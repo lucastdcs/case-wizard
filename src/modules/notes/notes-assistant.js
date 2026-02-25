@@ -272,6 +272,8 @@ export function initCaseNotesAssistant() {
             manualTaskBtn.style.display = "block";
         }
 
+        const mode = subStatusKey === "SO_Education_Only" ? "education" : "implementation";
+        stepTasks.setMode(mode);
         stepTasks.updateSubStatus(subStatusKey);
         updateTagSupport();
     }
