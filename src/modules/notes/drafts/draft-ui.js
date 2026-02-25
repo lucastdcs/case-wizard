@@ -5,15 +5,16 @@ import { showToast, confirmDialog } from "../../shared/utils.js";
 import { SoundManager } from "../../shared/sound-manager.js";
 
 export function createDraftsManager(callbacks) {
-    const { onSaveCurrent, onLoadDraft } = callbacks;
+    const { onSaveCurrent, onLoadDraft, t } = callbacks;
 
     // --- 1. BOTÃO "GUARDAR" (Redesenhado) ---
     const parkButton = document.createElement("button");
+    parkButton.className = "js-btn-park";
     
     // Ícone + Texto
     parkButton.innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-        Guardar
+        <span>${t('guardar')}</span>
     `;
 
     // Estilo Geométrico igual ao 'buttonBase' + Visual 'Outlined'
@@ -129,7 +130,7 @@ export function createDraftsManager(callbacks) {
 
     const drawerHeader = document.createElement("div");
     drawerHeader.style.cssText = "padding: 16px 24px; border-bottom: 1px solid #F1F3F4; display: flex; justify-content: space-between; align-items: center; background: #fff;";
-    drawerHeader.innerHTML = `<span style="font-size:16px; font-weight:700; color:#202124;">Rascunhos Salvos</span>`;
+    drawerHeader.innerHTML = `<span class="js-drawer-title" style="font-size:16px; font-weight:700; color:#202124;">${t('rascunhos_salvos')}</span>`;
     
     const closeBtn = document.createElement("button");
     closeBtn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
@@ -166,8 +167,7 @@ export function createDraftsManager(callbacks) {
             drawerList.innerHTML = `
                 <div style="text-align:center; padding:60px 20px; color:#9AA0A6;">
                     <div style="font-size:32px; margin-bottom:12px; opacity:0.5;">📭</div>
-                    <div style="font-size:14px; font-weight:500;">Nenhum rascunho guardado</div>
-                    <div style="font-size:12px; margin-top:4px;">Use o botão "Guardar" para estacionar um caso aqui.</div>
+                    <div style="font-size:14px; font-weight:500;">${t('nenhum_rascunho')}</div>
                 </div>`;
             return;
         }
