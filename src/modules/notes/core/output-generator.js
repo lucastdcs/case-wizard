@@ -41,12 +41,12 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
     if (outputText.includes('{SCREENSHOTS_LIST}')) outputText = outputText.replace(/{SCREENSHOTS_LIST}/g, screenshotsText || 'N/A');
     else if (screenshotsText !== '') outputText += `<br>${screenshotsText}`;
     const t = (key) => translations[state.currentLang]?.[key] || translations['pt']?.[key] || key;
-    if (state.currentLang === 'pt' && state.isPortugalCase) {
+    if (state.isPortugalCase) {
         const consentValue = state.consent ? t('sim') : t('nao');
         outputText = outputText.replace(/{CONSENTIU_GRAVACAO}/g, `<br><b>${t('consentiu_gravacao')}</b> ${consentValue}<br><br>`).replace(/{CASO_PORTUGAL}/g, `<br><b>${t('caso_portugal')}</b> ${t('sim')}<br>`);
-    } else if (state.currentLang === 'pt' && !state.isPortugalCase) {
+    } else {
         outputText = outputText.replace(/{CASO_PORTUGAL}/g, `<br><b>${t('caso_portugal')}</b> ${t('nao')}<br>`).replace(/{CONSENTIU_GRAVACAO}/g, '');
-    } else { outputText = outputText.replace(/{CASO_PORTUGAL}/g, '').replace(/{CONSENTIU_GRAVACAO}/g, ''); }
+    }
     for (const fieldId in state.formData) {
         const fieldName = fieldId.replace('field-', ''); const placeholderRegex = new RegExp(`{${fieldName}}`, 'g');
         let value = state.formData[fieldId];

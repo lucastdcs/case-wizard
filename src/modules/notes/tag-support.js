@@ -14,14 +14,15 @@ const styleWarning = { fontSize: "12px", color: "#e37400", marginTop: "4px" };
 const styleInputLocal = { width: "100%", padding: "8px", borderRadius: "8px", border: "1px solid #dadce0", fontSize: "14px", marginBottom: "12px", boxSizing: "border-box" };
 const styleRadioGroup = { display: 'flex', gap: '15px', marginBottom: '10px' };
 
-export function createTagSupportModule() {
+export function createTagSupportModule(t) {
     // --- 1. CONSTRUÇÃO DA UI ---
     const container = document.createElement("div");
     container.id = "tag-support-container";
     Object.assign(container.style, styleContainer);
 
     const mainLabel = document.createElement("label");
-    mainLabel.textContent = "Utilizou o Tag Support para criar/verificar?";
+    mainLabel.className = "js-ts-main-label";
+    mainLabel.textContent = t('utilizou_tag_support');
     Object.assign(mainLabel.style, styleLabel, { marginTop: "0" });
 
     // Radio Buttons Container
@@ -49,7 +50,8 @@ export function createTagSupportModule() {
     reasonDiv.style.display = "block"; // Default visível pois "Não" é default
 
     const reasonLabel = document.createElement("label");
-    reasonLabel.textContent = "Qual foi o Motivo?";
+    reasonLabel.className = "js-ts-reason-label";
+    reasonLabel.textContent = t('motivo_ts');
     Object.assign(reasonLabel.style, styleLabel, { fontSize: "12px" });
 
     const reasonInput = document.createElement("input");
@@ -57,7 +59,8 @@ export function createTagSupportModule() {
     Object.assign(reasonInput.style, styleInputLocal);
 
     const warningText = document.createElement("div");
-    warningText.innerHTML = `⚠️ <strong>Lembre-se de preencher o Form!</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" style="color:#e37400; text-decoration:underline;">Link aqui</a>`;
+    warningText.className = "js-ts-warning";
+    warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" style="color:#e37400; text-decoration:underline;">Link aqui</a>`;
     Object.assign(warningText.style, styleWarning);
 
     reasonDiv.appendChild(reasonLabel);
@@ -109,6 +112,13 @@ export function createTagSupportModule() {
         return text;
     }
 
+    function setLanguage(newT) {
+        t = newT;
+        mainLabel.textContent = t('utilizou_tag_support');
+        reasonLabel.textContent = t('motivo_ts');
+        warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" style="color:#e37400; text-decoration:underline;">Link aqui</a>`;
+    }
+
     // Reseta o estado (chamado ao mudar de passo)
     function reset() {
         container.style.display = 'none';
@@ -122,6 +132,7 @@ export function createTagSupportModule() {
         element: container, // O elemento HTML para dar append
         updateVisibility,
         getOutput,
+        setLanguage,
         reset
     };
 }

@@ -31,7 +31,6 @@ export function buildDynamicForm(subStatusKey, container, state) {
         } else {
             field = document.createElement("input"); field.type = "text"; field.classList.add("cw-input");
         }
-        if (fieldName === "REASON_COMMENTS" && (subStatusKey.startsWith("NI_") || subStatusKey.startsWith("IN_"))) { label.style.display = "none"; field.style.display = "none"; }
         if (fieldName === "ON_CALL" && state.currentCaseType === "lm") { label.style.display = "none"; field.style.display = "none"; field.value = "N/A"; }
         field.id = fieldId; field.value = state.formData[fieldId] || "";
         field.addEventListener('input', (e) => state.updateField(fieldId, e.target.value));

@@ -36,11 +36,11 @@ export function initCaseNotesAssistant() {
     const { popup, content, header, animRefs, credit } = createNotesPopup(CURRENT_VERSION, toggleVisibility);
 
     // 2. Initialize Sub-modules
-    const tagSupport = createTagSupportModule();
+    const tagSupport = createTagSupportModule(t);
     const stepTasks = createStepTasksComponent(() => {
         updateTagSupport();
         notesState.activeTasks = stepTasks.getCheckedElements();
-    });
+    }, t);
 
     const scenariosContainer = document.createElement("div");
     scenariosContainer.style.display = "none";
@@ -58,7 +58,8 @@ export function initCaseNotesAssistant() {
         },
         onLoadDraft: (draft) => {
             restoreFullState(draft);
-        }
+        },
+        t: (key) => t(key)
     });
 
     // 4. Build Main Layout Sections
@@ -76,13 +77,14 @@ export function initCaseNotesAssistant() {
     stepTasks.selectionElement.style.display = "none";
     stepTasks.screenshotsElement.style.display = "none";
 
-    // Manual Task Toggle Button (Dotted)
+    // Manual Task Toggle Button
     const manualTaskBtn = document.createElement("button");
     manualTaskBtn.id = "manual-task-toggle";
-    manualTaskBtn.textContent = "Gostaria de adicionar uma task";
-    manualTaskBtn.style.cssText = "display: none; width: 100%; padding: 10px; border: 1px dashed #dadce0; background: transparent; color: #5f6368; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 500; margin-top: 8px;";
+    manualTaskBtn.textContent = t('gostaria_de_adicionar_uma_task') || "Gostaria de adicionar uma task";
+    manualTaskBtn.style.cssText = "display: none; width: 100%; padding: 10px; border: 1px solid #dadce0; background: #f8f9fa; color: #1a73e8; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 500; margin-top: 8px;";
     manualTaskBtn.onclick = () => {
         stepTasks.selectionElement.style.display = "block";
+        stepTasks.screenshotsElement.style.display = "block";
         manualTaskBtn.style.display = "none";
     };
     content.appendChild(manualTaskBtn);
@@ -140,12 +142,12 @@ export function initCaseNotesAssistant() {
     function createLangTypeSection() {
         const div = document.createElement("div");
         div.innerHTML = `
-            <div class="cw-section-title">${t('idioma')}</div>
+            <div class="cw-section-title js-label-idioma">${t('idioma')}</div>
             <div class="cw-segmented-control" id="lang-selector">
                 <button data-lang="pt" class="active">Português</button>
                 <button data-lang="es">Español</button>
             </div>
-            <div class="cw-section-title">${t('fluxo')}</div>
+            <div class="cw-section-title js-label-fluxo">${t('fluxo')}</div>
             <div class="cw-segmented-control" id="type-selector">
                 <button data-type="bau" class="active">BAU</button>
                 <button data-type="lm">LM</button>
@@ -188,7 +190,7 @@ export function initCaseNotesAssistant() {
         div.className = "cw-status-section";
         div.style.cssText = "display: flex; flex-direction: column; gap: 8px;";
         div.innerHTML = `
-            <div class="cw-section-title" style="margin-top: 8px;">${t('status_principal')}</div>
+            <div class="cw-section-title js-label-status" style="margin-top: 8px;">${t('status_principal')}</div>
             <select id="main-status-select" class="cw-select">
                 <option value="" disabled selected>${t('select_status')}</option>
                 <option value="NI">NI - Need Info</option>
@@ -197,7 +199,7 @@ export function initCaseNotesAssistant() {
                 <option value="AS">AS - Assigned</option>
                 <option value="DC">DC - Discard</option>
             </select>
-            <div class="cw-section-title" style="margin-top: 8px;">${t('substatus')}</div>
+            <div class="cw-section-title js-label-substatus" style="margin-top: 8px;">${t('substatus')}</div>
             <select id="sub-status-select" class="cw-select" disabled>
                 <option value="">${t('select_substatus')}</option>
             </select>
@@ -209,6 +211,8 @@ export function initCaseNotesAssistant() {
         mainSelect.onchange = () => {
             notesState.setStatus(mainSelect.value);
             updateSubStatusOptions(mainSelect.value, subSelect);
+            notesState.setSubStatus("");
+            onSubStatusChange(""); // Clear UI when main status changes
         };
 
         subSelect.onchange = () => {
@@ -241,6 +245,8 @@ export function initCaseNotesAssistant() {
             scenariosContainer.style.display = "none";
             dynamicFormContainer.style.display = "none";
             document.getElementById("manual-task-toggle").style.display = "none";
+            stepTasks.selectionElement.style.display = "none";
+            stepTasks.screenshotsElement.style.display = "none";
             return;
         }
 
@@ -266,6 +272,8 @@ export function initCaseNotesAssistant() {
             manualTaskBtn.style.display = "block";
         }
 
+        const mode = subStatusKey === "SO_Education_Only" ? "education" : "implementation";
+        stepTasks.setMode(mode);
         stepTasks.updateSubStatus(subStatusKey);
         updateTagSupport();
     }
@@ -330,6 +338,7 @@ export function initCaseNotesAssistant() {
         const div = document.createElement("div");
         div.className = "cw-actions-section";
         div.style.display = "flex";
+        div.style.flexWrap = "wrap";
         div.style.gap = "8px";
         div.style.paddingTop = "16px";
         div.style.marginTop = "16px";
@@ -338,19 +347,26 @@ export function initCaseNotesAssistant() {
         const parkBtn = draftsManager.parkButton;
         parkBtn.style.marginTop = "0"; // Normalize margin to align with others
 
+        const btnReset = document.createElement("button");
+        btnReset.className = "cw-btn-secondary js-btn-reset";
+        btnReset.textContent = t('limpar');
+        btnReset.style.cssText = "flex: 1; background: #fff; color: #5f6368; border: 1px solid #dadce0;";
+        btnReset.onclick = () => resetModule();
+
         const btnCopy = document.createElement("button");
-        btnCopy.className = "cw-btn-secondary";
+        btnCopy.className = "cw-btn-secondary js-btn-copy";
         btnCopy.textContent = t('copiar');
         btnCopy.style.flex = "1";
         btnCopy.onclick = () => handleCopy();
 
         const btnGenerate = document.createElement("button");
-        btnGenerate.className = "cw-btn-primary";
+        btnGenerate.className = "cw-btn-primary js-btn-generate";
         btnGenerate.textContent = t('preencher');
         btnGenerate.style.flex = "1";
         btnGenerate.onclick = () => handleGenerate();
 
-        div.appendChild(draftsManager.parkButton);
+        div.appendChild(parkBtn);
+        div.appendChild(btnReset);
         div.appendChild(btnCopy);
         div.appendChild(btnGenerate);
 
@@ -358,6 +374,10 @@ export function initCaseNotesAssistant() {
     }
 
     async function handleCopy() {
+        if (!notesState.currentSubStatus) {
+            showToast(t('select_substatus'), { error: true });
+            return;
+        }
         const html = generateOutputHtml(notesState, stepTasks, tagSupport);
         if (html) {
             copyHtmlToClipboard(html);
@@ -369,11 +389,11 @@ export function initCaseNotesAssistant() {
     }
 
     async function handleGenerate() {
-        const html = generateOutputHtml(notesState, stepTasks, tagSupport);
-        if (!html) {
+        if (!notesState.currentSubStatus) {
             showToast(t('select_substatus'), { error: true });
             return;
         }
+        const html = generateOutputHtml(notesState, stepTasks, tagSupport);
 
         copyHtmlToClipboard(html);
         toggleVisibility();
@@ -405,6 +425,11 @@ export function initCaseNotesAssistant() {
         content.querySelector('#sub-status-select').disabled = true;
         dynamicFormContainer.innerHTML = "";
         scenariosContainer.style.display = "none";
+        if (document.getElementById("manual-task-toggle")) {
+            document.getElementById("manual-task-toggle").style.display = "none";
+        }
+        stepTasks.selectionElement.style.display = "none";
+        stepTasks.screenshotsElement.style.display = "none";
     }
 
     async function collectFullState() {
@@ -430,7 +455,9 @@ export function initCaseNotesAssistant() {
         };
     }
 
-    function restoreFullState(draft) {
+    const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    async function restoreFullState(draft) {
         notesState.setLanguage(draft.currentLang);
         notesState.setCaseType(draft.currentCaseType);
 
@@ -445,28 +472,26 @@ export function initCaseNotesAssistant() {
             mainSelect.value = draft.status;
             mainSelect.dispatchEvent(new Event('change'));
 
-            setTimeout(() => {
-                if (draft.subStatus) {
-                    const subSelect = content.querySelector('#sub-status-select');
-                    subSelect.value = draft.subStatus;
-                    subSelect.dispatchEvent(new Event('change'));
+            await wait(50);
+            if (draft.subStatus) {
+                const subSelect = content.querySelector('#sub-status-select');
+                subSelect.value = draft.subStatus;
+                subSelect.dispatchEvent(new Event('change'));
 
-                    setTimeout(() => {
-                        // Restore Form Fields
-                        for (const id in draft.formData) {
-                            const el = document.getElementById(id);
-                            if (el) {
-                                el.value = draft.formData[id];
-                                el.dispatchEvent(new Event('input'));
-                            }
-                        }
-                        // Restore Tasks
-                        if (draft.activeTasks) {
-                            draft.activeTasks.forEach(t => stepTasks.setTaskCount(t.key, t.count));
-                        }
-                    }, 100);
+                await wait(100);
+                // Restore Form Fields
+                for (const id in draft.formData) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.value = draft.formData[id];
+                        el.dispatchEvent(new Event('input'));
+                    }
                 }
-            }, 50);
+                // Restore Tasks
+                if (draft.activeTasks) {
+                    draft.activeTasks.forEach(t => stepTasks.setTaskCount(t.key, t.count));
+                }
+            }
         }
     }
 
@@ -484,7 +509,35 @@ export function initCaseNotesAssistant() {
     }
 
     function updateUIFromState(state) {
-        // Sync labels when language changes if needed
+        // Sync labels when language changes
+        const lIdioma = content.querySelector('.js-label-idioma');
+        if (lIdioma) lIdioma.textContent = t('idioma');
+        const lFluxo = content.querySelector('.js-label-fluxo');
+        if (lFluxo) lFluxo.textContent = t('fluxo');
+        const lStatus = content.querySelector('.js-label-status');
+        if (lStatus) lStatus.textContent = t('status_principal');
+        const lSubstatus = content.querySelector('.js-label-substatus');
+        if (lSubstatus) lSubstatus.textContent = t('substatus');
+
+        const btnCopy = content.querySelector('.js-btn-copy');
+        if (btnCopy) btnCopy.textContent = t('copiar');
+        const btnGenerate = content.querySelector('.js-btn-generate');
+        if (btnGenerate) btnGenerate.textContent = t('preencher');
+
+        const btnReset = content.querySelector('.js-btn-reset');
+        if (btnReset) btnReset.textContent = t('limpar');
+
+        const manualBtn = document.getElementById('manual-task-toggle');
+        if (manualBtn) manualBtn.textContent = t('gostaria_de_adicionar_uma_task') || "Gostaria de adicionar uma task";
+
+        const parkBtn = content.querySelector('.js-btn-park span');
+        if (parkBtn) parkBtn.textContent = t('guardar');
+
+        const drawerTitle = popup.querySelector('.js-drawer-title');
+        if (drawerTitle) drawerTitle.textContent = t('rascunhos_salvos');
+
+        if (tagSupport && tagSupport.setLanguage) tagSupport.setLanguage(t);
+        if (stepTasks && stepTasks.setLanguage) stepTasks.setLanguage(t);
     }
 
     // Initialize with defaults
