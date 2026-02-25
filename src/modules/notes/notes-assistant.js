@@ -211,6 +211,8 @@ export function initCaseNotesAssistant() {
         mainSelect.onchange = () => {
             notesState.setStatus(mainSelect.value);
             updateSubStatusOptions(mainSelect.value, subSelect);
+            notesState.setSubStatus("");
+            onSubStatusChange(""); // Clear UI when main status changes
         };
 
         subSelect.onchange = () => {
@@ -243,6 +245,8 @@ export function initCaseNotesAssistant() {
             scenariosContainer.style.display = "none";
             dynamicFormContainer.style.display = "none";
             document.getElementById("manual-task-toggle").style.display = "none";
+            stepTasks.selectionElement.style.display = "none";
+            stepTasks.screenshotsElement.style.display = "none";
             return;
         }
 
@@ -419,6 +423,11 @@ export function initCaseNotesAssistant() {
         content.querySelector('#sub-status-select').disabled = true;
         dynamicFormContainer.innerHTML = "";
         scenariosContainer.style.display = "none";
+        if (document.getElementById("manual-task-toggle")) {
+            document.getElementById("manual-task-toggle").style.display = "none";
+        }
+        stepTasks.selectionElement.style.display = "none";
+        stepTasks.screenshotsElement.style.display = "none";
     }
 
     async function collectFullState() {
