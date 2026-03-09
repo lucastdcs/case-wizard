@@ -172,9 +172,10 @@ export function initCaseNotesAssistant() {
             const style = document.createElement('style');
             style.id = 'cw-segmented-styles';
             style.innerHTML = `
-                .cw-segmented-control { display: flex; background: #f1f3f4; padding: 4px; border-radius: 12px; gap: 4px; }
-                .cw-segmented-control button { flex: 1; border: none; background: transparent; padding: 8px; font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.2s; color: #5f6368; }
-                .cw-segmented-control button.active { background: #fff; color: #1a73e8; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+                .cw-segmented-control { display: flex; background: #f1f3f4; padding: 2px; border-radius: 100px; gap: 2px; border: 1px solid #e5e7eb; }
+                .cw-segmented-control button { flex: 1; border: none; background: transparent; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 100px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); color: #5f6368; }
+                .cw-segmented-control button.active { background: #1a73e8; color: #fff; box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3); }
+                .cw-segmented-control button:hover:not(.active) { background: #e8eaed; color: #202124; }
             `;
             document.head.appendChild(style);
         }

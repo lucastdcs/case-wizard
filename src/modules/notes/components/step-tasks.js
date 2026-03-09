@@ -145,8 +145,8 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 position: relative; 
                 height: 80px; /* Altura fixa confortável */
                 display: flex; flex-direction: column; align-items: center; justify-content: center;
-                transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 1px 3px rgba(0,0,0,0.04);
                 overflow: hidden;
             }
             
@@ -154,8 +154,8 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             .cw-hero-card:last-child:nth-child(odd) { grid-column: span 2; }
 
             /* Interação */
-            .cw-hero-card:hover { border-color: #D1D5DB; box-shadow: 0 4px 8px rgba(0,0,0,0.03); }
-            .cw-hero-card:active { transform: scale(0.98); }
+            .cw-hero-card:hover { border-color: var(--hero-color); box-shadow: 0 6px 12px rgba(0,0,0,0.08); transform: translateY(-2px); }
+            .cw-hero-card:active { transform: scale(0.96) translateY(0); }
 
             /* HERO ACTIVE STATE (Borda Colorida Apenas) */
             .cw-hero-card.active {
@@ -309,18 +309,23 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             /* CARTÃO (Base Física) */
             .cw-screen-card {
                 background: #FFFFFF;
-                border-radius: 12px;
+                border-radius: 16px;
                 /* Borda base sutil */
                 border: 1px solid #E5E7EB; 
                 /* Faixa de identidade na esquerda (Cor injetada via JS) */
-                border-left: 4px solid var(--brand-color);
+                border-left: 6px solid var(--brand-color);
                 
-                padding: 16px 20px;
+                padding: 20px;
                 position: relative;
-                transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 
-                /* Sombra quase invisível, apenas para separar do fundo */
-                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+                /* Sombra estilo Google */
+                box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            }
+
+            .cw-screen-card:hover {
+                box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+                border-color: #D1D5DB;
             }
 
             .cw-screen-card.ts-success {

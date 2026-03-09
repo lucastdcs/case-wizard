@@ -46,9 +46,12 @@ export function buildDynamicForm(subStatusKey, container, state) {
         if (fieldName === "REASON_COMMENTS") foundReason = true;
         let field;
         if (textareaListFields.includes(fieldName)) {
-            field = document.createElement("textarea"); field.classList.add("bullet-textarea", "cw-textarea"); enableAutoBullet(field);
+            field = document.createElement("textarea"); field.classList.add("bullet-textarea", "cw-textarea");
+            field.placeholder = "Utilize marcadores para detalhar...";
+            enableAutoBullet(field);
         } else if (textareaParagraphFields.includes(fieldName)) {
             field = document.createElement("textarea"); field.classList.add("cw-textarea");
+            field.placeholder = "Descreva as considerações...";
         } else {
             field = document.createElement("input"); field.type = "text"; field.classList.add("cw-input");
         }
