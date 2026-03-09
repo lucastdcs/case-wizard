@@ -15,7 +15,11 @@ export class NotesState {
     setLanguage(lang) { this.currentLang = lang; this.notify(); }
     setPortugalCase(val) { this.isPortugalCase = val; this.notify(); }
     setConsent(val) { this.consent = val; this.notify(); }
-    setTagSupportUsed(val) { this.tagSupportUsed = val; this.notify(); }
+    setTagSupportUsed(val) {
+        this.tagSupportUsed = val;
+        if (!val) this.forcedScreenshots.clear();
+        this.notify();
+    }
     toggleForcedScreenshot(taskKey, val) {
         if (val) this.forcedScreenshots.add(taskKey);
         else this.forcedScreenshots.delete(taskKey);

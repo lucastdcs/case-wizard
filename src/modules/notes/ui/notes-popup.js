@@ -38,10 +38,11 @@ function injectStyles() {
         .cw-scenario-chip { padding: 4px 10px; border-radius: 100px; background: #fff; border: 1px solid #dadce0; font-size: 12px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
         .cw-scenario-chip:hover { border-color: #1a73e8; background: #e8f0fe; }
         .cw-scenario-preview { font-size: 11px; color: #80868b; font-style: italic; min-height: 2em; line-height: 1.4; border-top: 1px dashed #dadce0; paddingTop: 8px; }
-        .cw-btn-primary { background: #1a73e8; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
-        .cw-btn-primary:hover { background: #1765cc; }
-        .cw-btn-secondary { background: #5f6368; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
-        .cw-btn-secondary:hover { background: #4f5257; }
+        .cw-btn-primary { background: #1a73e8; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 600; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px rgba(66, 133, 244, 0.3); }
+        .cw-btn-primary:hover { background: #1765cc; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(66, 133, 244, 0.4); }
+        .cw-btn-primary:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(66, 133, 244, 0.3); }
+        .cw-btn-secondary { background: #fff; color: #5f6368; border: 1px solid #dadce0; border-radius: 8px; padding: 10px 20px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .cw-btn-secondary:hover { background: #f8f9fa; border-color: #d2d2d2; color: #3c4043; }
     `;
     document.head.appendChild(style);
 }
