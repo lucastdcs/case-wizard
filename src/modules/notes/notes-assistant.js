@@ -40,7 +40,7 @@ export function initCaseNotesAssistant() {
     const stepTasks = createStepTasksComponent(() => {
         updateTagSupport();
         notesState.activeTasks = stepTasks.getCheckedElements();
-    }, t);
+    }, t, notesState);
 
     const scenariosContainer = document.createElement("div");
     scenariosContainer.style.display = "none";
@@ -142,15 +142,28 @@ export function initCaseNotesAssistant() {
     function createLangTypeSection() {
         const div = document.createElement("div");
         div.innerHTML = `
-            <div class="cw-section-title js-label-idioma">${t('idioma')}</div>
-            <div class="cw-segmented-control" id="lang-selector">
-                <button data-lang="pt" class="active">Português</button>
-                <button data-lang="es">Español</button>
-            </div>
-            <div class="cw-section-title js-label-fluxo">${t('fluxo')}</div>
-            <div class="cw-segmented-control" id="type-selector">
-                <button data-type="bau" class="active">BAU</button>
-                <button data-type="lm">LM</button>
+            <div style="display: flex; gap: 16px; margin-bottom: 8px;">
+                <div style="flex: 1;">
+                    <div class="cw-section-title js-label-idioma">${t('idioma')}</div>
+                    <div class="cw-segmented-control" id="lang-selector">
+                        <button data-lang="pt" class="active">PT</button>
+                        <button data-lang="es">ES</button>
+                    </div>
+                </div>
+                <div style="flex: 1;">
+                    <div class="cw-section-title js-label-fluxo">${t('fluxo')}</div>
+                    <div class="cw-segmented-control" id="type-selector">
+                        <button data-type="bau" class="active">BAU</button>
+                        <button data-type="lm">LM</button>
+                    </div>
+                </div>
+                <div style="flex: 1;">
+                    <div class="cw-section-title js-label-portugal">${t('caso_portugal')}</div>
+                    <div class="cw-segmented-control" id="portugal-selector">
+                        <button data-val="false" class="active">${t('nao')}</button>
+                        <button data-val="true">${t('sim')}</button>
+                    </div>
+                </div>
             </div>
         `;
         
@@ -179,6 +192,17 @@ export function initCaseNotesAssistant() {
                 notesState.setCaseType(btn.dataset.type);
                 div.querySelectorAll('#type-selector button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+            };
+        });
+
+        div.querySelectorAll('#portugal-selector button').forEach(btn => {
+            btn.onclick = () => {
+                notesState.setPortugalCase(btn.dataset.val === "true");
+                div.querySelectorAll('#portugal-selector button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (notesState.currentSubStatus) {
+                    buildDynamicForm(notesState.currentSubStatus, dynamicFormContainer, notesState);
+                }
             };
         });
 
@@ -273,7 +297,15 @@ export function initCaseNotesAssistant() {
         }
 
         const mode = subStatusKey === "SO_Education_Only" ? "education" : "implementation";
-        stepTasks.setMode(mode);
+        notesState.setScreenshotMode(mode);
+
+        // Auto-hide ON_CALL for LM
+        if (notesState.currentCaseType === "lm") {
+            notesState.toggleFieldExclusion("field-ON_CALL", true);
+        } else {
+            notesState.toggleFieldExclusion("field-ON_CALL", false);
+        }
+
         stepTasks.updateSubStatus(subStatusKey);
         updateTagSupport();
     }
@@ -337,32 +369,36 @@ export function initCaseNotesAssistant() {
     function createActionsSection(draftsManager) {
         const div = document.createElement("div");
         div.className = "cw-actions-section";
-        div.style.display = "flex";
-        div.style.flexWrap = "wrap";
-        div.style.gap = "8px";
-        div.style.paddingTop = "16px";
-        div.style.marginTop = "16px";
-        div.style.borderTop = "1px solid #eee";
+        div.style.cssText = `
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 16px;
+            margin-top: 16px;
+            background: #f8f9fa;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+        `;
         
         const parkBtn = draftsManager.parkButton;
-        parkBtn.style.marginTop = "0"; // Normalize margin to align with others
+        parkBtn.style.cssText = "width: 100%; margin: 0; border-radius: 10px; grid-column: span 2;";
 
         const btnReset = document.createElement("button");
         btnReset.className = "cw-btn-secondary js-btn-reset";
         btnReset.textContent = t('limpar');
-        btnReset.style.cssText = "flex: 1; background: #fff; color: #5f6368; border: 1px solid #dadce0;";
+        btnReset.style.cssText = "width: 100%; height: 44px; background: #fff; color: #5f6368; border: 1px solid #dadce0; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;";
         btnReset.onclick = () => resetModule();
 
         const btnCopy = document.createElement("button");
         btnCopy.className = "cw-btn-secondary js-btn-copy";
         btnCopy.textContent = t('copiar');
-        btnCopy.style.flex = "1";
+        btnCopy.style.cssText = "width: 100%; height: 44px; background: #fff; color: #1a73e8; border: 1px solid #1a73e8; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;";
         btnCopy.onclick = () => handleCopy();
 
         const btnGenerate = document.createElement("button");
         btnGenerate.className = "cw-btn-primary js-btn-generate";
         btnGenerate.textContent = t('preencher');
-        btnGenerate.style.flex = "1";
+        btnGenerate.style.cssText = "width: 100%; height: 44px; background: #1a73e8; color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; grid-column: span 2; font-size: 15px; box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);";
         btnGenerate.onclick = () => handleGenerate();
 
         div.appendChild(parkBtn);
@@ -514,6 +550,8 @@ export function initCaseNotesAssistant() {
         if (lIdioma) lIdioma.textContent = t('idioma');
         const lFluxo = content.querySelector('.js-label-fluxo');
         if (lFluxo) lFluxo.textContent = t('fluxo');
+        const lPortugal = content.querySelector('.js-label-portugal');
+        if (lPortugal) lPortugal.textContent = t('caso_portugal');
         const lStatus = content.querySelector('.js-label-status');
         if (lStatus) lStatus.textContent = t('status_principal');
         const lSubstatus = content.querySelector('.js-label-substatus');

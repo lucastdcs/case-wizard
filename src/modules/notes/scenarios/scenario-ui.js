@@ -78,9 +78,13 @@ export function createScenarioSelector(onSelect, state) {
 
     let searchQuery = '';
     const render = () => {
+        const t = (key) => translations[state.currentLang]?.[key] || translations['pt']?.[key] || key;
         container.innerHTML = `
             <div class="cw-scenario-header">
-                <div class="cw-section-title" style="margin-top:0">${translations[state.currentLang]?.cenarios_comuns || 'Cenários Comuns'}</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="cw-section-title" style="margin-top:0">${t('cenarios_comuns')}</div>
+                    <button class="cw-btn-help-scenarios" title="${t('ajuda_scenarios')}">?</button>
+                </div>
                 <div class="cw-scenario-search">
                     <input type="text" placeholder="Buscar cenários..." value="${searchQuery}">
                 </div>
@@ -89,6 +93,25 @@ export function createScenarioSelector(onSelect, state) {
             <div class="cw-scenario-preview">Passe o mouse para ver os detalhes</div>
         `;
         container.querySelector('.cw-scenario-search input').oninput = (e) => { searchQuery = e.target.value.toLowerCase(); renderList(); };
+        container.querySelector('.cw-btn-help-scenarios').onclick = (e) => {
+            e.preventDefault();
+            alert(t('ajuda_scenarios_desc'));
+        };
+
+        if (!document.getElementById('cw-help-btn-style')) {
+            const style = document.createElement('style');
+            style.id = 'cw-help-btn-style';
+            style.innerHTML = `
+                .cw-btn-help-scenarios {
+                    width: 20px; height: 20px; border-radius: 50%; border: 1px solid #dadce0;
+                    background: #f8f9fa; color: #5f6368; font-size: 12px; cursor: pointer;
+                    display: flex; align-items: center; justify-content: center; font-weight: bold;
+                }
+                .cw-btn-help-scenarios:hover { background: #eee; }
+            `;
+            document.head.appendChild(style);
+        }
+
         renderList();
     };
 
@@ -112,10 +135,34 @@ export function createScenarioSelector(onSelect, state) {
             content: data
         }));
 
-        scenarios = scenarios.filter(s =>
-            (s.title?.toLowerCase().includes(searchQuery) || (typeof s.content === 'string' && s.content.toLowerCase().includes(searchQuery))) &&
-            (!s.content.type || s.content.type === 'all' || s.content.type === state.currentCaseType)
-        );
+        scenarios = scenarios.filter(s => {
+            const matchesSearch = (s.title?.toLowerCase().includes(searchQuery) || (typeof s.content === 'string' && s.content.toLowerCase().includes(searchQuery)));
+            const matchesType = (!s.content.type || s.content.type === 'all' || s.content.type === state.currentCaseType);
+
+            // Strict substatus filtering
+            let matchesSubStatus = true;
+            if (subStatus.startsWith('NI_')) {
+                matchesSubStatus = s.id.includes('-ni-') || s.id.includes('attempted');
+            } else if (subStatus.startsWith('SO_')) {
+                // SO scenarios can be tasks or specific SO closes
+                matchesSubStatus = s.id.includes('gtm') || s.id.includes('whatsapp') || s.id.includes('form') || s.id.includes('ecw4') || s.id.includes('ga4') || s.id.includes('-so-');
+            } else if (subStatus.startsWith('AS_')) {
+                matchesSubStatus = s.id.includes('-as-');
+            } else if (subStatus.startsWith('IN_')) {
+                matchesSubStatus = s.id.includes('-in-');
+            } else if (subStatus.startsWith('DC_')) {
+                matchesSubStatus = s.id.includes('-dc-');
+            }
+
+            return matchesSearch && matchesType && matchesSubStatus;
+        });
+
+        // Sort by favorites
+        scenarios.sort((a, b) => {
+            const favA = state.favorites.has(a.id) ? 1 : 0;
+            const favB = state.favorites.has(b.id) ? 1 : 0;
+            return favB - favA;
+        });
 
         listContainer.innerHTML = "";
         if (scenarios.length === 0) {
@@ -124,10 +171,29 @@ export function createScenarioSelector(onSelect, state) {
         }
 
         scenarios.forEach(s => {
+            const chipWrapper = document.createElement("div");
+            chipWrapper.style.position = "relative";
+            chipWrapper.style.display = "inline-block";
+
             const chip = document.createElement("div");
             chip.className = "cw-scenario-chip";
             if (selectedScenarios.has(s.id)) chip.classList.add("selected");
             chip.textContent = s.title || s.id;
+
+            const favBtn = document.createElement("span");
+            favBtn.textContent = state.favorites.has(s.id) ? "★" : "☆";
+            favBtn.style.cssText = `
+                position: absolute; top: -5px; right: -5px; background: #fff;
+                border-radius: 50%; width: 16px; height: 16px; display: flex;
+                align-items: center; justify-content: center; font-size: 10px;
+                cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); color: #fbbc04;
+                z-index: 2;
+            `;
+            favBtn.onclick = (e) => {
+                e.stopPropagation();
+                state.toggleFavorite(s.id);
+                renderList();
+            };
 
             chip.onmouseenter = () => {
                 const preview = container.querySelector('.cw-scenario-preview');
@@ -146,7 +212,9 @@ export function createScenarioSelector(onSelect, state) {
                 onSelect(s, selectedScenarios.has(s.id));
             };
 
-            listContainer.appendChild(chip);
+            chipWrapper.appendChild(chip);
+            chipWrapper.appendChild(favBtn);
+            listContainer.appendChild(chipWrapper);
         });
     };
     render(); return container;

@@ -30,7 +30,12 @@ export const translations = {
         'copiado_sucesso': 'Texto copiado com sucesso',
         'inserido_copiado': 'Texto inserido e copiado!',
         'campo_nao_encontrado': 'Campo não encontrado. O texto já foi copiado.',
-        
+        'ts_disclaimer': 'Não são necessários os screenshots em casos de conversões criadas/verificadas pelo Tag Support',
+        'incluir_mesmo_assim': 'Incluir mesmo assim',
+        'ajuda_scenarios': 'Como usar os Cenários?',
+        'ajuda_scenarios_desc': 'Os cenários preenchem automaticamente vários campos da nota. Clique em um chip para aplicar. Você pode combinar vários cenários (ex: Instalação GTM + WhatsApp).',
+        'ts_output_disclaimer': 'Tag criada/verificada pelo Tag Support, assim como a nota adicionada automáticamente ao caso indica. Não incluo os screenshots, de acordo com orientação do Win Criteria (com um link para https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit?resourcekey=0-GiUc9KwVTDkVaUxwlyNCtA#gid=971616043&range=A2:A8)',
+
         // Tarefa 3 (PT-only)
         'caso_portugal': 'Caso de Portugal?',
         'consentiu_gravacao': 'Anunciante consentiu com a gravação da reunião?',
@@ -87,7 +92,12 @@ export const translations = {
         'copiado_sucesso': 'Texto copiado con éxito',
         'inserido_copiado': '¡Texto insertado y copiado!',
         'campo_nao_encontrado': 'Campo no encontrado. El texto ya ha sido copiado.',
-        
+        'ts_disclaimer': 'No se requieren capturas de pantalla en casos de conversiones creadas/verificadas por Tag Support',
+        'incluir_mesmo_assim': 'Incluir de todos modos',
+        'ajuda_scenarios': '¿Cómo usar los Escenarios?',
+        'ajuda_scenarios_desc': 'Los escenarios completan automáticamente varios campos de la nota. Haga clic en un chip para aplicar. Puede combinar varios escenarios (ej: Instalación GTM + WhatsApp).',
+        'ts_output_disclaimer': 'Etiqueta creada/verificada por Tag Support, como indica la nota añadida automáticamente al caso. No incluyo las capturas de pantalla, según la guía de Win Criteria (con un enlace a https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit?resourcekey=0-GiUc9KwVTDkVaUxwlyNCtA#gid=971616043&range=A2:A8)',
+
         // Tarefa 3 (Não aplicável, mas traduzido)
         'caso_portugal': '¿Caso de Portugal?',
         'consentiu_gravacao': '¿El anunciante consintió la grabación de la reunión?',

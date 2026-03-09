@@ -70,9 +70,17 @@ const ICONS = {
   default: `<svg viewBox="0 0 24 24"><path fill="#5F6368" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`,
 };
 
-export function createStepTasksComponent(onUpdateCallback, t) {
+export function createStepTasksComponent(onUpdateCallback, t, notesState) {
   const selection = {}; 
   let currentMode = "implementation";
+
+  // Subscribe to state changes to react to Tag Support
+  if (notesState) {
+    notesState.subscribe(() => {
+        updateUI();
+        renderScreenshots();
+    });
+  }
 
   function getBrand(name) {
     const n = name.toLowerCase();
@@ -156,6 +164,13 @@ export function createStepTasksComponent(onUpdateCallback, t) {
                 box-shadow: 0 0 0 1px var(--hero-color), 0 4px 12px rgba(0,0,0,0.05);
             }
 
+            .cw-hero-card.ts-success {
+                background: #F0FDF4 !important;
+                border-color: #22C55E !important;
+                box-shadow: 0 0 0 1px #22C55E, 0 4px 12px rgba(34, 197, 94, 0.1) !important;
+            }
+            .cw-hero-card.ts-success .cw-hero-label { color: #166534 !important; }
+
             /* CONTAINER DE CONTEÚDO (Para animação de deslize) */
             .cw-hero-main {
                 display: flex; align-items: center; gap: 10px;
@@ -235,6 +250,8 @@ export function createStepTasksComponent(onUpdateCallback, t) {
             .cw-task-item:last-child { border-bottom: none; }
             .cw-task-item:hover { background: #F3F4F6; }
             .cw-task-item.selected { background: ${DS.blueLight}; }
+            .cw-task-item.ts-success { background: #F0FDF4 !important; border-left: 4px solid #22C55E; }
+            .cw-task-item.ts-success .cw-task-label { color: #166534 !important; }
             
             .cw-task-left { display: flex; align-items: center; gap: 12px; flex: 1; }
             .cw-list-icon {
@@ -305,6 +322,37 @@ export function createStepTasksComponent(onUpdateCallback, t) {
                 /* Sombra quase invisível, apenas para separar do fundo */
                 box-shadow: 0 1px 2px rgba(0,0,0,0.02);
             }
+
+            .cw-screen-card.ts-success {
+                background: #F0FDF4;
+                border-color: #BBF7D0;
+                border-left-color: #22C55E;
+            }
+
+            .cw-ts-disclaimer-box {
+                padding: 12px;
+                background: #DCFCE7;
+                border-radius: 8px;
+                font-size: 12px;
+                color: #166534;
+                margin-top: 8px;
+                line-height: 1.4;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .cw-btn-ts-force {
+                align-self: flex-start;
+                padding: 4px 10px;
+                background: #fff;
+                border: 1px solid #22C55E;
+                color: #166534;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            .cw-btn-ts-force:hover { background: #f0fdf4; }
 
             /* Interação de Foco no Cartão */
             .cw-screen-card:focus-within {
@@ -596,6 +644,7 @@ export function createStepTasksComponent(onUpdateCallback, t) {
   }
 
   function updateUI() {
+    const tsUsed = notesState.tagSupportUsed;
 
     heroTasks.forEach(([key]) => {
       const card = heroGrid.querySelector(`#hero-${key}`);
@@ -604,12 +653,18 @@ export function createStepTasksComponent(onUpdateCallback, t) {
 
       if (sel) {
         card.classList.add("active");
-
         card.querySelector(".cw-step-val").textContent = sel.count;
-
         card.querySelector(".cw-step-val").style.color = card.dataset.color;
+
+        const isTsTarget = key === 'ads_conversion_tracking' || key === 'ads_enhanced_conversions';
+        if (tsUsed && isTsTarget && !notesState.forcedScreenshots.has(key)) {
+            card.classList.add("ts-success");
+        } else {
+            card.classList.remove("ts-success");
+        }
       } else {
         card.classList.remove("active");
+        card.classList.remove("ts-success");
       }
     });
 
@@ -621,8 +676,16 @@ export function createStepTasksComponent(onUpdateCallback, t) {
       if (sel) {
         row.classList.add("selected");
         row.querySelector(".cw-step-val").textContent = sel.count;
+
+        const isTsTarget = key === 'ads_conversion_tracking' || key === 'ads_enhanced_conversions';
+        if (tsUsed && isTsTarget && !notesState.forcedScreenshots.has(key)) {
+            row.classList.add("ts-success");
+        } else {
+            row.classList.remove("ts-success");
+        }
       } else {
         row.classList.remove("selected");
+        row.classList.remove("ts-success");
       }
     });
 
@@ -701,14 +764,13 @@ export function createStepTasksComponent(onUpdateCallback, t) {
     const keys = Object.keys(selection);
     let hasAny = false;
 
-    const subStatus = document.getElementById("sub-status-select")?.value || "";
-    const hasTagSupport = !!document.getElementById("tag-support-container"); // Simple check
-
     if (keys.length === 0) {
       screenList.innerHTML = `<div class="cw-empty-state">${t('selecione_tarefas')}</div>`;
       screenshotsContainer.style.display = "none";
       return;
     }
+
+    const tsUsed = notesState.tagSupportUsed;
 
     const disclaimer = document.createElement("div");
     disclaimer.className = "cw-info-banner";
@@ -725,14 +787,19 @@ export function createStepTasksComponent(onUpdateCallback, t) {
       const taskCount = selection[key].count;
       const brand = selection[key].brand;
 
-      const screenshotLabels = task.screenshots?.[currentMode] || [];
+      const isTsTarget = key === 'ads_conversion_tracking' || key === 'ads_enhanced_conversions';
+      const useTsLogic = tsUsed && isTsTarget && !notesState.forcedScreenshots.has(key);
 
-      if (screenshotLabels.length > 0) {
+      const mode = notesState.screenshotMode || "implementation";
+      const screenshotLabels = task.screenshots?.[mode] || [];
+
+      if (screenshotLabels.length > 0 || useTsLogic) {
         hasAny = true;
 
         for (let i = 1; i <= taskCount; i++) {
           const card = document.createElement("div");
           card.className = "cw-screen-card";
+          if (useTsLogic) card.classList.add("ts-success");
           card.style.setProperty("--brand-color", brand.color);
           card.style.setProperty("--brand-bg", brand.bg);
           card.style.setProperty("--brand-shadow", brand.color + "40");
@@ -767,34 +834,47 @@ export function createStepTasksComponent(onUpdateCallback, t) {
           header.appendChild(titleWrap);
           card.appendChild(header);
 
-          screenshotLabels.forEach((title, idx) => {
-            const group = document.createElement("div");
-            group.className = "cw-input-group";
+          if (useTsLogic) {
+            const tsBox = document.createElement("div");
+            tsBox.className = "cw-ts-disclaimer-box";
+            tsBox.innerHTML = `
+                <span>${t('ts_disclaimer')}</span>
+                <button class="cw-btn-ts-force">${t('incluir_mesmo_assim')}</button>
+            `;
+            tsBox.querySelector('button').onclick = () => {
+                notesState.toggleForcedScreenshot(key, true);
+            };
+            card.appendChild(tsBox);
+          } else {
+            screenshotLabels.forEach((title, idx) => {
+                const group = document.createElement("div");
+                group.className = "cw-input-group";
 
-            const label = document.createElement("label");
-            label.className = "cw-input-label";
-            label.textContent = title;
+                const label = document.createElement("label");
+                label.className = "cw-input-label";
+                label.textContent = title;
 
-            const pInput = document.createElement("input");
-            pInput.className = "cw-input-field";
-            pInput.id = `screen-${key}-${i}-${idx}`;
-            pInput.placeholder = "Cole o link aqui...";
-            pInput.setAttribute("autocomplete", "off");
+                const pInput = document.createElement("input");
+                pInput.className = "cw-input-field";
+                pInput.id = `screen-${key}-${i}-${idx}`;
+                pInput.placeholder = "Cole o link aqui...";
+                pInput.setAttribute("autocomplete", "off");
 
-            pInput.addEventListener("input", () => {
-              if (pInput.value.trim().length > 5) pInput.classList.add("filled");
-              else pInput.classList.remove("filled");
-            });
+                pInput.addEventListener("input", () => {
+                  if (pInput.value.trim().length > 5) pInput.classList.add("filled");
+                  else pInput.classList.remove("filled");
+                });
 
-            const check = document.createElement("div");
-            check.className = "cw-input-check";
-            check.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                const check = document.createElement("div");
+                check.className = "cw-input-check";
+                check.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
-            group.appendChild(label);
-            group.appendChild(pInput);
-            group.appendChild(check);
-            card.appendChild(group);
-          });
+                group.appendChild(label);
+                group.appendChild(pInput);
+                group.appendChild(check);
+                card.appendChild(group);
+              });
+          }
 
           screenList.appendChild(card);
         }
@@ -836,11 +916,6 @@ export function createStepTasksComponent(onUpdateCallback, t) {
       }
     },
     
-    setMode: (mode) => {
-        currentMode = mode;
-        renderScreenshots(); 
-    },
-
     setLanguage: (newT) => {
         t = newT;
         const hTitle = container.querySelector('.js-hero-title');
