@@ -1,0 +1,17 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>TechSol Verification</title>
+        </head>
+        <body>
+            <div id="app"></div>
+            <script type="module">
+                import { initCaseNotesAssistant } from './src/modules/notes/notes-assistant.js';
+                // Mock dependencies if needed, but the app seems relatively self-contained
+                window.techSolInitialized = false;
+                initCaseNotesAssistant();
+            </script>
+        </body>
+        </html>

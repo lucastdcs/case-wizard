@@ -13,7 +13,15 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
         checkedBoxes.forEach(cb => {
             const taskKey = cb.value; const task = TASKS_DB[taskKey];
             const count = cb.count || 1;
-            tagNames.push(count > 1 ? `${task.name} (x${count})` : task.name);
+            const isTsTarget = taskKey === 'ads_conversion_tracking' || taskKey === 'ads_enhanced_conversions';
+            const useTsDisclaimer = state.tagSupportUsed && isTsTarget && !state.forcedScreenshots.has(taskKey);
+
+            if (useTsDisclaimer) {
+                const t = (key) => translations[state.currentLang]?.[key] || translations['pt']?.[key] || key;
+                tagNames.push(`${task.name} - ${t('ts_output_disclaimer')}`);
+            } else {
+                tagNames.push(count > 1 ? `${task.name} (x${count})` : task.name);
+            }
         });
     }
     const screenshotsContainer = stepTasks.screenshotsElement;
@@ -45,9 +53,15 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
         const consentValue = state.consent ? t('sim') : t('nao');
         outputText = outputText.replace(/{CONSENTIU_GRAVACAO}/g, `<br><b>${t('consentiu_gravacao')}</b> ${consentValue}<br><br>`).replace(/{CASO_PORTUGAL}/g, `<br><b>${t('caso_portugal')}</b> ${t('sim')}<br>`);
     } else {
-        outputText = outputText.replace(/{CASO_PORTUGAL}/g, `<br><b>${t('caso_portugal')}</b> ${t('nao')}<br>`).replace(/{CONSENTIU_GRAVACAO}/g, '');
+        outputText = outputText.replace(/{CASO_PORTUGAL}/g, '').replace(/{CONSENTIU_GRAVACAO}/g, '');
     }
     for (const fieldId in state.formData) {
+        if (state.excludedFields.has(fieldId)) {
+            const fieldName = fieldId.replace('field-', '');
+            const lineRegex = new RegExp(`(?:<br>\\s*)?<[b|strong]+>[^<]+:\\s*<\\/[b|strong]+>\\s*\\{${fieldName}\\}(?:<br>\\s*)?`, 'gi');
+            outputText = outputText.replace(lineRegex, '').replace(new RegExp(`{${fieldName}}`, 'g'), '');
+            continue;
+        }
         const fieldName = fieldId.replace('field-', ''); const placeholderRegex = new RegExp(`{${fieldName}}`, 'g');
         let value = state.formData[fieldId];
         if (textareaListFields.includes(fieldName) && value.trim() !== '') {

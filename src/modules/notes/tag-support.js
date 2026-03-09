@@ -72,8 +72,14 @@ export function createTagSupportModule(t) {
     container.appendChild(reasonDiv);
 
     // --- 2. EVENTOS INTERNOS ---
-    rSim.onchange = () => { reasonDiv.style.display = 'none'; };
-    rNao.onchange = () => { reasonDiv.style.display = 'block'; };
+    rSim.onchange = () => {
+        reasonDiv.style.display = 'none';
+        import('./core/notes-state.js').then(m => m.notesState.setTagSupportUsed(true));
+    };
+    rNao.onchange = () => {
+        reasonDiv.style.display = 'block';
+        import('./core/notes-state.js').then(m => m.notesState.setTagSupportUsed(false));
+    };
 
     // --- 3. API PÚBLICA (Métodos que o pai vai chamar) ---
 
@@ -82,21 +88,19 @@ export function createTagSupportModule(t) {
         // Reset inicial
         container.style.display = 'none';
 
-        if (!subStatus || subStatus.includes('Education')) return;
+        if (!subStatus) return;
         if (!selectedTasksArray || selectedTasksArray.length === 0) return;
 
-        // Verifica Enhanced
-        const hasEnhanced = selectedTasksArray.some(t => t.includes('enhanced') || t === 'ec_google_ads');
+        // Regra específica: Apenas Ads Conversion Tracking ou Enhanced Conversions
+        const hasTargetTasks = selectedTasksArray.some(t =>
+            t === 'ads_conversion_tracking' || t === 'ads_enhanced_conversions'
+        );
 
-        // Verifica Ads Puro
-        const hasAdsConv = selectedTasksArray.some(t => (t.includes('conversion') || t.includes('ads')) && !t.includes('enhanced'));
-        const hasAnalytics = selectedTasksArray.some(t => t.includes('ga4') || t.includes('analytics') || t.includes('ua'));
-        const hasMerchant = selectedTasksArray.some(t => t.includes('merchant') || t.includes('gmc') || t.includes('shopping'));
-        
-        const isOnlyAds = hasAdsConv && !hasAnalytics && !hasMerchant; // GTM permitido
-
-        if (hasEnhanced || isOnlyAds) {
+        if (hasTargetTasks) {
             container.style.display = 'block';
+        } else {
+            reset();
+            import('./core/notes-state.js').then(m => m.notesState.setTagSupportUsed(false));
         }
     }
 
