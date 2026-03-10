@@ -6,13 +6,14 @@ import {styleCheckboxInput} from '../notes/notes-styles.js'
 
 // Estilos locais específicos deste módulo
 const styleContainer = { 
-    marginTop: "16px", marginBottom: "12px", padding: "10px", 
-    background: "#fff8e1", borderRadius: "6px", border: "1px solid #ffecb3", 
-    display: "none" 
+    marginTop: "24px", marginBottom: "16px", padding: "20px",
+    background: "#fff9e6", borderRadius: "20px", border: "1.5px solid #fbbc0540",
+    display: "none",
+    boxShadow: "0 4px 12px rgba(251, 188, 5, 0.05)"
 };
-const styleWarning = { fontSize: "12px", color: "#e37400", marginTop: "4px" };
-const styleInputLocal = { width: "100%", padding: "8px", borderRadius: "8px", border: "1px solid #dadce0", fontSize: "14px", marginBottom: "12px", boxSizing: "border-box" };
-const styleRadioGroup = { display: 'flex', gap: '15px', marginBottom: '10px' };
+const styleWarning = { fontSize: "12px", color: "#b06000", marginTop: "8px", lineHeight: "1.4" };
+const styleInputLocal = { width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1.5px solid #dadce0", fontSize: "14px", marginBottom: "16px", boxSizing: "border-box", background: "#fff" };
+const styleRadioGroup = { display: 'flex', gap: '20px', marginBottom: '12px' };
 
 export function createTagSupportModule(t) {
     // --- 1. CONSTRUÇÃO DA UI ---
@@ -120,7 +121,7 @@ export function createTagSupportModule(t) {
         t = newT;
         mainLabel.textContent = t('utilizou_tag_support');
         reasonLabel.textContent = t('motivo_ts');
-        warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" style="color:#e37400; text-decoration:underline;">Link aqui</a>`;
+        warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" style="color:#b06000; text-decoration:underline;">Link aqui</a>`;
     }
 
     // Reseta o estado (chamado ao mudar de passo)

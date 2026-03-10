@@ -1,17 +1,30 @@
 
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>TechSol Verification</title>
-        </head>
-        <body>
-            <div id="app"></div>
-            <script type="module">
-                import { initCaseNotesAssistant } from './src/modules/notes/notes-assistant.js';
-                // Mock dependencies if needed, but the app seems relatively self-contained
-                window.techSolInitialized = false;
-                initCaseNotesAssistant();
-            </script>
-        </body>
-        </html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>TechSol Redesign Verification</title>
+    <style>
+        body { background: #f0f2f5; margin: 0; padding: 20px; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        import { initCaseNotesAssistant } from './src/modules/notes/notes-assistant.js';
+        import { initGlobalStylesAndFont } from './src/modules/shared/utils.js';
+
+        // Load global styles
+        initGlobalStylesAndFont();
+
+        // Initialize module
+        const toggleNotes = initCaseNotesAssistant();
+
+        // Open it
+        toggleNotes();
+
+        // Add a helper to ensure it stays open for the screenshot
+        window.notesOpened = true;
+    </script>
+</body>
+</html>
