@@ -2,6 +2,8 @@
 import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, translations } from "../data/notes-data.js";
 import { fetchAndInsertSpeakeasyId } from "../automation/case-log-scraper.js";
 import { enableAutoBullet } from "../components/bullet-editor.js";
+import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
+
 export function buildDynamicForm(subStatusKey, container, state) {
     container.innerHTML = "";
     const templateData = SUBSTATUS_TEMPLATES[subStatusKey];
@@ -18,7 +20,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
         const label = document.createElement("label");
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
         label.textContent = t(fieldName.toLowerCase()) !== fieldName.toLowerCase() ? t(fieldName.toLowerCase()) : fieldName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) + ":";
-        Object.assign(label.style, { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "14px", fontWeight: "500", color: "#3c4043", marginBottom: "8px", marginTop: "16px" });
+        Object.assign(label.style, { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", color: COLORS.textSub, marginBottom: "8px", marginTop: "24px", textTransform: "uppercase", letterSpacing: "0.5px" });
         const labelText = document.createElement("span");
         labelText.textContent = label.textContent;
         label.innerHTML = "";
@@ -27,7 +29,9 @@ export function buildDynamicForm(subStatusKey, container, state) {
         if (fieldName === "SPEAKEASY_ID") {
             const btnSearch = document.createElement('button');
             btnSearch.innerHTML = `✨ Auto Busca`;
-            btnSearch.style.cssText = "font-size: 11px; font-weight: 500; color: #0b57d0; background-color: #d3e3fd; border: none; border-radius: 100px; padding: 5px 12px; margin-left: 10px; cursor: pointer;";
+            btnSearch.style.cssText = `font-size: 11px; font-weight: 700; color: ${COLORS.primary}; background-color: ${COLORS.primaryBg}; border: none; border-radius: ${RADIUS.pill}; padding: 6px 14px; margin-left: 10px; cursor: pointer; transition: all 0.2s ${EASE};`;
+            btnSearch.onmouseenter = () => btnSearch.style.backgroundColor = "#d2e3fc";
+            btnSearch.onmouseleave = () => btnSearch.style.backgroundColor = COLORS.primaryBg;
             btnSearch.onclick = (e) => { e.preventDefault(); fetchAndInsertSpeakeasyId(fieldId); };
             label.appendChild(btnSearch);
         }
@@ -35,7 +39,9 @@ export function buildDynamicForm(subStatusKey, container, state) {
         if (foundReason) {
             const btnDelete = document.createElement('button');
             btnDelete.innerHTML = "✕";
-            btnDelete.style.cssText = "font-size: 12px; background: none; border: none; color: #5f6368; cursor: pointer; padding: 4px; margin-left: auto;";
+            btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
+            btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
+            btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
             btnDelete.onclick = (e) => {
                 e.preventDefault();
                 state.toggleFieldExclusion(fieldId, true);
@@ -66,7 +72,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
         const consentLabel = document.createElement("label");
         consentLabel.textContent = t('consentiu_gravacao');
-        Object.assign(consentLabel.style, { display: "block", fontSize: "14px", fontWeight: "500", color: "#3c4043", marginBottom: "8px", marginTop: "16px" });
+        Object.assign(consentLabel.style, { display: "block", fontSize: "13px", fontWeight: "700", color: COLORS.textSub, marginBottom: "8px", marginTop: "24px", textTransform: "uppercase", letterSpacing: "0.5px" });
 
         const consentSelect = document.createElement("select");
         consentSelect.className = "cw-select";

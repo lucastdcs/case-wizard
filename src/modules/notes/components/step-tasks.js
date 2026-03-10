@@ -1,42 +1,43 @@
 import { TASKS_DB } from "../data/notes-data.js";
 import { screenshotRules } from "../data/screenshot-rules.js";
+import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
 
 // --- 1. DESIGN SYSTEM & CONFIG ---
 const DS = {
-  bg: "#F9FAFB", 
-  white: "#FFFFFF",
-  border: "#E5E7EB",
-  textMain: "#111827",
-  textSub: "#6B7280",
-  blue: "#007AFF", 
-  blueLight: "#EBF5FF",
+  bg: COLORS.bgInput,
+  white: COLORS.surface,
+  border: COLORS.border,
+  textMain: COLORS.text,
+  textSub: COLORS.textSub,
+  blue: COLORS.blue,
+  blueLight: COLORS.primaryBg,
   // Cores Oficiais das Ferramentas
   brands: {
     ads: {
       id: "ads",
       label: "Google Ads",
-      color: "#1967D2",
-      bg: "#E8F0FE",
+      color: COLORS.blue,
+      bg: COLORS.primaryBg,
       icon: "ads",
     },
     ga4: {
       id: "ga4",
       label: "Google Analytics 4",
-      color: "#E37400",
+      color: COLORS.yellow,
       bg: "#FEF7E0",
       icon: "ga4",
     },
     gtm: {
       id: "gtm",
       label: "Tag Manager",
-      color: "#00A1F1",
-      bg: "#E2F4FD",
+      color: COLORS.primary,
+      bg: COLORS.primaryBg,
       icon: "gtm",
     },
     gmc: {
       id: "gmc",
       label: "Merchant Center",
-      color: "#0F9D58",
+      color: COLORS.green,
       bg: "#E6F4EA",
       icon: "gmc",
     },
@@ -138,15 +139,15 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             /* HERO CARD */
             .cw-hero-card {
                 background: ${DS.white}; 
-                border: 1px solid #E5E7EB; 
-                border-radius: 16px; 
-                padding: 12px;
+                border: 1.5px solid #f1f3f4;
+                border-radius: 20px;
+                padding: 16px;
                 cursor: pointer; 
                 position: relative; 
-                height: 80px; /* Altura fixa confortável */
+                height: 90px;
                 display: flex; flex-direction: column; align-items: center; justify-content: center;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+                transition: all 0.4s cubic-bezier(0.25, 1, 0.3, 1);
+                box-shadow: 0 2px 6px rgba(0,0,0,0.02);
                 overflow: hidden;
             }
             
@@ -154,14 +155,14 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             .cw-hero-card:last-child:nth-child(odd) { grid-column: span 2; }
 
             /* Interação */
-            .cw-hero-card:hover { border-color: var(--hero-color); box-shadow: 0 6px 12px rgba(0,0,0,0.08); transform: translateY(-2px); }
+            .cw-hero-card:hover { border-color: var(--hero-color); box-shadow: 0 8px 20px rgba(0,0,0,0.06); transform: translateY(-3px); }
             .cw-hero-card:active { transform: scale(0.96) translateY(0); }
 
             /* HERO ACTIVE STATE (Borda Colorida Apenas) */
             .cw-hero-card.active {
-                background: #FFFFFF; /* Fundo continua branco */
-                border-color: var(--hero-color); /* Cor da borda dinâmica */
-                box-shadow: 0 0 0 1px var(--hero-color), 0 4px 12px rgba(0,0,0,0.05);
+                background: #FFFFFF;
+                border-color: var(--hero-color);
+                box-shadow: 0 0 0 1px var(--hero-color), 0 10px 20px rgba(0,0,0,0.04);
             }
 
             .cw-hero-card.ts-success {
@@ -309,23 +310,20 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             /* CARTÃO (Base Física) */
             .cw-screen-card {
                 background: #FFFFFF;
-                border-radius: 16px;
-                /* Borda base sutil */
-                border: 1px solid #E5E7EB; 
-                /* Faixa de identidade na esquerda (Cor injetada via JS) */
-                border-left: 6px solid var(--brand-color);
+                border-radius: 24px;
+                border: 1.5px solid #f1f3f4;
+                border-left: 8px solid var(--brand-color);
                 
-                padding: 20px;
+                padding: 24px;
                 position: relative;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                
-                /* Sombra estilo Google */
-                box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+                transition: all 0.4s cubic-bezier(0.25, 1, 0.3, 1);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+                margin-bottom: 16px;
             }
 
             .cw-screen-card:hover {
-                box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-                border-color: #D1D5DB;
+                box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+                border-color: #e5e7eb;
             }
 
             .cw-screen-card.ts-success {
@@ -439,22 +437,22 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             .cw-mini-icon svg { width: 14px; height: 14px; } 
 
             /* INPUTS (Campos de Link) */
-            .cw-input-group { margin-bottom: 12px; position: relative; }
+            .cw-input-group { margin-bottom: 16px; position: relative; }
             .cw-input-group:last-child { margin-bottom: 0; }
 
             .cw-input-label {
-                display: block; font-size: 10px; font-weight: 700; color: ${DS.textSub};
-                margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+                display: block; font-size: 11px; font-weight: 700; color: ${DS.textSub};
+                margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.8px;
             }
 
             .cw-input-field {
                 width: 100%; box-sizing: border-box;
-                padding: 10px 12px;
-                border-radius: 8px;
-                border: 1px solid #E5E7EB; /* Borda leve */
-                background: #F9FAFB; /* Fundo levemente cinza */
-                font-size: 13px; color: #374151;
-                transition: all 0.2s ease; outline: none;
+                padding: 12px 14px;
+                border-radius: 12px;
+                border: 1.5px solid #f1f3f4;
+                background: #f8f9fa;
+                font-size: 14px; color: #374151;
+                transition: all 0.25s cubic-bezier(0.25, 1, 0.3, 1); outline: none;
             }
 
             /* Foco no Input: Usa a cor da marca */

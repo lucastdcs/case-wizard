@@ -3,6 +3,7 @@
 import { showToast } from "../shared/utils.js";
 import { notesState } from "./core/notes-state.js";
 import { createNotesPopup } from "./ui/notes-popup.js";
+import { COLORS, RADIUS, SHADOW, EASE } from "./notes-styles.js";
 import { buildDynamicForm } from "./core/form-builder.js";
 import { generateOutputHtml } from "./core/output-generator.js";
 import { createScenarioSelector } from "./scenarios/scenario-ui.js";
@@ -81,7 +82,9 @@ export function initCaseNotesAssistant() {
     const manualTaskBtn = document.createElement("button");
     manualTaskBtn.id = "manual-task-toggle";
     manualTaskBtn.textContent = t('gostaria_de_adicionar_uma_task') || "Gostaria de adicionar uma task";
-    manualTaskBtn.style.cssText = "display: none; width: 100%; padding: 10px; border: 1px solid #dadce0; background: #f8f9fa; color: #1a73e8; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 500; margin-top: 8px;";
+    manualTaskBtn.style.cssText = `display: none; width: 100%; padding: 14px; border: 2px dashed ${COLORS.primary}; background: ${COLORS.surface}; color: ${COLORS.primary}; border-radius: ${RADIUS.medium}; cursor: pointer; font-size: 13px; font-weight: 700; margin-top: 8px; transition: all 0.2s ${EASE}; text-transform: uppercase; letter-spacing: 0.5px;`;
+    manualTaskBtn.onmouseenter = () => { manualTaskBtn.style.background = COLORS.primaryBg; };
+    manualTaskBtn.onmouseleave = () => { manualTaskBtn.style.background = COLORS.surface; };
     manualTaskBtn.onclick = () => {
         stepTasks.selectionElement.style.display = "block";
         stepTasks.screenshotsElement.style.display = "block";
@@ -172,10 +175,10 @@ export function initCaseNotesAssistant() {
             const style = document.createElement('style');
             style.id = 'cw-segmented-styles';
             style.innerHTML = `
-                .cw-segmented-control { display: flex; background: #f1f3f4; padding: 2px; border-radius: 100px; gap: 2px; border: 1px solid #e5e7eb; }
-                .cw-segmented-control button { flex: 1; border: none; background: transparent; padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 100px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); color: #5f6368; }
-                .cw-segmented-control button.active { background: #1a73e8; color: #fff; box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3); }
-                .cw-segmented-control button:hover:not(.active) { background: #e8eaed; color: #202124; }
+                .cw-segmented-control { display: flex; background: ${COLORS.bgInput}; padding: 4px; border-radius: 100px; gap: 4px; border: 1px solid ${COLORS.border}; }
+                .cw-segmented-control button { flex: 1; border: none; background: transparent; padding: 8px 12px; font-size: 12px; font-weight: 700; border-radius: 100px; cursor: pointer; transition: all 0.3s ${EASE}; color: ${COLORS.textSub}; }
+                .cw-segmented-control button.active { background: ${COLORS.primary}; color: #fff; box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3); }
+                .cw-segmented-control button:hover:not(.active) { background: #e8eaed; color: ${COLORS.text}; }
             `;
             document.head.appendChild(style);
         }
@@ -373,33 +376,34 @@ export function initCaseNotesAssistant() {
         div.style.cssText = `
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            padding: 16px;
-            margin-top: 16px;
-            background: #f8f9fa;
-            border-radius: 16px;
-            border: 1px solid #e5e7eb;
+            gap: 12px;
+            padding: 24px;
+            margin-top: 32px;
+            background: ${COLORS.bgInput};
+            border-radius: 24px;
+            border: 1px solid ${COLORS.border};
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         `;
         
         const parkBtn = draftsManager.parkButton;
-        parkBtn.style.cssText = "width: 100%; margin: 0; border-radius: 10px; grid-column: span 2;";
+        parkBtn.style.cssText = `width: 100%; margin: 0; border-radius: ${RADIUS.pill}; grid-column: span 2; height: 48px; font-weight: 700;`;
 
         const btnReset = document.createElement("button");
         btnReset.className = "cw-btn-secondary js-btn-reset";
         btnReset.textContent = t('limpar');
-        btnReset.style.cssText = "width: 100%; height: 44px; background: #fff; color: #5f6368; border: 1px solid #dadce0; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;";
+        btnReset.style.cssText = `width: 100%; height: 48px; background: ${COLORS.surface}; color: ${COLORS.textSub}; border: 1px solid ${COLORS.border}; border-radius: ${RADIUS.pill}; font-weight: 700; cursor: pointer; transition: all 0.2s ${EASE}; font-size: 14px;`;
         btnReset.onclick = () => resetModule();
 
         const btnCopy = document.createElement("button");
         btnCopy.className = "cw-btn-secondary js-btn-copy";
         btnCopy.textContent = t('copiar');
-        btnCopy.style.cssText = "width: 100%; height: 44px; background: #fff; color: #1a73e8; border: 1px solid #1a73e8; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;";
+        btnCopy.style.cssText = `width: 100%; height: 48px; background: ${COLORS.surface}; color: ${COLORS.primary}; border: 1px solid ${COLORS.primary}; border-radius: ${RADIUS.pill}; font-weight: 700; cursor: pointer; transition: all 0.2s ${EASE}; font-size: 14px;`;
         btnCopy.onclick = () => handleCopy();
 
         const btnGenerate = document.createElement("button");
         btnGenerate.className = "cw-btn-primary js-btn-generate";
         btnGenerate.textContent = t('preencher');
-        btnGenerate.style.cssText = "width: 100%; height: 44px; background: #1a73e8; color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; grid-column: span 2; font-size: 15px; box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);";
+        btnGenerate.style.cssText = `width: 100%; height: 52px; background: ${COLORS.primary}; color: #fff; border: none; border-radius: ${RADIUS.pill}; font-weight: 700; cursor: pointer; transition: all 0.2s ${EASE}; grid-column: span 2; font-size: 16px; box-shadow: 0 8px 16px rgba(26, 115, 232, 0.25); margin-top: 8px;`;
         btnGenerate.onclick = () => handleGenerate();
 
         div.appendChild(parkBtn);

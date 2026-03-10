@@ -3,6 +3,7 @@
 import { DraftService } from "./draft-service.js";
 import { showToast, confirmDialog } from "../../shared/utils.js";
 import { SoundManager } from "../../shared/sound-manager.js";
+import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
 
 export function createDraftsManager(callbacks) {
     const { onSaveCurrent, onLoadDraft, t } = callbacks;
@@ -19,24 +20,24 @@ export function createDraftsManager(callbacks) {
 
     // Estilo Geométrico igual ao 'buttonBase' + Visual 'Outlined'
     parkButton.style.cssText = `
-        flex: 1 1 0;           /* Ocupa o mesmo espaço (33%) */
-        padding: 10px 0;       /* Mesma altura */
-        margin-top: 16px;      /* Mesmo espaçamento superior */
-        border-radius: 8px;    /* Mesma curva */
-        font-size: 14px;       /* Mesma fonte */
-        font-weight: 500;      /* Mesmo peso */
-        
-        /* Estilo Visual (Secundário/Branco) */
-        background: #FFFFFF; 
-        color: #5F6368; 
-        border: 1px solid #DADCE0; 
+        flex: 1 1 0;
+        padding: 12px 0;
+        margin-top: 24px;
+        border-radius: ${RADIUS.pill};
+        font-size: 14px;
+        font-weight: 700;
+        background: ${COLORS.surface};
+        color: ${COLORS.textSub};
+        border: 1px solid ${COLORS.border};
         cursor: pointer;
         display: flex; 
         align-items: center; 
-        justify-content: center; /* Centralizado */
+        justify-content: center;
         gap: 8px;
-        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        transition: all 0.2s ${EASE};
+        box-shadow: ${SHADOW.subtle};
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     `;
 
     // Micro-interações (Hover/Active)
@@ -121,11 +122,12 @@ export function createDraftsManager(callbacks) {
     const drawer = document.createElement("div");
     drawer.style.cssText = `
         position: absolute; bottom: 0; left: 0; width: 100%; height: 90%;
-        background: #FFFFFF; z-index: 100;
-        border-radius: 20px 20px 0 0;
-        box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
-        transform: translateY(110%); transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+        background: ${COLORS.surface}; z-index: 100;
+        border-radius: ${RADIUS.large} ${RADIUS.large} 0 0;
+        box-shadow: 0 -12px 40px rgba(0,0,0,0.12);
+        transform: translateY(110%); transition: transform 0.4s ${EASE};
         display: flex; flex-direction: column; overflow: hidden;
+        border-top: 1px solid rgba(255,255,255,0.7);
     `;
 
     const drawerHeader = document.createElement("div");
@@ -165,9 +167,9 @@ export function createDraftsManager(callbacks) {
 
         if (drafts.length === 0) {
             drawerList.innerHTML = `
-                <div style="text-align:center; padding:60px 20px; color:#9AA0A6;">
-                    <div style="font-size:32px; margin-bottom:12px; opacity:0.5;">📭</div>
-                    <div style="font-size:14px; font-weight:500;">${t('nenhum_rascunho')}</div>
+                <div style="text-align:center; padding:80px 20px; color:${COLORS.textSub};">
+                    <div style="font-size:40px; margin-bottom:16px; opacity:0.3;">📭</div>
+                    <div style="font-size:14px; font-weight:600;">${t('nenhum_rascunho')}</div>
                 </div>`;
             return;
         }
@@ -175,9 +177,9 @@ export function createDraftsManager(callbacks) {
         drafts.forEach(draft => {
             const card = document.createElement("div");
             card.style.cssText = `
-                background: #FFF; padding: 16px; border-radius: 12px;
-                border: 1px solid #E0E0E0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-                position: relative; transition: all 0.2s;
+                background: ${COLORS.surface}; padding: 20px; border-radius: ${RADIUS.large};
+                border: 1.5px solid ${COLORS.bgInput}; box-shadow: ${SHADOW.subtle};
+                position: relative; transition: all 0.3s ${EASE};
             `;
             
             // Data formatada
