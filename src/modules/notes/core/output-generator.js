@@ -91,10 +91,19 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
         const isEmptyValue = !value || value.toLowerCase() === 'n/a' || value === '.' || value === '-' || value === '•';
 
         if (isExcluded || isEmptyValue) {
-            // Regex improved to catch the label and any preceding/following <br> or whitespace
-            // It looks for <b> or <strong> followed by text and a colon, then the placeholder.
-            const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<[b|strong]+>[^<]+:\\s*<\\/[b|strong]+>\\s*(?:<br>\\s*)?{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
-            outputText = outputText.replace(lineRegex, '').replace(placeholderRegex, '');
+            // Regex improved to catch ONLY lines where the placeholder is the ONLY content after the bold label
+            // and remove the label + placeholder + surrounding breaks.
+            // If the line has more text (hardcoded in template), it should NOT match this regex.
+            const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<[b|strong]+>[^<]+:\\s*<\\/[b|strong]+>\\s*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
+
+            // First try to remove the whole labeled line if it's empty
+            const newOutput = outputText.replace(lineRegex, '');
+            if (newOutput !== outputText) {
+                outputText = newOutput;
+            } else {
+                // If not found as a full line, just remove the placeholder itself
+                outputText = outputText.replace(placeholderRegex, '');
+            }
             continue;
         }
 
@@ -107,8 +116,13 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
                                .join('');
             value = lines ? `<ul ${ulStyle}>${lines}</ul>` : '';
             if (!lines) {
-                const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<[b|strong]+>[^<]+:\\s*<\\/[b|strong]+>\\s*(?:<br>\\s*)?{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
-                outputText = outputText.replace(lineRegex, '').replace(placeholderRegex, '');
+                 const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<[b|strong]+>[^<]+:\\s*<\\/[b|strong]+>\\s*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
+                 const newOutput = outputText.replace(lineRegex, '');
+                 if (newOutput !== outputText) {
+                     outputText = newOutput;
+                 } else {
+                     outputText = outputText.replace(placeholderRegex, '');
+                 }
                 continue;
             }
         } else if (textareaParagraphFields.includes(fieldName)) {
