@@ -11,28 +11,42 @@ export class NotesState {
         this.favorites = new Set(JSON.parse(localStorage.getItem('cw-notes-favorites') || '[]'));
         this.screenshotMode = "implementation";
     }
-    setCaseType(type) { this.currentCaseType = type; this.notify(); }
+    setCaseType(type) { this.currentCaseType = type; this.isDirty = true; this.notify(); }
     setLanguage(lang) { this.currentLang = lang; this.notify(); }
-    setPortugalCase(val) { this.isPortugalCase = val; this.notify(); }
-    setConsent(val) { this.consent = val; this.notify(); }
+    setPortugalCase(val) { this.isPortugalCase = val; this.isDirty = true; this.notify(); }
+    setConsent(val) { this.consent = val; this.isDirty = true; this.notify(); }
     setTagSupportUsed(val) {
         this.tagSupportUsed = val;
         if (!val) this.forcedScreenshots.clear();
+        this.isDirty = true;
+        this.notify();
+    }
+    setForcedScreenshots(screenshotsArray) {
+        this.forcedScreenshots = new Set(screenshotsArray);
+        this.isDirty = true;
         this.notify();
     }
     toggleForcedScreenshot(taskKey, val) {
         if (val) this.forcedScreenshots.add(taskKey);
         else this.forcedScreenshots.delete(taskKey);
+        this.isDirty = true;
+        this.notify();
+    }
+    setExcludedFields(fieldsArray) {
+        this.excludedFields = new Set(fieldsArray);
+        this.isDirty = true;
         this.notify();
     }
     toggleFieldExclusion(fieldId, isExcluded) {
         if (isExcluded) this.excludedFields.add(fieldId);
         else this.excludedFields.delete(fieldId);
+        this.isDirty = true;
         this.notify();
     }
-    setStatus(status) { this.currentStatus = status; this.notify(); }
-    setSubStatus(subStatus) { this.currentSubStatus = subStatus; this.notify(); }
+    setStatus(status) { this.currentStatus = status; this.isDirty = true; this.notify(); }
+    setSubStatus(subStatus) { this.currentSubStatus = subStatus; this.isDirty = true; this.notify(); }
     setScreenshotMode(mode) { this.screenshotMode = mode; this.notify(); }
+    setActiveTasks(tasks) { this.activeTasks = tasks; this.isDirty = true; this.notify(); }
     toggleFavorite(id) {
         if (this.favorites.has(id)) this.favorites.delete(id);
         else this.favorites.add(id);
