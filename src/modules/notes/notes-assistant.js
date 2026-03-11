@@ -252,10 +252,10 @@ export function initCaseNotesAssistant() {
         }
 
         const updateIndicator = (selectorId, index) => {
-            const selector = div.querySelector(\`#\${selectorId}\`);
+            const selector = div.querySelector(`#${selectorId}`);
             const indicator = selector.querySelector('.cw-segmented-indicator');
             if (indicator) {
-                indicator.style.transform = \`translateX(\${index * 100}%) translateX(\${index * 2}px)\`;
+                indicator.style.transform = `translateX(${index * 100}%) translateX(${index * 2}px)`;
             }
         };
 
