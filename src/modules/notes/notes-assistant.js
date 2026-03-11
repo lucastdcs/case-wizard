@@ -123,6 +123,7 @@ export function initCaseNotesAssistant() {
     let autosaveTimeout = null;
     notesState.subscribe((state) => {
         updateUIFromState(state);
+        refreshGlobalBadge();
 
         // Autosave logic
         if (state.isDirty) {
@@ -136,6 +137,12 @@ export function initCaseNotesAssistant() {
     });
 
     // --- Helper Functions ---
+
+    function refreshGlobalBadge() {
+        const hasDrafts = DraftService.getCount() > 0;
+        const isWriting = !!notesState.currentSubStatus;
+        updateNotesBadge(hasDrafts || isWriting);
+    }
 
     function toggleVisibility() {
         notesState.visible = !notesState.visible;
@@ -493,6 +500,7 @@ export function initCaseNotesAssistant() {
         notesState.reset();
         stepTasks.reset();
         tagSupport.reset();
+        refreshGlobalBadge();
         // Reset UI elements
         content.querySelectorAll('select').forEach(s => s.value = "");
         content.querySelector('#sub-status-select').disabled = true;
@@ -729,7 +737,7 @@ export function initCaseNotesAssistant() {
     notesState.setCaseType("bau");
 
     // Initial Badge Check
-    updateNotesBadge(DraftService.getCount() > 0);
+    refreshGlobalBadge();
 
     // Emergency Recovery (Airbag) Check
     setTimeout(async () => {
