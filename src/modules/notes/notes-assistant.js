@@ -6,7 +6,7 @@ import { createNotesPopup } from "./ui/notes-popup.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "./notes-styles.js";
 import { buildDynamicForm } from "./core/form-builder.js";
 import { generateOutputHtml } from "./core/output-generator.js";
-import { createScenarioSelector } from "./scenarios/scenario-ui.js";
+import { createScenariosComponent } from "./components/step-scenarios.js";
 import { createStepTasksComponent } from "./components/step-tasks.js";
 import { createTagSupportModule } from "./tag-support.js";
 import { createDraftsManager } from "./drafts/draft-ui.js";
@@ -45,9 +45,9 @@ export function initCaseNotesAssistant() {
 
     const scenariosContainer = document.createElement("div");
     scenariosContainer.style.display = "none";
-    const scenarioSelector = createScenarioSelector((scenario, isSelected) => {
-        applyScenario(scenario, isSelected);
-    }, notesState);
+    const scenarioSelector = createScenariosComponent((scenarioId, isSelected) => {
+        applyScenario(scenarioId, isSelected);
+    });
     scenariosContainer.appendChild(scenarioSelector);
 
     // 3. Drafts Manager (Needs to be initialized before actions)
@@ -66,11 +66,15 @@ export function initCaseNotesAssistant() {
     // 4. Build Main Layout Sections
     const langTypeSection = createLangTypeSection();
     const statusSection = createStatusSection();
+    const emailToggleSection = createEmailToggleSection();
     const dynamicFormContainer = document.createElement("div");
-    const actionsSection = createActionsSection(draftsManager);
+    const emptyStateContainer = createEmptyState();
+    const actionsSection = createActionsSection(draftsManager, t);
 
     content.appendChild(langTypeSection);
     content.appendChild(statusSection);
+    content.appendChild(emailToggleSection);
+    content.appendChild(emptyStateContainer);
     content.appendChild(scenariosContainer);
     content.appendChild(dynamicFormContainer);
 
@@ -269,14 +273,31 @@ export function initCaseNotesAssistant() {
     }
 
     function onSubStatusChange(subStatusKey) {
+        if (scenarioSelector.render) {
+            scenarioSelector.render(subStatusKey, notesState.currentCaseType);
+        }
         if (!subStatusKey) {
             scenariosContainer.style.display = "none";
             dynamicFormContainer.style.display = "none";
             document.getElementById("manual-task-toggle").style.display = "none";
             stepTasks.selectionElement.style.display = "none";
             stepTasks.screenshotsElement.style.display = "none";
+
+            // Show Empty State
+            emptyStateContainer.style.display = "flex";
+            emptyStateContainer.style.opacity = "1";
+            actionsSection.style.display = "none";
             return;
         }
+
+        // Hide Empty State
+        emptyStateContainer.style.opacity = "0";
+        setTimeout(() => {
+            if (notesState.currentSubStatus) emptyStateContainer.style.display = "none";
+        }, 300);
+
+        // Show Actions
+        actionsSection.style.display = "grid";
 
         // 1. Rebuild Form
         buildDynamicForm(subStatusKey, dynamicFormContainer, notesState);
@@ -312,6 +333,12 @@ export function initCaseNotesAssistant() {
 
         stepTasks.updateSubStatus(subStatusKey);
         updateTagSupport();
+
+        // Show/Hide Email Toggle based on shortcode availability
+        const emailToggle = document.getElementById('email-automation-toggle-section');
+        if (emailToggle) {
+            emailToggle.style.display = SUBSTATUS_SHORTCODES[subStatusKey] ? "block" : "none";
+        }
     }
 
     function updateTagSupport() {
@@ -319,91 +346,72 @@ export function initCaseNotesAssistant() {
         tagSupport.updateVisibility(notesState.currentSubStatus, checked);
     }
 
-    function applyScenario(scenario, isSelected) {
-        const data = scenario.content;
-        if (typeof data === 'object') {
+    function applyScenario(scenarioId, isSelected) {
+        const data = scenarioSnippets[scenarioId];
+        if (!data) return;
+
+        if (isSelected) {
             for (const key in data) {
                 if (key === 'linkedTask') {
-                    stepTasks.toggleTask(data.linkedTask, isSelected);
+                    stepTasks.toggleTask(data.linkedTask, true);
                 } else if (key === 'activeTasks') {
-                    if (isSelected) {
-                        data.activeTasks.forEach(t => stepTasks.setTaskCount(t.value, t.count));
-                    }
+                    data.activeTasks.forEach(t => stepTasks.setTaskCount(t.value, t.count));
                 } else if (key.startsWith('field-')) {
-                    if (isSelected) {
-                        notesState.updateField(key, data[key]);
-                        const el = document.getElementById(key);
-                        if (el) {
-                            // Cumulative text if it's a list field
-                            if (textareaListFields.includes(key.replace('field-', ''))) {
-                                const currentVal = el.value.trim();
-                                if (currentVal && !currentVal.includes(data[key].trim())) {
-                                    el.value = currentVal + "\n" + data[key];
-                                } else {
-                                    el.value = data[key];
-                                }
+                    const fieldId = key;
+                    const value = data[key];
+                    notesState.updateField(fieldId, value);
+                    const el = document.getElementById(fieldId);
+                    if (el) {
+                        if (textareaListFields.includes(fieldId.replace('field-', ''))) {
+                            const currentVal = el.value.trim();
+                            if (currentVal && !currentVal.includes(value.trim())) {
+                                el.value = currentVal + (currentVal.endsWith('\n') ? '' : '\n') + value;
                             } else {
-                                el.value = data[key];
+                                el.value = value;
                             }
-                            el.dispatchEvent(new Event('input'));
+                        } else {
+                            el.value = value;
                         }
-                    } else {
-                        // Removal logic is complex for fields; usually users just want to add.
-                        // For simplicity, we mostly support cumulative addition.
+                        el.dispatchEvent(new Event('input'));
                     }
                 }
-            }
-        } else {
-            // Simple text snippet - find the first textarea
-            const firstTextarea = dynamicFormContainer.querySelector('textarea');
-            if (firstTextarea) {
-                if (isSelected) {
-                    const currentVal = firstTextarea.value.trim();
-                    if (currentVal && !currentVal.includes(data.trim())) {
-                        firstTextarea.value = currentVal + "\n" + data;
-                    } else {
-                        firstTextarea.value = data;
-                    }
-                }
-                firstTextarea.dispatchEvent(new Event('input'));
             }
         }
     }
 
-    function createActionsSection(draftsManager) {
+    function createActionsSection(draftsManager, t) {
         const div = document.createElement("div");
         div.className = "cw-actions-section";
         div.style.cssText = `
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            padding: 24px;
-            margin-top: 32px;
+            gap: 8px;
+            padding: 16px;
+            margin-top: 24px;
             background: ${COLORS.bgInput};
-            border-radius: 24px;
+            border-radius: 16px;
             border: 1px solid ${COLORS.border};
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         `;
         
         const parkBtn = draftsManager.parkButton;
-        parkBtn.style.cssText = `width: 100%; margin: 0; border-radius: ${RADIUS.pill}; grid-column: span 2; height: 48px; font-weight: 700;`;
+        parkBtn.style.cssText = `width: 100%; margin: 0; border-radius: ${RADIUS.medium}; height: 40px; font-weight: 600; font-size: 13px;`;
 
         const btnReset = document.createElement("button");
         btnReset.className = "cw-btn-secondary js-btn-reset";
         btnReset.textContent = t('limpar');
-        btnReset.style.cssText = `width: 100%; height: 48px; background: ${COLORS.surface}; color: ${COLORS.textSub}; border: 1px solid ${COLORS.border}; border-radius: ${RADIUS.pill}; font-weight: 700; cursor: pointer; transition: all 0.2s ${EASE}; font-size: 14px;`;
+        btnReset.style.cssText = `width: 100%; height: 40px; background: ${COLORS.surface}; color: ${COLORS.textSub}; border: 1px solid ${COLORS.border}; border-radius: ${RADIUS.medium}; font-weight: 600; cursor: pointer; transition: all 0.2s ${EASE}; font-size: 13px;`;
         btnReset.onclick = () => resetModule();
 
         const btnCopy = document.createElement("button");
         btnCopy.className = "cw-btn-secondary js-btn-copy";
         btnCopy.textContent = t('copiar');
-        btnCopy.style.cssText = `width: 100%; height: 48px; background: ${COLORS.surface}; color: ${COLORS.primary}; border: 1px solid ${COLORS.primary}; border-radius: ${RADIUS.pill}; font-weight: 700; cursor: pointer; transition: all 0.2s ${EASE}; font-size: 14px;`;
+        btnCopy.style.cssText = `width: 100%; height: 40px; background: ${COLORS.surface}; color: ${COLORS.primary}; border: 1px solid ${COLORS.primary}; border-radius: ${RADIUS.medium}; font-weight: 600; cursor: pointer; transition: all 0.2s ${EASE}; font-size: 13px;`;
         btnCopy.onclick = () => handleCopy();
 
         const btnGenerate = document.createElement("button");
         btnGenerate.className = "cw-btn-primary js-btn-generate";
         btnGenerate.textContent = t('preencher');
-        btnGenerate.style.cssText = `width: 100%; height: 52px; background: ${COLORS.primary}; color: #fff; border: none; border-radius: ${RADIUS.pill}; font-weight: 700; cursor: pointer; transition: all 0.2s ${EASE}; grid-column: span 2; font-size: 16px; box-shadow: 0 8px 16px rgba(26, 115, 232, 0.25); margin-top: 8px;`;
+        btnGenerate.style.cssText = `width: 100%; height: 44px; background: ${COLORS.primary}; color: #fff; border: none; border-radius: ${RADIUS.medium}; font-weight: 600; cursor: pointer; transition: all 0.2s ${EASE}; grid-column: span 2; font-size: 14px; box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2); margin-top: 4px;`;
         btnGenerate.onclick = () => handleGenerate();
 
         div.appendChild(parkBtn);
@@ -446,7 +454,10 @@ export function initCaseNotesAssistant() {
             document.execCommand("insertHTML", false, html);
             triggerInputEvents(field);
 
-            if (notesState.currentSubStatus && SUBSTATUS_SHORTCODES[notesState.currentSubStatus]) {
+            const emailCheckbox = document.getElementById('email-automation-checkbox');
+            const emailEnabled = emailCheckbox ? emailCheckbox.checked : true;
+
+            if (emailEnabled && notesState.currentSubStatus && SUBSTATUS_SHORTCODES[notesState.currentSubStatus]) {
                 await runEmailAutomation(SUBSTATUS_SHORTCODES[notesState.currentSubStatus]);
             }
 
@@ -464,8 +475,12 @@ export function initCaseNotesAssistant() {
         // Reset UI elements
         content.querySelectorAll('select').forEach(s => s.value = "");
         content.querySelector('#sub-status-select').disabled = true;
+        document.getElementById('email-automation-toggle-section').style.display = 'none';
         dynamicFormContainer.innerHTML = "";
         scenariosContainer.style.display = "none";
+        emptyStateContainer.style.display = "flex";
+        emptyStateContainer.style.opacity = "1";
+        actionsSection.style.display = "none";
         if (document.getElementById("manual-task-toggle")) {
             document.getElementById("manual-task-toggle").style.display = "none";
         }
@@ -549,6 +564,54 @@ export function initCaseNotesAssistant() {
         return btn;
     }
 
+    function createEmptyState() {
+        const div = document.createElement("div");
+        div.id = "notes-empty-state";
+        div.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            gap: 20px;
+            flex-grow: 1;
+            transition: opacity 0.3s ${EASE};
+        `;
+
+        div.innerHTML = `
+            <div style="width: 160px; height: 160px; opacity: 0.8;">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 3H5C3.89 3 3 3.9 3 5V19C3 20.1 3.89 21 5 21H19C20.11 21 21 20.1 21 19V5C21 3.9 20.11 3 19 3ZM19 19H5V5H19V19Z" fill="#4285F4"/>
+                    <path d="M7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z" fill="#EA4335"/>
+                    <circle cx="18" cy="18" r="4" fill="#FBBC05"/>
+                    <path d="M18 16V20M16 18H20" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-family: 'Google Sans', sans-serif; font-size: 16px; font-weight: 600; color: ${COLORS.text}; margin-bottom: 8px;">
+                    Pronto para começar?
+                </div>
+                <div style="font-size: 13px; color: ${COLORS.textSub}; line-height: 1.5;">
+                    Selecione um status e substatus para<br>gerar sua nota técnica.
+                </div>
+            </div>
+        `;
+        return div;
+    }
+
+    function createEmailToggleSection() {
+        const div = document.createElement("div");
+        div.id = "email-automation-toggle-section";
+        div.style.cssText = "display: none; margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 12px; border: 1px solid #eee;";
+        div.innerHTML = `
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; font-weight: 500; color: ${COLORS.textSub};">
+                <input type="checkbox" id="email-automation-checkbox" checked style="width: 16px; height: 16px; accent-color: ${COLORS.primary};">
+                <span class="js-label-email-toggle">Preencher email automaticamente?</span>
+            </label>
+        `;
+        return div;
+    }
+
     function updateUIFromState(state) {
         // Sync labels when language changes
         const lIdioma = content.querySelector('.js-label-idioma');
@@ -579,9 +642,16 @@ export function initCaseNotesAssistant() {
         const drawerTitle = popup.querySelector('.js-drawer-title');
         if (drawerTitle) drawerTitle.textContent = t('rascunhos_salvos');
 
+        const lEmail = content.querySelector('.js-label-email-toggle');
+        if (lEmail) lEmail.textContent = t('preencher_email_automaticamente');
+
         if (tagSupport && tagSupport.setLanguage) tagSupport.setLanguage(t);
         if (stepTasks && stepTasks.setLanguage) stepTasks.setLanguage(t);
     }
+
+    // Initial UI Adjustments
+    emptyStateContainer.style.display = "flex";
+    actionsSection.style.display = "none";
 
     // Initialize with defaults
     notesState.setLanguage("pt");
