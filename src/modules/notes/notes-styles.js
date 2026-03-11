@@ -33,8 +33,8 @@ export const SHADOW = {
   apple: "0 20px 40px rgba(0,0,0,0.12)"
 };
 
-// Curva de Animação "Líquida" (Apple Style)
-export const EASE = "cubic-bezier(0.25, 1, 0.3, 1)";
+// Curva de Animação "Líquida" / Dopaminérgica (Custom Spring-like)
+export const EASE = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 
 // =========================================================
 //           INPUTS & TEXTAREAS (Interativos)
@@ -50,7 +50,7 @@ export const styleInput = {
   marginBottom: "16px",
   boxSizing: "border-box",
   fontFamily: "'Google Sans', 'Roboto', sans-serif",
-  transition: `all 0.25s ${EASE}`,
+  transition: `all 0.3s ${EASE}`,
   outline: "none",
 };
 
@@ -115,13 +115,13 @@ export const styleCheckboxLabel = {
   backgroundColor: COLORS.surface,
   border: `1px solid ${COLORS.border}`,
   borderRadius: RADIUS.large, // Bem arredondado
-  transition: `all 0.3s ${EASE}`,
+  transition: `all 0.4s ${EASE}`,
   userSelect: "none",
   boxShadow: SHADOW.subtle,
 };
 
 // =========================================================
-//           BOTÕES (Ações)
+//           BOTÕES (AÇÕES)
 // =========================================================
 export const styleButtonBase = {
   padding: "14px 28px",
@@ -133,7 +133,7 @@ export const styleButtonBase = {
   fontWeight: "600",
   cursor: "pointer",
   boxShadow: "0 4px 14px 0 rgba(26,115,232,0.39)",
-  transition: `all 0.2s ${EASE}`,
+  transition: `all 0.25s ${EASE}`,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -152,7 +152,7 @@ export const styleOptionalBtn = {
   fontWeight: "600",
   fontSize: "13px",
   marginBottom: "16px",
-  transition: `all 0.2s ${EASE}`,
+  transition: `all 0.25s ${EASE}`,
 };
 
 export const styleLinkButton = {
@@ -169,5 +169,5 @@ export const styleLinkButton = {
   justifyContent: "center",
   gap: "8px",
   margin: "20px auto",
-  transition: `all 0.2s ${EASE}`,
+  transition: `all 0.25s ${EASE}`,
 };

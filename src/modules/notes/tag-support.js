@@ -109,7 +109,7 @@ export function createTagSupportModule(t) {
     function getOutput() {
         if (container.style.display === 'none') return '';
 
-        let text = `<br><b>Utilizou Tag Support?</b> ${rSim.checked ? "Sim" : "Não"}`;
+        let text = `<br><b>Utilizou Tag Support?</b> ${rSim.checked ? "✅ Sim" : "❌ Não"}`;
         if (rNao.checked && reasonInput.value.trim() !== "") {
             text += `<br><b>Motivo:</b> ${reasonInput.value}`;
         }
