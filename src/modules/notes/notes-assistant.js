@@ -28,7 +28,7 @@ import {
     triggerInputEvents
 } from "./notes-bridge.js";
 import { runEmailAutomation } from "../email/email-automation.js";
-import { triggerProcessingAnimation } from "../shared/command-center.js";
+import { triggerProcessingAnimation, updateNotesBadge } from "../shared/command-center.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 
 export function initCaseNotesAssistant() {
@@ -727,6 +727,9 @@ export function initCaseNotesAssistant() {
     // Initialize with defaults
     notesState.setLanguage("pt");
     notesState.setCaseType("bau");
+
+    // Initial Badge Check
+    updateNotesBadge(DraftService.getCount() > 0);
 
     // Emergency Recovery (Airbag) Check
     setTimeout(async () => {
