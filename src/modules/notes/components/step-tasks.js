@@ -282,6 +282,8 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 position: sticky; bottom: 0; left: 0; width: 100%; box-sizing: border-box;
                 padding: 12px 24px; background: rgba(255,255,255,0.92); backdrop-filter: blur(10px);
                 border-top: 1px solid ${DS.border};
+                border-bottom-left-radius: 11px;
+                border-bottom-right-radius: 11px;
                 display: flex; align-items: center; justify-content: space-between;
                 transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 box-shadow: ${DS.shadowFloat}; z-index: 10;
