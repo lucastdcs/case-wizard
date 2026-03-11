@@ -1,6 +1,6 @@
 // src/modules/notes/notes-assistant.js
 
-import { showToast } from "../shared/utils.js";
+import { showToast, confirmDialog } from "../shared/utils.js";
 import { notesState } from "./core/notes-state.js";
 import { createNotesPopup } from "./ui/notes-popup.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "./notes-styles.js";
@@ -19,7 +19,8 @@ import {
     SUBSTATUS_SHORTCODES,
     translations,
     scenarioSnippets,
-    textareaListFields
+    textareaListFields,
+    TASKS_DB
 } from "./data/notes-data.js";
 import {
     copyHtmlToClipboard,
@@ -40,7 +41,7 @@ export function initCaseNotesAssistant() {
     const tagSupport = createTagSupportModule(t);
     const stepTasks = createStepTasksComponent(() => {
         updateTagSupport();
-        notesState.activeTasks = stepTasks.getCheckedElements();
+        notesState.setActiveTasks(stepTasks.getCheckedElements());
     }, t, notesState);
 
     const scenariosContainer = document.createElement("div");
@@ -118,9 +119,20 @@ export function initCaseNotesAssistant() {
     }
     popup.appendChild(draftsManager.drawer);
 
-    // 7. State Synchronization
+    // 7. State Synchronization & Autosave (Airbag)
+    let autosaveTimeout = null;
     notesState.subscribe((state) => {
         updateUIFromState(state);
+
+        // Autosave logic
+        if (state.isDirty) {
+            if (autosaveTimeout) clearTimeout(autosaveTimeout);
+            autosaveTimeout = setTimeout(async () => {
+                const fullState = await collectFullState(true); // Fast save
+                DraftService.saveEmergency(fullState);
+                state.isDirty = false;
+            }, 2000);
+        }
     });
 
     // --- Helper Functions ---
@@ -498,25 +510,52 @@ export function initCaseNotesAssistant() {
         stepTasks.screenshotsElement.style.display = "none";
     }
 
-    async function collectFullState() {
+    async function collectFullState(isEmergency = false) {
         // Collect everything needed for a draft
         const formData = {};
-        dynamicFormContainer.querySelectorAll('input, textarea').forEach(el => formData[el.id] = el.value);
+        dynamicFormContainer.querySelectorAll('input, textarea, select').forEach(el => {
+            if (el.id.startsWith('field-') || el.id === 'consent-select') {
+                formData[el.id] = el.value;
+            }
+        });
 
-        const pageData = await getPageData();
+        let clientName = "Cliente";
+        let cid = "---";
+
+        if (!isEmergency) {
+            try {
+                const pageData = await getPageData();
+                clientName = pageData.advertiserName;
+                cid = pageData.cid;
+            } catch (e) { console.warn("Erro ao coletar pageData:", e); }
+        }
+
+        const activeTasks = stepTasks.getCheckedElements().map(c => ({
+            key: c.value,
+            count: c.count
+        }));
+
+        // Generate Summary Tags for the UI
+        const summaryTags = activeTasks.map(t => {
+            const taskInfo = TASKS_DB[t.key];
+            return taskInfo ? taskInfo.name : t.key;
+        });
 
         return {
             currentCaseType: notesState.currentCaseType,
             currentLang: notesState.currentLang,
+            isPortugalCase: notesState.isPortugalCase,
+            consent: notesState.consent,
+            tagSupportUsed: notesState.tagSupportUsed,
+            forcedScreenshots: [...notesState.forcedScreenshots],
+            excludedFields: [...notesState.excludedFields],
             status: notesState.currentStatus,
             subStatus: notesState.currentSubStatus,
             formData: formData,
-            activeTasks: stepTasks.getCheckedElements().map(c => ({
-                key: c.value,
-                count: c.count
-            })),
-            clientName: pageData.advertiserName,
-            cid: pageData.cid,
+            activeTasks: activeTasks,
+            summaryTags: summaryTags,
+            clientName: clientName,
+            cid: cid,
             timestamp: new Date().toISOString()
         };
     }
@@ -524,41 +563,72 @@ export function initCaseNotesAssistant() {
     const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     async function restoreFullState(draft) {
-        notesState.setLanguage(draft.currentLang);
-        notesState.setCaseType(draft.currentCaseType);
+        notesState.setLanguage(draft.currentLang || "pt");
+        notesState.setCaseType(draft.currentCaseType || "bau");
+        notesState.setPortugalCase(draft.isPortugalCase || false);
+        notesState.setConsent(draft.consent || false);
+        notesState.setExcludedFields(draft.excludedFields || []);
 
         // Update Segmented Controls visually
-        const langBtn = content.querySelector(`#lang-selector button[data-lang="${draft.currentLang}"]`);
-        if (langBtn) langBtn.click();
-        const typeBtn = content.querySelector(`#type-selector button[data-type="${draft.currentCaseType}"]`);
-        if (typeBtn) typeBtn.click();
+        const langBtn = content.querySelector(`#lang-selector button[data-lang="${notesState.currentLang}"]`);
+        if (langBtn) langBtn.classList.add('active');
+        content.querySelectorAll('#lang-selector button').forEach(b => { if(b !== langBtn) b.classList.remove('active'); });
+
+        const typeBtn = content.querySelector(`#type-selector button[data-type="${notesState.currentCaseType}"]`);
+        if (typeBtn) typeBtn.classList.add('active');
+        content.querySelectorAll('#type-selector button').forEach(b => { if(b !== typeBtn) b.classList.remove('active'); });
+
+        const portBtn = content.querySelector(`#portugal-selector button[data-val="${notesState.isPortugalCase}"]`);
+        if (portBtn) portBtn.classList.add('active');
+        content.querySelectorAll('#portugal-selector button').forEach(b => { if(b !== portBtn) b.classList.remove('active'); });
 
         if (draft.status) {
             const mainSelect = content.querySelector('#main-status-select');
             mainSelect.value = draft.status;
-            mainSelect.dispatchEvent(new Event('change'));
+            notesState.setStatus(draft.status);
+
+            const subSelect = content.querySelector('#sub-status-select');
+            updateSubStatusOptions(draft.status, subSelect);
 
             await wait(50);
             if (draft.subStatus) {
-                const subSelect = content.querySelector('#sub-status-select');
                 subSelect.value = draft.subStatus;
-                subSelect.dispatchEvent(new Event('change'));
+                notesState.setSubStatus(draft.subStatus);
+                onSubStatusChange(draft.subStatus);
 
                 await wait(100);
+
+                // Restore Tag Support
+                if (draft.tagSupportUsed !== undefined) {
+                    notesState.setTagSupportUsed(draft.tagSupportUsed);
+                    const tsSim = tagSupport.element.querySelector('input[value="Sim"]');
+                    const tsNao = tagSupport.element.querySelector('input[value="Não"]');
+                    if (draft.tagSupportUsed && tsSim) tsSim.checked = true;
+                    else if (tsNao) tsNao.checked = true;
+                    tagSupport.element.querySelector('div:last-child').style.display = draft.tagSupportUsed ? 'none' : 'block';
+                }
+
+                if (draft.forcedScreenshots) {
+                    notesState.setForcedScreenshots(draft.forcedScreenshots);
+                }
+
                 // Restore Form Fields
                 for (const id in draft.formData) {
                     const el = document.getElementById(id);
                     if (el) {
                         el.value = draft.formData[id];
-                        el.dispatchEvent(new Event('input'));
+                        notesState.updateField(id, el.value);
                     }
                 }
+
                 // Restore Tasks
                 if (draft.activeTasks) {
                     draft.activeTasks.forEach(t => stepTasks.setTaskCount(t.key, t.count));
+                    notesState.setActiveTasks(stepTasks.getCheckedElements());
                 }
             }
         }
+        notesState.isDirty = false;
     }
 
     function t(key) {
@@ -657,6 +727,20 @@ export function initCaseNotesAssistant() {
     // Initialize with defaults
     notesState.setLanguage("pt");
     notesState.setCaseType("bau");
+
+    // Emergency Recovery (Airbag) Check
+    setTimeout(async () => {
+        const emergencyData = DraftService.getEmergency();
+        if (emergencyData) {
+            const confirmed = await confirmDialog("Detectamos um rascunho não salvo da sua última sessão. Deseja restaurar?");
+            if (confirmed) {
+                restoreFullState(emergencyData);
+                showToast("Sessão restaurada!");
+            } else {
+                DraftService.clearEmergency();
+            }
+        }
+    }, 1000);
 
     document.body.appendChild(popup);
 
