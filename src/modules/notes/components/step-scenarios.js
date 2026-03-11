@@ -8,6 +8,8 @@ export function createScenariosComponent(onSelectCallback) {
   const container = document.createElement("div");
   container.className = "cw-step-scenarios";
 
+  const DEFAULT_PREVIEW_TEXT = "Passe o mouse sobre um cenário para visualizar o texto...";
+
   // 1. Área de Chips (Grid)
   const grid = document.createElement("div");
   Object.assign(grid.style, {
@@ -27,20 +29,26 @@ export function createScenariosComponent(onSelectCallback) {
     fontSize: "12px",
     color: "#5f6368",
     lineHeight: "1.5",
-    minHeight: "40px",
+    minHeight: "44px",
     display: "flex",
     alignItems: "center",
     fontStyle: "italic",
-    transition: "all 0.2s ease"
+    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    overflow: "hidden"
   });
-  previewBox.innerHTML = "<span>Passe o mouse sobre um cenário para visualizar o texto...</span>";
+
+  const previewText = document.createElement("span");
+  previewText.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+  previewText.textContent = DEFAULT_PREVIEW_TEXT;
+  previewBox.appendChild(previewText);
 
   // Estado interno
-  let activeValue = null;
+  const selectedIds = new Set();
+  let hoverTimeout = null;
 
   // Refined render version
   container.render = (subStatusKey, caseType) => {
-      activeValue = null;
+      selectedIds.clear();
       const filtered = Object.entries(scenarioSnippets).filter(([id, data]) => {
           const matchesType = !data.type || data.type === 'all' || data.type === caseType;
           let matchesSubStatus = false;
@@ -77,31 +85,58 @@ export function createScenariosComponent(onSelectCallback) {
             transition: "all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)",
           });
 
-          const textPreview = data['field-REASON_COMMENTS'] || data['field-CONTEXTO_CALL'] || id;
+          const textPreviewContent = data['field-REASON_COMMENTS'] || data['field-CONTEXTO_CALL'] || id;
 
           chip.onmouseenter = () => {
-              if (activeValue !== id) {
-                  previewBox.textContent = textPreview.substring(0, 100) + (textPreview.length > 100 ? '...' : '');
+              if (hoverTimeout) clearTimeout(hoverTimeout);
+
+              if (!selectedIds.has(id)) {
                   chip.style.background = "#f1f3f4";
               }
+
+              previewText.style.opacity = "0";
+              previewText.style.transform = "translateY(5px)";
+
+              hoverTimeout = setTimeout(() => {
+                  previewText.textContent = textPreviewContent.substring(0, 120) + (textPreviewContent.length > 120 ? '...' : '');
+                  previewText.style.opacity = "1";
+                  previewText.style.transform = "translateY(0)";
+              }, 50);
           };
+
           chip.onmouseleave = () => {
-              if (activeValue !== id) {
+              if (hoverTimeout) clearTimeout(hoverTimeout);
+
+              if (!selectedIds.has(id)) {
                   chip.style.background = "#ffffff";
-                  if (!activeValue) previewBox.textContent = "Passe o mouse para ver os detalhes";
               }
+
+              hoverTimeout = setTimeout(() => {
+                  if (selectedIds.size === 0) {
+                      previewText.style.opacity = "0";
+                      setTimeout(() => {
+                          previewText.textContent = DEFAULT_PREVIEW_TEXT;
+                          previewText.style.opacity = "1";
+                      }, 50);
+                  }
+              }, 100);
           };
+
           chip.onclick = () => {
               SoundManager.playClick();
-              const isSelecting = activeValue !== id;
-              activeValue = isSelecting ? id : null;
+              const isSelecting = !selectedIds.has(id);
 
-              Array.from(grid.children).forEach(c => {
-                  const isThis = c.dataset.id === activeValue;
-                  c.style.background = isThis ? "#e8f0fe" : "#ffffff";
-                  c.style.borderColor = isThis ? "#1a73e8" : "#dadce0";
-                  c.style.color = isThis ? "#1967d2" : "#3c4043";
-              });
+              if (isSelecting) {
+                  selectedIds.add(id);
+                  chip.style.background = "#e8f0fe";
+                  chip.style.borderColor = "#1a73e8";
+                  chip.style.color = "#1967d2";
+              } else {
+                  selectedIds.delete(id);
+                  chip.style.background = "#ffffff";
+                  chip.style.borderColor = "#dadce0";
+                  chip.style.color = "#3c4043";
+              }
 
               onSelectCallback(id, isSelecting);
           };
