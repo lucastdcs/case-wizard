@@ -3,6 +3,7 @@
 import { DraftService } from "./draft-service.js";
 import { showToast, confirmDialog } from "../../shared/utils.js";
 import { SoundManager } from "../../shared/sound-manager.js";
+import { updateNotesBadge } from "../../shared/command-center.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
 
 export function createDraftsManager(callbacks) {
@@ -104,6 +105,10 @@ export function createDraftsManager(callbacks) {
 
     function updateBadge() {
         const count = DraftService.getCount();
+
+        // Update Pill Badge (Global)
+        updateNotesBadge(count > 0);
+
         if (count > 0) {
             badge.style.display = "block";
             badge.textContent = count;

@@ -26,6 +26,25 @@ const COLORS = {
 
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// --- FUNÇÕES EXPORTADAS ---
+
+export function updateNotesBadge(hasDrafts) {
+  const btn = document.getElementById('cw-btn-notes');
+  if (!btn) return;
+
+  let badge = btn.querySelector('.cw-dot-dirty');
+
+  if (hasDrafts) {
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.className = 'cw-dot-dirty';
+      btn.appendChild(badge);
+    }
+  } else {
+    if (badge) badge.remove();
+  }
+}
+
 export function initCommandCenter(actions) {
   // 1. ESTILOS
   const styleId = "cw-command-center-style";
