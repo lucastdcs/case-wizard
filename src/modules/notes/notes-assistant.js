@@ -66,14 +66,12 @@ export function initCaseNotesAssistant() {
     // 4. Build Main Layout Sections
     const langTypeSection = createLangTypeSection();
     const statusSection = createStatusSection();
-    const emailToggleSection = createEmailToggleSection();
     const dynamicFormContainer = document.createElement("div");
     const emptyStateContainer = createEmptyState();
     const actionsSection = createActionsSection(draftsManager, t);
 
     content.appendChild(langTypeSection);
     content.appendChild(statusSection);
-    content.appendChild(emailToggleSection);
     content.appendChild(emptyStateContainer);
     content.appendChild(scenariosContainer);
     content.appendChild(dynamicFormContainer);
@@ -294,7 +292,7 @@ export function initCaseNotesAssistant() {
         emptyStateContainer.style.opacity = "0";
         setTimeout(() => {
             if (notesState.currentSubStatus) emptyStateContainer.style.display = "none";
-        }, 300);
+        }, 400); // Wait for fade out (matches transition)
 
         // Show Actions
         actionsSection.style.display = "grid";
@@ -335,9 +333,9 @@ export function initCaseNotesAssistant() {
         updateTagSupport();
 
         // Show/Hide Email Toggle based on shortcode availability
-        const emailToggle = document.getElementById('email-automation-toggle-section');
+        const emailToggle = document.getElementById('email-automation-toggle-row');
         if (emailToggle) {
-            emailToggle.style.display = SUBSTATUS_SHORTCODES[subStatusKey] ? "block" : "none";
+            emailToggle.style.display = SUBSTATUS_SHORTCODES[subStatusKey] ? "flex" : "none";
         }
     }
 
@@ -392,6 +390,16 @@ export function initCaseNotesAssistant() {
             border-radius: 16px;
             border: 1px solid ${COLORS.border};
         `;
+
+        const emailRow = document.createElement("div");
+        emailRow.id = "email-automation-toggle-row";
+        emailRow.style.cssText = "grid-column: span 2; display: none; align-items: center; justify-content: center; padding-bottom: 8px; border-bottom: 1px solid #eee; margin-bottom: 8px;";
+        emailRow.innerHTML = `
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: ${COLORS.textSub};">
+                <input type="checkbox" id="email-automation-checkbox" checked style="width: 14px; height: 14px; accent-color: ${COLORS.primary};">
+                <span class="js-label-email-toggle">${t('preencher_email_automaticamente')}</span>
+            </label>
+        `;
         
         const parkBtn = draftsManager.parkButton;
         parkBtn.style.cssText = `width: 100%; margin: 0; border-radius: ${RADIUS.medium}; height: 40px; font-weight: 600; font-size: 13px;`;
@@ -414,6 +422,7 @@ export function initCaseNotesAssistant() {
         btnGenerate.style.cssText = `width: 100%; height: 44px; background: ${COLORS.primary}; color: #fff; border: none; border-radius: ${RADIUS.medium}; font-weight: 600; cursor: pointer; transition: all 0.2s ${EASE}; grid-column: span 2; font-size: 14px; box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2); margin-top: 4px;`;
         btnGenerate.onclick = () => handleGenerate();
 
+        div.appendChild(emailRow);
         div.appendChild(parkBtn);
         div.appendChild(btnReset);
         div.appendChild(btnCopy);
@@ -475,7 +484,8 @@ export function initCaseNotesAssistant() {
         // Reset UI elements
         content.querySelectorAll('select').forEach(s => s.value = "");
         content.querySelector('#sub-status-select').disabled = true;
-        document.getElementById('email-automation-toggle-section').style.display = 'none';
+        const emailRow = document.getElementById('email-automation-toggle-row');
+        if (emailRow) emailRow.style.display = 'none';
         dynamicFormContainer.innerHTML = "";
         scenariosContainer.style.display = "none";
         emptyStateContainer.style.display = "flex";
@@ -573,44 +583,35 @@ export function initCaseNotesAssistant() {
             align-items: center;
             justify-content: center;
             padding: 40px 20px;
-            gap: 20px;
+            gap: 16px;
             flex-grow: 1;
-            transition: opacity 0.3s ${EASE};
+            transition: all 0.4s ${EASE};
         `;
 
         div.innerHTML = `
-            <div style="width: 160px; height: 160px; opacity: 0.8;">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19 3H5C3.89 3 3 3.9 3 5V19C3 20.1 3.89 21 5 21H19C20.11 21 21 20.1 21 19V5C21 3.9 20.11 3 19 3ZM19 19H5V5H19V19Z" fill="#4285F4"/>
-                    <path d="M7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z" fill="#EA4335"/>
-                    <circle cx="18" cy="18" r="4" fill="#FBBC05"/>
-                    <path d="M18 16V20M16 18H20" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            <div style="width: 140px; height: 140px; margin-bottom: 8px;">
+                <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="60" cy="60" r="50" fill="#f8f9fa"/>
+                    <rect x="35" y="25" width="50" height="70" rx="8" fill="white" stroke="#e8eaed" stroke-width="2"/>
+                    <rect x="45" y="40" width="30" height="4" rx="2" fill="#4285F4" opacity="0.6"/>
+                    <rect x="45" y="52" width="30" height="4" rx="2" fill="#EA4335" opacity="0.6"/>
+                    <rect x="45" y="64" width="20" height="4" rx="2" fill="#FBBC05" opacity="0.6"/>
+                    <circle cx="85" cy="85" r="18" fill="#34A853"/>
+                    <path d="M85 77V93M77 85H93" stroke="white" stroke-width="4" stroke-linecap="round"/>
                 </svg>
             </div>
             <div style="text-align: center;">
-                <div style="font-family: 'Google Sans', sans-serif; font-size: 16px; font-weight: 600; color: ${COLORS.text}; margin-bottom: 8px;">
-                    Pronto para começar?
+                <div style="font-family: 'Google Sans', sans-serif; font-size: 16px; font-weight: 600; color: ${COLORS.text}; margin-bottom: 4px;">
+                    ${t('pronto_comecar') || 'Pronto para começar?'}
                 </div>
-                <div style="font-size: 13px; color: ${COLORS.textSub}; line-height: 1.5;">
-                    Selecione um status e substatus para<br>gerar sua nota técnica.
+                <div style="font-size: 13px; color: ${COLORS.textSub}; line-height: 1.6; opacity: 0.8;">
+                    ${t('selecione_status_ajuda') || 'Selecione um status e substatus para<br>começar a sua nota técnica.'}
                 </div>
             </div>
         `;
         return div;
     }
 
-    function createEmailToggleSection() {
-        const div = document.createElement("div");
-        div.id = "email-automation-toggle-section";
-        div.style.cssText = "display: none; margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 12px; border: 1px solid #eee;";
-        div.innerHTML = `
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; font-weight: 500; color: ${COLORS.textSub};">
-                <input type="checkbox" id="email-automation-checkbox" checked style="width: 16px; height: 16px; accent-color: ${COLORS.primary};">
-                <span class="js-label-email-toggle">Preencher email automaticamente?</span>
-            </label>
-        `;
-        return div;
-    }
 
     function updateUIFromState(state) {
         // Sync labels when language changes

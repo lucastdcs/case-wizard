@@ -42,6 +42,8 @@ export const translations = {
         'consentiu_gravacao': 'Anunciante consentiu com a gravação da reunião?',
         'sim': 'Sim',
         'nao': 'Não',
+        'pronto_comecar': 'Pronto para começar?',
+        'selecione_status_ajuda': 'Selecione um status e substatus para<br>começar a sua nota técnica.',
         
         // Labels dos campos
         'speakeasy_id': 'Speakeasy ID:',
@@ -105,6 +107,8 @@ export const translations = {
         'consentiu_gravacao': '¿El anunciante consintió la grabación de la reunión?',
         'sim': 'Sí',
         'nao': 'No',
+        'pronto_comecar': '¿Listo para empezar?',
+        'selecione_status_ajuda': 'Seleccione un estado y subestado para<br>comenzar su nota técnica.',
         
         // Labels dos campos
         'speakeasy_id': 'Speakeasy ID:',
