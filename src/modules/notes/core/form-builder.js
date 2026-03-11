@@ -36,20 +36,17 @@ export function buildDynamicForm(subStatusKey, container, state) {
             label.appendChild(btnSearch);
         }
 
-        if (foundReason) {
-            const btnDelete = document.createElement('button');
-            btnDelete.innerHTML = "✕";
-            btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
-            btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
-            btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
-            btnDelete.onclick = (e) => {
-                e.preventDefault();
-                state.toggleFieldExclusion(fieldId, true);
-                buildDynamicForm(subStatusKey, container, state);
-            };
-            label.appendChild(btnDelete);
-        }
-        if (fieldName === "REASON_COMMENTS") foundReason = true;
+        const btnDelete = document.createElement('button');
+        btnDelete.innerHTML = "✕";
+        btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
+        btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
+        btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
+        btnDelete.onclick = (e) => {
+            e.preventDefault();
+            state.toggleFieldExclusion(fieldId, true);
+            buildDynamicForm(subStatusKey, container, state);
+        };
+        label.appendChild(btnDelete);
         let field;
         if (textareaListFields.includes(fieldName)) {
             field = document.createElement("textarea"); field.classList.add("bullet-textarea", "cw-textarea");
