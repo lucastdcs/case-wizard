@@ -80,10 +80,17 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
         outputText = outputText.replace(/{CASO_PORTUGAL}/g, '').replace(/{CONSENTIU_GRAVACAO}/g, '');
     }
 
-    for (const fieldId in state.formData) {
-        const fieldName = fieldId.replace('field-', '');
+    // Get all unique placeholders in the template to ensure we process everything, even untouched fields
+    const placeholders = outputText.match(/{([A-Z0-9_]+)}/g) || [];
+    const uniquePlaceholders = [...new Set(placeholders)];
+
+    uniquePlaceholders.forEach((placeholder) => {
+        const fieldName = placeholder.slice(1, -1);
+        const fieldId = `field-${fieldName}`;
         const placeholderRegex = new RegExp(`{${fieldName}}`, 'g');
-        let value = (state.formData[fieldId] || '').trim();
+
+        let rawValue = state.formData[fieldId] || '';
+        let value = rawValue.trim();
 
         const isExcluded = state.excludedFields.has(fieldId);
 
@@ -91,20 +98,16 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
         const isEmptyValue = !value || value.toLowerCase() === 'n/a' || value === '.' || value === '-' || value === '•';
 
         if (isExcluded || isEmptyValue) {
-            // Regex improved to catch ONLY lines where the placeholder is the ONLY content after the bold label
-            // and remove the label + placeholder + surrounding breaks.
-            // If the line has more text (hardcoded in template), it should NOT match this regex.
+            // Regex to catch the labeled line if the placeholder is the ONLY content after the colon
             const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<[b|strong]+>[^<]+:\\s*<\\/[b|strong]+>\\s*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
 
-            // First try to remove the whole labeled line if it's empty
             const newOutput = outputText.replace(lineRegex, '');
             if (newOutput !== outputText) {
                 outputText = newOutput;
             } else {
-                // If not found as a full line, just remove the placeholder itself
                 outputText = outputText.replace(placeholderRegex, '');
             }
-            continue;
+            return;
         }
 
         if (textareaListFields.includes(fieldName)) {
@@ -123,7 +126,7 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
                  } else {
                      outputText = outputText.replace(placeholderRegex, '');
                  }
-                continue;
+                return;
             }
         } else if (textareaParagraphFields.includes(fieldName)) {
             value = value.split('\n')
@@ -133,9 +136,9 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
         }
 
         outputText = outputText.replace(placeholderRegex, value.replace(/\$/g, '$$$$'));
-    }
+    });
 
-    // Clean up remaining placeholders and excessive breaks
+    // Final clean up for any missed placeholders and excessive breaks
     outputText = outputText.replace(/{([A-Z0-9_]+)}/g, '')
                            .replace(/(<br>\s*){3,}/g, '<br><br>')
                            .trim();
