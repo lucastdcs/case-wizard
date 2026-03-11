@@ -166,26 +166,29 @@ export function initCaseNotesAssistant() {
     function createLangTypeSection() {
         const div = document.createElement("div");
         div.innerHTML = `
-            <div style="display: flex; gap: 16px; margin-bottom: 8px;">
+            <div style="display: flex; gap: 12px; margin-bottom: 8px;">
                 <div style="flex: 1;">
-                    <div class="cw-section-title js-label-idioma">${t('idioma')}</div>
+                    <div class="cw-section-title js-label-idioma" style="font-size: 10px; margin-bottom: 6px;">${t('idioma')}</div>
                     <div class="cw-segmented-control" id="lang-selector">
-                        <button data-lang="pt" class="active">PT</button>
-                        <button data-lang="es">ES</button>
+                        <div class="cw-segmented-indicator"></div>
+                        <button data-lang="pt" class="active" style="z-index:2">PT</button>
+                        <button data-lang="es" style="z-index:2">ES</button>
                     </div>
                 </div>
                 <div style="flex: 1;">
-                    <div class="cw-section-title js-label-fluxo">${t('fluxo')}</div>
+                    <div class="cw-section-title js-label-fluxo" style="font-size: 10px; margin-bottom: 6px;">${t('fluxo')}</div>
                     <div class="cw-segmented-control" id="type-selector">
-                        <button data-type="bau" class="active">BAU</button>
-                        <button data-type="lm">LM</button>
+                        <div class="cw-segmented-indicator"></div>
+                        <button data-type="bau" class="active" style="z-index:2">BAU</button>
+                        <button data-type="lm" style="z-index:2">LM</button>
                     </div>
                 </div>
                 <div style="flex: 1;">
-                    <div class="cw-section-title js-label-portugal">${t('caso_portugal')}</div>
+                    <div class="cw-section-title js-label-portugal" style="font-size: 10px; margin-bottom: 6px;">${t('caso_portugal')}</div>
                     <div class="cw-segmented-control" id="portugal-selector">
-                        <button data-val="false" class="active">${t('nao')}</button>
-                        <button data-val="true">${t('sim')}</button>
+                        <div class="cw-segmented-indicator"></div>
+                        <button data-val="false" class="active" style="z-index:2">${t('nao')}</button>
+                        <button data-val="true" style="z-index:2">${t('sim')}</button>
                     </div>
                 </div>
             </div>
@@ -196,35 +199,93 @@ export function initCaseNotesAssistant() {
             const style = document.createElement('style');
             style.id = 'cw-segmented-styles';
             style.innerHTML = `
-                .cw-segmented-control { display: flex; background: ${COLORS.bgInput}; padding: 4px; border-radius: 100px; gap: 4px; border: 1px solid ${COLORS.border}; }
-                .cw-segmented-control button { flex: 1; border: none; background: transparent; padding: 8px 12px; font-size: 12px; font-weight: 700; border-radius: 100px; cursor: pointer; transition: all 0.3s ${EASE}; color: ${COLORS.textSub}; }
-                .cw-segmented-control button.active { background: ${COLORS.primary}; color: #fff; box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3); }
-                .cw-segmented-control button:hover:not(.active) { background: #e8eaed; color: ${COLORS.text}; }
+                .cw-segmented-control {
+                    display: flex;
+                    background: ${COLORS.bgInput};
+                    padding: 3px;
+                    border-radius: 100px;
+                    gap: 2px;
+                    border: 1px solid ${COLORS.border};
+                    position: relative;
+                    overflow: hidden;
+                }
+                .cw-segmented-control button {
+                    flex: 1;
+                    border: none;
+                    background: transparent;
+                    padding: 6px 4px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    border-radius: 100px;
+                    cursor: pointer;
+                    transition: all 0.3s ${EASE};
+                    color: ${COLORS.textSub};
+                    position: relative;
+                }
+                .cw-segmented-control button.active {
+                    color: #fff;
+                }
+                .cw-segmented-control button:hover:not(.active) {
+                    background: rgba(0,0,0,0.03);
+                    color: ${COLORS.text};
+                }
+                .cw-segmented-indicator {
+                    position: absolute;
+                    top: 3px;
+                    left: 3px;
+                    bottom: 3px;
+                    width: calc(50% - 4px);
+                    background: linear-gradient(90deg, #4285F4, #EA4335, #FBBC05, #34A853);
+                    background-size: 300% auto;
+                    border-radius: 100px;
+                    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    z-index: 1;
+                    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+                    animation: cw-gradient-flow 4s linear infinite;
+                }
+                @keyframes cw-gradient-flow {
+                    0% { background-position: 0% 50%; }
+                    100% { background-position: 300% 50%; }
+                }
             `;
             document.head.appendChild(style);
         }
 
-        div.querySelectorAll('#lang-selector button').forEach(btn => {
+        const updateIndicator = (selectorId, index) => {
+            const selector = div.querySelector(\`#\${selectorId}\`);
+            const indicator = selector.querySelector('.cw-segmented-indicator');
+            if (indicator) {
+                indicator.style.transform = \`translateX(\${index * 100}%) translateX(\${index * 2}px)\`;
+            }
+        };
+
+        div.querySelectorAll('#lang-selector button').forEach((btn, idx) => {
             btn.onclick = () => {
                 notesState.setLanguage(btn.dataset.lang);
                 div.querySelectorAll('#lang-selector button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                updateIndicator('lang-selector', idx);
+                SoundManager.playHover();
             };
         });
 
-        div.querySelectorAll('#type-selector button').forEach(btn => {
+        div.querySelectorAll('#type-selector button').forEach((btn, idx) => {
             btn.onclick = () => {
                 notesState.setCaseType(btn.dataset.type);
                 div.querySelectorAll('#type-selector button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                updateIndicator('type-selector', idx);
+                SoundManager.playHover();
             };
         });
 
-        div.querySelectorAll('#portugal-selector button').forEach(btn => {
+        div.querySelectorAll('#portugal-selector button').forEach((btn, idx) => {
             btn.onclick = () => {
                 notesState.setPortugalCase(btn.dataset.val === "true");
                 div.querySelectorAll('#portugal-selector button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                updateIndicator('portugal-selector', idx);
+                SoundManager.playHover();
                 if (notesState.currentSubStatus) {
                     buildDynamicForm(notesState.currentSubStatus, dynamicFormContainer, notesState);
                 }
@@ -403,42 +464,83 @@ export function initCaseNotesAssistant() {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
-            padding: 16px;
-            margin-top: 24px;
+            padding: 10px;
+            margin-top: 16px;
             background: ${COLORS.bgInput};
-            border-radius: 16px;
+            border-radius: 12px;
             border: 1px solid ${COLORS.border};
         `;
 
+        if (!document.getElementById('cw-actions-hover-styles')) {
+            const style = document.createElement('style');
+            style.id = 'cw-actions-hover-styles';
+            style.innerHTML = `
+                .cw-actions-section button {
+                    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .cw-actions-section button:active {
+                    transform: scale(0.96) translateY(0) !important;
+                }
+                .cw-actions-section .js-btn-generate:hover {
+                    background: #1765cc !important;
+                    box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4) !important;
+                    transform: translateY(-2px);
+                }
+                .cw-actions-section .js-btn-copy:hover {
+                    background: #f8f9fa !important;
+                    border-color: ${COLORS.primary} !important;
+                    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.15) !important;
+                    transform: translateY(-2px);
+                }
+                .cw-actions-section .js-btn-reset:hover {
+                    background: #fff5f5 !important;
+                    border-color: #ff8787 !important;
+                    color: #e03131 !important;
+                    box-shadow: 0 4px 12px rgba(234, 67, 53, 0.15) !important;
+                    transform: translateY(-2px);
+                }
+                .cw-actions-section .js-btn-park:hover {
+                    background: #f0f7ff !important;
+                    color: ${COLORS.primary} !important;
+                    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.1) !important;
+                    transform: translateY(-2px);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
         const emailRow = document.createElement("div");
         emailRow.id = "email-automation-toggle-row";
-        emailRow.style.cssText = "grid-column: span 2; display: none; align-items: center; justify-content: center; padding-bottom: 8px; border-bottom: 1px solid #eee; margin-bottom: 8px;";
+        emailRow.style.cssText = "grid-column: span 2; display: none; align-items: center; justify-content: center; padding-bottom: 6px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 2px;";
         emailRow.innerHTML = `
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: ${COLORS.textSub};">
-                <input type="checkbox" id="email-automation-checkbox" checked style="width: 14px; height: 14px; accent-color: ${COLORS.primary};">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 10.5px; font-weight: 600; color: ${COLORS.textSub};">
+                <input type="checkbox" id="email-automation-checkbox" checked style="width: 13px; height: 13px; accent-color: ${COLORS.primary};">
                 <span class="js-label-email-toggle">${t('preencher_email_automaticamente')}</span>
             </label>
         `;
         
         const parkBtn = draftsManager.parkButton;
-        parkBtn.style.cssText = `width: 100%; margin: 0; border-radius: ${RADIUS.medium}; height: 40px; font-weight: 600; font-size: 13px;`;
+        parkBtn.classList.add('js-btn-park');
+        parkBtn.style.cssText = `width: 100%; margin: 0; border-radius: 10px; height: 34px; font-weight: 600; font-size: 11.5px;`;
 
         const btnReset = document.createElement("button");
         btnReset.className = "cw-btn-secondary js-btn-reset";
         btnReset.textContent = t('limpar');
-        btnReset.style.cssText = `width: 100%; height: 40px; background: ${COLORS.surface}; color: ${COLORS.textSub}; border: 1px solid ${COLORS.border}; border-radius: ${RADIUS.medium}; font-weight: 600; cursor: pointer; transition: all 0.2s ${EASE}; font-size: 13px;`;
+        btnReset.style.cssText = `width: 100%; height: 34px; background: ${COLORS.surface}; color: ${COLORS.textSub}; border: 1px solid ${COLORS.border}; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 11.5px;`;
         btnReset.onclick = () => resetModule();
 
         const btnCopy = document.createElement("button");
         btnCopy.className = "cw-btn-secondary js-btn-copy";
         btnCopy.textContent = t('copiar');
-        btnCopy.style.cssText = `width: 100%; height: 40px; background: ${COLORS.surface}; color: ${COLORS.primary}; border: 1px solid ${COLORS.primary}; border-radius: ${RADIUS.medium}; font-weight: 600; cursor: pointer; transition: all 0.2s ${EASE}; font-size: 13px;`;
+        btnCopy.style.cssText = `width: 100%; height: 34px; background: ${COLORS.surface}; color: ${COLORS.primary}; border: 1px solid ${COLORS.primary}; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 11.5px;`;
         btnCopy.onclick = () => handleCopy();
 
         const btnGenerate = document.createElement("button");
         btnGenerate.className = "cw-btn-primary js-btn-generate";
         btnGenerate.textContent = t('preencher');
-        btnGenerate.style.cssText = `width: 100%; height: 44px; background: ${COLORS.primary}; color: #fff; border: none; border-radius: ${RADIUS.medium}; font-weight: 600; cursor: pointer; transition: all 0.2s ${EASE}; grid-column: span 2; font-size: 14px; box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2); margin-top: 4px;`;
+        btnGenerate.style.cssText = `width: 100%; height: 38px; background: ${COLORS.primary}; color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; grid-column: span 2; font-size: 12.5px; box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2); margin-top: 0px;`;
         btnGenerate.onclick = () => handleGenerate();
 
         div.appendChild(emailRow);

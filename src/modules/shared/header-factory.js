@@ -48,8 +48,23 @@ export function createStandardHeader(popupElement, titleText, versionText, helpD
     Object.assign(gradientLine.style, {
         position: 'absolute', bottom: '0', left: '0', width: '100%', height: '2px',
         background: 'linear-gradient(to right, #4285F4, #EA4335, #FBBC05, #34A853)',
+        backgroundSize: '300% auto',
         zIndex: '10', opacity: '0.8'
     });
+
+    if (!document.getElementById('cw-header-anim')) {
+        const style = document.createElement('style');
+        style.id = 'cw-header-anim';
+        style.innerHTML = `
+            @keyframes cw-header-flow {
+                0% { background-position: 0% 50%; }
+                100% { background-position: 300% 50%; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    gradientLine.style.animation = 'cw-header-flow 6s linear infinite';
+
     header.appendChild(gradientLine);
     
     if (animRefs) {
