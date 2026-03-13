@@ -235,17 +235,11 @@ export function initCaseNotesAssistant() {
                     left: 3px;
                     bottom: 3px;
                     width: calc(50% - 4px);
-                    background: linear-gradient(90deg, #4285F4, #EA4335, #FBBC05, #34A853);
-                    background-size: 300% auto;
+                    background: ${COLORS.primary};
                     border-radius: 100px;
-                    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                     z-index: 1;
-                    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
-                    animation: cw-gradient-flow 4s linear infinite;
-                }
-                @keyframes cw-gradient-flow {
-                    0% { background-position: 0% 50%; }
-                    100% { background-position: 300% 50%; }
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
                 }
             `;
             document.head.appendChild(style);
@@ -476,36 +470,36 @@ export function initCaseNotesAssistant() {
             style.id = 'cw-actions-hover-styles';
             style.innerHTML = `
                 .cw-actions-section button {
-                    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
                     position: relative;
                     overflow: hidden;
                 }
                 .cw-actions-section button:active {
-                    transform: scale(0.96) translateY(0) !important;
+                    transform: scale(0.98) !important;
                 }
                 .cw-actions-section .js-btn-generate:hover {
                     background: #1765cc !important;
-                    box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4) !important;
-                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3) !important;
+                    transform: translateY(-1px);
                 }
                 .cw-actions-section .js-btn-copy:hover {
                     background: #f8f9fa !important;
                     border-color: ${COLORS.primary} !important;
-                    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.15) !important;
-                    transform: translateY(-2px);
+                    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.1) !important;
+                    transform: translateY(-1px);
                 }
                 .cw-actions-section .js-btn-reset:hover {
                     background: #fff5f5 !important;
                     border-color: #ff8787 !important;
                     color: #e03131 !important;
-                    box-shadow: 0 4px 12px rgba(234, 67, 53, 0.15) !important;
-                    transform: translateY(-2px);
+                    box-shadow: 0 2px 8px rgba(234, 67, 53, 0.1) !important;
+                    transform: translateY(-1px);
                 }
                 .cw-actions-section .js-btn-park:hover {
                     background: #f0f7ff !important;
                     color: ${COLORS.primary} !important;
-                    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.1) !important;
-                    transform: translateY(-2px);
+                    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.05) !important;
+                    transform: translateY(-1px);
                 }
             `;
             document.head.appendChild(style);
