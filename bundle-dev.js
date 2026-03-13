@@ -1452,17 +1452,11 @@ ${D("checks")}
                     left: 3px;
                     bottom: 3px;
                     width: calc(50% - 4px);
-                    background: linear-gradient(90deg, #4285F4, #EA4335, #FBBC05, #34A853);
-                    background-size: 300% auto;
+                    background: ${R.primary};
                     border-radius: 100px;
-                    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                     z-index: 1;
-                    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
-                    animation: cw-gradient-flow 4s linear infinite;
-                }
-                @keyframes cw-gradient-flow {
-                    0% { background-position: 0% 50%; }
-                    100% { background-position: 300% 50%; }
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
                 }
             `,document.head.appendChild(I)}let h=(I,j)=>{let J=g.querySelector(`#${I}`).querySelector(".cw-segmented-indicator");J&&(J.style.transform=`translateX(${j*100}%) translateX(${j*2}px)`)};return g.querySelectorAll("#lang-selector button").forEach((I,j)=>{I.onclick=()=>{U.setLanguage(I.dataset.lang),g.querySelectorAll("#lang-selector button").forEach(Y=>Y.classList.remove("active")),I.classList.add("active"),h("lang-selector",j),P.playHover()}}),g.querySelectorAll("#type-selector button").forEach((I,j)=>{I.onclick=()=>{U.setCaseType(I.dataset.type),g.querySelectorAll("#type-selector button").forEach(Y=>Y.classList.remove("active")),I.classList.add("active"),h("type-selector",j),P.playHover()}}),g.querySelectorAll("#portugal-selector button").forEach((I,j)=>{I.onclick=()=>{U.setPortugalCase(I.dataset.val==="true"),g.querySelectorAll("#portugal-selector button").forEach(Y=>Y.classList.remove("active")),I.classList.add("active"),h("portugal-selector",j),P.playHover(),U.currentSubStatus&&Qe(U.currentSubStatus,b,U)}}),g}function _(){let g=document.createElement("div");g.className="cw-status-section",g.style.cssText="display: flex; flex-direction: column; gap: 8px;",g.innerHTML=`
             <div class="cw-section-title js-label-status" style="margin-top: 8px;">${E("status_principal")}</div>
@@ -1491,36 +1485,36 @@ ${D("checks")}
             border: 1px solid ${R.border};
         `,!document.getElementById("cw-actions-hover-styles")){let re=document.createElement("style");re.id="cw-actions-hover-styles",re.innerHTML=`
                 .cw-actions-section button {
-                    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
                     position: relative;
                     overflow: hidden;
                 }
                 .cw-actions-section button:active {
-                    transform: scale(0.96) translateY(0) !important;
+                    transform: scale(0.98) !important;
                 }
                 .cw-actions-section .js-btn-generate:hover {
                     background: #1765cc !important;
-                    box-shadow: 0 6px 20px rgba(26, 115, 232, 0.4) !important;
-                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3) !important;
+                    transform: translateY(-1px);
                 }
                 .cw-actions-section .js-btn-copy:hover {
                     background: #f8f9fa !important;
                     border-color: ${R.primary} !important;
-                    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.15) !important;
-                    transform: translateY(-2px);
+                    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.1) !important;
+                    transform: translateY(-1px);
                 }
                 .cw-actions-section .js-btn-reset:hover {
                     background: #fff5f5 !important;
                     border-color: #ff8787 !important;
                     color: #e03131 !important;
-                    box-shadow: 0 4px 12px rgba(234, 67, 53, 0.15) !important;
-                    transform: translateY(-2px);
+                    box-shadow: 0 2px 8px rgba(234, 67, 53, 0.1) !important;
+                    transform: translateY(-1px);
                 }
                 .cw-actions-section .js-btn-park:hover {
                     background: #f0f7ff !important;
                     color: ${R.primary} !important;
-                    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.1) !important;
-                    transform: translateY(-2px);
+                    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.05) !important;
+                    transform: translateY(-1px);
                 }
             `,document.head.appendChild(re)}let j=document.createElement("div");j.id="email-automation-toggle-row",j.style.cssText="grid-column: span 2; display: none; align-items: center; justify-content: center; padding-bottom: 6px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 2px;",j.innerHTML=`
             <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 10.5px; font-weight: 600; color: ${R.textSub};">
