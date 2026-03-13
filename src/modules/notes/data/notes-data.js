@@ -547,21 +547,21 @@ export const scenarioSnippets = {
     'quickfill-whatsapp': {
         type: 'all',
         'field-TASKS_SOLICITADAS': "• Criação de conversão para WHATSAPP",
-        'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM usando acionadores de clique (ex: Click URL / Click Text) para os botões de WhatsApp.\n• Realizamos os testes e validamos o funcionamento.",
+        'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM para os botões de WhatsApp.\n• Realizamos os testes e validamos o funcionamento.",
         'field-RESULTADO': "• Task implementada com sucesso. Fecho o caso sem acompanhamento.",
         linkedTask: 'ads_conversion_tracking'
     },
      'quickfill-form': {
         type: 'all',
         'field-TASKS_SOLICITADAS': "• Criação de conversão para FORMULÁRIO (padrão, não-otimizada).",
-        'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM usando o acionador de envio de formulário (Form Submission) ou visualização de página de agradecimento (Thank You Page).\n• Realizamos os testes e validamos o funcionamento.",
+        'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM.\n• Realizamos os testes e validamos o funcionamento.",
         'field-RESULTADO': "• Task implementada com sucesso. Fecho o caso sem acompanhamento.",
         linkedTask: 'ads_conversion_tracking'
     },
     'quickfill-ecw4-close': {
         type: 'all',
-        'field-TASKS_SOLICITADAS': "• Acompanhamento da conversão otimizada (ECW4) após 7 dias.",
-        'field-PASSOS_EXECUTADOS': "• Após o período de 7 dias de acompanhamento, verifiquei o painel do Ads.\n• A conversão está sendo registrada corretamente.",
+        'field-TASKS_SOLICITADAS': "• Acompanhamento da conversão otimizada (ECW4).",
+        'field-PASSOS_EXECUTADOS': "• Após o período de acompanhamento, verifiquei o painel do Ads.\n• A conversão está sendo registrada corretamente.",
         'field-RESULTADO': "• Valido o bom funcionamento da conversão otimizada.\n• Assim, fecho o caso.",
         linkedTask: 'ads_enhanced_conversions'
     },
@@ -595,15 +595,6 @@ export const scenarioSnippets = {
         'field-SCREENSHOTS': "• Tentativa 1 -\n• Tentativa 2 -\n• Tentativa 3 -",
         'field-GTM_GA4_VERIFICADO': "N/A"
     },
-    'quickfill-in-nrp-lm': {
-        type: 'lm',
-        'field-REASON_COMMENTS': "NRP (LM - Sem tentativas)",
-        'field-SPEAKEASY_ID': "N/A",
-        'field-ON_CALL': "N/A",
-        'field-COMENTARIOS': "• Tentativa de contato via e-mail (sem chamada) para o caso LM, sem resposta.\n• Caso inativado.",
-        'field-SCREENSHOTS': "• Caso LM, sem tentativas de ligação.",
-        'field-GTM_GA4_VERIFICADO': "N/A"
-    },
     'quickfill-in-no-show-bau': { 
         type: 'bau',
         'field-REASON_COMMENTS': "Sem resposta ao 2 Day Rule.",
@@ -626,15 +617,28 @@ export const scenarioSnippets = {
         'field-REASON_COMMENTS': "Outro (Manual)",
         'field-GTM_GA4_VERIFICADO': "N/A"
     },
-    'quickfill-dc-lm-no-access': {
-        type: 'lm',
-        'field-REASON_COMMENTS': "Discard - Falta de acessos (Reagendamento solicitado)",
-        'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, já que o adv não tinha os acessos.\n\nIrei abrir caso em BAU para o dia solicitado e pedir descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
-    },
     'quickfill-ni-attempted-2day': {
         type: 'bau',
         'field-REASON_COMMENTS': "Attempted Contact (Início 2 Day Rule)",
         'field-CONTEXTO_CALL': "• Fiz a primeira tentativa de ligação, sem sucesso.\n• Enviei uma mensagem no chat para o AM.\n• Aguardei 5 minutos e fiz a segunda tentativa de ligação, novamente sem sucesso.\n• Aguardei mais 5 minutos e agora farei o acompanhamento 2 Day Rule.",
         'field-SCREENSHOTS': "• MSG AM -\n• Tentativa 1 -\n• Tentativa 2 -"
     },
+
+        // --- Cenários de IN (Exclusivos - Rádio) ---
+    'quickfill-dc-lm-no-access': {
+        type: 'lm',
+        'field-REASON_COMMENTS': "Discard - Falta de acessos (Reagendamento solicitado)",
+        'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, já que o adv não tinha os acessos.\n\nIrei abrir caso em BAU para o dia solicitado e pedir descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
+    },
+    'quickfill-dc-lm-incomplete': {
+        type: 'lm',
+        'field-REASON_COMMENTS': "Discard - Nada foi implementado durante a consultoria",
+        'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, pois não houve tempo o suficiente para terminar a task relacionada.\n\nIrei abrir caso em BAU para o dia solicitado e pedir descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
+    },
+    'quickfill-dc-lm-no-show': {
+        type: 'lm',
+        'field-REASON_COMMENTS': "Discard - Sem contato com o Adv",
+        'field-COMENTARIOS': "O adv não compareceu na consultoria. Fiz as tentativas de ligação, mas não obtive retorno.\n\nIrei solicitar descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
+    },
+
 };
