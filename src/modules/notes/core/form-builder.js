@@ -15,7 +15,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
         if (["{TAGS_IMPLEMENTED}", "{SCREENSHOTS_LIST}", "{CONSENTIU_GRAVACAO}", "{CASO_PORTUGAL}"].includes(placeholder)) return;
         const fieldName = placeholder.slice(1, -1);
         const fieldId = `field-${fieldName}`;
-        if (state.excludedFields.has(fieldId)) return;
+        if (state.excludedFields.has(fieldId) || (fieldName === "ON_CALL" && state.currentCaseType === "lm")) return;
 
         const label = document.createElement("label");
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
@@ -58,7 +58,6 @@ export function buildDynamicForm(subStatusKey, container, state) {
         } else {
             field = document.createElement("input"); field.type = "text"; field.classList.add("cw-input");
         }
-        if (fieldName === "ON_CALL" && state.currentCaseType === "lm") { label.style.display = "none"; field.style.display = "none"; field.value = "N/A"; }
         field.id = fieldId; field.value = state.formData[fieldId] || "";
         field.addEventListener('input', (e) => state.updateField(fieldId, e.target.value));
         container.appendChild(label); container.appendChild(field);
