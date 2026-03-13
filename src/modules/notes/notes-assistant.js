@@ -260,6 +260,9 @@ export function initCaseNotesAssistant() {
                 btn.classList.add('active');
                 updateIndicator('lang-selector', idx);
                 SoundManager.playHover();
+                if (notesState.currentSubStatus) {
+                    buildDynamicForm(notesState.currentSubStatus, dynamicFormContainer, notesState);
+                }
             };
         });
 
@@ -270,6 +273,9 @@ export function initCaseNotesAssistant() {
                 btn.classList.add('active');
                 updateIndicator('type-selector', idx);
                 SoundManager.playHover();
+                if (notesState.currentSubStatus) {
+                    onSubStatusChange(notesState.currentSubStatus);
+                }
             };
         });
 

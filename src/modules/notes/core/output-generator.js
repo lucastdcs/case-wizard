@@ -92,14 +92,15 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
         let rawValue = state.formData[fieldId] || '';
         let value = rawValue.trim();
 
-        const isExcluded = state.excludedFields.has(fieldId);
+        const isExcluded = state.excludedFields.has(fieldId) || (fieldName === 'ON_CALL' && state.currentCaseType === 'lm');
 
         // Treat "N/A", ".", "-", "•" or empty values as "to be removed"
         const isEmptyValue = !value || value.toLowerCase() === 'n/a' || value === '.' || value === '-' || value === '•';
 
         if (isExcluded || isEmptyValue) {
-            // Regex to catch the labeled line if the placeholder is the ONLY content after the colon
-            const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<[b|strong]+>[^<]+:\\s*<\\/[b|strong]+>\\s*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
+            // Regex to catch the labeled line if the placeholder is the ONLY content after the label (bold/strong)
+            // It handles labels ending with ":" or "?" or nothing, and optional <br> before the placeholder.
+            const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<(?:b|strong)>[^<]+<\\/(?:b|strong)>[:?]?\\s*(?:<br\\s*\\/?>\\s*)*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
 
             const newOutput = outputText.replace(lineRegex, '');
             if (newOutput !== outputText) {
@@ -119,7 +120,7 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
                                .join('');
             value = lines ? `<ul ${ulStyle}>${lines}</ul>` : '';
             if (!lines) {
-                 const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<[b|strong]+>[^<]+:\\s*<\\/[b|strong]+>\\s*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
+                 const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<(?:b|strong)>[^<]+<\\/(?:b|strong)>[:?]?\\s*(?:<br\\s*\\/?>\\s*)*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
                  const newOutput = outputText.replace(lineRegex, '');
                  if (newOutput !== outputText) {
                      outputText = newOutput;
