@@ -436,7 +436,7 @@ export const SUBSTATUS_TEMPLATES = {
         name: 'DC - Other',
         requiresTasks: false,
         templateFields: ['speakeasy_id', 'reason_comments', 'comentarios'],
-        customFooter: `Obs.: Sigo as orientações presentes na documentação do treinamento (https://screenshot.googleplex.com/rUtQqsLxRNfjcr)`
+        customFooter: `Obs.: Sigo as orientações presentes na documentação do treinamento (https://screenshot.googleplex.com/3vzJ7rDg6tXSbE7)`
     }
 };
 
