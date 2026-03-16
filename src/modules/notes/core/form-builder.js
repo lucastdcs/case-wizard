@@ -3,20 +3,17 @@ import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, trans
 import { fetchAndInsertSpeakeasyId } from "../automation/case-log-scraper.js";
 import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
+import { confirmDialog } from "../../shared/utils.js";
 
 export function buildDynamicForm(subStatusKey, container, state) {
     container.innerHTML = "";
     const templateData = SUBSTATUS_TEMPLATES[subStatusKey];
     if (!templateData) return;
-    const placeholders = templateData.template.match(/{([A-Z0-9_]+)}/g) || [];
-    const uniquePlaceholders = [...new Set(placeholders)];
-    let foundReason = false;
-    uniquePlaceholders.forEach((placeholder) => {
-        if (["{TAGS_IMPLEMENTED}", "{SCREENSHOTS_LIST}", "{CONSENTIU_GRAVACAO}", "{CASO_PORTUGAL}"].includes(placeholder)) return;
-        const fieldName = placeholder.slice(1, -1);
-        const fieldId = `field-${fieldName}`;
-        if (state.excludedFields.has(fieldId)) return;
 
+    state.activeFields.forEach((fieldName) => {
+        if (["TAGS_IMPLEMENTED", "SCREENSHOTS_LIST", "CONSENTIU_GRAVACAO", "CASO_PORTUGAL", "label_substatus"].includes(fieldName)) return;
+
+        const fieldId = `field-${fieldName}`;
         const label = document.createElement("label");
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
         label.textContent = t(fieldName.toLowerCase()) !== fieldName.toLowerCase() ? t(fieldName.toLowerCase()) : fieldName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) + ":";
@@ -41,10 +38,13 @@ export function buildDynamicForm(subStatusKey, container, state) {
         btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
         btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
         btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
-        btnDelete.onclick = (e) => {
+        btnDelete.onclick = async (e) => {
             e.preventDefault();
-            state.toggleFieldExclusion(fieldId, true);
-            buildDynamicForm(subStatusKey, container, state);
+            const confirmed = await confirmDialog(`Tem certeza que deseja remover o campo "${labelText.textContent.replace(':', '')}"?`);
+            if (confirmed) {
+                state.removeField(fieldName);
+                buildDynamicForm(subStatusKey, container, state);
+            }
         };
         label.appendChild(btnDelete);
         let field;
@@ -58,14 +58,13 @@ export function buildDynamicForm(subStatusKey, container, state) {
         } else {
             field = document.createElement("input"); field.type = "text"; field.classList.add("cw-input");
         }
-        if (fieldName === "ON_CALL" && state.currentCaseType === "lm") { label.style.display = "none"; field.style.display = "none"; field.value = "N/A"; }
         field.id = fieldId; field.value = state.formData[fieldId] || "";
         field.addEventListener('input', (e) => state.updateField(fieldId, e.target.value));
         container.appendChild(label); container.appendChild(field);
     });
 
-    // Portugal Case Consent Field
-    if (state.isPortugalCase) {
+    // Handle CONSENTIU_GRAVACAO specifically if it's in activeFields
+    if (state.activeFields.includes("CONSENTIU_GRAVACAO")) {
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
         const consentLabel = document.createElement("label");
         consentLabel.textContent = t('consentiu_gravacao');
