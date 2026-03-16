@@ -35,7 +35,7 @@ export const translations = {
         'incluir_mesmo_assim': 'Incluir mesmo assim',
         'ajuda_scenarios': 'Como usar os Cenários?',
         'ajuda_scenarios_desc': 'Os cenários preenchem automaticamente vários campos da nota. Clique em um chip para aplicar. Você pode combinar vários cenários (ex: Instalação GTM + WhatsApp).',
-        'ts_output_disclaimer': 'Tag criada/verificada pelo Tag Support, assim como a nota adicionada automáticamente ao caso indica. Não incluo os screenshots, de acordo com orientação do Win Criteria (com um link para https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit?resourcekey=0-GiUc9KwVTDkVaUxwlyNCtA#gid=971616043&range=A2:A8)',
+        'ts_output_disclaimer': 'Tag criada/verificada pelo Tag Support, assim como a nota adicionada automáticamente ao caso indica. Não incluo os screenshots, de acordo com orientação do Win Criteria.',
 
         // Tarefa 3 (PT-only)
         'caso_portugal': 'Caso de Portugal?',
