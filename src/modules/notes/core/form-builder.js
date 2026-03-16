@@ -3,6 +3,7 @@ import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, trans
 import { fetchAndInsertSpeakeasyId } from "../automation/case-log-scraper.js";
 import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
+import { confirmDialog } from "../../shared/utils.js";
 
 export function buildDynamicForm(subStatusKey, container, state) {
     container.innerHTML = "";
@@ -37,10 +38,13 @@ export function buildDynamicForm(subStatusKey, container, state) {
         btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
         btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
         btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
-        btnDelete.onclick = (e) => {
+        btnDelete.onclick = async (e) => {
             e.preventDefault();
-            state.removeField(fieldName);
-            buildDynamicForm(subStatusKey, container, state);
+            const confirmed = await confirmDialog(`Tem certeza que deseja remover o campo "${labelText.textContent.replace(':', '')}"?`);
+            if (confirmed) {
+                state.removeField(fieldName);
+                buildDynamicForm(subStatusKey, container, state);
+            }
         };
         label.appendChild(btnDelete);
         let field;
