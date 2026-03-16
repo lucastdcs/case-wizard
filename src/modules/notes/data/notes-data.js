@@ -8,9 +8,9 @@ export const translations = {
         'idioma': 'Idioma:',
         'fluxo': 'Fluxo:',
         'status_principal': 'Status Principal:',
-        'select_status': '-- Selecione --',
+        'select_status': 'Selecione',
         'substatus': 'Substatus:',
-        'select_substatus': '-- Selecione o Status --',
+        'select_substatus': 'Selecione o Status',
         'cenarios_comuns': 'Cenários Comuns',
         'selecione_tasks': 'Selecione as Tasks',
         'preencha_detalhes': 'Preencha os Detalhes',
@@ -35,7 +35,7 @@ export const translations = {
         'incluir_mesmo_assim': 'Incluir mesmo assim',
         'ajuda_scenarios': 'Como usar os Cenários?',
         'ajuda_scenarios_desc': 'Os cenários preenchem automaticamente vários campos da nota. Clique em um chip para aplicar. Você pode combinar vários cenários (ex: Instalação GTM + WhatsApp).',
-        'ts_output_disclaimer': 'Tag criada/verificada pelo Tag Support, assim como a nota adicionada automáticamente ao caso indica. Não incluo os screenshots, de acordo com orientação do Win Criteria (com um link para https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit?resourcekey=0-GiUc9KwVTDkVaUxwlyNCtA#gid=971616043&range=A2:A8)',
+        'ts_output_disclaimer': 'Tag criada/verificada pelo Tag Support, assim como a nota adicionada automáticamente ao caso indica. Não incluo os screenshots, de acordo com orientação do Win Criteria.',
 
         'caso_portugal': '🇵🇹 Caso de Portugal?',
         'consentiu_gravacao': '⏺️ Anunciante consentiu com a gravação?',
@@ -75,9 +75,9 @@ export const translations = {
         'idioma': 'Idioma:',
         'fluxo': 'Flujo:',
         'status_principal': 'Estado Principal:',
-        'select_status': '-- Seleccione --',
+        'select_status': 'Seleccione',
         'substatus': 'Subestado:',
-        'select_substatus': '-- Seleccione el Estado --',
+        'select_substatus': 'Seleccione el Estado',
         'cenarios_comuns': 'Escenarios Comunes',
         'selecione_tasks': 'Seleccionar Tareas',
         'preencha_detalhes': 'Rellene los Detalles',
@@ -559,6 +559,7 @@ export const scenarioSnippets = {
     // --- Cenários de SO (Combináveis) ---
     'quickfill-gtm-install': {
         type: 'all',
+        'field-REASON_COMMENTS': "Instalação do GTM finalizada.",
         'field-TASKS_SOLICITADAS': "• Instalação do GTM",
         'field-PASSOS_EXECUTADOS': "• Criamos a conta dentro do GTM\n• Instalamos dentro do CMS/Hospedagem.\n• Criamos o Vinculador de Conversões.",
         'field-RESULTADO': "• Validei a instalação.",
@@ -566,6 +567,7 @@ export const scenarioSnippets = {
     },
     'quickfill-whatsapp': {
         type: 'all',
+        'field-REASON_COMMENTS': "Instalação do Ads Conversion tracking para Whatsapp finalizada.",
         'field-TASKS_SOLICITADAS': "• Criação de conversão para WHATSAPP",
         'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM para os botões de WhatsApp.\n• Realizamos os testes e validamos o funcionamento.",
         'field-RESULTADO': "• Task implementada com sucesso. Fecho o caso sem acompanhamento.",
@@ -573,6 +575,7 @@ export const scenarioSnippets = {
     },
      'quickfill-form': {
         type: 'all',
+        'field-REASON_COMMENTS': "Instalação do Ads Conversion tracking para Form finalizada.",
         'field-TASKS_SOLICITADAS': "• Criação de conversão para FORMULÁRIO (padrão, não-otimizada).",
         'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM.\n• Realizamos os testes e validamos o funcionamento.",
         'field-RESULTADO': "• Task implementada com sucesso. Fecho o caso sem acompanhamento.",
@@ -580,6 +583,7 @@ export const scenarioSnippets = {
     },
     'quickfill-ecw4-close': {
         type: 'all',
+        'field-REASON_COMMENTS': "Finalização do acompanhamento de EC.",
         'field-TASKS_SOLICITADAS': "• Acompanhamento da conversão otimizada (ECW4).",
         'field-PASSOS_EXECUTADOS': "• Após o período de acompanhamento, verifiquei o painel do Ads.\n• A conversão está sendo registrada corretamente.",
         'field-RESULTADO': "• Valido o bom funcionamento da conversão otimizada.\n• Assim, fecho o caso.",
@@ -587,6 +591,7 @@ export const scenarioSnippets = {
     },
     'quickfill-ga4-event-close': {
         type: 'all',
+        'field-REASON_COMMENTS': "Finalização do Acompanhamento de GA4.",
         'field-TASKS_SOLICITADAS': "• Acompanhamento de Eventos GA4 após 48h.",
         'field-PASSOS_EXECUTADOS': "• Após o período de 48h de acompanhamento, verifiquei o painel.\n• O evento está sendo registrado corretamente.",
         'field-RESULTADO': "• Valido o bom funcionamento do rastreamento de eventos.\n• Assim, fecho o caso.",
@@ -646,17 +651,17 @@ export const scenarioSnippets = {
 
         // --- Cenários de IN (Exclusivos - Rádio) ---
     'quickfill-dc-lm-no-access': {
-        type: 'lm',
+        type: 'all',
         'field-REASON_COMMENTS': "Discard - Falta de acessos (Reagendamento solicitado)",
         'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, já que o adv não tinha os acessos.\n\nIrei abrir caso em BAU para o dia solicitado e pedir descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
     },
     'quickfill-dc-lm-incomplete': {
-        type: 'lm',
+        type: 'all',
         'field-REASON_COMMENTS': "Discard - Nada foi implementado durante a consultoria",
         'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, pois não houve tempo o suficiente para terminar a task relacionada.\n\nIrei abrir caso em BAU para o dia solicitado e pedir descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
     },
     'quickfill-dc-lm-no-show': {
-        type: 'lm',
+        type: 'all',
         'field-REASON_COMMENTS': "Discard - Sem contato com o Adv",
         'field-COMENTARIOS': "O adv não compareceu na consultoria. Fiz as tentativas de ligação, mas não obtive retorno.\n\nIrei solicitar descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
     },
