@@ -75,7 +75,7 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
     if (state.isPortugalCase) {
         const consentValue = state.consent ? t('sim') : t('nao');
         outputText = outputText.replace(/{CONSENTIU_GRAVACAO}/g, `<br><b>⏺️ ${t('consentiu_gravacao')}</b> ${consentValue}<br><br>`)
-                               .replace(/{CASO_PORTUGAL}/g, `<br><b>🇵🇹 ${t('caso_portugal')}</b> ${t('sim')}<br>`);
+                               .replace(/{CASO_PORTUGAL}/g, `<br><b>${t('caso_portugal')}</b> ${t('sim')}<br>`);
     } else {
         outputText = outputText.replace(/{CASO_PORTUGAL}/g, '').replace(/{CONSENTIU_GRAVACAO}/g, '');
     }
