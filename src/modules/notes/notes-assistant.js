@@ -847,7 +847,7 @@ export function initCaseNotesAssistant() {
                 DraftService.clearEmergency();
             }
         }
-    }, 1000);
+    }, 3000);
 
     document.body.appendChild(popup);
 
