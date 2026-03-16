@@ -8,7 +8,9 @@ export class NotesState {
         this.currentSubStatus = ""; this.formData = {}; this.activeTasks = [];
         this.screenshotsData = {}; this.tagSupportState = null; this.isDirty = false;
         this.excludedFields = new Set();
-        this.favorites = new Set(JSON.parse(localStorage.getItem('cw-notes-favorites') || '[]'));
+        this.activeFields = [];
+        const savedFavorites = typeof localStorage !== 'undefined' ? localStorage.getItem('cw-notes-favorites') : null;
+        this.favorites = new Set(JSON.parse(savedFavorites || '[]'));
         this.screenshotMode = "implementation";
     }
     setCaseType(type) { this.currentCaseType = type; this.isDirty = true; this.notify(); }
@@ -20,6 +22,23 @@ export class NotesState {
         if (!val) this.forcedScreenshots.clear();
         this.isDirty = true;
         this.notify();
+    }
+    setActiveFields(fields) {
+        this.activeFields = [...fields];
+        this.isDirty = true;
+        this.notify();
+    }
+    removeField(fieldKey) {
+        this.activeFields = this.activeFields.filter(key => key !== fieldKey);
+        this.isDirty = true;
+        this.notify();
+    }
+    addFieldAt(fieldKey, index) {
+        if (!this.activeFields.includes(fieldKey)) {
+            this.activeFields.splice(index, 0, fieldKey);
+            this.isDirty = true;
+            this.notify();
+        }
     }
     setForcedScreenshots(screenshotsArray) {
         this.forcedScreenshots = new Set(screenshotsArray);
@@ -50,7 +69,9 @@ export class NotesState {
     toggleFavorite(id) {
         if (this.favorites.has(id)) this.favorites.delete(id);
         else this.favorites.add(id);
-        localStorage.setItem('cw-notes-favorites', JSON.stringify([...this.favorites]));
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('cw-notes-favorites', JSON.stringify([...this.favorites]));
+        }
         this.notify();
     }
     updateField(id, value) { this.formData[id] = value; this.isDirty = true; this.notify(); }

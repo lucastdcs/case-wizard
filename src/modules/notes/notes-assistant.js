@@ -261,7 +261,7 @@ export function initCaseNotesAssistant() {
                 updateIndicator('lang-selector', idx);
                 SoundManager.playHover();
                 if (notesState.currentSubStatus) {
-                    buildDynamicForm(notesState.currentSubStatus, dynamicFormContainer, notesState);
+                    onSubStatusChange(notesState.currentSubStatus);
                 }
             };
         });
@@ -287,7 +287,7 @@ export function initCaseNotesAssistant() {
                 updateIndicator('portugal-selector', idx);
                 SoundManager.playHover();
                 if (notesState.currentSubStatus) {
-                    buildDynamicForm(notesState.currentSubStatus, dynamicFormContainer, notesState);
+                    onSubStatusChange(notesState.currentSubStatus);
                 }
             };
         });
@@ -377,15 +377,23 @@ export function initCaseNotesAssistant() {
         // Show Actions
         actionsSection.style.display = "grid";
 
-        // 1. Rebuild Form
+        // 1. Initialize Active Fields from Template
+        const templateData = SUBSTATUS_TEMPLATES[subStatusKey];
+        if (templateData && templateData.templateFields) {
+            notesState.setActiveFields(templateData.templateFields);
+        }
+
+        // 2. Adjust for Case Type (LM/BAU) and Portugal Case
+        adjustActiveFieldsForContext();
+
+        // 3. Rebuild Form
         buildDynamicForm(subStatusKey, dynamicFormContainer, notesState);
         dynamicFormContainer.style.display = "block";
 
-        // 2. Show Scenarios if applicable
+        // 4. Show Scenarios if applicable
         scenariosContainer.style.display = "block";
 
-        // 3. Update Tasks focus
-        const templateData = SUBSTATUS_TEMPLATES[subStatusKey];
+        // 5. Update Tasks focus
         const isSo = subStatusKey.startsWith("SO_");
         const isAv = subStatusKey === "NI_Awaiting_Validation";
         const manualTaskBtn = document.getElementById("manual-task-toggle");
@@ -598,6 +606,30 @@ export function initCaseNotesAssistant() {
         finishLoading();
     }
 
+    function adjustActiveFieldsForContext() {
+        if (!notesState.currentSubStatus) return;
+
+        // Auto-remove ON_CALL for LM
+        if (notesState.currentCaseType === "lm") {
+            notesState.removeField("ON_CALL");
+        } else {
+            // Restore ON_CALL for BAU if it was in the template but removed by LM
+            const templateData = SUBSTATUS_TEMPLATES[notesState.currentSubStatus];
+            if (templateData && templateData.templateFields.includes("ON_CALL")) {
+                notesState.addFieldAt("ON_CALL", 1); // Usually after SPEAKEASY_ID
+            }
+        }
+
+        // Handle Portugal Case fields
+        if (notesState.isPortugalCase) {
+            notesState.addFieldAt("CASO_PORTUGAL", 1);
+            notesState.addFieldAt("CONSENTIU_GRAVACAO", 2);
+        } else {
+            notesState.removeField("CASO_PORTUGAL");
+            notesState.removeField("CONSENTIU_GRAVACAO");
+        }
+    }
+
     function resetModule() {
         notesState.reset();
         stepTasks.reset();
@@ -659,6 +691,7 @@ export function initCaseNotesAssistant() {
             tagSupportUsed: notesState.tagSupportUsed,
             forcedScreenshots: [...notesState.forcedScreenshots],
             excludedFields: [...notesState.excludedFields],
+            activeFields: notesState.activeFields,
             status: notesState.currentStatus,
             subStatus: notesState.currentSubStatus,
             formData: formData,
@@ -678,6 +711,9 @@ export function initCaseNotesAssistant() {
         notesState.setPortugalCase(draft.isPortugalCase || false);
         notesState.setConsent(draft.consent || false);
         notesState.setExcludedFields(draft.excludedFields || []);
+        if (draft.activeFields) {
+            notesState.setActiveFields(draft.activeFields);
+        }
 
         // Update Segmented Controls visually
         const langBtn = content.querySelector(`#lang-selector button[data-lang="${notesState.currentLang}"]`);
