@@ -80,6 +80,9 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
         outputText = outputText.replace(/{CASO_PORTUGAL}/g, '').replace(/{CONSENTIU_GRAVACAO}/g, '');
     }
 
+    // Standardize Substatus title with emoji
+    outputText = outputText.replace(/<b>Substatus:<\/b>/gi, '<b>📋 Substatus:</b>');
+
     // Get all unique placeholders in the template to ensure we process everything, even untouched fields
     const placeholders = outputText.match(/{([A-Z0-9_]+)}/g) || [];
     const uniquePlaceholders = [...new Set(placeholders)];
@@ -99,8 +102,8 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
 
         if (isExcluded || isEmptyValue) {
             // Regex to catch the labeled line if the placeholder is the ONLY content after the label (bold/strong)
-            // It handles labels ending with ":" or "?" or nothing, and optional <br> before the placeholder.
-            const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<(?:b|strong)>[^<]+<\\/(?:b|strong)>[:?]?\\s*(?:<br\\s*\\/?>\\s*)*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
+            // It handles labels ending with ":" or "?" or nothing (inside or outside the tags), and optional <br> before the placeholder.
+            const lineRegex = new RegExp(`(?:<br>\\s*)?\\s*(?:<p[^>]*>)?<(?:b|strong)>[^<]+[:?]?<\\/(?:b|strong)>[:?]?\\s*(?:<br\\s*\\/?>\\s*)*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
 
             const newOutput = outputText.replace(lineRegex, '');
             if (newOutput !== outputText) {
@@ -120,7 +123,7 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
                                .join('');
             value = lines ? `<ul ${ulStyle}>${lines}</ul>` : '';
             if (!lines) {
-                 const lineRegex = new RegExp(`(?:<br>\\s*)?(?:<p[^>]*>)?<(?:b|strong)>[^<]+<\\/(?:b|strong)>[:?]?\\s*(?:<br\\s*\\/?>\\s*)*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
+                 const lineRegex = new RegExp(`(?:<br>\\s*)?\\s*(?:<p[^>]*>)?<(?:b|strong)>[^<]+[:?]?<\\/(?:b|strong)>[:?]?\\s*(?:<br\\s*\\/?>\\s*)*{${fieldName}}(?:<\\/p>)?(?:<br>\\s*)?`, 'gi');
                  const newOutput = outputText.replace(lineRegex, '');
                  if (newOutput !== outputText) {
                      outputText = newOutput;
@@ -148,6 +151,9 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
         const tsOutput = tagSupport.getOutput();
         if (tsOutput) outputText += `<br><br>${tsOutput}`;
     }
+
+    // Add Credit Note as the last thing
+    outputText += `<br><br><i>Nota criada através do Cases Wizard.</i>`;
 
     return outputText;
 }
