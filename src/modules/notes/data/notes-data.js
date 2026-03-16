@@ -37,37 +37,39 @@ export const translations = {
         'ajuda_scenarios_desc': 'Os cenários preenchem automaticamente vários campos da nota. Clique em um chip para aplicar. Você pode combinar vários cenários (ex: Instalação GTM + WhatsApp).',
         'ts_output_disclaimer': 'Tag criada/verificada pelo Tag Support, assim como a nota adicionada automáticamente ao caso indica. Não incluo os screenshots, de acordo com orientação do Win Criteria (com um link para https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit?resourcekey=0-GiUc9KwVTDkVaUxwlyNCtA#gid=971616043&range=A2:A8)',
 
-        // Tarefa 3 (PT-only)
-        'caso_portugal': 'Caso de Portugal?',
-        'consentiu_gravacao': 'Anunciante consentiu com a gravação da reunião?',
+        'caso_portugal': '🇵🇹 Caso de Portugal?',
+        'consentiu_gravacao': '⏺️ Anunciante consentiu com a gravação?',
         'sim': 'Sim',
         'nao': 'Não',
         'pronto_comecar': 'Pronto para começar?',
         'selecione_status_ajuda': 'Selecione um status e substatus para<br>começar a sua nota técnica.',
         
-        // Labels dos campos
+        // Labels dos campos (Com Emojis conforme solicitado)
         'speakeasy_id': '🆔 Speakeasy ID:',
         'on_call': '📞 On Call signaled on time?',
-        'tasks_solicitadas': 'Task(s) solicitada(s):',
-        'passos_executados': 'Passos executados:',
-        'resultado': 'Resultado:',
-        'duvidas': 'Dúvidas do anunciante:',
-        'problemas': 'Problema inicial:',
-        'resolucoes': 'Resoluções/Explicações:',
+        'tasks_solicitadas': '🎯 Task(s) solicitada(s):',
+        'passos_executados': '👣 Seguimos com os passos:',
+        'resultado': '🏆 Resultado:',
+        'duvidas': '❓ Dúvidas do anunciante:',
+        'problemas': '⚠️ Problema inicial:',
+        'resolucoes': '✅ Resoluções/Explicações:',
         'gtm_ga4_verificado': '🛡️ GTM/GA4 Verificado:',
-        'tasks_implementadas_call': 'Tasks implementadas na call:',
-        'proximos_passos': 'Próximos passos:',
-        'consideracoes': 'Considerações adicionais:',
-        'contexto_call': 'Contexto/O que foi feito:',
-        'impedimento_cliente': 'Impedimento / Próximo passo (Anunciante):',
-        'minha_acao': 'Minha Ação:',
-        'dia': 'Dia do Follow-up (se aplicável):',
+        'tasks_implementadas_call': '🛠️ Tasks implementadas na call:',
+        'proximos_passos': '🚀 Próximos passos (Acompanhamento):',
+        'consideracoes': '💡 Considerações adicionais:',
+        'contexto_call': '💬 Contexto/O que foi feito:',
+        'impedimento_cliente': '🚧 Impedimento / Próximo passo (Anunciante):',
+        'minha_acao': '👨‍💻 Minha Ação:',
+        'dia': '📅 Dia do Follow-up (se aplicável):',
         'screenshots': '📸 Screenshots:',
         'comentarios': '💬 OnCall Comments:',
         'motivo_reagendamento': '💬 OnCall Comments:',
-        'data_reagendamento': 'Data do reagendamento:',
+        'data_reagendamento': '📅 Data do reagendamento:',
         'multiple_cids': '📂 Multiple CIDs:',
-        'reason_comments': '📌 Reason/Comments:'
+        'reason_comments': '📌 Reason/Comments:',
+        'tags_implemented': '🛠️ Tag Implemented:',
+        'screenshots_list': '📸 Screenshots:',
+        'label_substatus': '📋 Substatus:'
     },
     'es': {
         'idioma': 'Idioma:',
@@ -102,9 +104,8 @@ export const translations = {
         'ajuda_scenarios_desc': 'Los escenarios completan automáticamente varios campos de la nota. Haga clic en un chip para aplicar. Puede combinar varios escenarios (ej: Instalación GTM + WhatsApp).',
         'ts_output_disclaimer': 'Etiqueta creada/verificada por Tag Support, como indica la nota añadida automáticamente al caso. No incluyo las capturas de pantalla, según la guía de Win Criteria (con un enlace a https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit?resourcekey=0-GiUc9KwVTDkVaUxwlyNCtA#gid=971616043&range=A2:A8)',
 
-        // Tarefa 3 (Não aplicável, mas traduzido)
-        'caso_portugal': '¿Caso de Portugal?',
-        'consentiu_gravacao': '¿El anunciante consintió la grabación de la reunión?',
+        'caso_portugal': '🇵🇹 ¿Caso de Portugal?',
+        'consentiu_gravacao': '⏺️ ¿El anunciante consintió la grabación?',
         'sim': 'Sí',
         'nao': 'No',
         'pronto_comecar': '¿Listo para empezar?',
@@ -113,26 +114,29 @@ export const translations = {
         // Labels dos campos
         'speakeasy_id': '🆔 Speakeasy ID:',
         'on_call': '📞 On Call signaled on time?',
-        'tasks_solicitadas': 'Tarea(s) solicitada(s):',
-        'passos_executados': 'Pasos ejecutados:',
-        'resultado': 'Resultado:',
-        'duvidas': 'Dudas del anunciante:',
-        'problemas': 'Problema inicial:',
-        'resolucoes': 'Resoluciones/Explicaciones:',
+        'tasks_solicitadas': '🎯 Tarea(s) solicitada(s):',
+        'passos_executados': '👣 Pasos ejecutados:',
+        'resultado': '🏆 Resultado:',
+        'duvidas': '❓ Dudas del anunciante:',
+        'problemas': '⚠️ Problema inicial:',
+        'resolucoes': '✅ Resoluciones/Explicaciones:',
         'gtm_ga4_verificado': '🛡️ GTM/GA4 Verificado:',
-        'tasks_implementadas_call': 'Tareas implementadas en la call:',
-        'proximos_passos': 'Próximos pasos:',
-        'consideracoes': 'Consideraciones adicionales:',
-        'contexto_call': 'Contexto/Qué se hizo:',
-        'impedimento_cliente': 'Impedimento / Próximo paso (Anunciante):',
-        'minha_acao': 'Mi Acción:',
-        'dia': 'Día de Follow-up (si aplica):',
+        'tasks_implementadas_call': '🛠️ Tareas implementadas en la call:',
+        'proximos_passos': '🚀 Próximos pasos:',
+        'consideracoes': '💡 Consideraciones adicionales:',
+        'contexto_call': '💬 Contexto/Qué se hizo:',
+        'impedimento_cliente': '🚧 Impedimento / Próximo paso (Anunciante):',
+        'minha_acao': '👨‍💻 Mi Acción:',
+        'dia': '📅 Día de Follow-up (si aplica):',
         'screenshots': '📸 Screenshots:',
         'comentarios': '💬 OnCall Comments:',
         'motivo_reagendamento': '💬 OnCall Comments:',
-        'data_reagendamento': 'Fecha de reprogramación:',
+        'data_reagendamento': '📅 Fecha de reprogramación:',
         'multiple_cids': '📂 Multiple CIDs:',
-        'reason_comments': '📌 Reason/Comments:'
+        'reason_comments': '📌 Reason/Comments:',
+        'tags_implemented': '🛠️ Tag Implemented:',
+        'screenshots_list': '📸 Screenshots:',
+        'label_substatus': '📋 Substatus:'
     }
 };
 
@@ -317,23 +321,27 @@ export const TASKS_DB = {
 };
 
 // ==================================================================
-//               ATUALIZAÇÃO: Templates (Tarefa 3)
+//               NOVA ESTRUTURA: SUBSTATUS_TEMPLATES
 // ==================================================================
-// Adicionados {CASO_PORTUGAL} e {CONSENTIU_GRAVACAO} em todos os templates.
-
 export const SUBSTATUS_TEMPLATES = {
     // --- AS (Assigned) ---
     'AS_Reschedule_1': {
         status: 'AS', 
         name: 'AS - Reschedule 1', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> AS - Reschedule 1<br><br><b>📌 Reason/Comments:</b> Caso Reagendado. {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{MOTIVO_REAGENDAMENTO}<br>📅 Data do reagendamento: {DATA_REAGENDAMENTO}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots: N/A<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'MOTIVO_REAGENDAMENTO', 'DATA_REAGENDAMENTO', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        fieldPrefixes: {
+            'REASON_COMMENTS': 'Caso Reagendado.'
+        }
     },
     'AS_Acceptable_Reschedule': { 
         status: 'AS', 
         name: 'AS - Acceptable Reschedule', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> AS - Acceptable Reschedule<br><br><b>📌 Reason/Comments:</b> Reagendamento aceitável. {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{MOTIVO_REAGENDAMENTO}<br>📅 Data do reagendamento: {DATA_REAGENDAMENTO}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots: N/A<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'MOTIVO_REAGENDAMENTO', 'DATA_REAGENDAMENTO', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        fieldPrefixes: {
+            'REASON_COMMENTS': 'Reagendamento aceitável.'
+        }
     },
 
     // --- NI (Need Info) ---
@@ -341,25 +349,28 @@ export const SUBSTATUS_TEMPLATES = {
         status: 'NI', 
         name: 'NI - Awaiting Inputs',
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> NI - Awaiting Inputs<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{CONTEXTO_CALL}<br>  🎯 Task(s) solicitada(s):<br>  {TASKS_SOLICITADAS}<br>  🚧 Impedimento / Próximo passo (Anunciante):<br>  {IMPEDIMENTO_CLIENTE}<br>  👨‍💻 Minha Ação:<br>  {MINHA_ACAO}<br>  💡 Considerações adicionais:<br>  {CONSIDERACOES}<br>  📅 Dia do Follow-up (se aplicável): {DIA}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'CONTEXTO_CALL', 'TASKS_SOLICITADAS', 'IMPEDIMENTO_CLIENTE', 'MINHA_ACAO', 'CONSIDERACOES', 'DIA', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'NI_In_Consult': { 
         status: 'NI', 
         name: 'NI - In Consult', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> NI - In Consult<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{CONTEXTO_CALL}<br>  🎯 Task(s) solicitada(s):<br>  {TASKS_SOLICITADAS}<br>  🚧 Impedimento / Próximo passo (Anunciante):<br>  {IMPEDIMENTO_CLIENTE}<br>  👨‍💻 Minha Ação:<br>  {MINHA_ACAO}<br>  💡 Considerações adicionais:<br>  {CONSIDERACOES}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'CONTEXTO_CALL', 'TASKS_SOLICITADAS', 'IMPEDIMENTO_CLIENTE', 'MINHA_ACAO', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'NI_Awaiting_Validation': {
         status: 'NI', 
         name: 'NI - Awaiting Validation',
         requiresTasks: true,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> NI - Awaiting Validation<br><br><b>📌 Reason/Comments:</b> Aguardando Validações no Google Ads. {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>🎯 Task(s) solicitada(s):<br>{TASKS_SOLICITADAS}<br>🛠️ Tasks implementadas na call:<br>{TASKS_IMPLEMENTADAS_CALL}<br>👣 Seguimos com os passos:<br>{PASSOS_EXECUTADOS}<br>🚀 Próximos passos (Acompanhamento):<br>{PROXIMOS_PASSOS}<br>💡 Considerações adicionais:<br>{CONSIDERACOES}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: {TAGS_IMPLEMENTED}<br><br>📸 Screenshots:<br>{SCREENSHOTS_LIST}<br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'TASKS_SOLICITADAS', 'TASKS_IMPLEMENTADAS_CALL', 'PASSOS_EXECUTADOS', 'PROXIMOS_PASSOS', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        fieldPrefixes: {
+            'REASON_COMMENTS': 'Aguardando Validações no Google Ads.'
+        }
     },
     'NI_Attempted_Contact': {
         status: 'NI', 
         name: 'NI - Attempted Contact', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> NI - Attempted Contact<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{CONTEXTO_CALL}<br>  🎯 Task(s) solicitada(s):<br>  {TASKS_SOLICITADAS}<br>  🚧 Impedimento / Próximo passo (Anunciante):<br>  {IMPEDIMENTO_CLIENTE}<br>  👨‍💻 Minha Ação:<br>  {MINHA_ACAO}<br>  💡 Considerações adicionais:<br>  {CONSIDERACOES}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'CONTEXTO_CALL', 'TASKS_SOLICITADAS', 'IMPEDIMENTO_CLIENTE', 'MINHA_ACAO', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
 
     // --- IN (Inactive) ---
@@ -367,49 +378,49 @@ export const SUBSTATUS_TEMPLATES = {
         status: 'IN', 
         name: 'IN - Infeasible', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> IN - Infeasible<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{COMENTARIOS}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Not_Reachable': {
         status: 'IN', 
         name: 'IN - Not Reachable',
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> IN - Not Reachable<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{COMENTARIOS}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Not_Interested': {
         status: 'IN', 
         name: 'IN - Not Interested', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> IN - Not Interested<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{COMENTARIOS}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Not_Ready': {
         status: 'IN', 
         name: 'IN - Not Ready', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> IN - Not Ready<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{COMENTARIOS}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Out_of_Scope_Rerouted': {
         status: 'IN', 
         name: 'IN - Out of Scope - Rerouted to Internal Team', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> IN - Out of Scope - Rerouted to Internal Team<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{COMENTARIOS}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Out_of_Scope_Unable_to_Transfer': {
         status: 'IN', 
         name: 'IN - Out of Scope - Unable to Transfer', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> IN - Out of Scope - Unable to Transfer<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{COMENTARIOS}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Out_of_Scope_Email_to_Seller': {
         status: 'IN', 
         name: 'IN - Out of Scope - Email to Seller', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> IN - Out of Scope - Email to Seller<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{COMENTARIOS}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Troubleshooting_Transferred': {
         status: 'IN', 
         name: 'IN - Troubleshooting [Transferred]', 
         requiresTasks: false,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> IN - Troubleshooting [Transferred]<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{COMENTARIOS}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: N/A<br><br>📸 Screenshots:<br>{SCREENSHOTS}<br><br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
 
     // --- SO (Solution Offered) ---
@@ -417,26 +428,35 @@ export const SUBSTATUS_TEMPLATES = {
         status: 'SO', 
         name: 'SO - Implementation Only',
         requiresTasks: true,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> SO - Implementation Only<br><br><b>📌 Reason/Comments:</b> Task implementada com sucesso. {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>🎯 Task(s) solicitada(s):<br>{TASKS_SOLICITADAS}<br>🛠️ Tasks implementadas na call:<br>{TASKS_IMPLEMENTADAS_CALL}<br>👣 Seguimos com os passos:<br>{PASSOS_EXECUTADOS}<br>🏆 Resultado:<br>{RESULTADO}<br>🚀 Próximos passos (Acompanhamento):<br>{PROXIMOS_PASSOS}<br>💡 Considerações adicionais:<br>{CONSIDERACOES}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: {TAGS_IMPLEMENTED}<br><br>📸 Screenshots:<br>{SCREENSHOTS_LIST}<br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'TASKS_SOLICITADAS', 'TASKS_IMPLEMENTADAS_CALL', 'PASSOS_EXECUTADOS', 'RESULTADO', 'PROXIMOS_PASSOS', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        fieldPrefixes: {
+            'REASON_COMMENTS': 'Task implementada com sucesso.'
+        }
     },
     'SO_Education_Only': {
         status: 'SO', 
         name: 'SO - Education Only',
         requiresTasks: true,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> SO - Education Only<br><br><b>📌 Reason/Comments:</b> Consultoria utilizada para tirar dúvidas do anunciante. {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>❓ Dúvidas do anunciante:<br>{DUVIDAS}<br>✅ Resoluções/Explicações:<br>{RESOLUCOES}<br>🚀 Próximos passos (Acompanhamento):<br>{PROXIMOS_PASSOS}<br>💡 Considerações adicionais:<br>{CONSIDERACOES}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: {TAGS_IMPLEMENTED}<br><br>📸 Screenshots:<br>{SCREENSHOTS_LIST}<br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'DUVIDAS', 'RESOLUCOES', 'PROXIMOS_PASSOS', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        fieldPrefixes: {
+            'REASON_COMMENTS': 'Consultoria utilizada para tirar dúvidas do anunciante.'
+        }
     },
     'SO_Troubleshooting_Only': {
         status: 'SO', 
         name: 'SO - Troubleshooting Only',
         requiresTasks: true,
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>📞 On Call (Call Started) signaled on time?</b> {ON_CALL}{CASO_PORTUGAL}{CONSENTIU_GRAVACAO}<b>Substatus:</b> SO - Troubleshooting Only<br><br><b>📌 Reason/Comments:</b> Consultoria utilizada para testar e solucinar problemas da conversão. {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>⚠️ Problema inicial:<br>{PROBLEMAS}<br>✅ Resoluções/Explicações:<br>{RESOLUCOES}<br>🚀 Próximos passos (Acompanhamento):<br>{PROXIMOS_PASSOS}<br>💡 Considerações adicionais:<br>{CONSIDERACOES}<br><br>🛡️ GTM/GA4 Verificado: {GTM_GA4_VERIFICADO}<br><br>🛠️ Tag Implemented: {TAGS_IMPLEMENTED}<br><br>📸 Screenshots:<br>{SCREENSHOTS_LIST}<br><b>📂 Multiple CIDs:</b> {MULTIPLE_CIDS}<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'PROBLEMAS', 'RESOLUCOES', 'PROXIMOS_PASSOS', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        fieldPrefixes: {
+            'REASON_COMMENTS': 'Consultoria utilizada para testar e solucinar problemas da conversão.'
+        }
     },
     'DC_Other': {
         status: 'DC',
         name: 'DC - Other',
         requiresTasks: false,
-        // Template minimalista para LM Discard
-        template: `<b>🆔 Speakeasy ID:</b> {SPEAKEASY_ID}<br><br><b>Substatus:</b> DC - Other<br><br><b>📌 Reason/Comments:</b> {REASON_COMMENTS}<br><br><b>💬 OnCall Comments:</b><br>{COMENTARIOS}<br><br>Obs.: Sigo as orientações presentes na documentação do treinamento (https://screenshot.googleplex.com/rUtQqsLxRNfjcr)<br><br><i>Nota criada através do Cases Wizard.</i>`
+        templateFields: ['SPEAKEASY_ID', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS'],
+        customFooter: 'Obs.: Sigo as orientações presentes na documentação do treinamento (https://screenshot.googleplex.com/rUtQqsLxRNfjcr)'
     }
 };
 
@@ -620,7 +640,7 @@ export const scenarioSnippets = {
     'quickfill-ni-attempted-2day': {
         type: 'bau',
         'field-REASON_COMMENTS': "Attempted Contact (Início 2 Day Rule)",
-        'field-CONTEXTO_CALL': "• Fiz a primeira tentativa de ligação, sem sucesso.\n• Enviei uma mensagem no chat para o AM.\n• Aguardei 5 minutos e fiz a segunda tentativa de ligação, novamente sem sucesso.\n• Aguardei mais 5 minutos e agora farei o acompanhamento 2 Day Rule.",
+        'field-CONTEXTO_CALL': "• Fiz a primeira tentativa de ligação, sem sucesso.\n• Enviei uma message no chat para o AM.\n• Aguardei 5 minutos e fiz a segunda tentativa de ligação, novamente sem sucesso.\n• Aguardei mais 5 minutos e agora farei o acompanhamento 2 Day Rule.",
         'field-SCREENSHOTS': "• MSG AM -\n• Tentativa 1 -\n• Tentativa 2 -"
     },
 

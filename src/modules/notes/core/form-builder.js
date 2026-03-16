@@ -8,15 +8,11 @@ export function buildDynamicForm(subStatusKey, container, state) {
     container.innerHTML = "";
     const templateData = SUBSTATUS_TEMPLATES[subStatusKey];
     if (!templateData) return;
-    const placeholders = templateData.template.match(/{([A-Z0-9_]+)}/g) || [];
-    const uniquePlaceholders = [...new Set(placeholders)];
-    let foundReason = false;
-    uniquePlaceholders.forEach((placeholder) => {
-        if (["{TAGS_IMPLEMENTED}", "{SCREENSHOTS_LIST}", "{CONSENTIU_GRAVACAO}", "{CASO_PORTUGAL}"].includes(placeholder)) return;
-        const fieldName = placeholder.slice(1, -1);
-        const fieldId = `field-${fieldName}`;
-        if (state.excludedFields.has(fieldId) || (fieldName === "ON_CALL" && state.currentCaseType === "lm")) return;
 
+    state.activeFields.forEach((fieldName) => {
+        if (["TAGS_IMPLEMENTED", "SCREENSHOTS_LIST", "CONSENTIU_GRAVACAO", "CASO_PORTUGAL", "label_substatus"].includes(fieldName)) return;
+
+        const fieldId = `field-${fieldName}`;
         const label = document.createElement("label");
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
         label.textContent = t(fieldName.toLowerCase()) !== fieldName.toLowerCase() ? t(fieldName.toLowerCase()) : fieldName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) + ":";
@@ -43,7 +39,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
         btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
         btnDelete.onclick = (e) => {
             e.preventDefault();
-            state.toggleFieldExclusion(fieldId, true);
+            state.removeField(fieldName);
             buildDynamicForm(subStatusKey, container, state);
         };
         label.appendChild(btnDelete);
@@ -63,8 +59,8 @@ export function buildDynamicForm(subStatusKey, container, state) {
         container.appendChild(label); container.appendChild(field);
     });
 
-    // Portugal Case Consent Field
-    if (state.isPortugalCase) {
+    // Handle CONSENTIU_GRAVACAO specifically if it's in activeFields
+    if (state.activeFields.includes("CONSENTIU_GRAVACAO")) {
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
         const consentLabel = document.createElement("label");
         consentLabel.textContent = t('consentiu_gravacao');
