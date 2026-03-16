@@ -436,30 +436,52 @@ export function initCaseNotesAssistant() {
         const data = scenarioSnippets[scenarioId];
         if (!data) return;
 
-        if (isSelected) {
-            for (const key in data) {
-                if (key === 'linkedTask') {
-                    stepTasks.toggleTask(data.linkedTask, true);
-                } else if (key === 'activeTasks') {
-                    data.activeTasks.forEach(t => stepTasks.setTaskCount(t.value, t.count));
-                } else if (key.startsWith('field-')) {
-                    const fieldId = key;
-                    const value = data[key];
-                    notesState.updateField(fieldId, value);
-                    const el = document.getElementById(fieldId);
-                    if (el) {
-                        if (textareaListFields.includes(fieldId.replace('field-', ''))) {
+        for (const key in data) {
+            if (key === 'linkedTask') {
+                stepTasks.toggleTask(data.linkedTask, isSelected);
+            } else if (key === 'activeTasks') {
+                data.activeTasks.forEach(t => {
+                    if (isSelected) {
+                        stepTasks.setTaskCount(t.value, t.count);
+                    } else {
+                        // Ao desmarcar, removemos se o contador for igual ao do snippet
+                        // (Lógica simplificada para evitar remover tasks de outros snippets)
+                        stepTasks.setTaskCount(t.value, 0);
+                    }
+                });
+            } else if (key.startsWith('field-')) {
+                const fieldId = key;
+                const value = data[key];
+                const el = document.getElementById(fieldId);
+                if (el) {
+                    const isListField = textareaListFields.includes(fieldId.replace('field-', ''));
+                    if (isSelected) {
+                        if (isListField) {
                             const currentVal = el.value.trim();
-                            if (currentVal && !currentVal.includes(value.trim())) {
-                                el.value = currentVal + (currentVal.endsWith('\n') ? '' : '\n') + value;
-                            } else {
-                                el.value = value;
+                            if (!currentVal.includes(value.trim())) {
+                                el.value = currentVal ? (currentVal + "\n" + value.trim()) : value.trim();
                             }
                         } else {
                             el.value = value;
                         }
-                        el.dispatchEvent(new Event('input'));
+                    } else {
+                        // LOGICA DE REMOÇÃO (UNSELECT)
+                        if (isListField) {
+                            const currentVal = el.value.trim();
+                            const snippetVal = value.trim();
+                            if (currentVal.includes(snippetVal)) {
+                                // Remove o snippet e limpa quebras de linha duplicadas
+                                el.value = currentVal.replace(snippetVal, "").trim().replace(/\n{3,}/g, '\n\n');
+                            }
+                        } else {
+                            // Para campos normais, limpa se for exatamente igual
+                            if (el.value.trim() === value.trim()) {
+                                el.value = "";
+                            }
+                        }
                     }
+                    notesState.updateField(fieldId, el.value);
+                    el.dispatchEvent(new Event('input'));
                 }
             }
         }
