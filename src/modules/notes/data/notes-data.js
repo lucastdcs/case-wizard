@@ -37,7 +37,7 @@ export const translations = {
         'ajuda_scenarios_desc': 'Os cenários preenchem automaticamente vários campos da nota. Clique em um chip para aplicar. Você pode combinar vários cenários (ex: Instalação GTM + WhatsApp).',
         'ts_output_disclaimer': 'Tag criada/verificada pelo Tag Support, assim como a nota adicionada automáticamente ao caso indica. Não incluo os screenshots, de acordo com orientação do Win Criteria.',
 
-        'caso_portugal': '🇵🇹 Caso de Portugal?',
+        'caso_portugal': 'Caso de Portugal?',
         'consentiu_gravacao': '⏺️ Anunciante consentiu com a gravação?',
         'sim': 'Sim',
         'nao': 'Não',
@@ -104,7 +104,7 @@ export const translations = {
         'ajuda_scenarios_desc': 'Los escenarios completan automáticamente varios campos de la nota. Haga clic en un chip para aplicar. Puede combinar varios escenarios (ej: Instalación GTM + WhatsApp).',
         'ts_output_disclaimer': 'Etiqueta creada/verificada por Tag Support, como indica la nota añadida automáticamente al caso. No incluyo las capturas de pantalla, según la guía de Win Criteria (con un enlace a https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit?resourcekey=0-GiUc9KwVTDkVaUxwlyNCtA#gid=971616043&range=A2:A8)',
 
-        'caso_portugal': '🇵🇹 ¿Caso de Portugal?',
+        'caso_portugal': '¿Caso de Portugal?',
         'consentiu_gravacao': '⏺️ ¿El anunciante consintió la grabación?',
         'sim': 'Sí',
         'nao': 'No',
