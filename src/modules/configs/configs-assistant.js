@@ -95,18 +95,18 @@ export function initConfigsAssistant() {
     };
     container.appendChild(soundSection);
 
-    // --- SEÇÃO: TEMA ---
-    const themeSection = document.createElement("div");
-    themeSection.className = "cw-configs-section";
-    themeSection.innerHTML = `
-        <div class="cw-configs-section-title">Aparência</div>
-        <div class="cw-configs-card">
-            <div style="color:${COLORS.textSub}; font-size:13px; text-align:center; padding:10px;">
-                Em breve: Suporte a modo escuro e esquemas de cores.
-            </div>
-        </div>
-    `;
-    container.appendChild(themeSection);
+    // // --- SEÇÃO: TEMA ---
+    // const themeSection = document.createElement("div");
+    // themeSection.className = "cw-configs-section";
+    // themeSection.innerHTML = `
+    //     <div class="cw-configs-section-title">Aparência</div>
+    //     <div class="cw-configs-card">
+    //         <div style="color:${COLORS.textSub}; font-size:13px; text-align:center; padding:10px;">
+    //             Em breve: Suporte a modo escuro e esquemas de cores.
+    //         </div>
+    //     </div>
+    // `;
+    // container.appendChild(themeSection);
 
     // --- SEÇÃO: SUPORTE ---
     const supportSection = document.createElement("div");
@@ -115,8 +115,7 @@ export function initConfigsAssistant() {
         <div class="cw-configs-section-title">Suporte & Feedback</div>
         <div class="cw-configs-card">
             <div style="display:flex; flex-direction:column; gap:12px;">
-                <button class="cw-configs-btn">Reportar Bug</button>
-                <button class="cw-configs-btn">Sugerir Recurso</button>
+                <a class="cw-configs-btn" href="https://forms.gle/8icwk1TejBTDYsJS6" target="_blank">Reportar Bug/Sugestões</a>
             </div>
         </div>
     `;
