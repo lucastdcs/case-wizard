@@ -71,41 +71,46 @@ function injectStyles() {
         .cw-popup-content::-webkit-scrollbar-thumb:hover { background: #bdc1c6; }
 
         .cw-input, .cw-textarea, .cw-select {
-            width: 100%;
-            padding: 12px 16px;
-            border-radius: ${RADIUS.medium};
-            border: 1.5px solid ${COLORS.border};
-            font-size: 14px;
-            font-family: 'Google Sans', Roboto, sans-serif;
-            transition: all 0.2s ${EASE};
-            box-sizing: border-box;
-            background: ${COLORS.bgInput};
-            color: ${COLORS.text};
-            outline: none;
+            width: 100% !important;
+            padding: 12px 16px !important;
+            border-radius: ${RADIUS.medium} !important;
+            border: 1.5px solid ${COLORS.border} !important;
+            font-size: 14px !important;
+            font-family: 'Google Sans', Roboto, sans-serif !important;
+            transition: all 0.2s ${EASE} !important;
+            box-sizing: border-box !important;
+            background: ${COLORS.bgInput} !important;
+            color: ${COLORS.text} !important;
+            outline: none !important;
+            box-shadow: ${SHADOW.subtle} !important;
         }
 
-        .cw-select {
+        #notes-assistant-popup .cw-select {
             appearance: none !important;
             -webkit-appearance: none !important;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%235f6368%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E") !important;
+            -moz-appearance: none !important;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%235f6368%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E") !important;
             background-repeat: no-repeat !important;
-            background-position: right 16px center !important;
-            background-size: 18px !important;
-            padding-right: 44px !important;
-            cursor: pointer;
-            /* Fix moving arrow by keeping background properties static */
-            transition: border-color 0.2s ${EASE}, background-color 0.2s ${EASE}, box-shadow 0.2s ${EASE};
+            background-position: right 14px center !important;
+            background-size: 16px !important;
+            padding-right: 40px !important;
+            cursor: pointer !important;
+            font-weight: 500 !important;
+            line-height: 1.5 !important;
+            /* Ensure background and border transitions are smooth while icon stays static */
+            transition: border-color 0.2s ${EASE}, background-color 0.2s ${EASE}, box-shadow 0.2s ${EASE} !important;
         }
 
-        .cw-input:hover, .cw-textarea:hover, .cw-select:hover {
-            border-color: #bdc1c6;
-            background-color: #f1f3f4;
+        .cw-input:hover, .cw-textarea:hover, #notes-assistant-popup .cw-select:hover {
+            border-color: #bdc1c6 !important;
+            background-color: #f1f3f4 !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1) !important;
         }
 
-        .cw-input:focus, .cw-textarea:focus, .cw-select:focus {
-            border-color: ${COLORS.primary};
-            background-color: #fff;
-            box-shadow: 0 0 0 3px rgba(26,115,232,0.15);
+        .cw-input:focus, .cw-textarea:focus, #notes-assistant-popup .cw-select:focus {
+            border-color: ${COLORS.primary} !important;
+            background-color: #fff !important;
+            box-shadow: 0 0 0 3px rgba(26,115,232,0.15), 0 2px 8px rgba(0,0,0,0.05) !important;
         }
 
         .cw-textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
