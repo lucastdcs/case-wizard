@@ -6,6 +6,9 @@ import { showToast } from "../shared/utils.js";
 
 const STORAGE_KEY = "cw_personal_library_v1";
 
+// 🔒 Variável de bloqueio (Resolve o "Efeito Zumbi")
+let isMutating = false;
+
 export const SnippetService = {
     
     // --- 1. LEITURA (CACHE-FIRST) ---
@@ -16,7 +19,9 @@ export const SnippetService = {
         // B. Sincronia em Background (Fire & Forget)
         // Só roda se tivermos um email de usuário válido
         const userEmail = getAgentEmail();
-        if (userEmail && userEmail.includes('@')) {
+
+        // Só sincroniza se tivermos email E NÃO estivermos salvando/deletando nada agora
+        if (userEmail && userEmail.includes('@') && !isMutating) {
             SnippetService._syncWithServer(userEmail);
         }
 
@@ -32,6 +37,8 @@ export const SnippetService = {
             showToast("Erro: Usuário não identificado.", { error: true });
             return false;
         }
+
+        isMutating = true; // Fecha o cadeado da sincronização
 
         // A. Salva Localmente (Feedback Instantâneo)
         const localData = SnippetService._loadFromLocal();
@@ -63,6 +70,8 @@ export const SnippetService = {
             } else {
                 console.warn("⚠️ Falha ao salvar na nuvem. Dados apenas locais.");
             }
+            // Abre o cadeado 2 segundos após a nuvem responder
+            setTimeout(() => { isMutating = false; }, 2000);
         });
 
         return newSnippet;
@@ -71,6 +80,8 @@ export const SnippetService = {
     delete: async (id) => {
         const userEmail = getAgentEmail();
 
+        isMutating = true; // Fecha o cadeado da sincronização
+
         // A. Remove Localmente
         const localData = SnippetService._loadFromLocal();
         const updatedList = localData.filter(s => s.id !== id);
@@ -78,14 +89,23 @@ export const SnippetService = {
 
         // B. Remove da Nuvem
         if (userEmail) {
-            DataService.deleteSnippet(id, userEmail);
+            DataService.deleteSnippet(id, userEmail).then(() => {
+                // Abre o cadeado 2 segundos após a nuvem responder
+                setTimeout(() => { isMutating = false; }, 2000);
+            });
+        } else {
+            isMutating = false;
         }
         return true;
     },
 
     // --- 3. CORE DE SINCRONIA ---
     _syncWithServer: async (userEmail) => {
-        // Evita flood: Poderíamos colocar um debounce aqui se necessário
+        // Evita flood de requisições: só busca no servidor a cada 30 segundos
+        if (window._cw_library_syncing) return;
+        window._cw_library_syncing = true;
+        setTimeout(() => { window._cw_library_syncing = false; }, 30000);
+
         console.log("🔄 Sincronizando biblioteca...");
         
         const response = await DataService.getUserSnippets(userEmail);
