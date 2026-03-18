@@ -222,10 +222,12 @@ export function captureCID() {
 
 
 export async function getCaseId() {
+
+    let caseId = "Numero do caso";
         
         try {
             let caseUrl = window.location.href
-            let caseID =  caseUrl.split("/").pop()
+            let caseId =  caseUrl.split("/").pop()
 
         } catch (e) { console.warn("Falha URL:", e); }
 }
@@ -271,7 +273,7 @@ export async function getPageData() {
         internalEmail: internalEmail, // Pode ser null
         cid: cid,                     // Novo campo
         agentName: getAgentName(),
-        caseID: caseID
+        caseId: caseId
     };
 }
 
