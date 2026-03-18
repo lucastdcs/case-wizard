@@ -149,12 +149,20 @@ export function initCallScriptAssistant() {
 
   function copyMessage() {
     getPageData().then(data => {
-      let message = `Olá, venho falar sobre o caso ${data.caseId}`
+      const today = new Date().toLocaleDateString('pt-BR');
 
-      navigator.clipboard.writeText(message)
+      let message = `Olá. Bom dia!\n\n` +
+                    `Estou com um caso do seu cliente (${data.advertiserName || "Cliente"}) em andamento hoje (${today}). Fiz a primeira tentativa de contato agora há pouco, mas não tive sucesso.\n\n` +
+                    `Farei uma nova tentativa em alguns minutos. Caso ele não atenda novamente, seguirei com o e-mail padrão de reagendamento/no-show e te mantenho no radar.\n\n` +
+                    `Dados do caso para seu controle:\n\n` +
+                    `Cliente: ${data.advertiserName || "---"}\n` +
+                    `CID: ${data.cid || "---"}\n` +
+                    `Case ID: ${data.caseId || "---"}\n` +
+                    `E-mail: ${data.clientEmail || "---"}`;
+
+      navigator.clipboard.writeText(message);
+      showToast("Mensagem copiada para o AM!");
     });
-
-    
   }
 
   function toggleVisibility() {
@@ -188,7 +196,7 @@ export function initCallScriptAssistant() {
           <div style="font-size:10px; font-weight:700; color:#1A73E8; background:#E8F0FE; padding:2px 8px; border-radius:4px; text-transform:uppercase;">Live</div>
       </div>
       
-      <div style="display:grid; grid-template-columns: 1fr 1.5fr; gap: 10px;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="csa-data-pill" id="cw-pill-cid">
               <div style="font-size:9px; font-weight:700; color:#5F6368; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.5px;">CID (Conta)</div>
               <div id="cw-ctx-cid" class="csa-data-value" style="font-family:'Roboto Mono', monospace; font-size:13px; font-weight:500; color:#1A73E8;">---</div>
@@ -200,12 +208,18 @@ export function initCallScriptAssistant() {
               <div id="cw-ctx-email" class="csa-data-value" style="font-family:'Roboto', sans-serif; font-size:13px; color:#3C4043; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">---</div>
               <div class="csa-copy-hint">Copiado!</div>
           </div>
-          <button class="csa-data-pill" id="cw-pill-message">
-              <div style="font-size:9px; font-weight:700; color:#5F6368; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.5px;">Mensagem AM</div>
-              <div id="cw-ctx-message" class="csa-data-value" style="font-family:'Roboto', sans-serif; font-size:13px; color:#3C4043; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">1° Aviso Attempted Contact</div>
-              <div class="csa-copy-hint">Copiado!</div>
-          </button>
       </div>
+
+      <button class="csa-data-pill" id="cw-pill-message" style="width: 100%; text-align: left; margin-top: 4px; background: #E8F0FE; border: 1px solid #1A73E8; padding: 10px 14px; display: flex; align-items: center; gap: 12px;">
+          <div style="background: #1A73E8; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+          <div style="flex-grow: 1;">
+              <div style="font-size:10px; font-weight:800; color:#1A73E8; text-transform:uppercase; margin-bottom:1px; letter-spacing:0.5px;">Mensagem AM</div>
+              <div id="cw-ctx-message" class="csa-data-value" style="font-family:'Google Sans', sans-serif; font-size:13px; font-weight:500; color:#3C4043;">1° Aviso Attempted Contact</div>
+          </div>
+          <div class="csa-copy-hint">Copiado!</div>
+      </button>
   `;
 
   const messageBtn = contextBanner.querySelector('#cw-pill-message');
