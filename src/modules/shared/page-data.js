@@ -222,14 +222,14 @@ export function captureCID() {
 
 
 export async function getCaseId() {
-
-        let id = "Numero do caso";
-            
-            try {
-                let caseUrl = window.location.href
-                let id =  caseUrl.split("/").pop()
-
-            } catch (e) { console.warn("Falha URL:", e); }
+    let id = "---";
+    try {
+        let caseUrl = window.location.href;
+        id = caseUrl.split("/").pop();
+    } catch (e) {
+        console.warn("Falha URL:", e);
+    }
+    return id;
 }
 
 // --- 7. COMPILADOR DE DADOS DA PÁGINA ---
