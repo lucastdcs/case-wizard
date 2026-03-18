@@ -223,13 +223,13 @@ export function captureCID() {
 
 export async function getCaseId() {
 
-    let caseId = "Numero do caso";
-        
-        try {
-            let caseUrl = window.location.href
-            let caseId =  caseUrl.split("/").pop()
+        let id = "Numero do caso";
+            
+            try {
+                let caseUrl = window.location.href
+                let id =  caseUrl.split("/").pop()
 
-        } catch (e) { console.warn("Falha URL:", e); }
+            } catch (e) { console.warn("Falha URL:", e); }
 }
 
 // --- 7. COMPILADOR DE DADOS DA PÁGINA ---
@@ -266,6 +266,8 @@ export async function getPageData() {
     // Captura CID
     const cid = captureCID();
 
+    const caseId = await getCaseId();
+
     return {
         advertiserName: advertiserName,
         websiteUrl: websiteUrl,
@@ -273,7 +275,7 @@ export async function getPageData() {
         internalEmail: internalEmail, // Pode ser null
         cid: cid,                     // Novo campo
         agentName: getAgentName(),
-        caseId: caseId()
+        caseId: caseId
     };
 }
 
