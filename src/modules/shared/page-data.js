@@ -221,7 +221,7 @@ export function captureCID() {
 }
 
 
-export async function getCaseId() {
+export function getCaseId() {
 
     let caseId = "Numero do caso";
         
@@ -273,7 +273,7 @@ export async function getPageData() {
         internalEmail: internalEmail, // Pode ser null
         cid: cid,                     // Novo campo
         agentName: getAgentName(),
-        caseId: caseId
+        caseId: caseId()
     };
 }
 
