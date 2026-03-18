@@ -125,8 +125,11 @@ export function initCallScriptAssistant() {
           const elName = csaPopup.querySelector('#cw-ctx-name');
           const elCid = csaPopup.querySelector('#cw-ctx-cid');
           const elEmail = csaPopup.querySelector('#cw-ctx-email');
+          // const elCaseId = csaPopup.querySelector('#cw-ctx-message');
+
           
           if(elName) elName.textContent = data.advertiserName || "Cliente Desconhecido";
+          
           
           if(elCid) {
               const cidTxt = data.cid || "---";
@@ -140,7 +143,18 @@ export function initCallScriptAssistant() {
                   elEmail.title = emailTxt;
               }
           }
+
       });
+  }
+
+  function copyMessage() {
+    getPageData().then(data => {
+      let message = `Olá, venho falar sobre o caso ${data.caseId}`
+
+      navigator.clipboard.writeText(message)
+    });
+
+    
   }
 
   function toggleVisibility() {
@@ -186,6 +200,11 @@ export function initCallScriptAssistant() {
               <div id="cw-ctx-email" class="csa-data-value" style="font-family:'Roboto', sans-serif; font-size:13px; color:#3C4043; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">---</div>
               <div class="csa-copy-hint">Copiado!</div>
           </div>
+          <button class="csa-data-pill" id="cw-pill-message" onclick="copyMessage()">
+              <div style="font-size:9px; font-weight:700; color:#5F6368; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.5px;">Mensagem AM</div>
+              <div id="cw-ctx-message" class="csa-data-value" style="font-family:'Roboto', sans-serif; font-size:13px; color:#3C4043; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">1° Aviso Attempted Contact</div>
+              <div class="csa-copy-hint">Copiado!</div>
+          </button>
       </div>
   `;
   

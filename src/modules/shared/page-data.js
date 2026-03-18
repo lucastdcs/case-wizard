@@ -12,17 +12,17 @@ export async function captureNameWithMagic() {
     if (cachedAgentName && cachedAgentEmail) return cachedAgentName;
 
     try {
-        const btn = document.querySelector('profile-icon material-button') || 
-                    document.querySelector('a[aria-label*="Account"]');
-        
+        const btn = document.querySelector('profile-icon material-button') ||
+            document.querySelector('a[aria-label*="Account"]');
+
         if (!btn) return "Agente";
 
         // Abre o menu
         btn.click();
         await esperar(150); // Tempo para o Angular renderizar o menu
-        
+
         let name = "Consultor";
-        
+
         // 1. Captura o NOME
         const elName = document.querySelector('profile-details .name');
         if (elName) {
@@ -37,7 +37,7 @@ export async function captureNameWithMagic() {
                 name = ldap.charAt(0).toUpperCase() + ldap.slice(1);
             }
         }
-        
+
         // 2. Captura o EMAIL (NOVO) 📧
         const elEmail = document.querySelector('profile-details .email');
         if (elEmail) {
@@ -47,8 +47,8 @@ export async function captureNameWithMagic() {
 
         // Fecha o menu
         btn.click();
-        document.body.click(); 
-        
+        document.body.click();
+
         cachedAgentName = name;
         return name;
 
@@ -72,8 +72,8 @@ export function getAgentEmail() {
 export function getSmartGreeting(name) {
     const now = new Date();
     const h = now.getHours();
-    const d = now.getDay(); 
-    
+    const d = now.getDay();
+
     let prefix = "Olá";
     let iconSVG = "";
 
@@ -100,7 +100,7 @@ export function getSmartGreeting(name) {
     } else {
         phrases = ["Encerrando o dia com produtividade.", "Excelente dedicação."];
     }
-    
+
     if (d === 0 || d === 6) phrases = ["Sua dedicação no fim de semana é inspiradora.", "Trabalho excepcional."];
 
     const randomSuffix = phrases[Math.floor(Math.random() * phrases.length)];
@@ -127,25 +127,25 @@ export async function captureClientEmail() {
         const container = labelNode.parentElement;
 
         // 2. Verifica máscara e clica se necessário
-        const unmaskBtn = container.querySelector('.unmask-button') || 
-                          container.querySelector('[aria-label="Click to view"]');
+        const unmaskBtn = container.querySelector('.unmask-button') ||
+            container.querySelector('[aria-label="Click to view"]');
 
         if (unmaskBtn) {
             unmaskBtn.click();
             // Espera o Angular renderizar o valor real
-            await esperar(500); 
+            await esperar(500);
         }
 
         // 3. BUSCA INTELIGENTE (Procura por @ e ignora "Is this: Email?")
         const candidates = Array.from(container.querySelectorAll('a, span, div, pii-value'));
-        
+
         // Filtramos o candidato vencedor
         const emailElement = candidates.find(el => {
             const text = el.innerText.trim();
             // REGRAS: Tem @, não é pergunta do feedback, não é placeholder "Email"
-            return text.includes('@') && 
-                   !text.includes('Is this:') && 
-                   text.toLowerCase() !== 'email';
+            return text.includes('@') &&
+                !text.includes('Is this:') &&
+                text.toLowerCase() !== 'email';
         });
 
         if (emailElement) {
@@ -165,15 +165,15 @@ export function captureInternalEmail() {
     try {
         // Busca o input de busca/conta no topo
         const inputWrapper = document.querySelector('material-input[debug-id="account-id-input"]');
-        
+
         if (inputWrapper) {
             const inputElement = inputWrapper.querySelector('input');
             if (inputElement) {
                 const val = inputElement.value.trim();
-                
+
                 // Se tiver valor, verifica se precisa adicionar o domínio
                 if (val) {
-                     // Se tiver @ devolve, se for só ldap adiciona @google.com
+                    // Se tiver @ devolve, se for só ldap adiciona @google.com
                     return val.includes('@') ? val : `${val}@google.com`;
                 }
             }
@@ -191,7 +191,7 @@ export function captureCID() {
         // Busca labels que contenham "Google Ads External Customer ID"
         const labels = Array.from(document.querySelectorAll('.data-pair-label'));
         const cidLabel = labels.find(el => el.textContent.includes('Google Ads External Customer ID') || el.textContent.includes('Customer ID'));
-        
+
         if (cidLabel) {
             // Tenta achar o container pai <home-data-item> ou similar
             const parent = cidLabel.closest('home-data-item') || cidLabel.parentElement;
@@ -208,16 +208,26 @@ export function captureCID() {
         // Procura padrão XXX-XXX-XXXX ou XXXXXXXXXX (10 dígitos) no corpo da página
         const bodyText = document.body.innerText;
         const cidMatch = bodyText.match(/\b\d{3}[-]?\d{3}[-]?\d{4}\b/);
-        
+
         if (cidMatch) {
-             // Formata para garantir o padrão visual (123-456-7890)
-             return cidMatch[0].replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+            // Formata para garantir o padrão visual (123-456-7890)
+            return cidMatch[0].replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
         }
 
     } catch (e) {
         console.warn("Erro ao capturar CID:", e);
     }
     return "---";
+}
+
+
+export async function getCaseId() {
+        
+        try {
+            let caseUrl = window.location.href
+            let caseID =  caseUrl.split("/").pop()
+
+        } catch (e) { console.warn("Falha URL:", e); }
 }
 
 // --- 7. COMPILADOR DE DADOS DA PÁGINA ---
@@ -229,7 +239,7 @@ export async function getPageData() {
     try {
         const nameXpath = "//div[contains(text(), 'Given name')]";
         const nameNode = document.evaluate(nameXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-        
+
         if (nameNode && nameNode.nextElementSibling) {
             const rawName = nameNode.nextElementSibling.innerText.trim();
             if (rawName) advertiserName = rawName;
@@ -240,7 +250,7 @@ export async function getPageData() {
     try {
         const urlXpath = "//div[contains(text(), 'Website')]";
         const urlNode = document.evaluate(urlXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-        
+
         if (urlNode && urlNode.nextElementSibling) {
             const rawUrl = urlNode.nextElementSibling.innerText.trim();
             if (rawUrl) websiteUrl = rawUrl;
@@ -250,7 +260,7 @@ export async function getPageData() {
     // Captura EMAILS
     const clientEmail = await captureClientEmail();
     const internalEmail = captureInternalEmail();
-    
+
     // Captura CID
     const cid = captureCID();
 
@@ -260,6 +270,9 @@ export async function getPageData() {
         clientEmail: clientEmail,     // Pode ser null
         internalEmail: internalEmail, // Pode ser null
         cid: cid,                     // Novo campo
-        agentName: getAgentName()
+        agentName: getAgentName(),
+        caseID: caseID
     };
 }
+
+//criar função separada case id
