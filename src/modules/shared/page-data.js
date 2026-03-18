@@ -221,7 +221,7 @@ export function captureCID() {
 }
 
 
-export function getCaseId() {
+export async function getCaseId() {
 
     let caseId = "Numero do caso";
         
