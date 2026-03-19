@@ -27,7 +27,7 @@ import {
     ensureNoteCardIsOpen,
     triggerInputEvents
 } from "./notes-bridge.js";
-import { runEmailAutomation } from "../email/email-automation.js";
+import { runEmailAutomation } from "../email-assistant/email-automation-service.js";
 import { triggerProcessingAnimation, updateNotesBadge } from "../shared/command-center.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 

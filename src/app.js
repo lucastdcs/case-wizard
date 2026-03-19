@@ -2,7 +2,7 @@
 
 // 1. Importação dos Módulos
 import { initCaseNotesAssistant } from './modules/notes/notes-assistant.js';
-import { initQuickEmailAssistant } from './modules/quick-email/quick-email-assistant.js';
+import { initEmailAssistant } from './modules/email-assistant/email-assistant.js';
 import { initCallScriptAssistant } from './modules/call-script/call-script-assistant.js';
 import { initFeedbackAssistant } from './modules/lm-report/lm-repot-assistant.js'; 
 import { initBroadcastAssistant } from './modules/broadcast/broadcast-assistant.js'; 
@@ -54,7 +54,7 @@ function initApp() {
 
         // D. Inicializa os Módulos
         const toggleNotes = initCaseNotesAssistant();
-        const toggleEmail = initQuickEmailAssistant();
+        const toggleEmail = initEmailAssistant();
         const toggleScript = initCallScriptAssistant();
         const toggleLinks = initFeedbackAssistant();
         const toggleTimezone = initTimezoneAssistant();
