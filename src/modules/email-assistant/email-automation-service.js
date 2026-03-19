@@ -1,9 +1,8 @@
-// src/modules/email/email-automation.js
-import { showToast } from '../shared/utils.js';
-import { getPageData } from '../shared/page-data.js'; 
-import { getAgentName } from '../shared/page-data.js';
+// src/modules/email-assistant/email-automation-service.js
 
-// --- UTILITÁRIOS ---
+import { showToast } from '../shared/utils.js';
+import { getPageData, getAgentName } from '../shared/page-data.js';
+
 const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function log(msg, type = 'info') {
@@ -24,11 +23,9 @@ function simularCliqueReal(elemento) {
     );
 }
 
-// --- UTILITÁRIO: POPUP DE ALERTA (Google Style) ---
 function createFloatingWarning(targetElement, message) {
     if (!targetElement) return;
 
-    // Remove alerta anterior do mesmo elemento
     const existingId = `cw-warning-${targetElement.id || Math.random().toString(36).substr(2, 9)}`;
     const old = document.getElementById(existingId);
     if (old) old.remove();
@@ -88,22 +85,18 @@ function createFloatingWarning(targetElement, message) {
         popup.style.transform = 'translateY(0)';
     });
     
-    // Auto-remove após 25s
     setTimeout(() => { if(document.body.contains(popup)) closeBtn.click(); }, 25000);
 }
 
-// --- UTILITÁRIO: PREENCHER CAMPO DE EMAIL (CHIP) ---
 async function fillField(inputElement, value) {
     if (!inputElement || !value) return;
 
     inputElement.focus();
     
-    // Limpeza
     inputElement.value = '';
     inputElement.dispatchEvent(new Event('input', { bubbles: true }));
     await esperar(50);
 
-    // Inserção
     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
     nativeInputValueSetter.call(inputElement, value);
     
@@ -112,7 +105,6 @@ async function fillField(inputElement, value) {
     
     await esperar(100);
 
-    // Enter para criar o Chip
     inputElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
     inputElement.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
 }
@@ -129,8 +121,7 @@ function getVisibleEditor() {
     return editor;
 }
 
-// --- CORE: ABRIR E LIMPAR ---
-async function openAndClearEmail() {
+export async function openAndClearEmail() {
     log("🚀 FASE 1: Tentando abrir a janela de email...");
     let emailAberto = false;
     
@@ -255,24 +246,16 @@ async function openAndClearEmail() {
     return false;
 }
 
-// --- FUNÇÕES DE APLICAÇÃO ---
-
 export async function runEmailAutomation(cannedResponseText) {
     if (!cannedResponseText) return;
 
-    // 1. Abre e Limpa o Email
     const emailPronto = await openAndClearEmail();
     if (!emailPronto) return;
 
-    // 2. Coleta os Dados da Página
     const pageData = await getPageData(); 
 
-    // ============================================================
-    // 🟢 LÓGICA DE DESTINATÁRIOS
-    // ============================================================
     log("📧 Processando destinatários para CR...", 'info');
 
-    // A. Expandir Cabeçalho (CC/BCC) se necessário
     const expandBtn = document.querySelector('material-icon[aria-label="Show CC and BCC fields"]') || 
                       document.querySelector('material-icon[debug-id="expand-button"][aria-pressed="false"]');
     if (expandBtn) {
@@ -280,7 +263,6 @@ export async function runEmailAutomation(cannedResponseText) {
         await esperar(600);
     }
 
-    // B. Preencher TO (Cliente) + Aviso
     if (pageData.clientEmail && pageData.clientEmail !== "N/A" && pageData.clientEmail !== "N/A (Bloqueado)") {
         const toInput = document.querySelector('input[aria-label="Enter To email address"]');
         if (toInput) {
@@ -289,7 +271,6 @@ export async function runEmailAutomation(cannedResponseText) {
         }
     }
 
-    // C. Preencher BCC (Interno) + Aviso
     if (pageData.internalEmail) {
         const bccInput = document.querySelector('input[aria-label="Enter Bcc email address"]');
         if (bccInput) {
@@ -298,16 +279,13 @@ export async function runEmailAutomation(cannedResponseText) {
             createFloatingWarning(bccInput, warningMsg);
         }
     }
-    // ============================================================
 
     await esperar(500); 
 
-    // 3. Aplicação da Canned Response
     const btnCanned = document.querySelector('material-button[debug-id="canned_response_button"]');
     
     if (btnCanned) {
         simularCliqueReal(btnCanned);
-        // Espera um pouco para o input aparecer
         await esperar(1000);
         const searchInput = document.querySelector('material-auto-suggest-input input');
         
@@ -318,7 +296,6 @@ export async function runEmailAutomation(cannedResponseText) {
             
             log("⏳ Buscando resultado da Canned Response...", 'info');
             
-            // Lógica de Espera Dinâmica
             let primeiraOpcao = null;
             let tempoDecorrido = 0;
             const TEMPO_MAXIMO = 15000;
@@ -337,55 +314,37 @@ export async function runEmailAutomation(cannedResponseText) {
 
                 const editorVisivel = getVisibleEditor();
                 if (editorVisivel) {
-                    
-                    // ===========================================================
-                    // 1. MANIPULAÇÃO DE DOM (Tabelas e Estruturas Complexas)
-                    // ===========================================================
-                    
-                    // Identifica se temos o placeholder {Requested Task Type} em spans
                     const spans = Array.from(editorVisivel.querySelectorAll('span.field'));
                     const ecw4Spans = spans.filter(s => s.innerText.includes('{Requested Task Type}'));
                     
                     if (ecw4Spans.length > 0) {
-                        // Encontra as linhas (TR) que contêm esses spans
                         const rows = ecw4Spans.map(s => s.closest('tr')).filter(tr => tr !== null);
                         const uniqueRows = [...new Set(rows)];
                         
                         if (uniqueRows.length > 0) {
                             const firstRow = uniqueRows[0];
-                            // Tenta achar a célula de conteúdo (geralmente a segunda, ou width=100%)
                             const targetCell = firstRow.querySelector('td[width="100%"]');
                             
                             if (targetCell) {
-                                // Substitui o conteúdo da primeira linha
                                 targetCell.innerHTML = '<span class="field" style="color:rgb(60, 64, 67)">Enhanced Conversions - Aguardando Validação - Dentro de 7 dias</span>';
                             }
                             
-                            // Remove as linhas extras (duplicadas)
                             for (let i = 1; i < uniqueRows.length; i++) {
                                 uniqueRows[i].remove();
                             }
                         }
                     }
 
-                    // ===========================================================
-                    // 2. SUBSTITUIÇÃO DE STRING (Variáveis Simples)
-                    // ===========================================================
-                    
-                    // Pega o HTML atualizado (já com as linhas removidas)
                     let html = editorVisivel.innerHTML;
                     
-                    // Substituição Genérica do Nome
                     if (pageData.advertiserName && html.includes('{%ADVERTISER_NAME%}')) {
                         html = html.replace(/{%ADVERTISER_NAME%}/g, pageData.advertiserName);
                     }
 
-                    // Substituição do ID estranho do site
                     if (html.includes('{%^79285%}')) {
                         html = html.replace(/{%\^79285%}/g, pageData.websiteUrl || "seu site");
                     }
 
-                    // Aplica de volta ao editor
                     editorVisivel.innerHTML = html;
                 }
                 
@@ -403,17 +362,14 @@ export async function runEmailAutomation(cannedResponseText) {
 export async function runQuickEmail(template) {
     log(`🚀 Iniciando Quick Email: ${template.name}`);
     
-    // 1. Abre e Limpa
     const emailPronto = await openAndClearEmail(); 
     if (!emailPronto) return;
 
-    // 2. Coleta Dados (Agora com Email)
     const pageData = await getPageData(); 
     const agentName = getAgentName();
 
     await esperar(600); 
 
-    // FASE 4: PREENCHIMENTO DE DESTINATÁRIOS (Igual acima)
     const expandBtn = document.querySelector('material-icon[aria-label="Show CC and BCC fields"]') || 
                       document.querySelector('material-icon[debug-id="expand-button"][aria-pressed="false"]');
     if (expandBtn) {
@@ -438,7 +394,6 @@ export async function runQuickEmail(template) {
         }
     }
 
-    // FASE 5: ASSUNTO E CORPO
     const subjectInput = document.querySelector('input[aria-label="Subject"]');
     if (subjectInput && template.subject) {
         subjectInput.focus();
@@ -466,12 +421,15 @@ export async function runQuickEmail(template) {
         else if (day === 0) date.setDate(date.getDate() + 1);
         const dataFormatada = date.toLocaleDateString('pt-BR');
         
-        let finalBody = template.body;
-        finalBody = finalBody.replace(/\[Nome do Cliente\]/g, pageData.advertiserName || "Cliente");
-        finalBody = finalBody.replace(/\[INSERIR URL\]/g, pageData.websiteUrl || "seu site");
-        finalBody = finalBody.replace(/\[URL\]/g, pageData.websiteUrl || "seu site");
-        finalBody = finalBody.replace(/\[Seu Nome\]/g, agentName); 
-        finalBody = finalBody.replace(/\[MM\/DD\/YYYY\]/g, dataFormatada);
+        let finalBody = template.body || template.template;
+
+        if (template.body) {
+            finalBody = finalBody.replace(/\[Nome do Cliente\]/g, pageData.advertiserName || "Cliente");
+            finalBody = finalBody.replace(/\[INSERIR URL\]/g, pageData.websiteUrl || "seu site");
+            finalBody = finalBody.replace(/\[URL\]/g, pageData.websiteUrl || "seu site");
+            finalBody = finalBody.replace(/\[Seu Nome\]/g, agentName);
+            finalBody = finalBody.replace(/\[MM\/DD\/YYYY\]/g, dataFormatada);
+        }
 
         document.execCommand('insertHTML', false, finalBody);
         

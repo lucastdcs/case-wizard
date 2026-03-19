@@ -392,7 +392,7 @@ export function initCommandCenter(actions) {
             <div class="cw-grip-bar"></div>
         </div>
         <button class="cw-btn notes" id="cw-btn-notes" data-label="Case Notes">${ICONS.notes}</button>
-        <button class="cw-btn email" id="cw-btn-email" data-label="Quick Email">${ICONS.email}</button>
+        <button class="cw-btn email" id="cw-btn-email" data-label="Email Assistant">${ICONS.email}</button>
         <button class="cw-btn script" id="cw-btn-script" data-label="Call Script">${ICONS.script}</button>
         <button class="cw-btn links" id="cw-btn-links" data-label="Links">${ICONS.links}</button>
         <button class="cw-btn library" id="cw-btn-library" data-label="My Library">${ICONS.library}</button>
