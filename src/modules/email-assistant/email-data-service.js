@@ -7,8 +7,6 @@ export const EmailDataService = {
         if (this._templates) return this._templates;
 
         try {
-            // No ambiente do Chrome Extension / Bookmarklet, o caminho precisa ser absoluto ou relativo à base de carregamento
-            // Mas seguindo a arquitetura do projeto, usaremos fetch para o JSON
             const response = await fetch(this._getJsonUrl());
             if (!response.ok) throw new Error('Falha ao carregar templates de e-mail');
 
@@ -21,8 +19,12 @@ export const EmailDataService = {
     },
 
     _getJsonUrl() {
-        // Lógica para obter a URL do JSON (depende de como os arquivos são servidos)
-        // Por enquanto, assumimos que está no mesmo diretório relativo
-        return 'src/modules/email-assistant/email-templates.json';
+        // Corrige o caminho para funcionar em ambiente de Extensão Chrome
+        try {
+            return chrome.runtime.getURL('src/modules/email-assistant/email-templates.json');
+        } catch (error) {
+            // Fallback para ambiente de desenvolvimento ou bookmarklet
+            return 'src/modules/email-assistant/email-templates.json';
+        }
     }
 };
