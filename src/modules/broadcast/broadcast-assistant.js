@@ -14,9 +14,9 @@ import { toggleGenieAnimation } from "../shared/animations.js";
 import { BROADCAST_MESSAGES, setBroadcastMessages } from "./broadcast-data.js"; 
 import { DataService } from "../shared/data-service.js";
 import { getAgentEmail } from "../shared/page-data.js"; 
+import { ADMINS } from "../shared/config.js";
 
 // --- CONFIGURAÇÃO ---
-const ADMINS = ["lucaste", "ricardogi"]; 
 const POLL_TIME_MS = 60 * 1000; 
 
 // Inicializa estado global

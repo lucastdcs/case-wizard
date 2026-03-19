@@ -3,6 +3,8 @@
 import { DataService } from './data-service.js'; 
 import { showToast } from './utils.js';
 import { SoundManager } from './sound-manager.js';
+import { ADMINS } from './config.js';
+import { getAgentEmail } from './page-data.js';
 
 // --- 1. CONFIGURAÇÃO VISUAL ---
 const COLORS = {
@@ -312,6 +314,30 @@ export function initCommandCenter(actions) {
                 z-index: 11;
                 animation: popIn 0.3s;
             }
+
+            .cw-admin-badge {
+                position: absolute;
+                bottom: -10px;
+                left: 50%;
+                transform: translateX(-50%) scale(0);
+                background: linear-gradient(135deg, #1a73e8, #4285f4);
+                color: white;
+                font-size: 8px;
+                font-weight: 800;
+                padding: 2px 6px;
+                border-radius: 10px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                border: 1px solid rgba(255,255,255,0.2);
+                transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                pointer-events: none;
+                z-index: 20;
+                white-space: nowrap;
+            }
+            .cw-pill:not(.collapsed) .cw-admin-badge.visible {
+                transform: translateX(-50%) scale(1);
+            }
             
             .cw-center-success { display: none; color: ${COLORS.green}; margin-bottom: 10px; }
             .cw-center-success svg { width: 48px; height: 48px; }
@@ -360,6 +386,7 @@ export function initCommandCenter(actions) {
 
   pill.innerHTML = `
         <div class="cw-main-logo">${ICONS.main}</div>
+        <div id="cw-admin-tag" class="cw-admin-badge">Admin</div>
 
         <div class="cw-grip" title="Arrastar">
             <div class="cw-grip-bar"></div>
@@ -438,6 +465,21 @@ export function initCommandCenter(actions) {
 
   // 4. ANIMAÇÃO INICIAL
   (async function startAnimation() {
+    // Check Admin status
+    const checkAdmin = () => {
+      const email = getAgentEmail();
+      if (email) {
+        const user = email.split('@')[0].toLowerCase();
+        if (ADMINS.includes(user)) {
+          const badge = pill.querySelector('#cw-admin-tag');
+          if (badge) badge.classList.add('visible');
+        }
+      } else {
+        setTimeout(checkAdmin, 2000); // Retry if email not captured yet
+      }
+    };
+    checkAdmin();
+
     await esperar(2800); pill.classList.add("docked");
     await esperar(300);
     const items = pill.querySelectorAll(".cw-btn");
