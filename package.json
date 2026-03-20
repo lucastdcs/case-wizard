@@ -1,0 +1,14 @@
+{
+  "name": "techsol_DialIn_AutoCopy",
+  "version": "1.0.0",
+  "description": "TechSol Operations Assistant - Productivity Suite",
+  "main": "src/app.js",
+  "scripts": {
+    "build": "esbuild src/app.js --bundle --minify --outfile=dist/bundle.js",
+    "dev": "esbuild src/app.js --bundle --outfile=dist/bundle-dev.js",
+    "portfolio": "python3 generate-portfolio.py"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2"
+  }
+}

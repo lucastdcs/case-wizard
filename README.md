@@ -9,6 +9,33 @@ Este projeto é uma **camada de aplicação (Overlay)** injetada via JavaScript 
 
 -----
 
+## 📸 Visual Portfolio
+
+Explore as principais funcionalidades da suite TechSol em um ambiente simulado.
+
+### 🎥 Demonstração em Vídeo
+Assista à suite em ação, desde a inicialização com Sound UX até a automação de notas e e-mails:
+**[Clique aqui para ver o vídeo de demonstração](docs/media/techsol-demo.webm)**
+
+### 🖼️ Screenshots dos Módulos
+
+| **Command Center** | **Case Notes Assistant** |
+| :---: | :---: |
+| <img src="docs/media/command-center.png" width="400"> | <img src="docs/media/case-notes-filled.png" width="400"> |
+| *Ponto central de acesso e status.* | *Gerador inteligente de notas com lógica condicional.* |
+
+| **Email Assistant** | **Call Script Assistant** |
+| :---: | :---: |
+| <img src="docs/media/email-assistant.png" width="400"> | <img src="docs/media/call-script.png" width="400"> |
+| *Templates dinâmicos e rascunhos automáticos.* | *Roteiros guiados para chamadas com clientes.* |
+
+| **Timezone Assistant** |
+| :---: |
+| <img src="docs/media/timezone-assistant.png" width="400"> |
+| *Conversão de fusos horários e planejamento de reuniões.* |
+
+-----
+
 ## 🛠️ Instalação (Bookmarklets)
 
 Para utilizar a ferramenta, crie um favorito no seu navegador e cole o código correspondente no campo URL.
