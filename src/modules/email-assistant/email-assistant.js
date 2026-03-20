@@ -24,6 +24,7 @@ export function initEmailAssistant() {
     let selectedTemplate = null;
     let searchTerm = "";
     let activeCategory = "Todos";
+    let expandedCategories = new Set();
 
     // --- ESTILOS (Apple Inspired) ---
     const COLORS = {
@@ -40,6 +41,25 @@ export function initEmailAssistant() {
     const popup = document.createElement("div");
     popup.id = "email-assistant-popup";
     popup.classList.add("cw-module-window");
+
+    // Custom Scrollbar styles
+    const scrollStyles = document.createElement("style");
+    scrollStyles.textContent = `
+        #email-template-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        #email-template-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #email-template-list::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        #email-template-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+    `;
+    document.head.appendChild(scrollStyles);
     Object.assign(popup.style, stylePopup, {
         width: "850px",
         height: "650px",
@@ -106,11 +126,13 @@ export function initEmailAssistant() {
         searchInput.style.backgroundColor = '#FFFFFF';
         searchInput.style.borderColor = COLORS.primary;
         searchInput.style.boxShadow = '0 0 0 4px rgba(0, 122, 255, 0.1)';
+        searchInput.style.transform = 'scale(1.02)';
     };
     searchInput.onblur = () => {
         searchInput.style.backgroundColor = '#E3E3E8';
         searchInput.style.borderColor = 'transparent';
         searchInput.style.boxShadow = 'none';
+        searchInput.style.transform = 'scale(1)';
     };
 
 
@@ -357,10 +379,12 @@ export function initEmailAssistant() {
         const categories = [...new Set(allItems.map(t => t.category))].sort((a,b) => a.localeCompare(b));
 
         categories.forEach(cat => {
+            const isExpanded = expandedCategories.has(cat) || searchTerm.length > 0;
+            const categoryItems = allItems.filter(t => t.category === cat);
+
             const catHeader = document.createElement("div");
-            catHeader.textContent = cat;
             Object.assign(catHeader.style, {
-                padding: "16px 16px 8px 24px",
+                padding: "12px 16px 12px 24px",
                 fontSize: "11px",
                 fontWeight: "700",
                 color: COLORS.textSecondary,
@@ -368,29 +392,98 @@ export function initEmailAssistant() {
                 letterSpacing: "0.8px",
                 position: "sticky",
                 top: "-8px",
-                backgroundColor: 'rgba(239, 239, 240, 0.85)',
+                backgroundColor: 'rgba(239, 239, 240, 0.9)',
                 zIndex: "10",
                 backdropFilter: "blur(20px)",
-                margin: "0 -8px",
-                borderBottom: `0.5px solid ${COLORS.borderSubtle}`
+                margin: "0 -8px 8px -8px",
+                borderBottom: `0.5px solid ${COLORS.borderSubtle}`,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                userSelect: 'none',
+                transition: 'background-color 0.2s ease'
             });
+
+            catHeader.onmouseenter = () => catHeader.style.backgroundColor = 'rgba(230, 230, 232, 0.9)';
+            catHeader.onmouseleave = () => catHeader.style.backgroundColor = 'rgba(239, 239, 240, 0.9)';
+
+            const headerText = document.createElement("span");
+            headerText.textContent = cat;
+            catHeader.appendChild(headerText);
+
+            const badge = document.createElement("span");
+            badge.textContent = categoryItems.length;
+            Object.assign(badge.style, {
+                backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                fontSize: '10px',
+                color: COLORS.textSecondary
+            });
+
+            const arrow = document.createElement("span");
+            arrow.innerHTML = isExpanded ? '􀄪' : '􀄫'; // SF Pro symbols (fallback if not available)
+            // Using simpler chevrons if SF Pro is not there
+            arrow.innerHTML = isExpanded ? '▾' : '▸';
+            arrow.style.marginLeft = '8px';
+            arrow.style.transition = 'transform 0.3s ease';
+
+            const rightSide = document.createElement("div");
+            rightSide.style.display = 'flex';
+            rightSide.style.alignItems = 'center';
+            rightSide.appendChild(badge);
+            rightSide.appendChild(arrow);
+            catHeader.appendChild(rightSide);
+
+            catHeader.onclick = () => {
+                if (expandedCategories.has(cat)) {
+                    expandedCategories.delete(cat);
+                } else {
+                    expandedCategories.add(cat);
+                }
+                renderTemplateList();
+            };
+
             templateList.appendChild(catHeader);
 
-            allItems.filter(t => t.category === cat).forEach(template => {
+            if (!isExpanded) return;
+
+            categoryItems.forEach(template => {
+                const isSelected = selectedTemplate && selectedTemplate.id === template.id;
                 const item = document.createElement("div");
 
                 Object.assign(item.style, {
-                    padding: "10px 16px",
+                    padding: "12px 14px",
                     fontSize: "14px",
                     cursor: "pointer",
-                    transition: "all 0.2s cubic-bezier(0.25, 1, 0.5, 1)",
-                    borderRadius: "8px",
+                    transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)",
+                    borderRadius: "10px",
                     color: COLORS.textPrimary,
-                    margin: '2px 0',
+                    margin: '4px 6px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px'
+                    gap: '12px',
+                    backgroundColor: isSelected ? COLORS.primary : COLORS.bgSurface,
+                    boxShadow: isSelected ? '0 4px 12px rgba(0, 122, 255, 0.3)' : '0 1px 2px rgba(0,0,0,0.05)',
+                    border: isSelected ? 'none' : `1px solid ${COLORS.borderSubtle}`,
+                    position: 'relative',
+                    overflow: 'hidden'
                 });
+
+                if (isSelected) {
+                    const indicator = document.createElement("div");
+                    Object.assign(indicator.style, {
+                        position: 'absolute',
+                        left: '0',
+                        top: '0',
+                        bottom: '0',
+                        width: '4px',
+                        backgroundColor: '#fff',
+                        borderRadius: '0 4px 4px 0'
+                    });
+                    item.appendChild(indicator);
+                }
 
                 const icon = document.createElement("span");
                 icon.innerHTML = template.isSmartCR ? '⚡' : (template.category === '👤 Pessoal' ? '👤' : '📄');
@@ -407,34 +500,34 @@ export function initEmailAssistant() {
                 text.style.flex = "1";
                 item.appendChild(text);
 
-                if (selectedTemplate && selectedTemplate.id === template.id) {
-                    item.style.backgroundColor = COLORS.primary;
+                if (isSelected) {
                     item.style.color = "#fff";
                     item.style.fontWeight = "600";
-                    item.style.boxShadow = '0 4px 12px rgba(0, 122, 255, 0.25)';
                     icon.style.opacity = '1';
-                } else {
-                     item.style.backgroundColor = "transparent";
                 }
 
                 item.onmouseenter = () => {
-                    if (!selectedTemplate || selectedTemplate.id !== template.id) {
-                        item.style.backgroundColor = "rgba(0, 0, 0, 0.04)";
-                        item.style.transform = 'translateX(4px)';
+                    if (!isSelected) {
+                        item.style.backgroundColor = '#f8f8f9';
+                        item.style.transform = 'translateY(-1px) scale(1.01)';
+                        item.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)';
+                        item.style.borderColor = 'rgba(0, 122, 255, 0.2)';
                     }
                 };
                 item.onmouseleave = () => {
-                    if (!selectedTemplate || selectedTemplate.id !== template.id) {
-                        item.style.backgroundColor = "transparent";
-                        item.style.transform = 'translateX(0)';
+                    if (!isSelected) {
+                        item.style.backgroundColor = COLORS.bgSurface;
+                        item.style.transform = 'translateY(0) scale(1)';
+                        item.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+                        item.style.borderColor = COLORS.borderSubtle;
                     }
                 };
 
                 item.onmousedown = () => {
-                    item.style.transform = 'scale(0.97) translateX(4px)';
+                    item.style.transform = isSelected ? 'scale(0.97)' : 'scale(0.98)';
                 };
                 item.onmouseup = () => {
-                    item.style.transform = 'translateX(4px)';
+                    item.style.transform = isSelected ? 'scale(1)' : 'translateY(-1px) scale(1.01)';
                 };
                 item.onclick = () => {
                     selectTemplate(template);
