@@ -1,4 +1,4 @@
-[
+export const EMAIL_TEMPLATES = [
   {
     "id": "attempt_10min",
     "name": "Tentativa de Contato (Antes dos 10min)",
