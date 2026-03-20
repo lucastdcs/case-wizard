@@ -58,6 +58,14 @@ export function initEmailAssistant() {
         #email-template-list::-webkit-scrollbar-thumb:hover {
             background: rgba(0, 0, 0, 0.2);
         }
+        @keyframes cw-floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .cw-animate-float {
+            animation: cw-floating 3s ease-in-out infinite;
+        }
     `;
     document.head.appendChild(scrollStyles);
     Object.assign(popup.style, stylePopup, {
@@ -304,6 +312,7 @@ export function initEmailAssistant() {
 
     previewSection.appendChild(previewHeader);
     previewSection.appendChild(previewContent);
+    updatePreview();
 
     rightPanel.appendChild(fieldsSection);
     rightPanel.appendChild(previewSection);
@@ -642,13 +651,28 @@ export function initEmailAssistant() {
     function updatePreview() {
         if (!selectedTemplate) {
             previewContent.innerHTML = `
-                <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: ${COLORS.textSecondary}; opacity: 0.6;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                        <polyline points="22,6 12,13 2,6"></polyline>
-                    </svg>
-                    <div style="font-size: 16px; font-weight: 500;">Pronto para escrever?</div>
-                    <div style="font-size: 13px; margin-top: 4px;">Selecione um template à esquerda para começar.</div>
+                <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
+                    <div class="cw-animate-float" style="width: 140px; height: 140px; margin-bottom: 24px;">
+                        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="60" cy="60" r="55" fill="#f8f9fa"/>
+                            <!-- Envelope Base -->
+                            <path d="M30 40C30 37.7909 31.7909 36 34 36H86C88.2091 36 90 37.7909 90 40V80C90 82.2091 88.2091 84 86 84H34C31.7909 84 30 82.2091 30 80V40Z" fill="white" stroke="#e8eaed" stroke-width="2"/>
+                            <!-- Google Colors Stripes on the envelope flap -->
+                            <path d="M30 40L60 60L90 40" stroke="#4285F4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M30 80L50 65" stroke="#EA4335" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+                            <path d="M90 80L70 65" stroke="#FBBC05" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+                            <!-- Small Floating icons -->
+                            <circle cx="95" cy="30" r="8" fill="#34A853"/>
+                            <path d="M92 30H98M95 27V33" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                            <rect x="20" y="70" width="12" height="12" rx="3" fill="#4285F4" opacity="0.8"/>
+                        </svg>
+                    </div>
+                    <div style="font-family: 'Google Sans', sans-serif; font-size: 18px; font-weight: 600; color: ${COLORS.textPrimary}; margin-bottom: 8px;">
+                        Pronto para começar?
+                    </div>
+                    <div style="font-size: 14px; color: ${COLORS.textSecondary}; line-height: 1.6; max-width: 280px; margin: 0 auto;">
+                        Selecione um template à esquerda para<br>gerar o seu e-mail técnico.
+                    </div>
                 </div>`;
             return;
         }
