@@ -301,28 +301,36 @@ export function initCallScriptAssistant() {
               <div class="csa-copy-hint">Copiado!</div>
           </div>
       </div>
+  `;
 
-      <button class="csa-data-pill" id="cw-pill-message" style="width: 100%; text-align: left; margin-top: 4px; background: #E8F0FE; border: 1px solid #1A73E8; padding: 10px 14px; display: flex; align-items: center; gap: 12px;">
-          <div style="background: #1A73E8; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+  // --- MENSAGEM AM (Moved to a more discrete area) ---
+  const amSection = document.createElement("div");
+  amSection.style.cssText = "margin-top: 24px; border-top: 1px dashed #DADCE0; padding-top: 16px;";
+  amSection.innerHTML = `
+      <button id="cw-pill-message" style="width: 100%; background: transparent; border: 1px solid #DADCE0; border-radius: 10px; padding: 10px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s;">
+          <div style="background: #F1F3F4; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
           </div>
-          <div style="flex-grow: 1;">
-              <div style="font-size:10px; font-weight:800; color:#1A73E8; text-transform:uppercase; margin-bottom:1px; letter-spacing:0.5px;">Mensagem AM</div>
-              <div id="cw-ctx-message" class="csa-data-value" style="font-family:'Google Sans', sans-serif; font-size:13px; font-weight:500; color:#3C4043;">Gerar aviso para AM</div>
+          <div style="text-align: left;">
+              <div style="font-size:11px; font-weight:700; color:#5F6368;">Mensagem AM</div>
+              <div style="font-size:10px; color:#9AA0A6;">Gerar aviso de insucesso de contato</div>
           </div>
       </button>
 
-      <div id="cw-am-review-container" style="display: none; transition: all 0.3s ease; opacity: 0; max-height: 0; overflow: hidden; margin-top: 8px;">
+      <div id="cw-am-review-container" style="display: none; transition: all 0.3s ease; opacity: 0; max-height: 0; overflow: hidden; margin-top: 12px;">
           <textarea id="cw-am-message-area" style="width: 100%; height: 120px; border: 1px solid #DADCE0; border-radius: 8px; padding: 10px; font-family: 'Roboto', sans-serif; font-size: 13px; color: #3C4043; outline: none; resize: none; box-sizing: border-box; background: #F8F9FA; line-height: 1.4;"></textarea>
-          <button id="cw-am-copy-final" style="width: 100%; margin-top: 8px; padding: 10px; background: #1A73E8; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: background 0.2s;">
+          <button id="cw-am-copy-final" style="width: 100%; margin-top: 8px; padding: 10px; background: #007AFF; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: background 0.2s;">
               Copiar Mensagem Final
           </button>
       </div>
   `;
 
-  const messageBtn = contextBanner.querySelector('#cw-pill-message');
-  const finalCopyBtn = contextBanner.querySelector('#cw-am-copy-final');
-  const messageArea = contextBanner.querySelector('#cw-am-message-area');
+  const messageBtn = amSection.querySelector('#cw-pill-message');
+  const finalCopyBtn = amSection.querySelector('#cw-am-copy-final');
+  const messageArea = amSection.querySelector('#cw-am-message-area');
+
+  messageBtn.onmouseenter = () => { messageBtn.style.background = "#F8F9FA"; messageBtn.style.borderColor = "#007AFF"; };
+  messageBtn.onmouseleave = () => { messageBtn.style.background = "transparent"; messageBtn.style.borderColor = "#DADCE0"; };
 
   messageBtn.addEventListener('click', () => {
     populateMessageArea();
@@ -459,6 +467,7 @@ export function initCallScriptAssistant() {
   const csaChecklistArea = document.createElement("div");
   csaChecklistArea.id = "csa-checklist-area";
   csaContent.appendChild(csaChecklistArea);
+  csaContent.appendChild(amSection);
 
   const resizeHandle = document.createElement('div');
   Object.assign(resizeHandle.style, styleResizeHandle);
