@@ -301,36 +301,55 @@ export function initCallScriptAssistant() {
               <div class="csa-copy-hint">Copiado!</div>
           </div>
       </div>
-  `;
 
-  // --- MENSAGEM AM (Moved to a more discrete area) ---
-  const amSection = document.createElement("div");
-  amSection.style.cssText = "margin-top: 24px; border-top: 1px dashed #DADCE0; padding-top: 16px;";
-  amSection.innerHTML = `
-      <button id="cw-pill-message" style="width: 100%; background: transparent; border: 1px solid #DADCE0; border-radius: 10px; padding: 10px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s;">
-          <div style="background: #F1F3F4; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-          </div>
-          <div style="text-align: left;">
-              <div style="font-size:11px; font-weight:700; color:#5F6368;">Mensagem AM</div>
-              <div style="font-size:10px; color:#9AA0A6;">Gerar aviso de insucesso de contato</div>
-          </div>
-      </button>
-
-      <div id="cw-am-review-container" style="display: none; transition: all 0.3s ease; opacity: 0; max-height: 0; overflow: hidden; margin-top: 12px;">
-          <textarea id="cw-am-message-area" style="width: 100%; height: 120px; border: 1px solid #DADCE0; border-radius: 8px; padding: 10px; font-family: 'Roboto', sans-serif; font-size: 13px; color: #3C4043; outline: none; resize: none; box-sizing: border-box; background: #F8F9FA; line-height: 1.4;"></textarea>
-          <button id="cw-am-copy-final" style="width: 100%; margin-top: 8px; padding: 10px; background: #007AFF; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: background 0.2s;">
-              Copiar Mensagem Final
+      <div id="csa-more-options" style="margin-top: 8px;">
+          <button id="csa-toggle-options" style="width: 100%; background: transparent; border: none; padding: 4px 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9AA0A6; transition: color 0.2s;">
+              <svg id="csa-options-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease;"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
+
+          <div id="csa-options-content" style="max-height: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0; padding: 0 4px;">
+              <div style="padding: 12px; background: #F8F9FA; border: 1px solid #DADCE0; border-radius: 12px; margin-bottom: 8px;">
+                  <button id="cw-pill-message" style="width: 100%; background: #FFFFFF; border: 1px solid #DADCE0; border-radius: 10px; padding: 10px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                      <div style="background: #E8F0FE; border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A73E8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                      </div>
+                      <div style="text-align: left;">
+                          <div style="font-size:11px; font-weight:700; color:#3C4043;">Mensagem AM</div>
+                          <div style="font-size:10px; color:#5F6368;">Gerar aviso de insucesso</div>
+                      </div>
+                  </button>
+
+                  <div id="cw-am-review-container" style="display: none; transition: all 0.3s ease; opacity: 0; max-height: 0; overflow: hidden; margin-top: 12px;">
+                      <textarea id="cw-am-message-area" style="width: 100%; height: 120px; border: 1px solid #DADCE0; border-radius: 8px; padding: 10px; font-family: 'Roboto', sans-serif; font-size: 13px; color: #3C4043; outline: none; resize: none; box-sizing: border-box; background: #FFFFFF; line-height: 1.4;"></textarea>
+                      <button id="cw-am-copy-final" style="width: 100%; margin-top: 8px; padding: 10px; background: #007AFF; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: background 0.2s;">
+                          Copiar Mensagem Final
+                      </button>
+                  </div>
+              </div>
+          </div>
       </div>
   `;
 
-  const messageBtn = amSection.querySelector('#cw-pill-message');
-  const finalCopyBtn = amSection.querySelector('#cw-am-copy-final');
-  const messageArea = amSection.querySelector('#cw-am-message-area');
+  const optionsBtn = contextBanner.querySelector('#csa-toggle-options');
+  const optionsContent = contextBanner.querySelector('#csa-options-content');
+  const optionsArrow = contextBanner.querySelector('#csa-options-arrow');
 
-  messageBtn.onmouseenter = () => { messageBtn.style.background = "#F8F9FA"; messageBtn.style.borderColor = "#007AFF"; };
-  messageBtn.onmouseleave = () => { messageBtn.style.background = "transparent"; messageBtn.style.borderColor = "#DADCE0"; };
+  let optionsExpanded = false;
+  optionsBtn.onclick = () => {
+      optionsExpanded = !optionsExpanded;
+      optionsArrow.style.transform = optionsExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+      optionsContent.style.maxHeight = optionsExpanded ? '400px' : '0';
+      optionsContent.style.opacity = optionsExpanded ? '1' : '0';
+      optionsContent.style.marginTop = optionsExpanded ? '8px' : '0';
+      SoundManager.playClick();
+  };
+
+  const messageBtn = contextBanner.querySelector('#cw-pill-message');
+  const finalCopyBtn = contextBanner.querySelector('#cw-am-copy-final');
+  const messageArea = contextBanner.querySelector('#cw-am-message-area');
+
+  messageBtn.onmouseenter = () => { messageBtn.style.borderColor = "#007AFF"; messageBtn.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)"; };
+  messageBtn.onmouseleave = () => { messageBtn.style.borderColor = "#DADCE0"; messageBtn.style.boxShadow = "0 1px 2px rgba(0,0,0,0.02)"; };
 
   messageBtn.addEventListener('click', () => {
     populateMessageArea();
@@ -467,7 +486,6 @@ export function initCallScriptAssistant() {
   const csaChecklistArea = document.createElement("div");
   csaChecklistArea.id = "csa-checklist-area";
   csaContent.appendChild(csaChecklistArea);
-  csaContent.appendChild(amSection);
 
   const resizeHandle = document.createElement('div');
   Object.assign(resizeHandle.style, styleResizeHandle);
@@ -610,6 +628,7 @@ export function initCallScriptAssistant() {
         progressFill.style.background = COLORS.success;
         progressFill.classList.remove("csa-progress-fill"); // Stop shimmer when 100%
     } else {
+        progressFill.style.background = ""; // Revert to gradient shimmer
         progressFill.classList.add("csa-progress-fill");
     }
   }
