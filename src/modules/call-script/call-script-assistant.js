@@ -19,9 +19,22 @@ import { getPageData } from "../shared/page-data.js";
 import { csaChecklistData } from "./call-script-data.js";
 
 export function initCallScriptAssistant() {
-  const CURRENT_VERSION = "v2.6 (Context HD)";
+  const CURRENT_VERSION = "v3.0.0";
 
-  // --- ESTILOS INJETADOS (Animações Locais) ---
+  // --- CORES (Alinhadas com o Email Assistant) ---
+  const COLORS = {
+    bgApp: "#F5F5F7",
+    bgSurface: "#FFFFFF",
+    borderSubtle: "rgba(0, 0, 0, 0.07)",
+    primary: "#007AFF",
+    primaryBg: "rgba(0, 122, 255, 0.1)",
+    textPrimary: "#1D1D1F",
+    textSecondary: "#6E6E73",
+    shadowCard: "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)",
+    success: "#34A853"
+  };
+
+  // --- ESTILOS INJETADOS (Animações e UI Moderna) ---
   const localStyleId = 'csa-local-styles';
   if (!document.getElementById(localStyleId)) {
       const s = document.createElement('style');
@@ -60,40 +73,126 @@ export function initCallScriptAssistant() {
             opacity: 0; transition: opacity 0.2s; pointer-events: none;
         }
         .csa-data-pill.copied .csa-copy-hint { opacity: 1; }
-        .csa-data-pill.copied .csa-data-value { opacity: 0.3; } /* Diminui texto pra destacar o "Copiado" */
+        .csa-data-pill.copied .csa-data-value { opacity: 0.3; }
+
+        /* Estilos de Abas */
+        .csa-tabs-container {
+            display: flex;
+            background: #E3E3E8;
+            padding: 2px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .csa-tab {
+            flex: 1;
+            text-align: center;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: ${COLORS.textSecondary};
+            cursor: pointer;
+            z-index: 1;
+            transition: color 0.2s ease;
+            user-select: none;
+        }
+        .csa-tab.active {
+            color: ${COLORS.textPrimary};
+        }
+        .csa-tab-slider {
+            position: absolute;
+            background: #FFFFFF;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            z-index: 0;
+        }
+
+        /* Checkbox e Strikethrough */
+        .csa-checkbox {
+            min-width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 2px solid #DADCE0;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: #fff;
+        }
+        .csa-item-text {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        .csa-item-text::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 0;
+            height: 1.5px;
+            background: ${COLORS.textSecondary};
+            transition: width 0.3s ease;
+        }
+        .csa-item-completed .csa-item-text {
+            color: ${COLORS.textSecondary};
+            opacity: 0.7;
+        }
+        .csa-item-completed .csa-item-text::after {
+            width: 100%;
+        }
+
+        /* Textarea de Mensagem */
+        .csa-message-area {
+            width: 100%;
+            height: 80px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1.5px solid ${COLORS.borderSubtle};
+            background: #FBFBFD;
+            font-family: inherit;
+            font-size: 13px;
+            line-height: 1.4;
+            color: ${COLORS.textPrimary};
+            resize: none;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        .csa-message-area:focus {
+            border-color: ${COLORS.primary};
+            background: #FFFFFF;
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+        }
       `;
       document.head.appendChild(s);
   }
 
   const styles = {
     // Barra de Progresso
-    progressBarContainer: { height: "4px", background: "#f1f3f4", width: "100%", position: "relative", overflow: "hidden" },
-    progressBarFill: { height: "100%", background: "linear-gradient(90deg, #4285F4, #34A853)", width: "0%", transition: "width 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)", borderRadius: "0 2px 2px 0" },
+    progressBarContainer: { height: "6px", background: "#E3E3E8", width: "100%", position: "relative", overflow: "hidden" },
+    progressBarFill: { height: "100%", background: `linear-gradient(90deg, ${COLORS.primary}, ${COLORS.success})`, width: "0%", transition: "width 0.5s cubic-bezier(0.25, 1, 0.5, 1)", borderRadius: "0 3px 3px 0" },
 
-    contentArea: { padding: "16px", overflowY: "auto", flexGrow: "1", background: "#FFFFFF", scrollBehavior: "smooth" },
+    contentArea: { padding: "16px", overflowY: "auto", flexGrow: "1", background: COLORS.bgApp, scrollBehavior: "smooth" },
 
     // Cards do Script
-    card: { background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "12px", padding: "16px", marginBottom: "16px", transition: "transform 0.2s ease, box-shadow 0.2s ease", boxShadow: "0 1px 2px rgba(0,0,0,0.02)" },
-    cardTitle: { fontSize: "12px", fontWeight: "700", color: "#5f6368", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between", userSelect: "none" },
+    card: { background: COLORS.bgSurface, border: `1px solid ${COLORS.borderSubtle}`, borderRadius: "12px", padding: "16px", marginBottom: "16px", transition: "transform 0.2s ease, box-shadow 0.2s ease", boxShadow: COLORS.shadowCard },
+    cardTitle: { fontSize: "11px", fontWeight: "700", color: COLORS.textSecondary, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between", userSelect: "none" },
 
-    itemRow: { display: "flex", alignItems: "flex-start", padding: "8px 8px", cursor: "pointer", borderRadius: "8px", transition: "background-color 0.1s ease", color: "#202124", fontSize: "14px", lineHeight: "1.5", marginBottom: "2px" },
-    itemCompleted: { opacity: "0.6", textDecoration: "line-through", color: "#5f6368" },
-
-    checkbox: { minWidth: "18px", height: "18px", borderRadius: "6px", border: "2px solid #DADCE0", marginRight: "12px", marginTop: "2px", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)", background: "#fff" },
+    itemRow: { display: "flex", alignItems: "flex-start", padding: "10px 8px", cursor: "pointer", borderRadius: "10px", transition: "background-color 0.2s ease", color: COLORS.textPrimary, fontSize: "14px", lineHeight: "1.5", marginBottom: "4px" },
     
     // Footer
-    footer: { padding: "12px 16px", borderTop: "1px solid #F1F3F4", background: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center" },
+    footer: { padding: "12px 16px", borderTop: `1px solid ${COLORS.borderSubtle}`, background: COLORS.bgSurface, display: "flex", justifyContent: "space-between", alignItems: "center" },
     resetBtn: { background: "transparent", border: "none", color: "#d93025", fontSize: "12px", fontWeight: "600", cursor: "pointer", padding: "6px 12px", borderRadius: "20px", transition: "background 0.2s ease", display: "flex", alignItems: "center", gap: "4px" },
 
-    // Context Banner (HD Style)
+    // Context Banner
     contextBanner: {
-        padding: "20px 20px 16px 20px",
-        background: "#FFFFFF",
-        borderBottom: "1px solid #F1F3F4",
+        padding: "20px",
+        background: COLORS.bgSurface,
+        borderBottom: `1px solid ${COLORS.borderSubtle}`,
         display: "flex",
         flexDirection: "column",
         gap: "12px",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
         position: "relative",
         zIndex: "5"
     }
@@ -109,8 +208,9 @@ export function initCallScriptAssistant() {
   csaPopup.classList.add("cw-module-window");
 
   Object.assign(csaPopup.style, stylePopup, {
-    right: "auto", left: "50%", width: "420px", height: "700px",
+    right: "auto", left: "50%", width: "450px", height: "720px",
     display: "flex", flexDirection: "column", transform: "translateX(-50%) scale(0.05)",
+    borderRadius: "12px", overflow: "hidden", backgroundColor: COLORS.bgApp
   });
 
   const animRefs = { popup: csaPopup, googleLine: null };
@@ -125,11 +225,8 @@ export function initCallScriptAssistant() {
           const elName = csaPopup.querySelector('#cw-ctx-name');
           const elCid = csaPopup.querySelector('#cw-ctx-cid');
           const elEmail = csaPopup.querySelector('#cw-ctx-email');
-          // const elCaseId = csaPopup.querySelector('#cw-ctx-message');
-
           
           if(elName) elName.textContent = data.advertiserName || "Cliente Desconhecido";
-          
           
           if(elCid) {
               const cidTxt = data.cid || "---";
@@ -144,14 +241,19 @@ export function initCallScriptAssistant() {
               }
           }
 
+          updateMessageTextarea(data);
       });
   }
 
-  function copyMessage() {
-    getPageData().then(data => {
-      const today = new Date().toLocaleDateString('pt-BR');
+  function updateMessageTextarea(data) {
+      const textarea = csaPopup.querySelector('#cw-msg-textarea');
+      if (!textarea) return;
 
-      let message = `Olá. Bom dia!\n\n` +
+      // Só atualiza se o usuário não tiver alterado manualmente
+      if (textarea.dataset.userEdited === "true") return;
+
+      const today = new Date().toLocaleDateString('pt-BR');
+      const message = `Olá. Bom dia!\n\n` +
                     `Estou com um caso do seu cliente (${data.advertiserName || "Cliente"}) em andamento hoje (${today}). Fiz a primeira tentativa de contato agora há pouco, mas não tive sucesso.\n\n` +
                     `Farei uma nova tentativa em alguns minutos. Caso ele não atenda novamente, seguirei com o e-mail padrão de reagendamento/no-show e te mantenho no radar.\n\n` +
                     `Dados do caso para seu controle:\n\n` +
@@ -160,9 +262,7 @@ export function initCallScriptAssistant() {
                     `Case ID: ${data.caseId || "---"}\n` +
                     `E-mail: ${data.clientEmail || "---"}`;
 
-      navigator.clipboard.writeText(message);
-      showToast("Mensagem copiada para o AM!");
-    });
+      textarea.value = message;
   }
 
   function toggleVisibility() {
@@ -171,7 +271,7 @@ export function initCallScriptAssistant() {
     
     if (csaVisible) {
         updateContextData(); 
-        if (!monitorInterval) monitorInterval = setInterval(updateContextData, 2000); 
+        if (!monitorInterval) monitorInterval = setInterval(updateContextData, 5000);
     } else {
         if (monitorInterval) { clearInterval(monitorInterval); monitorInterval = null; }
     }
@@ -183,7 +283,7 @@ export function initCallScriptAssistant() {
   );
   csaPopup.appendChild(csaHeader);
 
-  // === BANNER DE CONTEXTO (ESTILO GOOGLE CARDS) ===
+  // === BANNER DE CONTEXTO ===
   const contextBanner = document.createElement("div");
   Object.assign(contextBanner.style, styles.contextBanner);
   
@@ -191,44 +291,56 @@ export function initCallScriptAssistant() {
       <div style="display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:10px;">
               <div class="csa-live-dot" title="Monitoramento Ativo"></div>
-              <span id="cw-ctx-name" style="font-family:'Google Sans'; font-size:16px; font-weight:500; color:#202124;">Carregando...</span>
+              <span id="cw-ctx-name" style="font-family:'Google Sans'; font-size:16px; font-weight:600; color:${COLORS.textPrimary};">Carregando...</span>
           </div>
-          <div style="font-size:10px; font-weight:700; color:#1A73E8; background:#E8F0FE; padding:2px 8px; border-radius:4px; text-transform:uppercase;">Live</div>
+          <div style="font-size:10px; font-weight:700; color:${COLORS.primary}; background:${COLORS.primaryBg}; padding:2px 8px; border-radius:4px; text-transform:uppercase;">Live</div>
       </div>
       
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="csa-data-pill" id="cw-pill-cid">
-              <div style="font-size:9px; font-weight:700; color:#5F6368; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.5px;">CID (Conta)</div>
-              <div id="cw-ctx-cid" class="csa-data-value" style="font-family:'Roboto Mono', monospace; font-size:13px; font-weight:500; color:#1A73E8;">---</div>
+              <div style="font-size:9px; font-weight:700; color:${COLORS.textSecondary}; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.5px;">CID (Conta)</div>
+              <div id="cw-ctx-cid" class="csa-data-value" style="font-family:'Roboto Mono', monospace; font-size:13px; font-weight:500; color:${COLORS.primary};">---</div>
               <div class="csa-copy-hint">Copiado!</div>
           </div>
           
           <div class="csa-data-pill" id="cw-pill-email">
-              <div style="font-size:9px; font-weight:700; color:#5F6368; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.5px;">Email de Contato</div>
-              <div id="cw-ctx-email" class="csa-data-value" style="font-family:'Roboto', sans-serif; font-size:13px; color:#3C4043; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">---</div>
+              <div style="font-size:9px; font-weight:700; color:${COLORS.textSecondary}; text-transform:uppercase; margin-bottom:2px; letter-spacing:0.5px;">Email de Contato</div>
+              <div id="cw-ctx-email" class="csa-data-value" style="font-family:'Roboto', sans-serif; font-size:13px; color:${COLORS.textPrimary}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">---</div>
               <div class="csa-copy-hint">Copiado!</div>
           </div>
       </div>
 
-      <button class="csa-data-pill" id="cw-pill-message" style="width: 100%; text-align: left; margin-top: 4px; background: #E8F0FE; border: 1px solid #1A73E8; padding: 10px 14px; display: flex; align-items: center; gap: 12px;">
-          <div style="background: #1A73E8; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding: 14px; background: #F8F9FA; border: 1px solid ${COLORS.borderSubtle}; border-radius: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="font-size:10px; font-weight:800; color:${COLORS.primary}; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                 Mensagem AM
+              </div>
+              <button id="cw-copy-msg-btn" style="background: ${COLORS.primary}; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Copiar</button>
           </div>
-          <div style="flex-grow: 1;">
-              <div style="font-size:10px; font-weight:800; color:#1A73E8; text-transform:uppercase; margin-bottom:1px; letter-spacing:0.5px;">Mensagem AM</div>
-              <div id="cw-ctx-message" class="csa-data-value" style="font-family:'Google Sans', sans-serif; font-size:13px; font-weight:500; color:#3C4043;">1° Aviso Attempted Contact</div>
-          </div>
-          <div class="csa-copy-hint">Copiado!</div>
-      </button>
+          <textarea id="cw-msg-textarea" class="csa-message-area" placeholder="Carregando mensagem..."></textarea>
+      </div>
   `;
 
-  const messageBtn = contextBanner.querySelector('#cw-pill-message');
+  const textarea = contextBanner.querySelector('#cw-msg-textarea');
+  textarea.addEventListener('input', () => {
+      textarea.dataset.userEdited = "true";
+  });
 
-  messageBtn.addEventListener('click', () => {
-    copyMessage()
-  })
-  
-  // Lógica de Cópia (Click to Copy)
+  const copyMsgBtn = contextBanner.querySelector('#cw-copy-msg-btn');
+  copyMsgBtn.onclick = () => {
+      navigator.clipboard.writeText(textarea.value);
+      SoundManager.playSuccess();
+      showToast("Mensagem copiada!");
+      copyMsgBtn.textContent = "Copiado!";
+      copyMsgBtn.style.background = COLORS.success;
+      setTimeout(() => {
+          copyMsgBtn.textContent = "Copiar";
+          copyMsgBtn.style.background = COLORS.primary;
+      }, 2000);
+  };
+
+  // Lógica de Cópia Pills
   const setupCopy = (id, textId) => {
       const pill = contextBanner.querySelector(id);
       const textEl = contextBanner.querySelector(textId);
@@ -245,7 +357,6 @@ export function initCallScriptAssistant() {
       };
   };
   
-  // Configura depois de inserir no DOM (no final da função)
   csaPopup.appendChild(contextBanner);
 
   // 2. PROGRESS BAR
@@ -275,35 +386,76 @@ export function initCallScriptAssistant() {
   resetBtn.onmouseenter = () => resetBtn.style.background = "#fce8e6";
   resetBtn.onmouseleave = () => resetBtn.style.background = "transparent";
   resetBtn.onclick = () => {
-    resetBtn.style.transform = "scale(0.9)";
-    setTimeout(() => resetBtn.style.transform = "scale(1)", 150);
-    for (let key in csaCompletedTasks) delete csaCompletedTasks[key];
-    csaBuildChecklist();
+    if (confirm("Deseja resetar todo o progresso do script?")) {
+        for (let key in csaCompletedTasks) delete csaCompletedTasks[key];
+        csaBuildChecklist();
+    }
   };
 
   footer.appendChild(credit);
   footer.appendChild(resetBtn);
   csaPopup.appendChild(footer);
 
-  // 5. CONTROLES (BAU/LT + IDIOMA)
-  const csaControlsDiv = document.createElement("div");
-  Object.assign(csaControlsDiv.style, { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", gap: "8px" });
+  // --- CONTROLES DE ABAS ---
+  function createTabs(options, defaultValue, onChange) {
+      const container = document.createElement("div");
+      container.className = "csa-tabs-container";
 
-  const csaTypeContainer = document.createElement("div");
-  Object.assign(csaTypeContainer.style, { display: "flex", borderRadius: "8px", border: "1px solid #dadce0", overflow: "hidden", background: "#fff" });
-  const csaTypeBAU = document.createElement("div"); csaTypeBAU.textContent = "BAU";
-  const csaTypeLT = document.createElement("div"); csaTypeLT.textContent = "LT";
-  Object.assign(csaTypeBAU.style, typeBtnStyle); Object.assign(csaTypeLT.style, typeBtnStyle);
-  csaTypeContainer.appendChild(csaTypeBAU); csaTypeContainer.appendChild(csaTypeLT);
+      const slider = document.createElement("div");
+      slider.className = "csa-tab-slider";
+      container.appendChild(slider);
 
-  const csaLangSelect = document.createElement("select");
-  Object.assign(csaLangSelect.style, styleSelect, { marginBottom: "0", width: "auto", minWidth: "90px", paddingTop: "6px", paddingBottom: "6px", paddingRight: "30px", height: "32px", backgroundPosition: "right 8px center" });
-  csaLangSelect.innerHTML = `<option value="PT">PT</option><option value="ES">ES</option><option value="EN">EN</option>`;
-  csaLangSelect.value = csaCurrentLang;
+      const tabEls = options.map((opt, idx) => {
+          const tab = document.createElement("div");
+          tab.className = "csa-tab";
+          if (opt.value === defaultValue) tab.classList.add("active");
+          tab.textContent = opt.label;
+          tab.onclick = () => {
+              tabEls.forEach(t => t.classList.remove("active"));
+              tab.classList.add("active");
+              updateSlider(idx);
+              onChange(opt.value);
+          };
+          container.appendChild(tab);
+          return tab;
+      });
 
-  csaControlsDiv.appendChild(csaTypeContainer);
-  csaControlsDiv.appendChild(csaLangSelect);
-  csaContent.appendChild(csaControlsDiv);
+      function updateSlider(index) {
+          const width = 100 / options.length;
+          slider.style.width = `calc(${width}% - 4px)`;
+          slider.style.left = `calc(${index * width}% + 2px)`;
+          slider.style.top = "2px";
+          slider.style.bottom = "2px";
+      }
+
+      // Delay para garantir que o DOM renderizou
+      setTimeout(() => {
+          const initialIndex = options.findIndex(o => o.value === defaultValue);
+          updateSlider(initialIndex);
+      }, 0);
+
+      return container;
+  }
+
+  const langTabs = createTabs([
+      { label: "Português", value: "PT" },
+      { label: "Español", value: "ES" },
+      { label: "English", value: "EN" }
+  ], csaCurrentLang, (val) => {
+      csaCurrentLang = val;
+      csaBuildChecklist();
+  });
+
+  const typeTabs = createTabs([
+      { label: "BAU (Standard)", value: "BAU" },
+      { label: "LT (Long Tail)", value: "LT" }
+  ], csaCurrentType, (val) => {
+      csaCurrentType = val;
+      csaBuildChecklist();
+  });
+
+  csaContent.appendChild(langTabs);
+  csaContent.appendChild(typeTabs);
 
   const csaChecklistArea = document.createElement("div");
   csaChecklistArea.id = "csa-checklist-area";
@@ -317,28 +469,24 @@ export function initCallScriptAssistant() {
 
   document.body.appendChild(csaPopup);
 
-  // --- ATIVAÇÃO DOS CLICKS DE CÓPIA ---
   setupCopy('#cw-pill-cid', '#cw-ctx-cid');
   setupCopy('#cw-pill-email', '#cw-ctx-email');
-
-  function formatScriptText(text) { return text; }
 
   function csaBuildChecklist() {
     csaChecklistArea.innerHTML = "";
     const combinedKey = `${csaCurrentLang} ${csaCurrentType}`;
-    const data = csaChecklistData[combinedKey];
+    const data = csaChecklistData[combinedKey] || csaChecklistData[`${csaCurrentLang} BAU`];
 
     if (!data) {
-      csaChecklistArea.innerHTML = `<div style="padding: 30px; text-align: center; color: #bdc1c6; display: flex; flex-direction: column; align-items: center; gap: 10px;"><div style="font-size: 24px;">☕</div><div>Script não configurado.</div></div>`;
-      progressFill.style.width = "0%";
+      csaChecklistArea.innerHTML = `<div style="padding: 30px; text-align: center; color: ${COLORS.textSecondary}; display: flex; flex-direction: column; align-items: center; gap: 10px;"><div style="font-size: 24px;">🔍</div><div>Script não disponível para esta seleção.</div></div>`;
+      updateProgressUI(0, 0);
       return;
     }
 
-    const activeColor = data.color || "#1a73e8";
     let totalItems = 0; let completedItems = 0;
     ["inicio", "meio", "fim"].forEach(k => { if (data[k]) totalItems += data[k].length; });
 
-    ["inicio", "meio", "fim"].forEach((groupKey, groupIndex) => {
+    ["inicio", "meio", "fim"].forEach((groupKey) => {
       const items = data[groupKey];
       if (!items || items.length === 0) return;
 
@@ -350,22 +498,16 @@ export function initCallScriptAssistant() {
 
       let titleText = "";
       if (groupKey === "inicio") {
-          if (csaCurrentLang.includes("ES")) titleText = "Apertura";
-          else if (csaCurrentLang.includes("EN")) titleText = "Opening";
-          else titleText = "Abertura";
+          titleText = csaCurrentLang === "ES" ? "Apertura" : (csaCurrentLang === "EN" ? "Opening" : "Abertura");
       } else if (groupKey === "meio") {
-          if (csaCurrentLang.includes("ES")) titleText = "Implementación";
-          else if (csaCurrentLang.includes("EN")) titleText = "Implementation";
-          else titleText = "Implementação (Tag Support)";
+          titleText = csaCurrentLang === "ES" ? "Implementación" : (csaCurrentLang === "EN" ? "Implementation" : "Implementação");
       } else if (groupKey === "fim") {
-          if (csaCurrentLang.includes("ES")) titleText = "Cierre";
-          else if (csaCurrentLang.includes("EN")) titleText = "Closing";
-          else titleText = "Fechamento";
+          titleText = csaCurrentLang === "ES" ? "Cierre" : (csaCurrentLang === "EN" ? "Closing" : "Fechamento");
       }
 
       cardTitle.textContent = titleText;
       const counter = document.createElement("span");
-      counter.style.fontSize = "11px"; counter.style.opacity = "0.7"; counter.style.fontWeight = "500"; counter.style.background = "#f1f3f4"; counter.style.padding = "2px 8px"; counter.style.borderRadius = "10px";
+      Object.assign(counter.style, { fontSize: "10px", background: "#f1f3f4", padding: "2px 8px", borderRadius: "10px", color: COLORS.textSecondary });
       cardTitle.appendChild(counter);
       card.appendChild(cardTitle);
 
@@ -378,22 +520,18 @@ export function initCallScriptAssistant() {
 
         const row = document.createElement("div");
         Object.assign(row.style, styles.itemRow);
+        if (isDone) row.classList.add("csa-item-completed");
 
         const chk = document.createElement("div");
-        Object.assign(chk.style, styles.checkbox);
+        chk.className = "csa-checkbox";
 
         const textSpan = document.createElement("span");
-        textSpan.innerHTML = formatScriptText(itemText);
-        textSpan.style.flex = "1";
+        textSpan.className = "csa-item-text";
+        textSpan.textContent = itemText;
 
         if (isDone) {
-          Object.assign(row.style, styles.itemCompleted);
-          chk.style.background = activeColor; chk.style.borderColor = activeColor; chk.style.transform = "scale(1)";
-          chk.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-        } else {
-          row.style.textDecoration = "none"; row.style.opacity = "1";
-          chk.style.background = "transparent"; chk.style.borderColor = "#dadce0"; chk.style.transform = "scale(1)";
-          chk.innerHTML = "";
+          chk.style.background = COLORS.primary; chk.style.borderColor = COLORS.primary;
+          chk.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         }
 
         row.onclick = () => {
@@ -402,18 +540,18 @@ export function initCallScriptAssistant() {
           SoundManager.playClick();
 
           if (newState) {
-            chk.style.transform = "scale(1.2)"; setTimeout(() => chk.style.transform = "scale(1)", 150);
-            Object.assign(row.style, styles.itemCompleted);
-            chk.style.background = activeColor; chk.style.borderColor = activeColor;
-            chk.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            row.classList.add("csa-item-completed");
+            chk.style.background = COLORS.primary; chk.style.borderColor = COLORS.primary;
+            chk.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            chk.style.transform = "scale(1.1)"; setTimeout(() => chk.style.transform = "scale(1)", 150);
           } else {
-            row.style.textDecoration = "none"; row.style.opacity = "1";
+            row.classList.remove("csa-item-completed");
             chk.style.background = "transparent"; chk.style.borderColor = "#dadce0"; chk.innerHTML = "";
           }
           updateProgressAndCounters(combinedKey, data);
         };
 
-        row.onmouseenter = () => { if (!csaCompletedTasks[key]) { row.style.background = "#f1f3f4"; chk.style.borderColor = activeColor; } };
+        row.onmouseenter = () => { if (!csaCompletedTasks[key]) { row.style.background = "rgba(0, 122, 255, 0.05)"; chk.style.borderColor = COLORS.primary; } };
         row.onmouseleave = () => { if (!csaCompletedTasks[key]) { row.style.background = "transparent"; chk.style.borderColor = "#dadce0"; } };
 
         row.appendChild(chk); row.appendChild(textSpan);
@@ -421,8 +559,8 @@ export function initCallScriptAssistant() {
       });
 
       if (groupDoneCount === items.length && items.length > 0) {
-        counter.style.color = "#1e8e3e"; counter.style.background = "#e6f4ea";
-        card.style.boxShadow = "inset 4px 0 0 #1e8e3e, 0 1px 3px rgba(0,0,0,0.05)";
+        counter.style.color = COLORS.success; counter.style.background = "rgba(52, 168, 83, 0.1)";
+        card.style.borderLeft = `4px solid ${COLORS.success}`;
       }
       counter.textContent = `${groupDoneCount}/${items.length}`;
       csaChecklistArea.appendChild(card);
@@ -430,6 +568,7 @@ export function initCallScriptAssistant() {
     updateProgressUI(totalItems, completedItems);
   }
 
+  let renderTimeout = null;
   function updateProgressAndCounters(combinedKey, data) {
     let total = 0; let completed = 0;
     ["inicio", "meio", "fim"].forEach(groupKey => {
@@ -438,28 +577,22 @@ export function initCallScriptAssistant() {
       items.forEach((_, idx) => { if (csaCompletedTasks[`${combinedKey}-${groupKey}-${idx}`]) completed++; });
     });
     updateProgressUI(total, completed);
-    setTimeout(() => csaBuildChecklist(), 200);
+    // Debounce re-render to avoid flickering
+    if (renderTimeout) clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(() => csaBuildChecklist(), 400);
   }
 
   function updateProgressUI(total, completed) {
     const pct = total === 0 ? 0 : (completed / total) * 100;
     progressFill.style.width = `${pct}%`;
-    progressFill.style.background = pct === 100 ? "#34A853" : "linear-gradient(90deg, #4285F4, #34A853)";
+    if (pct === 100) {
+        progressFill.style.background = COLORS.success;
+        SoundManager.playSuccess();
+    } else {
+        progressFill.style.background = `linear-gradient(90deg, ${COLORS.primary}, ${COLORS.success})`;
+    }
   }
 
-  function setActiveType(type) {
-    csaCurrentType = type;
-    const newActiveStyle = getRandomGoogleStyle();
-    Object.assign(csaTypeBAU.style, typeBtnStyle);
-    Object.assign(csaTypeLT.style, typeBtnStyle);
-    Object.assign(type === "BAU" ? csaTypeBAU.style : csaTypeLT.style, newActiveStyle);
-    csaBuildChecklist();
-  }
-
-  csaTypeBAU.onclick = () => setActiveType("BAU");
-  csaTypeLT.onclick = () => setActiveType("LT");
-  csaLangSelect.addEventListener("change", (e) => { csaCurrentLang = e.target.value; csaBuildChecklist(); });
-
-  setActiveType(csaCurrentType);
+  csaBuildChecklist();
   return toggleVisibility;
 }
