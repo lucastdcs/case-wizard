@@ -18,23 +18,23 @@ import { SUBSTATUS_SHORTCODES } from '../notes/data/notes-data.js';
 import { SnippetService } from "../personal-library/snippet-service.js";
 
 export function initEmailAssistant() {
-    const CURRENT_VERSION = "v5.0.0";
+    const CURRENT_VERSION = "v6.0.0";
     let visible = false;
     let templates = [];
     let selectedTemplate = null;
     let searchTerm = "";
     let activeCategory = "Todos";
 
-    // --- ESTILOS ---
+    // --- ESTILOS (Apple Inspired) ---
     const COLORS = {
-        bgApp: "#F8F9FA",
+        bgApp: "#F5F5F7",
         bgSurface: "#FFFFFF",
-        borderSubtle: "rgba(0, 0, 0, 0.08)",
-        primary: "#1A73E8",
-        primaryBg: "#E8F0FE",
-        textPrimary: "#202124",
-        textSecondary: "#5F6368",
-        shadowCard: "0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)"
+        borderSubtle: "rgba(0, 0, 0, 0.07)",
+        primary: "#007AFF",
+        primaryBg: "rgba(0, 122, 255, 0.1)",
+        textPrimary: "#1D1D1F",
+        textSecondary: "#6E6E73",
+        shadowCard: "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)"
     };
 
     const popup = document.createElement("div");
@@ -44,7 +44,10 @@ export function initEmailAssistant() {
         width: "850px",
         height: "650px",
         display: "none",
-        flexDirection: "column"
+        flexDirection: "column",
+        fontFamily: `'-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif`,
+        borderRadius: '12px',
+        overflow: 'hidden'
     });
 
     const header = createStandardHeader(
@@ -64,10 +67,11 @@ export function initEmailAssistant() {
         backgroundColor: COLORS.bgApp
     });
 
-    // --- PAINEL ESQUERDO (LISTA) ---
+    // --- PAINEL ESQUERDO (LISTA DE TEMPLATES) ---
     const leftPanel = document.createElement("div");
     Object.assign(leftPanel.style, {
-        width: "300px",
+        width: "320px",
+        backgroundColor: '#EFEFF0',
         borderRight: `1px solid ${COLORS.borderSubtle}`,
         display: "flex",
         flexDirection: "column",
@@ -77,42 +81,89 @@ export function initEmailAssistant() {
     const searchContainer = document.createElement("div");
     Object.assign(searchContainer.style, {
         padding: "16px",
-        borderBottom: `1px solid ${COLORS.borderSubtle}`
+        borderBottom: `1px solid ${COLORS.borderSubtle}`,
+        position: 'relative'
     });
 
     const searchInput = document.createElement("input");
     searchInput.placeholder = "Buscar templates...";
     Object.assign(searchInput.style, {
         width: "100%",
-        padding: "10px 12px 10px 36px",
-        borderRadius: "8px",
-        border: `1px solid ${COLORS.borderSubtle}`,
-        fontSize: "14px",
+        padding: "10px 14px 10px 36px",
+        borderRadius: "10px",
+        border: '1.5px solid transparent',
+        backgroundColor: '#E3E3E8',
+        fontSize: "15px",
         outline: "none",
         boxSizing: "border-box",
-        backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%235F6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>')`,
+        color: COLORS.textPrimary,
+        backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%238A8A8E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>')`,
         backgroundRepeat: "no-repeat",
-        backgroundPosition: "10px center"
+        backgroundPosition: "12px center",
+        transition: 'all 0.2s ease-in-out'
     });
+    searchInput.onfocus = () => {
+        searchInput.style.backgroundColor = '#FFFFFF';
+        searchInput.style.borderColor = COLORS.primary;
+        searchInput.style.boxShadow = '0 0 0 4px rgba(0, 122, 255, 0.1)';
+    };
+    searchInput.onblur = () => {
+        searchInput.style.backgroundColor = '#E3E3E8';
+        searchInput.style.borderColor = 'transparent';
+        searchInput.style.boxShadow = 'none';
+    };
+
 
     const templateList = document.createElement("div");
+    templateList.id = "email-template-list";
     Object.assign(templateList.style, {
         flex: "1",
         overflowY: "auto",
-        padding: "8px 0"
+        padding: "8px",
+        scrollBehavior: "smooth"
     });
 
+    const clearSearch = document.createElement("div");
+    clearSearch.innerHTML = "✕";
+    Object.assign(clearSearch.style, {
+        position: 'absolute',
+        right: '26px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        fontSize: '10px',
+        color: '#fff',
+        cursor: 'pointer',
+        display: 'none',
+        backgroundColor: '#C7C7CC',
+        width: '16px',
+        height: '16px',
+        borderRadius: '50%',
+        textAlign: 'center',
+        lineHeight: '16px',
+        fontWeight: 'bold'
+    });
+    clearSearch.onclick = () => {
+        searchInput.value = "";
+        searchTerm = "";
+        clearSearch.style.display = "none";
+        renderTemplateList();
+        searchInput.focus();
+    };
+
     searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(clearSearch);
     leftPanel.appendChild(searchContainer);
     leftPanel.appendChild(templateList);
 
-    // --- PAINEL DIREITO (TRABALHO) ---
+    // --- PAINEL DIREITO (PREVIEW) ---
     const rightPanel = document.createElement("div");
     Object.assign(rightPanel.style, {
         flex: "1",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden"
+        overflow: "hidden",
+        backgroundColor: COLORS.bgApp,
+        transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
     });
 
     // Seção de Campos (Topo)
@@ -120,9 +171,10 @@ export function initEmailAssistant() {
     Object.assign(fieldsSection.style, {
         padding: "20px",
         borderBottom: `1px solid ${COLORS.borderSubtle}`,
-        backgroundColor: "#fff",
+        backgroundColor: COLORS.bgSurface,
         maxHeight: "250px",
-        overflowY: "auto"
+        overflowY: "auto",
+        display: "none"
     });
 
     // Seção de Preview (Embaixo)
@@ -148,7 +200,7 @@ export function initEmailAssistant() {
     previewTitle.textContent = "Preview do E-mail";
     Object.assign(previewTitle.style, {
         fontSize: "12px",
-        fontWeight: "700",
+        fontWeight: "600",
         color: COLORS.textSecondary,
         textTransform: "uppercase",
         letterSpacing: "0.5px"
@@ -160,45 +212,51 @@ export function initEmailAssistant() {
         gap: "8px"
     });
 
-    const btnCopy = document.createElement("button");
-    btnCopy.textContent = "Copiar HTML";
-    Object.assign(btnCopy.style, {
-        padding: "6px 12px",
-        borderRadius: "6px",
-        border: `1px solid ${COLORS.primary}`,
-        background: "transparent",
-        color: COLORS.primary,
-        fontSize: "12px",
-        fontWeight: "600",
-        cursor: "pointer"
-    });
+    const createButton = (text, primary = false) => {
+        const btn = document.createElement("button");
+        btn.textContent = text;
+        Object.assign(btn.style, {
+            padding: "8px 14px",
+            borderRadius: "10px",
+            border: primary ? 'none' : `1.5px solid ${COLORS.primary}`,
+            background: primary ? COLORS.primary : "transparent",
+            color: primary ? "#fff" : COLORS.primary,
+            fontSize: "13px",
+            fontWeight: "600",
+            cursor: "pointer",
+            transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
+            boxShadow: primary ? '0 4px 12px rgba(0, 122, 255, 0.3)' : 'none'
+        });
+        btn.onmouseenter = () => {
+            if (primary) {
+                btn.style.backgroundColor = '#0062CC';
+                btn.style.transform = 'translateY(-1px)';
+                btn.style.boxShadow = '0 6px 16px rgba(0, 122, 255, 0.4)';
+            } else {
+                btn.style.backgroundColor = 'rgba(0, 122, 255, 0.05)';
+            }
+        };
+        btn.onmouseleave = () => {
+            if (primary) {
+                btn.style.backgroundColor = COLORS.primary;
+                btn.style.transform = 'translateY(0)';
+                btn.style.boxShadow = '0 4px 12px rgba(0, 122, 255, 0.3)';
+            } else {
+                btn.style.backgroundColor = 'transparent';
+                btn.style.transform = 'translateY(0)';
+            }
+        };
+        btn.onmousedown = () => btn.style.transform = 'scale(0.94)';
+        btn.onmouseup = () => btn.style.transform = 'scale(1)';
+        return btn;
+    }
 
-    const btnFill = document.createElement("button");
-    btnFill.textContent = "Preencher no CRM";
-    Object.assign(btnFill.style, {
-        padding: "6px 12px",
-        borderRadius: "6px",
-        border: "none",
-        background: COLORS.primary,
-        color: "#fff",
-        fontSize: "12px",
-        fontWeight: "600",
-        cursor: "pointer"
-    });
-
-    const btnSmartCR = document.createElement("button");
-    btnSmartCR.textContent = "Smart CR";
-    Object.assign(btnSmartCR.style, {
-        padding: "6px 12px",
-        borderRadius: "6px",
-        border: `1px solid #EA8600`,
-        background: "transparent",
-        color: "#EA8600",
-        fontSize: "12px",
-        fontWeight: "600",
-        cursor: "pointer",
-        display: "none" // Só mostra se for Smart CR
-    });
+    const btnCopy = createButton("Copiar HTML");
+    const btnFill = createButton("Preencher no CRM", true);
+    const btnSmartCR = createButton("Smart CR");
+    btnSmartCR.style.borderColor = '#E67E22';
+    btnSmartCR.style.color = '#E67E22';
+    btnSmartCR.style.display = 'none';
 
     previewActions.appendChild(btnSmartCR);
     previewActions.appendChild(btnCopy);
@@ -210,16 +268,16 @@ export function initEmailAssistant() {
     previewContent.contentEditable = "true";
     Object.assign(previewContent.style, {
         flex: "1",
-        backgroundColor: "#fff",
+        backgroundColor: COLORS.bgSurface,
         border: `1px solid ${COLORS.borderSubtle}`,
         borderRadius: "8px",
         padding: "20px",
-        fontSize: "14px",
+        fontSize: "15px",
         lineHeight: "1.6",
         color: COLORS.textPrimary,
         overflowY: "auto",
         outline: "none",
-        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)"
+        boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
     });
 
     previewSection.appendChild(previewHeader);
@@ -234,7 +292,6 @@ export function initEmailAssistant() {
     popup.appendChild(header);
     popup.appendChild(mainContent);
 
-    // Adiciona o Handle de redimensionamento
     const resizeHandle = document.createElement("div");
     Object.assign(resizeHandle.style, styleResizeHandle);
     popup.appendChild(resizeHandle);
@@ -269,117 +326,170 @@ export function initEmailAssistant() {
             t.category.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
-        if (filteredTemplates.length === 0) {
-            templateList.innerHTML = '<div style="padding: 20px; text-align: center; color: #5f6368;">Nenhum template encontrado</div>';
-            return;
-        }
-
-        // Adicionar Smart CRs à lista
         const smartCRs = Object.entries(SUBSTATUS_SHORTCODES)
             .filter(([key, code]) => code && (key.toLowerCase().includes(searchTerm.toLowerCase()) || code.toLowerCase().includes(searchTerm.toLowerCase())))
-            .map(([key, code]) => ({
-                id: key,
-                name: key.replace(/_/g, ' '),
-                category: "⚡ Smart CRs",
-                code: code,
-                isSmartCR: true
-            }));
+            .map(([key, code]) => ({ id: key, name: key.replace(/_/g, ' '), category: "⚡ Smart CRs", code: code, isSmartCR: true }));
 
-        // Adicionar Snippets da Biblioteca Pessoal
         const snippets = SnippetService.getSnippets('email')
             .filter(s => s.title.toLowerCase().includes(searchTerm.toLowerCase()) || (s.subject && s.subject.toLowerCase().includes(searchTerm.toLowerCase())))
             .map(s => {
-                // Tenta encontrar placeholders no formato [TEXTO]
                 const placeholders = [];
                 const matches = s.content.match(/\[([^\]]+)\]/g);
                 if (matches) {
                     [...new Set(matches)].forEach(m => {
-                        placeholders.push({
-                            key: m,
-                            label: m.replace('[', '').replace(']', ''),
-                            type: m.toLowerCase().includes('data') ? 'date' : 'text',
-                            auto: m.toLowerCase().includes('nome') && m.toLowerCase().includes('seu') ? 'agentName' : null
-                        });
+                        placeholders.push({ key: m, label: m.replace('[', '').replace(']', ''), type: m.toLowerCase().includes('data') ? 'date' : 'text', auto: m.toLowerCase().includes('nome') && m.toLowerCase().includes('seu') ? 'agentName' : null });
                     });
                 }
-
-                return {
-                    id: s.id || `snippet-${Math.random()}`,
-                    name: s.title,
-                    category: "👤 Pessoal",
-                    subject: s.subject || "Sem Assunto",
-                    template: s.content,
-                    placeholders: placeholders
-                };
+                return { id: s.id || `snippet-${Math.random()}`, name: s.title, category: "👤 Pessoal", subject: s.subject || "Sem Assunto", template: s.content, placeholders: placeholders };
             });
 
         const allItems = [...filteredTemplates, ...smartCRs, ...snippets];
 
-        // Agrupar por categoria
-        const categories = [...new Set(allItems.map(t => t.category))];
+        if (allItems.length === 0) {
+            templateList.innerHTML = `
+                <div style="padding: 40px 20px; text-align: center; color: ${COLORS.textSecondary}; opacity: 0.6;">
+                    <div style="font-size: 32px; margin-bottom: 12px;">🔍</div>
+                    <div style="font-size: 14px; font-weight: 500;">Nenhum resultado para "${searchTerm}"</div>
+                </div>`;
+            return;
+        }
+
+        const categories = [...new Set(allItems.map(t => t.category))].sort((a,b) => a.localeCompare(b));
 
         categories.forEach(cat => {
             const catHeader = document.createElement("div");
             catHeader.textContent = cat;
             Object.assign(catHeader.style, {
-                padding: "12px 16px 4px 16px",
+                padding: "16px 16px 8px 24px",
                 fontSize: "11px",
                 fontWeight: "700",
                 color: COLORS.textSecondary,
                 textTransform: "uppercase",
-                letterSpacing: "1px"
+                letterSpacing: "0.8px",
+                position: "sticky",
+                top: "-8px",
+                backgroundColor: 'rgba(239, 239, 240, 0.85)',
+                zIndex: "10",
+                backdropFilter: "blur(20px)",
+                margin: "0 -8px",
+                borderBottom: `0.5px solid ${COLORS.borderSubtle}`
             });
             templateList.appendChild(catHeader);
 
             allItems.filter(t => t.category === cat).forEach(template => {
                 const item = document.createElement("div");
-                item.textContent = template.name;
+
                 Object.assign(item.style, {
                     padding: "10px 16px",
                     fontSize: "14px",
                     cursor: "pointer",
-                    transition: "background 0.2s"
+                    transition: "all 0.2s cubic-bezier(0.25, 1, 0.5, 1)",
+                    borderRadius: "8px",
+                    color: COLORS.textPrimary,
+                    margin: '2px 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
                 });
 
+                const icon = document.createElement("span");
+                icon.innerHTML = template.isSmartCR ? '⚡' : (template.category === '👤 Pessoal' ? '👤' : '📄');
+                icon.style.fontSize = '12px';
+                icon.style.opacity = '0.7';
+                icon.style.flexShrink = '0';
+                item.appendChild(icon);
+
+                const text = document.createElement("span");
+                text.textContent = template.name;
+                text.style.overflow = "hidden";
+                text.style.textOverflow = "ellipsis";
+                text.style.whiteSpace = "nowrap";
+                text.style.flex = "1";
+                item.appendChild(text);
+
                 if (selectedTemplate && selectedTemplate.id === template.id) {
-                    item.style.backgroundColor = COLORS.primaryBg;
-                    item.style.color = COLORS.primary;
+                    item.style.backgroundColor = COLORS.primary;
+                    item.style.color = "#fff";
                     item.style.fontWeight = "600";
+                    item.style.boxShadow = '0 4px 12px rgba(0, 122, 255, 0.25)';
+                    icon.style.opacity = '1';
+                } else {
+                     item.style.backgroundColor = "transparent";
                 }
 
-                item.onmouseenter = () => { if (!selectedTemplate || selectedTemplate.id !== template.id) item.style.backgroundColor = "#f1f3f4"; };
-                item.onmouseleave = () => { if (!selectedTemplate || selectedTemplate.id !== template.id) item.style.backgroundColor = "transparent"; };
-                item.onclick = () => selectTemplate(template);
+                item.onmouseenter = () => {
+                    if (!selectedTemplate || selectedTemplate.id !== template.id) {
+                        item.style.backgroundColor = "rgba(0, 0, 0, 0.04)";
+                        item.style.transform = 'translateX(4px)';
+                    }
+                };
+                item.onmouseleave = () => {
+                    if (!selectedTemplate || selectedTemplate.id !== template.id) {
+                        item.style.backgroundColor = "transparent";
+                        item.style.transform = 'translateX(0)';
+                    }
+                };
+
+                item.onmousedown = () => {
+                    item.style.transform = 'scale(0.97) translateX(4px)';
+                };
+                item.onmouseup = () => {
+                    item.style.transform = 'translateX(4px)';
+                };
+                item.onclick = () => {
+                    selectTemplate(template);
+                };
 
                 templateList.appendChild(item);
             });
         });
     }
 
+    let selectionTimeout = null;
     async function selectTemplate(template) {
+        if (selectedTemplate?.id === template.id) return;
         selectedTemplate = template;
 
-        if (template.isSmartCR) {
-            btnSmartCR.style.display = "block";
-            btnFill.style.display = "none";
-        } else {
-            btnSmartCR.style.display = "none";
-            btnFill.style.display = "block";
-        }
+        if (selectionTimeout) clearTimeout(selectionTimeout);
 
-        renderTemplateList();
-        renderFields();
-        updatePreview();
+        rightPanel.style.opacity = "0";
+        rightPanel.style.transform = "translateY(5px)";
+
+        selectionTimeout = setTimeout(() => {
+            btnSmartCR.style.display = template.isSmartCR ? "block" : "none";
+            btnFill.style.display = template.isSmartCR ? "none" : "block";
+            btnCopy.style.display = template.isSmartCR ? "none" : "block";
+
+            renderTemplateList();
+            renderFields();
+            updatePreview();
+
+            rightPanel.style.opacity = "1";
+            rightPanel.style.transform = "translateY(0)";
+            selectionTimeout = null;
+        }, 150);
     }
 
     function renderFields() {
         fieldsSection.innerHTML = "";
+
         if (!selectedTemplate || selectedTemplate.isSmartCR) {
             if (selectedTemplate?.isSmartCR) {
-                fieldsSection.innerHTML = `<div style="padding: 10px; font-size: 13px; color: #5f6368; background: #FEF7E0; border-radius: 8px;">Este é um Smart CR. Clique em "Smart CR" para aplicar o atalho no CRM.</div>`;
+                fieldsSection.style.display = "block";
+                fieldsSection.innerHTML = `<div style="padding: 12px; font-size: 13px; color: #856404; background: #FFF3CD; border: 1px solid #FFEEBA; border-radius: 8px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">💡</span>
+                    <span>Este é um <b>Smart CR</b>. Clique no botão laranja acima para aplicar o atalho diretamente no CRM.</span>
+                </div>`;
+            } else {
+                fieldsSection.style.display = "none";
             }
             return;
         }
+
+        const hasPlaceholders = selectedTemplate.placeholders && selectedTemplate.placeholders.length > 0;
+        fieldsSection.style.display = hasPlaceholders ? "block" : "none";
+
+        if (!hasPlaceholders) return;
 
         const grid = document.createElement("div");
         Object.assign(grid.style, {
@@ -388,9 +498,8 @@ export function initEmailAssistant() {
             gap: "16px"
         });
 
-        selectedTemplate.placeholders.forEach(ph => {
+        (selectedTemplate.placeholders || []).forEach(ph => {
             const container = document.createElement("div");
-
             const label = document.createElement("label");
             label.textContent = ph.label;
             Object.assign(label.style, {
@@ -398,41 +507,56 @@ export function initEmailAssistant() {
                 fontSize: "11px",
                 fontWeight: "700",
                 color: COLORS.textSecondary,
-                marginBottom: "4px",
-                textTransform: "uppercase"
+                marginBottom: "8px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px"
             });
-
             const input = document.createElement("input");
             input.type = ph.type || "text";
             input.dataset.key = ph.key;
             Object.assign(input.style, {
                 width: "100%",
-                padding: "8px 10px",
-                borderRadius: "6px",
-                border: `1px solid ${COLORS.borderSubtle}`,
-                fontSize: "13px",
-                boxSizing: "border-box"
+                padding: "10px 12px",
+                borderRadius: "8px",
+                border: `1.5px solid ${COLORS.borderSubtle}`,
+                backgroundColor: '#FBFBFD',
+                fontSize: "14px",
+                boxSizing: "border-box",
+                transition: 'all 0.2s ease',
+                outline: 'none'
             });
 
-            // Preenchimento Automático
-            if (ph.auto === "agentName") {
-                const fullName = getAgentName();
-                input.value = fullName.split(' ')[0];
-            }
+            input.onfocus = () => {
+                input.style.borderColor = COLORS.primary;
+                input.style.backgroundColor = '#FFFFFF';
+                input.style.boxShadow = '0 0 0 4px rgba(0, 122, 255, 0.1)';
+            };
+            input.onblur = () => {
+                input.style.borderColor = COLORS.borderSubtle;
+                input.style.backgroundColor = '#FBFBFD';
+                input.style.boxShadow = 'none';
+            };
 
+            if (ph.auto === "agentName") { input.value = getAgentName().split(' ')[0]; }
             input.addEventListener("input", updatePreview);
-
             container.appendChild(label);
             container.appendChild(input);
             grid.appendChild(container);
         });
-
         fieldsSection.appendChild(grid);
     }
 
     function updatePreview() {
         if (!selectedTemplate) {
-            previewContent.innerHTML = '<div style="height: 100%; display: flex; align-items: center; justify-content: center; color: #9aa0a6;">Selecione um template para ver o preview</div>';
+            previewContent.innerHTML = `
+                <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: ${COLORS.textSecondary}; opacity: 0.6;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    <div style="font-size: 16px; font-weight: 500;">Pronto para escrever?</div>
+                    <div style="font-size: 13px; margin-top: 4px;">Selecione um template à esquerda para começar.</div>
+                </div>`;
             return;
         }
 
@@ -443,28 +567,20 @@ export function initEmailAssistant() {
 
         let html = selectedTemplate.template;
         const inputs = fieldsSection.querySelectorAll("input");
-
-        inputs.forEach(input => {
+        (inputs || []).forEach(input => {
             const key = input.dataset.key;
             let val = input.value;
-
-            if (input.type === 'date' && val) {
-                const [year, month, day] = val.split('-');
-                val = `${month}/${day}/${year}`;
-            }
-
+            if (input.type === 'date' && val) { const [year, month, day] = val.split('-'); val = `${month}/${day}/${year}`; }
             val = val || `<span style="color: #ea4335; background: #fce8e6; padding: 0 4px; border-radius: 4px;">${key}</span>`;
-
-            // Escapar regex e substituir
             const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             html = html.replace(new RegExp(escapedKey, 'g'), val);
         });
-
         previewContent.innerHTML = html;
     }
 
     searchInput.addEventListener("input", (e) => {
         searchTerm = e.target.value;
+        clearSearch.style.display = searchTerm ? "block" : "none";
         renderTemplateList();
     });
 
@@ -472,35 +588,18 @@ export function initEmailAssistant() {
         const html = previewContent.innerHTML;
         const blob = new Blob([html], { type: 'text/html' });
         const text = previewContent.innerText;
-
-        const data = [new ClipboardItem({
-            'text/html': blob,
-            'text/plain': new Blob([text], { type: 'text/plain' })
-        })];
-
-        navigator.clipboard.write(data).then(() => {
-            showToast("E-mail copiado com sucesso!");
-        }).catch(err => {
-            console.error("Erro ao copiar:", err);
-            showToast("Erro ao copiar e-mail", { error: true });
-        });
+        const data = [new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([text], { type: 'text/plain' }) })];
+        navigator.clipboard.write(data).then(() => showToast("E-mail copiado com sucesso!"), () => showToast("Erro ao copiar e-mail", { error: true }));
     };
 
     btnFill.onclick = async () => {
         if (!selectedTemplate) return;
-
         const finishLoading = triggerProcessingAnimation();
-
-        const filledTemplate = {
-            ...selectedTemplate,
-            body: previewContent.innerHTML
-        };
-
+        const filledTemplate = { ...selectedTemplate, body: previewContent.innerHTML };
         try {
             await runQuickEmail(filledTemplate);
             toggleVisibility();
         } catch (error) {
-            console.error("Fill error:", error);
             showToast("Erro ao preencher e-mail", { error: true });
         } finally {
             finishLoading();
@@ -509,14 +608,11 @@ export function initEmailAssistant() {
 
     btnSmartCR.onclick = async () => {
         if (!selectedTemplate || !selectedTemplate.isSmartCR) return;
-
         const finishLoading = triggerProcessingAnimation();
-
         try {
             await runEmailAutomation(selectedTemplate.code);
             toggleVisibility();
         } catch (error) {
-            console.error("Smart CR error:", error);
             showToast("Erro ao aplicar Smart CR", { error: true });
         } finally {
             finishLoading();
