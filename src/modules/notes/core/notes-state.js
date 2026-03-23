@@ -12,11 +12,31 @@ export class NotesState {
         const savedFavorites = typeof localStorage !== 'undefined' ? localStorage.getItem('cw-notes-favorites') : null;
         this.favorites = new Set(JSON.parse(savedFavorites || '[]'));
         this.screenshotMode = "implementation";
+        this.notify();
     }
-    setCaseType(type) { this.currentCaseType = type; this.isDirty = true; this.notify(); }
-    setLanguage(lang) { this.currentLang = lang; this.notify(); }
-    setPortugalCase(val) { this.isPortugalCase = val; this.isDirty = true; this.notify(); }
-    setConsent(val) { this.consent = val; this.isDirty = true; this.notify(); }
+    setCaseType(type) {
+        if (this.currentCaseType === type) return;
+        this.currentCaseType = type;
+        this.isDirty = true;
+        this.notify();
+    }
+    setLanguage(lang) {
+        if (this.currentLang === lang) return;
+        this.currentLang = lang;
+        this.notify();
+    }
+    setPortugalCase(val) {
+        if (this.isPortugalCase === val) return;
+        this.isPortugalCase = val;
+        this.isDirty = true;
+        this.notify();
+    }
+    setConsent(val) {
+        if (this.consent === val) return;
+        this.consent = val;
+        this.isDirty = true;
+        this.notify();
+    }
     setTagSupportUsed(val) {
         this.tagSupportUsed = val;
         if (!val) this.forcedScreenshots.clear();
@@ -62,8 +82,18 @@ export class NotesState {
         this.isDirty = true;
         this.notify();
     }
-    setStatus(status) { this.currentStatus = status; this.isDirty = true; this.notify(); }
-    setSubStatus(subStatus) { this.currentSubStatus = subStatus; this.isDirty = true; this.notify(); }
+    setStatus(status) {
+        if (this.currentStatus === status) return;
+        this.currentStatus = status;
+        this.isDirty = true;
+        this.notify();
+    }
+    setSubStatus(subStatus) {
+        if (this.currentSubStatus === subStatus) return;
+        this.currentSubStatus = subStatus;
+        this.isDirty = true;
+        this.notify();
+    }
     setScreenshotMode(mode) { this.screenshotMode = mode; this.notify(); }
     setActiveTasks(tasks) { this.activeTasks = tasks; this.isDirty = true; this.notify(); }
     toggleFavorite(id) {
@@ -74,7 +104,12 @@ export class NotesState {
         }
         this.notify();
     }
-    updateField(id, value) { this.formData[id] = value; this.isDirty = true; this.notify(); }
+    updateField(id, value) {
+        if (this.formData[id] === value) return;
+        this.formData[id] = value;
+        this.isDirty = true;
+        this.notify();
+    }
     listeners = [];
     subscribe(fn) { this.listeners.push(fn); return () => this.listeners = this.listeners.filter(l => l !== fn); }
     notify() { this.listeners.forEach(fn => fn(this)); }

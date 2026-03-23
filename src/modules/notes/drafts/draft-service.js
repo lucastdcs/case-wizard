@@ -56,6 +56,9 @@ export const DraftService = {
                 localStorage.removeItem(EMERGENCY_KEY);
                 return null;
             }
+            if (!parsed.data || !parsed.data.subStatus) {
+                return null;
+            }
             return parsed.data;
         } catch (e) { return null; }
     },
