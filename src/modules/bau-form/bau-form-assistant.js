@@ -188,8 +188,8 @@ export function initBAUForm() {
     document.body.appendChild(popup);
 
     // Função de abertura do módulo (injetar dados da tela)
-    function populateContextData() {
-        const pd = getPageData();
+    async function populateContextData() {
+        const pd = await getPageData();
         if (pd) {
             document.getElementById('bau-adv-name').textContent = pd.advName || "Anunciante Desconhecido";
             document.getElementById('bau-adv-details').textContent = `CID: ${pd.cid || "N/A"} • AM: ${pd.amName || "N/A"}`;
@@ -198,10 +198,26 @@ export function initBAUForm() {
             const inputTimezone = form.querySelector('input[name="timezone"]');
             const inputSite = form.querySelector('input[name="site"]');
             
-            if (pd.timezone) { inputTimezone.value = pd.timezone; fallbackCard.style.display = 'none'; }
-            if (pd.site) { inputSite.value = pd.site; fallbackCard.style.display = 'none'; }
-            
-            if (!pd.timezone || !pd.site) fallbackCard.style.display = 'block';
+            // Lógica do Graceful Fallback (Semáforo)
+            const hasTimezone = !!pd.timezone;
+            const hasSite = !!pd.site;
+
+            if (pd.timezone) inputTimezone.value = pd.timezone;
+            if (pd.site) inputSite.value = pd.site;
+
+            if (hasTimezone && hasSite) {
+                fallbackCard.style.display = 'none';
+                banner.style.background = COLORS.greenLight;
+                banner.style.color = COLORS.green;
+                banner.style.borderBottomColor = COLORS.green;
+                banner.innerHTML = `<span>✅</span> Dados capturados com sucesso!`;
+            } else {
+                fallbackCard.style.display = 'block';
+                banner.style.background = COLORS.yellowLight;
+                banner.style.color = "#E37400";
+                banner.style.borderBottomColor = "#FEF1D1";
+                banner.innerHTML = `<span>⚠️</span> Dados ausentes. Verifique o fallback abaixo.`;
+            }
         }
     }
 
@@ -209,10 +225,10 @@ export function initBAUForm() {
     form.onsubmit = async (e) => {
         e.preventDefault();
 
-        // 1. Coleta de dados do formulário e da página
+        // 1. Coleta de dados do formulário e da página (Sempre captura ao vivo no submit)
         const formData = new FormData(form);
         const escalationData = Object.fromEntries(formData.entries());
-        const contextData = getPageData() || {};
+        const contextData = await getPageData() || {};
 
         // 2. Mapeamento Exato para o Backend
         const payload = {
@@ -260,11 +276,11 @@ export function initBAUForm() {
         }
     };
 
-    function toggleVisibility() {
+    async function toggleVisibility() {
         isVisible = !isVisible;
         if (isVisible) {
             popup.style.display = "flex";
-            populateContextData();
+            await populateContextData();
         }
         toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");
     }

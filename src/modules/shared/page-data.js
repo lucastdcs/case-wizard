@@ -189,7 +189,7 @@ export function captureCID() {
     try {
         // Estratégia 1: Busca pelo Label Específico (Alta Precisão)
         // Busca labels que contenham "Google Ads External Customer ID"
-        const labels = Array.from(document.querySelectorAll('.data-pair-label'));
+        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
         const cidLabel = labels.find(el => el.textContent.includes('Google Ads External Customer ID') || el.textContent.includes('Customer ID'));
 
         if (cidLabel) {
@@ -217,7 +217,45 @@ export function captureCID() {
     } catch (e) {
         console.warn("Erro ao capturar CID:", e);
     }
-    return "---";
+    return "N/A";
+}
+
+// --- 7. CAPTURA DE ACCOUNT MANAGER ---
+export function captureAMName() {
+    try {
+        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
+        const amLabel = labels.find(el =>
+            el.textContent.includes('Account Manager') ||
+            el.textContent.includes('AM Name') ||
+            el.textContent.includes('Sales Rep')
+        );
+
+        if (amLabel) {
+            const parent = amLabel.closest('.data-pair') || amLabel.parentElement;
+            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
+            if (content) return content.textContent.trim();
+        }
+    } catch (e) { console.warn("Erro ao capturar AM:", e); }
+    return null;
+}
+
+// --- 8. CAPTURA DE TIMEZONE ---
+export function captureTimezone() {
+    try {
+        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
+        const tzLabel = labels.find(el =>
+            el.textContent.includes('Time zone') ||
+            el.textContent.includes('Timezone') ||
+            el.textContent.includes('Customer Time Zone')
+        );
+
+        if (tzLabel) {
+            const parent = tzLabel.closest('.data-pair') || tzLabel.parentElement;
+            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
+            if (content) return content.textContent.trim();
+        }
+    } catch (e) { console.warn("Erro ao capturar Timezone:", e); }
+    return null;
 }
 
 
@@ -232,10 +270,10 @@ export async function getCaseId() {
     return id;
 }
 
-// --- 7. COMPILADOR DE DADOS DA PÁGINA ---
+// --- 9. COMPILADOR DE DADOS DA PÁGINA ---
 export async function getPageData() {
     let advertiserName = "Cliente";
-    let websiteUrl = "[INSERIR URL]";
+    let websiteUrl = "";
 
     // Captura NOME DO ANUNCIANTE
     try {
@@ -266,16 +304,29 @@ export async function getPageData() {
     // Captura CID
     const cid = captureCID();
 
+    // Captura AM e Timezone
+    const amName = captureAMName();
+    const timezone = captureTimezone();
+
     const caseId = await getCaseId();
 
     return {
+        // Core fields (Original names)
         advertiserName: advertiserName,
         websiteUrl: websiteUrl,
-        clientEmail: clientEmail,     // Pode ser null
-        internalEmail: internalEmail, // Pode ser null
-        cid: cid,                     // Novo campo
+        clientEmail: clientEmail,
+        internalEmail: internalEmail,
+        cid: cid,
+        amName: amName,
+        timezone: timezone,
         agentName: getAgentName(),
-        caseId: caseId
+        agentEmail: getAgentEmail(),
+        caseId: caseId,
+
+        // Aliases for BAU Form compatibility
+        advName: advertiserName,
+        site: websiteUrl,
+        email: clientEmail
     };
 }
 
