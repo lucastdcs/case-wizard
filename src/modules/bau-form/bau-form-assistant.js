@@ -241,7 +241,7 @@ export function initBAUForm() {
 
         try {
             // 4. Chamada ao DataService
-            await \(payload, contextData.agentEmail || "anon");
+            await sendBAUEscalation(payload, contextData.agentEmail || "anon");
 
             // 5. Sucesso
             SoundManager.playSuccess();
