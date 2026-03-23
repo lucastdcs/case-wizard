@@ -63,7 +63,7 @@ export const injectStyles = () => {
       flex-grow: 1;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 28px;
     }
 
     .bau-card {
@@ -148,6 +148,15 @@ export const injectStyles = () => {
       transition: ${TRANSITION};
       box-sizing: border-box;
       outline: none;
+    }
+
+    .bau-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-right: 44px !important;
     }
     .bau-input:focus, .bau-select:focus, .bau-textarea:focus {
       border-color: ${COLORS.blue};
