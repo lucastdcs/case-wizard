@@ -302,6 +302,39 @@ export async function getCaseId() {
     return "";
 }
 
+// --- 8.5 CAPTURA DE IDIOMA E SPEAKEASY ID ---
+export function captureLanguage() {
+    try {
+        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
+        const langLabel = labels.find(el =>
+            el.textContent.includes('Language') ||
+            el.textContent.includes('Idioma')
+        );
+        if (langLabel) {
+            const parent = langLabel.closest('.data-pair') || langLabel.parentElement;
+            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
+            if (content) return content.textContent.trim();
+        }
+    } catch (e) { console.warn("Erro ao capturar Idioma:", e); }
+    return "N/A";
+}
+
+export function captureSpeakeasyID() {
+    try {
+        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
+        const seLabel = labels.find(el =>
+            el.textContent.includes('Speakeasy ID') ||
+            el.textContent.includes('SE ID')
+        );
+        if (seLabel) {
+            const parent = seLabel.closest('.data-pair') || seLabel.parentElement;
+            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
+            if (content) return content.textContent.trim();
+        }
+    } catch (e) { console.warn("Erro ao capturar SE ID:", e); }
+    return "N/A";
+}
+
 // --- 9. COMPILADOR DE DADOS DA PÁGINA ---
 export async function getPageData() {
     let advertiserName = "Cliente";
@@ -342,7 +375,9 @@ export async function getPageData() {
     const timezone = captureTimezone();
 
     const caseId = await getCaseId();
-    const salesProgram = captureSalesProgram()
+    const salesProgram = captureSalesProgram();
+    const language = captureLanguage();
+    const seId = captureSpeakeasyID();
 
     return {
         // Core fields (Original names)
@@ -361,7 +396,9 @@ export async function getPageData() {
         advName: advertiserName,
         site: websiteUrl,
         email: clientEmail,
-        salesProgram: salesProgram
+        salesProgram: salesProgram,
+        language: language,
+        seId: seId
     };
 }
 
