@@ -176,8 +176,7 @@ export const DataService = {
  * Envia os dados do formulário BAU para o backend via JSONP.
  * @param {object} payload - Os dados do formulário a serem enviados.
  * @param {string} userEmail - O email do agente que está enviando.
- * @returns {Promise<boolean>} - Retorna true em caso de sucesso.
- * @throws {Error} - Lança um erro se a operação falhar.
+ * @returns {Promise<boolean>}
  */
 export const sendBAUEscalation = async (payload, userEmail) => {
     const fullPayload = {
@@ -186,7 +185,8 @@ export const sendBAUEscalation = async (payload, userEmail) => {
         date: new Date().toISOString()
     };
     
-    // Usamos a função _performOp que já tem o tratamento de erro e logging
-    await _performOp('bau_escalation', fullPayload);
-    return true; // Se _performOp não lançar erro, consideramos sucesso.
+    // CORREÇÃO: O nome exato da operação configurada no Apps Script
+    await _performOp('create_bau_escalation', fullPayload);
+    
+    return true; 
 };
