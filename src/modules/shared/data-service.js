@@ -3,7 +3,7 @@
 import { getAgentEmail } from './page-data.js'; 
 
 // Sempre que atualizar o Apps Script, criar uma nova implantação e gerar um novo link, para garantir que os problemas não apareçam.
-const API_URL = "https://script.google.com/a/macros/google.com/s/AKfycbzjrhTCoLg0SZq3TB5oD2uyWw3t6-wbjHHPXOKurgwxZcKDFcHV2eVZZa7bLPRLFRa8hg/exec";
+const API_URL = "https://script.google.com/a/macros/google.com/s/AKfycbzqotRrJBMsxJEgi5J2mvmow1jMLoghFniq8IXKkojhZbbFtIa9KkjUAWuZ9g7fTnOIuA/exec";
 
 const CACHE_KEY_BROADCAST = "cw_data_broadcast";
 const CACHE_KEY_TIPS = "cw_data_tips";
