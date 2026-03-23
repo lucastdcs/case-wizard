@@ -270,6 +270,38 @@ export async function getCaseId() {
     return id;
 }
 
+    export function captureSalesProgram() {
+    try {
+        // 1. Encontra a label correta ("Program" ou "Sales Program")
+        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
+        const programLabel = labels.find(el => 
+            el.textContent.toLowerCase().includes('sales program') || 
+            el.textContent.toLowerCase().trim() === 'program' ||
+            el.textContent.toLowerCase().includes('programa')
+        );
+
+        if (programLabel) {
+            // 2. Sobe para o bloco pai
+            const parent = programLabel.closest('.data-pair') || programLabel.parentElement;
+            
+            // 3. Mergulha na estrutura que você mapeou (<sanitized-content> -> <ng-template>)
+            const valueNode = parent.querySelector('sanitized-content ng-template[debug-id="html-value"]') 
+                           || parent.querySelector('sanitized-content');
+            
+            if (valueNode) {
+                return valueNode.textContent.trim(); // Puxa o "umm_scaled" ou "kickstart_scaled"
+            }
+
+            // Fallback padrão se não tiver <sanitized-content>
+            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
+            if (content) return content.textContent.trim();
+        }
+    } catch (e) {
+        console.warn("Erro ao capturar Sales Program:", e);
+    }
+    return "";
+}
+
 // --- 9. COMPILADOR DE DADOS DA PÁGINA ---
 export async function getPageData() {
     let advertiserName = "Cliente";
@@ -297,6 +329,7 @@ export async function getPageData() {
         }
     } catch (e) { console.warn("Falha URL:", e); }
 
+
     // Captura EMAILS
     const clientEmail = await captureClientEmail();
     const internalEmail = captureInternalEmail();
@@ -309,6 +342,7 @@ export async function getPageData() {
     const timezone = captureTimezone();
 
     const caseId = await getCaseId();
+    const salesProgram = captureSalesProgram()
 
     return {
         // Core fields (Original names)
@@ -326,7 +360,8 @@ export async function getPageData() {
         // Aliases for BAU Form compatibility
         advName: advertiserName,
         site: websiteUrl,
-        email: clientEmail
+        email: clientEmail,
+        salesProgram: salesProgram
     };
 }
 
