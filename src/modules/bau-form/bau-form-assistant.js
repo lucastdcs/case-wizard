@@ -10,6 +10,7 @@ export function initBAUForm() {
     injectStyles();
 
     let isVisible = false;
+    let currentContextData = {};
 
     // --- POPUP CONTAINER ---
     const popup = document.createElement("div");
@@ -51,7 +52,8 @@ export function initBAUForm() {
     contextBody.innerHTML = `
         <h2 class="bau-title" id="bau-adv-name">Carregando...</h2>
         <p class="bau-subtitle" id="bau-adv-details">CID: - • AM: -</p>
-        <button type="button" class="bau-accordion-btn">Ver todos os dados capturados ▼</button>
+        <button type="button" id="bau-toggle-data" class="bau-accordion-btn">Ver todos os dados capturados ▼</button>
+        <div id="bau-hidden-data" style="display: none; margin-top: 12px; font-size: 12px; color: #5F6368; line-height: 1.6; border-top: 1px dashed #DADCE0; padding-top: 12px;"></div>
     `;
     contextCard.appendChild(contextBody);
     form.appendChild(contextCard);
@@ -187,13 +189,38 @@ export function initBAUForm() {
 
     document.body.appendChild(popup);
 
+    // Accordion Toggle
+    const toggleBtn = document.getElementById('bau-toggle-data');
+    const hiddenData = document.getElementById('bau-hidden-data');
+    if (toggleBtn && hiddenData) {
+        toggleBtn.onclick = () => {
+            const isHidden = hiddenData.style.display === 'none';
+            hiddenData.style.display = isHidden ? 'block' : 'none';
+            toggleBtn.textContent = isHidden ? "Ocultar dados ▲" : "Ver todos os dados capturados ▼";
+            SoundManager.playClick();
+        };
+    }
+
     // Função de abertura do módulo (injetar dados da tela)
     async function populateContextData() {
-        const pd = await getPageData();
+        currentContextData = await getPageData() || {};
+        const pd = currentContextData;
+
         if (pd) {
             document.getElementById('bau-adv-name').textContent = pd.advName || "Anunciante Desconhecido";
             document.getElementById('bau-adv-details').textContent = `CID: ${pd.cid || "N/A"} • AM: ${pd.amName || "N/A"}`;
             
+            // Injeta dados no accordion oculto
+            const hiddenData = document.getElementById('bau-hidden-data');
+            if (hiddenData) {
+                hiddenData.innerHTML = `
+                    <b>Email:</b> ${pd.email || "N/A"}<br>
+                    <b>Idioma:</b> ${pd.language || "N/A"}<br>
+                    <b>Programa:</b> ${pd.salesProgram || "N/A"}<br>
+                    <b>Speakeasy ID:</b> ${pd.seId || "N/A"}
+                `;
+            }
+
             // Fallback para campos faltantes
             const inputTimezone = form.querySelector('input[name="timezone"]');
             const inputSite = form.querySelector('input[name="site"]');
@@ -225,12 +252,17 @@ export function initBAUForm() {
     form.onsubmit = async (e) => {
         e.preventDefault();
 
-        // 1. Coleta de dados do formulário e da página (Sempre captura ao vivo no submit)
+        // 1. Feedback Tátil Imediato (Loading)
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = "Carregando...";
+
+        // 2. Coleta de dados do formulário e da página (Usa cache currentContextData)
         const formData = new FormData(form);
         const escalationData = Object.fromEntries(formData.entries());
-        const contextData = await getPageData() || {};
+        const contextData = currentContextData;
 
-        // 2. Mapeamento Exato para o Backend
+        // 3. Mapeamento Exato para o Backend
         const payload = {
             caseId: contextData.caseId || "",
             cid: contextData.cid || "",
@@ -249,11 +281,6 @@ export function initBAUForm() {
             description: escalationData.description,
             availability: escalationData.availability
         };
-
-        // 3. Feedback Tátil (Loading)
-        const originalText = submitBtn.innerHTML;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = "Carregando...";
 
         try {
             // 4. Chamada ao DataService
