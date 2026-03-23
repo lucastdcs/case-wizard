@@ -130,9 +130,18 @@ export function initCaseNotesAssistant() {
             if (autosaveTimeout) clearTimeout(autosaveTimeout);
             autosaveTimeout = setTimeout(async () => {
                 const fullState = await collectFullState(true); // Fast save
-                DraftService.saveEmergency(fullState);
+                if (fullState.subStatus) {
+                    DraftService.saveEmergency(fullState);
+                } else {
+                    DraftService.clearEmergency();
+                }
                 state.isDirty = false;
             }, 2000);
+        } else {
+            if (autosaveTimeout) {
+                clearTimeout(autosaveTimeout);
+                autosaveTimeout = null;
+            }
         }
     });
 
@@ -657,6 +666,7 @@ export function initCaseNotesAssistant() {
         stepTasks.reset();
         tagSupport.reset();
         refreshGlobalBadge();
+        DraftService.clearEmergency();
         // Reset UI elements
         content.querySelectorAll('select').forEach(s => s.value = "");
         content.querySelector('#sub-status-select').disabled = true;
