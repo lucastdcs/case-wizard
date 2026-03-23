@@ -169,4 +169,49 @@ export const DataService = {
     deleteSnippet: async (id, userEmail) => {
         return await DataService._performOp('delete_snippet', { id, user: userEmail });
     },
+
+    /**
+     * Envia uma solicitação de escalonamento BAU para o Hub de TLs.
+     * @param {Object} escalationData Dados do formulário
+     * @param {string} userEmail E-mail do agente
+     */
+    sendBAUEscalation: async (escalationData, userEmail) => {
+        const params = {
+            user: userEmail,
+            caseId: escalationData.caseId || '',
+            cid: escalationData.cid || '',
+            seId: escalationData.seId || '',
+            advName: escalationData.advName || '',
+            email: escalationData.email || '',
+            site: escalationData.site || '',
+            timezone: escalationData.timezone || '',
+            language: escalationData.language || '',
+            amName: escalationData.amName || '',
+            salesProgram: escalationData.salesProgram || '',
+            reason: escalationData.reason || '',
+            taskType: escalationData.taskType || '',
+            description: escalationData.description || '',
+            availability: escalationData.availability || ''
+        };
+
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Timeout (Request Hub)")), 20000)
+        );
+
+        try {
+            console.log("📤 Enviando BAU Escalation...", params);
+            const response = await Promise.race([
+                jsonpFetch('create_bau_escalation', params),
+                timeoutPromise
+            ]);
+
+            if (response && response.status === 'success') {
+                return { status: 'success', action: 'create', id: response.id };
+            }
+            return { status: 'error', message: response?.message || "Erro desconhecido no Hub" };
+        } catch (e) {
+            console.error("❌ Erro ao enviar BAU Escalation:", e);
+            return { status: 'error', message: e.message || "Erro de conexão" };
+        }
+    },
 };
