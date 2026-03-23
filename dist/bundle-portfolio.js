@@ -11224,7 +11224,7 @@ E-mail: ${data.clientEmail || "---"}`;
       flex-grow: 1;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 28px;
     }
 
     .bau-card {
@@ -11309,6 +11309,15 @@ E-mail: ${data.clientEmail || "---"}`;
       transition: ${TRANSITION};
       box-sizing: border-box;
       outline: none;
+    }
+
+    .bau-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-right: 44px !important;
     }
     .bau-input:focus, .bau-select:focus, .bau-textarea:focus {
       border-color: ${COLORS3.blue};
@@ -11437,22 +11446,9 @@ E-mail: ${data.clientEmail || "---"}`;
     contextCard.appendChild(contextBody);
     form.appendChild(contextCard);
     const fallbackCard = document.createElement("div");
+    fallbackCard.id = "bau-dynamic-fallback";
     fallbackCard.className = "bau-card bau-fallback-card";
-    fallbackCard.innerHTML = `
-        <div style="color: #D93025; font-weight: 700; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-            <span>\u26A0\uFE0F</span> Preencha os itens n\xE3o encontrados:
-        </div>
-        <div class="bau-grid-2">
-            <div>
-                <label class="bau-label">Fuso Hor\xE1rio</label>
-                <input type="text" name="timezone" class="bau-input" placeholder="Ex: America/Sao_Paulo">
-            </div>
-            <div>
-                <label class="bau-label">Site</label>
-                <input type="text" name="site" class="bau-input" placeholder="www.exemplo.com">
-            </div>
-        </div>
-    `;
+    fallbackCard.style.display = "none";
     form.appendChild(fallbackCard);
     const actionCard = document.createElement("div");
     actionCard.className = "bau-card";
@@ -11524,15 +11520,31 @@ E-mail: ${data.clientEmail || "---"}`;
     actionCard.appendChild(textarea);
     const dateLabel = document.createElement("label");
     dateLabel.className = "bau-label";
-    dateLabel.textContent = "Disponibilidade do Anunciante";
+    dateLabel.textContent = "Disponibilidade (3 op\xE7\xF5es para reagendamento)";
     dateLabel.style.marginTop = "16px";
     actionCard.appendChild(dateLabel);
-    const dateInput = document.createElement("input");
-    dateInput.type = "datetime-local";
-    dateInput.name = "availability";
-    dateInput.required = true;
-    dateInput.className = "bau-input";
-    actionCard.appendChild(dateInput);
+    const dateGrid = document.createElement("div");
+    dateGrid.className = "bau-grid-2";
+    dateGrid.style.gap = "12px";
+    const d1 = document.createElement("input");
+    d1.type = "datetime-local";
+    d1.name = "availability_1";
+    d1.required = true;
+    d1.className = "bau-input";
+    const d2 = document.createElement("input");
+    d2.type = "datetime-local";
+    d2.name = "availability_2";
+    d2.required = true;
+    d2.className = "bau-input";
+    const d3 = document.createElement("input");
+    d3.type = "datetime-local";
+    d3.name = "availability_3";
+    d3.required = true;
+    d3.className = "bau-input";
+    dateGrid.appendChild(d1);
+    dateGrid.appendChild(d2);
+    dateGrid.appendChild(d3);
+    actionCard.appendChild(dateGrid);
     form.appendChild(actionCard);
     const footer = document.createElement("div");
     footer.className = "bau-footer";
@@ -11568,24 +11580,45 @@ E-mail: ${data.clientEmail || "---"}`;
                     <b>Speakeasy ID:</b> ${pd.seId || "N/A"}
                 `;
         }
-        const inputTimezone = form.querySelector('input[name="timezone"]');
-        const inputSite = form.querySelector('input[name="site"]');
-        const hasTimezone = !!pd.timezone;
-        const hasSite = !!pd.site;
-        if (pd.timezone) inputTimezone.value = pd.timezone;
-        if (pd.site) inputSite.value = pd.site;
-        if (hasTimezone && hasSite) {
-          fallbackCard.style.display = "none";
-          banner.style.background = COLORS3.greenLight;
-          banner.style.color = COLORS3.green;
-          banner.style.borderBottomColor = COLORS3.green;
-          banner.innerHTML = `<span>\u2705</span> Dados capturados com sucesso!`;
-        } else {
+        const requiredFields = [
+          { key: "advName", label: "Nome do Anunciante" },
+          { key: "cid", label: "Customer ID (CID)" },
+          { key: "amName", label: "Account Manager" },
+          { key: "email", label: "Email de Contato" },
+          { key: "language", label: "Idioma" },
+          { key: "salesProgram", label: "Sales Program" },
+          { key: "seId", label: "Speakeasy ID" },
+          { key: "site", label: "Site / URL" },
+          { key: "timezone", label: "Fuso Hor\xE1rio" }
+        ];
+        const missingFields = requiredFields.filter((f) => !pd[f.key] || pd[f.key] === "N/A" || pd[f.key] === "---");
+        if (missingFields.length > 0) {
+          fallbackCard.innerHTML = `
+                    <div style="color: #D93025; font-weight: 700; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                        <span>\u26A0\uFE0F</span> Preencha os itens n\xE3o encontrados:
+                    </div>
+                    <div class="bau-grid-2" id="bau-fallback-grid"></div>
+                `;
+          const grid = fallbackCard.querySelector("#bau-fallback-grid");
+          missingFields.forEach((f) => {
+            const fieldDiv = document.createElement("div");
+            fieldDiv.innerHTML = `
+                        <label class="bau-label">${f.label}</label>
+                        <input type="text" name="${f.key}" class="bau-input" placeholder="Preencher ${f.label}...">
+                    `;
+            grid.appendChild(fieldDiv);
+          });
           fallbackCard.style.display = "block";
           banner.style.background = COLORS3.yellowLight;
           banner.style.color = "#E37400";
           banner.style.borderBottomColor = "#FEF1D1";
           banner.innerHTML = `<span>\u26A0\uFE0F</span> Dados ausentes. Verifique o fallback abaixo.`;
+        } else {
+          fallbackCard.style.display = "none";
+          banner.style.background = COLORS3.greenLight;
+          banner.style.color = COLORS3.green;
+          banner.style.borderBottomColor = COLORS3.green;
+          banner.innerHTML = `<span>\u2705</span> Dados capturados com sucesso!`;
         }
       }
     }
@@ -11597,24 +11630,31 @@ E-mail: ${data.clientEmail || "---"}`;
       const formData = new FormData(form);
       const escalationData = Object.fromEntries(formData.entries());
       const contextData = currentContextData;
+      const availability = `${escalationData.availability_1} | ${escalationData.availability_2} | ${escalationData.availability_3}`;
       const payload = {
         caseId: contextData.caseId || "",
-        cid: contextData.cid || "",
-        seId: contextData.seId || "",
-        advName: contextData.advName || "",
-        email: contextData.email || "",
-        language: contextData.language || "",
-        amName: contextData.amName || "",
-        salesProgram: contextData.salesProgram || "",
-        // Mistura os dados raspados com o que o agente preencheu manualmente no fallback
+        cid: escalationData.cid || contextData.cid || "",
+        seId: escalationData.seId || contextData.seId || "",
+        advName: escalationData.advName || contextData.advName || "",
+        email: escalationData.email || contextData.email || "",
+        language: escalationData.language || contextData.language || "",
+        amName: escalationData.amName || contextData.amName || "",
+        salesProgram: escalationData.salesProgram || contextData.salesProgram || "",
         site: escalationData.site || contextData.site || "",
         timezone: escalationData.timezone || contextData.timezone || "",
-        // Dados estritamente do formulário
         reason: escalationData.reason,
         taskType: escalationData.taskType,
         description: escalationData.description,
-        availability: escalationData.availability
+        availability
       };
+      const missingFields = Object.keys(payload).filter((key) => !payload[key] || payload[key] === "N/A" || payload[key] === "---");
+      if (missingFields.length > 0) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        SoundManager.playClick();
+        showToast(`Erro: Preencha todos os campos (${missingFields.join(", ")})`, "error");
+        return;
+      }
       try {
         await sendBAUEscalation(payload, contextData.agentEmail || "anon");
         SoundManager.playSuccess();
