@@ -11,6 +11,7 @@ import { checkAndShowChangelog } from './modules/changelog/changelog-wizard.js';
 import { initTimezoneAssistant } from './modules/timezone/timezone-assistant.js';
 import { initPersonalLibrary } from './modules/personal-library/personal-library-assistant.js'; // [NOVO]
 import { initConfigsAssistant } from './modules/configs/configs-assistant.js';
+import { initBAUForm } from './modules/bau-form/bau-form-assistant.js';
 
 // Importação do Serviço de Dados
 import { DataService } from './modules/shared/data-service.js';
@@ -60,6 +61,7 @@ function initApp() {
         const toggleTimezone = initTimezoneAssistant();
         const toggleLibrary = initPersonalLibrary(); // [NOVO] Inicializa a Biblioteca
         const toggleConfigs = initConfigsAssistant();
+        const toggleBAUForm = initBAUForm();
         
         const broadcastControl = initBroadcastAssistant(); 
 
@@ -72,6 +74,7 @@ function initApp() {
             toggleTimezone,
             toggleLibrary, // [NOVO] Passa o controle para a pílula
             toggleConfigs,
+            toggleBAUForm,
             broadcastControl
         });
 
