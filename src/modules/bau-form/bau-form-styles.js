@@ -38,33 +38,57 @@ export const injectStyles = () => {
   style.id = 'bau-form-global-styles';
   style.innerHTML = `
     .bau-popup {
-      width: 480px;
-      max-height: 85vh;
+      display: flex !important;
+      flex-direction: column !important;
+      width: 480px !important;
+      max-height: 85vh !important;
+      background: ${COLORS.surface} !important;
+      backdrop-filter: blur(10px) !important;
+      -webkit-backdrop-filter: blur(10px) !important;
+      border-radius: ${RADIUS.large} !important;
+      box-shadow: ${SHADOW.deep} !important;
+      border: 1px solid rgba(255, 255, 255, 0.3) !important;
+      overflow: hidden !important;
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       z-index: 10000;
+      font-family: 'Google Sans', Roboto, sans-serif;
+    }
+
+    .bau-content {
+      padding: 24px;
+      overflow-y: auto;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
 
     .bau-card {
       background: ${COLORS.white};
       border-radius: ${RADIUS.medium};
       padding: 16px;
-      margin-bottom: 16px;
       box-shadow: ${SHADOW.subtle};
       border: 1px solid ${COLORS.border};
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .bau-header-banner {
       background: ${COLORS.yellowLight};
-      color: #E37400; /* Darker orange for contrast */
-      padding: 8px 16px;
+      color: #E37400;
+      padding: 10px 16px;
       font-size: 13px;
       font-weight: 600;
       display: flex;
       align-items: center;
       gap: 8px;
+      margin: -16px -16px 16px -16px;
+      border-bottom: 1px solid #FEF1D1;
     }
 
     .bau-title {
@@ -77,42 +101,45 @@ export const injectStyles = () => {
     .bau-subtitle {
       font-size: 13px;
       color: ${COLORS.textSecondary};
-      margin: 4px 0 0 0;
+      margin: 4px 0 12px 0;
     }
 
     .bau-accordion-btn {
-      background: transparent;
-      border: none;
+      background: #F8F9FA;
+      border: 1px solid ${COLORS.border};
+      border-radius: ${RADIUS.small};
       color: ${COLORS.textSecondary};
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
-      padding: 8px 0;
+      padding: 8px 12px;
       display: flex;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
+      gap: 6px;
       transition: ${TRANSITION};
+      width: fit-content;
     }
-    .bau-accordion-btn:hover { color: ${COLORS.blue}; }
+    .bau-accordion-btn:hover { background: ${COLORS.blueLight}; color: ${COLORS.blue}; border-color: ${COLORS.blue}; }
 
     .bau-fallback-card {
-      background: #FFF4F2; /* Very light red/orange */
+      background: #FFF4F2;
       border: 1px solid #FAD2CF;
     }
 
     .bau-label {
       display: block;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: ${COLORS.textSecondary};
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
       margin-bottom: 8px;
     }
 
     .bau-input, .bau-select, .bau-textarea {
       width: 100%;
-      padding: 12px 16px;
+      padding: 12px 14px;
       border-radius: ${RADIUS.medium};
       border: 1.5px solid ${COLORS.border};
       background: ${COLORS.white};
@@ -124,18 +151,19 @@ export const injectStyles = () => {
     }
     .bau-input:focus, .bau-select:focus, .bau-textarea:focus {
       border-color: ${COLORS.blue};
-      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+      background: ${COLORS.white};
     }
 
     .bau-chips-container {
       display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
+      gap: 10px;
+      margin-bottom: 4px;
       flex-wrap: wrap;
     }
 
     .bau-chip {
-      padding: 8px 16px;
+      padding: 8px 18px;
       border-radius: ${RADIUS.pill};
       border: 1.5px solid ${COLORS.border};
       background: ${COLORS.white};
@@ -145,30 +173,30 @@ export const injectStyles = () => {
       transition: ${TRANSITION};
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       user-select: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     .bau-chip:hover {
-      transform: translateY(-1px);
+      transform: translateY(-1.5px);
       background: ${COLORS.blueLight};
       border-color: ${COLORS.blue};
+      box-shadow: 0 4px 8px rgba(26, 115, 232, 0.1);
     }
-    .bau-chip:active {
-      transform: scale(0.97);
-    }
+    .bau-chip:active { transform: scale(0.96); }
     .bau-chip.active {
       background: ${COLORS.blueLight};
       border-color: ${COLORS.blue};
       color: ${COLORS.blue};
+      box-shadow: inset 0 1px 2px rgba(26, 115, 232, 0.1);
     }
 
     .bau-footer {
-      padding: 20px;
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(5px);
+      padding: 20px 24px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
       border-top: 1px solid ${COLORS.border};
-      position: sticky;
-      bottom: 0;
+      margin-top: auto;
       display: flex;
       justify-content: center;
     }
@@ -180,23 +208,29 @@ export const injectStyles = () => {
       background: ${COLORS.blue};
       color: white;
       border: none;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       cursor: pointer;
       transition: ${TRANSITION};
-      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+      box-shadow: 0 4px 14px rgba(26, 115, 232, 0.4);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 12px;
+      letter-spacing: 0.3px;
     }
     .bau-btn-submit:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(26, 115, 232, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(26, 115, 232, 0.5);
       background: #1765CC;
     }
-    .bau-btn-submit:active {
-      transform: scale(0.97);
+    .bau-btn-submit:active { transform: scale(0.97); }
+
+    .bau-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 4px;
     }
   `;
   document.head.appendChild(style);
