@@ -44,6 +44,24 @@ function jsonpFetch(operation, params = {}) {
     });
 }
 
+// --- Helper genérico para Operações ---
+async function _performOp(op, params) {
+    try {
+        console.log(`📤 Executando ${op}...`, params);
+        const response = await jsonpFetch(op, params);
+        if (response && response.status === 'success') {
+            console.log("✅ Sucesso:", op);
+            return response; // Retornar a resposta completa em caso de sucesso
+        }
+        console.warn("⚠️ Falha:", response);
+        throw new Error(response.message || `Operação ${op} falhou.`);
+    } catch (e) {
+        console.error(`❌ Erro na operação ${op}:`, e);
+        throw e; // Propaga o erro para quem chamou
+    }
+}
+
+
 export const DataService = {
     
     fetchTips: async () => {
@@ -80,35 +98,18 @@ export const DataService = {
             date: new Date().toISOString(),
             id: Date.now().toString() 
         };
-        return await DataService._performOp('new_broadcast', fullPayload);
+        return await _performOp('new_broadcast', fullPayload);
     },
 
     // 4. ATUALIZAR (UPDATE)
     updateBroadcast: async (id, payload) => {
         const fullPayload = { id, ...payload };
-        return await DataService._performOp('update_broadcast', fullPayload);
+        return await _performOp('update_broadcast', fullPayload);
     },
 
     // 5. DELETAR (DELETE)
     deleteBroadcast: async (id) => {
-        return await DataService._performOp('delete_broadcast', { id });
-    },
-
-    // Helper genérico para Broadcast
-    _performOp: async (op, params) => {
-        try {
-            console.log(`📤 Executando ${op}...`, params);
-            const response = await jsonpFetch(op, params);
-            if (response && response.status === 'success') {
-                console.log("✅ Sucesso:", op);
-                return true;
-            }
-            console.warn("⚠️ Falha:", response);
-            return false;
-        } catch (e) {
-            console.error("❌ Erro JSONP:", e);
-            return false;
-        }
+        return await _performOp('delete_broadcast', { id });
     },
     
     // --- ANALYTICS VIA JSONP (A Correção) ---
@@ -162,11 +163,30 @@ export const DataService = {
             user: userEmail 
         };
         // O ID é gerado/validado no backend se não vier
-        return await DataService._performOp('save_snippet', payload);
+        return await _performOp('save_snippet', payload);
     },
 
     // Deletar (DELETE)
     deleteSnippet: async (id, userEmail) => {
-        return await DataService._performOp('delete_snippet', { id, user: userEmail });
+        return await _performOp('delete_snippet', { id, user: userEmail });
     },
+};
+
+/**
+ * Envia os dados do formulário BAU para o backend via JSONP.
+ * @param {object} payload - Os dados do formulário a serem enviados.
+ * @param {string} userEmail - O email do agente que está enviando.
+ * @returns {Promise<boolean>} - Retorna true em caso de sucesso.
+ * @throws {Error} - Lança um erro se a operação falhar.
+ */
+export const sendBAUEscalation = async (payload, userEmail) => {
+    const fullPayload = {
+        ...payload,
+        user: userEmail,
+        date: new Date().toISOString()
+    };
+    
+    // Usamos a função _performOp que já tem o tratamento de erro e logging
+    await _performOp('bau_escalation', fullPayload);
+    return true; // Se _performOp não lançar erro, consideramos sucesso.
 };
