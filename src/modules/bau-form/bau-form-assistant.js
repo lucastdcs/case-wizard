@@ -180,3 +180,93 @@ export function initBAUForm() {
 
     return toggleVisibility;
 }
+// src/modules/bau-form/bau-form-assistant.js
+
+import { injectStyles, COLORS } from './bau-form-styles.js';
+import { createStandardHeader } from '../shared/header-factory.js';
+import { showToast } from '../shared/utils.js';
+import { sendBAUEscalation } from '../shared/data-service.js';
+import { getPageData } from '../shared/page-data.js'; // Helper que usa o Sherlock Holmes
+
+export function initBAUForm() {
+    injectStyles();
+    let isVisible = false;
+
+    // --- POPUP CONTAINER ---
+    const popup = document.createElement("div");
+    popup.id = "bau-form-popup";
+    popup.className = "bau-popup cw-module-window";
+    popup.style.display = "none";
+
+    const toggleVisibility = () => {
+        isVisible = !isVisible;
+        popup.style.display = isVisible ? "flex" : "none";
+    };
+
+    // --- HEADER ---
+    const animRefs = { googleLine: null };
+    const header = createStandardHeader(
+        popup,
+        "BAU Form",
+        "v1.0.0",
+        "Solicite a abertura de casos BAU rapidamente.",
+        animRefs,
+        () => toggleVisibility()
+    );
+    popup.appendChild(header);
+
+    // --- CONTENT AREA ---
+    const content = document.createElement("div");
+    content.className = "bau-content";
+    popup.appendChild(content);
+
+    // --- FORM LOGIC ---
+    const form = document.createElement("form");
+    form.innerHTML = `
+        <div class="bau-card">
+            <select name="reason" required class="bau-input">
+                <option value="">Motivo *</option>
+                <option value="Dúvida Técnica">Dúvida Técnica</option>
+                <option value="Bug/Erro">Bug/Erro</option>
+            </select>
+            <input type="text" name="taskType" placeholder="Task/Tarefa *" required class="bau-input">
+            <textarea name="description" placeholder="Justificativa *" required class="bau-input"></textarea>
+            <input type="text" name="availability" placeholder="Sua Disponibilidade (Ex: 14h-16h) *" required class="bau-input">
+        </div>
+        <button type="submit" class="bau-submit-btn">Escalar para SME/TL</button>
+    `;
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const btn = form.querySelector('.bau-submit-btn');
+        const context = getPageData(); // Extrai CaseID, CID, etc da tela
+        const formData = new FormData(form);
+        const payload = {
+            ...context,
+            ...Object.fromEntries(formData.entries())
+        };
+
+        // Feedback Tátil: Loading
+        btn.disabled = true;
+        const originalText = btn.innerText;
+        btn.innerText = "Carregando...";
+
+        try {
+            await sendBAUEscalation(payload, context.agentEmail);
+            
+            showToast("Sucesso! Escalonamento enviado.", "success");
+            form.reset();
+            toggleVisibility(); // Fecha o modal
+        } catch (err) {
+            console.error(err);
+            showToast("Erro ao enviar: " + (err.message || "Tente novamente"), "error");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    };
+
+    content.appendChild(form);
+    document.body.appendChild(popup);
+}
