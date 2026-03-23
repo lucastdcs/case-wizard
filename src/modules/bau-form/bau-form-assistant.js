@@ -5,6 +5,8 @@ import { createStandardHeader } from '../shared/header-factory.js';
 import { toggleGenieAnimation } from '../shared/animations.js';
 import { showToast } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
+import { sendBAUEscalation } from '../shared/data-service.js';
+import { getPageData } from '../shared/page-data.js';
 
 export function initBAUForm() {
     injectStyles();
@@ -34,6 +36,11 @@ export function initBAUForm() {
     content.className = "bau-content";
     popup.appendChild(content);
 
+    // --- FORM ELEMENT ---
+    const form = document.createElement("form");
+    content.appendChild(form);
+
+
     // 1. CONTEXT CARD
     const contextCard = document.createElement("div");
     contextCard.className = "bau-card";
@@ -50,7 +57,7 @@ export function initBAUForm() {
         <button class="bau-accordion-btn">Ver todos os dados capturados ▼</button>
     `;
     contextCard.appendChild(contextBody);
-    content.appendChild(contextCard);
+    form.appendChild(contextCard);
 
     // 2. FALLBACK CARD
     const fallbackCard = document.createElement("div");
@@ -62,15 +69,15 @@ export function initBAUForm() {
         <div class="bau-grid-2">
             <div>
                 <label class="bau-label">Fuso Horário</label>
-                <input type="text" class="bau-input" placeholder="Ex: GMT-3">
+                <input type="text" name="timezone" class="bau-input" placeholder="Ex: GMT-3">
             </div>
             <div>
                 <label class="bau-label">Site</label>
-                <input type="text" class="bau-input" placeholder="www.exemplo.com">
+                <input type="text" name="website" class="bau-input" placeholder="www.exemplo.com">
             </div>
         </div>
     `;
-    content.appendChild(fallbackCard);
+    form.appendChild(fallbackCard);
 
     // 3. ACTION ZONE
     const actionCard = document.createElement("div");
@@ -95,6 +102,7 @@ export function initBAUForm() {
         const chip = document.createElement("div");
         chip.className = "bau-chip";
         chip.textContent = data.text;
+        chip.dataset.id = data.id;
         chip.onclick = () => {
             chip.classList.toggle('active');
             SoundManager.playClick();
@@ -102,6 +110,13 @@ export function initBAUForm() {
         chipsContainer.appendChild(chip);
     });
     actionCard.appendChild(chipsContainer);
+    
+    // Hidden input to store selected chips
+    const quickActionsInput = document.createElement('input');
+    quickActionsInput.type = 'hidden';
+    quickActionsInput.name = 'quickActions';
+    actionCard.appendChild(quickActionsInput);
+
 
     // Dropdowns
     const dropdownRow = document.createElement("div");
@@ -110,7 +125,7 @@ export function initBAUForm() {
     dropdownRow.innerHTML = `
         <div>
             <label class="bau-label">Motivo da Abertura</label>
-            <select class="bau-select">
+            <select name="reason" required class="bau-select">
                 <option value="">Selecione...</option>
                 <option value="new">Nova Implementação</option>
                 <option value="fix">Correção de Tag</option>
@@ -119,7 +134,7 @@ export function initBAUForm() {
         </div>
         <div>
             <label class="bau-label">Task para BAU</label>
-            <select class="bau-select">
+            <select name="taskType" required class="bau-select">
                 <option value="">Selecione...</option>
                 <option value="gtm">Setup GTM</option>
                 <option value="ads">Google Ads Conversion</option>
@@ -137,6 +152,8 @@ export function initBAUForm() {
     actionCard.appendChild(textLabel);
 
     const textarea = document.createElement("textarea");
+    textarea.name = "description";
+    textarea.required = true;
     textarea.className = "bau-textarea";
     textarea.placeholder = "Descreva detalhadamente o que precisa ser feito...";
     textarea.style.minHeight = "100px";
@@ -151,26 +168,77 @@ export function initBAUForm() {
 
     const dateInput = document.createElement("input");
     dateInput.type = "datetime-local";
+    dateInput.name = "availability";
+    dateInput.required = true;
     dateInput.className = "bau-input";
     actionCard.appendChild(dateInput);
 
-    content.appendChild(actionCard);
+    form.appendChild(actionCard);
 
     // --- STICKY FOOTER ---
     const footer = document.createElement("div");
     footer.className = "bau-footer";
     const submitBtn = document.createElement("button");
+    submitBtn.type = "submit";
     submitBtn.className = "bau-btn-submit";
     submitBtn.innerHTML = `<span>⚡</span> Enviar para o TL abrir o Caso`;
-    submitBtn.onclick = () => {
-        showToast("Solicitação enviada com sucesso!");
-        SoundManager.playSuccess();
-        toggleVisibility();
-    };
     footer.appendChild(submitBtn);
-    popup.appendChild(footer);
+    form.appendChild(footer);
 
     document.body.appendChild(popup);
+
+    // --- FORM SUBMISSION LOGIC ---
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+
+        // Update hidden input with selected chips
+        const selectedChips = Array.from(chipsContainer.querySelectorAll('.bau-chip.active'))
+                                   .map(chip => chip.dataset.id);
+        quickActionsInput.value = selectedChips.join(',');
+
+
+        // 1. Coleta de dados do formulário
+        const formData = new FormData(form);
+        const escalationData = Object.fromEntries(formData.entries());
+        const contextData = getPageData();
+        const payload = {
+            ...contextData,
+            ...escalationData,
+        };
+
+        // 2. Validação (HTML5 'required' is already helping)
+        if (!payload.reason || !payload.taskType || !payload.description || !payload.availability) {
+            showToast("Por favor, preencha todos os campos obrigatórios.", "error");
+            return;
+        }
+
+        // 3. Feedback Tátil (Loading)
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = "Carregando...";
+
+        try {
+            // 4. Chamada ao DataService
+            await sendBAUEscalation(payload, contextData.agentEmail);
+
+            // 5. Sucesso
+            SoundManager.playSuccess();
+            showToast("Escalonamento enviado com sucesso!", "success");
+            form.reset();
+            chipsContainer.querySelectorAll('.bau-chip.active').forEach(c => c.classList.remove('active'));
+            toggleVisibility(); // Fecha o modal/popup
+
+        } catch (error) {
+            // 6. Erro
+            console.error("Erro BAU:", error);
+            showToast("Falha ao enviar: " + (error.message || "Erro desconhecido"), "error");
+        } finally {
+            // Restaurar botão
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    };
+
 
     function toggleVisibility() {
         isVisible = !isVisible;
@@ -179,94 +247,4 @@ export function initBAUForm() {
     }
 
     return toggleVisibility;
-}
-// src/modules/bau-form/bau-form-assistant.js
-
-import { injectStyles, COLORS } from './bau-form-styles.js';
-import { createStandardHeader } from '../shared/header-factory.js';
-import { showToast } from '../shared/utils.js';
-import { sendBAUEscalation } from '../shared/data-service.js';
-import { getPageData } from '../shared/page-data.js'; // Helper que usa o Sherlock Holmes
-
-export function initBAUForm() {
-    injectStyles();
-    let isVisible = false;
-
-    // --- POPUP CONTAINER ---
-    const popup = document.createElement("div");
-    popup.id = "bau-form-popup";
-    popup.className = "bau-popup cw-module-window";
-    popup.style.display = "none";
-
-    const toggleVisibility = () => {
-        isVisible = !isVisible;
-        popup.style.display = isVisible ? "flex" : "none";
-    };
-
-    // --- HEADER ---
-    const animRefs = { googleLine: null };
-    const header = createStandardHeader(
-        popup,
-        "BAU Form",
-        "v1.0.0",
-        "Solicite a abertura de casos BAU rapidamente.",
-        animRefs,
-        () => toggleVisibility()
-    );
-    popup.appendChild(header);
-
-    // --- CONTENT AREA ---
-    const content = document.createElement("div");
-    content.className = "bau-content";
-    popup.appendChild(content);
-
-    // --- FORM LOGIC ---
-    const form = document.createElement("form");
-    form.innerHTML = `
-        <div class="bau-card">
-            <select name="reason" required class="bau-input">
-                <option value="">Motivo *</option>
-                <option value="Dúvida Técnica">Dúvida Técnica</option>
-                <option value="Bug/Erro">Bug/Erro</option>
-            </select>
-            <input type="text" name="taskType" placeholder="Task/Tarefa *" required class="bau-input">
-            <textarea name="description" placeholder="Justificativa *" required class="bau-input"></textarea>
-            <input type="text" name="availability" placeholder="Sua Disponibilidade (Ex: 14h-16h) *" required class="bau-input">
-        </div>
-        <button type="submit" class="bau-submit-btn">Escalar para SME/TL</button>
-    `;
-
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        
-        const btn = form.querySelector('.bau-submit-btn');
-        const context = getPageData(); // Extrai CaseID, CID, etc da tela
-        const formData = new FormData(form);
-        const payload = {
-            ...context,
-            ...Object.fromEntries(formData.entries())
-        };
-
-        // Feedback Tátil: Loading
-        btn.disabled = true;
-        const originalText = btn.innerText;
-        btn.innerText = "Carregando...";
-
-        try {
-            await sendBAUEscalation(payload, context.agentEmail);
-            
-            showToast("Sucesso! Escalonamento enviado.", "success");
-            form.reset();
-            toggleVisibility(); // Fecha o modal
-        } catch (err) {
-            console.error(err);
-            showToast("Erro ao enviar: " + (err.message || "Tente novamente"), "error");
-        } finally {
-            btn.disabled = false;
-            btn.innerText = originalText;
-        }
-    };
-
-    content.appendChild(form);
-    document.body.appendChild(popup);
 }
