@@ -14,9 +14,8 @@ export function initBAUForm() {
     // --- POPUP CONTAINER ---
     const popup = document.createElement("div");
     popup.id = "bau-form-popup";
-    popup.className = "bau-popup cw-module-window"; // Added cw-module-window for animation compatibility
+    popup.className = "bau-popup cw-module-window";
     popup.style.display = "none";
-    popup.style.transformOrigin = "center center"; // Ensure transition starts from center if no button
 
     // --- HEADER ---
     const animRefs = { googleLine: null };
@@ -32,16 +31,12 @@ export function initBAUForm() {
 
     // --- CONTENT AREA ---
     const content = document.createElement("div");
-    content.style.padding = "20px";
-    content.style.overflowY = "auto";
-    content.style.flexGrow = "1";
+    content.className = "bau-content";
     popup.appendChild(content);
 
     // 1. CONTEXT CARD
     const contextCard = document.createElement("div");
     contextCard.className = "bau-card";
-    contextCard.style.padding = "0";
-    contextCard.style.overflow = "hidden";
 
     const banner = document.createElement("div");
     banner.className = "bau-header-banner";
@@ -49,7 +44,6 @@ export function initBAUForm() {
     contextCard.appendChild(banner);
 
     const contextBody = document.createElement("div");
-    contextBody.style.padding = "16px";
     contextBody.innerHTML = `
         <h2 class="bau-title">Marffen Saneantes</h2>
         <p class="bau-subtitle">CID: 123-456-7890 • AM: Lucas Teixeira</p>
@@ -62,10 +56,10 @@ export function initBAUForm() {
     const fallbackCard = document.createElement("div");
     fallbackCard.className = "bau-card bau-fallback-card";
     fallbackCard.innerHTML = `
-        <div style="color: #D93025; font-weight: 700; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+        <div style="color: #D93025; font-weight: 700; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
             <span>⚠️</span> Preencha os itens não encontrados:
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="bau-grid-2">
             <div>
                 <label class="bau-label">Fuso Horário</label>
                 <input type="text" class="bau-input" placeholder="Ex: GMT-3">
@@ -111,10 +105,8 @@ export function initBAUForm() {
 
     // Dropdowns
     const dropdownRow = document.createElement("div");
-    dropdownRow.style.display = "grid";
-    dropdownRow.style.gridTemplateColumns = "1fr 1fr";
-    dropdownRow.style.gap = "12px";
-    dropdownRow.style.marginBottom = "16px";
+    dropdownRow.className = "bau-grid-2";
+    dropdownRow.style.marginTop = "16px";
     dropdownRow.innerHTML = `
         <div>
             <label class="bau-label">Motivo da Abertura</label>
@@ -141,19 +133,20 @@ export function initBAUForm() {
     const textLabel = document.createElement("label");
     textLabel.className = "bau-label";
     textLabel.textContent = "Justificativa / Descrição";
+    textLabel.style.marginTop = "16px";
     actionCard.appendChild(textLabel);
 
     const textarea = document.createElement("textarea");
     textarea.className = "bau-textarea";
     textarea.placeholder = "Descreva detalhadamente o que precisa ser feito...";
-    textarea.style.minHeight = "80px";
-    textarea.style.marginBottom = "16px";
+    textarea.style.minHeight = "100px";
     actionCard.appendChild(textarea);
 
     // Datetime
     const dateLabel = document.createElement("label");
     dateLabel.className = "bau-label";
     dateLabel.textContent = "Disponibilidade do Anunciante";
+    dateLabel.style.marginTop = "16px";
     actionCard.appendChild(dateLabel);
 
     const dateInput = document.createElement("input");
