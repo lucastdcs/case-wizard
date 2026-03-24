@@ -4384,7 +4384,7 @@
       user: userEmail,
       date: (/* @__PURE__ */ new Date()).toISOString()
     };
-    await _performOp("create_bau_escalation", fullPayload);
+    await _performOp("create_bau", fullPayload);
     return true;
   };
 
