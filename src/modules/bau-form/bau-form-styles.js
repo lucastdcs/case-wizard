@@ -44,6 +44,10 @@ export const injectStyles = () => {
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes bauFadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
     @keyframes spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
@@ -79,15 +83,13 @@ export const injectStyles = () => {
       overflow: hidden; /* Garante que o conteúdo não vaze */
     }
     .bau-view {
-      display: none; /* Oculto por padrão */
-      flex-direction: column;
-      flex-grow: 1;
-      width: 100%;
-      height: 100%;
-      animation: fadeIn 0.3s ${EASE};
+        display: none;
+        flex-direction: column;
+        height: 100%;
     }
     .bau-view.active {
-      display: flex; /* Exibe a view ativa */
+        display: flex;
+        animation: bauFadeIn 0.3s ease;
     }
 
     /* --- VIEW 1: DASHBOARD (REQUISITO) --- */
