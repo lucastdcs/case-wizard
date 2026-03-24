@@ -15,7 +15,7 @@ export function initBAUForm() {
     let isVisible = false;
     let currentContextData = null;
     let currentStep = 1;
-    const totalSteps = 3;
+    const totalSteps = 4;
 
     const popup = document.createElement("div");
     popup.id = "bau-form-popup";
@@ -50,83 +50,76 @@ export function initBAUForm() {
     step1.id = "bau-step-1";
 
     const contextCard = document.createElement("div");
-    contextCard.className = "bau-card bau-context-card"; // Nova classe para o estilo Gemini
+    contextCard.className = "bau-card bau-context-card";
 
     const banner = document.createElement("div");
     banner.className = "bau-header-banner";
     contextCard.appendChild(banner);
 
     const contextBody = document.createElement("div");
-    // Acordeão removido, dados sempre visíveis
     contextBody.innerHTML = `
-        <h2 class="bau-title" id="bau-adv-name">Carregando...</h2>
-        <p class="bau-subtitle" id="bau-adv-details">CID: - • AM: -</p>
-        <div id="bau-all-data" style="margin-top: 16px; font-size: 13px; color: #5F6368; line-height: 1.7; border-top: 1px dashed #DADCE0; padding-top: 16px;"></div>
+        <div class="bau-inline-field" title="Clique para editar" style="margin-bottom: 4px;">
+            <input type="text" id="bau-adv-name-input" name="advName" class="bau-title bau-inline-input" style="border-bottom: none; font-size: 20px;" placeholder="Nome do Anunciante">
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-left: 10px; opacity: 0.9;">
+            <div class="bau-inline-field" title="Clique para editar" style="padding: 2px 6px;">
+                 <span style="color: #fff; font-size: 13px; font-weight: 700;">CID:</span>
+                 <input type="text" id="bau-cid-input" name="cid" class="bau-inline-input" style="width: 120px; font-size: 13px; border-bottom-color: rgba(255,255,255,0.3);" placeholder="CID">
+            </div>
+            <span style="color: #fff; opacity: 0.5;">•</span>
+            <div class="bau-inline-field" title="Clique para editar" style="padding: 2px 6px;">
+                 <span style="color: #fff; font-size: 13px; font-weight: 700;">AM:</span>
+                 <input type="text" id="bau-am-name-input" name="amName" class="bau-inline-input" style="width: 150px; font-size: 13px; border-bottom-color: rgba(255,255,255,0.3);" placeholder="Account Manager">
+            </div>
+        </div>
+        <div id="bau-all-data"></div>
     `;
     contextCard.appendChild(contextBody);
     step1.appendChild(contextCard);
-
-    const fallbackCard = document.createElement("div");
-    fallbackCard.id = "bau-dynamic-fallback";
-    fallbackCard.className = "bau-card bau-fallback-card";
-    fallbackCard.style.display = "none";
-    step1.appendChild(fallbackCard);
     form.appendChild(step1);
 
-    // --- STEP 2: AÇÕES RÁPIDAS E TASKS ---
+    // --- STEP 2: TASKS ---
     const step2 = document.createElement("div");
     step2.className = "bau-step";
     step2.id = "bau-step-2";
-    // ... (O conteúdo do passo 2 permanece o mesmo)
+
     const actionCard = document.createElement("div");
     actionCard.className = "bau-card";
-    const chipsLabel = document.createElement("label");
-    chipsLabel.className = "bau-label";
-    chipsLabel.textContent = "Ações Rápidas (Preenche Motivo e Task)";
-    actionCard.appendChild(chipsLabel);
-    const chipsContainer = document.createElement("div");
-    chipsContainer.className = "bau-chips-container";
-    chipData.forEach(data => {
-        const chip = document.createElement("div");
-        chip.className = "bau-chip";
-        chip.textContent = data.text;
-        chip.dataset.id = data.id;
-        chip.onclick = () => {
-            chipsContainer.querySelectorAll('.bau-chip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            SoundManager.playClick();
-            form.querySelector('select[name="reason"]').value = data.reason;
-            form.querySelector('select[name="taskType"]').value = data.task;
-        };
-        chipsContainer.appendChild(chip);
-    });
-    actionCard.appendChild(chipsContainer);
-    const dropdownRow = document.createElement("div");
-    dropdownRow.className = "bau-grid-2";
-    dropdownRow.style.marginTop = "16px";
-    dropdownRow.innerHTML = `
-        <div>
-            <label class="bau-label">Motivo da Abertura</label>
-            <select name="reason" required class="bau-select">
-                <option value="">Selecione...</option>
-                <option value="Nova Implementação">Nova Implementação</option>
-                <option value="Correção de Tag">Correção de Tag</option>
-                <option value="Upgrade / Migração">Upgrade / Migração</option>
-                <option value="Troubleshooting">Troubleshooting</option>
-            </select>
-        </div>
-        <div>
-            <label class="bau-label">Task para BAU</label>
-            <select name="taskType" required class="bau-select">
-                <option value="">Selecione...</option>
-                <option value="Setup GTM">Setup GTM</option>
-                <option value="Google Ads Conversion">Google Ads Conversion</option>
-                <option value="GA4 Events">GA4 Events</option>
-                <option value="Outros">Outros</option>
-            </select>
+
+    actionCard.innerHTML = `
+        <label class="bau-label">Motivo da Abertura</label>
+        <select name="reason" required class="bau-select">
+            <option value="">Selecione...</option>
+            <option value="Nova Implementação">Nova Implementação</option>
+            <option value="Correção de Tag">Correção de Tag</option>
+            <option value="Upgrade / Migração">Upgrade / Migração</option>
+            <option value="Troubleshooting">Troubleshooting</option>
+        </select>
+
+        <label class="bau-label" style="margin-top: 24px;">Tasks para BAU (Selecione 1 ou mais)</label>
+        <div class="bau-tasks-grid" id="bau-tasks-container">
+            ${['Setup GTM', 'Google Ads Conversion', 'GA4 Events', 'Enhanced Conversions', 'Offline Conversions', 'Consent Mode', 'Troubleshooting', 'Outros'].map(task => `
+                <label class="bau-task-item">
+                    <input type="checkbox" name="taskType" value="${task}">
+                    <span>${task}</span>
+                </label>
+            `).join('')}
         </div>
     `;
-    actionCard.appendChild(dropdownRow);
+
+    // Lógica para toggle visual dos itens de task
+    actionCard.querySelectorAll('.bau-task-item').forEach(item => {
+        const input = item.querySelector('input');
+        item.onclick = (e) => {
+            // Se clicar no label, o input já troca. Se clicar no item, trocamos manualmente.
+            if (e.target !== input) {
+                input.checked = !input.checked;
+            }
+            item.classList.toggle('active', input.checked);
+            SoundManager.playClick();
+        };
+    });
+
     step2.appendChild(actionCard);
     form.appendChild(step2);
 
@@ -177,6 +170,20 @@ export function initBAUForm() {
     step3.appendChild(detailsCard);
     form.appendChild(step3);
 
+    // --- STEP 4: CONFIRMAÇÃO ---
+    const step4 = document.createElement("div");
+    step4.className = "bau-step";
+    step4.id = "bau-step-4";
+
+    const confirmCard = document.createElement("div");
+    confirmCard.className = "bau-card";
+    confirmCard.innerHTML = `
+        <h3 style="margin-top: 0; color: ${COLORS.blue}; font-size: 16px; margin-bottom: 20px;">Confirme os dados antes de enviar</h3>
+        <div id="bau-confirmation-details"></div>
+    `;
+    step4.appendChild(confirmCard);
+    form.appendChild(step4);
+
     // --- FOOTER & NAVIGATION ---
     const footer = document.createElement("div");
     footer.className = "bau-footer";
@@ -220,14 +227,67 @@ export function initBAUForm() {
         backBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
         nextBtn.style.display = currentStep < totalSteps ? 'inline-block' : 'none';
         submitBtn.style.display = currentStep === totalSteps ? 'inline-block' : 'none';
+
+        if (currentStep === 4) {
+            renderConfirmation();
+        }
+    }
+
+    function renderConfirmation() {
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const tasks = formData.getAll('taskType');
+        const availabilities = [data.availability_1, data.availability_2, data.availability_3]
+            .filter(v => v && v.trim() !== "")
+            .map(v => v.replace('T', ' '))
+            .join(' | ');
+
+        const container = document.getElementById('bau-confirmation-details');
+        container.innerHTML = `
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Anunciante:</span><span class="bau-confirm-value">${data.advName}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">CID:</span><span class="bau-confirm-value">${data.cid}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">AM:</span><span class="bau-confirm-value">${data.amName}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Email:</span><span class="bau-confirm-value">${data.email || 'N/A'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Programa:</span><span class="bau-confirm-value">${data.salesProgram || 'N/A'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Speakeasy ID:</span><span class="bau-confirm-value">${data.seId || 'N/A'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Motivo:</span><span class="bau-confirm-value">${data.reason}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Tasks:</span><span class="bau-confirm-value">${tasks.join(', ')}</span></div>
+            <div class="bau-confirm-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                <span class="bau-confirm-label">Descrição:</span>
+                <div style="font-size: 13px; color: ${COLORS.textPrimary}; background: #f8f9fa; padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; white-space: pre-wrap;">${data.description}</div>
+            </div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Disponibilidade:</span><span class="bau-confirm-value">${availabilities || 'N/A'}</span></div>
+        `;
     }
 
     function validateStep(step) {
+        if (step === 2) {
+            const reason = form.querySelector('select[name="reason"]').value;
+            const tasks = Array.from(form.querySelectorAll('input[name="taskType"]:checked'));
+            if (!reason) {
+                showToast("Erro: O Motivo da Abertura é obrigatório.", "error");
+                return false;
+            }
+            if (tasks.length === 0) {
+                showToast("Erro: Selecione pelo menos uma Task.", "error");
+                return false;
+            }
+            return true;
+        }
+
         const inputs = form.querySelectorAll(`#bau-step-${step} [required]`);
         for (const input of inputs) {
             if (!input.value.trim()) {
+                let labelText = "";
                 const label = input.closest('div').querySelector('.bau-label');
-                showToast(`Erro: O campo '${label?.textContent || input.name}' é obrigatório.`, "error");
+                if (label) {
+                    labelText = label.textContent;
+                } else {
+                    const inlineLabel = input.closest('.bau-inline-field')?.querySelector('span');
+                    labelText = inlineLabel ? inlineLabel.textContent : input.placeholder || input.name;
+                }
+
+                showToast(`Erro: O campo '${labelText.replace(':', '')}' é obrigatório.`, "error");
                 input.classList.add('input-error');
                 setTimeout(() => input.classList.remove('input-error'), 3000);
                 return false;
@@ -262,53 +322,64 @@ export function initBAUForm() {
     function renderData(pd) {
         if (!pd) return;
 
-        document.getElementById('bau-adv-name').textContent = pd.advName || "Anunciante Desconhecido";
-        document.getElementById('bau-adv-details').textContent = `CID: ${pd.cid || "N/A"} • AM: ${pd.amName || "N/A"}`;
+        form.querySelector('[name="advName"]').value = pd.advName || "";
+        form.querySelector('[name="cid"]').value = pd.cid || "";
+        form.querySelector('[name="amName"]').value = pd.amName || "";
         
         const allDataEl = document.getElementById('bau-all-data');
         if (allDataEl) {
             allDataEl.innerHTML = "";
 
             const fields = [
-                { label: 'Email', value: pd.email },
-                { label: 'Idioma', value: pd.language },
-                { label: 'Programa', value: pd.salesProgram },
-                { label: 'Speakeasy ID', value: pd.seId, isSpeakeasy: true },
-                { label: 'Timezone', value: pd.timezone }
+                { label: 'Email', name: 'email', value: pd.email },
+                { label: 'Idioma', name: 'language', value: pd.language },
+                { label: 'Programa', name: 'salesProgram', value: pd.salesProgram },
+                { label: 'Speakeasy ID', name: 'seId', value: pd.seId, isSpeakeasy: true },
+                { label: 'Timezone', name: 'timezone', value: pd.timezone }
             ];
 
             fields.forEach(f => {
                 const row = document.createElement('div');
-                row.style.display = 'flex';
-                row.style.alignItems = 'center';
-                row.style.gap = '8px';
-                row.style.marginBottom = '4px';
+                row.className = "bau-inline-field";
+                row.title = "Clique para editar";
 
                 const label = document.createElement('b');
                 label.textContent = `${f.label}:`;
                 row.appendChild(label);
 
-                const valueSpan = document.createElement('span');
-                valueSpan.textContent = f.value || "N/A";
-                if (f.isSpeakeasy) valueSpan.id = "bau-context-se-id";
-                row.appendChild(valueSpan);
+                const input = document.createElement('input');
+                input.type = "text";
+                input.name = f.name;
+                input.className = "bau-inline-input";
+                input.value = f.value || "";
+                input.placeholder = `Preencher ${f.label}...`;
+                if (f.isSpeakeasy) input.id = "bau-context-se-id-input";
+
+                // Se o valor for vazio, destacamos visualmente (opcional, já tem o placeholder)
+                if (!f.value || f.value === "N/A" || f.value === "---") {
+                    input.value = "";
+                }
+
+                row.appendChild(input);
 
                 if (f.isSpeakeasy) {
                     const btnSearch = document.createElement('button');
                     btnSearch.type = "button";
                     btnSearch.innerHTML = `✨ Auto Busca`;
-                    btnSearch.style.cssText = `font-size: 10px; font-weight: 700; color: #fff; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 100px; padding: 2px 10px; cursor: pointer; transition: all 0.2s; margin-left: 4px;`;
+                    btnSearch.style.cssText = `font-size: 10px; font-weight: 700; color: #fff; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 100px; padding: 2px 10px; cursor: pointer; transition: all 0.2s; margin-left: 4px; flex-shrink: 0;`;
                     btnSearch.onmouseenter = () => btnSearch.style.background = "rgba(255,255,255,0.3)";
                     btnSearch.onmouseleave = () => btnSearch.style.background = "rgba(255,255,255,0.2)";
                     btnSearch.onclick = async (e) => {
+                        e.stopPropagation();
                         e.preventDefault();
-                        await fetchAndInsertSpeakeasyId("bau-context-se-id");
-                        // Sync back to currentContextData if needed, though sendBAUEscalation uses payload
-                        const newValue = document.getElementById("bau-context-se-id").value || document.getElementById("bau-context-se-id").textContent;
-                        currentContextData.seId = newValue;
+                        await fetchAndInsertSpeakeasyId("bau-context-se-id-input");
+                        currentContextData.seId = input.value;
                     };
                     row.appendChild(btnSearch);
                 }
+
+                // Ao clicar na linha, foca o input
+                row.onclick = () => input.focus();
 
                 allDataEl.appendChild(row);
             });
@@ -320,68 +391,15 @@ export function initBAUForm() {
         const requiredFields = [
             { key: 'advName', label: 'Nome do Anunciante' },
             { key: 'cid', label: 'Customer ID (CID)' },
-            { key: 'amName', label: 'Account Manager' },
-            { key: 'email', label: 'Email de Contato' },
-            // ... outros campos essenciais
+            { key: 'amName', label: 'Account Manager' }
         ];
 
         const missingFields = requiredFields.filter(f => !pd[f.key] || pd[f.key] === "N/A" || pd[f.key].trim() === "---");
 
         if (missingFields.length > 0) {
-            fallbackCard.innerHTML = `
-                <div class="bau-fallback-header">
-                    <span>⚠️</span> Complete os dados não encontrados:
-                </div>
-                <div class="bau-grid-2" id="bau-fallback-grid"></div>
-            `;
-            const grid = fallbackCard.querySelector('#bau-fallback-grid');
-            missingFields.forEach(f => {
-                const fieldDiv = document.createElement("div");
-                fieldDiv.style.position = "relative";
-
-                const labelWrapper = document.createElement("div");
-                labelWrapper.style.display = "flex";
-                labelWrapper.style.alignItems = "center";
-                labelWrapper.style.justifyContent = "space-between";
-
-                const label = document.createElement("label");
-                label.className = "bau-label";
-                label.textContent = f.label;
-                labelWrapper.appendChild(label);
-
-                if (f.key === "seId") {
-                    const btnSearch = document.createElement('button');
-                    btnSearch.type = "button";
-                    btnSearch.innerHTML = `✨ Auto Busca`;
-                    btnSearch.style.cssText = `font-size: 11px; font-weight: 700; color: ${COLORS.blue}; background: ${COLORS.blueLight}; border: none; border-radius: 100px; padding: 4px 12px; cursor: pointer; transition: all 0.2s; margin-top: 12px;`;
-                    btnSearch.onclick = (e) => {
-                        e.preventDefault();
-                        fetchAndInsertSpeakeasyId(`fallback-input-${f.key}`);
-                    };
-                    labelWrapper.appendChild(btnSearch);
-                }
-
-                fieldDiv.appendChild(labelWrapper);
-
-                const input = document.createElement("input");
-                input.type = "text";
-                input.name = f.key;
-                input.id = `fallback-input-${f.key}`;
-                input.className = "bau-input";
-                input.placeholder = `Preencher ${f.label}...`;
-                input.required = true;
-                fieldDiv.appendChild(input);
-
-                grid.appendChild(fieldDiv);
-            });
-
-            fallbackCard.style.display = 'block';
-            banner.style.background = 'transparent'; // Fundo do banner fica neutro
-            banner.innerHTML = `<span>⚠️</span> Dados ausentes! Por favor, preencha os campos no card abaixo para continuar.`;
+            banner.innerHTML = `<span>⚠️</span> Alguns dados não foram encontrados. Por favor, complete os campos editáveis acima.`;
         } else {
-            fallbackCard.style.display = 'none';
-            banner.style.background = 'transparent';
-            banner.innerHTML = `<span>✅</span> Dados do CRM carregados com sucesso!`;
+            banner.innerHTML = `<span>✅</span> Dados do CRM carregados. Você pode editar qualquer campo clicando nele.`;
         }
     }
 
@@ -394,6 +412,8 @@ export function initBAUForm() {
         submitBtn.innerHTML = "Enviando...";
         const formData = new FormData(form);
         const escalationData = Object.fromEntries(formData.entries());
+        const tasks = formData.getAll('taskType');
+
         const payload = {
             caseId: currentContextData.caseId || "",
             cid: escalationData.cid || currentContextData.cid || "",
@@ -406,7 +426,7 @@ export function initBAUForm() {
             site: escalationData.site || currentContextData.site || "",
             timezone: escalationData.timezone || currentContextData.timezone || "",
             reason: escalationData.reason,
-            taskType: escalationData.taskType,
+            taskType: tasks.join(', '),
             description: escalationData.description,
             availability: `${escalationData.availability_1 || ''} | ${escalationData.availability_2 || ''} | ${escalationData.availability_3 || ''}`.trim()
         };
@@ -415,7 +435,6 @@ export function initBAUForm() {
             SoundManager.playSuccess();
             showToast("Escalonamento enviado com sucesso!", "success");
             form.reset();
-            chipsContainer.querySelectorAll('.bau-chip.active').forEach(c => c.classList.remove('active'));
             currentStep = 1;
             updateWizardState();
             toggleVisibility();
