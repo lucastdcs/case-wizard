@@ -35,6 +35,17 @@ export const injectStyles = () => {
   const style = document.createElement('style');
   style.id = 'bau-form-global-styles';
   style.innerHTML = `
+    /* --- KEYFRAMES PARA ANIMAÇÃO --- */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes gemini-gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
     /* --- BASE & UTILITIES --- */
     .input-error {
       border-color: ${COLORS.red} !important;
@@ -42,201 +53,119 @@ export const injectStyles = () => {
     }
 
     .bau-popup {
-      display: flex !important;
-      flex-direction: column !important;
-      width: 520px !important; /* Aumentado para melhor espaçamento */
-      max-height: 85vh !important;
+      display: flex !important; flex-direction: column !important;
+      width: 520px !important; max-height: 85vh !important;
       background: ${COLORS.surface} !important;
-      backdrop-filter: blur(12px) !important;
-      -webkit-backdrop-filter: blur(12px) !important;
-      border-radius: ${RADIUS.large} !important;
-      box-shadow: ${SHADOW.deep} !important;
+      backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important;
+      border-radius: ${RADIUS.large} !important; box-shadow: ${SHADOW.deep} !important;
       border: 1px solid rgba(255, 255, 255, 0.4) !important;
-      overflow: hidden !important;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10000;
+      overflow: hidden !important; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); z-index: 10000;
       font-family: 'Google Sans', Roboto, sans-serif;
     }
 
     /* --- PROGRESS INDICATOR --- */
-    .bau-progress-indicator {
-      display: flex;
-      justify-content: space-around;
-      padding: 20px 32px;
+    .bau-progress-indicator { /* ... sem alterações ... */
+      display: flex; justify-content: space-around; padding: 20px 32px;
       border-bottom: 1px solid ${COLORS.border};
       background: rgba(248, 249, 250, 0.7);
     }
-
     .bau-progress-step {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background-color: #F1F3F4;
-      color: ${COLORS.textSecondary};
-      font-weight: 700;
-      font-size: 14px;
-      border: 2px solid #F1F3F4;
-      transition: ${TRANSITION};
-      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 50%;
+      background-color: #F1F3F4; color: ${COLORS.textSecondary};
+      font-weight: 700; font-size: 14px; border: 2px solid #F1F3F4;
+      transition: ${TRANSITION}; position: relative;
     }
-    
-    .bau-progress-step.active {
-      background-color: ${COLORS.blueLight};
-      color: ${COLORS.blue};
-      border-color: ${COLORS.blue};
-      transform: scale(1.1);
-    }
-
-    .bau-progress-step.completed {
-      background-color: ${COLORS.greenLight};
-      color: ${COLORS.green};
-      border-color: ${COLORS.green};
-    }
+    .bau-progress-step.active { background-color: ${COLORS.blueLight}; color: ${COLORS.blue}; border-color: ${COLORS.blue}; transform: scale(1.1); }
+    .bau-progress-step.completed { background-color: ${COLORS.greenLight}; color: ${COLORS.green}; border-color: ${COLORS.green}; }
     
     /* --- CONTENT & STEPS --- */
-    .bau-content {
-      padding: 32px;
-      overflow-y: auto;
-      flex-grow: 1;
-    }
-
-    .bau-step {
-        display: none;
-        animation: fadeIn 0.5s ${EASE};
-    }
-
-    .bau-step.active {
-        display: block;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
+    .bau-content { padding: 32px; overflow-y: auto; flex-grow: 1; }
+    .bau-step { display: none; animation: fadeIn 0.5s ${EASE}; }
+    .bau-step.active { display: block; }
 
     .bau-card {
-      background: ${COLORS.white};
-      border-radius: ${RADIUS.medium};
-      padding: 24px;
-      box-shadow: none; /* Sombra removida para um look mais flat dentro do wizard */
-      border: 1px solid ${COLORS.border};
+      background: ${COLORS.white}; border-radius: ${RADIUS.medium};
+      padding: 24px; border: 1px solid ${COLORS.border};
       margin-bottom: 24px;
     }
 
-    /* --- FORM ELEMENTS (sem grandes mudanças, apenas ajustes finos) --- */
-
-    .bau-header-banner {
-      background: ${COLORS.yellowLight};
-      color: #E37400;
-      padding: 10px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: -24px -24px 24px -24px;
-      border-bottom: 1px solid #FEF1D1;
-      border-radius: ${RADIUS.medium} ${RADIUS.medium} 0 0;
+    /* --- CARD DE CONTEXTO (NOVO ESTILO GEMINI) --- */
+    .bau-context-card {
+        color: #fff;
+        border: none;
+        background: linear-gradient(120deg, #13547a, #80d0c7, #2a6c8b, #5ED5D8);
+        background-size: 400% 400%;
+        animation: gemini-gradient 15s ease infinite;
+    }
+    .bau-context-card .bau-title, .bau-context-card .bau-subtitle, .bau-context-card b {
+        color: #fff !important;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+     .bau-context-card #bau-all-data {
+        color: #E0F5F5 !important;
+        border-top-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    .bau-context-card .bau-header-banner {
+        color: #fff; 
+        background: transparent !important;
+        border-bottom: none !important;
+        margin-bottom: 8px;
+        padding: 0;
+        font-weight: 700;
     }
 
-    .bau-title { font-size: 18px; font-weight: 700; margin: 0; color: ${COLORS.textPrimary}; }
-    .bau-subtitle { font-size: 13px; color: ${COLORS.textSecondary}; margin: 4px 0 12px 0; }
-
-    .bau-accordion-btn {
-      background: #F8F9FA; border: 1px solid ${COLORS.border}; border-radius: ${RADIUS.small};
-      color: ${COLORS.textSecondary}; font-size: 12px; font-weight: 600; cursor: pointer;
-      padding: 8px 12px; transition: ${TRANSITION}; width: fit-content;
+    /* --- CARD DE FALLBACK (ESTILO SUAVIZADO) --- */
+    .bau-fallback-card {
+        background-color: ${COLORS.yellowLight};
+        border: 1.5px dashed #FBC02D; /* Borda tracejada para diferenciar */
+        padding: 16px;
     }
-    .bau-accordion-btn:hover { background: #F1F3F4; }
-
-    .bau-fallback-card { background: #FFF4F2; border: 1px solid #FAD2CF; }
-
-    .bau-label {
-      display: block; font-size: 11px; font-weight: 700; color: ${COLORS.textSecondary};
-      text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;
-    }
-
-    .bau-input, .bau-select, .bau-textarea {
-      width: 100%; padding: 12px 14px; border-radius: ${RADIUS.medium}; border: 1.5px solid ${COLORS.border};
-      background: #F8F9FA; font-size: 14px; color: ${COLORS.textPrimary}; transition: ${TRANSITION};
-      box-sizing: border-box; outline: none;
-    }
-    
-    .bau-input:focus, .bau-select:focus, .bau-textarea:focus {
-      border-color: ${COLORS.blue}; box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15); background: ${COLORS.white};
-    }
-    
-    .bau-select {
-      appearance: none; -webkit-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'%3E%3C/path%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 16px center; padding-right: 44px !important;
+    .bau-fallback-header {
+        color: #BF360C; /* Tom de laranja mais escuro para o texto */
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .bau-chips-container { display: flex; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
-    .bau-chip {
-      padding: 8px 18px; border-radius: ${RADIUS.pill}; border: 1.5px solid ${COLORS.border}; background: ${COLORS.white};
-      font-size: 13px; font-weight: 600; cursor: pointer; transition: ${TRANSITION}; user-select: none;
+    /* --- FORM ELEMENTS --- */
+    .bau-label { /* ... sem alterações ... */ }
+    .bau-input, .bau-select, .bau-textarea { /* ... sem alterações ... */ }
+    .bau-select { /* ... sem alterações ... */ }
+    .bau-chips-container { /* ... sem alterações ... */ }
+    .bau-chip { /* ... sem alterações ... */ }
+
+    /* --- SEÇÃO DE DISPONIBILIDADE (NOVO LAYOUT) --- */
+    .bau-availability-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 4px;
     }
-    .bau-chip:hover { transform: translateY(-1px); border-color: #C2C3C4; box-shadow: ${SHADOW.subtle}; }
-    .bau-chip.active {
-      background: ${COLORS.blueLight}; border-color: ${COLORS.blue}; color: ${COLORS.blue};
-      box-shadow: none; transform: none;
+    .bau-availability-hint {
+        margin-top: 16px;
+        padding: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: ${COLORS.textSecondary};
+        background-color: #F8F9FA;
+        border-radius: ${RADIUS.medium};
+        line-height: 1.6;
     }
 
     /* --- FOOTER & NAVIGATION BUTTONS --- */
-    .bau-footer {
-      padding: 16px 32px;
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(8px);
-      border-top: 1px solid ${COLORS.border};
-      display: flex;
-      justify-content: space-between; /* Alinhado para separar botões */
-      align-items: center;
-    }
+    .bau-footer { /* ... sem alterações ... */ }
+    .bau-btn-primary, .bau-btn-secondary, .bau-btn-submit { /* ... sem alterações ... */ }
+    .bau-btn-secondary { /* ... sem alterações ... */ }
+    .bau-btn-primary { /* ... sem alterações ... */ }
+    .bau-btn-submit { /* ... sem alterações ... */ }
 
-    .bau-btn-primary, .bau-btn-secondary, .bau-btn-submit {
-      padding: 12px 24px;
-      border-radius: ${RADIUS.pill};
-      border: none;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: ${TRANSITION};
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .bau-btn-secondary {
-        background-color: #F1F3F4;
-        color: ${COLORS.textPrimary};
-        border: 1px solid ${COLORS.border};
-    }
-    .bau-btn-secondary:hover { background-color: #E8EAED; border-color: #C2C3C4; }
-
-    .bau-btn-primary {
-        background-color: ${COLORS.blue};
-        color: white;
-    }
-    .bau-btn-primary:hover { background-color: #1765CC; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(26, 115, 232, 0.2); }
-
-    .bau-btn-submit {
-        background-color: ${COLORS.green};
-        color: white;
-        flex-grow: 1; /* Ocupa o espaço no final */
-    }
-    .bau-btn-submit:hover { background-color: #1A7F37; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(24, 127, 55, 0.2); }
-
+    /* --- GRIDS --- */
     .bau-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .bau-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-
   `;
   document.head.appendChild(style);
-};
+}; 

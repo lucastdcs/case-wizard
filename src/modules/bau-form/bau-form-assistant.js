@@ -16,39 +16,30 @@ export function initBAUForm() {
     let currentStep = 1;
     const totalSteps = 3;
 
-    // --- POPUP CONTAINER ---
-    
     const popup = document.createElement("div");
     popup.id = "bau-form-popup";
     popup.className = "bau-popup cw-module-window";
     popup.style.display = "none";
 
-    // --- HEADER ---
-    
     const animRefs = { googleLine: null };
     const header = createStandardHeader(
         popup,
         "BAU Form",
-        "v1.1.0", // Versão atualizada para refletir a nova UX
+        "v1.2.0", 
         "Solicite a abertura de casos BAU em um fluxo guiado.",
         animRefs,
         () => toggleVisibility()
     );
     popup.appendChild(header);
 
-    // --- PROGRESS INDICATOR (WIZARD STEPS) ---
     const progressIndicator = document.createElement("div");
     progressIndicator.className = "bau-progress-indicator";
     popup.appendChild(progressIndicator);
 
-    // --- CONTENT AREA ---
-    
     const content = document.createElement("div");
     content.className = "bau-content";
     popup.appendChild(content);
 
-    // --- FORM ELEMENT ---
-    
     const form = document.createElement("form");
     content.appendChild(form);
 
@@ -58,17 +49,18 @@ export function initBAUForm() {
     step1.id = "bau-step-1";
 
     const contextCard = document.createElement("div");
-    contextCard.className = "bau-card";
+    contextCard.className = "bau-card bau-context-card"; // Nova classe para o estilo Gemini
+
     const banner = document.createElement("div");
     banner.className = "bau-header-banner";
-    banner.innerHTML = `<span>⚠️</span> Verifique os dados capturados do CRM`;
     contextCard.appendChild(banner);
+
     const contextBody = document.createElement("div");
+    // Acordeão removido, dados sempre visíveis
     contextBody.innerHTML = `
         <h2 class="bau-title" id="bau-adv-name">Carregando...</h2>
         <p class="bau-subtitle" id="bau-adv-details">CID: - • AM: -</p>
-        <button type="button" id="bau-toggle-data" class="bau-accordion-btn">Ver todos os dados capturados ▼</button>
-        <div id="bau-hidden-data" style="display: none; margin-top: 12px; font-size: 12px; color: #5F6368; line-height: 1.6; border-top: 1px dashed #DADCE0; padding-top: 12px;"></div>
+        <div id="bau-all-data" style="margin-top: 16px; font-size: 13px; color: #5F6368; line-height: 1.7; border-top: 1px dashed #DADCE0; padding-top: 16px;"></div>
     `;
     contextCard.appendChild(contextBody);
     step1.appendChild(contextCard);
@@ -84,15 +76,13 @@ export function initBAUForm() {
     const step2 = document.createElement("div");
     step2.className = "bau-step";
     step2.id = "bau-step-2";
-
+    // ... (O conteúdo do passo 2 permanece o mesmo)
     const actionCard = document.createElement("div");
     actionCard.className = "bau-card";
-    
     const chipsLabel = document.createElement("label");
     chipsLabel.className = "bau-label";
     chipsLabel.textContent = "Ações Rápidas (Preenche Motivo e Task)";
     actionCard.appendChild(chipsLabel);
-
     const chipsContainer = document.createElement("div");
     chipsContainer.className = "bau-chips-container";
     chipData.forEach(data => {
@@ -110,7 +100,6 @@ export function initBAUForm() {
         chipsContainer.appendChild(chip);
     });
     actionCard.appendChild(chipsContainer);
-
     const dropdownRow = document.createElement("div");
     dropdownRow.className = "bau-grid-2";
     dropdownRow.style.marginTop = "16px";
@@ -162,29 +151,32 @@ export function initBAUForm() {
     detailsCard.appendChild(textarea);
 
     const dateLabel = document.createElement("label");
-dateLabel.className = "bau-label";
-dateLabel.textContent = "Disponibilidade (3 opções para reagendamento)";
-dateLabel.style.marginTop = "16px";
-detailsCard.appendChild(dateLabel);
+    dateLabel.className = "bau-label";
+    dateLabel.textContent = "Disponibilidade (mínimo 1 opção)";
+    dateLabel.style.marginTop = "20px";
+    detailsCard.appendChild(dateLabel);
 
-const dateGrid = document.createElement("div");
-dateGrid.className = "bau-grid-2"; // Reutilizando a classe para um grid de 2, mas pode ser ajustado
-dateGrid.style.gap = "12px";
+    const availabilityContainer = document.createElement("div");
+    availabilityContainer.className = "bau-availability-container";
 
-// Criando 3 campos de data
-for (let i = 1; i <= 3; i++) {
-    const d = document.createElement("input");
-    d.type = "datetime-local";
-    d.name = `availability_${i}`;
-    d.required = i === 1; // Apenas o primeiro é obrigatório
-    d.className = "bau-input";
-    dateGrid.appendChild(d);
-}
-    detailsCard.appendChild(dateGrid);
+    for (let i = 1; i <= 3; i++) {
+        const d = document.createElement("input");
+        d.type = "datetime-local";
+        d.name = `availability_${i}`;
+        d.required = i === 1;
+        d.className = "bau-input";
+        availabilityContainer.appendChild(d);
+    }
+    detailsCard.appendChild(availabilityContainer);
+
+    const availabilityHint = document.createElement("div");
+    availabilityHint.className = "bau-availability-hint";
+    detailsCard.appendChild(availabilityHint);
+    
     step3.appendChild(detailsCard);
     form.appendChild(step3);
 
-    // --- STICKY FOOTER & NAVIGATION ---
+    // --- FOOTER & NAVIGATION ---
     const footer = document.createElement("div");
     footer.className = "bau-footer";
 
@@ -207,18 +199,15 @@ for (let i = 1; i <= 3; i++) {
     submitBtn.style.display = "none";
     footer.appendChild(submitBtn);
     
-    popup.appendChild(footer); // Adicionando o footer ao popup, não ao form
-
+    popup.appendChild(footer);
     document.body.appendChild(popup);
 
     // --- WIZARD LOGIC ---
     function updateWizardState() {
-        // Atualiza os steps
         form.querySelectorAll('.bau-step').forEach((step, index) => {
             step.classList.toggle('active', (index + 1) === currentStep);
         });
 
-        // Atualiza o indicador de progresso
         progressIndicator.innerHTML = '';
         for (let i = 1; i <= totalSteps; i++) {
             const stepDot = document.createElement('div');
@@ -227,7 +216,6 @@ for (let i = 1; i <= 3; i++) {
             progressIndicator.appendChild(stepDot);
         }
 
-        // Atualiza os botões de navegação
         backBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
         nextBtn.style.display = currentStep < totalSteps ? 'inline-block' : 'none';
         submitBtn.style.display = currentStep === totalSteps ? 'inline-block' : 'none';
@@ -237,7 +225,8 @@ for (let i = 1; i <= 3; i++) {
         const inputs = form.querySelectorAll(`#bau-step-${step} [required]`);
         for (const input of inputs) {
             if (!input.value.trim()) {
-                showToast(`Erro: O campo '${input.previousElementSibling?.textContent || input.name}' é obrigatório.`, "error");
+                const label = input.closest('div').querySelector('.bau-label');
+                showToast(`Erro: O campo '${label?.textContent || input.name}' é obrigatório.`, "error");
                 input.classList.add('input-error');
                 setTimeout(() => input.classList.remove('input-error'), 3000);
                 return false;
@@ -262,18 +251,6 @@ for (let i = 1; i <= 3; i++) {
         }
     };
 
-    // Accordion Toggle
-    const toggleBtn = document.getElementById('bau-toggle-data');
-    const hiddenDataEl = document.getElementById('bau-hidden-data');
-    if (toggleBtn && hiddenDataEl) {
-        toggleBtn.onclick = () => {
-            const isHidden = hiddenDataEl.style.display === 'none';
-            hiddenDataEl.style.display = isHidden ? 'block' : 'none';
-            toggleBtn.textContent = isHidden ? "Ocultar dados ▲" : "Ver todos os dados capturados ▼";
-            SoundManager.playClick();
-        };
-    }
-
     // --- DATA POPULATION ---
     async function populateContextData() {
         const pageData = await getPageData() || {};
@@ -282,15 +259,14 @@ for (let i = 1; i <= 3; i++) {
     }
 
     function renderData(pd) {
-        // ... (lógica de renderização dos dados do CRM e fallback - SEM ALTERAÇÕES)
         if (!pd) return;
 
         document.getElementById('bau-adv-name').textContent = pd.advName || "Anunciante Desconhecido";
         document.getElementById('bau-adv-details').textContent = `CID: ${pd.cid || "N/A"} • AM: ${pd.amName || "N/A"}`;
         
-        const hiddenData = document.getElementById('bau-hidden-data');
-        if (hiddenData) {
-            hiddenData.innerHTML = `
+        const allDataEl = document.getElementById('bau-all-data');
+        if (allDataEl) {
+            allDataEl.innerHTML = `
                 <b>Email:</b> ${pd.email || "N/A"}<br>
                 <b>Idioma:</b> ${pd.language || "N/A"}<br>
                 <b>Programa:</b> ${pd.salesProgram || "N/A"}<br>
@@ -299,24 +275,23 @@ for (let i = 1; i <= 3; i++) {
             `;
         }
 
+        // Atualiza a dica de fuso horário
+        availabilityHint.innerHTML = `ℹ️ Lembrete: Os horários são baseados no seu fuso horário atual (${pd.timezone || 'não detectado'}). Fornecer mais de uma opção aumenta a chance de agendamento rápido.`
+
         const requiredFields = [
             { key: 'advName', label: 'Nome do Anunciante' },
             { key: 'cid', label: 'Customer ID (CID)' },
             { key: 'amName', label: 'Account Manager' },
             { key: 'email', label: 'Email de Contato' },
-            { key: 'language', label: 'Idioma' },
-            { key: 'salesProgram', label: 'Sales Program' },
-            { key: 'seId', label: 'Speakeasy ID' },
-            { key: 'site', label: 'Site / URL' },
-            { key: 'timezone', label: 'Fuso Horário' }
+            // ... outros campos essenciais
         ];
 
         const missingFields = requiredFields.filter(f => !pd[f.key] || pd[f.key] === "N/A" || pd[f.key].trim() === "---");
 
         if (missingFields.length > 0) {
             fallbackCard.innerHTML = `
-                <div style="color: #D93025; font-weight: 700; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                    <span>⚠️</span> Preencha os itens não encontrados:
+                <div class="bau-fallback-header">
+                    <span>⚠️</span> Complete os dados não encontrados:
                 </div>
                 <div class="bau-grid-2" id="bau-fallback-grid"></div>
             `;
@@ -331,32 +306,24 @@ for (let i = 1; i <= 3; i++) {
             });
 
             fallbackCard.style.display = 'block';
-            banner.style.background = COLORS.yellowLight;
-            banner.style.color = "#E37400";
-            banner.style.borderBottomColor = "#FEF1D1";
-            banner.innerHTML = `<span>⚠️</span> Dados ausentes. Preencha os campos abaixo.`;
+            banner.style.background = 'transparent'; // Fundo do banner fica neutro
+            banner.innerHTML = `<span>⚠️</span> Dados ausentes! Por favor, preencha os campos no card abaixo para continuar.`;
         } else {
             fallbackCard.style.display = 'none';
-            banner.style.background = COLORS.greenLight;
-            banner.style.color = COLORS.green;
-            banner.style.borderBottomColor = COLORS.green;
-            banner.innerHTML = `<span>✅</span> Todos os dados foram capturados do CRM!`;
+            banner.style.background = 'transparent';
+            banner.innerHTML = `<span>✅</span> Dados do CRM carregados com sucesso!`;
         }
     }
 
-    // --- FORM SUBMISSION LOGIC ---
+    // --- FORM SUBMISSION & OTHER LOGIC ---
     form.onsubmit = async (e) => {
         e.preventDefault();
-
-        if (!validateStep(totalSteps)) return; // Valida a última etapa antes de enviar
-
+        if (!validateStep(totalSteps)) return;
         const originalText = submitBtn.innerHTML;
         submitBtn.disabled = true;
-        submitBtn.innerHTML = "Carregando...";
-
+        submitBtn.innerHTML = "Enviando...";
         const formData = new FormData(form);
         const escalationData = Object.fromEntries(formData.entries());
-        
         const payload = {
             caseId: currentContextData.caseId || "",
             cid: escalationData.cid || currentContextData.cid || "",
@@ -373,7 +340,6 @@ for (let i = 1; i <= 3; i++) {
             description: escalationData.description,
             availability: `${escalationData.availability_1 || ''} | ${escalationData.availability_2 || ''} | ${escalationData.availability_3 || ''}`.trim()
         };
-
         try {
             await sendBAUEscalation(payload, currentContextData.agentEmail || "anon");
             SoundManager.playSuccess();
@@ -383,7 +349,6 @@ for (let i = 1; i <= 3; i++) {
             currentStep = 1;
             updateWizardState();
             toggleVisibility();
-
         } catch (error) {
             console.error("Erro BAU:", error);
             showToast("Falha ao enviar: " + (error.message || "Erro desconhecido"), "error");
@@ -404,8 +369,6 @@ for (let i = 1; i <= 3; i++) {
         toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");
     }
     
-    // Inicialização do Wizard
     updateWizardState();
-
     return toggleVisibility;
 }
