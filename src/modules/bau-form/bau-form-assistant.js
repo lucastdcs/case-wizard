@@ -140,9 +140,38 @@ export function initBAUForm() {
     const detailsCard = document.createElement("div");
     detailsCard.className = "bau-card";
 
+    const nonImplLabel = document.createElement('label');
+    nonImplLabel.className = 'bau-label';
+    nonImplLabel.textContent = 'Motivo da Não Implementação (Justificativa BAU)';
+    detailsCard.appendChild(nonImplLabel);
+
+    const nonImplSelect = document.createElement('select');
+    nonImplSelect.name = 'nonImplementationReason';
+    nonImplSelect.required = true;
+    nonImplSelect.className = 'bau-select';
+
+    const nonImplReasons = [
+        "Tempo da consultoria esgotado",
+        "Solicitação de reagendamento pelo anunciante",
+        "Falta de acessos ou backup do site",
+        "Anunciante indisponível ou não preparado",
+        "Implementação parcial (nem todas as tasks concluídas)",
+        "Solicitação de tarefas (tasks) adicionais",
+        "Necessidade de novas alterações (fase de acompanhamento)",
+        "Retorno de contato após prazo de 14 dias expirado"
+    ];
+
+    let reasonOptions = '<option value="">Selecione um motivo...</option>';
+    nonImplReasons.forEach(reason => {
+        reasonOptions += `<option value="${reason}">${reason}</option>`;
+    });
+    nonImplSelect.innerHTML = reasonOptions;
+    detailsCard.appendChild(nonImplSelect);
+
     const textLabel = document.createElement("label");
     textLabel.className = "bau-label";
     textLabel.textContent = "Justificativa / Descrição";
+    textLabel.style.marginTop = "20px";
     detailsCard.appendChild(textLabel);
 
     const textarea = document.createElement("textarea");
@@ -261,6 +290,7 @@ export function initBAUForm() {
             <div class="bau-confirm-row"><span class="bau-confirm-label">Programa:</span><span class="bau-confirm-value">${data.salesProgram || 'N/A'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Speakeasy ID:</span><span class="bau-confirm-value">${data.seId || 'N/A'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Idioma:</span><span class="bau-confirm-value">${data.language || 'Português'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Motivo da Não Implementação:</span><span class="bau-confirm-value">${data.nonImplementationReason}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Motivo:</span><span class="bau-confirm-value">${data.reason}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Tasks:</span><span class="bau-confirm-value">${tasks.join(', ')}</span></div>
             <div class="bau-confirm-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
@@ -472,6 +502,7 @@ export function initBAUForm() {
             salesProgram: escalationData.salesProgram || currentContextData.salesProgram || "",
             site: escalationData.site || currentContextData.site || "",
             timezone: escalationData.timezone || currentContextData.timezone || "",
+            nonImplementationReason: escalationData.nonImplementationReason,
             reason: escalationData.reason,
             taskType: tasks.join(', '),
             description: escalationData.description,
