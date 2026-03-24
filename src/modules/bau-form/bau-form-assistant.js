@@ -41,6 +41,7 @@ export function initBAUForm() {
     popup.appendChild(content);
 
     const form = document.createElement("form");
+    form.id = "bau-escalation-form"; // FIX: Add ID to the form
     content.appendChild(form);
 
     // --- STEP 1: CONTEXTO E VALIDAÇÃO ---
@@ -200,6 +201,7 @@ export function initBAUForm() {
     const submitBtn = document.createElement("button");
     submitBtn.type = "submit";
     submitBtn.className = "bau-btn-submit";
+    submitBtn.setAttribute("form", "bau-escalation-form"); // FIX: Associate button with form
     submitBtn.innerHTML = `<span>📝</span> Enviar para o TL`;
     submitBtn.style.display = "none";
     footer.appendChild(submitBtn);
