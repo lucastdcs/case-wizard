@@ -5,12 +5,16 @@ import { showToast } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { sendBAUEscalation } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
+import { chipData } from './bau-form-config.js';
 
 export function initBAUForm() {
     injectStyles();
 
     let isVisible = false;
-    let currentContextData = {};
+    let pageDataCache = null;
+    let cacheTimestamp = null;
+
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
     // --- POPUP CONTAINER ---
     const popup = document.createElement("div");
@@ -23,7 +27,7 @@ export function initBAUForm() {
     const header = createStandardHeader(
         popup,
         "BAU Form",
-        "v1.0.0",
+        "v1.0.1", // Updated version
         "Solicite a abertura de casos BAU rapidamente.",
         animRefs,
         () => toggleVisibility()
@@ -69,7 +73,6 @@ export function initBAUForm() {
     const actionCard = document.createElement("div");
     actionCard.className = "bau-card";
 
-    // Chips de Ação Rápida
     const chipsLabel = document.createElement("label");
     chipsLabel.className = "bau-label";
     chipsLabel.textContent = "Ações Rápidas (Preenche Motivo e Task)";
@@ -78,19 +81,12 @@ export function initBAUForm() {
     const chipsContainer = document.createElement("div");
     chipsContainer.className = "bau-chips-container";
 
-    const chipData = [
-        { id: 'gtm', text: "🚀 Instalação GTM", reason: "Nova Implementação", task: "Setup GTM" },
-        { id: 'ecw4', text: "🛒 ECW4 Purchase", reason: "Nova Implementação", task: "Google Ads Conversion" },
-        { id: 'consent', text: "🛡️ Consent Mode", reason: "Correção de Tag", task: "GA4 Events" }
-    ];
-
     chipData.forEach(data => {
         const chip = document.createElement("div");
         chip.className = "bau-chip";
         chip.textContent = data.text;
         chip.dataset.id = data.id;
         
-        // Lógica: Clicar preenche os selects automaticamente
         chip.onclick = () => {
             chipsContainer.querySelectorAll('.bau-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
@@ -105,7 +101,7 @@ export function initBAUForm() {
     });
     actionCard.appendChild(chipsContainer);
 
-    // Dropdowns
+    // Dropdowns and other fields...
     const dropdownRow = document.createElement("div");
     dropdownRow.className = "bau-grid-2";
     dropdownRow.style.marginTop = "16px";
@@ -133,7 +129,6 @@ export function initBAUForm() {
     `;
     actionCard.appendChild(dropdownRow);
 
-    // Textarea
     const textLabel = document.createElement("label");
     textLabel.className = "bau-label";
     textLabel.textContent = "Justificativa / Descrição";
@@ -148,7 +143,6 @@ export function initBAUForm() {
     textarea.style.minHeight = "100px";
     actionCard.appendChild(textarea);
 
-    // Datetime
     const dateLabel = document.createElement("label");
     dateLabel.className = "bau-label";
     dateLabel.textContent = "Disponibilidade (3 opções para reagendamento)";
@@ -159,29 +153,15 @@ export function initBAUForm() {
     dateGrid.className = "bau-grid-2";
     dateGrid.style.gap = "12px";
 
-    const d1 = document.createElement("input");
-    d1.type = "datetime-local";
-    d1.name = "availability_1";
-    d1.required = true;
-    d1.className = "bau-input";
-
-    const d2 = document.createElement("input");
-    d2.type = "datetime-local";
-    d2.name = "availability_2";
-    d2.required = true;
-    d2.className = "bau-input";
-
-    const d3 = document.createElement("input");
-    d3.type = "datetime-local";
-    d3.name = "availability_3";
-    d3.required = true;
-    d3.className = "bau-input";
-
-    dateGrid.appendChild(d1);
-    dateGrid.appendChild(d2);
-    dateGrid.appendChild(d3);
+    for (let i = 1; i <= 3; i++) {
+        const d = document.createElement("input");
+        d.type = "datetime-local";
+        d.name = `availability_${i}`;
+        d.required = true;
+        d.className = "bau-input";
+        dateGrid.appendChild(d);
+    }
     actionCard.appendChild(dateGrid);
-
     form.appendChild(actionCard);
 
     // --- STICKY FOOTER ---
@@ -198,80 +178,90 @@ export function initBAUForm() {
 
     // Accordion Toggle
     const toggleBtn = document.getElementById('bau-toggle-data');
-    const hiddenData = document.getElementById('bau-hidden-data');
-    if (toggleBtn && hiddenData) {
+    const hiddenDataEl = document.getElementById('bau-hidden-data');
+    if (toggleBtn && hiddenDataEl) {
         toggleBtn.onclick = () => {
-            const isHidden = hiddenData.style.display === 'none';
-            hiddenData.style.display = isHidden ? 'block' : 'none';
+            const isHidden = hiddenDataEl.style.display === 'none';
+            hiddenDataEl.style.display = isHidden ? 'block' : 'none';
             toggleBtn.textContent = isHidden ? "Ocultar dados ▲" : "Ver todos os dados capturados ▼";
             SoundManager.playClick();
         };
     }
 
-    // Função de abertura do módulo (injetar dados da tela)
+    // --- DATA POPULATION ---
     async function populateContextData() {
-        currentContextData = await getPageData() || {};
-        const pd = currentContextData;
+        const now = new Date().getTime();
+        if (pageDataCache && cacheTimestamp && (now - cacheTimestamp < CACHE_DURATION)) {
+            renderData(pageDataCache);
+            return;
+        }
 
-        if (pd) {
-            document.getElementById('bau-adv-name').textContent = pd.advName || "Anunciante Desconhecido";
-            document.getElementById('bau-adv-details').textContent = `CID: ${pd.cid || "N/A"} • AM: ${pd.amName || "N/A"}`;
-            
-            // Injeta dados no accordion oculto
-            const hiddenData = document.getElementById('bau-hidden-data');
-            if (hiddenData) {
-                hiddenData.innerHTML = `
-                    <b>Email:</b> ${pd.email || "N/A"}<br>
-                    <b>Idioma:</b> ${pd.language || "N/A"}<br>
-                    <b>Programa:</b> ${pd.salesProgram || "N/A"}<br>
-                    <b>Speakeasy ID:</b> ${pd.seId || "N/A"}
+        const pageData = await getPageData() || {};
+        pageDataCache = pageData;
+        cacheTimestamp = new Date().getTime();
+        renderData(pageData);
+    }
+
+    function renderData(pd) {
+        if (!pd) return;
+
+        const sparkleIcon = `<span class="magic-sparkle">✨</span>`;
+
+        document.getElementById('bau-adv-name').innerHTML = (pd.advName || "Anunciante Desconhecido") + (pd.advName ? sparkleIcon : '');
+        document.getElementById('bau-adv-details').innerHTML = `CID: ${pd.cid || "N/A"} • AM: ${pd.amName || "N/A"}` + (pd.cid ? sparkleIcon : '');
+        
+        const hiddenData = document.getElementById('bau-hidden-data');
+        if (hiddenData) {
+            hiddenData.innerHTML = `
+                <b>Email:</b> ${pd.email || "N/A"} ${pd.email ? sparkleIcon : ''}<br>
+                <b>Idioma:</b> ${pd.language || "N/A"} ${pd.language ? sparkleIcon : ''}<br>
+                <b>Programa:</b> ${pd.salesProgram || "N/A"} ${pd.salesProgram ? sparkleIcon : ''}<br>
+                <b>Speakeasy ID:</b> ${pd.seId || "N/A"} ${pd.seId ? sparkleIcon : ''}
+            `;
+        }
+
+        const requiredFields = [
+            { key: 'advName', label: 'Nome do Anunciante' },
+            { key: 'cid', label: 'Customer ID (CID)' },
+            { key: 'amName', label: 'Account Manager' },
+            { key: 'email', label: 'Email de Contato' },
+            { key: 'language', label: 'Idioma' },
+            { key: 'salesProgram', label: 'Sales Program' },
+            { key: 'seId', label: 'Speakeasy ID' },
+            { key: 'site', label: 'Site / URL' },
+            { key: 'timezone', label: 'Fuso Horário' }
+        ];
+
+        const missingFields = requiredFields.filter(f => !pd[f.key] || pd[f.key] === "N/A" || pd[f.key].trim() === "---");
+
+        if (missingFields.length > 0) {
+            fallbackCard.innerHTML = `
+                <div style="color: #D93025; font-weight: 700; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                    <span>⚠️</span> Preencha os itens não encontrados:
+                </div>
+                <div class="bau-grid-2" id="bau-fallback-grid"></div>
+            `;
+            const grid = fallbackCard.querySelector('#bau-fallback-grid');
+            missingFields.forEach(f => {
+                const fieldDiv = document.createElement("div");
+                fieldDiv.innerHTML = `
+                    <label class="bau-label">${f.label}</label>
+                    <input type="text" name="${f.key}" class="bau-input" placeholder="Preencher ${f.label}...">
                 `;
-            }
+                grid.appendChild(fieldDiv);
+            });
 
-            // --- DINAMIC FALLBACK LOGIC ---
-            const requiredFields = [
-                { key: 'advName', label: 'Nome do Anunciante' },
-                { key: 'cid', label: 'Customer ID (CID)' },
-                { key: 'amName', label: 'Account Manager' },
-                { key: 'email', label: 'Email de Contato' },
-                { key: 'language', label: 'Idioma' },
-                { key: 'salesProgram', label: 'Sales Program' },
-                { key: 'seId', label: 'Speakeasy ID' },
-                { key: 'site', label: 'Site / URL' },
-                { key: 'timezone', label: 'Fuso Horário' }
-            ];
-
-            const missingFields = requiredFields.filter(f => !pd[f.key] || pd[f.key] === "N/A" || pd[f.key] === "---");
-
-            if (missingFields.length > 0) {
-                fallbackCard.innerHTML = `
-                    <div style="color: #D93025; font-weight: 700; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                        <span>⚠️</span> Preencha os itens não encontrados:
-                    </div>
-                    <div class="bau-grid-2" id="bau-fallback-grid"></div>
-                `;
-                const grid = fallbackCard.querySelector('#bau-fallback-grid');
-                missingFields.forEach(f => {
-                    const fieldDiv = document.createElement("div");
-                    fieldDiv.innerHTML = `
-                        <label class="bau-label">${f.label}</label>
-                        <input type="text" name="${f.key}" class="bau-input" placeholder="Preencher ${f.label}...">
-                    `;
-                    grid.appendChild(fieldDiv);
-                });
-
-                fallbackCard.style.display = 'block';
-                banner.style.background = COLORS.yellowLight;
-                banner.style.color = "#E37400";
-                banner.style.borderBottomColor = "#FEF1D1";
-                banner.innerHTML = `<span>⚠️</span> Dados ausentes. Verifique o fallback abaixo.`;
-            } else {
-                fallbackCard.style.display = 'none';
-                banner.style.background = COLORS.greenLight;
-                banner.style.color = COLORS.green;
-                banner.style.borderBottomColor = COLORS.green;
-                banner.innerHTML = `<span>✅</span> Dados capturados com sucesso!`;
-            }
+            fallbackCard.style.display = 'block';
+            banner.style.background = COLORS.yellowLight;
+            banner.style.color = "#E37400";
+            banner.style.borderBottomColor = "#FEF1D1";
+            banner.innerHTML = `<span>⚠️</span> Dados ausentes. Preencha os campos abaixo.`;
+        } else {
+            fallbackCard.style.display = 'none';
+            banner.style.background = COLORS.greenLight;
+            banner.style.color = COLORS.green;
+            banner.style.borderBottomColor = COLORS.green;
+            banner.innerHTML = `<span>✅</span> Todos os dados foram capturados do CRM!`;
         }
     }
 
@@ -279,52 +269,55 @@ export function initBAUForm() {
     form.onsubmit = async (e) => {
         e.preventDefault();
 
-        // 1. Feedback Tátil Imediato (Loading)
         const originalText = submitBtn.innerHTML;
         submitBtn.disabled = true;
         submitBtn.innerHTML = "Carregando...";
 
-        // 2. Coleta de dados do formulário e da página (Usa cache currentContextData)
         const formData = new FormData(form);
         const escalationData = Object.fromEntries(formData.entries());
-        const contextData = currentContextData;
-
-        // 3. Mapeamento Exato para o Backend
-        const availability = `${escalationData.availability_1} | ${escalationData.availability_2} | ${escalationData.availability_3}`;
-
+        
         const payload = {
-            caseId: contextData.caseId || "",
-            cid: escalationData.cid || contextData.cid || "",
-            seId: escalationData.seId || contextData.seId || "",
-            advName: escalationData.advName || contextData.advName || "",
-            email: escalationData.email || contextData.email || "",
-            language: escalationData.language || contextData.language || "",
-            amName: escalationData.amName || contextData.amName || "",
-            salesProgram: escalationData.salesProgram || contextData.salesProgram || "",
-            site: escalationData.site || contextData.site || "",
-            timezone: escalationData.timezone || contextData.timezone || "",
+            caseId: pageDataCache.caseId || "",
+            cid: escalationData.cid || pageDataCache.cid || "",
+            seId: escalationData.seId || pageDataCache.seId || "",
+            advName: escalationData.advName || pageDataCache.advName || "",
+            email: escalationData.email || pageDataCache.email || "",
+            language: escalationData.language || pageDataCache.language || "",
+            amName: escalationData.amName || pageDataCache.amName || "",
+            salesProgram: escalationData.salesProgram || pageDataCache.salesProgram || "",
+            site: escalationData.site || pageDataCache.site || "",
+            timezone: escalationData.timezone || pageDataCache.timezone || "",
             reason: escalationData.reason,
             taskType: escalationData.taskType,
             description: escalationData.description,
-            availability: availability
+            availability: `${escalationData.availability_1} | ${escalationData.availability_2} | ${escalationData.availability_3}`
         };
 
-        // 4. Validação Estrita (Nunca enviar com dados faltando)
-        const missingFields = Object.keys(payload).filter(key => !payload[key] || payload[key] === "N/A" || payload[key] === "---");
+        const validationFields = Object.keys(payload).filter(k => k !== 'caseId');
+        const emptyFields = validationFields.filter(key => {
+            const value = payload[key];
+            return !value || String(value).trim() === "" || String(value).trim() === "N/A" || String(value).trim() === "---";
+        });
 
-        if (missingFields.length > 0) {
+        if (emptyFields.length > 0) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
             SoundManager.playClick();
-            showToast(`Erro: Preencha todos os campos (${missingFields.join(', ')})`, "error");
+            showToast(`Erro: Preencha todos os campos (${emptyFields.join(', ')})`, "error");
+            
+            // Highlight empty fields
+            emptyFields.forEach(key => {
+                const field = form.querySelector(`[name="${key}"]`);
+                if (field) {
+                    field.classList.add('input-error'); // You need to define this class in your CSS
+                    setTimeout(() => field.classList.remove('input-error'), 3000);
+                }
+            });
             return;
         }
 
         try {
-            // 4. Chamada ao DataService
-            await sendBAUEscalation(payload, contextData.agentEmail || "anon");
-
-            // 5. Sucesso
+            await sendBAUEscalation(payload, pageDataCache.agentEmail || "anon");
             SoundManager.playSuccess();
             showToast("Escalonamento enviado com sucesso!", "success");
             form.reset();
@@ -332,7 +325,6 @@ export function initBAUForm() {
             toggleVisibility(); 
 
         } catch (error) {
-            // 6. Erro
             console.error("Erro BAU:", error);
             showToast("Falha ao enviar: " + (error.message || "Erro desconhecido"), "error");
         } finally {
@@ -343,8 +335,8 @@ export function initBAUForm() {
 
     async function toggleVisibility() {
         isVisible = !isVisible;
+        popup.style.display = isVisible ? "flex" : "none";
         if (isVisible) {
-            popup.style.display = "flex";
             await populateContextData();
         }
         toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");

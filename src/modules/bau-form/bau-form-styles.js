@@ -1,5 +1,3 @@
-// src/modules/bau-form/bau-form-styles.js
-
 export const COLORS = {
   blue: "#1A73E8",
   red: "#D93025",
@@ -12,7 +10,7 @@ export const COLORS = {
   textPrimary: "#202124",
   textSecondary: "#5F6368",
   border: "#DADCE0",
-  surface: "rgba(255, 255, 255, 0.8)", // Glassmorphism base
+  surface: "rgba(255, 255, 255, 0.8)",
   white: "#FFFFFF"
 };
 
@@ -29,7 +27,6 @@ export const SHADOW = {
 };
 
 export const EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
-
 export const TRANSITION = `all 0.2s ${EASE}`;
 
 export const injectStyles = () => {
@@ -37,6 +34,26 @@ export const injectStyles = () => {
   const style = document.createElement('style');
   style.id = 'bau-form-global-styles';
   style.innerHTML = `
+    @keyframes sparkle-animation {
+      0% { transform: scale(1); opacity: 0.7; }
+      50% { transform: scale(1.5); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.7; }
+    }
+
+    .magic-sparkle {
+      display: inline-block;
+      margin-left: 8px;
+      animation: sparkle-animation 1.5s infinite;
+      color: ${COLORS.yellow};
+    }
+
+    .input-error {
+      border-color: ${COLORS.red} !important;
+      box-shadow: 0 0 0 3px rgba(217, 48, 37, 0.15) !important;
+    }
+
+    /* ... existing styles ... */
+
     .bau-popup {
       display: flex !important;
       flex-direction: column !important;
