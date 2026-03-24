@@ -41,8 +41,13 @@ export function initBAUForm() {
     popup.appendChild(content);
 
     const form = document.createElement("form");
-    form.id = "bau-escalation-form"; // FIX: Add ID to the form
+    form.id = "bau-escalation-form"; 
     content.appendChild(form);
+
+    const languageInput = document.createElement('input');
+    languageInput.type = 'hidden';
+    languageInput.name = 'language';
+    form.appendChild(languageInput);
 
     // --- STEP 1: CONTEXTO E VALIDAÇÃO ---
     const step1 = document.createElement("div");
@@ -201,7 +206,7 @@ export function initBAUForm() {
     const submitBtn = document.createElement("button");
     submitBtn.type = "submit";
     submitBtn.className = "bau-btn-submit";
-    submitBtn.setAttribute("form", "bau-escalation-form"); // FIX: Associate button with form
+    submitBtn.setAttribute("form", "bau-escalation-form"); 
     submitBtn.innerHTML = `<span>📝</span> Enviar para o TL`;
     submitBtn.style.display = "none";
     footer.appendChild(submitBtn);
@@ -249,6 +254,7 @@ export function initBAUForm() {
             <div class="bau-confirm-row"><span class="bau-confirm-label">Email:</span><span class="bau-confirm-value">${data.email || 'N/A'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Programa:</span><span class="bau-confirm-value">${data.salesProgram || 'N/A'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Speakeasy ID:</span><span class="bau-confirm-value">${data.seId || 'N/A'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Idioma:</span><span class="bau-confirm-value">${data.language || 'Português'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Motivo:</span><span class="bau-confirm-value">${data.reason}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Tasks:</span><span class="bau-confirm-value">${tasks.join(', ')}</span></div>
             <div class="bau-confirm-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
@@ -344,10 +350,39 @@ export function initBAUForm() {
 
             const fields = [
                 { label: 'Email', name: 'email', value: pd.email, type: 'text' },
-                { label: 'Idioma', name: 'language', value: pd.language, type: 'select', options: ['Português', 'Espanhol'] },
                 { label: 'Programa', name: 'salesProgram', value: pd.salesProgram, type: 'text' },
                 { label: 'Timezone', name: 'timezone', value: pd.timezone, type: 'text' }
             ];
+            
+            const langRow = document.createElement('div');
+            langRow.className = "bau-inline-field";
+            langRow.innerHTML = `<b>Idioma:</b>`;
+
+            const langToggleWrapper = document.createElement('div');
+            langToggleWrapper.className = 'bau-lang-toggle-wrapper';
+
+            const langToggle = document.createElement('div');
+            langToggle.className = 'bau-lang-toggle';
+            langToggle.innerHTML = `
+                <div class="glider"></div>
+                <span class="lang-pt">Português</span>
+                <span class="lang-es">Espanhol</span>
+            `;
+
+            const currentLang = (pd.language && pd.language.toLowerCase().includes('espanhol')) ? 'Espanhol' : 'Português';
+            langToggle.dataset.lang = currentLang;
+            languageInput.value = currentLang;
+
+            langToggle.onclick = () => {
+                const newLang = langToggle.dataset.lang === 'Português' ? 'Espanhol' : 'Português';
+                langToggle.dataset.lang = newLang;
+                languageInput.value = newLang;
+                SoundManager.playClick(0.8);
+            };
+            
+            langToggleWrapper.appendChild(langToggle);
+            langRow.appendChild(langToggleWrapper);
+            allDataEl.appendChild(langRow);
 
             fields.forEach(f => {
                 const row = document.createElement('div');
@@ -358,38 +393,14 @@ export function initBAUForm() {
                 label.textContent = `${f.label}:`;
                 row.appendChild(label);
 
-                let input;
-                if (f.type === 'select') {
-                    input = document.createElement('select');
-                    input.name = f.name;
-                    input.className = "bau-inline-input";
-                    input.style.appearance = "none";
-                    input.style.cursor = "pointer";
+                let input = document.createElement('input');
+                input.type = "text";
+                input.name = f.name;
+                input.className = "bau-inline-input";
+                input.value = f.value || "";
+                input.placeholder = `Preencher ${f.label}...`;
 
-                    const placeholderOpt = document.createElement('option');
-                    placeholderOpt.value = "";
-                    placeholderOpt.textContent = `Selecionar ${f.label}...`;
-                    input.appendChild(placeholderOpt);
-
-                    f.options.forEach(opt => {
-                        const o = document.createElement('option');
-                        o.value = opt;
-                        o.textContent = opt;
-                        if (f.value && (f.value.toLowerCase().includes(opt.toLowerCase()) || opt.toLowerCase().includes(f.value.toLowerCase()))) {
-                             o.selected = true;
-                        }
-                        input.appendChild(o);
-                    });
-                } else {
-                    input = document.createElement('input');
-                    input.type = "text";
-                    input.name = f.name;
-                    input.className = "bau-inline-input";
-                    input.value = f.value || "";
-                    input.placeholder = `Preencher ${f.label}...`;
-                }
-
-                if (input.tagName === 'INPUT' && (!f.value || f.value === "N/A" || f.value === "---")) {
+                if (!f.value || f.value === "N/A" || f.value === "---") {
                     input.value = "";
                 }
 

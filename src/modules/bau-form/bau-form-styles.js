@@ -155,6 +155,45 @@ export const injectStyles = () => {
     .bau-inline-input::placeholder {
         color: rgba(255, 255, 255, 0.5);
     }
+
+    /* --- LANGUAGE TOGGLE --- */
+    .bau-lang-toggle-wrapper { flex-grow: 1; }
+    .bau-lang-toggle {
+        display: flex;
+        align-items: center;
+        background-color: rgba(0,0,0,0.25);
+        border-radius: ${RADIUS.pill};
+        padding: 4px;
+        cursor: pointer;
+        position: relative;
+        width: 130px;
+        height: 32px;
+        transition: background-color 0.3s;
+    }
+    .bau-lang-toggle:hover { background-color: rgba(0,0,0,0.35); }
+    .bau-lang-toggle span {
+        flex: 1;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 600;
+        color: #fff;
+        z-index: 1;
+        transition: color 0.3s;
+    }
+    .bau-lang-toggle .glider {
+        position: absolute;
+        top: 4px;
+        height: calc(100% - 8px);
+        width: calc(50% - 4px);
+        background-color: #fff;
+        border-radius: ${RADIUS.pill};
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: transform 0.3s ${EASE};
+    }
+    .bau-lang-toggle[data-lang="Espanhol"] .glider { transform: translateX(100%); }
+    .bau-lang-toggle[data-lang="Português"] .lang-pt { color: ${COLORS.textPrimary}; }
+    .bau-lang-toggle[data-lang="Espanhol"] .lang-es { color: ${COLORS.textPrimary}; }
+
     
     /* --- CARD DE FALLBACK (ESTILO SUAVIZADO) --- */
     .bau-fallback-card {
