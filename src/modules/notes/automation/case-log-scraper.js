@@ -200,7 +200,11 @@ export async function fetchAndInsertSpeakeasyId(targetInputId) {
             if (idEncontrado) {
                 try { await navigator.clipboard.writeText(idEncontrado); } catch(e){}
 
-                inputWidget.value = idEncontrado;
+                if (inputWidget.tagName === 'INPUT' || inputWidget.tagName === 'TEXTAREA') {
+                    inputWidget.value = idEncontrado;
+                } else {
+                    inputWidget.textContent = idEncontrado;
+                }
                 
                 // Dispara eventos para o framework do site reconhecer
                 inputWidget.dispatchEvent(new Event('input', { bubbles: true }));

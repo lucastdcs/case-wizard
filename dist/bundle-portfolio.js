@@ -328,12 +328,23 @@
     try {
       const labels = Array.from(document.querySelectorAll(".data-pair-label, .form-label"));
       const tzLabel = labels.find(
-        (el) => el.textContent.includes("Time zone") || el.textContent.includes("Timezone") || el.textContent.includes("Customer Time Zone")
+        (el) => el.textContent.toLowerCase().includes("customer time zone") || el.textContent.toLowerCase().includes("time zone") || el.textContent.toLowerCase().includes("timezone")
       );
       if (tzLabel) {
-        const parent = tzLabel.closest(".data-pair") || tzLabel.parentElement;
-        const content = parent.querySelector(".data-pair-content") || parent.nextElementSibling;
-        if (content) return content.textContent.trim();
+        const parent = tzLabel.parentElement;
+        if (parent) {
+          const sanitizedNode = parent.querySelector("sanitized-content");
+          if (sanitizedNode && sanitizedNode.textContent.trim()) {
+            return sanitizedNode.textContent.trim();
+          }
+          const content = parent.querySelector(".data-pair-content") || tzLabel.nextElementSibling;
+          if (content && content.textContent.trim()) {
+            const value = content.textContent.trim();
+            if (value && value !== "---" && value !== "N/A") {
+              return value;
+            }
+          }
+        }
       }
     } catch (e) {
       console.warn("Erro ao capturar Timezone:", e);
@@ -2816,7 +2827,11 @@
             await navigator.clipboard.writeText(idEncontrado);
           } catch (e) {
           }
-          inputWidget.value = idEncontrado;
+          if (inputWidget.tagName === "INPUT" || inputWidget.tagName === "TEXTAREA") {
+            inputWidget.value = idEncontrado;
+          } else {
+            inputWidget.textContent = idEncontrado;
+          }
           inputWidget.dispatchEvent(new Event("input", { bubbles: true }));
           inputWidget.dispatchEvent(new Event("change", { bubbles: true }));
           SoundManager.playSuccess();
@@ -4227,7 +4242,7 @@
   };
 
   // src/modules/shared/data-service.js
-  var API_URL = "https://script.google.com/a/macros/google.com/s/AKfycbw2oPrfcDrXoKWT25hCAetnJ132SKFasTbywfwCVNT-qjwnO6Ip-yRp0w89eyyceziaDQ/exec";
+  var API_URL = "https://script.google.com/a/macros/google.com/s/AKfycbyz2baawbO3gqSCFwlriDZRUUaW44CpjAbQT_0pRgCU2HVcNx0h9e_4pZn4UtdMAFN4zQ/exec";
   var CACHE_KEY_BROADCAST = "cw_data_broadcast";
   var CACHE_KEY_TIPS = "cw_data_tips";
   var FALLBACK_TIPS = ["Processando...", "Mantenha o foco!", "Aguarde..."];
@@ -4430,8 +4445,8 @@
             /* --- PILL PRINCIPAL --- */
             .cw-pill {
                 position: fixed; top: 30%; right: 24px;
-                display: flex; flex-direction: column; align-items: center; gap: 12px;
-                padding: 16px 8px;
+                display: flex; flex-direction: column; align-items: center; gap: 14px;
+                padding: 18px 8px;
 
                 background: ${COLORS2.glassBg};
                 backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -4741,8 +4756,8 @@
       timezone: `<svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`,
       library: `<svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>`,
       // [NOVO]
-      configs: `<svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>`,
-      bauform: `<svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>`
+      configs: `<svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>`,
+      bauform: `<svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14zm-1-6h-3v3h-2v-3H8v-2h3V8h2v3h3v2z"/></svg>`
     };
     const pill = document.createElement("div");
     pill.className = "cw-pill side-right collapsed";
@@ -11178,7 +11193,6 @@ E-mail: ${data.clientEmail || "---"}`;
     textSecondary: "#5F6368",
     border: "#DADCE0",
     surface: "rgba(255, 255, 255, 0.8)",
-    // Glassmorphism base
     white: "#FFFFFF"
   };
   var RADIUS2 = {
@@ -11192,225 +11206,277 @@ E-mail: ${data.clientEmail || "---"}`;
     subtle: "0 4px 12px rgba(0,0,0,0.05)"
   };
   var EASE2 = "cubic-bezier(0.4, 0, 0.2, 1)";
-  var TRANSITION = `all 0.2s ${EASE2}`;
+  var TRANSITION = `all 0.3s ${EASE2}`;
   var injectStyles2 = () => {
     if (document.getElementById("bau-form-global-styles")) return;
     const style = document.createElement("style");
     style.id = "bau-form-global-styles";
     style.innerHTML = `
+    /* --- KEYFRAMES PARA ANIMA\xC7\xC3O --- */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes gemini-gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* --- BASE & UTILITIES --- */
+    .input-error {
+      border-color: ${COLORS3.red} !important;
+      box-shadow: 0 0 0 3px rgba(217, 48, 37, 0.15) !important;
+    }
+
     .bau-popup {
-      display: flex !important;
-      flex-direction: column !important;
-      width: 480px !important;
-      max-height: 85vh !important;
+      display: flex !important; flex-direction: column !important;
+      width: 520px !important; max-height: 85vh !important;
       background: ${COLORS3.surface} !important;
-      backdrop-filter: blur(10px) !important;
-      -webkit-backdrop-filter: blur(10px) !important;
-      border-radius: ${RADIUS2.large} !important;
-      box-shadow: ${SHADOW2.deep} !important;
-      border: 1px solid rgba(255, 255, 255, 0.3) !important;
-      overflow: hidden !important;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10000;
+      backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important;
+      border-radius: ${RADIUS2.large} !important; box-shadow: ${SHADOW2.deep} !important;
+      border: 1px solid rgba(255, 255, 255, 0.4) !important;
+      overflow: hidden !important; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); z-index: 10000;
       font-family: 'Google Sans', Roboto, sans-serif;
     }
 
-    .bau-content {
-      padding: 24px;
-      overflow-y: auto;
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
+    /* --- PROGRESS INDICATOR --- */
+    .bau-progress-indicator { /* ... sem altera\xE7\xF5es ... */
+      display: flex; justify-content: space-around; padding: 20px 32px;
+      border-bottom: 1px solid ${COLORS3.border};
+      background: rgba(248, 249, 250, 0.7);
     }
+    .bau-progress-step {
+      display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 50%;
+      background-color: #F1F3F4; color: ${COLORS3.textSecondary};
+      font-weight: 700; font-size: 14px; border: 2px solid #F1F3F4;
+      transition: ${TRANSITION}; position: relative;
+    }
+    .bau-progress-step.active { background-color: ${COLORS3.blueLight}; color: ${COLORS3.blue}; border-color: ${COLORS3.blue}; transform: scale(1.1); }
+    .bau-progress-step.completed { background-color: ${COLORS3.greenLight}; color: ${COLORS3.green}; border-color: ${COLORS3.green}; }
+
+    /* --- CONTENT & STEPS --- */
+    .bau-content { padding: 32px; overflow-y: auto; flex-grow: 1; }
+    .bau-step { display: none; animation: fadeIn 0.5s ${EASE2}; }
+    .bau-step.active { display: block; }
 
     .bau-card {
-      background: ${COLORS3.white};
-      border-radius: ${RADIUS2.medium};
-      padding: 16px;
-      box-shadow: ${SHADOW2.subtle};
-      border: 1px solid ${COLORS3.border};
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      box-sizing: border-box;
+      background: ${COLORS3.white}; border-radius: ${RADIUS2.medium};
+      padding: 24px; border: 1px solid ${COLORS3.border};
+      margin-bottom: 24px;
     }
 
-    .bau-header-banner {
-      background: ${COLORS3.yellowLight};
-      color: #E37400;
-      padding: 10px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: -16px -16px 16px -16px;
-      border-bottom: 1px solid #FEF1D1;
+    /* --- CARD DE CONTEXTO (NOVO ESTILO GEMINI) --- */
+    .bau-context-card {
+        color: #fff;
+        border: none;
+        background: linear-gradient(135deg, #0d47a1, #1976d2, #1565c0, #1a237e);
+        background-size: 400% 400%;
+        animation: gemini-gradient 10s ease infinite;
+        box-shadow: 0 10px 30px rgba(13, 71, 161, 0.2);
+    }
+    .bau-context-card .bau-title {
+        color: #fff !important;
+        font-weight: 800 !important;
+        font-size: 20px !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .bau-context-card .bau-subtitle, .bau-context-card b {
+        color: #fff !important;
+        font-weight: 700 !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+     .bau-context-card #bau-all-data {
+        color: #E0F5F5 !important;
+        border-top-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    .bau-context-card .bau-header-banner {
+        color: #fff;
+        background: transparent !important;
+        border-bottom: none !important;
+        margin-bottom: 8px;
+        padding: 0;
+        font-weight: 700;
     }
 
-    .bau-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin: 0;
-      color: ${COLORS3.textPrimary};
-    }
-
-    .bau-subtitle {
-      font-size: 13px;
-      color: ${COLORS3.textSecondary};
-      margin: 4px 0 12px 0;
-    }
-
-    .bau-accordion-btn {
-      background: #F8F9FA;
-      border: 1px solid ${COLORS3.border};
-      border-radius: ${RADIUS2.small};
-      color: ${COLORS3.textSecondary};
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      padding: 8px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: ${TRANSITION};
-      width: fit-content;
-    }
-    .bau-accordion-btn:hover { background: ${COLORS3.blueLight}; color: ${COLORS3.blue}; border-color: ${COLORS3.blue}; }
-
+    /* --- CARD DE FALLBACK (ESTILO SUAVIZADO) --- */
     .bau-fallback-card {
-      background: #FFF4F2;
-      border: 1px solid #FAD2CF;
+        background-color: ${COLORS3.yellowLight};
+        border: 1.5px dashed #FBC02D; /* Borda tracejada para diferenciar */
+        padding: 16px;
+    }
+    .bau-fallback-header {
+        color: #BF360C; /* Tom de laranja mais escuro para o texto */
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
+    /* --- FORM ELEMENTS --- */
     .bau-label {
       display: block;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 700;
       color: ${COLORS3.textSecondary};
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
       margin-bottom: 8px;
+      margin-top: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-
     .bau-input, .bau-select, .bau-textarea {
       width: 100%;
-      padding: 12px 14px;
+      padding: 12px 16px;
       border-radius: ${RADIUS2.medium};
       border: 1.5px solid ${COLORS3.border};
-      background: ${COLORS3.white};
+      background-color: #F8F9FA;
       font-size: 14px;
       color: ${COLORS3.textPrimary};
       transition: ${TRANSITION};
       box-sizing: border-box;
       outline: none;
-    }
-
-    .bau-select {
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'%3E%3C/path%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 16px center;
-      padding-right: 44px !important;
+      font-family: inherit;
     }
     .bau-input:focus, .bau-select:focus, .bau-textarea:focus {
       border-color: ${COLORS3.blue};
-      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
-      background: ${COLORS3.white};
+      background-color: #fff;
+      box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1);
     }
-
+    .bau-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 40px;
+      cursor: pointer;
+    }
     .bau-chips-container {
       display: flex;
-      gap: 10px;
-      margin-bottom: 4px;
       flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
     }
-
     .bau-chip {
-      padding: 8px 18px;
+      padding: 8px 16px;
       border-radius: ${RADIUS2.pill};
-      border: 1.5px solid ${COLORS3.border};
-      background: ${COLORS3.white};
-      font-size: 13px;
+      background-color: ${COLORS3.blueLight};
+      color: ${COLORS3.blue};
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       transition: ${TRANSITION};
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      user-select: none;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      border: 1px solid transparent;
     }
     .bau-chip:hover {
-      transform: translateY(-1.5px);
-      background: ${COLORS3.blueLight};
-      border-color: ${COLORS3.blue};
-      box-shadow: 0 4px 8px rgba(26, 115, 232, 0.1);
+      background-color: #d2e3fc;
     }
-    .bau-chip:active { transform: scale(0.96); }
     .bau-chip.active {
-      background: ${COLORS3.blueLight};
-      border-color: ${COLORS3.blue};
-      color: ${COLORS3.blue};
-      box-shadow: inset 0 1px 2px rgba(26, 115, 232, 0.1);
+      background-color: ${COLORS3.blue};
+      color: #fff;
     }
 
+    /* --- SE\xC7\xC3O DE DISPONIBILIDADE (NOVO LAYOUT) --- */
+    .bau-availability-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 4px;
+    }
+    .bau-availability-hint {
+        margin-top: 16px;
+        padding: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: ${COLORS3.textSecondary};
+        background-color: #F8F9FA;
+        border-radius: ${RADIUS2.medium};
+        line-height: 1.6;
+    }
+
+    /* --- FOOTER & NAVIGATION BUTTONS --- */
     .bau-footer {
-      padding: 20px 24px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      border-top: 1px solid ${COLORS3.border};
-      margin-top: auto;
       display: flex;
-      justify-content: center;
+      justify-content: flex-end;
+      padding: 24px 32px;
+      gap: 12px;
+      border-top: 1px solid ${COLORS3.border};
+      background: #F8F9FA;
     }
-
-    .bau-btn-submit {
-      width: 100%;
-      padding: 16px;
+    .bau-btn-primary, .bau-btn-secondary, .bau-btn-submit {
+      padding: 12px 24px;
       border-radius: ${RADIUS2.pill};
-      background: ${COLORS3.blue};
-      color: white;
-      border: none;
-      font-size: 15px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 600;
       cursor: pointer;
       transition: ${TRANSITION};
-      box-shadow: 0 4px 14px rgba(26, 115, 232, 0.4);
+      border: none;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      letter-spacing: 0.3px;
+      gap: 8px;
+      outline: none;
+    }
+    .bau-btn-primary {
+      background-color: ${COLORS3.blue};
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);
+    }
+    .bau-btn-primary:hover {
+      background-color: #1765cc;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(26, 115, 232, 0.3);
+    }
+    .bau-btn-primary:active {
+      transform: translateY(0);
+    }
+    .bau-btn-secondary {
+      background-color: transparent;
+      color: ${COLORS3.textSecondary};
+      border: 1px solid ${COLORS3.border};
+    }
+    .bau-btn-secondary:hover {
+      background-color: #E8EAED;
+      color: ${COLORS3.textPrimary};
+    }
+    .bau-btn-submit {
+      background-color: ${COLORS3.green};
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(30, 142, 62, 0.2);
     }
     .bau-btn-submit:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(26, 115, 232, 0.5);
-      background: #1765CC;
+      background-color: #1a7d36;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(30, 142, 62, 0.3);
     }
-    .bau-btn-submit:active { transform: scale(0.97); }
+    .bau-btn-submit:active {
+      transform: translateY(0);
+    }
 
-    .bau-grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 4px;
-    }
+    /* --- GRIDS --- */
+    .bau-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   `;
     document.head.appendChild(style);
   };
+
+  // src/modules/bau-form/bau-form-config.js
+  var chipData = [
+    { id: "gtm", text: "\u{1F680} Instala\xE7\xE3o GTM", reason: "Nova Implementa\xE7\xE3o", task: "Setup GTM" },
+    { id: "ecw4", text: "\u{1F6D2} ECW4 Purchase", reason: "Nova Implementa\xE7\xE3o", task: "Google Ads Conversion" },
+    { id: "consent", text: "\u{1F6E1}\uFE0F Consent Mode", reason: "Corre\xE7\xE3o de Tag", task: "GA4 Events" }
+  ];
 
   // src/modules/bau-form/bau-form-assistant.js
   function initBAUForm() {
     injectStyles2();
     let isVisible = false;
-    let currentContextData = {};
+    let currentContextData = null;
+    let currentStep = 1;
+    const totalSteps = 3;
     const popup = document.createElement("div");
     popup.id = "bau-form-popup";
     popup.className = "bau-popup cw-module-window";
@@ -11419,37 +11485,45 @@ E-mail: ${data.clientEmail || "---"}`;
     const header = createStandardHeader(
       popup,
       "BAU Form",
-      "v1.0.0",
-      "Solicite a abertura de casos BAU rapidamente.",
+      "v1.2.0",
+      "Solicite a abertura de casos BAU em um fluxo guiado.",
       animRefs,
       () => toggleVisibility()
     );
     popup.appendChild(header);
+    const progressIndicator = document.createElement("div");
+    progressIndicator.className = "bau-progress-indicator";
+    popup.appendChild(progressIndicator);
     const content = document.createElement("div");
     content.className = "bau-content";
     popup.appendChild(content);
     const form = document.createElement("form");
     content.appendChild(form);
+    const step1 = document.createElement("div");
+    step1.className = "bau-step active";
+    step1.id = "bau-step-1";
     const contextCard = document.createElement("div");
-    contextCard.className = "bau-card";
+    contextCard.className = "bau-card bau-context-card";
     const banner = document.createElement("div");
     banner.className = "bau-header-banner";
-    banner.innerHTML = `<span>\u26A0\uFE0F</span> Verifique os dados capturados do CRM`;
     contextCard.appendChild(banner);
     const contextBody = document.createElement("div");
     contextBody.innerHTML = `
         <h2 class="bau-title" id="bau-adv-name">Carregando...</h2>
         <p class="bau-subtitle" id="bau-adv-details">CID: - \u2022 AM: -</p>
-        <button type="button" id="bau-toggle-data" class="bau-accordion-btn">Ver todos os dados capturados \u25BC</button>
-        <div id="bau-hidden-data" style="display: none; margin-top: 12px; font-size: 12px; color: #5F6368; line-height: 1.6; border-top: 1px dashed #DADCE0; padding-top: 12px;"></div>
+        <div id="bau-all-data" style="margin-top: 16px; font-size: 13px; color: #5F6368; line-height: 1.7; border-top: 1px dashed #DADCE0; padding-top: 16px;"></div>
     `;
     contextCard.appendChild(contextBody);
-    form.appendChild(contextCard);
+    step1.appendChild(contextCard);
     const fallbackCard = document.createElement("div");
     fallbackCard.id = "bau-dynamic-fallback";
     fallbackCard.className = "bau-card bau-fallback-card";
     fallbackCard.style.display = "none";
-    form.appendChild(fallbackCard);
+    step1.appendChild(fallbackCard);
+    form.appendChild(step1);
+    const step2 = document.createElement("div");
+    step2.className = "bau-step";
+    step2.id = "bau-step-2";
     const actionCard = document.createElement("div");
     actionCard.className = "bau-card";
     const chipsLabel = document.createElement("label");
@@ -11458,11 +11532,6 @@ E-mail: ${data.clientEmail || "---"}`;
     actionCard.appendChild(chipsLabel);
     const chipsContainer = document.createElement("div");
     chipsContainer.className = "bau-chips-container";
-    const chipData = [
-      { id: "gtm", text: "\u{1F680} Instala\xE7\xE3o GTM", reason: "Nova Implementa\xE7\xE3o", task: "Setup GTM" },
-      { id: "ecw4", text: "\u{1F6D2} ECW4 Purchase", reason: "Nova Implementa\xE7\xE3o", task: "Google Ads Conversion" },
-      { id: "consent", text: "\u{1F6E1}\uFE0F Consent Mode", reason: "Corre\xE7\xE3o de Tag", task: "GA4 Events" }
-    ];
     chipData.forEach((data) => {
       const chip = document.createElement("div");
       chip.className = "bau-chip";
@@ -11472,10 +11541,8 @@ E-mail: ${data.clientEmail || "---"}`;
         chipsContainer.querySelectorAll(".bau-chip").forEach((c) => c.classList.remove("active"));
         chip.classList.add("active");
         SoundManager.playClick();
-        const reasonSelect = form.querySelector('select[name="reason"]');
-        const taskSelect = form.querySelector('select[name="taskType"]');
-        if (reasonSelect) reasonSelect.value = data.reason;
-        if (taskSelect) taskSelect.value = data.task;
+        form.querySelector('select[name="reason"]').value = data.reason;
+        form.querySelector('select[name="taskType"]').value = data.task;
       };
       chipsContainer.appendChild(chip);
     });
@@ -11506,161 +11573,248 @@ E-mail: ${data.clientEmail || "---"}`;
         </div>
     `;
     actionCard.appendChild(dropdownRow);
+    step2.appendChild(actionCard);
+    form.appendChild(step2);
+    const step3 = document.createElement("div");
+    step3.className = "bau-step";
+    step3.id = "bau-step-3";
+    const detailsCard = document.createElement("div");
+    detailsCard.className = "bau-card";
     const textLabel = document.createElement("label");
     textLabel.className = "bau-label";
     textLabel.textContent = "Justificativa / Descri\xE7\xE3o";
-    textLabel.style.marginTop = "16px";
-    actionCard.appendChild(textLabel);
+    detailsCard.appendChild(textLabel);
     const textarea = document.createElement("textarea");
     textarea.name = "description";
     textarea.required = true;
     textarea.className = "bau-textarea";
     textarea.placeholder = "Descreva detalhadamente o que precisa ser feito...";
-    textarea.style.minHeight = "100px";
-    actionCard.appendChild(textarea);
+    textarea.style.minHeight = "120px";
+    detailsCard.appendChild(textarea);
     const dateLabel = document.createElement("label");
     dateLabel.className = "bau-label";
-    dateLabel.textContent = "Disponibilidade (3 op\xE7\xF5es para reagendamento)";
-    dateLabel.style.marginTop = "16px";
-    actionCard.appendChild(dateLabel);
-    const dateGrid = document.createElement("div");
-    dateGrid.className = "bau-grid-2";
-    dateGrid.style.gap = "12px";
-    const d1 = document.createElement("input");
-    d1.type = "datetime-local";
-    d1.name = "availability_1";
-    d1.required = true;
-    d1.className = "bau-input";
-    const d2 = document.createElement("input");
-    d2.type = "datetime-local";
-    d2.name = "availability_2";
-    d2.required = true;
-    d2.className = "bau-input";
-    const d3 = document.createElement("input");
-    d3.type = "datetime-local";
-    d3.name = "availability_3";
-    d3.required = true;
-    d3.className = "bau-input";
-    dateGrid.appendChild(d1);
-    dateGrid.appendChild(d2);
-    dateGrid.appendChild(d3);
-    actionCard.appendChild(dateGrid);
-    form.appendChild(actionCard);
+    dateLabel.textContent = "Disponibilidade (m\xEDnimo 1 op\xE7\xE3o)";
+    dateLabel.style.marginTop = "20px";
+    detailsCard.appendChild(dateLabel);
+    const availabilityContainer = document.createElement("div");
+    availabilityContainer.className = "bau-availability-container";
+    for (let i = 1; i <= 3; i++) {
+      const d = document.createElement("input");
+      d.type = "datetime-local";
+      d.name = `availability_${i}`;
+      d.required = i === 1;
+      d.className = "bau-input";
+      availabilityContainer.appendChild(d);
+    }
+    detailsCard.appendChild(availabilityContainer);
+    const availabilityHint = document.createElement("div");
+    availabilityHint.className = "bau-availability-hint";
+    detailsCard.appendChild(availabilityHint);
+    step3.appendChild(detailsCard);
+    form.appendChild(step3);
     const footer = document.createElement("div");
     footer.className = "bau-footer";
+    const backBtn = document.createElement("button");
+    backBtn.type = "button";
+    backBtn.className = "bau-btn-secondary";
+    backBtn.textContent = "Voltar";
+    footer.appendChild(backBtn);
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "bau-btn-primary";
+    nextBtn.textContent = "Pr\xF3ximo";
+    footer.appendChild(nextBtn);
     const submitBtn = document.createElement("button");
     submitBtn.type = "submit";
     submitBtn.className = "bau-btn-submit";
-    submitBtn.innerHTML = `<span>\u26A1</span> Enviar para o TL abrir o Caso`;
+    submitBtn.innerHTML = `<span>\u{1F4DD}</span> Enviar para o TL`;
+    submitBtn.style.display = "none";
     footer.appendChild(submitBtn);
-    form.appendChild(footer);
+    popup.appendChild(footer);
     document.body.appendChild(popup);
-    const toggleBtn = document.getElementById("bau-toggle-data");
-    const hiddenData = document.getElementById("bau-hidden-data");
-    if (toggleBtn && hiddenData) {
-      toggleBtn.onclick = () => {
-        const isHidden = hiddenData.style.display === "none";
-        hiddenData.style.display = isHidden ? "block" : "none";
-        toggleBtn.textContent = isHidden ? "Ocultar dados \u25B2" : "Ver todos os dados capturados \u25BC";
-        SoundManager.playClick();
-      };
+    function updateWizardState() {
+      form.querySelectorAll(".bau-step").forEach((step, index) => {
+        step.classList.toggle("active", index + 1 === currentStep);
+      });
+      progressIndicator.innerHTML = "";
+      for (let i = 1; i <= totalSteps; i++) {
+        const stepDot = document.createElement("div");
+        stepDot.className = `bau-progress-step ${i === currentStep ? "active" : i < currentStep ? "completed" : ""}`;
+        stepDot.textContent = i;
+        progressIndicator.appendChild(stepDot);
+      }
+      backBtn.style.display = currentStep > 1 ? "inline-block" : "none";
+      nextBtn.style.display = currentStep < totalSteps ? "inline-block" : "none";
+      submitBtn.style.display = currentStep === totalSteps ? "inline-block" : "none";
     }
+    function validateStep(step) {
+      const inputs = form.querySelectorAll(`#bau-step-${step} [required]`);
+      for (const input of inputs) {
+        if (!input.value.trim()) {
+          const label = input.closest("div").querySelector(".bau-label");
+          showToast(`Erro: O campo '${label?.textContent || input.name}' \xE9 obrigat\xF3rio.`, "error");
+          input.classList.add("input-error");
+          setTimeout(() => input.classList.remove("input-error"), 3e3);
+          return false;
+        }
+      }
+      return true;
+    }
+    nextBtn.onclick = () => {
+      if (validateStep(currentStep)) {
+        currentStep++;
+        updateWizardState();
+        SoundManager.playClick();
+      }
+    };
+    backBtn.onclick = () => {
+      if (currentStep > 1) {
+        currentStep--;
+        updateWizardState();
+        SoundManager.playClick();
+      }
+    };
     async function populateContextData() {
-      currentContextData = await getPageData() || {};
-      const pd = currentContextData;
-      if (pd) {
-        document.getElementById("bau-adv-name").textContent = pd.advName || "Anunciante Desconhecido";
-        document.getElementById("bau-adv-details").textContent = `CID: ${pd.cid || "N/A"} \u2022 AM: ${pd.amName || "N/A"}`;
-        const hiddenData2 = document.getElementById("bau-hidden-data");
-        if (hiddenData2) {
-          hiddenData2.innerHTML = `
-                    <b>Email:</b> ${pd.email || "N/A"}<br>
-                    <b>Idioma:</b> ${pd.language || "N/A"}<br>
-                    <b>Programa:</b> ${pd.salesProgram || "N/A"}<br>
-                    <b>Speakeasy ID:</b> ${pd.seId || "N/A"}
-                `;
-        }
-        const requiredFields = [
-          { key: "advName", label: "Nome do Anunciante" },
-          { key: "cid", label: "Customer ID (CID)" },
-          { key: "amName", label: "Account Manager" },
-          { key: "email", label: "Email de Contato" },
-          { key: "language", label: "Idioma" },
-          { key: "salesProgram", label: "Sales Program" },
-          { key: "seId", label: "Speakeasy ID" },
-          { key: "site", label: "Site / URL" },
-          { key: "timezone", label: "Fuso Hor\xE1rio" }
+      const pageData = await getPageData() || {};
+      currentContextData = pageData;
+      renderData(pageData);
+    }
+    function renderData(pd) {
+      if (!pd) return;
+      document.getElementById("bau-adv-name").textContent = pd.advName || "Anunciante Desconhecido";
+      document.getElementById("bau-adv-details").textContent = `CID: ${pd.cid || "N/A"} \u2022 AM: ${pd.amName || "N/A"}`;
+      const allDataEl = document.getElementById("bau-all-data");
+      if (allDataEl) {
+        allDataEl.innerHTML = "";
+        const fields = [
+          { label: "Email", value: pd.email },
+          { label: "Idioma", value: pd.language },
+          { label: "Programa", value: pd.salesProgram },
+          { label: "Speakeasy ID", value: pd.seId, isSpeakeasy: true },
+          { label: "Timezone", value: pd.timezone }
         ];
-        const missingFields = requiredFields.filter((f) => !pd[f.key] || pd[f.key] === "N/A" || pd[f.key] === "---");
-        if (missingFields.length > 0) {
-          fallbackCard.innerHTML = `
-                    <div style="color: #D93025; font-weight: 700; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-                        <span>\u26A0\uFE0F</span> Preencha os itens n\xE3o encontrados:
-                    </div>
-                    <div class="bau-grid-2" id="bau-fallback-grid"></div>
-                `;
-          const grid = fallbackCard.querySelector("#bau-fallback-grid");
-          missingFields.forEach((f) => {
-            const fieldDiv = document.createElement("div");
-            fieldDiv.innerHTML = `
-                        <label class="bau-label">${f.label}</label>
-                        <input type="text" name="${f.key}" class="bau-input" placeholder="Preencher ${f.label}...">
-                    `;
-            grid.appendChild(fieldDiv);
-          });
-          fallbackCard.style.display = "block";
-          banner.style.background = COLORS3.yellowLight;
-          banner.style.color = "#E37400";
-          banner.style.borderBottomColor = "#FEF1D1";
-          banner.innerHTML = `<span>\u26A0\uFE0F</span> Dados ausentes. Verifique o fallback abaixo.`;
-        } else {
-          fallbackCard.style.display = "none";
-          banner.style.background = COLORS3.greenLight;
-          banner.style.color = COLORS3.green;
-          banner.style.borderBottomColor = COLORS3.green;
-          banner.innerHTML = `<span>\u2705</span> Dados capturados com sucesso!`;
-        }
+        fields.forEach((f) => {
+          const row = document.createElement("div");
+          row.style.display = "flex";
+          row.style.alignItems = "center";
+          row.style.gap = "8px";
+          row.style.marginBottom = "4px";
+          const label = document.createElement("b");
+          label.textContent = `${f.label}:`;
+          row.appendChild(label);
+          const valueSpan = document.createElement("span");
+          valueSpan.textContent = f.value || "N/A";
+          if (f.isSpeakeasy) valueSpan.id = "bau-context-se-id";
+          row.appendChild(valueSpan);
+          if (f.isSpeakeasy) {
+            const btnSearch = document.createElement("button");
+            btnSearch.type = "button";
+            btnSearch.innerHTML = `\u2728 Auto Busca`;
+            btnSearch.style.cssText = `font-size: 10px; font-weight: 700; color: #fff; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 100px; padding: 2px 10px; cursor: pointer; transition: all 0.2s; margin-left: 4px;`;
+            btnSearch.onmouseenter = () => btnSearch.style.background = "rgba(255,255,255,0.3)";
+            btnSearch.onmouseleave = () => btnSearch.style.background = "rgba(255,255,255,0.2)";
+            btnSearch.onclick = async (e) => {
+              e.preventDefault();
+              await fetchAndInsertSpeakeasyId("bau-context-se-id");
+              const newValue = document.getElementById("bau-context-se-id").value || document.getElementById("bau-context-se-id").textContent;
+              currentContextData.seId = newValue;
+            };
+            row.appendChild(btnSearch);
+          }
+          allDataEl.appendChild(row);
+        });
+      }
+      availabilityHint.innerHTML = `\u2139\uFE0F Lembrete: Os hor\xE1rios s\xE3o baseados no seu fuso hor\xE1rio atual (${pd.timezone || "n\xE3o detectado"}). Fornecer mais de uma op\xE7\xE3o aumenta a chance de agendamento r\xE1pido.`;
+      const requiredFields = [
+        { key: "advName", label: "Nome do Anunciante" },
+        { key: "cid", label: "Customer ID (CID)" },
+        { key: "amName", label: "Account Manager" },
+        { key: "email", label: "Email de Contato" }
+        // ... outros campos essenciais
+      ];
+      const missingFields = requiredFields.filter((f) => !pd[f.key] || pd[f.key] === "N/A" || pd[f.key].trim() === "---");
+      if (missingFields.length > 0) {
+        fallbackCard.innerHTML = `
+                <div class="bau-fallback-header">
+                    <span>\u26A0\uFE0F</span> Complete os dados n\xE3o encontrados:
+                </div>
+                <div class="bau-grid-2" id="bau-fallback-grid"></div>
+            `;
+        const grid = fallbackCard.querySelector("#bau-fallback-grid");
+        missingFields.forEach((f) => {
+          const fieldDiv = document.createElement("div");
+          fieldDiv.style.position = "relative";
+          const labelWrapper = document.createElement("div");
+          labelWrapper.style.display = "flex";
+          labelWrapper.style.alignItems = "center";
+          labelWrapper.style.justifyContent = "space-between";
+          const label = document.createElement("label");
+          label.className = "bau-label";
+          label.textContent = f.label;
+          labelWrapper.appendChild(label);
+          if (f.key === "seId") {
+            const btnSearch = document.createElement("button");
+            btnSearch.type = "button";
+            btnSearch.innerHTML = `\u2728 Auto Busca`;
+            btnSearch.style.cssText = `font-size: 11px; font-weight: 700; color: ${COLORS3.blue}; background: ${COLORS3.blueLight}; border: none; border-radius: 100px; padding: 4px 12px; cursor: pointer; transition: all 0.2s; margin-top: 12px;`;
+            btnSearch.onclick = (e) => {
+              e.preventDefault();
+              fetchAndInsertSpeakeasyId(`fallback-input-${f.key}`);
+            };
+            labelWrapper.appendChild(btnSearch);
+          }
+          fieldDiv.appendChild(labelWrapper);
+          const input = document.createElement("input");
+          input.type = "text";
+          input.name = f.key;
+          input.id = `fallback-input-${f.key}`;
+          input.className = "bau-input";
+          input.placeholder = `Preencher ${f.label}...`;
+          input.required = true;
+          fieldDiv.appendChild(input);
+          grid.appendChild(fieldDiv);
+        });
+        fallbackCard.style.display = "block";
+        banner.style.background = "transparent";
+        banner.innerHTML = `<span>\u26A0\uFE0F</span> Dados ausentes! Por favor, preencha os campos no card abaixo para continuar.`;
+      } else {
+        fallbackCard.style.display = "none";
+        banner.style.background = "transparent";
+        banner.innerHTML = `<span>\u2705</span> Dados do CRM carregados com sucesso!`;
       }
     }
     form.onsubmit = async (e) => {
       e.preventDefault();
+      if (!validateStep(totalSteps)) return;
       const originalText = submitBtn.innerHTML;
       submitBtn.disabled = true;
-      submitBtn.innerHTML = "Carregando...";
+      submitBtn.innerHTML = "Enviando...";
       const formData = new FormData(form);
       const escalationData = Object.fromEntries(formData.entries());
-      const contextData = currentContextData;
-      const availability = `${escalationData.availability_1} | ${escalationData.availability_2} | ${escalationData.availability_3}`;
       const payload = {
-        caseId: contextData.caseId || "",
-        cid: escalationData.cid || contextData.cid || "",
-        seId: escalationData.seId || contextData.seId || "",
-        advName: escalationData.advName || contextData.advName || "",
-        email: escalationData.email || contextData.email || "",
-        language: escalationData.language || contextData.language || "",
-        amName: escalationData.amName || contextData.amName || "",
-        salesProgram: escalationData.salesProgram || contextData.salesProgram || "",
-        site: escalationData.site || contextData.site || "",
-        timezone: escalationData.timezone || contextData.timezone || "",
+        caseId: currentContextData.caseId || "",
+        cid: escalationData.cid || currentContextData.cid || "",
+        seId: escalationData.seId || currentContextData.seId || "",
+        advName: escalationData.advName || currentContextData.advName || "",
+        email: escalationData.email || currentContextData.email || "",
+        language: escalationData.language || currentContextData.language || "",
+        amName: escalationData.amName || currentContextData.amName || "",
+        salesProgram: escalationData.salesProgram || currentContextData.salesProgram || "",
+        site: escalationData.site || currentContextData.site || "",
+        timezone: escalationData.timezone || currentContextData.timezone || "",
         reason: escalationData.reason,
         taskType: escalationData.taskType,
         description: escalationData.description,
-        availability
+        availability: `${escalationData.availability_1 || ""} | ${escalationData.availability_2 || ""} | ${escalationData.availability_3 || ""}`.trim()
       };
-      const missingFields = Object.keys(payload).filter((key) => !payload[key] || payload[key] === "N/A" || payload[key] === "---");
-      if (missingFields.length > 0) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        SoundManager.playClick();
-        showToast(`Erro: Preencha todos os campos (${missingFields.join(", ")})`, "error");
-        return;
-      }
       try {
-        await sendBAUEscalation(payload, contextData.agentEmail || "anon");
+        await sendBAUEscalation(payload, currentContextData.agentEmail || "anon");
         SoundManager.playSuccess();
         showToast("Escalonamento enviado com sucesso!", "success");
         form.reset();
         chipsContainer.querySelectorAll(".bau-chip.active").forEach((c) => c.classList.remove("active"));
+        currentStep = 1;
+        updateWizardState();
         toggleVisibility();
       } catch (error) {
         console.error("Erro BAU:", error);
@@ -11672,12 +11826,15 @@ E-mail: ${data.clientEmail || "---"}`;
     };
     async function toggleVisibility() {
       isVisible = !isVisible;
+      popup.style.display = isVisible ? "flex" : "none";
       if (isVisible) {
-        popup.style.display = "flex";
+        currentStep = 1;
+        updateWizardState();
         await populateContextData();
       }
       toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");
     }
+    updateWizardState();
     return toggleVisibility;
   }
 
