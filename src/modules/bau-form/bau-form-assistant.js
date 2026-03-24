@@ -6,7 +6,6 @@ import { showToast } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { sendBAUEscalation } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
-import { chipData } from './bau-form-config.js';
 import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.js';
 
 export function initBAUForm() {
@@ -59,17 +58,23 @@ export function initBAUForm() {
     const contextBody = document.createElement("div");
     contextBody.innerHTML = `
         <div class="bau-inline-field" title="Clique para editar" style="margin-bottom: 4px;">
-            <input type="text" id="bau-adv-name-input" name="advName" class="bau-title bau-inline-input" style="border-bottom: none; font-size: 20px;" placeholder="Nome do Anunciante">
+            <input type="text" id="bau-adv-name-input" name="advName" class="bau-title bau-inline-input" style="border-bottom: none; font-size: 20px;" placeholder="Nome do Anunciante" required>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px; margin-left: 10px; opacity: 0.9;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-left: 10px; opacity: 0.9;">
             <div class="bau-inline-field" title="Clique para editar" style="padding: 2px 6px;">
                  <span style="color: #fff; font-size: 13px; font-weight: 700;">CID:</span>
-                 <input type="text" id="bau-cid-input" name="cid" class="bau-inline-input" style="width: 120px; font-size: 13px; border-bottom-color: rgba(255,255,255,0.3);" placeholder="CID">
+                 <input type="text" id="bau-cid-input" name="cid" class="bau-inline-input" style="width: 110px; font-size: 13px; border-bottom-color: rgba(255,255,255,0.3);" placeholder="CID" required>
             </div>
             <span style="color: #fff; opacity: 0.5;">•</span>
             <div class="bau-inline-field" title="Clique para editar" style="padding: 2px 6px;">
                  <span style="color: #fff; font-size: 13px; font-weight: 700;">AM:</span>
-                 <input type="text" id="bau-am-name-input" name="amName" class="bau-inline-input" style="width: 150px; font-size: 13px; border-bottom-color: rgba(255,255,255,0.3);" placeholder="Account Manager">
+                 <input type="text" id="bau-am-name-input" name="amName" class="bau-inline-input" style="width: 130px; font-size: 13px; border-bottom-color: rgba(255,255,255,0.3);" placeholder="Account Manager" required>
+            </div>
+            <span style="color: #fff; opacity: 0.5;">•</span>
+            <div class="bau-inline-field" style="padding: 2px 6px; position: relative;">
+                 <span style="color: #fff; font-size: 13px; font-weight: 700;">SE ID:</span>
+                 <input type="text" id="bau-context-se-id-input" name="seId" class="bau-inline-input" style="width: 160px; font-size: 13px; border-bottom-color: rgba(255,255,255,0.3);" placeholder="Speakeasy ID">
+                 <button type="button" id="bau-top-se-search" class="bau-mini-btn" title="Buscar ID automaticamente" style="margin-left: 8px;">✨</button>
             </div>
         </div>
         <div id="bau-all-data"></div>
@@ -110,14 +115,10 @@ export function initBAUForm() {
     // Lógica para toggle visual dos itens de task
     actionCard.querySelectorAll('.bau-task-item').forEach(item => {
         const input = item.querySelector('input');
-        item.onclick = (e) => {
-            // Se clicar no label, o input já troca. Se clicar no item, trocamos manualmente.
-            if (e.target !== input) {
-                input.checked = !input.checked;
-            }
+        input.addEventListener('change', () => {
             item.classList.toggle('active', input.checked);
-            SoundManager.playClick();
-        };
+            if (input.checked) SoundManager.playClick();
+        });
     });
 
     step2.appendChild(actionCard);
@@ -261,6 +262,9 @@ export function initBAUForm() {
     }
 
     function validateStep(step) {
+        const stepEl = document.getElementById(`bau-step-${step}`);
+        if (!stepEl) return true;
+
         if (step === 2) {
             const reason = form.querySelector('select[name="reason"]').value;
             const tasks = Array.from(form.querySelectorAll('input[name="taskType"]:checked'));
@@ -275,11 +279,11 @@ export function initBAUForm() {
             return true;
         }
 
-        const inputs = form.querySelectorAll(`#bau-step-${step} [required]`);
+        const inputs = stepEl.querySelectorAll('[required]');
         for (const input of inputs) {
             if (!input.value.trim()) {
                 let labelText = "";
-                const label = input.closest('div').querySelector('.bau-label');
+                const label = input.closest('div')?.querySelector('.bau-label');
                 if (label) {
                     labelText = label.textContent;
                 } else {
@@ -287,7 +291,7 @@ export function initBAUForm() {
                     labelText = inlineLabel ? inlineLabel.textContent : input.placeholder || input.name;
                 }
 
-                showToast(`Erro: O campo '${labelText.replace(':', '')}' é obrigatório.`, "error");
+                showToast(`Erro: O campo '${labelText.replace(':', '')}' é obrigatório.`, { error: true });
                 input.classList.add('input-error');
                 setTimeout(() => input.classList.remove('input-error'), 3000);
                 return false;
@@ -325,17 +329,26 @@ export function initBAUForm() {
         form.querySelector('[name="advName"]').value = pd.advName || "";
         form.querySelector('[name="cid"]').value = pd.cid || "";
         form.querySelector('[name="amName"]').value = pd.amName || "";
+        form.querySelector('[name="seId"]').value = pd.seId || "";
+
+        const btnTopSearch = document.getElementById('bau-top-se-search');
+        if (btnTopSearch) {
+            btnTopSearch.onclick = async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                await fetchAndInsertSpeakeasyId("bau-context-se-id-input");
+            };
+        }
         
         const allDataEl = document.getElementById('bau-all-data');
         if (allDataEl) {
             allDataEl.innerHTML = "";
 
             const fields = [
-                { label: 'Email', name: 'email', value: pd.email },
-                { label: 'Idioma', name: 'language', value: pd.language },
-                { label: 'Programa', name: 'salesProgram', value: pd.salesProgram },
-                { label: 'Speakeasy ID', name: 'seId', value: pd.seId, isSpeakeasy: true },
-                { label: 'Timezone', name: 'timezone', value: pd.timezone }
+                { label: 'Email', name: 'email', value: pd.email, type: 'text' },
+                { label: 'Idioma', name: 'language', value: pd.language, type: 'select', options: ['Português', 'Espanhol'] },
+                { label: 'Programa', name: 'salesProgram', value: pd.salesProgram, type: 'text' },
+                { label: 'Timezone', name: 'timezone', value: pd.timezone, type: 'text' }
             ];
 
             fields.forEach(f => {
@@ -347,40 +360,43 @@ export function initBAUForm() {
                 label.textContent = `${f.label}:`;
                 row.appendChild(label);
 
-                const input = document.createElement('input');
-                input.type = "text";
-                input.name = f.name;
-                input.className = "bau-inline-input";
-                input.value = f.value || "";
-                input.placeholder = `Preencher ${f.label}...`;
-                if (f.isSpeakeasy) input.id = "bau-context-se-id-input";
+                let input;
+                if (f.type === 'select') {
+                    input = document.createElement('select');
+                    input.name = f.name;
+                    input.className = "bau-inline-input";
+                    input.style.appearance = "none";
+                    input.style.cursor = "pointer";
 
-                // Se o valor for vazio, destacamos visualmente (opcional, já tem o placeholder)
-                if (!f.value || f.value === "N/A" || f.value === "---") {
+                    const placeholderOpt = document.createElement('option');
+                    placeholderOpt.value = "";
+                    placeholderOpt.textContent = `Selecionar ${f.label}...`;
+                    input.appendChild(placeholderOpt);
+
+                    f.options.forEach(opt => {
+                        const o = document.createElement('option');
+                        o.value = opt;
+                        o.textContent = opt;
+                        if (f.value && (f.value.toLowerCase().includes(opt.toLowerCase()) || opt.toLowerCase().includes(f.value.toLowerCase()))) {
+                             o.selected = true;
+                        }
+                        input.appendChild(o);
+                    });
+                } else {
+                    input = document.createElement('input');
+                    input.type = "text";
+                    input.name = f.name;
+                    input.className = "bau-inline-input";
+                    input.value = f.value || "";
+                    input.placeholder = `Preencher ${f.label}...`;
+                }
+
+                if (input.tagName === 'INPUT' && (!f.value || f.value === "N/A" || f.value === "---")) {
                     input.value = "";
                 }
 
                 row.appendChild(input);
-
-                if (f.isSpeakeasy) {
-                    const btnSearch = document.createElement('button');
-                    btnSearch.type = "button";
-                    btnSearch.innerHTML = `✨ Auto Busca`;
-                    btnSearch.style.cssText = `font-size: 10px; font-weight: 700; color: #fff; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 100px; padding: 2px 10px; cursor: pointer; transition: all 0.2s; margin-left: 4px; flex-shrink: 0;`;
-                    btnSearch.onmouseenter = () => btnSearch.style.background = "rgba(255,255,255,0.3)";
-                    btnSearch.onmouseleave = () => btnSearch.style.background = "rgba(255,255,255,0.2)";
-                    btnSearch.onclick = async (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        await fetchAndInsertSpeakeasyId("bau-context-se-id-input");
-                        currentContextData.seId = input.value;
-                    };
-                    row.appendChild(btnSearch);
-                }
-
-                // Ao clicar na linha, foca o input
                 row.onclick = () => input.focus();
-
                 allDataEl.appendChild(row);
             });
         }
@@ -436,6 +452,7 @@ export function initBAUForm() {
             showToast("Escalonamento enviado com sucesso!", "success");
             form.reset();
             currentStep = 1;
+            currentContextData = null;
             updateWizardState();
             toggleVisibility();
         } catch (error) {
@@ -450,7 +467,7 @@ export function initBAUForm() {
     async function toggleVisibility() {
         isVisible = !isVisible;
         popup.style.display = isVisible ? "flex" : "none";
-        if (isVisible) {
+        if (isVisible && !currentContextData) {
             currentStep = 1;
             updateWizardState();
             await populateContextData();

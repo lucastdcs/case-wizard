@@ -374,6 +374,24 @@ export const injectStyles = () => {
       transform: translateY(0);
     }
 
+    .bau-mini-btn {
+        font-size: 10px;
+        font-weight: 700;
+        color: #fff;
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.4);
+        border-radius: 100px;
+        padding: 2px 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+        outline: none;
+    }
+    .bau-mini-btn:hover {
+        background: rgba(255,255,255,0.3);
+        transform: scale(1.05);
+    }
+
     /* --- GRIDS --- */
     .bau-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   `;
