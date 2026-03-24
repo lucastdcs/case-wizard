@@ -32,6 +32,12 @@ export function initBAUForm() {
     );
     popup.appendChild(header);
 
+    const refreshBtn = document.createElement('button');
+    refreshBtn.className = 'bau-refresh-btn';
+    refreshBtn.innerHTML = '🔄';
+    refreshBtn.title = 'Recarregar dados do caso';
+    header.appendChild(refreshBtn);
+
     const progressIndicator = document.createElement("div");
     progressIndicator.className = "bau-progress-indicator";
     popup.appendChild(progressIndicator);
@@ -320,6 +326,22 @@ export function initBAUForm() {
         }
     };
 
+    async function refreshData() {
+        refreshBtn.classList.add('rotating');
+        showToast("Atualizando dados do CRM...", "info");
+        try {
+            await populateContextData();
+        } catch (error) {
+            showToast("Falha ao atualizar dados.", "error");
+        } finally {
+            setTimeout(() => { // Prevent animation from being too fast
+                 refreshBtn.classList.remove('rotating');
+            }, 500);
+        }
+    }
+
+    refreshBtn.onclick = refreshData;
+
     // --- DATA POPULATION ---
     async function populateContextData() {
         const pageData = await getPageData() || {};
@@ -476,12 +498,11 @@ export function initBAUForm() {
     async function toggleVisibility() {
         isVisible = !isVisible;
         popup.style.display = isVisible ? "flex" : "none";
-        if (isVisible && !currentContextData) {
-            currentStep = 1;
+        if (isVisible) { // Only fetch data when opening
+            await refreshData(); 
+            currentStep = 1; 
             updateWizardState();
-            await populateContextData();
         }
-        toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");
     }
     
     updateWizardState();

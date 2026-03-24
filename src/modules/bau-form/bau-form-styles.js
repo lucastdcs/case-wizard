@@ -45,6 +45,10 @@ export const injectStyles = () => {
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
     }
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
 
     /* --- BASE & UTILITIES --- */
     .input-error {
@@ -62,6 +66,30 @@ export const injectStyles = () => {
       overflow: hidden !important; position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%); z-index: 10000;
       font-family: 'Google Sans', Roboto, sans-serif;
+    }
+
+    /* --- REFRESH BUTTON --- */
+    .bau-refresh-btn {
+        position: absolute;
+        top: 18px;
+        right: 90px; /* Position it to the left of the close button */
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: white;
+        opacity: 0.6;
+        cursor: pointer;
+        transition: all 0.3s ${EASE};
+        padding: 5px;
+        border-radius: 50%;
+        line-height: 1;
+    }
+    .bau-refresh-btn:hover {
+        opacity: 1;
+        background: rgba(255,255,255,0.15);
+    }
+    .bau-refresh-btn.rotating {
+        animation: spin 0.5s linear;
     }
 
     /* --- PROGRESS INDICATOR --- */
