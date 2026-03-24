@@ -51,10 +51,6 @@ export function initBAUForm() {
     const contextCard = document.createElement("div");
     contextCard.className = "bau-card bau-context-card";
 
-    const banner = document.createElement("div");
-    banner.className = "bau-header-banner";
-    contextCard.appendChild(banner);
-
     const contextBody = document.createElement("div");
     contextBody.innerHTML = `
         <div class="bau-inline-field" title="Clique para editar" style="margin-bottom: 4px;">
@@ -413,9 +409,9 @@ export function initBAUForm() {
         const missingFields = requiredFields.filter(f => !pd[f.key] || pd[f.key] === "N/A" || pd[f.key].trim() === "---");
 
         if (missingFields.length > 0) {
-            banner.innerHTML = `<span>⚠️</span> Alguns dados não foram encontrados. Por favor, complete os campos editáveis acima.`;
+            showToast("⚠️ Alguns dados de CRM não foram encontrados. Complete os campos editáveis.", "warning");
         } else {
-            banner.innerHTML = `<span>✅</span> Dados do CRM carregados. Você pode editar qualquer campo clicando nele.`;
+            showToast("✅ Dados do CRM carregados. Você pode editar qualquer campo.", "info");
         }
     }
 

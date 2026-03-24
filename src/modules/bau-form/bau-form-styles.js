@@ -65,7 +65,7 @@ export const injectStyles = () => {
     }
 
     /* --- PROGRESS INDICATOR --- */
-    .bau-progress-indicator { /* ... sem alterações ... */
+    .bau-progress-indicator {
       display: flex; justify-content: space-around; padding: 20px 32px;
       border-bottom: 1px solid ${COLORS.border};
       background: rgba(248, 249, 250, 0.7);
@@ -155,15 +155,7 @@ export const injectStyles = () => {
     .bau-inline-input::placeholder {
         color: rgba(255, 255, 255, 0.5);
     }
-    .bau-context-card .bau-header-banner {
-        color: #fff; 
-        background: transparent !important;
-        border-bottom: none !important;
-        margin-bottom: 8px;
-        padding: 0;
-        font-weight: 700;
-    }
-
+    
     /* --- CARD DE FALLBACK (ESTILO SUAVIZADO) --- */
     .bau-fallback-card {
         background-color: ${COLORS.yellowLight};
