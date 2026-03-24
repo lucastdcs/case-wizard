@@ -55,7 +55,6 @@ export const sendBAUEscalation = (payload, userEmail) => {
         user: userEmail,
         date: new Date().toISOString()
     };
-    // CORREÇÃO: Usando a operação 'create_bau' conforme o backend
     return _performOp('create_bau', fullPayload);
 };
 
@@ -63,12 +62,20 @@ export const readAgentBAU = async () => {
     const agentEmail = getAgentEmail();
     if (!agentEmail) {
         console.error("Não foi possível obter o email do agente para buscar os casos BAU.");
-        return []; // Retorna um array vazio se o email não for encontrado
+        return [];
     }
     const response = await _performOp('read_agent_bau', { user: agentEmail });
-    // O backend retorna { status: 'success', cases: [...] }
     return response.cases || []; 
 };
 
-// Demais funções do DataService (inalteradas)
-export const DataService = { /* ... */ };
+// Nova função adicionada
+export const fetchTips = async () => {
+    // A lógica real para buscar dicas pode ser adicionada aqui
+    console.log("Buscando dicas...");
+};
+
+export const DataService = {
+    fetchTips,
+    sendBAUEscalation,
+    readAgentBAU
+};
