@@ -32,18 +32,17 @@ export const TRANSITION = `all 0.3s ${EASE}`;
 
 export const injectStyles = () => {
   if (document.getElementById('bau-form-global-styles')) return;
+
   const style = document.createElement('style');
   style.id = 'bau-form-global-styles';
   style.innerHTML = `
-    /* --- KEYFRAMES PARA ANIMAÇÃO --- */
+    /* --- FONT IMPORT --- */
+    @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+    /* --- KEYFRAMES --- */
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes gemini-gradient {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
     }
     @keyframes spin {
         from { transform: rotate(0deg); }
@@ -51,14 +50,11 @@ export const injectStyles = () => {
     }
 
     /* --- BASE & UTILITIES --- */
-    .input-error {
-      border-color: ${COLORS.red} !important;
-      box-shadow: 0 0 0 3px rgba(217, 48, 37, 0.15) !important;
-    }
-
     .bau-popup {
       display: flex !important; flex-direction: column !important;
-      width: 520px !important; max-height: 85vh !important;
+      width: 650px !important; /* LARGURA AUMENTADA */
+      max-width: 90vw !important;
+      max-height: 85vh !important;
       background: ${COLORS.surface} !important;
       backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important;
       border-radius: ${RADIUS.large} !important; box-shadow: ${SHADOW.deep} !important;
@@ -68,398 +64,176 @@ export const injectStyles = () => {
       font-family: 'Google Sans', Roboto, sans-serif;
     }
 
-    /* --- REFRESH BUTTON --- */
-    .bau-refresh-btn {
-        position: absolute;
-        top: 18px;
-        right: 90px;
-        background: none;
-        border: none;
-        color: white;
-        opacity: 0.6;
-        cursor: pointer;
-        transition: all 0.3s ${EASE};
-        padding: 6px;
-        border-radius: 50%;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    /* --- VIEW MANAGEMENT --- */
+    .bau-view {
+      display: none;
+      flex-direction: column;
+      flex-grow: 1;
+      animation: fadeIn 0.4s ${EASE};
     }
-    .bau-refresh-btn:hover {
-        opacity: 1;
-        background: rgba(255,255,255,0.15);
-    }
-    .bau-refresh-btn.rotating {
-        animation: spin 0.5s linear;
-    }
-    .bau-refresh-btn svg {
-        width: 20px;
-        height: 20px;
-        fill: currentColor;
+    .bau-view.active {
+      display: flex;
     }
 
-    /* --- PROGRESS INDICATOR --- */
-    .bau-progress-indicator {
-      display: flex; justify-content: space-around; padding: 20px 32px;
-      border-bottom: 1px solid ${COLORS.border};
-      background: rgba(248, 249, 250, 0.7);
+    /* --- VIEW: DASHBOARD --- */
+    .bau-dashboard-content {
+      padding: 24px 32px;
+      overflow-y: auto;
+      flex-grow: 1;
     }
-    .bau-progress-step {
-      display: flex; align-items: center; justify-content: center;
-      width: 32px; height: 32px; border-radius: 50%;
-      background-color: #F1F3F4; color: ${COLORS.textSecondary};
-      font-weight: 700; font-size: 14px; border: 2px solid #F1F3F4;
-      transition: ${TRANSITION}; position: relative;
+    .bau-case-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
-    .bau-progress-step.active { background-color: ${COLORS.blueLight}; color: ${COLORS.blue}; border-color: ${COLORS.blue}; transform: scale(1.1); }
-    .bau-progress-step.completed { background-color: ${COLORS.greenLight}; color: ${COLORS.green}; border-color: ${COLORS.green}; }
-    
-    /* --- CONTENT & STEPS --- */
-    .bau-content { padding: 32px; overflow-y: auto; flex-grow: 1; }
-    .bau-step { display: none; animation: fadeIn 0.5s ${EASE}; opacity: 0; }
-    .bau-step.active { display: block; opacity: 1; }
-
-    .bau-card {
-      background: ${COLORS.white}; border-radius: ${RADIUS.medium};
-      padding: 24px; border: 1px solid ${COLORS.border};
-      margin-bottom: 24px;
+    .bau-case-card {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      background: ${COLORS.white};
+      border-radius: ${RADIUS.medium};
+      border: 1px solid ${COLORS.border};
+      transition: ${TRANSITION};
+      cursor: pointer;
     }
-
-    /* --- CARD DE CONTEXTO (NOVO ESTILO GEMINI) --- */
-    .bau-context-card {
-        color: #fff;
-        border: none;
-        background: linear-gradient(135deg, #0d47a1, #1976d2, #1565c0, #1a237e);
-        background-size: 400% 400%;
-        animation: gemini-gradient 10s ease infinite;
-        box-shadow: 0 10px 30px rgba(13, 71, 161, 0.2);
+    .bau-case-card:hover {
+      border-color: ${COLORS.blue};
+      box-shadow: ${SHADOW.subtle};
+      transform: translateY(-2px);
     }
-    .bau-context-card .bau-title {
-        color: #fff !important;
-        font-weight: 800 !important;
-        font-size: 20px !important;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    .bau-case-info {
+      flex-grow: 1;
     }
-    .bau-context-card .bau-subtitle, .bau-context-card b {
-        color: #fff !important;
-        font-weight: 700 !important;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    }
-     .bau-context-card #bau-all-data {
-        color: #E0F5F5 !important;
-        border-top-color: rgba(255, 255, 255, 0.3) !important;
-        padding-top: 20px !important;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    .bau-inline-field {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 6px 10px;
-        border-radius: 8px;
-        transition: background 0.2s ease;
-        cursor: pointer;
-    }
-    .bau-inline-field:hover {
-        background: rgba(255, 255, 255, 0.15);
-    }
-    .bau-inline-field b {
-        min-width: 100px;
-        font-size: 12px;
-        opacity: 0.9;
-    }
-    .bau-inline-input {
-        background: transparent;
-        border: none;
-        border-bottom: 1.5px dashed rgba(255, 255, 255, 0.4);
-        color: #fff;
-        font-size: 13px;
-        font-weight: 600;
-        padding: 4px 0;
-        width: 100%;
-        outline: none;
-        transition: border-bottom-color 0.2s;
-    }
-    .bau-inline-input:focus {
-        border-bottom-style: solid;
-        border-bottom-color: #fff;
-    }
-    .bau-inline-input::placeholder {
-        color: rgba(255, 255, 255, 0.5);
-    }
-
-    /* --- LANGUAGE TOGGLE --- */
-    .bau-lang-toggle-wrapper { flex-grow: 1; }
-    .bau-lang-toggle {
-        display: flex;
-        align-items: center;
-        background-color: rgba(0,0,0,0.25);
-        border-radius: ${RADIUS.pill};
-        padding: 4px;
-        cursor: pointer;
-        position: relative;
-        width: 130px;
-        height: 32px;
-        transition: background-color 0.3s;
-    }
-    .bau-lang-toggle:hover { background-color: rgba(0,0,0,0.35); }
-    .bau-lang-toggle span {
-        flex: 1;
-        text-align: center;
-        font-size: 12px;
-        font-weight: 600;
-        color: #fff;
-        z-index: 1;
-        transition: color 0.3s;
-    }
-    .bau-lang-toggle .glider {
-        position: absolute;
-        top: 4px;
-        height: calc(100% - 8px);
-        width: calc(50% - 4px);
-        background-color: #fff;
-        border-radius: ${RADIUS.pill};
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        transition: transform 0.3s ${EASE};
-    }
-    .bau-lang-toggle[data-lang="Espanhol"] .glider { transform: translateX(100%); }
-    .bau-lang-toggle[data-lang="Português"] .lang-pt { color: ${COLORS.textPrimary}; }
-    .bau-lang-toggle[data-lang="Espanhol"] .lang-es { color: ${COLORS.textPrimary}; }
-
-    
-    /* --- CARD DE FALLBACK (ESTILO SUAVIZADO) --- */
-    .bau-fallback-card {
-        background-color: ${COLORS.yellowLight};
-        border: 1.5px dashed #FBC02D; /* Borda tracejada para diferenciar */
-        padding: 16px;
-    }
-    .bau-fallback-header {
-        color: #BF360C; /* Tom de laranja mais escuro para o texto */
-        font-weight: 700;
-        font-size: 14px;
-        margin-bottom: 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    /* --- FORM ELEMENTS --- */
-    .bau-label {
-      display: block;
-      font-size: 13px;
+    .bau-case-title {
+      font-size: 15px;
       font-weight: 700;
+      color: ${COLORS.textPrimary};
+      margin: 0 0 4px 0;
+    }
+    .bau-case-details {
+      font-size: 13px;
       color: ${COLORS.textSecondary};
-      margin-bottom: 8px;
-      margin-top: 20px;
+    }
+    .bau-case-status-badge {
+      padding: 4px 10px;
+      border-radius: ${RADIUS.pill};
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    .bau-input, .bau-select, .bau-textarea {
-      width: 100%;
-      padding: 12px 16px;
-      border-radius: ${RADIUS.medium};
-      border: 1.5px solid ${COLORS.border};
-      background-color: #F8F9FA;
-      font-size: 14px;
-      color: ${COLORS.textPrimary};
-      transition: ${TRANSITION};
-      box-sizing: border-box;
-      outline: none;
-      font-family: inherit;
-    }
-    .bau-input:focus, .bau-select:focus, .bau-textarea:focus {
-      border-color: ${COLORS.blue};
-      background-color: #fff;
-      box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1);
-    }
-    .bau-select {
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      background-size: 16px;
-      padding-right: 40px;
-      cursor: pointer;
-    }
-    .bau-chips-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .bau-chip {
-      padding: 8px 16px;
-      border-radius: ${RADIUS.pill};
-      background-color: ${COLORS.blueLight};
-      color: ${COLORS.blue};
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: ${TRANSITION};
-      border: 1px solid transparent;
-    }
-    .bau-chip:hover {
-      background-color: #d2e3fc;
-    }
-    .bau-chip.active {
+    .bau-case-status-badge[data-status="Pendente"] { background-color: ${COLORS.yellowLight}; color: #A56700; }
+    .bau-case-status-badge[data-status="Criado"] { background-color: ${COLORS.greenLight}; color: ${COLORS.green}; }
+    .bau-case-status-badge[data-status="Cancelado"] { background-color: ${COLORS.redLight}; color: ${COLORS.red}; }
+
+    .bau-dashboard-fab {
+      position: absolute;
+      bottom: 24px;
+      right: 32px;
       background-color: ${COLORS.blue};
-      color: #fff;
-    }
-
-    /* --- SEÇÃO DE TASKS (MULTI-SELECT) --- */
-    .bau-tasks-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-top: 12px;
-    }
-    .bau-task-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 16px;
-        background: #F8F9FA;
-        border: 1px solid ${COLORS.border};
-        border-radius: ${RADIUS.medium};
-        cursor: pointer;
-        transition: all 0.2s ${EASE};
-    }
-    .bau-task-item:hover {
-        background: #fff;
-        border-color: ${COLORS.blue};
-    }
-    .bau-task-item.active {
-        background: ${COLORS.blueLight};
-        border-color: ${COLORS.blue};
-        color: ${COLORS.blue};
-    }
-    .bau-task-item input {
-        display: none;
-    }
-    .bau-task-item span {
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    /* --- CONFIRMATION SCREEN --- */
-    .bau-confirm-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 10px 0;
-        border-bottom: 1px solid #f0f0f0;
-        font-size: 14px;
-    }
-    .bau-confirm-label {
-        color: ${COLORS.textSecondary};
-        font-weight: 600;
-    }
-    .bau-confirm-value {
-        color: ${COLORS.textPrimary};
-        font-weight: 700;
-        text-align: right;
-        max-width: 60%;
-    }
-
-    /* --- SEÇÃO DE DISPONIBILIDADE (NOVO LAYOUT) --- */
-    .bau-availability-container {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-top: 4px;
-    }
-    .bau-availability-hint {
-        margin-top: 16px;
-        padding: 12px;
-        font-size: 12px;
-        font-weight: 500;
-        color: ${COLORS.textSecondary};
-        background-color: #F8F9FA;
-        border-radius: ${RADIUS.medium};
-        line-height: 1.6;
-    }
-
-    /* --- FOOTER & NAVIGATION BUTTONS --- */
-    .bau-footer {
-      display: flex;
-      justify-content: flex-end;
-      padding: 24px 32px;
-      gap: 12px;
-      border-top: 1px solid ${COLORS.border};
-      background: #F8F9FA;
-    }
-    .bau-btn-primary, .bau-btn-secondary, .bau-btn-submit {
-      padding: 12px 24px;
-      border-radius: ${RADIUS.pill};
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: ${TRANSITION};
+      color: ${COLORS.white};
       border: none;
+      border-radius: ${RADIUS.pill};
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 8px;
-      outline: none;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+      transition: ${TRANSITION};
     }
-    .bau-btn-primary {
-      background-color: ${COLORS.blue};
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);
+    .bau-dashboard-fab:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 16px rgba(26, 115, 232, 0.4);
     }
-    .bau-btn-primary:hover {
-      background-color: #1765cc;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(26, 115, 232, 0.3);
+
+    /* --- VIEW: SUCCESS SCREEN --- */
+    .bau-success-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      flex-grow: 1;
+      padding: 32px;
+      text-align: center;
     }
-    .bau-btn-primary:active {
-      transform: translateY(0);
+    .bau-success-icon .material-icons {
+      font-size: 72px;
+      color: ${COLORS.green};
     }
-    .bau-btn-secondary {
-      background-color: transparent;
+    .bau-success-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: ${COLORS.textPrimary};
+      margin: 16px 0 8px 0;
+    }
+    .bau-success-message {
+      font-size: 15px;
       color: ${COLORS.textSecondary};
-      border: 1px solid ${COLORS.border};
+      margin-bottom: 24px;
     }
-    .bau-btn-secondary:hover {
-      background-color: #E8EAED;
+
+    /* --- REUSABLE COMPONENTS (MODIFIED/NEW) --- */
+    .bau-view-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 24px;
+      border-bottom: 1px solid ${COLORS.border};
+      background: #F8F9FA;
+    }
+    .bau-back-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: ${COLORS.textSecondary};
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .bau-back-btn:hover {
       color: ${COLORS.textPrimary};
     }
-    .bau-btn-submit {
-      background-color: ${COLORS.green};
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(30, 142, 62, 0.2);
-    }
-    .bau-btn-submit:hover {
-      background-color: #1a7d36;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(30, 142, 62, 0.3);
-    }
-    .bau-btn-submit:active {
-      transform: translateY(0);
-    }
 
-    .bau-mini-btn {
-        font-size: 10px;
-        font-weight: 700;
-        color: #fff;
-        background: rgba(255,255,255,0.2);
-        border: 1px solid rgba(255,255,255,0.4);
-        border-radius: 100px;
-        padding: 2px 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-        flex-shrink: 0;
-        outline: none;
-    }
-    .bau-mini-btn:hover {
-        background: rgba(255,255,255,0.3);
-        transform: scale(1.05);
-    }
-
-    /* --- GRIDS --- */
-    .bau-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    /* --- FORM STYLES (UNCHANGED/EXISTING) --- */
+    .bau-content { padding: 32px; overflow-y: auto; flex-grow: 1; }
+    .bau-step { display: none; animation: fadeIn 0.5s ${EASE}; opacity: 0; }
+    .bau-step.active { display: block; opacity: 1; }
+    .bau-card { background: ${COLORS.white}; border-radius: ${RADIUS.medium}; padding: 24px; border: 1px solid ${COLORS.border}; margin-bottom: 24px; }
+    /* ... [Rest of the existing styles for form elements, buttons, etc.] ... */
+    .bau-progress-indicator { display: flex; justify-content: space-around; padding: 20px 32px; border-bottom: 1px solid ${COLORS.border}; background: rgba(248, 249, 250, 0.7); }
+    .bau-progress-step { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background-color: #F1F3F4; color: ${COLORS.textSecondary}; font-weight: 700; font-size: 14px; border: 2px solid #F1F3F4; transition: ${TRANSITION}; position: relative; }
+    .bau-progress-step.active { background-color: ${COLORS.blueLight}; color: ${COLORS.blue}; border-color: ${COLORS.blue}; transform: scale(1.1); }
+    .bau-progress-step.completed { background-color: ${COLORS.greenLight}; color: ${COLORS.green}; border-color: ${COLORS.green}; }
+    .bau-footer { display: flex; justify-content: flex-end; padding: 24px 32px; gap: 12px; border-top: 1px solid ${COLORS.border}; background: #F8F9FA; }
+    .bau-btn-primary, .bau-btn-secondary, .bau-btn-submit { padding: 12px 24px; border-radius: ${RADIUS.pill}; font-size: 14px; font-weight: 600; cursor: pointer; transition: ${TRANSITION}; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; outline: none; }
+    .bau-btn-primary { background-color: ${COLORS.blue}; color: #fff; box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2); }
+    .bau-btn-primary:hover { background-color: #1765cc; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(26, 115, 232, 0.3); }
+    .bau-btn-secondary { background-color: transparent; color: ${COLORS.textSecondary}; border: 1px solid ${COLORS.border}; }
+    .bau-btn-secondary:hover { background-color: #E8EAED; color: ${COLORS.textPrimary}; }
+    .bau-btn-submit { background-color: ${COLORS.green}; color: #fff; box-shadow: 0 4px 12px rgba(30, 142, 62, 0.2); }
+    .bau-btn-submit:hover { background-color: #1a7d36; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(30, 142, 62, 0.3); }
+    .bau-label { display: block; font-size: 13px; font-weight: 700; color: ${COLORS.textSecondary}; margin-bottom: 8px; margin-top: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .bau-input, .bau-select, .bau-textarea { width: 100%; padding: 12px 16px; border-radius: ${RADIUS.medium}; border: 1.5px solid ${COLORS.border}; background-color: #F8F9FA; font-size: 14px; color: ${COLORS.textPrimary}; transition: ${TRANSITION}; box-sizing: border-box; outline: none; font-family: inherit; }
+    .bau-input:focus, .bau-select:focus, .bau-textarea:focus { border-color: ${COLORS.blue}; background-color: #fff; box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1); }
+    .bau-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 40px; cursor: pointer; }
+    .bau-tasks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .bau-task-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #F8F9FA; border: 1px solid ${COLORS.border}; border-radius: ${RADIUS.medium}; cursor: pointer; transition: all 0.2s ${EASE}; }
+    .bau-task-item:hover { background: #fff; border-color: ${COLORS.blue}; }
+    .bau-task-item.active { background: ${COLORS.blueLight}; border-color: ${COLORS.blue}; color: ${COLORS.blue}; }
+    .bau-task-item input { display: none; }
+    .bau-task-item span { font-size: 13px; font-weight: 600; }
+    .bau-confirm-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+    .bau-confirm-label { color: ${COLORS.textSecondary}; font-weight: 600; }
+    .bau-confirm-value { color: ${COLORS.textPrimary}; font-weight: 700; text-align: right; max-width: 60%; }
+    .bau-availability-container { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+    .bau-availability-hint { margin-top: 16px; padding: 12px; font-size: 12px; font-weight: 500; color: ${COLORS.textSecondary}; background-color: #F8F9FA; border-radius: ${RADIUS.medium}; line-height: 1.6; }
   `;
   document.head.appendChild(style);
-}; 
+};
