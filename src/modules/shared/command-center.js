@@ -384,9 +384,11 @@ export function initCommandCenter(actions) {
   };
 
   const pill = document.createElement("div");
+  pill.id = "cw-floating-trigger";
   pill.className = "cw-pill side-right collapsed";
 
   pill.innerHTML = `
+        <div id="cw-command-center" style="display:none;"></div>
         <div class="cw-main-logo">${ICONS.main}</div>
         <div id="cw-admin-tag" class="cw-admin-badge">Admin</div>
 

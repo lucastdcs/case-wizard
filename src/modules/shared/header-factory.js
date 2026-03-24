@@ -112,7 +112,7 @@ export function createStandardHeader(popupElement, titleText, versionText, helpD
     closeBtn.innerHTML = closeIcon;
     Object.assign(closeBtn.style, BTN_STYLE);
     closeBtn.title = "Fechar";
-    closeBtn.classList.add('no-drag');
+    closeBtn.classList.add('no-drag', 'cw-header-close');
 
     closeBtn.onmouseenter = () => { closeBtn.style.background = 'rgba(242, 139, 130, 0.2)'; closeBtn.style.color = '#F28B82'; }; 
     closeBtn.onmouseleave = () => { closeBtn.style.background = 'transparent'; closeBtn.style.color = '#9AA0A6'; };

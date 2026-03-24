@@ -233,6 +233,7 @@ export function initGlobalStylesAndFont() {
 
 export function showToast(message, opts = {}) {
   const toast = document.createElement("div");
+  if (opts.error) toast.className = "toast-error";
   
   // Cores com transparência para o Glassmorphism
   const bg = opts.error 
