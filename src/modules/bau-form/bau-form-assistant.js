@@ -7,6 +7,7 @@ import { SoundManager } from '../shared/sound-manager.js';
 import { sendBAUEscalation } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
 import { chipData } from './bau-form-config.js';
+import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.js';
 
 export function initBAUForm() {
     injectStyles();
@@ -266,13 +267,51 @@ export function initBAUForm() {
         
         const allDataEl = document.getElementById('bau-all-data');
         if (allDataEl) {
-            allDataEl.innerHTML = `
-                <b>Email:</b> ${pd.email || "N/A"}<br>
-                <b>Idioma:</b> ${pd.language || "N/A"}<br>
-                <b>Programa:</b> ${pd.salesProgram || "N/A"}<br>
-                <b>Speakeasy ID:</b> ${pd.seId || "N/A"}<br>
-                <b>Timezone:</b> ${pd.timezone || "N/A"}
-            `;
+            allDataEl.innerHTML = "";
+
+            const fields = [
+                { label: 'Email', value: pd.email },
+                { label: 'Idioma', value: pd.language },
+                { label: 'Programa', value: pd.salesProgram },
+                { label: 'Speakeasy ID', value: pd.seId, isSpeakeasy: true },
+                { label: 'Timezone', value: pd.timezone }
+            ];
+
+            fields.forEach(f => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.gap = '8px';
+                row.style.marginBottom = '4px';
+
+                const label = document.createElement('b');
+                label.textContent = `${f.label}:`;
+                row.appendChild(label);
+
+                const valueSpan = document.createElement('span');
+                valueSpan.textContent = f.value || "N/A";
+                if (f.isSpeakeasy) valueSpan.id = "bau-context-se-id";
+                row.appendChild(valueSpan);
+
+                if (f.isSpeakeasy) {
+                    const btnSearch = document.createElement('button');
+                    btnSearch.type = "button";
+                    btnSearch.innerHTML = `✨ Auto Busca`;
+                    btnSearch.style.cssText = `font-size: 10px; font-weight: 700; color: #fff; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 100px; padding: 2px 10px; cursor: pointer; transition: all 0.2s; margin-left: 4px;`;
+                    btnSearch.onmouseenter = () => btnSearch.style.background = "rgba(255,255,255,0.3)";
+                    btnSearch.onmouseleave = () => btnSearch.style.background = "rgba(255,255,255,0.2)";
+                    btnSearch.onclick = async (e) => {
+                        e.preventDefault();
+                        await fetchAndInsertSpeakeasyId("bau-context-se-id");
+                        // Sync back to currentContextData if needed, though sendBAUEscalation uses payload
+                        const newValue = document.getElementById("bau-context-se-id").value || document.getElementById("bau-context-se-id").textContent;
+                        currentContextData.seId = newValue;
+                    };
+                    row.appendChild(btnSearch);
+                }
+
+                allDataEl.appendChild(row);
+            });
         }
 
         // Atualiza a dica de fuso horário
@@ -298,10 +337,41 @@ export function initBAUForm() {
             const grid = fallbackCard.querySelector('#bau-fallback-grid');
             missingFields.forEach(f => {
                 const fieldDiv = document.createElement("div");
-                fieldDiv.innerHTML = `
-                    <label class="bau-label">${f.label}</label>
-                    <input type="text" name="${f.key}" class="bau-input" placeholder="Preencher ${f.label}..." required>
-                `;
+                fieldDiv.style.position = "relative";
+
+                const labelWrapper = document.createElement("div");
+                labelWrapper.style.display = "flex";
+                labelWrapper.style.alignItems = "center";
+                labelWrapper.style.justifyContent = "space-between";
+
+                const label = document.createElement("label");
+                label.className = "bau-label";
+                label.textContent = f.label;
+                labelWrapper.appendChild(label);
+
+                if (f.key === "seId") {
+                    const btnSearch = document.createElement('button');
+                    btnSearch.type = "button";
+                    btnSearch.innerHTML = `✨ Auto Busca`;
+                    btnSearch.style.cssText = `font-size: 11px; font-weight: 700; color: ${COLORS.blue}; background: ${COLORS.blueLight}; border: none; border-radius: 100px; padding: 4px 12px; cursor: pointer; transition: all 0.2s; margin-top: 12px;`;
+                    btnSearch.onclick = (e) => {
+                        e.preventDefault();
+                        fetchAndInsertSpeakeasyId(`fallback-input-${f.key}`);
+                    };
+                    labelWrapper.appendChild(btnSearch);
+                }
+
+                fieldDiv.appendChild(labelWrapper);
+
+                const input = document.createElement("input");
+                input.type = "text";
+                input.name = f.key;
+                input.id = `fallback-input-${f.key}`;
+                input.className = "bau-input";
+                input.placeholder = `Preencher ${f.label}...`;
+                input.required = true;
+                fieldDiv.appendChild(input);
+
                 grid.appendChild(fieldDiv);
             });
 

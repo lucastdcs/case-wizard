@@ -95,13 +95,21 @@ export const injectStyles = () => {
     .bau-context-card {
         color: #fff;
         border: none;
-        background: linear-gradient(120deg, #13547a, #80d0c7, #2a6c8b, #5ED5D8);
+        background: linear-gradient(135deg, #0d47a1, #1976d2, #1565c0, #1a237e);
         background-size: 400% 400%;
-        animation: gemini-gradient 15s ease infinite;
+        animation: gemini-gradient 10s ease infinite;
+        box-shadow: 0 10px 30px rgba(13, 71, 161, 0.2);
     }
-    .bau-context-card .bau-title, .bau-context-card .bau-subtitle, .bau-context-card b {
+    .bau-context-card .bau-title {
         color: #fff !important;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        font-weight: 800 !important;
+        font-size: 20px !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .bau-context-card .bau-subtitle, .bau-context-card b {
+        color: #fff !important;
+        font-weight: 700 !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
      .bau-context-card #bau-all-data {
         color: #E0F5F5 !important;
@@ -133,11 +141,67 @@ export const injectStyles = () => {
     }
 
     /* --- FORM ELEMENTS --- */
-    .bau-label { /* ... sem alterações ... */ }
-    .bau-input, .bau-select, .bau-textarea { /* ... sem alterações ... */ }
-    .bau-select { /* ... sem alterações ... */ }
-    .bau-chips-container { /* ... sem alterações ... */ }
-    .bau-chip { /* ... sem alterações ... */ }
+    .bau-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: ${COLORS.textSecondary};
+      margin-bottom: 8px;
+      margin-top: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .bau-input, .bau-select, .bau-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: ${RADIUS.medium};
+      border: 1.5px solid ${COLORS.border};
+      background-color: #F8F9FA;
+      font-size: 14px;
+      color: ${COLORS.textPrimary};
+      transition: ${TRANSITION};
+      box-sizing: border-box;
+      outline: none;
+      font-family: inherit;
+    }
+    .bau-input:focus, .bau-select:focus, .bau-textarea:focus {
+      border-color: ${COLORS.blue};
+      background-color: #fff;
+      box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1);
+    }
+    .bau-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%235F6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 40px;
+      cursor: pointer;
+    }
+    .bau-chips-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .bau-chip {
+      padding: 8px 16px;
+      border-radius: ${RADIUS.pill};
+      background-color: ${COLORS.blueLight};
+      color: ${COLORS.blue};
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: ${TRANSITION};
+      border: 1px solid transparent;
+    }
+    .bau-chip:hover {
+      background-color: #d2e3fc;
+    }
+    .bau-chip.active {
+      background-color: ${COLORS.blue};
+      color: #fff;
+    }
 
     /* --- SEÇÃO DE DISPONIBILIDADE (NOVO LAYOUT) --- */
     .bau-availability-container {
@@ -158,11 +222,63 @@ export const injectStyles = () => {
     }
 
     /* --- FOOTER & NAVIGATION BUTTONS --- */
-    .bau-footer { /* ... sem alterações ... */ }
-    .bau-btn-primary, .bau-btn-secondary, .bau-btn-submit { /* ... sem alterações ... */ }
-    .bau-btn-secondary { /* ... sem alterações ... */ }
-    .bau-btn-primary { /* ... sem alterações ... */ }
-    .bau-btn-submit { /* ... sem alterações ... */ }
+    .bau-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding: 24px 32px;
+      gap: 12px;
+      border-top: 1px solid ${COLORS.border};
+      background: #F8F9FA;
+    }
+    .bau-btn-primary, .bau-btn-secondary, .bau-btn-submit {
+      padding: 12px 24px;
+      border-radius: ${RADIUS.pill};
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: ${TRANSITION};
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      outline: none;
+    }
+    .bau-btn-primary {
+      background-color: ${COLORS.blue};
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);
+    }
+    .bau-btn-primary:hover {
+      background-color: #1765cc;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(26, 115, 232, 0.3);
+    }
+    .bau-btn-primary:active {
+      transform: translateY(0);
+    }
+    .bau-btn-secondary {
+      background-color: transparent;
+      color: ${COLORS.textSecondary};
+      border: 1px solid ${COLORS.border};
+    }
+    .bau-btn-secondary:hover {
+      background-color: #E8EAED;
+      color: ${COLORS.textPrimary};
+    }
+    .bau-btn-submit {
+      background-color: ${COLORS.green};
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(30, 142, 62, 0.2);
+    }
+    .bau-btn-submit:hover {
+      background-color: #1a7d36;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(30, 142, 62, 0.3);
+    }
+    .bau-btn-submit:active {
+      transform: translateY(0);
+    }
 
     /* --- GRIDS --- */
     .bau-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
