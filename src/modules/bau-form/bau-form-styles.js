@@ -34,25 +34,10 @@ export const injectStyles = () => {
   const style = document.createElement('style');
   style.id = 'bau-form-global-styles';
   style.innerHTML = `
-    @keyframes sparkle-animation {
-      0% { transform: scale(1); opacity: 0.7; }
-      50% { transform: scale(1.5); opacity: 1; }
-      100% { transform: scale(1); opacity: 0.7; }
-    }
-
-    .magic-sparkle {
-      display: inline-block;
-      margin-left: 8px;
-      animation: sparkle-animation 1.5s infinite;
-      color: ${COLORS.yellow};
-    }
-
     .input-error {
       border-color: ${COLORS.red} !important;
       box-shadow: 0 0 0 3px rgba(217, 48, 37, 0.15) !important;
     }
-
-    /* ... existing styles ... */
 
     .bau-popup {
       display: flex !important;
@@ -75,18 +60,18 @@ export const injectStyles = () => {
     }
 
     .bau-content {
-      padding: 24px;
+      padding: 32px;
       overflow-y: auto;
       flex-grow: 1;
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 32px;
     }
 
     .bau-card {
       background: ${COLORS.white};
       border-radius: ${RADIUS.medium};
-      padding: 16px;
+      padding: 24px;
       box-shadow: ${SHADOW.subtle};
       border: 1px solid ${COLORS.border};
       display: flex;
@@ -104,7 +89,7 @@ export const injectStyles = () => {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin: -16px -16px 16px -16px;
+      margin: -24px -24px 24px -24px;
       border-bottom: 1px solid #FEF1D1;
     }
 

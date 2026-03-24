@@ -27,7 +27,7 @@ export function initBAUForm() {
     const header = createStandardHeader(
         popup,
         "BAU Form",
-        "v1.0.1", // Updated version
+        "v1.0.2", // Updated version
         "Solicite a abertura de casos BAU rapidamente.",
         animRefs,
         () => toggleVisibility()
@@ -170,7 +170,7 @@ export function initBAUForm() {
     const submitBtn = document.createElement("button");
     submitBtn.type = "submit";
     submitBtn.className = "bau-btn-submit";
-    submitBtn.innerHTML = `<span>⚡</span> Enviar para o TL abrir o Caso`;
+    submitBtn.innerHTML = `<span>📝</span> Enviar para o TL abrir o Caso`;
     footer.appendChild(submitBtn);
     form.appendChild(footer);
 
@@ -205,18 +205,16 @@ export function initBAUForm() {
     function renderData(pd) {
         if (!pd) return;
 
-        const sparkleIcon = `<span class="magic-sparkle">✨</span>`;
-
-        document.getElementById('bau-adv-name').innerHTML = (pd.advName || "Anunciante Desconhecido") + (pd.advName ? sparkleIcon : '');
-        document.getElementById('bau-adv-details').innerHTML = `CID: ${pd.cid || "N/A"} • AM: ${pd.amName || "N/A"}` + (pd.cid ? sparkleIcon : '');
+        document.getElementById('bau-adv-name').textContent = pd.advName || "Anunciante Desconhecido";
+        document.getElementById('bau-adv-details').textContent = `CID: ${pd.cid || "N/A"} • AM: ${pd.amName || "N/A"}`;
         
         const hiddenData = document.getElementById('bau-hidden-data');
         if (hiddenData) {
             hiddenData.innerHTML = `
-                <b>Email:</b> ${pd.email || "N/A"} ${pd.email ? sparkleIcon : ''}<br>
-                <b>Idioma:</b> ${pd.language || "N/A"} ${pd.language ? sparkleIcon : ''}<br>
-                <b>Programa:</b> ${pd.salesProgram || "N/A"} ${pd.salesProgram ? sparkleIcon : ''}<br>
-                <b>Speakeasy ID:</b> ${pd.seId || "N/A"} ${pd.seId ? sparkleIcon : ''}
+                <b>Email:</b> ${pd.email || "N/A"}<br>
+                <b>Idioma:</b> ${pd.language || "N/A"}<br>
+                <b>Programa:</b> ${pd.salesProgram || "N/A"}<br>
+                <b>Speakeasy ID:</b> ${pd.seId || "N/A"}
             `;
         }
 
@@ -309,7 +307,7 @@ export function initBAUForm() {
             emptyFields.forEach(key => {
                 const field = form.querySelector(`[name="${key}"]`);
                 if (field) {
-                    field.classList.add('input-error'); // You need to define this class in your CSS
+                    field.classList.add('input-error');
                     setTimeout(() => field.classList.remove('input-error'), 3000);
                 }
             });
