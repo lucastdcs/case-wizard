@@ -72,17 +72,19 @@ export const injectStyles = () => {
     .bau-refresh-btn {
         position: absolute;
         top: 18px;
-        right: 90px; /* Position it to the left of the close button */
+        right: 90px;
         background: none;
         border: none;
-        font-size: 20px;
         color: white;
         opacity: 0.6;
         cursor: pointer;
         transition: all 0.3s ${EASE};
-        padding: 5px;
+        padding: 6px;
         border-radius: 50%;
         line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     .bau-refresh-btn:hover {
         opacity: 1;
@@ -90,6 +92,11 @@ export const injectStyles = () => {
     }
     .bau-refresh-btn.rotating {
         animation: spin 0.5s linear;
+    }
+    .bau-refresh-btn svg {
+        width: 20px;
+        height: 20px;
+        fill: currentColor;
     }
 
     /* --- PROGRESS INDICATOR --- */
