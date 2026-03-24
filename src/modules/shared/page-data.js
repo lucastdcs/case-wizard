@@ -239,22 +239,40 @@ export function captureAMName() {
     return null;
 }
 
-// --- 8. CAPTURA DE TIMEZONE ---
+// --- 8. CAPTURA DE TIMEZONE (ATUALIZADO) ---
 export function captureTimezone() {
     try {
         const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
         const tzLabel = labels.find(el =>
-            el.textContent.includes('Time zone') ||
-            el.textContent.includes('Timezone') ||
-            el.textContent.includes('Customer Time Zone')
+            el.textContent.toLowerCase().includes('customer time zone') ||
+            el.textContent.toLowerCase().includes('time zone') ||
+            el.textContent.toLowerCase().includes('timezone')
         );
 
         if (tzLabel) {
-            const parent = tzLabel.closest('.data-pair') || tzLabel.parentElement;
-            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
-            if (content) return content.textContent.trim();
+            const parent = tzLabel.parentElement; // O container que agrupa label e valor
+            if (parent) {
+                // Estratégia 1: Busca por <sanitized-content> dentro do container pai
+                const sanitizedNode = parent.querySelector('sanitized-content');
+                if (sanitizedNode && sanitizedNode.textContent.trim()) {
+                    return sanitizedNode.textContent.trim();
+                }
+
+                // Estratégia 2: Fallback para irmão adjacente ou outros seletores
+                const content = parent.querySelector('.data-pair-content') || tzLabel.nextElementSibling;
+                 if (content && content.textContent.trim()) {
+                    // Verifica se o conteúdo é um elemento e tem texto
+                    const value = content.textContent.trim();
+                    // Evita pegar valores vazios ou placeholders
+                    if (value && value !== '---' && value !== 'N/A') {
+                        return value;
+                    }
+                }
+            }
         }
-    } catch (e) { console.warn("Erro ao capturar Timezone:", e); }
+    } catch (e) {
+        console.warn("Erro ao capturar Timezone:", e);
+    }
     return null;
 }
 

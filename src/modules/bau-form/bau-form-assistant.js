@@ -11,10 +11,7 @@ export function initBAUForm() {
     injectStyles();
 
     let isVisible = false;
-    let pageDataCache = null;
-    let cacheTimestamp = null;
-
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    let currentContextData = null;
 
     // --- POPUP CONTAINER ---
     const popup = document.createElement("div");
@@ -27,7 +24,7 @@ export function initBAUForm() {
     const header = createStandardHeader(
         popup,
         "BAU Form",
-        "v1.0.2", // Updated version
+        "v1.0.3", // Updated version
         "Solicite a abertura de casos BAU rapidamente.",
         animRefs,
         () => toggleVisibility()
@@ -190,15 +187,8 @@ export function initBAUForm() {
 
     // --- DATA POPULATION ---
     async function populateContextData() {
-        const now = new Date().getTime();
-        if (pageDataCache && cacheTimestamp && (now - cacheTimestamp < CACHE_DURATION)) {
-            renderData(pageDataCache);
-            return;
-        }
-
         const pageData = await getPageData() || {};
-        pageDataCache = pageData;
-        cacheTimestamp = new Date().getTime();
+        currentContextData = pageData;
         renderData(pageData);
     }
 
@@ -214,7 +204,8 @@ export function initBAUForm() {
                 <b>Email:</b> ${pd.email || "N/A"}<br>
                 <b>Idioma:</b> ${pd.language || "N/A"}<br>
                 <b>Programa:</b> ${pd.salesProgram || "N/A"}<br>
-                <b>Speakeasy ID:</b> ${pd.seId || "N/A"}
+                <b>Speakeasy ID:</b> ${pd.seId || "N/A"}<br>
+                <b>Timezone:</b> ${pd.timezone || "N/A"}
             `;
         }
 
@@ -275,16 +266,16 @@ export function initBAUForm() {
         const escalationData = Object.fromEntries(formData.entries());
         
         const payload = {
-            caseId: pageDataCache.caseId || "",
-            cid: escalationData.cid || pageDataCache.cid || "",
-            seId: escalationData.seId || pageDataCache.seId || "",
-            advName: escalationData.advName || pageDataCache.advName || "",
-            email: escalationData.email || pageDataCache.email || "",
-            language: escalationData.language || pageDataCache.language || "",
-            amName: escalationData.amName || pageDataCache.amName || "",
-            salesProgram: escalationData.salesProgram || pageDataCache.salesProgram || "",
-            site: escalationData.site || pageDataCache.site || "",
-            timezone: escalationData.timezone || pageDataCache.timezone || "",
+            caseId: currentContextData.caseId || "",
+            cid: escalationData.cid || currentContextData.cid || "",
+            seId: escalationData.seId || currentContextData.seId || "",
+            advName: escalationData.advName || currentContextData.advName || "",
+            email: escalationData.email || currentContextData.email || "",
+            language: escalationData.language || currentContextData.language || "",
+            amName: escalationData.amName || currentContextData.amName || "",
+            salesProgram: escalationData.salesProgram || currentContextData.salesProgram || "",
+            site: escalationData.site || currentContextData.site || "",
+            timezone: escalationData.timezone || currentContextData.timezone || "",
             reason: escalationData.reason,
             taskType: escalationData.taskType,
             description: escalationData.description,
@@ -315,7 +306,7 @@ export function initBAUForm() {
         }
 
         try {
-            await sendBAUEscalation(payload, pageDataCache.agentEmail || "anon");
+            await sendBAUEscalation(payload, currentContextData.agentEmail || "anon");
             SoundManager.playSuccess();
             showToast("Escalonamento enviado com sucesso!", "success");
             form.reset();
