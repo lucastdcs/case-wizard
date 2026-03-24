@@ -228,21 +228,23 @@ export function initBAUForm() {
     function switchView(viewName) {
         currentView = viewName;
         popup.querySelectorAll('.bau-view').forEach(v => v.classList.remove('active'));
-        popup.querySelector(`#bau-view-${viewName}`).classList.add('active');
+        const targetView = popup.querySelector(`#bau-view-${viewName}`);
+        if (targetView) targetView.classList.add('active');
 
-        const titleEl = header.querySelector('.cw-module-header-title');
-        const subtitleEl = header.querySelector('.cw-module-header-subtitle');
-        if (viewName === 'form') {
-            titleEl.textContent = 'Novo Caso BAU';
-            subtitleEl.textContent = 'Preencha os detalhes abaixo';
-        } else {
-            titleEl.textContent = 'BAU Central';
-            subtitleEl.textContent = 'Dashboard de Casos BAU';
+        const titleEl = header.querySelector('.cw-module-header-title') || header.querySelector('h2');
+        const subtitleEl = header.querySelector('.cw-module-header-subtitle') || header.querySelector('p');
+
+        if (titleEl) {
+            titleEl.textContent = (viewName === 'form') ? 'Novo Caso BAU' : 'BAU Central';
+        }
+        if (subtitleEl) {
+            subtitleEl.textContent = (viewName === 'form') ? 'Preencha os detalhes abaixo' : 'Dashboard de Casos BAU';
         }
     }
 
     async function loadDashboardData() {
-        const listEl = document.getElementById('bau-case-list-container');
+        const listEl = popup.querySelector('#bau-case-list-container');
+        if (!listEl) return;
         listEl.innerHTML = '<p>Carregando casos...</p>';
         try {
             const cases = await readAgentBAU();
@@ -253,7 +255,8 @@ export function initBAUForm() {
     }
 
     function renderDashboard(cases) {
-        const listEl = document.getElementById('bau-case-list-container');
+        const listEl = popup.querySelector('#bau-case-list-container');
+        if (!listEl) return;
         if (!cases || cases.length === 0) {
             listEl.innerHTML = '<p>Nenhum caso BAU encontrado.</p>';
             return;
@@ -287,7 +290,7 @@ export function initBAUForm() {
     }
     
     function validateStep(step) {
-        const stepEl = document.getElementById(`bau-step-${step}`);
+        const stepEl = popup.querySelector(`#bau-step-${step}`);
         if (!stepEl) return true;
         if (step === 2) {
             if (!form.querySelector('select[name="reason"]').value) {
@@ -343,7 +346,8 @@ export function initBAUForm() {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         const tasks = formData.getAll('taskType');
-        const container = document.getElementById('bau-confirmation-details');
+        const container = popup.querySelector('#bau-confirmation-details');
+        if (!container) return;
         container.innerHTML = `
             <div class="bau-confirm-row"><span class="bau-confirm-label">Anunciante:</span><span class="bau-confirm-value">${data.advName}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">CID:</span><span class="bau-confirm-value">${data.cid}</span></div>
@@ -382,14 +386,20 @@ export function initBAUForm() {
         actionCard.querySelectorAll('.bau-task-item.active').forEach(item => item.classList.remove('active'));
     }
 
-    document.getElementById('bau-new-case-btn').onclick = () => {
-        resetForm();
-        switchView('form');
-        populateContextData();
-    };
+    const newCaseBtn = popup.querySelector('#bau-new-case-btn');
+    if (newCaseBtn) {
+        newCaseBtn.onclick = () => {
+            resetForm();
+            switchView('form');
+            populateContextData();
+        };
+    }
 
-    document.getElementById('bau-form-back-btn').onclick = () => switchView('dashboard');
-    document.getElementById('bau-success-back-btn').onclick = () => switchView('dashboard');
+    const formBackBtn = popup.querySelector('#bau-form-back-btn');
+    if (formBackBtn) formBackBtn.onclick = () => switchView('dashboard');
+
+    const successBackBtn = popup.querySelector('#bau-success-back-btn');
+    if (successBackBtn) successBackBtn.onclick = () => switchView('dashboard');
 
     async function toggleVisibility() {
         isVisible = !isVisible;
