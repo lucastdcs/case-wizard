@@ -498,11 +498,13 @@ export function initBAUForm() {
     async function toggleVisibility() {
         isVisible = !isVisible;
         popup.style.display = isVisible ? "flex" : "none";
-        if (isVisible) { // Only fetch data when opening
+        if (isVisible) {
             await refreshData(); 
             currentStep = 1; 
             updateWizardState();
         }
+        // BUG FIX: Restore the animation call
+        toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");
     }
     
     updateWizardState();
