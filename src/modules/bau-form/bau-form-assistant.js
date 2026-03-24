@@ -1,3 +1,4 @@
+
 import { injectStyles, COLORS } from './bau-form-styles.js';
 import { createStandardHeader } from '../shared/header-factory.js';
 import { toggleGenieAnimation } from '../shared/animations.js';
@@ -12,43 +13,56 @@ export function initBAUForm() {
 
     let isVisible = false;
     let currentContextData = null;
+    let currentStep = 1;
+    const totalSteps = 3;
 
     // --- POPUP CONTAINER ---
+    
     const popup = document.createElement("div");
     popup.id = "bau-form-popup";
     popup.className = "bau-popup cw-module-window";
     popup.style.display = "none";
 
     // --- HEADER ---
+    
     const animRefs = { googleLine: null };
     const header = createStandardHeader(
         popup,
         "BAU Form",
-        "v1.0.3", // Updated version
-        "Solicite a abertura de casos BAU rapidamente.",
+        "v1.1.0", // Versão atualizada para refletir a nova UX
+        "Solicite a abertura de casos BAU em um fluxo guiado.",
         animRefs,
         () => toggleVisibility()
     );
     popup.appendChild(header);
 
+    // --- PROGRESS INDICATOR (WIZARD STEPS) ---
+    const progressIndicator = document.createElement("div");
+    progressIndicator.className = "bau-progress-indicator";
+    popup.appendChild(progressIndicator);
+
     // --- CONTENT AREA ---
+    
     const content = document.createElement("div");
     content.className = "bau-content";
     popup.appendChild(content);
 
     // --- FORM ELEMENT ---
+    
     const form = document.createElement("form");
     content.appendChild(form);
 
-    // 1. CONTEXT CARD
+    // --- STEP 1: CONTEXTO E VALIDAÇÃO ---
+    const step1 = document.createElement("div");
+    step1.className = "bau-step active";
+    step1.id = "bau-step-1";
+
     const contextCard = document.createElement("div");
     contextCard.className = "bau-card";
-
     const banner = document.createElement("div");
     banner.className = "bau-header-banner";
     banner.innerHTML = `<span>⚠️</span> Verifique os dados capturados do CRM`;
     contextCard.appendChild(banner);
-
     const contextBody = document.createElement("div");
     contextBody.innerHTML = `
         <h2 class="bau-title" id="bau-adv-name">Carregando...</h2>
@@ -57,19 +71,23 @@ export function initBAUForm() {
         <div id="bau-hidden-data" style="display: none; margin-top: 12px; font-size: 12px; color: #5F6368; line-height: 1.6; border-top: 1px dashed #DADCE0; padding-top: 12px;"></div>
     `;
     contextCard.appendChild(contextBody);
-    form.appendChild(contextCard);
+    step1.appendChild(contextCard);
 
-    // 2. DYNAMIC FALLBACK CARD
     const fallbackCard = document.createElement("div");
     fallbackCard.id = "bau-dynamic-fallback";
     fallbackCard.className = "bau-card bau-fallback-card";
     fallbackCard.style.display = "none";
-    form.appendChild(fallbackCard);
+    step1.appendChild(fallbackCard);
+    form.appendChild(step1);
 
-    // 3. ACTION ZONE
+    // --- STEP 2: AÇÕES RÁPIDAS E TASKS ---
+    const step2 = document.createElement("div");
+    step2.className = "bau-step";
+    step2.id = "bau-step-2";
+
     const actionCard = document.createElement("div");
     actionCard.className = "bau-card";
-
+    
     const chipsLabel = document.createElement("label");
     chipsLabel.className = "bau-label";
     chipsLabel.textContent = "Ações Rápidas (Preenche Motivo e Task)";
@@ -77,28 +95,22 @@ export function initBAUForm() {
 
     const chipsContainer = document.createElement("div");
     chipsContainer.className = "bau-chips-container";
-
     chipData.forEach(data => {
         const chip = document.createElement("div");
         chip.className = "bau-chip";
         chip.textContent = data.text;
         chip.dataset.id = data.id;
-        
         chip.onclick = () => {
             chipsContainer.querySelectorAll('.bau-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
             SoundManager.playClick();
-            
-            const reasonSelect = form.querySelector('select[name="reason"]');
-            const taskSelect = form.querySelector('select[name="taskType"]');
-            if (reasonSelect) reasonSelect.value = data.reason;
-            if (taskSelect) taskSelect.value = data.task;
+            form.querySelector('select[name="reason"]').value = data.reason;
+            form.querySelector('select[name="taskType"]').value = data.task;
         };
         chipsContainer.appendChild(chip);
     });
     actionCard.appendChild(chipsContainer);
 
-    // Dropdowns and other fields...
     const dropdownRow = document.createElement("div");
     dropdownRow.className = "bau-grid-2";
     dropdownRow.style.marginTop = "16px";
@@ -125,53 +137,130 @@ export function initBAUForm() {
         </div>
     `;
     actionCard.appendChild(dropdownRow);
+    step2.appendChild(actionCard);
+    form.appendChild(step2);
+
+    // --- STEP 3: JUSTIFICATIVA E AGENDAMENTO ---
+    const step3 = document.createElement("div");
+    step3.className = "bau-step";
+    step3.id = "bau-step-3";
+
+    const detailsCard = document.createElement("div");
+    detailsCard.className = "bau-card";
 
     const textLabel = document.createElement("label");
     textLabel.className = "bau-label";
     textLabel.textContent = "Justificativa / Descrição";
-    textLabel.style.marginTop = "16px";
-    actionCard.appendChild(textLabel);
+    detailsCard.appendChild(textLabel);
 
     const textarea = document.createElement("textarea");
     textarea.name = "description";
     textarea.required = true;
     textarea.className = "bau-textarea";
     textarea.placeholder = "Descreva detalhadamente o que precisa ser feito...";
-    textarea.style.minHeight = "100px";
-    actionCard.appendChild(textarea);
+    textarea.style.minHeight = "120px";
+    detailsCard.appendChild(textarea);
 
     const dateLabel = document.createElement("label");
-    dateLabel.className = "bau-label";
-    dateLabel.textContent = "Disponibilidade (3 opções para reagendamento)";
-    dateLabel.style.marginTop = "16px";
-    actionCard.appendChild(dateLabel);
+dateLabel.className = "bau-label";
+dateLabel.textContent = "Disponibilidade (3 opções para reagendamento)";
+dateLabel.style.marginTop = "16px";
+detailsCard.appendChild(dateLabel);
 
-    const dateGrid = document.createElement("div");
-    dateGrid.className = "bau-grid-2";
-    dateGrid.style.gap = "12px";
+const dateGrid = document.createElement("div");
+dateGrid.className = "bau-grid-2"; // Reutilizando a classe para um grid de 2, mas pode ser ajustado
+dateGrid.style.gap = "12px";
 
-    for (let i = 1; i <= 3; i++) {
-        const d = document.createElement("input");
-        d.type = "datetime-local";
-        d.name = `availability_${i}`;
-        d.required = true;
-        d.className = "bau-input";
-        dateGrid.appendChild(d);
-    }
-    actionCard.appendChild(dateGrid);
-    form.appendChild(actionCard);
+// Criando 3 campos de data
+for (let i = 1; i <= 3; i++) {
+    const d = document.createElement("input");
+    d.type = "datetime-local";
+    d.name = `availability_${i}`;
+    d.required = i === 1; // Apenas o primeiro é obrigatório
+    d.className = "bau-input";
+    dateGrid.appendChild(d);
+}
+    detailsCard.appendChild(dateGrid);
+    step3.appendChild(detailsCard);
+    form.appendChild(step3);
 
-    // --- STICKY FOOTER ---
+    // --- STICKY FOOTER & NAVIGATION ---
     const footer = document.createElement("div");
     footer.className = "bau-footer";
+
+    const backBtn = document.createElement("button");
+    backBtn.type = "button";
+    backBtn.className = "bau-btn-secondary";
+    backBtn.textContent = "Voltar";
+    footer.appendChild(backBtn);
+
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "bau-btn-primary";
+    nextBtn.textContent = "Próximo";
+    footer.appendChild(nextBtn);
+    
     const submitBtn = document.createElement("button");
     submitBtn.type = "submit";
     submitBtn.className = "bau-btn-submit";
-    submitBtn.innerHTML = `<span>📝</span> Enviar para o TL abrir o Caso`;
+    submitBtn.innerHTML = `<span>📝</span> Enviar para o TL`;
+    submitBtn.style.display = "none";
     footer.appendChild(submitBtn);
-    form.appendChild(footer);
+    
+    popup.appendChild(footer); // Adicionando o footer ao popup, não ao form
 
     document.body.appendChild(popup);
+
+    // --- WIZARD LOGIC ---
+    function updateWizardState() {
+        // Atualiza os steps
+        form.querySelectorAll('.bau-step').forEach((step, index) => {
+            step.classList.toggle('active', (index + 1) === currentStep);
+        });
+
+        // Atualiza o indicador de progresso
+        progressIndicator.innerHTML = '';
+        for (let i = 1; i <= totalSteps; i++) {
+            const stepDot = document.createElement('div');
+            stepDot.className = `bau-progress-step ${i === currentStep ? 'active' : (i < currentStep ? 'completed' : '')}`;
+            stepDot.textContent = i;
+            progressIndicator.appendChild(stepDot);
+        }
+
+        // Atualiza os botões de navegação
+        backBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
+        nextBtn.style.display = currentStep < totalSteps ? 'inline-block' : 'none';
+        submitBtn.style.display = currentStep === totalSteps ? 'inline-block' : 'none';
+    }
+
+    function validateStep(step) {
+        const inputs = form.querySelectorAll(`#bau-step-${step} [required]`);
+        for (const input of inputs) {
+            if (!input.value.trim()) {
+                showToast(`Erro: O campo '${input.previousElementSibling?.textContent || input.name}' é obrigatório.`, "error");
+                input.classList.add('input-error');
+                setTimeout(() => input.classList.remove('input-error'), 3000);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    nextBtn.onclick = () => {
+        if (validateStep(currentStep)) {
+            currentStep++;
+            updateWizardState();
+            SoundManager.playClick();
+        }
+    };
+
+    backBtn.onclick = () => {
+        if (currentStep > 1) {
+            currentStep--;
+            updateWizardState();
+            SoundManager.playClick();
+        }
+    };
 
     // Accordion Toggle
     const toggleBtn = document.getElementById('bau-toggle-data');
@@ -193,6 +282,7 @@ export function initBAUForm() {
     }
 
     function renderData(pd) {
+        // ... (lógica de renderização dos dados do CRM e fallback - SEM ALTERAÇÕES)
         if (!pd) return;
 
         document.getElementById('bau-adv-name').textContent = pd.advName || "Anunciante Desconhecido";
@@ -235,7 +325,7 @@ export function initBAUForm() {
                 const fieldDiv = document.createElement("div");
                 fieldDiv.innerHTML = `
                     <label class="bau-label">${f.label}</label>
-                    <input type="text" name="${f.key}" class="bau-input" placeholder="Preencher ${f.label}...">
+                    <input type="text" name="${f.key}" class="bau-input" placeholder="Preencher ${f.label}..." required>
                 `;
                 grid.appendChild(fieldDiv);
             });
@@ -258,6 +348,8 @@ export function initBAUForm() {
     form.onsubmit = async (e) => {
         e.preventDefault();
 
+        if (!validateStep(totalSteps)) return; // Valida a última etapa antes de enviar
+
         const originalText = submitBtn.innerHTML;
         submitBtn.disabled = true;
         submitBtn.innerHTML = "Carregando...";
@@ -279,31 +371,8 @@ export function initBAUForm() {
             reason: escalationData.reason,
             taskType: escalationData.taskType,
             description: escalationData.description,
-            availability: `${escalationData.availability_1} | ${escalationData.availability_2} | ${escalationData.availability_3}`
+            availability: `${escalationData.availability_1 || ''} | ${escalationData.availability_2 || ''} | ${escalationData.availability_3 || ''}`.trim()
         };
-
-        const validationFields = Object.keys(payload).filter(k => k !== 'caseId');
-        const emptyFields = validationFields.filter(key => {
-            const value = payload[key];
-            return !value || String(value).trim() === "" || String(value).trim() === "N/A" || String(value).trim() === "---";
-        });
-
-        if (emptyFields.length > 0) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-            SoundManager.playClick();
-            showToast(`Erro: Preencha todos os campos (${emptyFields.join(', ')})`, "error");
-            
-            // Highlight empty fields
-            emptyFields.forEach(key => {
-                const field = form.querySelector(`[name="${key}"]`);
-                if (field) {
-                    field.classList.add('input-error');
-                    setTimeout(() => field.classList.remove('input-error'), 3000);
-                }
-            });
-            return;
-        }
 
         try {
             await sendBAUEscalation(payload, currentContextData.agentEmail || "anon");
@@ -311,7 +380,9 @@ export function initBAUForm() {
             showToast("Escalonamento enviado com sucesso!", "success");
             form.reset();
             chipsContainer.querySelectorAll('.bau-chip.active').forEach(c => c.classList.remove('active'));
-            toggleVisibility(); 
+            currentStep = 1;
+            updateWizardState();
+            toggleVisibility();
 
         } catch (error) {
             console.error("Erro BAU:", error);
@@ -326,10 +397,15 @@ export function initBAUForm() {
         isVisible = !isVisible;
         popup.style.display = isVisible ? "flex" : "none";
         if (isVisible) {
+            currentStep = 1;
+            updateWizardState();
             await populateContextData();
         }
         toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");
     }
+    
+    // Inicialização do Wizard
+    updateWizardState();
 
     return toggleVisibility;
 }
