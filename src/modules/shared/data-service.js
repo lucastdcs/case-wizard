@@ -176,17 +176,16 @@ export const DataService = {
  * Envia os dados do formulário BAU para o backend via JSONP.
  * @param {object} payload - Os dados do formulário a serem enviados.
  * @param {string} userEmail - O email do agente que está enviando.
- * @returns {Promise<boolean>}
+ * @returns {Promise<any>} A promessa da operação de envio, retornando a resposta do servidor.
  */
-export const sendBAUEscalation = async (payload, userEmail) => {
+export const sendBAUEscalation = (payload, userEmail) => {
     const fullPayload = {
         ...payload,
         user: userEmail,
         date: new Date().toISOString()
     };
     
-    // CORREÇÃO: O nome exato da operação configurada no Apps Script
-    await _performOp('create_bau_escalation', fullPayload);
-    
-    return true; 
+    // A função agora retorna a promessa diretamente de _performOp para garantir
+    // que a resposta do servidor seja propagada corretamente.
+    return _performOp('create_bau_escalation', fullPayload);
 };
