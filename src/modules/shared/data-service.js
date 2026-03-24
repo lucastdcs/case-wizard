@@ -189,3 +189,6 @@ export const DataService = {
         }
     }
 };
+
+export const sendBAUEscalation = DataService.sendBAUEscalation;
+export const readAgentBAU = DataService.readAgentBAU;
