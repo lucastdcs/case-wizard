@@ -67,8 +67,8 @@ export function initCommandCenter(actions) {
             /* --- PILL PRINCIPAL --- */
             .cw-pill {
                 position: fixed; top: 30%; right: 24px;
-                display: flex; flex-direction: column; align-items: center; gap: 12px;
-                padding: 16px 8px;
+                display: flex; flex-direction: column; align-items: center; gap: 14px;
+                padding: 18px 8px;
                 
                 background: ${COLORS.glassBg};
                 backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
