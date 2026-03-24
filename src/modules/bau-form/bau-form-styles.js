@@ -82,8 +82,8 @@ export const injectStyles = () => {
     
     /* --- CONTENT & STEPS --- */
     .bau-content { padding: 32px; overflow-y: auto; flex-grow: 1; }
-    .bau-step { display: none; animation: fadeIn 0.5s ${EASE}; }
-    .bau-step.active { display: block; }
+    .bau-step { display: none; animation: fadeIn 0.5s ${EASE}; opacity: 0; }
+    .bau-step.active { display: block; opacity: 1; }
 
     .bau-card {
       background: ${COLORS.white}; border-radius: ${RADIUS.medium};
@@ -114,6 +114,46 @@ export const injectStyles = () => {
      .bau-context-card #bau-all-data {
         color: #E0F5F5 !important;
         border-top-color: rgba(255, 255, 255, 0.3) !important;
+        padding-top: 20px !important;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .bau-inline-field {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        transition: background 0.2s ease;
+        cursor: pointer;
+    }
+    .bau-inline-field:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+    .bau-inline-field b {
+        min-width: 100px;
+        font-size: 12px;
+        opacity: 0.9;
+    }
+    .bau-inline-input {
+        background: transparent;
+        border: none;
+        border-bottom: 1.5px dashed rgba(255, 255, 255, 0.4);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 4px 0;
+        width: 100%;
+        outline: none;
+        transition: border-bottom-color 0.2s;
+    }
+    .bau-inline-input:focus {
+        border-bottom-style: solid;
+        border-bottom-color: #fff;
+    }
+    .bau-inline-input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
     }
     .bau-context-card .bau-header-banner {
         color: #fff; 
@@ -201,6 +241,60 @@ export const injectStyles = () => {
     .bau-chip.active {
       background-color: ${COLORS.blue};
       color: #fff;
+    }
+
+    /* --- SEÇÃO DE TASKS (MULTI-SELECT) --- */
+    .bau-tasks-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 12px;
+    }
+    .bau-task-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: #F8F9FA;
+        border: 1px solid ${COLORS.border};
+        border-radius: ${RADIUS.medium};
+        cursor: pointer;
+        transition: all 0.2s ${EASE};
+    }
+    .bau-task-item:hover {
+        background: #fff;
+        border-color: ${COLORS.blue};
+    }
+    .bau-task-item.active {
+        background: ${COLORS.blueLight};
+        border-color: ${COLORS.blue};
+        color: ${COLORS.blue};
+    }
+    .bau-task-item input {
+        display: none;
+    }
+    .bau-task-item span {
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    /* --- CONFIRMATION SCREEN --- */
+    .bau-confirm-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 14px;
+    }
+    .bau-confirm-label {
+        color: ${COLORS.textSecondary};
+        font-weight: 600;
+    }
+    .bau-confirm-value {
+        color: ${COLORS.textPrimary};
+        font-weight: 700;
+        text-align: right;
+        max-width: 60%;
     }
 
     /* --- SEÇÃO DE DISPONIBILIDADE (NOVO LAYOUT) --- */
