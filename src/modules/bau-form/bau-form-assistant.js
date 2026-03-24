@@ -206,7 +206,7 @@ export function initBAUForm() {
     submitBtn.innerHTML = `<span class="material-icons">send</span> Enviar para o TL`;
     submitBtn.style.display = "none";
     footer.appendChild(submitBtn);
-    formUiContainer.appendChild(footer);
+    form.appendChild(footer);
 
     viewContainer.appendChild(formView);
 
@@ -365,10 +365,11 @@ export function initBAUForm() {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         const tasks = formData.getAll('taskType');
-        const payload = { ...data, taskType: tasks.join(', '), ...currentContextData };
+        const context = currentContextData || {};
+        const payload = { ...data, taskType: tasks.join(', '), ...context };
 
         try {
-            await sendBAUEscalation(payload, currentContextData.agentEmail || "anon");
+            await sendBAUEscalation(payload, context.agentEmail || "anon");
             SoundManager.playSuccess();
             switchView('success');
         } catch (error) {
