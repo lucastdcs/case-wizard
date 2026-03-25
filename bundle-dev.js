@@ -936,7 +936,7 @@ Irei solicitar descarte do mesmo, levando em conta a falta de acessos e solicita
                 
                 opacity: 0; 
                 width: 56px;
-                max-height: 480px;
+                
                 
                 overflow: visible;
 
