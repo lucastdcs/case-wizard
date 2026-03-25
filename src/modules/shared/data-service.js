@@ -148,7 +148,7 @@ export const DataService = {
     // ==========================================
     // 4. NOVO SISTEMA BAU (Formulário e Dashboard)
     // ==========================================
-    sendBAUEscalation: async (payload, userEmail) => {
+sendBAUEscalation: async (payload, userEmail) => {
         const fullPayload = {
             ...payload,
             user: userEmail,
@@ -159,9 +159,10 @@ export const DataService = {
             const response = await jsonpFetch('create_bau', fullPayload);
             if (response && response.status === 'success') {
                 console.log("✅ Sucesso: create_bau");
-                return response; // Aqui retornamos o objeto completo, diferente do _performOp antigo
+                return response;
             }
-            throw new Error(response?.message || "Falha na operação BAU");
+            // AGORA SIM ELE VAI MOSTRAR O ERRO REAL DO APPS SCRIPT:
+            throw new Error(response?.error || response?.message || "Falha na operação BAU");
         } catch (e) {
             console.error("❌ Erro JSONP (BAU):", e);
             throw e;

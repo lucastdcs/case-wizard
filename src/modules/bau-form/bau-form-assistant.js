@@ -368,40 +368,42 @@ export function initBAUForm() {
             <div class="bau-confirm-row"><span class="bau-confirm-label">Próximo Contato:</span><span class="bau-confirm-value">${data.availability_1 ? data.availability_1.replace('T', ' ') : 'Não definida'}</span></div>
         `;
     }
-
     form.onsubmit = async (e) => {
         e.preventDefault();
-
-        // Valida o passo atual (passo 4 de confirmação)
-        if (!validateStep(currentStep)) return;
-
-        const originalBtnHTML = submitBtn.innerHTML;
+        if (!validateStep(totalSteps)) return;
+        
+        const submitBtn = popup.querySelector('.bau-btn-submit');
         submitBtn.disabled = true;
         submitBtn.innerHTML = "Enviando...";
         
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const tasks = formData.getAll('taskType');
+        const context = currentContextData || {};
+
+        // A MÁGICA AQUI: Junta as 3 datas num campo só, ignorando os vazios
+        const disponibilidadeUnificada = [data.availability_1, data.availability_2, data.availability_3]
+            .filter(d => d && d.trim() !== '')
+            .join(' | ');
+
+        // Cria o payload com o campo 'availability' exato que o backend espera
+        const payload = { 
+            ...data, 
+            taskType: tasks.join(', '), 
+            availability: disponibilidadeUnificada, 
+            ...context 
+        };
+
         try {
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-            const tasks = formData.getAll('taskType');
-
-            // Merge seguro: dados do formulário (incluindo overrides manuais) + dados de contexto (e-mail, etc.)
-            const context = currentContextData || {};
-            const payload = {
-                ...context,
-                ...data,
-                taskType: tasks.length > 0 ? tasks.join(', ') : 'Nenhuma'
-            };
-
             await sendBAUEscalation(payload, context.agentEmail || "anon");
-
             SoundManager.playSuccess();
             switchView('success');
         } catch (error) {
-            console.error("Erro no envio BAU:", error);
-            showToast("Falha ao enviar: " + (error.message || "Erro desconhecido"), { error: true });
+            showToast("Erro: " + (error.message || "Erro desconhecido"), { error: true });
+            console.error("Payload que tentou enviar:", payload); // Para debug
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = originalBtnHTML;
+            submitBtn.innerHTML = `<span class="material-icons">send</span> Enviar para o TL`;
         }
     };
 
