@@ -1,6 +1,7 @@
 // src/modules/configs/configs-assistant.js
 
 import { stylePopup, showToast } from "../shared/utils.js";
+import { getPageData } from "../shared/page-data.js";
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
@@ -49,6 +50,31 @@ export function initConfigsAssistant() {
                 transition: all 0.2s;
             }
             .cw-configs-btn:hover { background: #f1f3f4; border-color: #bdc1c6; }
+
+            /* --- PROFILE CARD PREMIUM --- */
+            .cw-profile-card {
+                background: ${COLORS.surface}; border-radius: 12px; padding: 20px;
+                border: 1px solid ${COLORS.border}; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                display: flex; align-items: center; gap: 20px; margin-bottom: 8px;
+            }
+            .cw-profile-avatar {
+                width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
+                border: 2px solid #e8f0fe; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            .cw-profile-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+            .cw-profile-ldap {
+                font-size: 18px; font-weight: 700; color: ${COLORS.text}; margin: 0;
+                font-family: 'Google Sans', sans-serif;
+            }
+            .cw-profile-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+            .cw-profile-badge {
+                padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+                background: #f1f3f4; color: #5f6368; border: 1px solid #dadce0;
+                text-transform: uppercase; letter-spacing: 0.3px;
+            }
+            .cw-profile-badge.overhead {
+                background: #e8f0fe; color: #1a73e8; border-color: #d2e3fc;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -72,6 +98,44 @@ export function initConfigsAssistant() {
     const container = document.createElement("div");
     container.className = "cw-configs-container";
     popup.appendChild(container);
+
+    // --- SEÇÃO: PERFIL ---
+    const profileSection = document.createElement("div");
+    profileSection.className = "cw-profile-card";
+    profileSection.id = "cw-user-profile-section";
+    profileSection.style.display = "none"; // Oculto até carregar
+    container.appendChild(profileSection);
+
+    async function renderUserProfile() {
+        try {
+            const data = await getPageData();
+            const profile = data.userProfile;
+
+            if (!profile) return;
+
+            profileSection.style.display = "flex";
+            profileSection.innerHTML = `
+                <img src="https://moma-teams-photos.corp.google.com/photos/${profile.ldap}?sz=600&type=PLUS"
+                     class="cw-profile-avatar" alt="User Photo"
+                     onerror="this.style.display='none'">
+                <div class="cw-profile-info">
+                    <h2 class="cw-profile-ldap">@${profile.ldap}</h2>
+                    <div class="cw-profile-badges">
+                        <span class="cw-profile-badge">${profile.roleCategory}</span>
+                        <span class="cw-profile-badge">${profile.segment}</span>
+                        <span class="cw-profile-badge">${profile.defaultLanguage}</span>
+                        ${profile.isOverhead ? '<span class="cw-profile-badge overhead">Gestão / Overhead</span>' : ''}
+                    </div>
+                    <div style="font-size: 12px; color: ${COLORS.textSub}; margin-top: 4px;">
+                        ${profile.role}
+                    </div>
+                </div>
+            `;
+        } catch (e) {
+            console.warn("Erro ao renderizar perfil:", e);
+        }
+    }
+    renderUserProfile();
 
     // --- SEÇÃO: SOM ---
     const soundSection = document.createElement("div");

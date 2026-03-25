@@ -93,6 +93,15 @@ def generate_portfolio():
         time.sleep(2)
         page.screenshot(path='docs/media/timezone-assistant.png')
 
+        # 6. Show Configs (User Profile)
+        print("Opening Configs...")
+        timezone_btn.click(force=True)
+        time.sleep(1)
+        configs_btn = page.locator('#cw-btn-configs')
+        configs_btn.click(force=True)
+        time.sleep(5) # Wait for profile to load (getPageData)
+        page.screenshot(path='docs/media/configs-profile.png')
+
         context.close()
 
         # Rename the recorded video to techsol-demo.webm
