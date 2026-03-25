@@ -188,8 +188,36 @@ sendBAUEscalation: async (payload, userEmail) => {
             console.error("❌ Erro ao buscar casos BAU:", e);
             return [];
         }
+    },
+
+    // ==========================================
+    // 5. USER PROFILE SYSTEM (Mock)
+    // ==========================================
+    fetchUserProfile: async (ldap) => {
+        // TODO: Conectar com API real no futuro
+        return new Promise((resolve) => {
+            const role = "Webtech Senior Manager";
+            const roleCategory = "Senior Manager";
+            const segment = "Staff";
+
+            // Lógica computada: Manager, Lead, TL, Staff
+            const overheadRoles = ["Manager", "Lead", "TL", "Staff"];
+            const isOverhead = overheadRoles.some(r => roleCategory.includes(r));
+
+            const mockProfile = {
+                ldap: ldap,
+                role: role,
+                roleCategory: roleCategory,
+                segment: segment,
+                defaultLanguage: "PT-BR",
+                isOverhead: isOverhead
+            };
+
+            resolve(mockProfile);
+        });
     }
 };
 
 export const sendBAUEscalation = DataService.sendBAUEscalation;
 export const readAgentBAU = DataService.readAgentBAU;
+export const fetchUserProfile = DataService.fetchUserProfile;

@@ -1,8 +1,10 @@
 // src/modules/shared/page-data.js
+import { fetchUserProfile } from './data-service.js';
 
 // Variável que guarda o nome para usar nos emails depois
 let cachedAgentName = "";
 let cachedAgentEmail = "";
+let cachedUserProfile = null;
 
 const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -369,8 +371,18 @@ export function captureSpeakeasyID() {
     return "N/A";
 }
 
+// --- 8.6 UTILITÁRIOS DE PERMISSÃO ---
+export function isCurrentUserOverhead() {
+    return cachedUserProfile?.isOverhead || false;
+}
+
 // --- 9. COMPILADOR DE DADOS DA PÁGINA ---
 export async function getPageData() {
+    // Garante que a identidade foi capturada antes de prosseguir
+    if (!cachedAgentEmail) {
+        await captureNameWithMagic();
+    }
+
     let advertiserName = "Cliente";
     let websiteUrl = "";
 
@@ -413,6 +425,17 @@ export async function getPageData() {
     const language = captureLanguage();
     const seId = captureSpeakeasyID();
 
+    // Novo: Captura de Perfil de Usuário
+    const agentEmail = getAgentEmail();
+    if (agentEmail && !cachedUserProfile) {
+        const ldap = agentEmail.split('@')[0];
+        try {
+            cachedUserProfile = await fetchUserProfile(ldap);
+        } catch (e) {
+            console.warn("Falha ao carregar perfil do usuário:", e);
+        }
+    }
+
     return {
         // Core fields (Original names)
         advertiserName: advertiserName,
@@ -425,6 +448,7 @@ export async function getPageData() {
         agentName: getAgentName(),
         agentEmail: getAgentEmail(),
         caseId: caseId,
+        userProfile: cachedUserProfile,
 
         // Aliases for BAU Form compatibility
         advName: advertiserName,
