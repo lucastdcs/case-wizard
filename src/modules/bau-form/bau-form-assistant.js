@@ -13,7 +13,9 @@ const ICONS = {
     back: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>`,
     wand: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7.5 5.6L10 7 8.6 4.5 10 2 7.5 3.4 5 2l1.4 2.5L5 7zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5zm-7.63 5.29c-.39-.39-1.02-.39-1.41 0L1.29 18.96c-.39.39-.39 1.02 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05c.39-.39.39-1.02 0-1.41l-2.33-2.35zm-1.03 5.41l-2.12-2.12 2.44-2.44 2.12 2.12-2.44 2.44z"/></svg>`,
     send: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`,
-    check: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`
+    check: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
+    folder: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`,
+    empty: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.44 2s2.75-.81 3.44-2H19v3zm0-5h-4.99c0 1.1-.9 2-2 2s-2-.9-2-2H5V5h14v9z"/></svg>`
 };
 
 export function initBAUForm() {
@@ -50,6 +52,7 @@ export function initBAUForm() {
     dashboardView.className = 'bau-view active';
     dashboardView.innerHTML = `
         <div class="bau-dashboard-content">
+            <div class="bau-dashboard-metrics" id="bau-dashboard-metrics"></div>
             <ul class="bau-case-list" id="bau-case-list-container"></ul>
         </div>
         <button class="bau-dashboard-fab" id="bau-new-case-btn">
@@ -278,20 +281,69 @@ export function initBAUForm() {
 
     function renderDashboard(cases) {
         const listEl = popup.querySelector('#bau-case-list-container');
+        const metricsEl = popup.querySelector('#bau-dashboard-metrics');
         if (!listEl) return;
+
+        // Status Mapping
+        const getStatusData = (status) => {
+            switch(status) {
+                case 'PENDING_TL_CREATION': return { text: "Aguardando TL", class: "status-yellow" };
+                case 'CREATED': return { text: "Aprovado / Criado", class: "status-green" };
+                case 'DISCARDED': return { text: "Descartado pelo TL", class: "status-red" };
+                case 'CANCELED_BY_AGENT': return { text: "Cancelado", class: "status-gray" };
+                default: return { text: status || "Pendente", class: "status-gray" };
+            }
+        };
+
         if (!cases || cases.length === 0) {
-            listEl.innerHTML = '<p>Nenhum caso BAU encontrado.</p>';
+            if (metricsEl) metricsEl.innerHTML = '';
+            listEl.innerHTML = `
+                <div class="bau-empty-state">
+                    ${ICONS.empty}
+                    <h3 class="bau-empty-title">Nenhum caso recente</h3>
+                    <p class="bau-empty-subtitle">Seus casos BAU aparecerão aqui</p>
+                </div>
+            `;
             return;
         }
-        listEl.innerHTML = cases.map(c => `
-            <li class="bau-case-card" data-case-id="${c.id}">
-                <div class="bau-case-info">
-                    <h3 class="bau-case-title">${c.advName || 'Nome indefinido'}</h3>
-                    <p class="bau-case-details">CID: ${c.cid || 'N/A'} • Motivo: ${c.reason || 'N/A'}</p>
+
+        // Metrics Calculation
+        const pendingCount = cases.filter(c => c.status === 'PENDING_TL_CREATION').length;
+        const createdCount = cases.filter(c => c.status === 'CREATED').length;
+
+        if (metricsEl) {
+            metricsEl.innerHTML = `
+                <div class="bau-metric-card">
+                    <span class="bau-metric-value">${pendingCount}</span>
+                    <span class="bau-metric-label">Aguardando TL</span>
                 </div>
-                <span class="bau-case-status-badge" data-status="${c.status || 'Pendente'}">${c.status || 'Pendente'}</span>
-            </li>
-        `).join('');
+                <div class="bau-metric-card">
+                    <span class="bau-metric-value">${createdCount}</span>
+                    <span class="bau-metric-label">Criados / Aprovados</span>
+                </div>
+            `;
+        }
+
+        listEl.innerHTML = cases.map(c => {
+            const statusData = getStatusData(c.status);
+            const dateStr = c.date ? new Date(c.date).toLocaleDateString('pt-BR') : '';
+
+            return `
+                <li class="bau-case-card" data-case-id="${c.id}">
+                    <div class="bau-case-main">
+                        <div class="bau-case-icon">${ICONS.folder}</div>
+                        <div class="bau-case-info">
+                            <div class="bau-case-header">
+                                <h3 class="bau-case-title">${c.advName || 'Nome indefinido'}</h3>
+                                <span class="bau-case-date">${dateStr}</span>
+                            </div>
+                            <p class="bau-case-details">CID: ${c.cid || 'N/A'} • Motivo: ${c.reason || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
+                </li>
+            `;
+        }).join('');
     }
 
     function updateWizardState() {

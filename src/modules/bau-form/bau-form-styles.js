@@ -146,12 +146,82 @@ export const injectStyles = () => {
     /* --- 3. ESTILOS GERAIS E CLASSES ADICIONAIS --- */
     
     .bau-dashboard-content { flex: 1; }
+
+    .bau-dashboard-metrics {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .bau-metric-card {
+      flex: 1;
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .bau-metric-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a73e8;
+    }
+    .bau-metric-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #5f6368;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
     .bau-case-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
-    .bau-case-card { background: #ffffff; border: 1px solid #dadce0; border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .bau-case-card {
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+    .bau-case-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
+    }
+    .bau-case-main { display: flex; align-items: flex-start; gap: 12px; }
+    .bau-case-icon { color: #5f6368; margin-top: 2px; }
     .bau-case-info { display: flex; flex-direction: column; gap: 4px; }
-    .bau-case-title { margin: 0; font-size: 15px; font-weight: 500; color: #202124; }
+    .bau-case-header { display: flex; align-items: baseline; gap: 8px; }
+    .bau-case-title { margin: 0; font-size: 15px; font-weight: 600; color: #202124; }
+    .bau-case-date { font-size: 11px; color: #9aa0a6; }
     .bau-case-details { margin: 0; font-size: 12px; color: #5f6368; }
-    .bau-case-status-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; text-transform: uppercase; background: #f1f3f4; color: #5f6368; }
+
+    .bau-case-status-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+    .bau-case-status-badge.status-yellow { background: #fef7e0; color: #b06000; }
+    .bau-case-status-badge.status-green { background: #e6f4ea; color: #1e8e3e; }
+    .bau-case-status-badge.status-red { background: #fce8e6; color: #d93025; }
+    .bau-case-status-badge.status-gray { background: #f1f3f4; color: #5f6368; }
+
+    .bau-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      text-align: center;
+      color: #9aa0a6;
+    }
+    .bau-empty-state svg { margin-bottom: 16px; opacity: 0.5; }
+    .bau-empty-title { font-size: 16px; font-weight: 600; color: #5f6368; margin: 0 0 4px 0; }
+    .bau-empty-subtitle { font-size: 13px; margin: 0; }
     .bau-dashboard-fab { position: absolute; bottom: 24px; right: 24px; background: #1a73e8; color: #ffffff; border: none; border-radius: 100px; padding: 12px 20px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); transition: all 0.2s ease; }
     .bau-dashboard-fab:active { transform: scale(0.98); }
 
