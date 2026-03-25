@@ -77,7 +77,7 @@ export function initCommandCenter(actions) {
                 
                 opacity: 0; 
                 width: 56px;
-                max-height: 480px;
+                
                 
                 overflow: visible;
 
