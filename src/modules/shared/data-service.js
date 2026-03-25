@@ -3,7 +3,7 @@
 import { getAgentEmail } from './page-data.js'; 
 
 // URL da API atualizada
-const API_URL = "https://script.google.com/a/macros/google.com/s/AKfycbyoADzX4rdXcpbJgwYvP0OpcBiHQEAsrN4EYlEj5x9fyp1h-xbY_6jwaYuJiTaYo8vALg/exec";
+const API_URL = "https://script.google.com/a/macros/google.com/s/AKfycbxx66yAWDKEXgY5gClR3jIa14lkEWbDlzF8nM4pa6bkM42ff6m6xf-fCmEKkjVluL2feg/exec";
 
 const CACHE_KEY_BROADCAST = "cw_data_broadcast";
 const CACHE_KEY_TIPS = "cw_data_tips";
