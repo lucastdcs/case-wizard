@@ -245,6 +245,17 @@ export const injectStyles = () => {
       border-radius: 12px;
       padding: 20px;
     }
+
+    .bau-dynamic-inputs-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0; /* Gap is handled by label margins */
+      margin-bottom: 20px;
+    }
+
+    .bau-dynamic-input {
+      animation: bauFadeIn 0.3s ease;
+    }
     
     .bau-label { display: block; font-size: 13px; font-weight: 600; color: #202124; margin-top: 24px; margin-bottom: 8px; }
     .bau-label:first-of-type { margin-top: 0; }
@@ -262,16 +273,6 @@ export const injectStyles = () => {
     }
     .bau-textarea { min-height: 120px; resize: vertical; }
     
-    .bau-inline-input {
-      background: transparent;
-      border: none;
-      border-bottom: 1px solid rgba(255,255,255,0.3);
-      color: #ffffff;
-      border-radius: 0;
-      padding: 4px 0;
-      transition: all 0.2s ease;
-    }
-    .bau-inline-input:focus { box-shadow: none; border-bottom-color: #1a73e8; outline: none; }
 
     .bau-tasks-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
     .bau-task-item input { display: none; }
@@ -298,20 +299,30 @@ export const injectStyles = () => {
       transition: all 0.2s ease;
     }
     .bau-btn-submit {
-      background: #1a73e8;
+      width: 100%;
+      background-color: #1a73e8;
       color: #ffffff;
-      border: 1px solid transparent;
-      border-radius: 8px;
-      padding: 12px 32px;
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 600;
-      cursor: pointer;
+      border-radius: 8px;
+      border: none;
+      box-shadow: 0 4px 12px rgba(26,115,232,0.3);
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: all 0.2s ease;
-      margin-top: 16px;
+      margin-top: 24px;
+      padding: 14px 32px;
+      cursor: pointer;
+    }
+    .bau-btn-submit:hover {
+      background-color: #1557b0;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(26,115,232,0.4);
+    }
+    .bau-btn-submit:active {
+      transform: translateY(0);
     }
     .bau-btn-secondary {
       background: #ffffff;
@@ -330,35 +341,37 @@ export const injectStyles = () => {
     .bau-success-icon { color: #1e8e3e; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; }
 
     /* --- 4. UTILITIES PARA O REFACTOR --- */
-    .bau-mb-xs { margin-bottom: 4px; }
     .bau-mt-md { margin-top: 20px; }
     .bau-mt-lg { margin-top: 24px; }
-    .bau-p-xs { padding: 2px 6px; }
     .bau-relative { position: relative; }
-    .bau-w-cid { width: 110px; font-size: 13px; }
-    .bau-w-am { width: 130px; font-size: 13px; }
-    .bau-w-se { width: 160px; font-size: 13px; }
 
     .bau-title { font-size: 20px; font-weight: 700; width: 100%; }
-    .bau-title.bau-inline-input { border-bottom: none; }
-    .bau-context-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-left: 10px; opacity: 0.9; }
-    .bau-context-label { color: #fff; font-size: 13px; font-weight: 800; }
-    .bau-context-separator { color: #fff; opacity: 0.5; }
 
-    .bau-mini-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
+    .bau-input-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .bau-mini-btn-input {
+      background: #f1f3f4;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      width: 42px;
+      height: 42px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: #5f6368;
       cursor: pointer;
       transition: all 0.2s ease;
+      flex-shrink: 0;
     }
-    .bau-mini-btn:hover { background: rgba(255, 255, 255, 0.2); }
+    .bau-mini-btn-input:hover {
+      background: #e8eaed;
+      color: #202124;
+      border-color: #bdc1c6;
+    }
 
     .bau-step-title { margin-top: 0; color: #1a73e8; font-size: 16px; margin-bottom: 20px; font-weight: 600; }
     .bau-error-text { color: #d93025; font-weight: 500; }
