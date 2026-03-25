@@ -88,11 +88,6 @@ export function initBAUForm() {
     const form = document.createElement("form");
     form.id = "bau-escalation-form";
     formUiContainer.appendChild(form);
-
-    const languageInput = document.createElement('input');
-    languageInput.type = 'hidden';
-    languageInput.name = 'language';
-    form.appendChild(languageInput);
     
     // --- STEP 1: CONTEXTO E VALIDAÇÃO ---
     const step1 = document.createElement("div");
@@ -506,6 +501,8 @@ export function initBAUForm() {
         const payload = { 
             ...context,
             ...data, 
+            advEmail: context.email || "", 
+            website: context.site || "",
             taskType: tasks.join(', '), 
             availability: disponibilidadeUnificada
         };
