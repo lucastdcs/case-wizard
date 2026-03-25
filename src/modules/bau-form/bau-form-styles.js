@@ -33,14 +33,6 @@ export const TRANSITION = `all 0.3s ${EASE}`;
 export const injectStyles = () => {
   if (document.getElementById('bau-form-global-styles')) return;
 
-  // Carregar Material Icons se necessário
-  if (!document.querySelector('link[href*="Material+Icons"]')) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
-    document.head.appendChild(link);
-  }
-
   const style = document.createElement('style');
   style.id = 'bau-form-global-styles';
   style.textContent = `
@@ -164,7 +156,7 @@ export const injectStyles = () => {
     .bau-dashboard-fab:active { transform: scale(0.98); }
 
     .bau-view-header { margin-bottom: 20px; }
-    .bau-back-btn { background: transparent; border: none; color: #5f6368; font-size: 14px; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 0; }
+    .bau-back-btn { background: transparent; border: none; color: #5f6368; font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 0; }
     .bau-back-btn:hover { color: #202124; }
 
     .bau-progress-indicator { display: flex; justify-content: space-between; margin-bottom: 24px; position: relative; }
@@ -184,7 +176,9 @@ export const injectStyles = () => {
       padding: 20px;
     }
     
-    .bau-label { display: block; font-size: 13px; font-weight: 600; color: #202124; margin-bottom: 8px; }
+    .bau-label { display: block; font-size: 13px; font-weight: 600; color: #202124; margin-top: 24px; margin-bottom: 8px; }
+    .bau-label:first-of-type { margin-top: 0; }
+
     .bau-select, .bau-textarea, .bau-input {
       width: 100%;
       padding: 12px 16px;
@@ -209,7 +203,7 @@ export const injectStyles = () => {
     }
     .bau-inline-input:focus { box-shadow: none; border-bottom-color: #1a73e8; outline: none; }
 
-    .bau-tasks-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .bau-tasks-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
     .bau-task-item input { display: none; }
     
     .bau-confirm-row { display: flex; padding: 8px 0; border-bottom: 1px solid #f1f3f4; font-size: 13px; }
@@ -247,7 +241,7 @@ export const injectStyles = () => {
     .bau-btn-secondary:hover { background-color: #f8f9fa; border-color: #cdd1d5; }
 
     .bau-success-content { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 40px 20px; }
-    .bau-success-icon .material-icons { font-size: 64px; color: #1e8e3e; margin-bottom: 16px; }
+    .bau-success-icon { color: #1e8e3e; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; }
 
     /* --- 4. UTILITIES PARA O REFACTOR --- */
     .bau-mb-xs { margin-bottom: 4px; }
@@ -279,7 +273,6 @@ export const injectStyles = () => {
       transition: all 0.2s ease;
     }
     .bau-mini-btn:hover { background: rgba(255, 255, 255, 0.2); }
-    .bau-mini-btn .material-icons { font-size: 14px; }
 
     .bau-step-title { margin-top: 0; color: #1a73e8; font-size: 16px; margin-bottom: 20px; font-weight: 600; }
     .bau-error-text { color: #d93025; font-weight: 500; }
