@@ -96,7 +96,7 @@ export function initBAUForm() {
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-left: 10px; opacity: 0.9;">
             <div class="bau-inline-field" style="padding: 2px 6px;">
                  <span style="color: #fff; font-size: 13px; font-weight: 700;">CID:</span>
-                 <input type="text" name="cid" class="bau-inline-input" style="width: 110px; font-size: 13px;" placeholder="CID" required>
+                 <input type="text" id="bau-cid-input" name="cid" class="bau-inline-input" style="width: 110px; font-size: 13px;" placeholder="CID" required>
             </div>
             <span style="color: #fff; opacity: 0.5;">•</span>
             <div class="bau-inline-field" style="padding: 2px 6px;">
@@ -187,26 +187,30 @@ export function initBAUForm() {
     // --- FOOTER & NAVIGATION ---
     const footer = document.createElement("div");
     footer.className = "bau-footer";
+
     const backBtn = document.createElement("button");
     backBtn.type = "button";
     backBtn.id = "bau-step-back-btn";
     backBtn.className = "bau-btn-secondary";
     backBtn.textContent = "Voltar";
-    footer.appendChild(backBtn);
+
     const nextBtn = document.createElement("button");
     nextBtn.type = "button";
     nextBtn.id = "bau-step-next-btn";
     nextBtn.className = "bau-btn-primary";
     nextBtn.textContent = "Próximo";
-    footer.appendChild(nextBtn);
+
     const submitBtn = document.createElement("button");
     submitBtn.type = "submit";
     submitBtn.className = "bau-btn-submit";
-    submitBtn.setAttribute("form", "bau-escalation-form");
     submitBtn.innerHTML = `<span class="material-icons">send</span> Enviar para o TL`;
     submitBtn.style.display = "none";
-    footer.appendChild(submitBtn);
-    form.appendChild(footer);
+
+    // OBRIGATORIAMENTE precisam ser "child" (filho) direto da tag <form>
+    form.appendChild(backBtn);
+    form.appendChild(nextBtn);
+    form.appendChild(submitBtn);
+    form.appendChild(footer); // footer agora serve apenas para o estilo/ancoragem se necessário, mas os botões são filhos diretos
 
     viewContainer.appendChild(formView);
 
@@ -348,35 +352,56 @@ export function initBAUForm() {
         const tasks = formData.getAll('taskType');
         const container = popup.querySelector('#bau-confirmation-details');
         if (!container) return;
+
+        const tasksText = tasks.length > 0 ? tasks.join(', ') : "Nenhuma";
+
         container.innerHTML = `
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Anunciante:</span><span class="bau-confirm-value">${data.advName}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">CID:</span><span class="bau-confirm-value">${data.cid}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Motivo:</span><span class="bau-confirm-value">${data.reason}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Tasks:</span><span class="bau-confirm-value">${tasks.join(', ')}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Anunciante:</span><span class="bau-confirm-value">${data.advName || '---'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">CID:</span><span class="bau-confirm-value">${data.cid || '---'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">AM:</span><span class="bau-confirm-value">${data.amName || '---'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Speakeasy ID:</span><span class="bau-confirm-value">${data.seId || 'Não informado'}</span></div>
+            <div style="margin: 15px 0; border-bottom: 1px solid rgba(0,0,0,0.1);"></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Motivo Abertura:</span><span class="bau-confirm-value">${data.reason || '---'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Tasks:</span><span class="bau-confirm-value">${tasksText}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Justificativa BAU:</span><span class="bau-confirm-value">${data.nonImplementationReason || '---'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Descrição:</span><span class="bau-confirm-value">${data.description || '---'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Próximo Contato:</span><span class="bau-confirm-value">${data.availability_1 ? data.availability_1.replace('T', ' ') : 'Não definida'}</span></div>
         `;
     }
 
     form.onsubmit = async (e) => {
         e.preventDefault();
-        if (!validateStep(totalSteps)) return;
+
+        // Valida o passo atual (passo 4 de confirmação)
+        if (!validateStep(currentStep)) return;
+
+        const originalBtnHTML = submitBtn.innerHTML;
         submitBtn.disabled = true;
         submitBtn.innerHTML = "Enviando...";
         
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-        const tasks = formData.getAll('taskType');
-        const context = currentContextData || {};
-        const payload = { ...data, taskType: tasks.join(', '), ...context };
-
         try {
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            const tasks = formData.getAll('taskType');
+
+            // Merge seguro: dados do formulário (incluindo overrides manuais) + dados de contexto (e-mail, etc.)
+            const context = currentContextData || {};
+            const payload = {
+                ...context,
+                ...data,
+                taskType: tasks.length > 0 ? tasks.join(', ') : 'Nenhuma'
+            };
+
             await sendBAUEscalation(payload, context.agentEmail || "anon");
+
             SoundManager.playSuccess();
             switchView('success');
         } catch (error) {
-            showToast("Falha ao enviar: " + (error.message || "Erro desconhecido"), "error");
+            console.error("Erro no envio BAU:", error);
+            showToast("Falha ao enviar: " + (error.message || "Erro desconhecido"), { error: true });
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = `<span class="material-icons">send</span> Enviar para o TL`;
+            submitBtn.innerHTML = originalBtnHTML;
         }
     };
 
