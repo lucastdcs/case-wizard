@@ -419,7 +419,7 @@ export function initBAUForm() {
             ];
 
             highlightsContainer.innerHTML = vitals.map(v => {
-                const displayValue = (v.value && v.value !== "N/A" && v.value !== "undefined" && v.value !== "null") ? v.value : "---";
+                const displayValue = (v.value && v.value !== "N/A" && v.value !== "undefined" && v.value !== "null") ? v.value : "Não capturado";
                 return `
                     <div class="bau-highlight-item">
                         <span class="bau-highlight-label">${v.label}</span>
