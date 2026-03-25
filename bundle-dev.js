@@ -2319,18 +2319,23 @@ E-mail: ${y.clientEmail||"---"}`;T&&(T.value=X),L&&(L.style.display="block",L.st
 
     .bau-case-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
     .bau-case-card {
-      background: #ffffff;
-      border: 1px solid #e0e0e0;
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
       border-radius: 12px;
       padding: 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: all 0.2s ease;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
     }
     .bau-case-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 8px 30px rgba(26, 115, 232, 0.12), 0 0 15px rgba(161, 75, 255, 0.08);
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.8);
     }
     .bau-case-main { display: flex; align-items: flex-start; gap: 12px; }
     .bau-case-icon { color: #5f6368; margin-top: 2px; }
@@ -2393,33 +2398,65 @@ E-mail: ${y.clientEmail||"---"}`;T&&(T.value=X),L&&(L.style.display="block",L.st
     }
 
     .bau-highlight-panel {
-        background: rgba(26, 115, 232, 0.05);
-        border-left: 4px solid #1a73e8;
-        padding: 16px;
-        border-radius: 4px;
-        margin-bottom: 20px;
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.95) 0%,
+            rgba(240, 247, 255, 0.9) 40%,
+            rgba(248, 240, 255, 0.85) 100%);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        padding: 20px;
+        border-radius: 16px;
+        margin-bottom: 24px;
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 12px 24px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        gap: 16px 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow:
+            0 10px 40px rgba(26, 115, 232, 0.08),
+            0 0 20px rgba(161, 75, 255, 0.05),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+    }
+    .bau-highlight-panel::before {
+        content: '';
+        position: absolute;
+        top: -25%;
+        left: -25%;
+        width: 150%;
+        height: 150%;
+        background: radial-gradient(circle at center,
+            rgba(66, 133, 244, 0.15) 0%,
+            rgba(161, 75, 255, 0.1) 30%,
+            transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+        animation: geminiPulse 12s infinite linear;
+    }
+    @keyframes geminiPulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.1); }
     }
     .bau-highlight-item {
         display: flex;
         flex-direction: column;
         gap: 4px;
+        position: relative;
+        z-index: 1;
     }
     .bau-highlight-label {
-        font-size: 11px;
-        font-weight: 700;
-        color: #5f6368;
+        font-size: 10px;
+        font-weight: 800;
+        color: #70757a;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.8px;
     }
     .bau-highlight-value {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 800;
-        color: #202124;
+        color: #1a202c;
         word-break: break-all;
+        letter-spacing: -0.2px;
     }
 
     .bau-dynamic-inputs-container {
@@ -2729,7 +2766,7 @@ E-mail: ${y.clientEmail||"---"}`;T&&(T.value=X),L&&(L.style.display="block",L.st
                     </div>
                     <span class="bau-case-status-badge ${X.class}">${X.text}</span>
                 </li>
-            `}).join("")}function f(){b.querySelectorAll(".bau-step").forEach((w,k)=>{w.classList.toggle("active",k+1===a)}),x.innerHTML="";for(let w=1;w<=n;w++){let k=document.createElement("div");k.className=`bau-progress-step ${w===a?"active":w<a?"completed":""}`,k.textContent=w,x.appendChild(k)}O.style.display=a>1?"inline-block":"none",z.style.display=a<n?"inline-block":"none",U.style.display=a===n?"flex":"none",a===4&&_()}function A(w){let k=i.querySelector(`#bau-step-${w}`);if(!k)return!0;if(w===2)return b.querySelector('textarea[name="reason"]').value.trim()?b.querySelector('input[name="taskType"]:checked')?!0:(K("Erro: Selecione pelo menos uma Task.",{error:!0}),!1):(K("Erro: A descri\xE7\xE3o do que deve ser feito \xE9 obrigat\xF3ria.",{error:!0}),!1);for(let m of k.querySelectorAll("[required]"))if(!m.value.trim())return K(`Erro: O campo '${m.name||m.placeholder}' \xE9 obrigat\xF3rio.`,{error:!0}),!1;return!0}z.onclick=()=>{A(a)&&(a++,f(),G.playClick())},O.onclick=()=>{a>1&&(a--,f(),G.playClick())};async function q(){let w=await fe()||{};o=w;let k=b.querySelector("#bau-vital-highlights");if(k){let v=[{label:"Anunciante",value:w.advName},{label:"CID",value:w.cid},{label:"Website",value:w.site||w.website},{label:"Case ID",value:w.caseId}];k.innerHTML=v.map(T=>{let L=T.value&&T.value!=="N/A"&&T.value!=="undefined"&&T.value!=="null"?T.value:"---";return`
+            `}).join("")}function f(){b.querySelectorAll(".bau-step").forEach((w,k)=>{w.classList.toggle("active",k+1===a)}),x.innerHTML="";for(let w=1;w<=n;w++){let k=document.createElement("div");k.className=`bau-progress-step ${w===a?"active":w<a?"completed":""}`,k.textContent=w,x.appendChild(k)}O.style.display=a>1?"inline-block":"none",z.style.display=a<n?"inline-block":"none",U.style.display=a===n?"flex":"none",a===4&&_()}function A(w){let k=i.querySelector(`#bau-step-${w}`);if(!k)return!0;if(w===2)return b.querySelector('textarea[name="reason"]').value.trim()?b.querySelector('input[name="taskType"]:checked')?!0:(K("Erro: Selecione pelo menos uma Task.",{error:!0}),!1):(K("Erro: A descri\xE7\xE3o do que deve ser feito \xE9 obrigat\xF3ria.",{error:!0}),!1);for(let m of k.querySelectorAll("[required]"))if(!m.value.trim())return K(`Erro: O campo '${m.name||m.placeholder}' \xE9 obrigat\xF3rio.`,{error:!0}),!1;return!0}z.onclick=()=>{A(a)&&(a++,f(),G.playClick())},O.onclick=()=>{a>1&&(a--,f(),G.playClick())};async function q(){let w=await fe()||{};o=w;let k=b.querySelector("#bau-vital-highlights");if(k){let v=[{label:"Anunciante",value:w.advName},{label:"CID",value:w.cid},{label:"Website",value:w.site||w.website},{label:"Case ID",value:w.caseId}];k.innerHTML=v.map(T=>{let L=T.value&&T.value!=="N/A"&&T.value!=="undefined"&&T.value!=="null"?T.value:"N\xE3o capturado";return`
                     <div class="bau-highlight-item">
                         <span class="bau-highlight-label">${T.label}</span>
                         <span class="bau-highlight-value">${L}</span>
