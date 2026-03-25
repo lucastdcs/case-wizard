@@ -172,9 +172,18 @@ export function initBAUForm() {
         <textarea name="description" required class="bau-textarea" placeholder="Descreva detalhadamente o que precisa ser feito..."></textarea>
         <label class="bau-label">Disponibilidade (mínimo 1 opção)</label>
         <div class="bau-availability-container">
-            <input type="datetime-local" name="availability_1" required class="bau-input">
-            <input type="datetime-local" name="availability_2" class="bau-input">
-            <input type="datetime-local" name="availability_3" class="bau-input">
+            <div class="bau-availability-field">
+                <span class="bau-field-hint">Opção 1 (Prioridade)</span>
+                <input type="datetime-local" name="availability_1" required class="bau-input">
+            </div>
+            <div class="bau-availability-field">
+                <span class="bau-field-hint">Opção 2 (Opcional)</span>
+                <input type="datetime-local" name="availability_2" class="bau-input">
+            </div>
+            <div class="bau-availability-field">
+                <span class="bau-field-hint">Opção 3 (Opcional)</span>
+                <input type="datetime-local" name="availability_3" class="bau-input">
+            </div>
         </div>
         <div class="bau-availability-hint"></div>
     `;
@@ -348,6 +357,31 @@ export function initBAUForm() {
         form.querySelector('[name="cid"]').value = pageData.cid || "";
         form.querySelector('[name="amName"]').value = pageData.amName || "";
         form.querySelector('[name="seId"]').value = pageData.seId || "";
+
+        const allDataContainer = popup.querySelector('#bau-all-data');
+        if (allDataContainer) {
+            const extraFields = [
+                { label: "Site", value: pageData.site },
+                { label: "Email", value: pageData.email },
+                { label: "Timezone", value: pageData.timezone },
+                { label: "Case ID", value: pageData.caseId },
+                { label: "Programa", value: pageData.salesProgram },
+                { label: "Idioma", value: pageData.language }
+            ];
+
+            allDataContainer.innerHTML = `
+                <div class="bau-context-badges-grid">
+                    ${extraFields
+                        .filter(f => f.value && f.value !== "N/A" && f.value !== "---")
+                        .map(f => `
+                            <div class="bau-context-badge">
+                                <span class="bau-badge-label">${f.label}:</span>
+                                <span class="bau-badge-value">${f.value}</span>
+                            </div>
+                        `).join('')}
+                </div>
+            `;
+        }
     }
 
     popup.querySelector('#bau-top-se-search').onclick = (e) => {
@@ -396,11 +430,12 @@ export function initBAUForm() {
             .join(' | ');
 
         // Cria o payload com o campo 'availability' exato que o backend espera
+        // O data (form) deve vir depois do context (scraped) para que os overrides manuais funcionem
         const payload = { 
+            ...context,
             ...data, 
             taskType: tasks.join(', '), 
-            availability: disponibilidadeUnificada, 
-            ...context 
+            availability: disponibilidadeUnificada
         };
 
         try {
