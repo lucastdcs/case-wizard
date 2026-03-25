@@ -33,19 +33,27 @@ export const TRANSITION = `all 0.3s ${EASE}`;
 export const injectStyles = () => {
   if (document.getElementById('bau-form-global-styles')) return;
 
+  // Carregar Material Icons se necessário
+  if (!document.querySelector('link[href*="Material+Icons"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
+    document.head.appendChild(link);
+  }
+
   const style = document.createElement('style');
   style.id = 'bau-form-global-styles';
   style.textContent = `
     /* --- 1. POSICIONAMENTO E ANCORAGEM --- */
     .bau-popup {
-      /* Removido !important e adicionado posicionamento fixo padrão */
       width: 650px;
       max-width: 95vw;
-      max-height: 90vh; /* Evita que o modal saia da tela */
+      max-height: 90vh;
       position: fixed;
-      bottom: 70px; /* Alinhado com outros módulos */
-      right: 20px;
-      z-index: 10000;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
       
       background-color: #f8f9fa;
       display: flex;
@@ -55,7 +63,7 @@ export const injectStyles = () => {
       box-shadow: 0 8px 24px rgba(0,0,0,0.15);
       
       /* Herda a animação de entrada padrão */
-      transform-origin: bottom right;
+      transform-origin: center center;
       animation: cw-genie-effect-in 0.4s ${EASE};
     }
 
