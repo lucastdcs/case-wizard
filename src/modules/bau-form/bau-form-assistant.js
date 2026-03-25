@@ -8,6 +8,14 @@ import { sendBAUEscalation, readAgentBAU } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
 import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.js';
 
+const ICONS = {
+    add: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
+    back: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>`,
+    wand: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7.5 5.6L10 7 8.6 4.5 10 2 7.5 3.4 5 2l1.4 2.5L5 7zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5zm-7.63 5.29c-.39-.39-1.02-.39-1.41 0L1.29 18.96c-.39.39-.39 1.02 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05c.39-.39.39-1.02 0-1.41l-2.33-2.35zm-1.03 5.41l-2.12-2.12 2.44-2.44 2.12 2.12-2.44 2.44z"/></svg>`,
+    send: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`,
+    check: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`
+};
+
 export function initBAUForm() {
     injectStyles();
 
@@ -45,7 +53,7 @@ export function initBAUForm() {
             <ul class="bau-case-list" id="bau-case-list-container"></ul>
         </div>
         <button class="bau-dashboard-fab" id="bau-new-case-btn">
-            <span class="material-icons">add</span>
+            ${ICONS.add}
             Novo Caso BAU
         </button>
     `;
@@ -60,7 +68,7 @@ export function initBAUForm() {
     formHeader.className = 'bau-view-header';
     formHeader.innerHTML = `
       <button class="bau-back-btn" id="bau-form-back-btn">
-        <span class="material-icons">arrow_back</span>
+        ${ICONS.back}
         Voltar ao Dashboard
       </button>
     `;
@@ -107,7 +115,7 @@ export function initBAUForm() {
             <div class="bau-inline-field bau-p-xs bau-relative">
                  <span class="bau-context-label">SE ID:</span>
                  <input type="text" id="bau-context-se-id-input" name="seId" class="bau-inline-input bau-w-se" placeholder="Speakeasy ID">
-                 <button type="button" id="bau-top-se-search" class="bau-mini-btn" title="Buscar ID automaticamente"><span class="material-icons">auto_fix_high</span></button>
+                 <button type="button" id="bau-top-se-search" class="bau-mini-btn" title="Buscar ID automaticamente">${ICONS.wand}</button>
             </div>
         </div>
         <div id="bau-all-data"></div>
@@ -121,18 +129,19 @@ export function initBAUForm() {
     step2.id = "bau-step-2";
     const actionCard = document.createElement("div");
     actionCard.className = "bau-card";
+    const tasks = [
+        'Ads Conversion Tracking', 'Ads Dynamic Remarketing', 'Ads Enhanced Conversions', 'Ads Website Call Conversion',
+        'Ads Remarketing', 'Analytics Cross Domain Tracking', 'Analytics E-Commerce Tracking', 'Analytics Enhanced E-Commerce Tracking',
+        'Analytics Event Tracking', 'Analytics Health Check', 'Analytics Remarketing', 'Analytics Setup',
+        'Fix GA4 implementation', 'Consent Mode', 'Fix Sitewide Tagging (OGT & CT)', 'Google Tag Manager Installation', 'Customer Match'
+    ];
     actionCard.innerHTML = `
-        <label class="bau-label">Motivo da Abertura</label>
-        <select name="reason" required class="bau-select">
-            <option value="">Selecione...</option>
-            <option value="Nova Implementação">Nova Implementação</option>
-            <option value="Correção de Tag">Correção de Tag</option>
-            <option value="Upgrade / Migração">Upgrade / Migração</option>
-            <option value="Troubleshooting">Troubleshooting</option>
-        </select>
-        <label class="bau-label bau-mt-lg">Tasks para BAU (Selecione 1 ou mais)</label>
+        <label class="bau-label">O que deve ser feito em BAU</label>
+        <textarea name="reason" class="bau-textarea" placeholder="Descreva as ações esperadas..." style="min-height: 80px;" required></textarea>
+
+        <label class="bau-label">Tasks para BAU (Selecione 1 ou mais)</label>
         <div class="bau-tasks-grid" id="bau-tasks-container">
-            ${['Setup GTM', 'Google Ads Conversion', 'GA4 Events', 'Enhanced Conversions', 'Offline Conversions', 'Consent Mode', 'Troubleshooting', 'Outros'].map(task => `
+            ${tasks.map(task => `
                 <label class="bau-task-item">
                     <input type="checkbox" name="taskType" value="${task}">
                     <span>${task}</span>
@@ -159,9 +168,9 @@ export function initBAUForm() {
             <option value="">Selecione um motivo...</option>
             ${["Tempo da consultoria esgotado", "Solicitação de reagendamento pelo anunciante", "Falta de acessos ou backup do site", "Anunciante indisponível ou não preparado", "Implementação parcial (nem todas as tasks concluídas)", "Solicitação de tarefas (tasks) adicionais", "Necessidade de novas alterações (fase de acompanhamento)", "Retorno de contato após prazo de 14 dias expirado"].map(r => `<option value="${r}">${r}</option>`).join('')}
         </select>
-        <label class="bau-label bau-mt-md">Justificativa / Descrição</label>
+        <label class="bau-label">Justificativa / Descrição</label>
         <textarea name="description" required class="bau-textarea" placeholder="Descreva detalhadamente o que precisa ser feito..."></textarea>
-        <label class="bau-label bau-mt-md">Disponibilidade (mínimo 1 opção)</label>
+        <label class="bau-label">Disponibilidade (mínimo 1 opção)</label>
         <div class="bau-availability-container">
             <input type="datetime-local" name="availability_1" required class="bau-input">
             <input type="datetime-local" name="availability_2" class="bau-input">
@@ -203,7 +212,7 @@ export function initBAUForm() {
     const submitBtn = document.createElement("button");
     submitBtn.type = "submit";
     submitBtn.className = "bau-btn-submit";
-    submitBtn.innerHTML = `<span class="material-icons">send</span> Enviar para o TL`;
+    submitBtn.innerHTML = `${ICONS.send} Enviar para o TL`;
     submitBtn.style.display = "none";
 
     // OBRIGATORIAMENTE precisam ser "child" (filho) direto da tag <form>
@@ -220,7 +229,7 @@ export function initBAUForm() {
     successView.className = 'bau-view';
     successView.innerHTML = `
         <div class="bau-success-content">
-            <div class="bau-success-icon"><span class="material-icons">check_circle</span></div>
+            <div class="bau-success-icon">${ICONS.check}</div>
             <h2 class="bau-success-title">Caso enviado com sucesso!</h2>
             <p class="bau-success-message">Sua solicitação foi recebida e será processada em breve.</p>
             <button class="bau-btn-primary" id="bau-success-back-btn">Voltar ao Dashboard</button>
@@ -297,8 +306,8 @@ export function initBAUForm() {
         const stepEl = popup.querySelector(`#bau-step-${step}`);
         if (!stepEl) return true;
         if (step === 2) {
-            if (!form.querySelector('select[name="reason"]').value) {
-                showToast("Erro: O Motivo da Abertura é obrigatório.", { error: true });
+            if (!form.querySelector('textarea[name="reason"]').value.trim()) {
+                showToast("Erro: A descrição do que deve ser feito é obrigatória.", { error: true });
                 return false;
             }
             if (!form.querySelector('input[name="taskType"]:checked')) {
@@ -361,7 +370,7 @@ export function initBAUForm() {
             <div class="bau-confirm-row"><span class="bau-confirm-label">AM:</span><span class="bau-confirm-value">${data.amName || '---'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Speakeasy ID:</span><span class="bau-confirm-value">${data.seId || 'Não informado'}</span></div>
             <div class="bau-confirm-divider"></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Motivo Abertura:</span><span class="bau-confirm-value">${data.reason || '---'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">O que deve ser feito:</span><span class="bau-confirm-value">${data.reason || '---'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Tasks:</span><span class="bau-confirm-value">${tasksText}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Justificativa BAU:</span><span class="bau-confirm-value">${data.nonImplementationReason || '---'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Descrição:</span><span class="bau-confirm-value">${data.description || '---'}</span></div>
@@ -403,7 +412,7 @@ export function initBAUForm() {
             console.error("Payload que tentou enviar:", payload); // Para debug
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = `<span class="material-icons">send</span> Enviar para o TL`;
+            submitBtn.innerHTML = `${ICONS.send} Enviar para o TL`;
         }
     };
 
