@@ -90,24 +90,24 @@ export function initBAUForm() {
     const contextCard = document.createElement("div");
     contextCard.className = "bau-card bau-context-card";
     contextCard.innerHTML = `
-        <div class="bau-inline-field" style="margin-bottom: 4px;">
-            <input type="text" name="advName" class="bau-title bau-inline-input" style="border-bottom: none; font-size: 20px;" placeholder="Nome do Anunciante" required>
+        <div class="bau-inline-field bau-mb-xs">
+            <input type="text" name="advName" class="bau-title bau-inline-input" placeholder="Nome do Anunciante" required>
         </div>
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-left: 10px; opacity: 0.9;">
-            <div class="bau-inline-field" style="padding: 2px 6px;">
-                 <span style="color: #fff; font-size: 13px; font-weight: 700;">CID:</span>
-                 <input type="text" id="bau-cid-input" name="cid" class="bau-inline-input" style="width: 110px; font-size: 13px;" placeholder="CID" required>
+        <div class="bau-context-grid">
+            <div class="bau-inline-field bau-p-xs">
+                 <span class="bau-context-label">CID:</span>
+                 <input type="text" id="bau-cid-input" name="cid" class="bau-inline-input bau-w-cid" placeholder="CID" required>
             </div>
-            <span style="color: #fff; opacity: 0.5;">•</span>
-            <div class="bau-inline-field" style="padding: 2px 6px;">
-                 <span style="color: #fff; font-size: 13px; font-weight: 700;">AM:</span>
-                 <input type="text" name="amName" class="bau-inline-input" style="width: 130px; font-size: 13px;" placeholder="Account Manager" required>
+            <span class="bau-context-separator">•</span>
+            <div class="bau-inline-field bau-p-xs">
+                 <span class="bau-context-label">AM:</span>
+                 <input type="text" name="amName" class="bau-inline-input bau-w-am" placeholder="Account Manager" required>
             </div>
-            <span style="color: #fff; opacity: 0.5;">•</span>
-            <div class="bau-inline-field" style="padding: 2px 6px; position: relative;">
-                 <span style="color: #fff; font-size: 13px; font-weight: 700;">SE ID:</span>
-                 <input type="text" id="bau-context-se-id-input" name="seId" class="bau-inline-input" style="width: 160px; font-size: 13px;" placeholder="Speakeasy ID">
-                 <button type="button" id="bau-top-se-search" class="bau-mini-btn" title="Buscar ID automaticamente"><span class="material-icons" style="font-size: 14px;">magic_wand</span></button>
+            <span class="bau-context-separator">•</span>
+            <div class="bau-inline-field bau-p-xs bau-relative">
+                 <span class="bau-context-label">SE ID:</span>
+                 <input type="text" id="bau-context-se-id-input" name="seId" class="bau-inline-input bau-w-se" placeholder="Speakeasy ID">
+                 <button type="button" id="bau-top-se-search" class="bau-mini-btn" title="Buscar ID automaticamente"><span class="material-icons">auto_fix_high</span></button>
             </div>
         </div>
         <div id="bau-all-data"></div>
@@ -130,7 +130,7 @@ export function initBAUForm() {
             <option value="Upgrade / Migração">Upgrade / Migração</option>
             <option value="Troubleshooting">Troubleshooting</option>
         </select>
-        <label class="bau-label" style="margin-top: 24px;">Tasks para BAU (Selecione 1 ou mais)</label>
+        <label class="bau-label bau-mt-lg">Tasks para BAU (Selecione 1 ou mais)</label>
         <div class="bau-tasks-grid" id="bau-tasks-container">
             ${['Setup GTM', 'Google Ads Conversion', 'GA4 Events', 'Enhanced Conversions', 'Offline Conversions', 'Consent Mode', 'Troubleshooting', 'Outros'].map(task => `
                 <label class="bau-task-item">
@@ -159,9 +159,9 @@ export function initBAUForm() {
             <option value="">Selecione um motivo...</option>
             ${["Tempo da consultoria esgotado", "Solicitação de reagendamento pelo anunciante", "Falta de acessos ou backup do site", "Anunciante indisponível ou não preparado", "Implementação parcial (nem todas as tasks concluídas)", "Solicitação de tarefas (tasks) adicionais", "Necessidade de novas alterações (fase de acompanhamento)", "Retorno de contato após prazo de 14 dias expirado"].map(r => `<option value="${r}">${r}</option>`).join('')}
         </select>
-        <label class="bau-label" style="margin-top: 20px;">Justificativa / Descrição</label>
-        <textarea name="description" required class="bau-textarea" placeholder="Descreva detalhadamente o que precisa ser feito..." style="min-height: 120px;"></textarea>
-        <label class="bau-label" style="margin-top: 20px;">Disponibilidade (mínimo 1 opção)</label>
+        <label class="bau-label bau-mt-md">Justificativa / Descrição</label>
+        <textarea name="description" required class="bau-textarea" placeholder="Descreva detalhadamente o que precisa ser feito..."></textarea>
+        <label class="bau-label bau-mt-md">Disponibilidade (mínimo 1 opção)</label>
         <div class="bau-availability-container">
             <input type="datetime-local" name="availability_1" required class="bau-input">
             <input type="datetime-local" name="availability_2" class="bau-input">
@@ -178,7 +178,7 @@ export function initBAUForm() {
     step4.id = "bau-step-4";
     step4.innerHTML = `
         <div class="bau-card">
-            <h3 style="margin-top: 0; color: ${COLORS.blue}; font-size: 16px; margin-bottom: 20px;">Confirme os dados antes de enviar</h3>
+            <h3 class="bau-step-title">Confirme os dados antes de enviar</h3>
             <div id="bau-confirmation-details"></div>
         </div>
     `;
@@ -210,7 +210,7 @@ export function initBAUForm() {
     form.appendChild(backBtn);
     form.appendChild(nextBtn);
     form.appendChild(submitBtn);
-    form.appendChild(footer); // footer agora serve apenas para o estilo/ancoragem se necessário, mas os botões são filhos diretos
+    form.appendChild(footer);
 
     viewContainer.appendChild(formView);
 
@@ -254,7 +254,7 @@ export function initBAUForm() {
             const cases = await readAgentBAU();
             renderDashboard(cases);
         } catch (error) {
-            listEl.innerHTML = '<p style="color: red;">Erro ao carregar casos.</p>';
+            listEl.innerHTML = '<p class="bau-error-text">Erro ao carregar casos.</p>';
         }
     }
 
@@ -360,7 +360,7 @@ export function initBAUForm() {
             <div class="bau-confirm-row"><span class="bau-confirm-label">CID:</span><span class="bau-confirm-value">${data.cid || '---'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">AM:</span><span class="bau-confirm-value">${data.amName || '---'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Speakeasy ID:</span><span class="bau-confirm-value">${data.seId || 'Não informado'}</span></div>
-            <div style="margin: 15px 0; border-bottom: 1px solid rgba(0,0,0,0.1);"></div>
+            <div class="bau-confirm-divider"></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Motivo Abertura:</span><span class="bau-confirm-value">${data.reason || '---'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Tasks:</span><span class="bau-confirm-value">${tasksText}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Justificativa BAU:</span><span class="bau-confirm-value">${data.nonImplementationReason || '---'}</span></div>
