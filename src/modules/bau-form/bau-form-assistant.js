@@ -98,29 +98,35 @@ export function initBAUForm() {
     const step1 = document.createElement("div");
     step1.className = "bau-step active";
     step1.id = "bau-step-1";
+
+    const dynamicInputsContainer = document.createElement("div");
+    dynamicInputsContainer.className = "bau-dynamic-inputs-container";
+    dynamicInputsContainer.innerHTML = `
+        <div class="bau-dynamic-input" id="wrapper-advName">
+            <label class="bau-label">Nome do Anunciante</label>
+            <input type="text" name="advName" class="bau-input" placeholder="Nome do Anunciante" required>
+        </div>
+        <div class="bau-dynamic-input" id="wrapper-cid">
+            <label class="bau-label">CID</label>
+            <input type="text" id="bau-cid-input" name="cid" class="bau-input" placeholder="000-000-0000" required>
+        </div>
+        <div class="bau-dynamic-input" id="wrapper-amName">
+            <label class="bau-label">Account Manager (AM)</label>
+            <input type="text" name="amName" class="bau-input" placeholder="Nome do AM" required>
+        </div>
+        <div class="bau-dynamic-input" id="wrapper-seId">
+            <label class="bau-label">Speakeasy ID (SE ID)</label>
+            <div class="bau-input-group">
+                <input type="text" id="bau-context-se-id-input" name="seId" class="bau-input" placeholder="Speakeasy ID">
+                <button type="button" id="bau-top-se-search" class="bau-mini-btn-input" title="Buscar ID automaticamente">${ICONS.wand}</button>
+            </div>
+        </div>
+    `;
+    step1.appendChild(dynamicInputsContainer);
+
     const contextCard = document.createElement("div");
     contextCard.className = "bau-card bau-context-card";
     contextCard.innerHTML = `
-        <div class="bau-inline-field bau-mb-xs">
-            <input type="text" name="advName" class="bau-title bau-inline-input" placeholder="Nome do Anunciante" required>
-        </div>
-        <div class="bau-context-grid">
-            <div class="bau-inline-field bau-p-xs">
-                 <span class="bau-context-label">CID:</span>
-                 <input type="text" id="bau-cid-input" name="cid" class="bau-inline-input bau-w-cid" placeholder="CID" required>
-            </div>
-            <span class="bau-context-separator">•</span>
-            <div class="bau-inline-field bau-p-xs">
-                 <span class="bau-context-label">AM:</span>
-                 <input type="text" name="amName" class="bau-inline-input bau-w-am" placeholder="Account Manager" required>
-            </div>
-            <span class="bau-context-separator">•</span>
-            <div class="bau-inline-field bau-p-xs bau-relative">
-                 <span class="bau-context-label">SE ID:</span>
-                 <input type="text" id="bau-context-se-id-input" name="seId" class="bau-inline-input bau-w-se" placeholder="Speakeasy ID">
-                 <button type="button" id="bau-top-se-search" class="bau-mini-btn" title="Buscar ID automaticamente">${ICONS.wand}</button>
-            </div>
-        </div>
         <div id="bau-all-data"></div>
     `;
     step1.appendChild(contextCard);
@@ -359,7 +365,7 @@ export function initBAUForm() {
         }
         backBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
         nextBtn.style.display = currentStep < totalSteps ? 'inline-block' : 'none';
-        submitBtn.style.display = currentStep === totalSteps ? 'inline-block' : 'none';
+        submitBtn.style.display = currentStep === totalSteps ? 'flex' : 'none';
         if (currentStep === 4) renderConfirmation();
     }
     
@@ -405,14 +411,28 @@ export function initBAUForm() {
     async function populateContextData() {
         const pageData = await getPageData() || {};
         currentContextData = pageData;
-        form.querySelector('[name="advName"]').value = pageData.advName || "";
-        form.querySelector('[name="cid"]').value = pageData.cid || "";
-        form.querySelector('[name="amName"]').value = pageData.amName || "";
-        form.querySelector('[name="seId"]').value = pageData.seId || "";
+
+        const smartFields = ['advName', 'cid', 'amName', 'seId'];
+        smartFields.forEach(field => {
+            const value = pageData[field];
+            const input = form.querySelector(`[name="${field}"]`);
+            const wrapper = popup.querySelector(`#wrapper-${field}`);
+
+            if (input) input.value = (value && value !== "N/A") ? value : "";
+
+            if (wrapper) {
+                const isValid = value && value !== "" && value !== "N/A" && value !== "undefined" && value !== "null";
+                wrapper.style.display = isValid ? 'none' : 'block';
+            }
+        });
 
         const allDataContainer = popup.querySelector('#bau-all-data');
         if (allDataContainer) {
-            const extraFields = [
+            const displayFields = [
+                { label: "Anunciante", value: pageData.advName },
+                { label: "CID", value: pageData.cid },
+                { label: "AM", value: pageData.amName },
+                { label: "SE ID", value: pageData.seId },
                 { label: "Site", value: pageData.site },
                 { label: "Email", value: pageData.email },
                 { label: "Timezone", value: pageData.timezone },
@@ -423,8 +443,8 @@ export function initBAUForm() {
 
             allDataContainer.innerHTML = `
                 <div class="bau-context-badges-grid">
-                    ${extraFields
-                        .filter(f => f.value && f.value !== "N/A" && f.value !== "---")
+                    ${displayFields
+                        .filter(f => f.value && f.value !== "N/A" && f.value !== "---" && f.value !== "undefined" && f.value !== "null")
                         .map(f => `
                             <div class="bau-context-badge">
                                 <span class="bau-badge-label">${f.label}:</span>
