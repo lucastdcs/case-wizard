@@ -246,6 +246,40 @@ export const injectStyles = () => {
       padding: 20px;
     }
 
+    .bau-context-card .bau-label {
+        color: #e8f0fe;
+    }
+
+    .bau-highlight-panel {
+        background: rgba(26, 115, 232, 0.05);
+        border-left: 4px solid #1a73e8;
+        padding: 16px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .bau-highlight-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .bau-highlight-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #5f6368;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .bau-highlight-value {
+        font-size: 13px;
+        font-weight: 800;
+        color: #202124;
+        word-break: break-all;
+    }
+
     .bau-dynamic-inputs-container {
       display: flex;
       flex-direction: column;

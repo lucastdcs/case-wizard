@@ -94,6 +94,13 @@ export function initBAUForm() {
     step1.className = "bau-step active";
     step1.id = "bau-step-1";
 
+    const contextCard = document.createElement("div");
+    contextCard.className = "bau-card bau-context-card";
+    contextCard.innerHTML = `
+        <div id="bau-vital-highlights" class="bau-highlight-panel"></div>
+        <div id="bau-all-data"></div>
+    `;
+
     const dynamicInputsContainer = document.createElement("div");
     dynamicInputsContainer.className = "bau-dynamic-inputs-container";
     dynamicInputsContainer.innerHTML = `
@@ -117,13 +124,8 @@ export function initBAUForm() {
             </div>
         </div>
     `;
-    step1.appendChild(dynamicInputsContainer);
 
-    const contextCard = document.createElement("div");
-    contextCard.className = "bau-card bau-context-card";
-    contextCard.innerHTML = `
-        <div id="bau-all-data"></div>
-    `;
+    contextCard.insertBefore(dynamicInputsContainer, contextCard.querySelector('#bau-all-data'));
     step1.appendChild(contextCard);
     form.appendChild(step1);
 
@@ -338,7 +340,7 @@ export function initBAUForm() {
                                 <h3 class="bau-case-title">${c.advName || 'Nome indefinido'}</h3>
                                 <span class="bau-case-date">${dateStr}</span>
                             </div>
-                            <p class="bau-case-details">CID: ${c.cid || 'N/A'} • Motivo: ${c.reason || 'N/A'}</p>
+                            <p class="bau-case-details">Case: ${c.caseId || 'N/A'} • CID: ${c.cid || 'N/A'} • Motivo: ${c.reason || 'N/A'}</p>
                         </div>
                     </div>
                     <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
@@ -406,6 +408,26 @@ export function initBAUForm() {
     async function populateContextData() {
         const pageData = await getPageData() || {};
         currentContextData = pageData;
+
+        const highlightsContainer = form.querySelector('#bau-vital-highlights');
+        if (highlightsContainer) {
+            const vitals = [
+                { label: "Anunciante", value: pageData.advName },
+                { label: "CID", value: pageData.cid },
+                { label: "Website", value: pageData.site || pageData.website },
+                { label: "Case ID", value: pageData.caseId }
+            ];
+
+            highlightsContainer.innerHTML = vitals.map(v => {
+                const displayValue = (v.value && v.value !== "N/A" && v.value !== "undefined" && v.value !== "null") ? v.value : "---";
+                return `
+                    <div class="bau-highlight-item">
+                        <span class="bau-highlight-label">${v.label}</span>
+                        <span class="bau-highlight-value">${displayValue}</span>
+                    </div>
+                `;
+            }).join('');
+        }
 
         const smartFields = ['advName', 'cid', 'amName', 'seId'];
         smartFields.forEach(field => {
