@@ -213,7 +213,7 @@ export const injectStyles = () => {
 
     .bau-footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 24px; margin-top: 24px; border-top: 1px solid #dadce0; }
     
-    .bau-btn-primary, .bau-btn-submit {
+    .bau-btn-primary {
       background: #1a73e8;
       color: #ffffff;
       border: 1px solid transparent;
@@ -226,6 +226,22 @@ export const injectStyles = () => {
       align-items: center;
       gap: 8px;
       transition: all 0.2s ease;
+    }
+    .bau-btn-submit {
+      background: #1a73e8;
+      color: #ffffff;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 12px 32px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      margin-top: 16px;
     }
     .bau-btn-secondary {
       background: #ffffff;
@@ -277,6 +293,68 @@ export const injectStyles = () => {
     .bau-step-title { margin-top: 0; color: #1a73e8; font-size: 16px; margin-bottom: 20px; font-weight: 600; }
     .bau-error-text { color: #d93025; font-weight: 500; }
     .bau-confirm-divider { margin: 15px 0; border-bottom: 1px solid rgba(0,0,0,0.1); }
+
+    .bau-context-badges-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .bau-context-badge {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(4px);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.2s ease;
+    }
+    .bau-context-badge:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+    .bau-badge-label {
+      font-weight: 700;
+      opacity: 0.8;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .bau-badge-value {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+
+    .bau-availability-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .bau-availability-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .bau-field-hint {
+      font-size: 11px;
+      font-weight: 600;
+      color: #5f6368;
+      margin-left: 4px;
+    }
+    .bau-input[type="datetime-local"] {
+      padding: 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      cursor: pointer;
+      background-color: #ffffff;
+    }
   `;
   document.head.appendChild(style);
 };
