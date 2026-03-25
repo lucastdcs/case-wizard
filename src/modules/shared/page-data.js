@@ -339,6 +339,7 @@ export function captureLanguage() {
 
 export function captureSpeakeasyID() {
     try {
+        // 1. TENTATIVA PADRÃO: Buscar pelas Labels Estruturadas
         const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
         const seLabel = labels.find(el =>
             el.textContent.includes('Speakeasy ID') ||
@@ -347,9 +348,24 @@ export function captureSpeakeasyID() {
         if (seLabel) {
             const parent = seLabel.closest('.data-pair') || seLabel.parentElement;
             const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
-            if (content) return content.textContent.trim();
+            if (content && content.textContent.trim()) return content.textContent.trim();
         }
-    } catch (e) { console.warn("Erro ao capturar SE ID:", e); }
+
+        // 2. TENTATIVA AVANÇADA (O Regex): Buscar varrendo blocos de texto e notas
+        const regexID = /Speakeasy.*?(P\d{15,25})/i;
+        const textAreas = Array.from(document.querySelectorAll('textarea, .preview, .message-body, .notes-content'));
+        
+        for (let i = textAreas.length - 1; i >= 0; i--) {
+            const text = textAreas[i].value || textAreas[i].innerText || "";
+            const match = text.match(regexID);
+            if (match && match[1]) {
+                return match[1];
+            }
+        }
+    } catch (e) { 
+        console.warn("Erro ao capturar SE ID:", e); 
+    }
+    
     return "N/A";
 }
 
