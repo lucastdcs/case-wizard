@@ -407,6 +407,12 @@ export function initBAUForm() {
     
     async function populateContextData() {
         const pageData = await getPageData() || {};
+
+        // AUTO-PREENCHIMENTO AM: Se o nome do AM não foi capturado, usamos o e-mail do BCC (internalEmail)
+        if (!pageData.amName || pageData.amName === "N/A") {
+            pageData.amName = pageData.internalEmail || "N/A";
+        }
+
         currentContextData = pageData;
 
         const highlightsContainer = form.querySelector('#bau-vital-highlights');
