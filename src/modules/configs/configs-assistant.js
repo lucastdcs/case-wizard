@@ -75,6 +75,23 @@ export function initConfigsAssistant() {
             .cw-profile-badge.overhead {
                 background: #e8f0fe; color: #1a73e8; border-color: #d2e3fc;
             }
+
+            /* --- SKELETON LOADING --- */
+            .cw-skeleton {
+                background: #eee;
+                background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
+                border-radius: 5px;
+                background-size: 200% 100%;
+                animation: 1.5s shine linear infinite;
+            }
+            .cw-skeleton-avatar { width: 80px; height: 80px; border-radius: 50%; }
+            .cw-skeleton-text { height: 14px; width: 120px; margin-bottom: 8px; }
+            .cw-skeleton-title { height: 22px; width: 100px; margin-bottom: 12px; }
+            .cw-skeleton-badge { width: 60px; height: 22px; border-radius: 6px; }
+
+            @keyframes shine {
+                to { background-position-x: -200%; }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -107,13 +124,47 @@ export function initConfigsAssistant() {
     container.appendChild(profileSection);
 
     async function renderUserProfile() {
+        // Exibe skeleton loader imediatamente
+        profileSection.style.display = "flex";
+        profileSection.innerHTML = `
+            <div class="cw-skeleton cw-skeleton-avatar"></div>
+            <div class="cw-profile-info">
+                <div class="cw-skeleton cw-skeleton-title"></div>
+                <div class="cw-profile-badges">
+                    <div class="cw-skeleton cw-skeleton-badge"></div>
+                    <div class="cw-skeleton cw-skeleton-badge"></div>
+                    <div class="cw-skeleton cw-skeleton-badge"></div>
+                </div>
+                <div class="cw-skeleton cw-skeleton-text" style="margin-top: 8px;"></div>
+            </div>
+        `;
+
         try {
             const data = await getPageData();
             const profile = data.userProfile;
+            const ldap = data.agentEmail ? data.agentEmail.split('@')[0] : "user";
 
-            if (!profile) return;
+            if (!profile) {
+                // Fallback: Se não encontrar no Sheet, mostra apenas o LDAP capturado
+                profileSection.innerHTML = `
+                    <div class="cw-profile-avatar" style="background: #e8eaed; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #5f6368; font-weight: bold;">
+                        ${ldap.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="cw-profile-info">
+                        <h2 class="cw-profile-ldap">@${ldap}</h2>
+                        <div class="cw-profile-badges">
+                            <span class="cw-profile-badge">Consultor</span>
+                            <span class="cw-profile-badge">N/A</span>
+                        </div>
+                        <div style="font-size: 12px; color: ${COLORS.textSub}; margin-top: 4px;">
+                            Perfil não localizado na base de dados.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
 
-            profileSection.style.display = "flex";
+            // Renderização dinâmica com dados reais
             profileSection.innerHTML = `
                 <img src="https://moma-teams-photos.corp.google.com/photos/${profile.ldap}?sz=600&type=PLUS"
                      class="cw-profile-avatar" alt="User Photo"
@@ -121,18 +172,19 @@ export function initConfigsAssistant() {
                 <div class="cw-profile-info">
                     <h2 class="cw-profile-ldap">@${profile.ldap}</h2>
                     <div class="cw-profile-badges">
-                        <span class="cw-profile-badge">${profile.roleCategory}</span>
-                        <span class="cw-profile-badge">${profile.segment}</span>
-                        <span class="cw-profile-badge">${profile.defaultLanguage}</span>
+                        <span class="cw-profile-badge">${profile.roleCategory || 'N/A'}</span>
+                        <span class="cw-profile-badge">${profile.segment || 'N/A'}</span>
+                        <span class="cw-profile-badge">${profile.defaultLanguage || 'N/A'}</span>
                         ${profile.isOverhead ? '<span class="cw-profile-badge overhead">Gestão / Overhead</span>' : ''}
                     </div>
                     <div style="font-size: 12px; color: ${COLORS.textSub}; margin-top: 4px;">
-                        ${profile.role}
+                        ${profile.role || ''}
                     </div>
                 </div>
             `;
         } catch (e) {
             console.warn("Erro ao renderizar perfil:", e);
+            profileSection.style.display = "none";
         }
     }
     renderUserProfile();
