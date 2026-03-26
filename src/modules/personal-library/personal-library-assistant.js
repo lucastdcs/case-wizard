@@ -13,103 +13,169 @@ export function initPersonalLibrary() {
     let editorOverlay = null;
     let currentEditingId = null;
 
-    // --- INJEÇÃO DE ESTILOS GLOBAIS (DNA APPLE/GOOGLE) ---
+    // --- GEMINI ASSETS ---
+    const GEMINI_ASSETS = {
+        tabs: {
+            general: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`,
+            note: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"></path><path d="M15 3v6h6"></path><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="15" y2="17"></line></svg>`,
+            email: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`
+        },
+        actions: {
+            copy: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+            edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
+            delete: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`,
+            add: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`
+        },
+        toolbar: {
+            bold: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>`,
+            italic: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>`,
+            code: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
+            image: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`
+        },
+        empty: `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(26, 115, 232, 0.2)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>`,
+        media: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`
+    };
+
+    // --- INJEÇÃO DE ESTILOS GLOBAIS (GEMINI AURA) ---
     if (!document.getElementById('cw-lib-styles')) {
         const style = document.createElement('style');
         style.id = 'cw-lib-styles';
         style.innerHTML = `
-            .cw-lib-card { transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) !important; }
-            .cw-lib-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.12) !important; border-color: rgba(0, 122, 255, 0.3) !important; }
-            .cw-tactile { transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1); }
-            .cw-tactile:active { transform: scale(0.92) !important; }
-            .cw-toolbar-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s; color: #5F6368; }
-            .cw-toolbar-btn:hover { background: #F1F3F4; color: #007AFF; border-color: #DADCE0; }
-            .cw-toolbar-btn.active { background: #E8F0FE; color: #007AFF; border-color: #007AFF; }
+            @keyframes geminiAura {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+            }
+            @keyframes shimmer {
+                0% { background-position: -200% 0; }
+                100% { background-position: 200% 0; }
+            }
+            .cw-aura-card {
+                transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+                background: rgba(255, 255, 255, 0.7) !important;
+                backdrop-filter: blur(16px) !important;
+                border: 1px solid rgba(255, 255, 255, 0.4) !important;
+                position: relative;
+                z-index: 1;
+            }
+            .cw-aura-card::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: linear-gradient(135deg, rgba(138, 180, 248, 0.15), rgba(197, 138, 249, 0.15), rgba(242, 139, 130, 0.15));
+                background-size: 400% 400%;
+                z-index: -1;
+                opacity: 0;
+                transition: opacity 0.5s ease;
+            }
+            .cw-aura-card:hover {
+                transform: translateY(-6px) scale(1.01);
+                box-shadow: 0 20px 40px rgba(0,0,0,0.08) !important;
+                border-color: rgba(255, 255, 255, 0.8) !important;
+            }
+            .cw-aura-card:hover::before {
+                opacity: 1;
+                animation: geminiAura 8s ease infinite;
+            }
+            .cw-tactile { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+            .cw-tactile:active { transform: scale(0.96) !important; }
+            .cw-toolbar-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s; color: #474747; }
+            .cw-toolbar-btn:hover { background: rgba(0,0,0,0.04); color: #1a73e8; }
+            .cw-toolbar-btn.active { background: rgba(26, 115, 232, 0.1); color: #1a73e8; border-color: rgba(26, 115, 232, 0.2); }
+            .cw-shimmer {
+                background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+                background-size: 200% 100%;
+                animation: shimmer 1.5s infinite;
+            }
         `;
         document.head.appendChild(style);
     }
 
     // --- DESIGN SYSTEM ---
     const COLORS = {
-        bg: "#F0F2F5",
-        surface: "#FFFFFF",
-        primary: "#007AFF",
-        primaryBg: "rgba(0, 122, 255, 0.1)",
-        text: "#1C1C1E",
-        textSub: "#8E8E93",
-        border: "rgba(0, 0, 0, 0.08)",
-        danger: "#FF3B30"
+        bg: "linear-gradient(180deg, #F8FAFD 0%, #EEF2F8 100%)",
+        surface: "rgba(255, 255, 255, 0.85)",
+        glass: "rgba(255, 255, 255, 0.7)",
+        primary: "#1a73e8",
+        primaryLight: "rgba(26, 115, 232, 0.1)",
+        text: "#1f1f1f",
+        textSub: "#474747",
+        border: "rgba(0, 0, 0, 0.06)",
+        danger: "#d93025"
     };
 
     const styles = {
         container: { display: 'flex', flexDirection: 'column', height: '100%', background: COLORS.bg, fontFamily: "'Google Sans', Roboto, sans-serif" },
         
         // Tabs
-        tabHeader: { display: 'flex', padding: '12px 16px 0 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` },
+        tabHeader: { display: 'flex', padding: '16px 24px 0 24px', background: 'transparent', borderBottom: `1px solid ${COLORS.border}`, gap: '8px' },
         tabBtn: { 
-            flex: 1, padding: '12px', textAlign: 'center', cursor: 'pointer', 
-            fontSize: '13px', fontWeight: '500', color: COLORS.textSub, 
-            borderBottom: '3px solid transparent', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', userSelect: 'none'
+            flex: 1, padding: '14px 16px', textAlign: 'center', cursor: 'pointer',
+            fontSize: '14px', fontWeight: '500', color: COLORS.textSub,
+            borderBottom: '3px solid transparent', transition: 'all 0.3s ease', userSelect: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            borderRadius: '12px 12px 0 0'
         },
-        tabActive: { color: COLORS.primary, borderBottomColor: COLORS.primary, fontWeight: '600' },
+        tabActive: { color: COLORS.primary, borderBottomColor: COLORS.primary, fontWeight: '600', background: 'rgba(26, 115, 232, 0.04)' },
 
         // List
-        listContainer: { flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' },
-        emptyState: { padding: '40px 20px', textAlign: 'center', color: '#BDC1C6', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' },
+        listContainer: { flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' },
+        emptyState: { padding: '60px 24px', textAlign: 'center', color: COLORS.textSub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' },
 
         // Card
         card: {
-            background: COLORS.surface, borderRadius: '16px', padding: '16px',
-            border: `1px solid ${COLORS.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            background: COLORS.surface, borderRadius: '24px', padding: '20px',
+            border: `1px solid ${COLORS.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
             transition: 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)', cursor: 'default',
             position: 'relative', overflow: 'hidden'
         },
-        cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' },
-        cardTitle: { fontSize: '14px', fontWeight: '600', color: COLORS.text },
-        cardPreview: { fontSize: '12px', color: COLORS.textSub, lineHeight: '1.5', display: '-webkit-box', webkitLineClamp: '3', webkitBoxOrient: 'vertical', overflow: 'hidden' },
+        cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' },
+        cardTitle: { fontSize: '15px', fontWeight: '600', color: COLORS.text, letterSpacing: '-0.01em' },
+        cardPreview: { fontSize: '13px', color: COLORS.textSub, lineHeight: '1.6', display: '-webkit-box', webkitLineClamp: '3', webkitBoxOrient: 'vertical', overflow: 'hidden' },
         
         // Actions
         cardActions: { 
-            display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px', 
-            paddingTop: '12px', borderTop: `1px dashed ${COLORS.border}` 
+            display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px',
+            paddingTop: '16px', borderTop: `1px solid ${COLORS.border}`
         },
         actionBtn: { 
-            padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', 
-            cursor: 'pointer', border: 'none', background: 'transparent', transition: 'background 0.2s'
+            padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '500',
+            cursor: 'pointer', border: 'none', background: 'transparent', transition: 'all 0.2s',
+            display: 'flex', alignItems: 'center', gap: '6px'
         },
 
         // Floating Action Button (FAB)
         fab: {
-            position: 'absolute', bottom: '24px', right: '24px',
-            width: '56px', height: '56px', borderRadius: '16px',
-            background: COLORS.primary, color: '#FFF',
+            position: 'absolute', bottom: '32px', right: '32px',
+            width: '64px', height: '64px', borderRadius: '20px',
+            background: `linear-gradient(135deg, ${COLORS.primary}, #0059c1)`, color: '#FFF',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(26, 115, 232, 0.4)',
-            cursor: 'pointer', transition: 'transform 0.2s', zIndex: 10
+            boxShadow: '0 8px 24px rgba(26, 115, 232, 0.4)',
+            cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 10
         },
 
         // Editor Overlay
         editorOverlay: {
             position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-            background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(25px) saturate(180%)',
-            webkitBackdropFilter: 'blur(25px) saturate(180%)',
+            background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(30px) saturate(180%)',
+            webkitBackdropFilter: 'blur(30px) saturate(180%)',
             zIndex: 20, transform: 'translateY(100%)',
-            transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
             display: 'flex', flexDirection: 'column'
         },
         editorHeader: {
-            padding: '16px 24px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`,
+            padding: '24px 32px', background: 'transparent', borderBottom: `1px solid ${COLORS.border}`,
             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
         },
-        editorBody: { flex: 1, padding: '24px', overflowY: 'auto' },
+        editorBody: { flex: 1, padding: '32px', overflowY: 'auto' },
         
         // Inputs
-        inputGroup: { marginBottom: '20px' },
-        label: { display: 'block', fontSize: '12px', fontWeight: '700', color: COLORS.textSub, marginBottom: '8px', textTransform: 'uppercase' },
+        inputGroup: { marginBottom: '24px' },
+        label: { display: 'block', fontSize: '13px', fontWeight: '600', color: COLORS.textSub, marginBottom: '10px', letterSpacing: '0.02em' },
         input: {
-            width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${COLORS.border}`,
-            fontSize: '14px', fontFamily: 'inherit', outline: 'none', background: COLORS.surface,
-            boxSizing: 'border-box'
+            width: '100%', padding: '14px 18px', borderRadius: '14px', border: `1px solid ${COLORS.border}`,
+            fontSize: '15px', fontFamily: 'inherit', outline: 'none', background: COLORS.surface,
+            transition: 'all 0.2s ease', boxSizing: 'border-box'
         }
     };
 
@@ -139,14 +205,14 @@ export function initPersonalLibrary() {
     Object.assign(tabHeader.style, styles.tabHeader);
 
     const tabs = [
-        { id: 'general', label: 'Geral', icon: '📋' },
-        { id: 'note', label: 'Notas', icon: '📝' },
-        { id: 'email', label: 'Emails', icon: '📧' }
+        { id: 'general', label: 'Geral', icon: GEMINI_ASSETS.tabs.general },
+        { id: 'note', label: 'Notas', icon: GEMINI_ASSETS.tabs.note },
+        { id: 'email', label: 'Emails', icon: GEMINI_ASSETS.tabs.email }
     ];
 
     tabs.forEach(t => {
         const btn = document.createElement("div");
-        btn.innerHTML = `${t.icon} ${t.label}`;
+        btn.innerHTML = `${t.icon} <span>${t.label}</span>`;
         btn.id = `lib-tab-${t.id}`;
         Object.assign(btn.style, styles.tabBtn);
         if(t.id === currentTab) Object.assign(btn.style, styles.tabActive);
@@ -166,9 +232,9 @@ export function initPersonalLibrary() {
     const fab = document.createElement("div");
     fab.className = "cw-fab cw-tactile";
     Object.assign(fab.style, styles.fab);
-    fab.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
-    fab.onmouseenter = () => fab.style.transform = "scale(1.1)";
-    fab.onmouseleave = () => fab.style.transform = "scale(1)";
+    fab.innerHTML = GEMINI_ASSETS.actions.add;
+    fab.onmouseenter = () => { fab.style.transform = "scale(1.1)"; fab.style.boxShadow = "0 12px 32px rgba(26, 115, 232, 0.5)"; };
+    fab.onmouseleave = () => { fab.style.transform = "scale(1)"; fab.style.boxShadow = "0 8px 24px rgba(26, 115, 232, 0.4)"; };
     fab.onclick = () => openEditor();
     container.appendChild(fab);
 
@@ -195,11 +261,11 @@ export function initPersonalLibrary() {
 
     // Footer do Editor (Save)
     const edFooter = document.createElement("div");
-    edFooter.style.cssText = "padding:16px 24px; border-top:1px solid #DADCE0; background:#FFF; display:flex; justify-content:flex-end;";
+    edFooter.style.cssText = "padding:24px 32px; border-top:1px solid rgba(0,0,0,0.06); background:transparent; display:flex; justify-content:flex-end;";
     
     const saveBtn = document.createElement("button");
     saveBtn.textContent = "Salvar";
-    saveBtn.style.cssText = "padding:10px 24px; background:#1a73e8; color:white; border:none; border-radius:20px; font-weight:600; cursor:pointer; box-shadow:0 2px 5px rgba(26,115,232,0.3);";
+    saveBtn.style.cssText = "padding:12px 32px; background:linear-gradient(135deg, #1a73e8, #0059c1); color:white; border:none; border-radius:14px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(26,115,232,0.3); transition: all 0.2s;";
     saveBtn.onclick = handleSave;
     edFooter.appendChild(saveBtn);
     editorOverlay.appendChild(edFooter);
@@ -241,9 +307,9 @@ export function initPersonalLibrary() {
         if (items.length === 0) {
             listContainer.innerHTML = `
                 <div style="${objectToCss(styles.emptyState)}">
-                    <div style="font-size:32px; opacity:0.5;">📭</div>
-                    <div style="font-weight:500;">Nada aqui ainda.</div>
-                    <div style="font-size:12px;">Clique no + para criar.</div>
+                    <div style="opacity:0.8;">${GEMINI_ASSETS.empty}</div>
+                    <div style="font-weight:600; font-size:16px; color:${COLORS.text};">Nada aqui ainda.</div>
+                    <div style="font-size:14px; opacity:0.7;">Clique no botão de adicionar para começar sua coleção.</div>
                 </div>
             `;
             return;
@@ -251,45 +317,48 @@ export function initPersonalLibrary() {
 
         items.forEach(item => {
             const card = document.createElement("div");
-            card.className = "cw-lib-card";
+            card.className = "cw-aura-card";
             Object.assign(card.style, styles.card);
 
             if (item.isCode) {
                 card.style.borderLeft = `4px solid ${COLORS.primary}`;
-                card.style.background = "rgba(0, 122, 255, 0.02)";
+                card.style.background = "rgba(26, 115, 232, 0.02)";
             }
 
             // Sanitização básica ou processamento para preview
             let previewContent = item.content;
+            let mediaIndicator = "";
             if (item.isRich) {
-                // Remove tags para o preview, exceto imagens que mostramos um placeholder ou pequeno ícone
                 const temp = document.createElement('div');
                 temp.innerHTML = item.content;
                 const hasImages = temp.querySelector('img');
                 previewContent = temp.innerText.substring(0, 150) + (temp.innerText.length > 150 ? '...' : '');
-                if (hasImages) previewContent = "🖼️ [Contém Imagens] " + previewContent;
+                if (hasImages) {
+                    mediaIndicator = `<span style="display:inline-flex; align-items:center; background:rgba(26, 115, 232, 0.1); color:#1a73e8; padding:2px 8px; border-radius:10px; font-size:11px; margin-bottom:8px; font-weight:600;">${GEMINI_ASSETS.media} Media</span>`;
+                }
             }
 
             card.innerHTML = `
                 <div style="${objectToCss(styles.cardHeader)}">
                     <div style="${objectToCss(styles.cardTitle)}">${item.title}</div>
-                    <div style="display:flex; gap:4px;">
-                        ${item.isCode ? '<span style="font-size:10px; background:#F1F3F4; color:#5F6368; padding:2px 6px; border-radius:4px; font-family:monospace;">CODE</span>' : ''}
-                        ${currentTab === 'email' ? '<span style="font-size:10px; background:#E8F0FE; color:#1967D2; padding:2px 6px; border-radius:4px;">TEMPLATE</span>' : ''}
+                    <div style="display:flex; gap:6px;">
+                        ${item.isCode ? `<span style="font-size:10px; background:rgba(0,0,0,0.05); color:#474747; padding:3px 8px; border-radius:6px; font-family:monospace; font-weight:700;">CODE</span>` : ''}
+                        ${currentTab === 'email' ? `<span style="font-size:10px; background:rgba(26, 115, 232, 0.1); color:#1a73e8; padding:3px 8px; border-radius:6px; font-weight:700;">TEMPLATE</span>` : ''}
                     </div>
                 </div>
-                <div style="${objectToCss(styles.cardPreview)}; ${item.isCode ? "font-family:'Roboto Mono', monospace; font-size:11px;" : ""}">${previewContent}</div>
+                ${mediaIndicator}
+                <div style="${objectToCss(styles.cardPreview)}; ${item.isCode ? "font-family:'Roboto Mono', monospace; font-size:12px; background:rgba(0,0,0,0.02); padding:12px; border-radius:12px;" : ""}">${previewContent}</div>
                 <div style="${objectToCss(styles.cardActions)}">
-                    <button class="cw-act-copy cw-tactile" title="Copiar" style="${objectToCss(styles.actionBtn)}; color:#007AFF; display:flex; align-items:center; gap:4px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <button class="cw-act-copy cw-tactile" title="Copiar" style="${objectToCss(styles.actionBtn)}; color:#1a73e8;">
+                        ${GEMINI_ASSETS.actions.copy}
                         <span>Copiar</span>
                     </button>
-                    <button class="cw-act-edit cw-tactile" title="Editar" style="${objectToCss(styles.actionBtn)}; color:#8E8E93; display:flex; align-items:center; gap:4px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    <button class="cw-act-edit cw-tactile" title="Editar" style="${objectToCss(styles.actionBtn)}; color:#474747;">
+                        ${GEMINI_ASSETS.actions.edit}
                         <span>Editar</span>
                     </button>
-                    <button class="cw-act-del cw-tactile" title="Excluir" style="${objectToCss(styles.actionBtn)}; color:#FF3B30; display:flex; align-items:center; gap:4px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    <button class="cw-act-del cw-tactile" title="Excluir" style="${objectToCss(styles.actionBtn)}; color:#d93025;">
+                        ${GEMINI_ASSETS.actions.delete}
                         <span>Excluir</span>
                     </button>
                 </div>
@@ -435,20 +504,20 @@ export function initPersonalLibrary() {
         let input;
         if (options.isRich) {
             const toolbar = document.createElement("div");
-            toolbar.style.cssText = "display:flex; gap:6px; margin-bottom:12px; background:rgba(241, 243, 244, 0.8); padding:6px; border-radius:12px; border:1px solid #DADCE0; backdrop-filter: blur(10px);";
+            toolbar.style.cssText = "display:flex; gap:8px; margin-bottom:14px; background:rgba(255, 255, 255, 0.5); padding:8px; border-radius:14px; border:1px solid rgba(0,0,0,0.06); backdrop-filter: blur(10px); width: fit-content;";
 
             toolbar.innerHTML = `
                 <button type="button" class="cw-toolbar-btn cw-tb-bold cw-tactile" title="Negrito">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
+                    ${GEMINI_ASSETS.toolbar.bold}
                 </button>
                 <button type="button" class="cw-toolbar-btn cw-tb-italic cw-tactile" title="Itálico">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>
+                    ${GEMINI_ASSETS.toolbar.italic}
                 </button>
                 <button type="button" class="cw-toolbar-btn cw-tb-code cw-tactile" title="Formato Código">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                    ${GEMINI_ASSETS.toolbar.code}
                 </button>
                 <button type="button" class="cw-toolbar-btn cw-tb-img cw-tactile" title="Inserir Imagem">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    ${GEMINI_ASSETS.toolbar.image}
                 </button>
             `;
 
