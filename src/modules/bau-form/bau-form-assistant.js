@@ -132,8 +132,11 @@ export function initBAUForm() {
             <input type="text" name="advName" class="bau-input" placeholder="Nome do Anunciante" required>
         </div>
         <div class="bau-dynamic-input" id="wrapper-cid">
-            <label class="bau-label">CID</label>
+            <label class="bau-label" data-tooltip="Use o formato 000-000-0000 ou 10 dígitos">CID</label>
             <input type="text" id="bau-cid-input" name="cid" class="bau-input" placeholder="000-000-0000" required>
+            <div id="bau-cid-error" class="bau-cid-error-hint" style="display: none;">
+                Formato de CID incorreto
+            </div>
         </div>
         <div class="bau-dynamic-input" id="wrapper-amName">
             <label class="bau-label">Account Manager (AM)</label>
@@ -168,7 +171,7 @@ export function initBAUForm() {
         <label class="bau-label">O que deve ser feito em BAU</label>
         <textarea name="reason" class="bau-textarea" placeholder="Descreva as ações esperadas..." style="min-height: 80px;" required></textarea>
 
-        <label class="bau-label">Tasks para BAU (Selecione 1 ou mais)</label>
+        <label class="bau-label" data-tooltip="Selecione os tipos de implementação técnica">Tasks para BAU (Selecione 1 ou mais)</label>
         <div class="bau-tasks-grid" id="bau-tasks-container">
             ${tasks.map(task => `
                 <label class="bau-task-item">
@@ -293,10 +296,29 @@ export function initBAUForm() {
         }
     }
 
+    function renderSkeleton() {
+        const listEl = popup.querySelector('#bau-case-list-container');
+        const metricsEl = popup.querySelector('#bau-dashboard-metrics');
+        if (metricsEl) {
+            metricsEl.innerHTML = `
+                <div class="bau-skeleton-metric"><div class="bau-shimmer"></div></div>
+                <div class="bau-skeleton-metric"><div class="bau-shimmer"></div></div>
+            `;
+        }
+        if (!listEl) return;
+        listEl.innerHTML = Array(3).fill(0).map(() => `
+            <div class="bau-skeleton-card">
+                <div class="bau-shimmer"></div>
+            </div>
+        `).join('');
+    }
+
     async function loadDashboardData() {
         const listEl = popup.querySelector('#bau-case-list-container');
         if (!listEl) return;
-        listEl.innerHTML = '<p style="padding: 24px; text-align: center; color: #5f6368;">Sincronizando casos...</p>';
+
+        renderSkeleton();
+
         try {
             const cases = await readAgentBAU();
             renderDashboard(cases);
@@ -354,19 +376,49 @@ export function initBAUForm() {
             const statusData = getStatusData(c.status);
             const dateStr = c.date ? new Date(c.date).toLocaleDateString('pt-BR') : '';
 
+            // SLA / Urgency Logic
+            let slaBadge = '';
+            let pulseClass = '';
+            if (c.status === 'PENDING_TL_CREATION' && c.availability_1) {
+                const availDate = new Date(c.availability_1);
+                const now = new Date();
+                if (availDate <= now || (availDate - now) < 3600000 * 2) { // Vencido ou < 2h
+                    slaBadge = `<span class="bau-sla-badge">Urgente</span>`;
+                    pulseClass = 'bau-pulse-attention';
+                }
+            }
+
+            const reasonDisplay = (c.reason && c.reason.trim()) ? c.reason : "Nenhum contexto adicional fornecido pelo agente.";
+
+            const cidRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
+            const isValidCIDCard = cidRegex.test(c.cid || '');
+            const hasDataError = !c.caseId || c.caseId === 'N/A' || !isValidCIDCard;
+
+            if (hasDataError && c.status === 'PENDING_TL_CREATION') {
+                pulseClass = 'bau-pulse-attention';
+            }
+
             return `
-                <li class="bau-case-card ${statusData.aura}" data-case-id="${c.id}">
+                <li class="bau-case-card ${statusData.aura} ${pulseClass}" data-case-id="${c.id}">
                     <div class="bau-case-main">
                         <div class="bau-case-icon">${ICONS.folder}</div>
                         <div class="bau-case-info">
                             <div class="bau-case-header">
                                 <h3 class="bau-case-title">${c.advName || 'Nome indefinido'}</h3>
+                                ${slaBadge}
                                 <span class="bau-case-date">${dateStr}</span>
                             </div>
-                            <p class="bau-case-details">Case: ${c.caseId || 'N/A'} • CID: ${c.cid || 'N/A'} • Motivo: ${c.reason || 'N/A'}</p>
+                            <p class="bau-case-details">
+                                <span data-tooltip="Customer ID do Anunciante">Case: ${c.caseId || 'N/A'}</span> •
+                                <span data-tooltip="CID do Anunciante (Formato: 000-000-0000)" class="${!isValidCIDCard ? 'bau-error-text' : ''}">CID: ${c.cid || 'N/A'}</span> •
+                                <span data-tooltip="O que deve ser feito em BAU">Motivo: ${reasonDisplay}</span>
+                            </p>
+                            ${hasDataError ? `<div class="bau-data-error-hint">${!c.caseId ? 'Dados Incompletos' : 'CID Inválido'} - Contate o Suporte</div>` : ''}
                         </div>
                     </div>
-                    <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                        <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
+                    </div>
                 </li>
             `;
         }).join('');
@@ -392,6 +444,25 @@ export function initBAUForm() {
     function validateStep(step) {
         const stepEl = popup.querySelector(`#bau-step-${step}`);
         if (!stepEl) return true;
+
+        if (step === 1) {
+            const cidInput = popup.querySelector('#bau-cid-input');
+            const cidValue = cidInput.value.trim();
+            const cidRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
+            const isValidCID = cidRegex.test(cidValue);
+            const errorHint = popup.querySelector('#bau-cid-error');
+
+            if (!isValidCID && cidInput.parentElement.style.display !== 'none') {
+                cidInput.classList.add('invalid-cid');
+                if (errorHint) errorHint.style.display = 'flex';
+                showToast("Erro: O formato do CID é inválido.", { error: true });
+                return false;
+            } else {
+                cidInput.classList.remove('invalid-cid');
+                if (errorHint) errorHint.style.display = 'none';
+            }
+        }
+
         if (step === 2) {
             if (!form.querySelector('textarea[name="reason"]').value.trim()) {
                 showToast("Erro: A descrição do que deve ser feito é obrigatória.", { error: true });
@@ -506,6 +577,26 @@ export function initBAUForm() {
         e.preventDefault();
         fetchAndInsertSpeakeasyId("bau-context-se-id-input");
     };
+
+    // CID Validation Real-time
+    const cidInput = popup.querySelector('#bau-cid-input');
+    if (cidInput) {
+        cidInput.addEventListener('input', () => {
+            const cidValue = cidInput.value.trim();
+            const cidRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
+            const isValidCID = cidRegex.test(cidValue);
+            const errorHint = popup.querySelector('#bau-cid-error');
+
+            if (!isValidCID && cidValue.length > 0) {
+                cidInput.classList.add('invalid-cid');
+                if (errorHint) errorHint.style.display = 'flex';
+            } else {
+                cidInput.classList.remove('invalid-cid');
+                if (errorHint) errorHint.style.display = 'none';
+            }
+        });
+    }
+
 
     function renderConfirmation() {
         const formData = new FormData(form);
