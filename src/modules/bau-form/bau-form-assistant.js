@@ -15,7 +15,8 @@ const ICONS = {
     send: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`,
     check: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
     folder: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`,
-    empty: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.44 2s2.75-.81 3.44-2H19v3zm0-5h-4.99c0 1.1-.9 2-2 2s-2-.9-2-2H5V5h14v9z"/></svg>`
+    empty: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.44 2s2.75-.81 3.44-2H19v3zm0-5h-4.99c0 1.1-.9 2-2 2s-2-.9-2-2H5V5h14v9z"/></svg>`,
+    refresh: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`
 };
 
 export function initBAUForm() {
@@ -40,6 +41,28 @@ export function initBAUForm() {
         {},
         () => toggleVisibility()
     );
+
+    // ADICIONAR BOTÃO REFRESH NO HEADER
+    const headerActions = header.querySelector('div:last-child');
+    if (headerActions) {
+        const refreshBtn = document.createElement('div');
+        refreshBtn.className = 'bau-refresh-btn no-drag';
+        refreshBtn.innerHTML = ICONS.refresh;
+        refreshBtn.title = "Atualizar Dashboard";
+
+        refreshBtn.onclick = async (e) => {
+            e.stopPropagation();
+            if (refreshBtn.classList.contains('spinning')) return;
+
+            refreshBtn.classList.add('spinning');
+            SoundManager.playClick();
+            await loadDashboardData();
+            setTimeout(() => refreshBtn.classList.remove('spinning'), 1000);
+        };
+
+        headerActions.insertBefore(refreshBtn, headerActions.firstChild);
+    }
+
     popup.appendChild(header);
 
     const viewContainer = document.createElement('div');
@@ -273,7 +296,7 @@ export function initBAUForm() {
     async function loadDashboardData() {
         const listEl = popup.querySelector('#bau-case-list-container');
         if (!listEl) return;
-        listEl.innerHTML = '<p>Carregando casos...</p>';
+        listEl.innerHTML = '<p style="padding: 24px; text-align: center; color: #5f6368;">Sincronizando casos...</p>';
         try {
             const cases = await readAgentBAU();
             renderDashboard(cases);
@@ -290,11 +313,11 @@ export function initBAUForm() {
         // Status Mapping
         const getStatusData = (status) => {
             switch(status) {
-                case 'PENDING_TL_CREATION': return { text: "Aguardando TL", class: "status-yellow" };
-                case 'CREATED': return { text: "Aprovado / Criado", class: "status-green" };
-                case 'DISCARDED': return { text: "Descartado pelo TL", class: "status-red" };
-                case 'CANCELED_BY_AGENT': return { text: "Cancelado", class: "status-gray" };
-                default: return { text: status || "Pendente", class: "status-gray" };
+                case 'PENDING_TL_CREATION': return { text: "Aguardando TL", class: "status-yellow", aura: "status-yellow-aura" };
+                case 'CREATED': return { text: "Aprovado / Criado", class: "status-green", aura: "status-green-aura" };
+                case 'DISCARDED': return { text: "Descartado pelo TL", class: "status-red", aura: "status-red-aura" };
+                case 'CANCELED_BY_AGENT': return { text: "Cancelado", class: "status-gray", aura: "" };
+                default: return { text: status || "Pendente", class: "status-gray", aura: "" };
             }
         };
 
@@ -332,7 +355,7 @@ export function initBAUForm() {
             const dateStr = c.date ? new Date(c.date).toLocaleDateString('pt-BR') : '';
 
             return `
-                <li class="bau-case-card" data-case-id="${c.id}">
+                <li class="bau-case-card ${statusData.aura}" data-case-id="${c.id}">
                     <div class="bau-case-main">
                         <div class="bau-case-icon">${ICONS.folder}</div>
                         <div class="bau-case-info">

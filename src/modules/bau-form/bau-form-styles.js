@@ -64,47 +64,34 @@ export const injectStyles = () => {
       flex: 1;
       position: relative;
       min-height: 400px;
-      overflow-y: auto; /* Adiciona scroll quando necessário */
-
-      /* Estilização suave do scrollbar */
-      scrollbar-width: thin;
-      scrollbar-color: #DADCE0 #f1f3f4;
-    }
-    .bau-view-container::-webkit-scrollbar {
-      width: 8px;
-    }
-    .bau-view-container::-webkit-scrollbar-track {
-      background: #f1f3f4;
-      border-radius: 4px;
-    }
-    .bau-view-container::-webkit-scrollbar-thumb {
-      background-color: #DADCE0;
-      border-radius: 4px;
-      border: 2px solid #f1f3f4;
-    }
-    .bau-view-container::-webkit-scrollbar-thumb:hover {
-      background-color: #5F6368;
+      overflow: hidden;
     }
 
-    .bau-view { display: none; flex-direction: column; height: 100%; padding: 24px; animation: bauFadeIn 0.3s ease; }
+    .bau-view {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      padding: 24px;
+      animation: bauFadeIn 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
     .bau-view.active { display: flex; }
     @keyframes bauFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
     /* --- 2. FEEDBACK TÁTIL E MICRO-INTERAÇÕES --- */
 
-    /* Transição padrão para elementos interativos */
     .bau-select, .bau-textarea, .bau-input, .bau-task-item, .bau-btn-primary, .bau-btn-secondary, .bau-back-btn {
       transition: all 0.2s ease;
     }
     
-    /* Foco para Inputs, Selects e Textareas */
     .bau-select:focus, .bau-textarea:focus, .bau-input:focus {
       border-color: #1a73e8;
       box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
       outline: none;
     }
 
-    /* Hover e Feedback para Cards de Tasks */
     .bau-task-item {
       cursor: pointer;
       background: #f8f9fa;
@@ -127,13 +114,11 @@ export const injectStyles = () => {
       font-weight: 600;
     }
 
-    /* Feedback de clique para botões */
     .bau-btn-primary:active, .bau-btn-submit:active, .bau-btn-secondary:active {
         transform: scale(0.98);
         filter: brightness(0.95);
     }
 
-    /* Estilos para botões desabilitados */
     .bau-btn-primary:disabled, .bau-btn-submit:disabled, .bau-btn-secondary:disabled {
         cursor: not-allowed;
         opacity: 0.6;
@@ -145,7 +130,30 @@ export const injectStyles = () => {
 
     /* --- 3. ESTILOS GERAIS E CLASSES ADICIONAIS --- */
     
-    .bau-dashboard-content { flex: 1; }
+    .bau-dashboard-content {
+      flex: 1;
+      overflow-y: auto;
+      margin: -24px;
+      padding: 24px;
+      padding-bottom: 100px;
+
+      scrollbar-width: thin;
+      scrollbar-color: #DADCE0 transparent;
+    }
+    .bau-dashboard-content::-webkit-scrollbar {
+      width: 8px;
+    }
+    .bau-dashboard-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .bau-dashboard-content::-webkit-scrollbar-thumb {
+      background-color: #DADCE0;
+      border-radius: 4px;
+      border: 2px solid #ffffff;
+    }
+    .bau-dashboard-content::-webkit-scrollbar-thumb:hover {
+      background-color: #bdc1c6;
+    }
 
     .bau-dashboard-metrics {
       display: flex;
@@ -176,25 +184,53 @@ export const injectStyles = () => {
     }
 
     .bau-case-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+
+    /* GEMINI AURA - CASE CARDS */
     .bau-case-card {
-      background: rgba(255, 255, 255, 0.65);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: linear-gradient(90deg,
+        rgba(66, 133, 244, 0.05) 0%,
+        rgba(161, 75, 255, 0.05) 50%,
+        rgba(244, 180, 0, 0.05) 100%);
+      border: 1px solid rgba(0, 0, 0, 0.06);
       border-radius: 12px;
       padding: 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+      position: relative;
+      overflow: hidden;
+      cursor: default;
     }
+
+    /* Aura Status Overrides */
+    .bau-case-card.status-yellow-aura { background: linear-gradient(90deg, rgba(255, 252, 240, 0.8) 0%, rgba(255, 247, 224, 0.8) 100%); border-color: rgba(249, 171, 0, 0.15); }
+    .bau-case-card.status-green-aura { background: linear-gradient(90deg, rgba(246, 251, 247, 0.8) 0%, rgba(230, 244, 234, 0.8) 100%); border-color: rgba(30, 142, 62, 0.15); }
+    .bau-case-card.status-red-aura { background: linear-gradient(90deg, rgba(254, 247, 246, 0.8) 0%, rgba(252, 232, 230, 0.8) 100%); border-color: rgba(217, 48, 37, 0.15); }
+
     .bau-case-card:hover {
-      background: rgba(255, 255, 255, 0.95);
-      box-shadow: 0 8px 30px rgba(26, 115, 232, 0.12), 0 0 15px rgba(161, 75, 255, 0.08);
-      transform: translateY(-3px);
-      border-color: rgba(255, 255, 255, 0.8);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+      border-color: rgba(26, 115, 232, 0.4);
+      background: linear-gradient(90deg,
+        rgba(66, 133, 244, 0.1) 0%,
+        rgba(161, 75, 255, 0.1) 50%,
+        rgba(244, 180, 0, 0.1) 100%);
     }
+
+    .bau-case-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.8s ease;
+      pointer-events: none;
+    }
+    .bau-case-card:hover::after {
+      transform: translateX(100%);
+    }
+
     .bau-case-main { display: flex; align-items: flex-start; gap: 12px; }
     .bau-case-icon { color: #5f6368; margin-top: 2px; }
     .bau-case-info { display: flex; flex-direction: column; gap: 4px; }
@@ -209,11 +245,14 @@ export const injectStyles = () => {
       padding: 4px 12px;
       border-radius: 100px;
       white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      position: relative;
+      z-index: 2;
     }
-    .bau-case-status-badge.status-yellow { background: #fef7e0; color: #b06000; }
-    .bau-case-status-badge.status-green { background: #e6f4ea; color: #1e8e3e; }
-    .bau-case-status-badge.status-red { background: #fce8e6; color: #d93025; }
-    .bau-case-status-badge.status-gray { background: #f1f3f4; color: #5f6368; }
+    .bau-case-status-badge.status-yellow { background: #fff1c1; color: #724c00; }
+    .bau-case-status-badge.status-green { background: #ceead6; color: #0d652d; }
+    .bau-case-status-badge.status-red { background: #fad2cf; color: #a50e0e; }
+    .bau-case-status-badge.status-gray { background: #e8eaed; color: #3c4043; }
 
     .bau-empty-state {
       display: flex;
@@ -227,7 +266,32 @@ export const injectStyles = () => {
     .bau-empty-state svg { margin-bottom: 16px; opacity: 0.5; }
     .bau-empty-title { font-size: 16px; font-weight: 600; color: #5f6368; margin: 0 0 4px 0; }
     .bau-empty-subtitle { font-size: 13px; margin: 0; }
-    .bau-dashboard-fab { position: absolute; bottom: 24px; right: 24px; background: #1a73e8; color: #ffffff; border: none; border-radius: 100px; padding: 12px 20px; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); transition: all 0.2s ease; }
+
+    /* STICKY FAB - NOVO CASO */
+    .bau-dashboard-fab {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      background: #1a73e8;
+      color: #ffffff;
+      border: none;
+      border-radius: 100px;
+      padding: 14px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(26,115,232,0.4);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 10;
+    }
+    .bau-dashboard-fab:hover {
+      background: #1557b0;
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(26,115,232,0.5);
+    }
     .bau-dashboard-fab:active { transform: scale(0.98); }
 
     .bau-view-header { margin-bottom: 20px; }
@@ -320,7 +384,7 @@ export const injectStyles = () => {
     .bau-dynamic-inputs-container {
       display: flex;
       flex-direction: column;
-      gap: 0; /* Gap is handled by label margins */
+      gap: 0;
       margin-bottom: 20px;
     }
 
@@ -411,7 +475,6 @@ export const injectStyles = () => {
     .bau-success-content { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 40px 20px; }
     .bau-success-icon { color: #1e8e3e; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; }
 
-    /* --- 4. UTILITIES PARA O REFACTOR --- */
     .bau-mt-md { margin-top: 20px; }
     .bau-mt-lg { margin-top: 24px; }
     .bau-relative { position: relative; }
@@ -508,6 +571,30 @@ export const injectStyles = () => {
       font-family: inherit;
       cursor: pointer;
       background-color: #ffffff;
+    }
+
+    /* REFRESH BTN ACTIONS */
+    .bau-refresh-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      cursor: pointer;
+      color: #bdc1c6;
+      transition: all 0.2s ease;
+    }
+    .bau-refresh-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+    .bau-refresh-btn.spinning svg {
+      animation: cw-spin 1s linear infinite;
+    }
+    @keyframes cw-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
   `;
   document.head.appendChild(style);
