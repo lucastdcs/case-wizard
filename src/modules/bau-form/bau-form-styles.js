@@ -135,13 +135,14 @@ export const injectStyles = () => {
       overflow-y: auto;
       margin: -24px;
       padding: 24px;
-      padding-bottom: 100px;
+      padding-bottom: 120px;
+      scroll-behavior: smooth;
 
       scrollbar-width: thin;
       scrollbar-color: #DADCE0 transparent;
     }
     .bau-dashboard-content::-webkit-scrollbar {
-      width: 8px;
+      width: 6px;
     }
     .bau-dashboard-content::-webkit-scrollbar-track {
       background: transparent;
@@ -595,6 +596,124 @@ export const injectStyles = () => {
     @keyframes cw-spin {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
+    }
+
+    /* --- 4. TOOLTIPS (Gemini Style) --- */
+    [data-tooltip] {
+        position: relative;
+    }
+    [data-tooltip]::before {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px 12px;
+        background: rgba(32, 33, 36, 0.9);
+        backdrop-filter: blur(8px);
+        color: #ffffff;
+        font-size: 11px;
+        border-radius: 6px;
+        white-space: normal;
+        width: 180px;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        pointer-events: none;
+        text-align: center;
+    }
+    [data-tooltip]:hover::before {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(-5px);
+    }
+
+    /* --- 5. SKELETON SCREEN & SHIMMER --- */
+    .bau-skeleton-metric {
+        flex: 1;
+        background: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        height: 60px;
+        position: relative;
+        overflow: hidden;
+    }
+    .bau-skeleton-card {
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        height: 80px;
+        position: relative;
+        overflow: hidden;
+    }
+    .bau-shimmer {
+        width: 100%;
+        height: 100%;
+        background: #f6f7f8;
+        background-image: linear-gradient(90deg, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+        background-repeat: no-repeat;
+        background-size: 800px 100%;
+        display: block;
+        animation: shimmer 1.5s linear infinite forwards;
+    }
+    @keyframes shimmer {
+        0% { background-position: -468px 0; }
+        100% { background-position: 468px 0; }
+    }
+
+
+    /* --- 7. PULSE ATTENTION --- */
+    .bau-pulse-attention {
+        animation: bau-pulse-border 2s infinite;
+    }
+    @keyframes bau-pulse-border {
+        0% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(217, 48, 37, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0); }
+    }
+
+    /* --- 8. CID VALIDATION FEEDBACK --- */
+    .bau-input.invalid-cid {
+        border-color: #d93025 !important;
+        background-color: #fce8e6 !important;
+    }
+    .bau-cid-error-hint {
+        color: #d93025;
+        font-size: 11px;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 600;
+    }
+
+    /* --- 9. SLA/URGENCY BADGE --- */
+    .bau-sla-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        background: #fce8e6;
+        color: #d93025;
+        border: 1px solid rgba(217, 48, 37, 0.2);
+        margin-left: 8px;
+    }
+
+
+    .bau-data-error-hint {
+        color: #d93025;
+        font-size: 11px;
+        margin-top: 4px;
+        font-weight: 600;
+        text-align: right;
     }
   `;
   document.head.appendChild(style);

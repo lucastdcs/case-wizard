@@ -99,16 +99,16 @@ export const DataService = {
 
     _performOp: async (op, params) => {
         try {
-            console.log(`📤 Executando ${op}...`, params);
+            console.log(`Executando ${op}...`, params);
             const response = await jsonpFetch(op, params);
             if (response && response.status === 'success') {
-                console.log("✅ Sucesso:", op);
+                console.log("Sucesso:", op);
                 return true; // Mantido true para não quebrar a lógica antiga do broadcast
             }
-            console.warn("⚠️ Falha:", response);
+            console.warn("Falha:", response);
             return false;
         } catch (e) {
-            console.error("❌ Erro JSONP:", e);
+            console.error("Erro JSONP:", e);
             return false;
         }
     },
@@ -155,16 +155,16 @@ sendBAUEscalation: async (payload, userEmail) => {
             date: new Date().toISOString()
         };
         try {
-            console.log(`📤 Executando create_bau...`, fullPayload);
+            console.log(`Executando create_bau...`, fullPayload);
             const response = await jsonpFetch('create_bau', fullPayload);
             if (response && response.status === 'success') {
-                console.log("✅ Sucesso: create_bau");
+                console.log("Sucesso: create_bau");
                 return response;
             }
             // AGORA SIM ELE VAI MOSTRAR O ERRO REAL DO APPS SCRIPT:
             throw new Error(response?.error || response?.message || "Falha na operação BAU");
         } catch (e) {
-            console.error("❌ Erro JSONP (BAU):", e);
+            console.error("Erro JSONP (BAU):", e);
             throw e;
         }
     },
@@ -172,12 +172,12 @@ sendBAUEscalation: async (payload, userEmail) => {
     readAgentBAU: async () => {
         const agentEmail = getAgentEmail();
         if (!agentEmail) {
-            console.warn("⚠️ Email não encontrado. Não foi possível buscar casos BAU.");
+            console.warn("Email não encontrado. Não foi possível buscar casos BAU.");
             return [];
         }
         
         try {
-            console.log("🔍 Buscando casos BAU para:", agentEmail);
+            console.log("Buscando casos BAU para:", agentEmail);
             const response = await jsonpFetch('read_agent_bau', { user: agentEmail });
             
             if (response && response.status === 'success') {
@@ -185,8 +185,25 @@ sendBAUEscalation: async (payload, userEmail) => {
             }
             return [];
         } catch (e) {
-            console.error("❌ Erro ao buscar casos BAU:", e);
+            console.error("Erro ao buscar casos BAU:", e);
             return [];
+        }
+    },
+
+    updateBAUStatus: async (id, status, extra = {}) => {
+        const agentEmail = getAgentEmail();
+        try {
+            console.log(`Atualizando status BAU ${id} para ${status}...`);
+            const response = await jsonpFetch('update_bau_status', {
+                id,
+                status,
+                user: agentEmail,
+                ...extra
+            });
+            return response && response.status === 'success';
+        } catch (e) {
+            console.error("Erro ao atualizar status BAU:", e);
+            return false;
         }
     },
 
@@ -195,7 +212,7 @@ sendBAUEscalation: async (payload, userEmail) => {
     // ==========================================
     fetchUserProfile: async (ldap) => {
         try {
-            console.log(`🔍 Buscando perfil para: ${ldap}`);
+            console.log(`Buscando perfil para: ${ldap}`);
             const response = await jsonpFetch('people');
 
             if (response && response.status === 'success' && response.people) {
@@ -213,7 +230,7 @@ sendBAUEscalation: async (payload, userEmail) => {
             }
             return null;
         } catch (e) {
-            console.error("❌ Erro ao buscar perfil:", e);
+            console.error("Erro ao buscar perfil:", e);
             return null;
         }
     }
@@ -221,4 +238,5 @@ sendBAUEscalation: async (payload, userEmail) => {
 
 export const sendBAUEscalation = DataService.sendBAUEscalation;
 export const readAgentBAU = DataService.readAgentBAU;
+export const updateBAUStatus = DataService.updateBAUStatus;
 export const fetchUserProfile = DataService.fetchUserProfile;
