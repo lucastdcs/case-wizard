@@ -191,30 +191,31 @@ sendBAUEscalation: async (payload, userEmail) => {
     },
 
     // ==========================================
-    // 5. USER PROFILE SYSTEM (Mock)
+    // 5. USER PROFILE SYSTEM (Dynamic)
     // ==========================================
     fetchUserProfile: async (ldap) => {
-        // TODO: Conectar com API real no futuro
-        return new Promise((resolve) => {
-            const role = "Webtech Senior Manager";
-            const roleCategory = "Senior Manager";
-            const segment = "Staff";
+        try {
+            console.log(`🔍 Buscando perfil para: ${ldap}`);
+            const response = await jsonpFetch('people');
 
-            // Lógica computada: Manager, Lead, TL, Staff
-            const overheadRoles = ["Manager", "Lead", "TL", "Staff"];
-            const isOverhead = overheadRoles.some(r => roleCategory.includes(r));
+            if (response && response.status === 'success' && response.people) {
+                const user = response.people.find(p => p.ldap.toLowerCase() === ldap.toLowerCase());
 
-            const mockProfile = {
-                ldap: ldap,
-                role: role,
-                roleCategory: roleCategory,
-                segment: segment,
-                defaultLanguage: "PT-BR",
-                isOverhead: isOverhead
-            };
+                if (user) {
+                    const overheadRoles = ["Manager", "Lead", "TL", "Staff"];
+                    const isOverhead = overheadRoles.some(r => user.roleCategory.includes(r));
 
-            resolve(mockProfile);
-        });
+                    return {
+                        ...user,
+                        isOverhead: isOverhead
+                    };
+                }
+            }
+            return null;
+        } catch (e) {
+            console.error("❌ Erro ao buscar perfil:", e);
+            return null;
+        }
     }
 };
 
