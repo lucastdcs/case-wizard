@@ -141,7 +141,7 @@ export function initBAUForm() {
     const header = createStandardHeader(
         popup,
         "BAU Central",
-        "v2.1.0",
+        "v2.2.0",
         "Dashboard de Casos BAU",
         {},
         () => toggleVisibility()
@@ -173,8 +173,6 @@ export function initBAUForm() {
     viewContainer.className = 'bau-view-container';
     popup.appendChild(viewContainer);
 
-    // --- VIEW 1: DASHBOARD ---
-    
     const dashboardView = document.createElement('div');
     dashboardView.id = 'bau-view-dashboard';
     dashboardView.className = 'bau-view active';
@@ -190,8 +188,6 @@ export function initBAUForm() {
     `;
     viewContainer.appendChild(dashboardView);
 
-    // --- VIEW 2: FORM ---
-    
     const formView = document.createElement('div');
     formView.id = 'bau-view-form';
     formView.className = 'bau-view';
@@ -218,7 +214,6 @@ export function initBAUForm() {
     form.id = "bau-escalation-form";
     formUiContainer.appendChild(form);
     
-    // --- DYNAMIC FORM GENERATION ---
     FORM_CONFIG.steps.forEach(stepConfig => {
         const stepEl = document.createElement('div');
         stepEl.className = 'bau-step';
@@ -245,12 +240,16 @@ export function initBAUForm() {
                 stepConfig.fields.forEach(fieldConfig => {
                     fieldsContainer.appendChild(createField(fieldConfig));
                 });
-                 // Add static error hint for CID
-                const cidWrapper = card.querySelector('#wrapper-cid');
-                if(cidWrapper) {
-                     cidWrapper.innerHTML += `<div id="bau-cid-error" class="bau-cid-error-hint" style="display: none;">Formato de CID incorreto</div>`;
-                }
 
+                const cidWrapper = card.querySelector('#wrapper-cid');
+                if (cidWrapper) {
+                    const errorHint = document.createElement('div');
+                    errorHint.id = 'bau-cid-error';
+                    errorHint.className = 'bau-cid-error-hint';
+                    errorHint.style.display = 'none';
+                    errorHint.textContent = 'Formato de CID incorreto';
+                    cidWrapper.appendChild(errorHint);
+                }
             } else {
                  stepConfig.fields.forEach(fieldConfig => {
                     card.appendChild(createField(fieldConfig));
@@ -261,9 +260,6 @@ export function initBAUForm() {
         form.appendChild(stepEl);
     });
 
-
-    // --- FOOTER & NAVIGATION ---
-    
     const footer = document.createElement("div");
     footer.className = "bau-footer";
 
@@ -292,8 +288,6 @@ export function initBAUForm() {
 
     viewContainer.appendChild(formView);
 
-    // --- VIEW 3: SUCCESS ---
-    
     const successView = document.createElement('div');
     successView.id = 'bau-view-success';
     successView.className = 'bau-view';
@@ -345,7 +339,7 @@ export function initBAUForm() {
     async function loadDashboardData() {
         const listEl = popup.querySelector('#bau-case-list-container');
         const metricsEl = popup.querySelector('#bau-dashboard-metrics');
-        if (!listEl) return;
+        if (!listEl || !metricsEl) return;
 
         renderSkeleton();
 
@@ -370,10 +364,7 @@ export function initBAUForm() {
                     </button>
                 </div>
             `;
-            const retryBtn = listEl.querySelector('#bau-retry-btn');
-            if (retryBtn) {
-                retryBtn.onclick = () => loadDashboardData();
-            }
+            popup.querySelector('#bau-retry-btn')?.addEventListener('click', () => loadDashboardData());
             showToast("Erro ao carregar Dashboard. Verifique sua conexão.", { error: true });
         }
     }
@@ -443,7 +434,7 @@ export function initBAUForm() {
         const metricsEl = popup.querySelector('#bau-dashboard-metrics');
         if (!listEl || !metricsEl) return;
         
-        const safeCases = Array.isArray(cases) ? cases : [];
+        const safeCases = Array.isArray(cases) ? cases.filter(Boolean) : [];
 
         if (safeCases.length === 0) {
             metricsEl.innerHTML = '';
@@ -457,8 +448,8 @@ export function initBAUForm() {
             return;
         }
 
-        const pendingCount = safeCases.filter(c => c?.status === 'PENDING_TL_CREATION').length;
-        const createdCount = safeCases.filter(c => c?.status === 'CREATED').length;
+        const pendingCount = safeCases.filter(c => c.status === 'PENDING_TL_CREATION').length;
+        const createdCount = safeCases.filter(c => c.status === 'CREATED').length;
 
         metricsEl.innerHTML = `
             <div class="bau-metric-card">
@@ -475,9 +466,7 @@ export function initBAUForm() {
         const olderCases = safeCases.slice(5);
 
         recentCases.forEach(caseItem => {
-            if (caseItem) {
-                listEl.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
-            }
+            listEl.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
         });
 
         if (olderCases.length > 0) {
@@ -495,16 +484,13 @@ export function initBAUForm() {
                 olderCasesList.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
             });
 
-            toggleButton.onclick = () => {
+            toggleButton.addEventListener('click', () => {
                 const isHidden = olderCasesList.style.display === 'none';
                 olderCasesList.style.display = isHidden ? 'block' : 'none';
                 toggleButton.classList.toggle('expanded', isHidden);
-                const text = toggleButton.querySelector('span');
-                if (text) {
-                    text.textContent = isHidden ? 'Esconder casos mais antigos' : `Mostrar ${olderCases.length} casos mais antigos`;
-                }
+                toggleButton.querySelector('span').textContent = isHidden ? 'Esconder casos mais antigos' : `Mostrar ${olderCases.length} casos mais antigos`;
                 SoundManager.playClick();
-            };
+            });
 
             accordionContainer.appendChild(toggleButton);
             accordionContainer.appendChild(olderCasesList);
@@ -534,18 +520,44 @@ export function initBAUForm() {
         if (!stepConfig || !stepConfig.fields) return true;
 
         for (const fieldConfig of stepConfig.fields) {
-             if (fieldConfig.required) {
+            if (fieldConfig.validation) {
+                const input = form.querySelector(`[name="${fieldConfig.name}"]`);
+                if (input && input.value.trim()) {
+                    const regex = new RegExp(fieldConfig.validation.regex);
+                    if (!regex.test(input.value.trim())) {
+                        showToast(`Erro: ${fieldConfig.validation.error}`, { error: true });
+                        input.classList.add('invalid-cid');
+                        const errorHint = form.querySelector('#bau-cid-error');
+                        if (errorHint) errorHint.style.display = 'flex';
+                        return false;
+                    } else {
+                        input.classList.remove('invalid-cid');
+                        const errorHint = form.querySelector('#bau-cid-error');
+                        if (errorHint) errorHint.style.display = 'none';
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+     function validateRequiredFields(step) {
+        const stepConfig = FORM_CONFIG.steps.find(s => s.id === step);
+        if (!stepConfig || !stepConfig.fields) return true;
+
+        for (const fieldConfig of stepConfig.fields) {
+            if (fieldConfig.required) {
                 if (fieldConfig.type === 'checkbox-grid') {
                     if (!form.querySelector(`input[name="${fieldConfig.name}"]:checked`)) {
                         showToast(`Erro: Selecione pelo menos uma opção para "${fieldConfig.label}".`, { error: true });
                         return false;
                     }
                 } else if (fieldConfig.type === 'datetime-group') {
-                     const firstInput = form.querySelector(`input[name="${fieldConfig.fields[0].name}"]`);
-                     if(!firstInput || !firstInput.value.trim()){
-                         showToast(`Erro: O campo "${fieldConfig.fields[0].label}" é obrigatório.`, { error: true });
-                         return false;
-                     }
+                    const firstInput = form.querySelector(`input[name="${fieldConfig.fields[0].name}"]`);
+                    if (!firstInput || !firstInput.value.trim()) {
+                        showToast(`Erro: O campo "${fieldConfig.fields[0].label}" é obrigatório.`, { error: true });
+                        return false;
+                    }
                 } else {
                     const input = form.querySelector(`[name="${fieldConfig.name}"]`);
                     if (!input || !input.value.trim()) {
@@ -554,41 +566,25 @@ export function initBAUForm() {
                     }
                 }
             }
-
-            if (fieldConfig.validation) {
-                const input = form.querySelector(`[name="${fieldConfig.name}"]`);
-                const regex = new RegExp(fieldConfig.validation.regex);
-                 if (input.value.trim() && !regex.test(input.value.trim())) {
-                    showToast(`Erro: ${fieldConfig.validation.error}`, { error: true });
-                    input.classList.add('invalid-cid');
-                    const errorHint = form.querySelector('#bau-cid-error');
-                    if (errorHint) errorHint.style.display = 'flex';
-                    return false;
-                } else {
-                    input.classList.remove('invalid-cid');
-                     const errorHint = form.querySelector('#bau-cid-error');
-                    if (errorHint) errorHint.style.display = 'none';
-                }
-            }
         }
         return true;
     }
 
-    nextBtn.onclick = () => {
-        if (validateStep(currentStep)) {
+    nextBtn.addEventListener('click',() => {
+        if (validateStep(currentStep) && validateRequiredFields(currentStep)) {
             currentStep++;
             updateWizardState();
             SoundManager.playClick();
         }
-    };
+    });
 
-    backBtn.onclick = () => {
+    backBtn.addEventListener('click',() => {
         if (currentStep > 1) {
             currentStep--;
             updateWizardState();
             SoundManager.playClick();
         }
-    };
+    });
     
     async function populateContextData() {
         const pageData = await getPageData() || {};
@@ -668,27 +664,14 @@ export function initBAUForm() {
         }
     }
 
-    popup.querySelector('#bau-top-se-search').onclick = (e) => {
+    popup.querySelector('#bau-top-se-search')?.addEventListener('click', (e) => {
         e.preventDefault();
         fetchAndInsertSpeakeasyId("bau-form-seId");
-    };
+    });
 
     const cidInput = popup.querySelector('#bau-form-cid');
     if (cidInput) {
-        cidInput.addEventListener('input', () => {
-            const fieldConfig = FORM_CONFIG.steps[0].fields.find(f=>f.id === 'cid');
-            const regex = new RegExp(fieldConfig.validation.regex);
-            const isValidCID = regex.test(cidInput.value.trim());
-            const errorHint = popup.querySelector('#bau-cid-error');
-
-            if (!isValidCID && cidInput.value.length > 0) {
-                cidInput.classList.add('invalid-cid');
-                if (errorHint) errorHint.style.display = 'flex';
-            } else {
-                cidInput.classList.remove('invalid-cid');
-                if (errorHint) errorHint.style.display = 'none';
-            }
-        });
+        cidInput.addEventListener('input', () => validateStep(1));
     }
 
     function renderConfirmation() {
@@ -721,18 +704,13 @@ export function initBAUForm() {
     form.onsubmit = async (e) => {
         e.preventDefault();
         
-        // Custom validation for final step before submitting
-        let isAllValid = true;
-        for(let i=1; i <= totalSteps; i++){
-            if(!validateStep(i)) {
-                isAllValid = false;
-                // Jump to the first invalid step
+        for(let i=1; i < totalSteps; i++){
+            if(!validateStep(i) || !validateRequiredFields(i)) {
                 currentStep = i;
                 updateWizardState();
-                break;
+                return;
             }
         }
-        if (!isAllValid) return;
         
         const submitBtn = popup.querySelector('.bau-btn-submit');
         submitBtn.disabled = true;
@@ -776,21 +754,21 @@ export function initBAUForm() {
         form.querySelectorAll('.bau-task-item.active').forEach(item => item.classList.remove('active'));
     }
 
-    popup.querySelector('#bau-new-case-btn').onclick = () => {
+    popup.querySelector('#bau-new-case-btn').addEventListener('click',() => {
         resetForm();
         switchView('form');
         populateContextData();
-    };
+    });
 
-    popup.querySelector('#bau-form-back-btn').onclick = () => switchView('dashboard');
-    popup.querySelector('#bau-success-back-btn').onclick = () => switchView('dashboard');
+    popup.querySelector('#bau-form-back-btn').addEventListener('click', () => switchView('dashboard'));
+    popup.querySelector('#bau-success-back-btn').addEventListener('click', () => switchView('dashboard'));
 
     async function toggleVisibility() {
         isVisible = !isVisible;
         popup.style.display = isVisible ? "flex" : "none";
         if (isVisible) {
             switchView('dashboard');
-            await loadDashboardData();
+            loadDashboardData(); 
         }
         toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");
     }
