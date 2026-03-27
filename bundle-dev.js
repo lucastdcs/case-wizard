@@ -2288,7 +2288,6 @@ E-mail: ${c.clientEmail||"---"}`;T&&(T.value=U),F&&(F.style.display="block",F.st
       flex: 1;
       position: relative;
       min-height: 400px;
-      overflow: hidden;
     }
 
     .bau-view {
@@ -2298,7 +2297,6 @@ E-mail: ${c.clientEmail||"---"}`;T&&(T.value=U),F&&(F.style.display="block",F.st
       padding: 24px;
       animation: bauFadeIn 0.3s ease;
       position: relative;
-      overflow: hidden;
       box-sizing: border-box;
     }
     .bau-view.active { display: flex; }
