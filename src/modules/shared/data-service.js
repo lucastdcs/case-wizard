@@ -180,13 +180,20 @@ sendBAUEscalation: async (payload, userEmail) => {
             console.log("Buscando casos BAU para:", agentEmail);
             const response = await jsonpFetch('read_agent_bau', { user: agentEmail });
             
-            if (response && response.status === 'success') {
-                return response.cases || [];
+            // VALIDAÇÃO RIGOROSA DA RESPOSTA
+            if (response && response.status === 'success' && Array.isArray(response.cases)) {
+                return response.cases;
             }
+
+            if (response && response.status === 'error') {
+                throw new Error(response.message || "Erro retornado pela API de leitura");
+            }
+
             return [];
         } catch (e) {
             console.error("Erro ao buscar casos BAU:", e);
-            return [];
+            // Propaga o erro para que a UI possa reagir (limpar skeleton)
+            throw e;
         }
     },
 
