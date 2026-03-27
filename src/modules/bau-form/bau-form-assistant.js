@@ -16,7 +16,8 @@ const ICONS = {
     check: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
     folder: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`,
     empty: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.44 2s2.75-.81 3.44-2H19v3zm0-5h-4.99c0 1.1-.9 2-2 2s-2-.9-2-2H5V5h14v9z"/></svg>`,
-    refresh: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`
+    refresh: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`,
+    expand: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>`
 };
 
 export function initBAUForm() {
@@ -36,7 +37,7 @@ export function initBAUForm() {
     const header = createStandardHeader(
         popup,
         "BAU Central",
-        "v2.0.0",
+        "v2.1.0", // Updated version
         "Dashboard de Casos BAU",
         {},
         () => toggleVisibility()
@@ -306,7 +307,7 @@ export function initBAUForm() {
             `;
         }
         if (!listEl) return;
-        listEl.innerHTML = Array(3).fill(0).map(() => `
+        listEl.innerHTML = Array(5).fill(0).map(() => `
             <div class="bau-skeleton-card">
                 <div class="bau-shimmer"></div>
             </div>
@@ -324,14 +325,11 @@ export function initBAUForm() {
             renderDashboard(cases);
         } catch (error) {
             listEl.innerHTML = '<p class="bau-error-text">Erro ao carregar casos.</p>';
+            console.error("Error loading BAU cases:", error);
         }
     }
 
-    function renderDashboard(cases) {
-        const listEl = popup.querySelector('#bau-case-list-container');
-        const metricsEl = popup.querySelector('#bau-dashboard-metrics');
-        if (!listEl) return;
-
+    function renderCaseCard(c) {
         // Status Mapping
         const getStatusData = (status) => {
             switch(status) {
@@ -342,9 +340,62 @@ export function initBAUForm() {
                 default: return { text: status || "Pendente", class: "status-gray", aura: "" };
             }
         };
+        const statusData = getStatusData(c.status);
+        const dateStr = c.date ? new Date(c.date).toLocaleDateString('pt-BR') : '';
+
+        // SLA / Urgency Logic
+        let slaBadge = '';
+        let pulseClass = '';
+        if (c.status === 'PENDING_TL_CREATION' && c.availability_1) {
+            const availDate = new Date(c.availability_1);
+            const now = new Date();
+            if (availDate <= now || (availDate - now) < 3600000 * 2) { // Vencido ou < 2h
+                slaBadge = `<span class="bau-sla-badge">Urgente</span>`;
+                pulseClass = 'bau-pulse-attention';
+            }
+        }
+
+        const reasonDisplay = (c.reason && c.reason.trim()) ? c.reason : "Nenhum contexto adicional fornecido pelo agente.";
+        const cidRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
+        const isValidCIDCard = cidRegex.test(c.cid || '');
+        const hasDataError = !c.caseId || c.caseId === 'N/A' || !isValidCIDCard;
+
+        if (hasDataError && c.status === 'PENDING_TL_CREATION') {
+            pulseClass = 'bau-pulse-attention';
+        }
+
+        return `
+            <li class="bau-case-card ${statusData.aura} ${pulseClass}" data-case-id="${c.id}">
+                <div class="bau-case-main">
+                    <div class="bau-case-icon">${ICONS.folder}</div>
+                    <div class="bau-case-info">
+                        <div class="bau-case-header">
+                            <h3 class="bau-case-title">${c.advName || 'Nome indefinido'}</h3>
+                            ${slaBadge}
+                            <span class="bau-case-date">${dateStr}</span>
+                        </div>
+                        <p class="bau-case-details">
+                            <span data-tooltip="Customer ID do Anunciante">Case: ${c.caseId || 'N/A'}</span> •
+                            <span data-tooltip="CID do Anunciante (Formato: 000-000-0000)" class="${!isValidCIDCard ? 'bau-error-text' : ''}">CID: ${c.cid || 'N/A'}</span> •
+                            <span data-tooltip="O que deve ser feito em BAU">Motivo: ${reasonDisplay}</span>
+                        </p>
+                        ${hasDataError ? `<div class="bau-data-error-hint">${!c.caseId ? 'Dados Incompletos' : 'CID Inválido'} - Contate o Suporte</div>` : ''}
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                    <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
+                </div>
+            </li>
+        `;
+    }
+
+    function renderDashboard(cases) {
+        const listEl = popup.querySelector('#bau-case-list-container');
+        const metricsEl = popup.querySelector('#bau-dashboard-metrics');
+        if (!listEl || !metricsEl) return;
 
         if (!cases || cases.length === 0) {
-            if (metricsEl) metricsEl.innerHTML = '';
+            metricsEl.innerHTML = '';
             listEl.innerHTML = `
                 <div class="bau-empty-state">
                     ${ICONS.empty}
@@ -358,70 +409,59 @@ export function initBAUForm() {
         // Metrics Calculation
         const pendingCount = cases.filter(c => c.status === 'PENDING_TL_CREATION').length;
         const createdCount = cases.filter(c => c.status === 'CREATED').length;
+        metricsEl.innerHTML = `
+            <div class="bau-metric-card">
+                <span class="bau-metric-value">${pendingCount}</span>
+                <span class="bau-metric-label">Aguardando TL</span>
+            </div>
+            <div class="bau-metric-card">
+                <span class="bau-metric-value">${createdCount}</span>
+                <span class="bau-metric-label">Criados / Aprovados</span>
+            </div>
+        `;
 
-        if (metricsEl) {
-            metricsEl.innerHTML = `
-                <div class="bau-metric-card">
-                    <span class="bau-metric-value">${pendingCount}</span>
-                    <span class="bau-metric-label">Aguardando TL</span>
-                </div>
-                <div class="bau-metric-card">
-                    <span class="bau-metric-value">${createdCount}</span>
-                    <span class="bau-metric-label">Criados / Aprovados</span>
-                </div>
-            `;
-        }
+        // Clear list before rendering
+        listEl.innerHTML = '';
 
-        listEl.innerHTML = cases.map(c => {
-            const statusData = getStatusData(c.status);
-            const dateStr = c.date ? new Date(c.date).toLocaleDateString('pt-BR') : '';
+        const recentCases = cases.slice(0, 5);
+        const olderCases = cases.slice(5);
 
-            // SLA / Urgency Logic
-            let slaBadge = '';
-            let pulseClass = '';
-            if (c.status === 'PENDING_TL_CREATION' && c.availability_1) {
-                const availDate = new Date(c.availability_1);
-                const now = new Date();
-                if (availDate <= now || (availDate - now) < 3600000 * 2) { // Vencido ou < 2h
-                    slaBadge = `<span class="bau-sla-badge">Urgente</span>`;
-                    pulseClass = 'bau-pulse-attention';
+        // Render recent cases directly
+        recentCases.forEach(caseItem => {
+            listEl.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
+        });
+
+        // Handle older cases with an accordion
+        if (olderCases.length > 0) {
+            const accordionContainer = document.createElement('li');
+            accordionContainer.className = 'bau-accordion-container';
+
+            const toggleButton = document.createElement('button');
+            toggleButton.className = 'bau-accordion-toggle';
+            toggleButton.innerHTML = `${ICONS.expand} <span>Mostrar ${olderCases.length} casos mais antigos</span>`;
+            
+            const olderCasesList = document.createElement('ul');
+            olderCasesList.className = 'bau-case-list bau-accordion-content';
+            olderCasesList.style.display = 'none'; // Initially hidden
+            olderCases.forEach(caseItem => {
+                olderCasesList.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
+            });
+
+            toggleButton.onclick = () => {
+                const isHidden = olderCasesList.style.display === 'none';
+                olderCasesList.style.display = isHidden ? 'block' : 'none';
+                toggleButton.classList.toggle('expanded', isHidden);
+                const text = toggleButton.querySelector('span');
+                if (text) {
+                    text.textContent = isHidden ? 'Esconder casos mais antigos' : `Mostrar ${olderCases.length} casos mais antigos`;
                 }
-            }
+                SoundManager.playClick();
+            };
 
-            const reasonDisplay = (c.reason && c.reason.trim()) ? c.reason : "Nenhum contexto adicional fornecido pelo agente.";
-
-            const cidRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
-            const isValidCIDCard = cidRegex.test(c.cid || '');
-            const hasDataError = !c.caseId || c.caseId === 'N/A' || !isValidCIDCard;
-
-            if (hasDataError && c.status === 'PENDING_TL_CREATION') {
-                pulseClass = 'bau-pulse-attention';
-            }
-
-            return `
-                <li class="bau-case-card ${statusData.aura} ${pulseClass}" data-case-id="${c.id}">
-                    <div class="bau-case-main">
-                        <div class="bau-case-icon">${ICONS.folder}</div>
-                        <div class="bau-case-info">
-                            <div class="bau-case-header">
-                                <h3 class="bau-case-title">${c.advName || 'Nome indefinido'}</h3>
-                                ${slaBadge}
-                                <span class="bau-case-date">${dateStr}</span>
-                            </div>
-                            <p class="bau-case-details">
-                                <span data-tooltip="Customer ID do Anunciante">Case: ${c.caseId || 'N/A'}</span> •
-                                <span data-tooltip="CID do Anunciante (Formato: 000-000-0000)" class="${!isValidCIDCard ? 'bau-error-text' : ''}">CID: ${c.cid || 'N/A'}</span> •
-                                <span data-tooltip="O que deve ser feito em BAU">Motivo: ${reasonDisplay}</span>
-                            </p>
-                            ${hasDataError ? `<div class="bau-data-error-hint">${!c.caseId ? 'Dados Incompletos' : 'CID Inválido'} - Contate o Suporte</div>` : ''}
-                        </div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                        <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
-                    </div>
-                </li>
-            `;
-        }).join('');
+            accordionContainer.appendChild(toggleButton);
+            accordionContainer.appendChild(olderCasesList);
+            listEl.appendChild(accordionContainer);
+        }
     }
 
     function updateWizardState() {
