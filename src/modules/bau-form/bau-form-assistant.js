@@ -316,20 +316,46 @@ export function initBAUForm() {
 
     async function loadDashboardData() {
         const listEl = popup.querySelector('#bau-case-list-container');
+        const metricsEl = popup.querySelector('#bau-dashboard-metrics');
         if (!listEl) return;
 
         renderSkeleton();
 
         try {
             const cases = await readAgentBAU();
+            // VALIDAÇÃO DE SEGURANÇA: Garante que o skeleton suma mesmo se cases vier bugado
+            if (!Array.isArray(cases)) {
+                throw new Error("Resposta da API não é um array válido");
+            }
             renderDashboard(cases);
         } catch (error) {
-            listEl.innerHTML = '<p class="bau-error-text">Erro ao carregar casos.</p>';
-            console.error("Error loading BAU cases:", error);
+            console.error("Critical Error loading BAU cases:", error);
+
+            // LIMPEZA DE ESTADO: Se falhar, removemos o skeleton e mostramos erro amigável
+            if (metricsEl) metricsEl.innerHTML = '';
+            listEl.innerHTML = `
+                <div class="bau-empty-state bau-error-state">
+                    <div style="color: #d93025; margin-bottom: 16px;">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                    </div>
+                    <h3 class="bau-empty-title">Ops! Algo deu errado</h3>
+                    <p class="bau-empty-subtitle">Não conseguimos carregar seus casos BAU no momento.</p>
+                    <button class="bau-btn-secondary" id="bau-retry-btn" style="margin-top: 16px;">
+                        Tentar Novamente
+                    </button>
+                </div>
+            `;
+            const retryBtn = listEl.querySelector('#bau-retry-btn');
+            if (retryBtn) {
+                retryBtn.onclick = () => loadDashboardData();
+            }
+            showToast("Erro ao carregar Dashboard. Verifique sua conexão.", { error: true });
         }
     }
 
     function renderCaseCard(c) {
+        if (!c) return '';
+
         // Status Mapping
         const getStatusData = (status) => {
             switch(status) {
@@ -340,13 +366,13 @@ export function initBAUForm() {
                 default: return { text: status || "Pendente", class: "status-gray", aura: "" };
             }
         };
-        const statusData = getStatusData(c.status);
-        const dateStr = c.date ? new Date(c.date).toLocaleDateString('pt-BR') : '';
+        const statusData = getStatusData(c?.status);
+        const dateStr = c?.date ? new Date(c.date).toLocaleDateString('pt-BR') : '';
 
         // SLA / Urgency Logic
         let slaBadge = '';
         let pulseClass = '';
-        if (c.status === 'PENDING_TL_CREATION' && c.availability_1) {
+        if (c?.status === 'PENDING_TL_CREATION' && c?.availability_1) {
             const availDate = new Date(c.availability_1);
             const now = new Date();
             if (availDate <= now || (availDate - now) < 3600000 * 2) { // Vencido ou < 2h
@@ -355,31 +381,31 @@ export function initBAUForm() {
             }
         }
 
-        const reasonDisplay = (c.reason && c.reason.trim()) ? c.reason : "Nenhum contexto adicional fornecido pelo agente.";
+        const reasonDisplay = (c?.reason && c.reason.trim()) ? c.reason : "Nenhum contexto adicional fornecido pelo agente.";
         const cidRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
-        const isValidCIDCard = cidRegex.test(c.cid || '');
-        const hasDataError = !c.caseId || c.caseId === 'N/A' || !isValidCIDCard;
+        const isValidCIDCard = cidRegex.test(c?.cid || '');
+        const hasDataError = !c?.caseId || c.caseId === 'N/A' || !isValidCIDCard;
 
-        if (hasDataError && c.status === 'PENDING_TL_CREATION') {
+        if (hasDataError && c?.status === 'PENDING_TL_CREATION') {
             pulseClass = 'bau-pulse-attention';
         }
 
         return `
-            <li class="bau-case-card ${statusData.aura} ${pulseClass}" data-case-id="${c.id}">
+            <li class="bau-case-card ${statusData.aura} ${pulseClass}" data-case-id="${c?.id || ''}">
                 <div class="bau-case-main">
                     <div class="bau-case-icon">${ICONS.folder}</div>
                     <div class="bau-case-info">
                         <div class="bau-case-header">
-                            <h3 class="bau-case-title">${c.advName || 'Nome indefinido'}</h3>
+                            <h3 class="bau-case-title">${c?.advName || 'Nome indefinido'}</h3>
                             ${slaBadge}
                             <span class="bau-case-date">${dateStr}</span>
                         </div>
                         <p class="bau-case-details">
-                            <span data-tooltip="Customer ID do Anunciante">Case: ${c.caseId || 'N/A'}</span> •
-                            <span data-tooltip="CID do Anunciante (Formato: 000-000-0000)" class="${!isValidCIDCard ? 'bau-error-text' : ''}">CID: ${c.cid || 'N/A'}</span> •
+                            <span data-tooltip="Customer ID do Anunciante">Case: ${c?.caseId || 'N/A'}</span> •
+                            <span data-tooltip="CID do Anunciante (Formato: 000-000-0000)" class="${!isValidCIDCard ? 'bau-error-text' : ''}">CID: ${c?.cid || 'N/A'}</span> •
                             <span data-tooltip="O que deve ser feito em BAU">Motivo: ${reasonDisplay}</span>
                         </p>
-                        ${hasDataError ? `<div class="bau-data-error-hint">${!c.caseId ? 'Dados Incompletos' : 'CID Inválido'} - Contate o Suporte</div>` : ''}
+                        ${hasDataError ? `<div class="bau-data-error-hint">${!c?.caseId || c?.caseId === 'N/A' ? 'Dados Incompletos' : 'CID Inválido'} - Contate o Suporte</div>` : ''}
                     </div>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
@@ -394,7 +420,10 @@ export function initBAUForm() {
         const metricsEl = popup.querySelector('#bau-dashboard-metrics');
         if (!listEl || !metricsEl) return;
 
-        if (!cases || cases.length === 0) {
+        // PROTEÇÃO CONTRA UNDEFINED/NULL
+        const safeCases = Array.isArray(cases) ? cases : [];
+
+        if (safeCases.length === 0) {
             metricsEl.innerHTML = '';
             listEl.innerHTML = `
                 <div class="bau-empty-state">
@@ -406,9 +435,10 @@ export function initBAUForm() {
             return;
         }
 
-        // Metrics Calculation
-        const pendingCount = cases.filter(c => c.status === 'PENDING_TL_CREATION').length;
-        const createdCount = cases.filter(c => c.status === 'CREATED').length;
+        // Metrics Calculation - Com Optional Chaining por segurança
+        const pendingCount = safeCases.filter(c => c?.status === 'PENDING_TL_CREATION').length;
+        const createdCount = safeCases.filter(c => c?.status === 'CREATED').length;
+
         metricsEl.innerHTML = `
             <div class="bau-metric-card">
                 <span class="bau-metric-value">${pendingCount}</span>
@@ -423,12 +453,14 @@ export function initBAUForm() {
         // Clear list before rendering
         listEl.innerHTML = '';
 
-        const recentCases = cases.slice(0, 5);
-        const olderCases = cases.slice(5);
+        const recentCases = safeCases.slice(0, 5);
+        const olderCases = safeCases.slice(5);
 
         // Render recent cases directly
         recentCases.forEach(caseItem => {
-            listEl.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
+            if (caseItem) {
+                listEl.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
+            }
         });
 
         // Handle older cases with an accordion
