@@ -7,6 +7,7 @@ import { SoundManager } from '../shared/sound-manager.js';
 import { sendBAUEscalation, readAgentBAU } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
 import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.js';
+import { FORM_CONFIG } from './bau-form-config.js';
 
 const ICONS = {
     add: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
@@ -20,6 +21,109 @@ const ICONS = {
     expand: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>`
 };
 
+function createField(fieldConfig) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'bau-dynamic-input';
+    wrapper.id = `wrapper-${fieldConfig.id}`;
+
+    if (fieldConfig.label) {
+        const label = document.createElement('label');
+        label.className = 'bau-label';
+        label.textContent = fieldConfig.label;
+        if (fieldConfig.tooltip) {
+            label.setAttribute('data-tooltip', fieldConfig.tooltip);
+        }
+        wrapper.appendChild(label);
+    }
+
+    let input;
+    switch (fieldConfig.type) {
+        case 'textarea':
+            input = document.createElement('textarea');
+            input.style.minHeight = '80px';
+            wrapper.appendChild(input);
+            break;
+
+        case 'select':
+            input = document.createElement('select');
+            fieldConfig.options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.textContent = opt.text;
+                input.appendChild(option);
+            });
+            wrapper.appendChild(input);
+            break;
+
+        case 'checkbox-grid':
+            input = document.createElement('div');
+            input.className = 'bau-tasks-grid';
+            fieldConfig.options.forEach(task => {
+                const item = document.createElement('label');
+                item.className = 'bau-task-item';
+                item.innerHTML = `<input type="checkbox" name="${fieldConfig.name}" value="${task}"><span>${task}</span>`;
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const chk = item.querySelector('input');
+                    chk.checked = !chk.checked;
+                    item.classList.toggle('active', chk.checked);
+                    SoundManager.playClick();
+                });
+                input.appendChild(item);
+            });
+            wrapper.appendChild(input);
+            return wrapper; 
+
+        case 'datetime-group':
+            input = document.createElement('div');
+            input.className = 'bau-availability-container';
+            fieldConfig.fields.forEach(f => {
+                const fieldWrapper = document.createElement('div');
+                fieldWrapper.className = 'bau-availability-field';
+                fieldWrapper.innerHTML = `
+                    <span class="bau-field-hint">${f.label}</span>
+                    <input type="datetime-local" name="${f.name}" class="bau-input" ${f.required ? 'required' : ''}>
+                `;
+                input.appendChild(fieldWrapper);
+            });
+            wrapper.appendChild(input);
+            wrapper.appendChild(document.createElement('div'));
+            return wrapper;
+
+        case 'text-with-button':
+            const group = document.createElement('div');
+            group.className = 'bau-input-group';
+            input = document.createElement('input');
+            input.type = 'text';
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.id = fieldConfig.button.id;
+            button.className = 'bau-mini-btn-input';
+            button.title = fieldConfig.button.title;
+            button.innerHTML = ICONS[fieldConfig.button.icon] || '';
+            group.appendChild(input);
+            group.appendChild(button);
+            wrapper.appendChild(group);
+            break;
+
+        default: // text
+            input = document.createElement('input');
+            input.type = 'text';
+            wrapper.appendChild(input);
+    }
+    
+    if (input && fieldConfig.type !== 'checkbox-grid' && fieldConfig.type !== 'datetime-group') {
+        input.id = `bau-form-${fieldConfig.id}`;
+        input.name = fieldConfig.name;
+        input.className = fieldConfig.type === 'select' ? 'bau-select' : fieldConfig.type === 'textarea' ? 'bau-textarea' : 'bau-input';
+        if (fieldConfig.placeholder) input.placeholder = fieldConfig.placeholder;
+        if (fieldConfig.required) input.required = true;
+    }
+
+    return wrapper;
+}
+
+
 export function initBAUForm() {
     injectStyles();
 
@@ -27,7 +131,7 @@ export function initBAUForm() {
     let currentView = 'dashboard';
     let currentContextData = null;
     let currentStep = 1;
-    const totalSteps = 4;
+    const totalSteps = FORM_CONFIG.steps.length;
 
     const popup = document.createElement("div");
     popup.id = "bau-form-popup";
@@ -37,13 +141,12 @@ export function initBAUForm() {
     const header = createStandardHeader(
         popup,
         "BAU Central",
-        "v2.1.0", // Updated version
+        "v2.1.0",
         "Dashboard de Casos BAU",
         {},
         () => toggleVisibility()
     );
 
-    // ADICIONAR BOTÃO REFRESH NO HEADER
     const headerActions = header.querySelector('div:last-child');
     if (headerActions) {
         const refreshBtn = document.createElement('div');
@@ -71,6 +174,7 @@ export function initBAUForm() {
     popup.appendChild(viewContainer);
 
     // --- VIEW 1: DASHBOARD ---
+    
     const dashboardView = document.createElement('div');
     dashboardView.id = 'bau-view-dashboard';
     dashboardView.className = 'bau-view active';
@@ -87,6 +191,7 @@ export function initBAUForm() {
     viewContainer.appendChild(dashboardView);
 
     // --- VIEW 2: FORM ---
+    
     const formView = document.createElement('div');
     formView.id = 'bau-view-form';
     formView.className = 'bau-view';
@@ -102,7 +207,7 @@ export function initBAUForm() {
     formView.appendChild(formHeader);
 
     const formUiContainer = document.createElement('div');
-    formUiContainer.className = "bau-content"; 
+    formUiContainer.className = "bau-content";
     formView.appendChild(formUiContainer);
 
     const progressIndicator = document.createElement("div");
@@ -113,129 +218,52 @@ export function initBAUForm() {
     form.id = "bau-escalation-form";
     formUiContainer.appendChild(form);
     
-    // --- STEP 1: CONTEXTO E VALIDAÇÃO ---
-    const step1 = document.createElement("div");
-    step1.className = "bau-step active";
-    step1.id = "bau-step-1";
+    // --- DYNAMIC FORM GENERATION ---
+    FORM_CONFIG.steps.forEach(stepConfig => {
+        const stepEl = document.createElement('div');
+        stepEl.className = 'bau-step';
+        stepEl.id = `bau-step-${stepConfig.id}`;
+        
+        if (stepConfig.isConfirmation) {
+            stepEl.innerHTML = `
+                <div class="bau-card">
+                    <h3 class="bau-step-title">Confirme os dados antes de enviar</h3>
+                    <div id="bau-confirmation-details"></div>
+                </div>
+            `;
+        } else {
+            const card = document.createElement('div');
+            card.className = 'bau-card';
 
-    const contextCard = document.createElement("div");
-    contextCard.className = "bau-card bau-context-card";
-    contextCard.innerHTML = `
-        <div id="bau-vital-highlights" class="bau-highlight-panel"></div>
-        <div id="bau-all-data"></div>
-    `;
+            if (stepConfig.id === 1) {
+                card.innerHTML = `
+                    <div id="bau-vital-highlights" class="bau-highlight-panel"></div>
+                    <div class="bau-dynamic-inputs-container"></div>
+                    <div id="bau-all-data"></div>
+                `;
+                const fieldsContainer = card.querySelector('.bau-dynamic-inputs-container');
+                stepConfig.fields.forEach(fieldConfig => {
+                    fieldsContainer.appendChild(createField(fieldConfig));
+                });
+                 // Add static error hint for CID
+                const cidWrapper = card.querySelector('#wrapper-cid');
+                if(cidWrapper) {
+                     cidWrapper.innerHTML += `<div id="bau-cid-error" class="bau-cid-error-hint" style="display: none;">Formato de CID incorreto</div>`;
+                }
 
-    const dynamicInputsContainer = document.createElement("div");
-    dynamicInputsContainer.className = "bau-dynamic-inputs-container";
-    dynamicInputsContainer.innerHTML = `
-        <div class="bau-dynamic-input" id="wrapper-advName">
-            <label class="bau-label">Nome do Anunciante</label>
-            <input type="text" name="advName" class="bau-input" placeholder="Nome do Anunciante" required>
-        </div>
-        <div class="bau-dynamic-input" id="wrapper-cid">
-            <label class="bau-label" data-tooltip="Use o formato 000-000-0000 ou 10 dígitos">CID</label>
-            <input type="text" id="bau-cid-input" name="cid" class="bau-input" placeholder="000-000-0000" required>
-            <div id="bau-cid-error" class="bau-cid-error-hint" style="display: none;">
-                Formato de CID incorreto
-            </div>
-        </div>
-        <div class="bau-dynamic-input" id="wrapper-amName">
-            <label class="bau-label">Account Manager (AM)</label>
-            <input type="text" name="amName" class="bau-input" placeholder="Nome do AM" required>
-        </div>
-        <div class="bau-dynamic-input" id="wrapper-seId">
-            <label class="bau-label">Speakeasy ID (SE ID)</label>
-            <div class="bau-input-group">
-                <input type="text" id="bau-context-se-id-input" name="seId" class="bau-input" placeholder="Speakeasy ID">
-                <button type="button" id="bau-top-se-search" class="bau-mini-btn-input" title="Buscar ID automaticamente">${ICONS.wand}</button>
-            </div>
-        </div>
-    `;
-
-    contextCard.insertBefore(dynamicInputsContainer, contextCard.querySelector('#bau-all-data'));
-    step1.appendChild(contextCard);
-    form.appendChild(step1);
-
-    // --- STEP 2: TASKS ---
-    const step2 = document.createElement("div");
-    step2.className = "bau-step";
-    step2.id = "bau-step-2";
-    const actionCard = document.createElement("div");
-    actionCard.className = "bau-card";
-    const tasks = [
-        'Ads Conversion Tracking', 'Ads Dynamic Remarketing', 'Ads Enhanced Conversions', 'Ads Website Call Conversion',
-        'Ads Remarketing', 'Analytics Cross Domain Tracking', 'Analytics E-Commerce Tracking', 'Analytics Enhanced E-Commerce Tracking',
-        'Analytics Event Tracking', 'Analytics Health Check', 'Analytics Remarketing', 'Analytics Setup',
-        'Fix GA4 implementation', 'Consent Mode', 'Fix Sitewide Tagging (OGT & CT)', 'Google Tag Manager Installation', 'Customer Match'
-    ];
-    actionCard.innerHTML = `
-        <label class="bau-label">O que deve ser feito em BAU</label>
-        <textarea name="reason" class="bau-textarea" placeholder="Descreva as ações esperadas..." style="min-height: 80px;" required></textarea>
-
-        <label class="bau-label" data-tooltip="Selecione os tipos de implementação técnica">Tasks para BAU (Selecione 1 ou mais)</label>
-        <div class="bau-tasks-grid" id="bau-tasks-container">
-            ${tasks.map(task => `
-                <label class="bau-task-item">
-                    <input type="checkbox" name="taskType" value="${task}">
-                    <span>${task}</span>
-                </label>
-            `).join('')}
-        </div>
-    `;
-    actionCard.querySelectorAll('.bau-task-item').forEach(item => {
-        const input = item.querySelector('input');
-        item.addEventListener('click', () => { input.checked = !input.checked; item.classList.toggle('active', input.checked); SoundManager.playClick(); });
+            } else {
+                 stepConfig.fields.forEach(fieldConfig => {
+                    card.appendChild(createField(fieldConfig));
+                });
+            }
+            stepEl.appendChild(card);
+        }
+        form.appendChild(stepEl);
     });
-    step2.appendChild(actionCard);
-    form.appendChild(step2);
 
-    // --- STEP 3: JUSTIFICATIVA E AGENDAMENTO ---
-    const step3 = document.createElement("div");
-    step3.className = "bau-step";
-    step3.id = "bau-step-3";
-    const detailsCard = document.createElement("div");
-    detailsCard.className = "bau-card";
-    detailsCard.innerHTML = `
-        <label class="bau-label">Motivo da Não Implementação (Justificativa BAU)</label>
-        <select name="nonImplementationReason" required class="bau-select">
-            <option value="">Selecione um motivo...</option>
-            ${["Tempo da consultoria esgotado", "Solicitação de reagendamento pelo anunciante", "Falta de acessos ou backup do site", "Anunciante indisponível ou não preparado", "Implementação parcial (nem todas as tasks concluídas)", "Solicitação de tarefas (tasks) adicionais", "Necessidade de novas alterações (fase de acompanhamento)", "Retorno de contato após prazo de 14 dias expirado"].map(r => `<option value="${r}">${r}</option>`).join('')}
-        </select>
-        <label class="bau-label">Justificativa / Descrição</label>
-        <textarea name="description" required class="bau-textarea" placeholder="Descreva detalhadamente o que precisa ser feito..."></textarea>
-        <label class="bau-label">Disponibilidade (mínimo 1 opção)</label>
-        <div class="bau-availability-container">
-            <div class="bau-availability-field">
-                <span class="bau-field-hint">Opção 1 (Prioridade)</span>
-                <input type="datetime-local" name="availability_1" required class="bau-input">
-            </div>
-            <div class="bau-availability-field">
-                <span class="bau-field-hint">Opção 2 (Opcional)</span>
-                <input type="datetime-local" name="availability_2" class="bau-input">
-            </div>
-            <div class="bau-availability-field">
-                <span class="bau-field-hint">Opção 3 (Opcional)</span>
-                <input type="datetime-local" name="availability_3" class="bau-input">
-            </div>
-        </div>
-        <div class="bau-availability-hint"></div>
-    `;
-    step3.appendChild(detailsCard);
-    form.appendChild(step3);
-    
-    // --- STEP 4: CONFIRMAÇÃO ---
-    const step4 = document.createElement("div");
-    step4.className = "bau-step";
-    step4.id = "bau-step-4";
-    step4.innerHTML = `
-        <div class="bau-card">
-            <h3 class="bau-step-title">Confirme os dados antes de enviar</h3>
-            <div id="bau-confirmation-details"></div>
-        </div>
-    `;
-    form.appendChild(step4);
 
     // --- FOOTER & NAVIGATION ---
+    
     const footer = document.createElement("div");
     footer.className = "bau-footer";
 
@@ -257,7 +285,6 @@ export function initBAUForm() {
     submitBtn.innerHTML = `${ICONS.send} Enviar para o TL`;
     submitBtn.style.display = "none";
 
-    // OBRIGATORIAMENTE precisam ser "child" (filho) direto da tag <form>
     form.appendChild(backBtn);
     form.appendChild(nextBtn);
     form.appendChild(submitBtn);
@@ -266,6 +293,7 @@ export function initBAUForm() {
     viewContainer.appendChild(formView);
 
     // --- VIEW 3: SUCCESS ---
+    
     const successView = document.createElement('div');
     successView.id = 'bau-view-success';
     successView.className = 'bau-view';
@@ -323,15 +351,12 @@ export function initBAUForm() {
 
         try {
             const cases = await readAgentBAU();
-            // VALIDAÇÃO DE SEGURANÇA: Garante que o skeleton suma mesmo se cases vier bugado
             if (!Array.isArray(cases)) {
-                throw new Error("Resposta da API não é um array válido");
+                throw new Error("API response is not a valid array");
             }
             renderDashboard(cases);
         } catch (error) {
             console.error("Critical Error loading BAU cases:", error);
-
-            // LIMPEZA DE ESTADO: Se falhar, removemos o skeleton e mostramos erro amigável
             if (metricsEl) metricsEl.innerHTML = '';
             listEl.innerHTML = `
                 <div class="bau-empty-state bau-error-state">
@@ -356,7 +381,6 @@ export function initBAUForm() {
     function renderCaseCard(c) {
         if (!c) return '';
 
-        // Status Mapping
         const getStatusData = (status) => {
             switch(status) {
                 case 'PENDING_TL_CREATION': return { text: "Aguardando TL", class: "status-yellow", aura: "status-yellow-aura" };
@@ -369,13 +393,12 @@ export function initBAUForm() {
         const statusData = getStatusData(c?.status);
         const dateStr = c?.date ? new Date(c.date).toLocaleDateString('pt-BR') : '';
 
-        // SLA / Urgency Logic
         let slaBadge = '';
         let pulseClass = '';
         if (c?.status === 'PENDING_TL_CREATION' && c?.availability_1) {
             const availDate = new Date(c.availability_1);
             const now = new Date();
-            if (availDate <= now || (availDate - now) < 3600000 * 2) { // Vencido ou < 2h
+            if (availDate <= now || (availDate - now) < 3600000 * 2) { 
                 slaBadge = `<span class="bau-sla-badge">Urgente</span>`;
                 pulseClass = 'bau-pulse-attention';
             }
@@ -419,8 +442,7 @@ export function initBAUForm() {
         const listEl = popup.querySelector('#bau-case-list-container');
         const metricsEl = popup.querySelector('#bau-dashboard-metrics');
         if (!listEl || !metricsEl) return;
-
-        // PROTEÇÃO CONTRA UNDEFINED/NULL
+        
         const safeCases = Array.isArray(cases) ? cases : [];
 
         if (safeCases.length === 0) {
@@ -435,7 +457,6 @@ export function initBAUForm() {
             return;
         }
 
-        // Metrics Calculation - Com Optional Chaining por segurança
         const pendingCount = safeCases.filter(c => c?.status === 'PENDING_TL_CREATION').length;
         const createdCount = safeCases.filter(c => c?.status === 'CREATED').length;
 
@@ -449,21 +470,16 @@ export function initBAUForm() {
                 <span class="bau-metric-label">Criados / Aprovados</span>
             </div>
         `;
-
-        // Clear list before rendering
         listEl.innerHTML = '';
-
         const recentCases = safeCases.slice(0, 5);
         const olderCases = safeCases.slice(5);
 
-        // Render recent cases directly
         recentCases.forEach(caseItem => {
             if (caseItem) {
                 listEl.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
             }
         });
 
-        // Handle older cases with an accordion
         if (olderCases.length > 0) {
             const accordionContainer = document.createElement('li');
             accordionContainer.className = 'bau-accordion-container';
@@ -474,7 +490,7 @@ export function initBAUForm() {
             
             const olderCasesList = document.createElement('ul');
             olderCasesList.className = 'bau-case-list bau-accordion-content';
-            olderCasesList.style.display = 'none'; // Initially hidden
+            olderCasesList.style.display = 'none'; 
             olderCases.forEach(caseItem => {
                 olderCasesList.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
             });
@@ -510,46 +526,49 @@ export function initBAUForm() {
         backBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
         nextBtn.style.display = currentStep < totalSteps ? 'inline-block' : 'none';
         submitBtn.style.display = currentStep === totalSteps ? 'flex' : 'none';
-        if (currentStep === 4) renderConfirmation();
+        if (currentStep === totalSteps) renderConfirmation();
     }
     
     function validateStep(step) {
-        const stepEl = popup.querySelector(`#bau-step-${step}`);
-        if (!stepEl) return true;
+        const stepConfig = FORM_CONFIG.steps.find(s => s.id === step);
+        if (!stepConfig || !stepConfig.fields) return true;
 
-        if (step === 1) {
-            const cidInput = popup.querySelector('#bau-cid-input');
-            const cidValue = cidInput.value.trim();
-            const cidRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
-            const isValidCID = cidRegex.test(cidValue);
-            const errorHint = popup.querySelector('#bau-cid-error');
+        for (const fieldConfig of stepConfig.fields) {
+             if (fieldConfig.required) {
+                if (fieldConfig.type === 'checkbox-grid') {
+                    if (!form.querySelector(`input[name="${fieldConfig.name}"]:checked`)) {
+                        showToast(`Erro: Selecione pelo menos uma opção para "${fieldConfig.label}".`, { error: true });
+                        return false;
+                    }
+                } else if (fieldConfig.type === 'datetime-group') {
+                     const firstInput = form.querySelector(`input[name="${fieldConfig.fields[0].name}"]`);
+                     if(!firstInput || !firstInput.value.trim()){
+                         showToast(`Erro: O campo "${fieldConfig.fields[0].label}" é obrigatório.`, { error: true });
+                         return false;
+                     }
+                } else {
+                    const input = form.querySelector(`[name="${fieldConfig.name}"]`);
+                    if (!input || !input.value.trim()) {
+                        showToast(`Erro: O campo '${fieldConfig.label}' é obrigatório.`, { error: true });
+                        return false;
+                    }
+                }
+            }
 
-            if (!isValidCID && cidInput.parentElement.style.display !== 'none') {
-                cidInput.classList.add('invalid-cid');
-                if (errorHint) errorHint.style.display = 'flex';
-                showToast("Erro: O formato do CID é inválido.", { error: true });
-                return false;
-            } else {
-                cidInput.classList.remove('invalid-cid');
-                if (errorHint) errorHint.style.display = 'none';
-            }
-        }
-
-        if (step === 2) {
-            if (!form.querySelector('textarea[name="reason"]').value.trim()) {
-                showToast("Erro: A descrição do que deve ser feito é obrigatória.", { error: true });
-                return false;
-            }
-            if (!form.querySelector('input[name="taskType"]:checked')) {
-                showToast("Erro: Selecione pelo menos uma Task.", { error: true });
-                return false;
-            }
-            return true;
-        }
-        for (const input of stepEl.querySelectorAll('[required]')) {
-            if (!input.value.trim()) {
-                showToast(`Erro: O campo '${input.name || input.placeholder}' é obrigatório.`, { error: true });
-                return false;
+            if (fieldConfig.validation) {
+                const input = form.querySelector(`[name="${fieldConfig.name}"]`);
+                const regex = new RegExp(fieldConfig.validation.regex);
+                 if (input.value.trim() && !regex.test(input.value.trim())) {
+                    showToast(`Erro: ${fieldConfig.validation.error}`, { error: true });
+                    input.classList.add('invalid-cid');
+                    const errorHint = form.querySelector('#bau-cid-error');
+                    if (errorHint) errorHint.style.display = 'flex';
+                    return false;
+                } else {
+                    input.classList.remove('invalid-cid');
+                     const errorHint = form.querySelector('#bau-cid-error');
+                    if (errorHint) errorHint.style.display = 'none';
+                }
             }
         }
         return true;
@@ -574,11 +593,9 @@ export function initBAUForm() {
     async function populateContextData() {
         const pageData = await getPageData() || {};
 
-        // AUTO-PREENCHIMENTO AM: Se o nome do AM não foi capturado, usamos o e-mail do BCC (internalEmail)
         if (!pageData.amName || pageData.amName === "N/A") {
             pageData.amName = pageData.internalEmail || "N/A";
         }
-
         currentContextData = pageData;
 
         const highlightsContainer = form.querySelector('#bau-vital-highlights');
@@ -601,19 +618,25 @@ export function initBAUForm() {
             }).join('');
         }
 
-        const smartFields = ['advName', 'cid', 'amName', 'seId'];
-        smartFields.forEach(field => {
-            const value = pageData[field];
-            const input = form.querySelector(`[name="${field}"]`);
-            const wrapper = popup.querySelector(`#wrapper-${field}`);
+        FORM_CONFIG.steps.forEach(step => {
+            if(step.fields) {
+                step.fields.forEach(field => {
+                    if (field.isSmart) {
+                         const value = pageData[field.id];
+                        const input = form.querySelector(`[name="${field.name}"]`);
+                        const wrapper = popup.querySelector(`#wrapper-${field.id}`);
 
-            if (input) input.value = (value && value !== "N/A") ? value : "";
+                        if (input) input.value = (value && value !== "N/A") ? value : "";
 
-            if (wrapper) {
-                const isValid = value && value !== "" && value !== "N/A" && value !== "undefined" && value !== "null";
-                wrapper.style.display = isValid ? 'none' : 'block';
+                        if (wrapper) {
+                            const isValid = value && value !== "" && value !== "N/A" && value !== "undefined" && value !== "null";
+                            wrapper.style.display = isValid ? 'none' : 'block';
+                        }
+                    }
+                });
             }
         });
+
 
         const allDataContainer = popup.querySelector('#bau-all-data');
         if (allDataContainer) {
@@ -647,19 +670,18 @@ export function initBAUForm() {
 
     popup.querySelector('#bau-top-se-search').onclick = (e) => {
         e.preventDefault();
-        fetchAndInsertSpeakeasyId("bau-context-se-id-input");
+        fetchAndInsertSpeakeasyId("bau-form-seId");
     };
 
-    // CID Validation Real-time
-    const cidInput = popup.querySelector('#bau-cid-input');
+    const cidInput = popup.querySelector('#bau-form-cid');
     if (cidInput) {
         cidInput.addEventListener('input', () => {
-            const cidValue = cidInput.value.trim();
-            const cidRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
-            const isValidCID = cidRegex.test(cidValue);
+            const fieldConfig = FORM_CONFIG.steps[0].fields.find(f=>f.id === 'cid');
+            const regex = new RegExp(fieldConfig.validation.regex);
+            const isValidCID = regex.test(cidInput.value.trim());
             const errorHint = popup.querySelector('#bau-cid-error');
 
-            if (!isValidCID && cidValue.length > 0) {
+            if (!isValidCID && cidInput.value.length > 0) {
                 cidInput.classList.add('invalid-cid');
                 if (errorHint) errorHint.style.display = 'flex';
             } else {
@@ -669,7 +691,6 @@ export function initBAUForm() {
         });
     }
 
-
     function renderConfirmation() {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
@@ -678,6 +699,10 @@ export function initBAUForm() {
         if (!container) return;
 
         const tasksText = tasks.length > 0 ? tasks.join(', ') : "Nenhuma";
+        const availabilityText = [data.availability_1, data.availability_2, data.availability_3]
+            .filter(d => d && d.trim())
+            .map(d => d.replace('T', ' '))
+            .join(', ') || 'Não definida';
 
         container.innerHTML = `
             <div class="bau-confirm-row"><span class="bau-confirm-label">Anunciante:</span><span class="bau-confirm-value">${data.advName || '---'}</span></div>
@@ -687,14 +712,27 @@ export function initBAUForm() {
             <div class="bau-confirm-divider"></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">O que deve ser feito:</span><span class="bau-confirm-value">${data.reason || '---'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Tasks:</span><span class="bau-confirm-value">${tasksText}</span></div>
+            <div class="bau-confirm-divider"></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Justificativa BAU:</span><span class="bau-confirm-value">${data.nonImplementationReason || '---'}</span></div>
             <div class="bau-confirm-row"><span class="bau-confirm-label">Descrição:</span><span class="bau-confirm-value">${data.description || '---'}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Próximo Contato:</span><span class="bau-confirm-value">${data.availability_1 ? data.availability_1.replace('T', ' ') : 'Não definida'}</span></div>
+            <div class="bau-confirm-row"><span class="bau-confirm-label">Disponibilidade:</span><span class="bau-confirm-value">${availabilityText}</span></div>
         `;
     }
     form.onsubmit = async (e) => {
         e.preventDefault();
-        if (!validateStep(totalSteps)) return;
+        
+        // Custom validation for final step before submitting
+        let isAllValid = true;
+        for(let i=1; i <= totalSteps; i++){
+            if(!validateStep(i)) {
+                isAllValid = false;
+                // Jump to the first invalid step
+                currentStep = i;
+                updateWizardState();
+                break;
+            }
+        }
+        if (!isAllValid) return;
         
         const submitBtn = popup.querySelector('.bau-btn-submit');
         submitBtn.disabled = true;
@@ -704,14 +742,11 @@ export function initBAUForm() {
         const data = Object.fromEntries(formData.entries());
         const tasks = formData.getAll('taskType');
         const context = currentContextData || {};
-
-        // A MÁGICA AQUI: Junta as 3 datas num campo só, ignorando os vazios
+        
         const disponibilidadeUnificada = [data.availability_1, data.availability_2, data.availability_3]
             .filter(d => d && d.trim() !== '')
             .join(' | ');
 
-        // Cria o payload com o campo 'availability' exato que o backend espera
-        // O data (form) deve vir depois do context (scraped) para que os overrides manuais funcionem
         const payload = { 
             ...context,
             ...data, 
@@ -727,7 +762,7 @@ export function initBAUForm() {
             switchView('success');
         } catch (error) {
             showToast("Erro: " + (error.message || "Erro desconhecido"), { error: true });
-            console.error("Payload que tentou enviar:", payload); // Para debug
+            console.error("Payload que tentou enviar:", payload); 
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = `${ICONS.send} Enviar para o TL`;
@@ -738,30 +773,24 @@ export function initBAUForm() {
         form.reset();
         currentStep = 1;
         updateWizardState();
-        actionCard.querySelectorAll('.bau-task-item.active').forEach(item => item.classList.remove('active'));
+        form.querySelectorAll('.bau-task-item.active').forEach(item => item.classList.remove('active'));
     }
 
-    const newCaseBtn = popup.querySelector('#bau-new-case-btn');
-    if (newCaseBtn) {
-        newCaseBtn.onclick = () => {
-            resetForm();
-            switchView('form');
-            populateContextData();
-        };
-    }
+    popup.querySelector('#bau-new-case-btn').onclick = () => {
+        resetForm();
+        switchView('form');
+        populateContextData();
+    };
 
-    const formBackBtn = popup.querySelector('#bau-form-back-btn');
-    if (formBackBtn) formBackBtn.onclick = () => switchView('dashboard');
-
-    const successBackBtn = popup.querySelector('#bau-success-back-btn');
-    if (successBackBtn) successBackBtn.onclick = () => switchView('dashboard');
+    popup.querySelector('#bau-form-back-btn').onclick = () => switchView('dashboard');
+    popup.querySelector('#bau-success-back-btn').onclick = () => switchView('dashboard');
 
     async function toggleVisibility() {
         isVisible = !isVisible;
         popup.style.display = isVisible ? "flex" : "none";
         if (isVisible) {
             switchView('dashboard');
-            loadDashboardData();
+            await loadDashboardData();
         }
         toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");
     }
