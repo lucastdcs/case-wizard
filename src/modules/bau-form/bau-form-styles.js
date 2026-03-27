@@ -64,7 +64,6 @@ export const injectStyles = () => {
       flex: 1;
       position: relative;
       min-height: 400px;
-      overflow: hidden;
     }
 
     .bau-view {
@@ -74,7 +73,6 @@ export const injectStyles = () => {
       padding: 24px;
       animation: bauFadeIn 0.3s ease;
       position: relative;
-      overflow: hidden;
       box-sizing: border-box;
     }
     .bau-view.active { display: flex; }
