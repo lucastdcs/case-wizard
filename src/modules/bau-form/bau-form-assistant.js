@@ -147,25 +147,6 @@ export function initBAUForm() {
         () => toggleVisibility()
     );
 
-    const headerActions = header.querySelector('div:last-child');
-    if (headerActions) {
-        const refreshBtn = document.createElement('div');
-        refreshBtn.className = 'bau-refresh-btn no-drag';
-        refreshBtn.innerHTML = ICONS.refresh;
-        refreshBtn.title = "Atualizar Dashboard";
-
-        refreshBtn.onclick = async (e) => {
-            e.stopPropagation();
-            if (refreshBtn.classList.contains('spinning')) return;
-
-            refreshBtn.classList.add('spinning');
-            SoundManager.playClick();
-            await loadDashboardData();
-            setTimeout(() => refreshBtn.classList.remove('spinning'), 1000);
-        };
-
-        headerActions.insertBefore(refreshBtn, headerActions.firstChild);
-    }
 
     popup.appendChild(header);
 
@@ -437,7 +418,12 @@ export function initBAUForm() {
         const safeCases = Array.isArray(cases) ? cases.filter(Boolean) : [];
 
         if (safeCases.length === 0) {
-            metricsEl.innerHTML = '';
+            metricsEl.innerHTML = `
+                <button class="bau-metrics-refresh-btn" id="bau-refresh-dashboard">
+                    ${ICONS.refresh}
+                    Atualizar
+                </button>
+            `;
             listEl.innerHTML = `
                 <div class="bau-empty-state">
                     ${ICONS.empty}
@@ -445,6 +431,7 @@ export function initBAUForm() {
                     <p class="bau-empty-subtitle">Seus casos BAU aparecerão aqui</p>
                 </div>
             `;
+            popup.querySelector('#bau-refresh-dashboard')?.addEventListener('click', () => loadDashboardData());
             return;
         }
 
@@ -460,7 +447,20 @@ export function initBAUForm() {
                 <span class="bau-metric-value">${createdCount}</span>
                 <span class="bau-metric-label">Criados / Aprovados</span>
             </div>
+            <button class="bau-metrics-refresh-btn" id="bau-refresh-dashboard" title="Atualizar Dashboard">
+                ${ICONS.refresh}
+            </button>
         `;
+
+        const refreshBtn = metricsEl.querySelector('#bau-refresh-dashboard');
+        refreshBtn?.addEventListener('click', async () => {
+            if (refreshBtn.classList.contains('spinning')) return;
+            refreshBtn.classList.add('spinning');
+            SoundManager.playClick();
+            await loadDashboardData();
+            setTimeout(() => refreshBtn.classList.remove('spinning'), 1000);
+        });
+
         listEl.innerHTML = '';
         const recentCases = safeCases.slice(0, 5);
         const olderCases = safeCases.slice(5);
@@ -695,17 +695,23 @@ export function initBAUForm() {
             .join(', ') || 'Não definida';
 
         container.innerHTML = `
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Anunciante:</span><span class="bau-confirm-value">${data.advName || '---'}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">CID:</span><span class="bau-confirm-value">${data.cid || '---'}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">AM:</span><span class="bau-confirm-value">${data.amName || '---'}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Speakeasy ID:</span><span class="bau-confirm-value">${data.seId || 'Não informado'}</span></div>
-            <div class="bau-confirm-divider"></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">O que deve ser feito:</span><span class="bau-confirm-value">${data.reason || '---'}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Tasks:</span><span class="bau-confirm-value">${tasksText}</span></div>
-            <div class="bau-confirm-divider"></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Justificativa BAU:</span><span class="bau-confirm-value">${data.nonImplementationReason || '---'}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Descrição:</span><span class="bau-confirm-value">${data.description || '---'}</span></div>
-            <div class="bau-confirm-row"><span class="bau-confirm-label">Disponibilidade:</span><span class="bau-confirm-value">${availabilityText}</span></div>
+            <div class="bau-confirmation-grid">
+                <div class="bau-confirm-row"><span class="bau-confirm-label">Anunciante</span><span class="bau-confirm-value">${data.advName || '---'}</span></div>
+                <div class="bau-confirm-row"><span class="bau-confirm-label">CID</span><span class="bau-confirm-value">${data.cid || '---'}</span></div>
+                <div class="bau-confirm-row"><span class="bau-confirm-label">AM</span><span class="bau-confirm-value">${data.amName || '---'}</span></div>
+                <div class="bau-confirm-row"><span class="bau-confirm-label">Speakeasy ID</span><span class="bau-confirm-value">${data.seId || 'Não informado'}</span></div>
+
+                <div class="bau-confirm-divider"></div>
+
+                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">O que deve ser feito</span><span class="bau-confirm-value">${data.reason || '---'}</span></div>
+                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">Tasks</span><span class="bau-confirm-value">${tasksText}</span></div>
+
+                <div class="bau-confirm-divider"></div>
+
+                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">Justificativa BAU</span><span class="bau-confirm-value">${data.nonImplementationReason || '---'}</span></div>
+                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">Descrição</span><span class="bau-confirm-value">${data.description || '---'}</span></div>
+                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">Disponibilidade</span><span class="bau-confirm-value">${availabilityText}</span></div>
+            </div>
         `;
     }
     form.onsubmit = async (e) => {
