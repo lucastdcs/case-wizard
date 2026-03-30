@@ -214,9 +214,9 @@ export function initBAUForm() {
     form.id = "bau-escalation-form";
     formUiContainer.appendChild(form);
     
-    FORM_CONFIG.steps.forEach(stepConfig => {
+    FORM_CONFIG.steps.forEach((stepConfig, index) => {
         const stepEl = document.createElement('div');
-        stepEl.className = 'bau-step';
+        stepEl.className = 'bau-step' + (index === 0 ? ' active' : '');
         stepEl.id = `bau-step-${stepConfig.id}`;
         
         if (stepConfig.isConfirmation) {
@@ -281,10 +281,10 @@ export function initBAUForm() {
     submitBtn.innerHTML = `${ICONS.send} Enviar para o TL`;
     submitBtn.style.display = "none";
 
-    form.appendChild(backBtn);
-    form.appendChild(nextBtn);
-    form.appendChild(submitBtn);
-    form.appendChild(footer);
+    footer.appendChild(backBtn);
+    footer.appendChild(nextBtn);
+    footer.appendChild(submitBtn);
+    formView.appendChild(footer);
 
     viewContainer.appendChild(formView);
 
@@ -500,7 +500,8 @@ export function initBAUForm() {
 
     function updateWizardState() {
         form.querySelectorAll('.bau-step').forEach((step, index) => {
-            step.classList.toggle('active', (index + 1) === currentStep);
+            const isActive = (index + 1) === currentStep;
+            step.classList.toggle('active', isActive);
         });
         progressIndicator.innerHTML = '';
         for (let i = 1; i <= totalSteps; i++) {
@@ -574,6 +575,8 @@ export function initBAUForm() {
         if (validateStep(currentStep) && validateRequiredFields(currentStep)) {
             currentStep++;
             updateWizardState();
+            const contentArea = popup.querySelector('.bau-content');
+            if (contentArea) contentArea.scrollTop = 0;
             SoundManager.playClick();
         }
     });
@@ -589,11 +592,13 @@ export function initBAUForm() {
     async function populateContextData() {
         const pageData = await getPageData() || {};
 
+        // AM Fallback to internalEmail if missing
         if (!pageData.amName || pageData.amName === "N/A") {
             pageData.amName = pageData.internalEmail || "N/A";
         }
         currentContextData = pageData;
 
+        // Render "Captured Data Hero" panel
         const highlightsContainer = form.querySelector('#bau-vital-highlights');
         if (highlightsContainer) {
             const vitals = [
@@ -614,11 +619,12 @@ export function initBAUForm() {
             }).join('');
         }
 
+        // Smart Rendering Logic
         FORM_CONFIG.steps.forEach(step => {
             if(step.fields) {
                 step.fields.forEach(field => {
                     if (field.isSmart) {
-                         const value = pageData[field.id];
+                        const value = pageData[field.id];
                         const input = form.querySelector(`[name="${field.name}"]`);
                         const wrapper = popup.querySelector(`#wrapper-${field.id}`);
 
@@ -626,6 +632,7 @@ export function initBAUForm() {
 
                         if (wrapper) {
                             const isValid = value && value !== "" && value !== "N/A" && value !== "undefined" && value !== "null";
+                            // Smart Rendering: Hide editable input if data is present
                             wrapper.style.display = isValid ? 'none' : 'block';
                         }
                     }
@@ -633,7 +640,7 @@ export function initBAUForm() {
             }
         });
 
-
+        // Context Badges Grid (Read-only visible even if hidden in inputs)
         const allDataContainer = popup.querySelector('#bau-all-data');
         if (allDataContainer) {
             const displayFields = [
