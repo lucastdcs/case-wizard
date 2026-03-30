@@ -47,7 +47,7 @@ export const injectStyles = () => {
       transform: translate(-50%, -50%);
       z-index: 9999;
       
-      background: #111111; /* Dark Surface */
+      background: #1c1c1c; /* Lighter Dark Surface */
       display: flex;
       flex-direction: column;
       border-radius: 16px;
@@ -146,9 +146,37 @@ export const injectStyles = () => {
 
     .bau-dashboard-metrics {
       display: flex;
+      align-items: center;
       gap: 12px;
       margin-bottom: 24px;
     }
+
+    .bau-metrics-refresh-btn {
+      background: #2a2a2a;
+      border: 1px solid #3c4043;
+      color: #9aa0a6;
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      height: 60px; /* Alinha com os cards de métricas */
+    }
+    .bau-metrics-refresh-btn:hover {
+      background: #333;
+      color: #e8f0fe;
+      border-color: #5f6368;
+    }
+    .bau-metrics-refresh-btn svg { width: 18px; height: 18px; }
+    .bau-metrics-refresh-btn.spinning svg { animation: rotate 1s linear infinite; }
+
+    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
     .bau-metric-card {
       flex: 1;
       background: #1a1a1a;
@@ -398,6 +426,49 @@ export const injectStyles = () => {
     }
     .bau-badge-label { color: #80868b; }
     .bau-badge-value { color: #e8f0fe; font-weight: 500; }
+
+    /* CONFIRMATION STEP 4 */
+    .bau-confirmation-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .bau-confirm-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: background 0.2s ease;
+    }
+    .bau-confirm-row:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .bau-confirm-row.full-width {
+      grid-column: 1 / -1;
+    }
+    .bau-confirm-label {
+      font-size: 10px;
+      color: #8ab4f8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 700;
+    }
+    .bau-confirm-value {
+      font-size: 13px;
+      color: #e8f0fe;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .bau-confirm-divider {
+      grid-column: 1 / -1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      margin: 12px 0;
+    }
 
     .bau-footer { 
         position: absolute; 
