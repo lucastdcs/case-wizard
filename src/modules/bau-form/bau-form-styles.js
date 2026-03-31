@@ -271,29 +271,111 @@ export const injectStyles = () => {
     .bau-empty-state svg { margin-bottom: 16px; opacity: 0.5; }
     .bau-empty-title { font-size: 16px; font-weight: 600; color: #202124; margin: 0 0 4px 0; }
 
+    .bau-success-content {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 1;
+    }
+
+    .bau-success-content::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 300px;
+        height: 300px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, rgba(30, 142, 62, 0.15) 0%, rgba(26, 115, 232, 0.1) 50%, transparent 70%);
+        filter: blur(40px);
+        z-index: -1;
+        opacity: 0;
+        animation: bauFadeIn 1s ${EASE} 0.2s forwards;
+    }
+
     @keyframes bau-success-pop {
       0% { transform: scale(0.5); opacity: 0; }
-      60% { transform: scale(1.1); opacity: 1; }
+      70% { transform: scale(1.1); opacity: 1; }
       100% { transform: scale(1); opacity: 1; }
     }
 
+    @keyframes bauCheckDraw {
+        from { stroke-dashoffset: 30; }
+        to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes bauSlideUpFade {
+        from { transform: translateY(15px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes bauBtnShimmer {
+        0% { transform: translateX(-100%) skewX(-15deg); }
+        30%, 100% { transform: translateX(250%) skewX(-15deg); }
+    }
+
     .bau-success-icon {
-        width: 72px;
-        height: 72px;
-        background: ${COLORS.greenLight};
+        width: 84px;
+        height: 84px;
+        background: rgba(30, 142, 62, 0.1);
+        backdrop-filter: blur(12px);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-bottom: 24px;
         color: ${COLORS.green};
-        animation: bau-success-pop 0.5s ${EASE} forwards;
-        box-shadow: 0 4px 12px rgba(30, 142, 62, 0.15);
+        animation: bau-success-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 10px 25px rgba(30, 142, 62, 0.15);
+        border: 1px solid rgba(30, 142, 62, 0.2);
     }
 
     .bau-success-icon svg {
-        width: 36px;
-        height: 36px;
+        width: 42px;
+        height: 42px;
+    }
+
+    .bau-check-path {
+        stroke-dasharray: 30;
+        stroke-dashoffset: 30;
+        animation: bauCheckDraw 0.5s ${EASE} 0.6s forwards;
+    }
+
+    .bau-success-title {
+        font-size: 22px;
+        font-weight: 700;
+        color: #202124;
+        margin: 0 0 8px 0;
+        opacity: 0;
+        animation: bauSlideUpFade 0.5s ${EASE} 0.7s forwards;
+    }
+
+    .bau-success-message {
+        font-size: 15px;
+        color: #5F6368;
+        margin-bottom: 32px;
+        opacity: 0;
+        animation: bauSlideUpFade 0.5s ${EASE} 0.8s forwards;
+    }
+
+    #bau-success-back-btn {
+        opacity: 0;
+        animation: bauSlideUpFade 0.5s ${EASE} 0.9s forwards;
+        position: relative;
+        overflow: hidden;
+    }
+
+    #bau-success-back-btn::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 40%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transform: translateX(-100%) skewX(-15deg);
+        animation: bauBtnShimmer 2s ease-in-out 1.5s forwards;
     }
     
     /* STICKY FAB */
