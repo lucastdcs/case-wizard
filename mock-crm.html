@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock CRM - TechSol Portfolio</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f1f3f4;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #fff;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            border-bottom: 1px solid #dadce0;
+        }
+        .logo {
+            font-size: 22px;
+            color: #5f6368;
+            font-weight: 500;
+        }
+        .profile-area {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+        }
+        profile-icon material-button {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #1a73e8;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+        }
+        profile-details {
+            position: absolute;
+            top: 48px;
+            right: 0;
+            background: white;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 1000;
+            min-width: 200px;
+        }
+        profile-details.show {
+            display: block;
+        }
+        .name { font-weight: bold; margin-bottom: 4px; }
+        .email { color: #5f6368; font-size: 13px; }
+
+        main {
+            display: flex;
+            flex: 1;
+            padding: 24px;
+            gap: 24px;
+        }
+        .sidebar {
+            width: 240px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #dadce0;
+            padding: 16px;
+        }
+        .content {
+            flex: 1;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #dadce0;
+            padding: 32px;
+        }
+        .data-pair {
+            margin-bottom: 24px;
+        }
+        .form-label, .data-pair-label {
+            font-size: 12px;
+            color: #5f6368;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        .data-pair-content, pii-value {
+            font-size: 14px;
+            color: #202124;
+        }
+        .unmask-button {
+            color: #1a73e8;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        /* Account Input for Internal Email */
+        material-input[debug-id="account-id-input"] input {
+            padding: 8px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">CorpCRM</div>
+        <div class="profile-area">
+             <material-input debug-id="account-id-input">
+                <input type="text" value="jules@google.com">
+            </material-input>
+            <profile-icon>
+                <material-button aria-label="Account">J</material-button>
+            </profile-icon>
+            <profile-details>
+                <div class="name">Jules Engineer</div>
+                <div class="email">jules@google.com</div>
+            </profile-details>
+        </div>
+    </header>
+    <main>
+        <div class="sidebar">
+            <div style="height: 20px; background: #f1f3f4; margin-bottom: 12px; border-radius: 4px;"></div>
+            <div style="height: 20px; background: #f1f3f4; margin-bottom: 12px; border-radius: 4px; width: 80%;"></div>
+            <div style="height: 20px; background: #f1f3f4; margin-bottom: 12px; border-radius: 4px; width: 90%;"></div>
+        </div>
+        <div class="content">
+            <h1>Case #123456789</h1>
+
+            <div class="data-pair" id="advertiser-name-container">
+                <div class="form-label">Given name</div>
+                <div class="data-pair-content">Acme Corp</div>
+            </div>
+
+            <div class="data-pair" id="website-container">
+                <div class="form-label">Website</div>
+                <div class="data-pair-content">https://www.acme.com</div>
+            </div>
+
+            <home-data-item>
+                <div class="data-pair-label">Google Ads External Customer ID</div>
+                <div class="data-pair-content">123-456-7890</div>
+            </home-data-item>
+
+            <div class="data-pair" id="client-email-container">
+                <div class="form-label">Contact email</div>
+                <div class="data-pair-content">
+                    <pii-value>customer@example.com</pii-value>
+                    <span class="unmask-button">Click to view</span>
+                </div>
+            </div>
+
+            <div class="data-pair">
+                <div class="form-label">Account Manager</div>
+                <div class="data-pair-content">John Doe (AM)</div>
+            </div>
+
+            <div class="data-pair">
+                <div class="form-label">Time zone</div>
+                <div class="data-pair-content">America/Sao_Paulo</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Simple interaction for profile menu
+        const profileBtn = document.querySelector('profile-icon material-button');
+        const profileDetails = document.querySelector('profile-details');
+
+        profileBtn.addEventListener('click', () => {
+            profileDetails.classList.toggle('show');
+        });
+
+        // Hide profile details when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.profile-area')) {
+                profileDetails.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>

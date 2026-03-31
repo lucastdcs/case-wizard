@@ -51,6 +51,48 @@ export function initCaseNotesAssistant() {
     });
     scenariosContainer.appendChild(scenarioSelector);
 
+    // --- Evidence Container (Attempted Contact) ---
+    const evidenceContainer = document.createElement("div");
+    evidenceContainer.id = "evidence-container";
+    Object.assign(evidenceContainer.style, {
+        display: "none",
+        marginTop: "16px",
+        padding: "16px",
+        background: COLORS.bgInput,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: RADIUS.medium,
+        boxShadow: SHADOW.subtle
+    });
+
+    const evidenceTitle = document.createElement("div");
+    evidenceTitle.className = "cw-section-title";
+    evidenceTitle.textContent = t('evidencias_contato');
+    evidenceContainer.appendChild(evidenceTitle);
+
+    const evidenceInputs = {};
+    const createEvidenceInput = (id, labelText) => {
+        const wrapper = document.createElement("div");
+        wrapper.style.marginBottom = "12px";
+        const label = document.createElement("label");
+        label.textContent = labelText;
+        label.setAttribute("for", id);
+        label.style.cssText = `display: block; font-size: 11px; font-weight: 700; color: ${COLORS.textSub}; margin-bottom: 6px; text-transform: uppercase;`;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.id = id;
+        input.className = "cw-input";
+        input.placeholder = "https://screenshot.googleplex.com/...";
+        input.style.marginBottom = "0";
+        wrapper.appendChild(label);
+        wrapper.appendChild(input);
+        evidenceInputs[id] = input;
+        return wrapper;
+    };
+
+    evidenceContainer.appendChild(createEvidenceInput("evidence-l1", t('ligacao_1')));
+    evidenceContainer.appendChild(createEvidenceInput("evidence-l2", t('ligacao_2')));
+    evidenceContainer.appendChild(createEvidenceInput("evidence-msg", t('mensagem_am')));
+
     // 3. Drafts Manager (Needs to be initialized before actions)
     const draftsManager = createDraftsManager({
         onSaveCurrent: async () => {
@@ -76,6 +118,7 @@ export function initCaseNotesAssistant() {
     content.appendChild(emptyStateContainer);
     content.appendChild(scenariosContainer);
     content.appendChild(dynamicFormContainer);
+    content.appendChild(evidenceContainer);
 
     // Hide tasks and screenshots initially
     stepTasks.selectionElement.style.display = "none";
@@ -98,48 +141,6 @@ export function initCaseNotesAssistant() {
     content.appendChild(stepTasks.selectionElement);
     content.appendChild(tagSupport.element);
     content.appendChild(stepTasks.screenshotsElement);
-
-    // --- Evidence Container (Attempted Contact) ---
-    const evidenceContainer = document.createElement("div");
-    evidenceContainer.id = "evidence-container";
-    Object.assign(evidenceContainer.style, {
-        display: "none",
-        marginTop: "16px",
-        padding: "16px",
-        background: COLORS.bgInput,
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: RADIUS.medium,
-        boxShadow: SHADOW.subtle
-    });
-
-    const evidenceTitle = document.createElement("div");
-    evidenceTitle.className = "cw-section-title";
-    evidenceTitle.textContent = t('evidencias_contato');
-    evidenceContainer.appendChild(evidenceTitle);
-
-    const createEvidenceInput = (id, labelText) => {
-        const wrapper = document.createElement("div");
-        wrapper.style.marginBottom = "12px";
-        const label = document.createElement("label");
-        label.textContent = labelText;
-        label.setAttribute("for", id);
-        label.style.cssText = `display: block; font-size: 11px; font-weight: 700; color: ${COLORS.textSub}; margin-bottom: 6px; text-transform: uppercase;`;
-        const input = document.createElement("input");
-        input.type = "text";
-        input.id = id;
-        input.className = "cw-input";
-        input.placeholder = "https://screenshot.googleplex.com/...";
-        input.style.marginBottom = "0";
-        wrapper.appendChild(label);
-        wrapper.appendChild(input);
-        return wrapper;
-    };
-
-    evidenceContainer.appendChild(createEvidenceInput("evidence-l1", t('ligacao_1')));
-    evidenceContainer.appendChild(createEvidenceInput("evidence-l2", t('ligacao_2')));
-    evidenceContainer.appendChild(createEvidenceInput("evidence-msg", t('mensagem_am')));
-
-    content.appendChild(evidenceContainer);
 
     content.appendChild(actionsSection);
 
@@ -388,9 +389,9 @@ export function initCaseNotesAssistant() {
     function getEvidenceData() {
         if (evidenceContainer.style.display === "none") return null;
         return {
-            l1: document.getElementById("evidence-l1").value.trim(),
-            l2: document.getElementById("evidence-l2").value.trim(),
-            msg: document.getElementById("evidence-msg").value.trim()
+            l1: evidenceInputs["evidence-l1"]?.value.trim() || "",
+            l2: evidenceInputs["evidence-l2"]?.value.trim() || "",
+            msg: evidenceInputs["evidence-msg"]?.value.trim() || ""
         };
     }
 
@@ -412,24 +413,24 @@ export function initCaseNotesAssistant() {
     }
 
     function onSubStatusChange(subStatusKey) {
+        const templateData = SUBSTATUS_TEMPLATES[subStatusKey];
+        const isAttemptedContact = subStatusKey === "NI_Attempted_Contact" ||
+                                   (templateData && templateData.name && templateData.name.toLowerCase().includes("attempted contact"));
+
         if (scenarioSelector.render) {
             scenarioSelector.render(subStatusKey, notesState.currentCaseType);
         }
 
-        // Toggle Evidence Container
-        if (subStatusKey === "NI_Attempted_Contact") {
-            evidenceContainer.style.display = "block";
-        } else {
-            evidenceContainer.style.display = "none";
-            document.getElementById("evidence-l1").value = "";
-            document.getElementById("evidence-l2").value = "";
-            document.getElementById("evidence-msg").value = "";
-        }
-
         if (!subStatusKey) {
+            evidenceContainer.style.display = "none";
+            if (evidenceInputs["evidence-l1"]) evidenceInputs["evidence-l1"].value = "";
+            if (evidenceInputs["evidence-l2"]) evidenceInputs["evidence-l2"].value = "";
+            if (evidenceInputs["evidence-msg"]) evidenceInputs["evidence-msg"].value = "";
+
             scenariosContainer.style.display = "none";
             dynamicFormContainer.style.display = "none";
-            document.getElementById("manual-task-toggle").style.display = "none";
+            const manualBtn = document.getElementById("manual-task-toggle");
+            if (manualBtn) manualBtn.style.display = "none";
             stepTasks.selectionElement.style.display = "none";
             stepTasks.screenshotsElement.style.display = "none";
 
@@ -440,17 +441,26 @@ export function initCaseNotesAssistant() {
             return;
         }
 
+        // Toggle Evidence Container
+        if (isAttemptedContact) {
+            evidenceContainer.style.display = "block";
+        } else {
+            evidenceContainer.style.display = "none";
+            if (evidenceInputs["evidence-l1"]) evidenceInputs["evidence-l1"].value = "";
+            if (evidenceInputs["evidence-l2"]) evidenceInputs["evidence-l2"].value = "";
+            if (evidenceInputs["evidence-msg"]) evidenceInputs["evidence-msg"].value = "";
+        }
+
         // Hide Empty State
         emptyStateContainer.style.opacity = "0";
         setTimeout(() => {
             if (notesState.currentSubStatus) emptyStateContainer.style.display = "none";
-        }, 400); // Wait for fade out (matches transition)
+        }, 400);
 
         // Show Actions
         actionsSection.style.display = "grid";
 
         // 1. Initialize Active Fields from Template
-        const templateData = SUBSTATUS_TEMPLATES[subStatusKey];
         if (templateData && templateData.templateFields) {
             notesState.setActiveFields(templateData.templateFields);
         }
@@ -748,9 +758,9 @@ export function initCaseNotesAssistant() {
 
         // Reset Evidence UI
         evidenceContainer.style.display = "none";
-        document.getElementById("evidence-l1").value = "";
-        document.getElementById("evidence-l2").value = "";
-        document.getElementById("evidence-msg").value = "";
+        if (evidenceInputs["evidence-l1"]) evidenceInputs["evidence-l1"].value = "";
+        if (evidenceInputs["evidence-l2"]) evidenceInputs["evidence-l2"].value = "";
+        if (evidenceInputs["evidence-msg"]) evidenceInputs["evidence-msg"].value = "";
     }
 
     async function collectFullState(isEmergency = false) {
