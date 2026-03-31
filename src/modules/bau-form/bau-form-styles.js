@@ -65,7 +65,7 @@ export const injectStyles = () => {
       flex: 1;
       position: relative;
       min-height: 400px;
-      overflow: hidden;
+      overflow: scroll;
     }
 
     .bau-view {
@@ -76,6 +76,7 @@ export const injectStyles = () => {
       position: relative;
       box-sizing: border-box;
       overflow: hidden; /* Garante que o conteúdo não vaze */
+      margin-top: 18px;
     }
     .bau-view.active { display: flex; }
     @keyframes bauFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -125,6 +126,7 @@ export const injectStyles = () => {
         justify-content: center;
         gap: 8px;
         transition: all 0.2s ease;
+        margin-bottom: 24px;
     }
     .bau-accordion-toggle:hover { background-color: #222; color: #fff; }
     .bau-accordion-toggle svg {
@@ -202,7 +204,13 @@ export const injectStyles = () => {
       letter-spacing: 0.3px;
     }
 
-    .bau-case-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+    .bau-case-list { list-style: none; padding: 0; margin: 0; }
+
+    .bau-case-list li {
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
 
     .bau-case-card {
       background: rgba(255, 255, 255, 0.05);
