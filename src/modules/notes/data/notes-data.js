@@ -69,7 +69,11 @@ export const translations = {
         'reason_comments': '📌 Reason/Comments:',
         'tags_implemented': '🛠️ Tag Implemented:',
         'screenshots_list': '📸 Screenshots:',
-        'label_substatus': '📋 Substatus:'
+        'label_substatus': '📋 Substatus:',
+        'evidencias_contato': 'Evidências de Contato',
+        'ligacao_1': 'Ligação 1',
+        'ligacao_2': 'Ligação 2',
+        'mensagem_am': 'Mensagem para AM'
     },
     'es': {
         'idioma': 'Idioma:',
@@ -136,7 +140,11 @@ export const translations = {
         'reason_comments': '📌 Reason/Comments:',
         'tags_implemented': '🛠️ Tag Implemented:',
         'screenshots_list': '📸 Screenshots:',
-        'label_substatus': '📋 Substatus:'
+        'label_substatus': '📋 Substatus:',
+        'evidencias_contato': 'Evidencias de Contacto',
+        'ligacao_1': 'Llamada 1',
+        'ligacao_2': 'Llamada 2',
+        'mensagem_am': 'Mensaje para AM'
     }
 };
 
