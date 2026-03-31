@@ -274,7 +274,7 @@ export function initBAUForm() {
     successView.className = 'bau-view';
     successView.innerHTML = `
         <div class="bau-success-content">
-            <div class="bau-success-icon">${ICONS.check}</div>
+            <div class="bau-success-icon" style="color: ${COLORS.green};">${ICONS.check}</div>
             <h2 class="bau-success-title">Caso enviado com sucesso!</h2>
             <p class="bau-success-message">Sua solicitação foi recebida e será processada em breve.</p>
             <button class="bau-btn-primary" id="bau-success-back-btn">Voltar ao Dashboard</button>
@@ -335,7 +335,7 @@ export function initBAUForm() {
             if (metricsEl) metricsEl.innerHTML = '';
             listEl.innerHTML = `
                 <div class="bau-empty-state bau-error-state">
-                    <div style="color: #d93025; margin-bottom: 16px;">
+                    <div style="color: ${COLORS.red}; margin-bottom: 16px;">
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                     </div>
                     <h3 class="bau-empty-title">Ops! Algo deu errado</h3>
