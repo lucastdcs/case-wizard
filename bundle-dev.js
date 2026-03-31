@@ -2289,7 +2289,7 @@ E-mail: ${E.clientEmail||"---"}`;j&&(j.value=J),G&&(G.style.display="block",G.st
       flex: 1;
       position: relative;
       min-height: 400px;
-      overflow: hidden;
+      overflow: scroll;
     }
 
     .bau-view {
@@ -2300,6 +2300,7 @@ E-mail: ${E.clientEmail||"---"}`;j&&(j.value=J),G&&(G.style.display="block",G.st
       position: relative;
       box-sizing: border-box;
       overflow: hidden; /* Garante que o conte\xFAdo n\xE3o vaze */
+      margin-top: 18px;
     }
     .bau-view.active { display: flex; }
     @keyframes bauFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -2349,6 +2350,7 @@ E-mail: ${E.clientEmail||"---"}`;j&&(j.value=J),G&&(G.style.display="block",G.st
         justify-content: center;
         gap: 8px;
         transition: all 0.2s ease;
+        margin-bottom: 24px;
     }
     .bau-accordion-toggle:hover { background-color: #222; color: #fff; }
     .bau-accordion-toggle svg {
@@ -2426,7 +2428,13 @@ E-mail: ${E.clientEmail||"---"}`;j&&(j.value=J),G&&(G.style.display="block",G.st
       letter-spacing: 0.3px;
     }
 
-    .bau-case-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+    .bau-case-list { list-style: none; padding: 0; margin: 0; }
+
+    .bau-case-list li {
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
 
     .bau-case-card {
       background: rgba(255, 255, 255, 0.05);
