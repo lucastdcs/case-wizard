@@ -2503,7 +2503,7 @@ E-mail: ${E.clientEmail||"---"}`;j&&(j.value=J),G&&(G.style.display="block",G.st
 
     /* STICKY FAB */
     .bau-dashboard-fab {
-      position: absolute;
+      position: fixed;
       bottom: 24px;
       right: 24px;
       background: #1a73e8;
