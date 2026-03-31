@@ -27,6 +27,21 @@ export const EMAIL_TEMPLATES = [
     ],
     "template": "<p>Olá, tudo bem?</p><br><p>Seguem as próximas datas disponíveis:</p><ul><li><strong>[DATA 1] às [HORA 1]</strong></li><li><strong>[DATA 2] às [HORA 2]</strong></li><li><strong>[DATA 3] às [HORA 3]</strong></li></ul><br><p>Também informo que se não houver resposta a este email, realizarei um acompanhamento neste caso durante 6 dias, onde entrarei em contato a cada 3 dias para tentarmos reagendar seu caso o mais breve possível.</p><p>Reforço que minha agenda é dinâmica, sendo assim, a qualquer momento um atendimento pode ser marcado para os dias disponíveis. Logo, quanto mais rápido conseguir me responder, mais garantido será o agendamento de data e horário.</p><br><p>Atenciosamente,</p><p><strong>[Seu Nome]</strong><br>Time de Soluções Técnicas Cognizant, em nome do Google.</p>"
   },
+  {"id": "reschedule2",
+    "name": "Proposta de Reagendamento",
+    "category": "Tentativas & Agendamento",
+    "subject": "Reagendamento de Consultoria",
+    "placeholders": [
+      { "key": "[DATA 1]", "label": "Data 1", "type": "text" },
+      { "key": "[HORA 1]", "label": "Hora 1", "type": "text" },
+      { "key": "[DATA 2]", "label": "Data 2", "type": "text" },
+      { "key": "[HORA 2]", "label": "Hora 2", "type": "text" },
+      { "key": "[DATA 3]", "label": "Data 3", "type": "text" },
+      { "key": "[HORA 3]", "label": "Hora 3", "type": "text" },
+      { "key": "[Seu Nome]", "label": "Assinatura", "type": "text", "auto": "agentName" }
+    ],
+    "template": "<p>Olá, tudo bem?</p><br><p>Seguem as próximas datas disponíveis:</p><ul><li><strong>[DATA 1] às [HORA 1]</strong></li><li><strong>[DATA 2] às [HORA 2]</strong></li><li><strong>[DATA 3] às [HORA 3]</strong></li></ul><br><p>Também informo que se não houver resposta a este email nas próximas 48 horas o caso será encerrado.</p><p>Reforço que minha agenda é dinâmica, sendo assim, a qualquer momento um atendimento pode ser marcado para os dias disponíveis. Logo, quanto mais rápido conseguir me responder, mais garantido será o agendamento de data e horário.</p><br><p>Atenciosamente,</p><p><strong>[Seu Nome]</strong><br>Time de Soluções Técnicas Cognizant, em nome do Google.</p>"
+  },
   {
     "id": "max_reschedules",
     "name": "Limite de Reagendamentos Excedido",
