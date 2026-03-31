@@ -258,7 +258,7 @@ export const injectStyles = () => {
     .bau-case-status-badge.status-red { background: rgba(217, 48, 37, 0.2); color: #D93025; }
     .bau-case-status-badge.status-gray { background: rgba(128, 134, 139, 0.2); color: #5F6368; }
 
-    .bau-empty-state {
+    .bau-empty-state, .bau-success-view {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -271,6 +271,31 @@ export const injectStyles = () => {
     .bau-empty-state svg { margin-bottom: 16px; opacity: 0.5; }
     .bau-empty-title { font-size: 16px; font-weight: 600; color: #202124; margin: 0 0 4px 0; }
 
+    @keyframes bau-success-pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .bau-success-icon {
+        width: 72px;
+        height: 72px;
+        background: ${COLORS.greenLight};
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 24px;
+        color: ${COLORS.green};
+        animation: bau-success-pop 0.5s ${EASE} forwards;
+        box-shadow: 0 4px 12px rgba(30, 142, 62, 0.15);
+    }
+
+    .bau-success-icon svg {
+        width: 36px;
+        height: 36px;
+    }
+    
     /* STICKY FAB */
     .bau-dashboard-fab {
       position: fixed;
