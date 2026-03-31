@@ -1,7 +1,7 @@
 // src/modules/notes/core/output-generator.js
 import { SUBSTATUS_TEMPLATES, TASKS_DB, textareaListFields, textareaParagraphFields, translations } from "../data/notes-data.js";
 
-export function generateOutputHtml(state, stepTasks, tagSupport) {
+export function generateOutputHtml(state, stepTasks, tagSupport, evidenceData = null) {
     const selectedSubStatusKey = state.currentSubStatus;
     if (!selectedSubStatusKey) return null;
 
@@ -114,6 +114,18 @@ export function generateOutputHtml(state, stepTasks, tagSupport) {
 
         htmlOutput += `<b>${label}</b><br>${finalValue}<br><br>`;
     });
+
+    // Add Evidence Data if present
+    if (evidenceData) {
+        let evidenceHtml = "";
+        if (evidenceData.l1) evidenceHtml += `<li>${t('ligacao_1')}: ${evidenceData.l1}</li>`;
+        if (evidenceData.l2) evidenceHtml += `<li>${t('ligacao_2')}: ${evidenceData.l2}</li>`;
+        if (evidenceData.msg) evidenceHtml += `<li>${t('mensagem_am')}: ${evidenceData.msg}</li>`;
+
+        if (evidenceHtml) {
+            htmlOutput += `<b>${t('evidencias_contato')}</b><br><ul ${ulStyle}>${evidenceHtml}</ul><br>`;
+        }
+    }
 
     // Add template specific footer
     if (templateDef.customFooter) {
