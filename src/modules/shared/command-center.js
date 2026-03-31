@@ -66,7 +66,7 @@ export function initCommandCenter(actions) {
 
             /* --- PILL PRINCIPAL --- */
             .cw-pill {
-                position: fixed; bottom: 15%; right: 24px;
+                position: fixed; bottom: 10%; right: 24px;
                 display: flex; flex-direction: column; align-items: center; gap: 14px;
                 padding: 18px 8px;
                 
