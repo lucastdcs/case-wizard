@@ -1,7 +1,8 @@
 // src/modules/configs/configs-assistant.js
 
 import { stylePopup, showToast } from "../shared/utils.js";
-import { getPageData } from "../shared/page-data.js";
+import { getPageData, getAgentEmail } from "../shared/page-data.js";
+import { fetchUserProfile } from "../shared/data-service.js"; // Importação crucial adicionada
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
@@ -20,7 +21,6 @@ export function initConfigsAssistant() {
         border: "#DADCE0",
     };
 
-    // CSS injection for maintainability
     const styleId = "cw-configs-styles";
     if (!document.getElementById(styleId)) {
         const style = document.createElement("style");
@@ -120,11 +120,10 @@ export function initConfigsAssistant() {
     const profileSection = document.createElement("div");
     profileSection.className = "cw-profile-card";
     profileSection.id = "cw-user-profile-section";
-    profileSection.style.display = "none"; // Oculto até carregar
+    profileSection.style.display = "none";
     container.appendChild(profileSection);
 
     async function renderUserProfile() {
-        // Exibe skeleton loader imediatamente
         profileSection.style.display = "flex";
         profileSection.innerHTML = `
             <div class="cw-skeleton cw-skeleton-avatar"></div>
@@ -140,12 +139,14 @@ export function initConfigsAssistant() {
         `;
 
         try {
-            const data = await getPageData();
-            const profile = data.userProfile;
-            const ldap = data.agentEmail ? data.agentEmail.split('@')[0] : "user";
+            // Busca o LDAP real do usuário logado
+            const agentEmail = getAgentEmail();
+            const ldap = agentEmail ? agentEmail.split('@')[0] : "user";
+            
+            // Faz a chamada real para a base de dados via JSONP
+            const profile = await fetchUserProfile(ldap);
 
             if (!profile) {
-                // Fallback: Se não encontrar no Sheet, mostra apenas o LDAP capturado
                 profileSection.innerHTML = `
                     <div class="cw-profile-avatar" style="background: #e8eaed; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #5f6368; font-weight: bold;">
                         ${ldap.charAt(0).toUpperCase()}
@@ -154,7 +155,6 @@ export function initConfigsAssistant() {
                         <h2 class="cw-profile-ldap">@${ldap}</h2>
                         <div class="cw-profile-badges">
                             <span class="cw-profile-badge">Consultor</span>
-                            <span class="cw-profile-badge">N/A</span>
                         </div>
                         <div style="font-size: 12px; color: ${COLORS.textSub}; margin-top: 4px;">
                             Perfil não localizado na base de dados.
@@ -164,7 +164,6 @@ export function initConfigsAssistant() {
                 return;
             }
 
-            // Renderização dinâmica com dados reais
             profileSection.innerHTML = `
                 <img src="https://moma-teams-photos.corp.google.com/photos/${profile.ldap}?sz=600&type=PLUS"
                      class="cw-profile-avatar" alt="User Photo"
@@ -210,19 +209,6 @@ export function initConfigsAssistant() {
         if (e.target.checked) SoundManager.playClick();
     };
     container.appendChild(soundSection);
-
-    // // --- SEÇÃO: TEMA ---
-    // const themeSection = document.createElement("div");
-    // themeSection.className = "cw-configs-section";
-    // themeSection.innerHTML = `
-    //     <div class="cw-configs-section-title">Aparência</div>
-    //     <div class="cw-configs-card">
-    //         <div style="color:${COLORS.textSub}; font-size:13px; text-align:center; padding:10px;">
-    //             Em breve: Suporte a modo escuro e esquemas de cores.
-    //         </div>
-    //     </div>
-    // `;
-    // container.appendChild(themeSection);
 
     // --- SEÇÃO: SUPORTE ---
     const supportSection = document.createElement("div");

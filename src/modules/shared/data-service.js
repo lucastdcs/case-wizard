@@ -11,33 +11,40 @@ const CACHE_KEY_TIPS = "cw_data_tips";
 const FALLBACK_TIPS = ["Processando...", "Mantenha o foco!", "Aguarde..."];
 
 // --- Helper JSONP Poderoso (Core do Sistema) ---
+
 function jsonpFetch(operation, params = {}) {
     return new Promise((resolve, reject) => {
         const callbackName = 'cw_cb_' + Math.round(100000 * Math.random());
         const script = document.createElement('script');
         
+        // WATCHDOG TIMEOUT: Evita o Skeleton Infinito
+        // Se o Google não responder em 15 segundos, rejeita a promise.
+        const timeoutId = setTimeout(() => {
+            if (document.body.contains(script)) document.body.removeChild(script);
+            delete window[callbackName];
+            reject(new Error("Timeout: A API demorou muito para responder. (Apps Script bloqueado ou erro 500)"));
+        }, 15000); 
+
         window[callbackName] = (data) => {
+            clearTimeout(timeoutId); // Sucesso! Cancela a bomba-relógio.
             if (document.body.contains(script)) document.body.removeChild(script);
             delete window[callbackName];
             resolve(data);
         };
 
-        // Converte objeto params em string query
         const queryString = Object.keys(params)
             .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(params[key]))
             .join('&');
 
-        // Monta URL com Cache Buster (t=...)
         const finalUrl = `${API_URL}?op=${operation}&callback=${callbackName}&t=${Date.now()}&${queryString}`;
         
         script.src = finalUrl;
         
         script.onerror = () => {
+            clearTimeout(timeoutId);
             if (document.body.contains(script)) document.body.removeChild(script);
             delete window[callbackName];
-            // Em scripts corporativos, as vezes o onerror dispara mesmo com sucesso 
-            // se o mimetype variar, mas geralmente é bloqueio.
-            reject(new Error("JSONP Error (Check Corp Login)"));
+            reject(new Error("Erro de conexão JSONP."));
         };
 
         document.body.appendChild(script);
