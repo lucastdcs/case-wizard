@@ -265,7 +265,7 @@ export function initBAUForm() {
     footer.appendChild(backBtn);
     footer.appendChild(nextBtn);
     footer.appendChild(submitBtn);
-    formView.appendChild(footer);
+    form.appendChild(footer);
 
     viewContainer.appendChild(formView);
 
@@ -502,6 +502,7 @@ export function initBAUForm() {
         form.querySelectorAll('.bau-step').forEach((step, index) => {
             const isActive = (index + 1) === currentStep;
             step.classList.toggle('active', isActive);
+            step.style.display = isActive ? 'block' : 'none';
         });
         progressIndicator.innerHTML = '';
         for (let i = 1; i <= totalSteps; i++) {
@@ -717,7 +718,9 @@ export function initBAUForm() {
     form.onsubmit = async (e) => {
         e.preventDefault();
         
-        for(let i=1; i < totalSteps; i++){
+        for(let i=1; i <= totalSteps; i++){
+            const stepConfig = FORM_CONFIG.steps.find(s => s.id === i);
+            if (stepConfig?.isConfirmation) continue;
             if(!validateStep(i) || !validateRequiredFields(i)) {
                 currentStep = i;
                 updateWizardState();
