@@ -229,6 +229,7 @@ sendBAUEscalation: async (payload, userEmail) => {
             console.log(`Buscando perfil para: ${ldap}`);
 
             const response = await jsonpFetch('get_user_profile');
+            console.log("Resposta bruta do servidor:", response);
     
 
             if (response && response.status === 'success' && response.profile) {
