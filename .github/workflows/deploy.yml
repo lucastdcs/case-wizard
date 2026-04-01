@@ -1,4 +1,4 @@
-name: Build and Deploy to GitHub Pages
+name: Build and Deploy (GH Pages & Apps Script)
 
 on:
   push:
@@ -7,7 +7,10 @@ on:
       - refactor-structure
 
 jobs:
-  build-and-deploy:
+  # ==========================================
+  # JOB 1: FRONTEND (Esbuild -> GitHub Pages)
+  # ==========================================
+  build-and-deploy-frontend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -27,7 +30,6 @@ jobs:
         run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle.js --minify
 
       # --- BUILD DE DESENVOLVIMENTO (Apenas na refactor) ---
-      # Cria um arquivo com nome diferente: bundle-dev.js
       - name: Build Development (bundle-dev.js)
         if: github.ref == 'refs/heads/refactor-structure'
         run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle-dev.js --minify
@@ -39,5 +41,33 @@ jobs:
           publish_dir: ./dist
           publish_branch: gh-pages
           cname: ''
-          # IMPORTANTE: Isso impede que o deploy da refactor apague o arquivo da main e vice-versa
           keep_files: true
+
+  # ==========================================
+  # JOB 2: BACKEND (Clasp -> Google Apps Script)
+  # ==========================================
+  deploy-backend-gas:
+    runs-on: ubuntu-latest
+    # Segurança: Só atualiza o banco/lógica no Google se a mudança for oficial (main)
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Instalar o Google Clasp
+        run: npm install -g @google/clasp
+
+      - name: Autenticar Clasp (Injetando o Secret)
+        run: |
+          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+
+      - name: Push para o Apps Script
+        run: |
+          cd gas-backend
+          clasp push -f
