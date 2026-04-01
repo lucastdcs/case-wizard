@@ -64,7 +64,9 @@ jobs:
 
       - name: Autenticar Clasp (Injetando o Secret)
         run: |
-          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+          cat << 'EOF' > ~/.clasprc.json
+          ${{ secrets.CLASPRC_JSON }}
+          EOF
 
       - name: Push para o Apps Script
         run: |
