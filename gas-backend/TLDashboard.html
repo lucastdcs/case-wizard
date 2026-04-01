@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>TL Dashboard - Powered by Cases Wizard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <style>
+        :root {
+            /* Paleta Gemini AI */
+            --bg-base: #131314;
+            --surface-level-1: #1e1f20;
+            --surface-level-2: #282a2c;
+            --surface-level-3: #3c4043;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            
+            --text-primary: #e3e3e3;
+            --text-secondary: #c4c7c5;
+            --text-tertiary: #8e918f;
+            
+            /* Gradientes e Auras */
+            --gemini-blue: #a8c7fa;
+            --gemini-purple: #c58af9;
+            --gemini-peach: #f2b8b5;
+            --gemini-gradient: linear-gradient(90deg, #4285f4, #9b72cb, #d96570);
+            --gemini-gradient-subtle: linear-gradient(90deg, rgba(66, 133, 244, 0.15), rgba(155, 114, 203, 0.15));
+            
+            --success: #81c995;
+            --danger: #f28b82;
+            
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-pill: 100px;
+        }
+
+        body { 
+            font-family: 'Google Sans', system-ui, sans-serif; 
+            background-color: var(--bg-base); 
+            margin: 0; 
+            color: var(--text-primary); 
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .ambient-glow {
+            position: fixed;
+            top: -20vh; left: 10vw;
+            width: 80vw; height: 50vh;
+            background: radial-gradient(ellipse at center, rgba(155, 114, 203, 0.08) 0%, rgba(19, 19, 20, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Top Navigation - Branding Cases Wizard */
+        .topnav {
+            background: rgba(19, 19, 20, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 0 32px;
+            height: 72px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .topnav::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 1px;
+            background: var(--gemini-gradient);
+            opacity: 0.5;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-powered {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-icon {
+            background: var(--gemini-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-variation-settings: 'FILL' 1;
+            animation: pulseGlow 3s infinite alternate;
+            font-size: 24px !important;
+        }
+
+        @keyframes pulseGlow {
+            0% { filter: brightness(1) drop-shadow(0 0 4px rgba(155, 114, 203, 0.4)); }
+            100% { filter: brightness(1.2) drop-shadow(0 0 12px rgba(66, 133, 244, 0.6)); }
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            height: 40px;
+            padding: 0 20px;
+            border-radius: var(--radius-pill);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            font-family: 'Google Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        .btn-icon:hover {
+            background: var(--surface-level-2);
+            color: var(--text-primary);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .workspace {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 32px;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 2.5fr 2fr 1.5fr 1fr;
+            padding: 0 24px 16px 24px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 16px;
+        }
+
+        .case-row {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer; /* Indica que a linha é clicável */
+        }
+
+        .case-row:hover {
+            background: var(--surface-level-2);
+            border-color: rgba(255,255,255,0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .row-main-data {
+            display: grid;
+            grid-template-columns: 2.5fr 2fr 1.5fr 1fr;
+            align-items: center;
+            gap: 24px;
+        }
+
+        /* Prevenir que cliques nos botões abram o modal */
+        .action-group, .link {
+            position: relative;
+            z-index: 2;
+        }
+
+        .text-primary { font-size: 16px; font-weight: 500; color: var(--text-primary); margin-bottom: 6px; letter-spacing: 0.2px;}
+        .text-secondary { font-size: 13px; color: var(--text-secondary); }
+        .text-mono { font-family: 'Roboto Mono', monospace; font-size: 13px; color: var(--gemini-blue); background: rgba(168, 199, 250, 0.08); padding: 2px 6px; border-radius: 4px;}
+
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: var(--radius-pill);
+            font-size: 12px; font-weight: 500; letter-spacing: 0.3px;
+            margin-bottom: 12px; width: fit-content;
+        }
+        .badge-create { background: var(--gemini-gradient-subtle); color: var(--gemini-blue); border: 1px solid rgba(168, 199, 250, 0.2); }
+        .badge-discard { background: rgba(242, 139, 130, 0.1); color: var(--danger); border: 1px solid rgba(242, 139, 130, 0.2); }
+
+        .action-group {
+            display: flex; gap: 12px; justify-content: flex-end;
+        }
+
+        .btn {
+            height: 40px; padding: 0 20px; border-radius: var(--radius-pill);
+            font-size: 14px; font-weight: 500; font-family: 'Google Sans', sans-serif;
+            cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+            border: 1px solid transparent;
+        }
+
+        .btn-primary { background: var(--text-primary); color: var(--bg-base); }
+        .btn-primary:hover { background: #ffffff; box-shadow: 0 0 20px rgba(168, 199, 250, 0.4); transform: scale(1.02); }
+        .btn-danger-outline { background: transparent; color: var(--text-secondary); border-color: var(--border-subtle); }
+        .btn-danger-outline:hover { background: rgba(242, 139, 130, 0.1); color: var(--danger); border-color: rgba(242, 139, 130, 0.3); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+        .reason-box {
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            display: flex; gap: 12px; align-items: flex-start;
+        }
+        .reason-box .material-symbols-rounded { color: var(--gemini-purple); font-size: 20px; font-variation-settings: 'wght' 300;}
+
+        .link { color: var(--gemini-blue); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: opacity 0.2s; }
+        .link:hover { opacity: 0.8; }
+
+        /* Estilos do Modal (Pop-up) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+
+        .modal-content {
+            background: var(--surface-level-1); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg); width: 100%; max-width: 600px;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.4); transform: translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+
+        .modal-header {
+            padding: 24px 32px; border-bottom: 1px solid var(--border-subtle);
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface-level-2); position: sticky; top: 0; z-index: 2;
+        }
+
+        .modal-body { padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+
+        .detail-group { display: flex; flex-direction: column; gap: 6px; }
+        .detail-label { font-size: 12px; color: var(--text-tertiary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        .detail-value { 
+            background: rgba(0,0,0,0.2); padding: 12px 16px; border-radius: var(--radius-sm);
+            font-size: 15px; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; word-break: break-word;
+        }
+        .copy-btn {
+            background: none; border: none; color: var(--text-tertiary); cursor: pointer;
+            padding: 4px; border-radius: 4px; transition: color 0.2s, background 0.2s; display: flex;
+        }
+        .copy-btn:hover { color: var(--gemini-blue); background: rgba(168, 199, 250, 0.1); }
+
+        /* Estilo da Foto LDAP */
+        .agent-profile { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+        .agent-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-subtle); background: var(--surface-level-3); }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: var(--text-primary); color: var(--bg-base); padding: 12px 24px;
+            border-radius: var(--radius-pill); font-size: 14px; font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+            z-index: 2000;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        .loader { padding: 60px; text-align: center; color: var(--gemini-blue); display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .spinner { animation: spin 1.5s cubic-bezier(0.5, 0, 0.5, 1) infinite; font-size: 32px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .empty-state { padding: 80px 20px; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="ambient-glow"></div>
+
+<div id="toast" class="toast">Copiado para a área de transferência</div>
+
+<div id="caseModal" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div style="font-size: 18px; font-weight: 500;">Detalhes do Caso</div>
+            <button class="btn-icon" style="height: 32px; padding: 0 8px; border: none;" onclick="closeModal(event)">
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div class="modal-body" id="modal-body-content">
+            </div>
+    </div>
+</div>
+
+<nav class="topnav">
+    <div class="brand-container">
+        <div class="brand-main">
+            <span class="material-symbols-rounded brand-icon">auto_awesome</span>
+            Cases Wizard
+        </div>
+        <div style="width: 1px; height: 24px; background: var(--border-subtle);"></div>
+        <div class="brand-powered">
+            <span style="color: var(--text-primary); font-size: 14px; letter-spacing: -0.2px;">BAU Central</span>
+            <span>TL Dashboard</span>
+        </div>
+    </div>
+    <button class="btn-icon" onclick="loadCases()">
+        <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
+        Atualizar Dados
+    </button>
+</nav>
+
+<main class="workspace">
+    <div class="table-header">
+        <div>ANUNCIANTE & ID</div>
+        <div>SOLICITAÇÃO & REFERÊNCIA</div>
+        <div>AGENDAMENTO</div>
+        <div style="text-align: right;">AÇÃO</div>
+    </div>
+
+    <div id="loader" class="loader" style="display: none;">
+        <span class="material-symbols-rounded spinner">progress_activity</span>
+        <span style="color: var(--text-secondary); font-size: 15px;">Sincronizando com a base...</span>
+    </div>
+
+    <div id="cases-container"></div>
+</main>
+
+<script>
+    window.onload = loadCases;
+    let currentCasesData = []; // Armazena dados globais para o modal
+
+    function loadCases() {
+        document.getElementById('loader').style.display = 'flex';
+        document.getElementById('cases-container').innerHTML = '';
+        
+        google.script.run
+            .withSuccessHandler(renderCases)
+            .getPendingBAUCases();
+    }
+
+    function renderCases(cases) {
+        document.getElementById('loader').style.display = 'none';
+        const container = document.getElementById('cases-container');
+        currentCasesData = cases; // Salva
+        
+        if (cases.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-symbols-rounded" style="font-size: 48px; color: var(--border-subtle);">task_alt</span>
+                    <div style="font-size: 18px; font-weight: 500; color: var(--text-primary);">Fila perfeitamente alinhada</div>
+                    <div style="font-size: 14px;">Nenhum caso requer a sua aprovação no momento.</div>
+                </div>`;
+            return;
+        }
+
+        cases.forEach(c => {
+            const isDiscard = c.status === "PENDING_DISCARD";
+            const badgeClass = isDiscard ? "badge-discard" : "badge-create";
+            const badgeIcon = isDiscard ? "delete" : "add_circle";
+            const badgeText = isDiscard ? "Avaliar Descarte" : "Aprovar Criação";
+            
+            let dataFormatada = c.availability || "Não informado";
+            if (dataFormatada.includes("T")) {
+                const p = dataFormatada.split("T");
+                dataFormatada = `${p[0].split("-").reverse().join("/")} às ${p[1]}`;
+            }
+
+            const dataEnvio = new Date(c.date).toLocaleDateString('pt-BR', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+            const agentLdap = c.agentEmail ? c.agentEmail.split('@')[0] : 'Unknown';
+
+            const row = document.createElement('div');
+            row.className = 'case-row';
+            row.id = `row-${c.id}`;
+            // Clique na linha abre o modal, passando o ID
+            row.onclick = () => openModal(c.id);
+            
+            row.innerHTML = `
+                <div class="row-main-data">
+                    <div>
+                        <div class="status-badge ${badgeClass}">
+                            <span class="material-symbols-rounded" style="font-size: 14px;">${badgeIcon}</span>
+                            ${badgeText}
+                        </div>
+                        <div class="text-primary">${c.advName}</div>
+                        <div class="text-secondary">CID: <span class="text-mono">${c.cid}</span></div>
+                    </div>
+
+                    <div>
+                        <div class="text-primary">${c.task}</div>
+                        <div class="text-secondary" style="margin-top: 6px;">
+                            <a href="https://cases.connect.corp.google.com/#/case/${c.caseId}" target="_blank" class="link" onclick="event.stopPropagation()">
+                                <span class="material-symbols-rounded" style="font-size: 16px;">arrow_outward</span>
+                                ${c.caseId}
+                            </a>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-primary" style="display: flex; align-items: center; gap: 6px;">
+                            <span class="material-symbols-rounded" style="font-size: 18px; color: var(--text-tertiary);">schedule</span>
+                            ${dataFormatada}
+                        </div>
+                        
+                        <div class="agent-profile">
+                            <img src="https://moma-teams-photos.corp.google.com/photos/${agentLdap}?sz=600&type=PLUS" class="agent-photo" alt="Foto LDAP" onerror="this.style.display='none'">
+                            <div>
+                                <div class="text-secondary" style="font-size: 13px; color: var(--text-primary);">${agentLdap}</div>
+                                <div class="text-secondary" style="font-size: 11px;">Enviado em ${dataEnvio}</div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="action-group">
+                        <button class="btn btn-danger-outline" onclick="event.stopPropagation(); processAction('${c.id}', 'DISCARDED', this)" title="Rejeitar/Descartar">
+                            <span class="material-symbols-rounded" style="font-size: 20px;">close</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="event.stopPropagation(); processAction('${c.id}', 'CREATED', this)">
+                            <span class="material-symbols-rounded" style="font-size: 20px;">check</span>
+                            Aprovar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="reason-box">
+                    <span class="material-symbols-rounded">format_quote</span>
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Contexto fornecido</div>
+                        "${c.reason}"
+                    </div>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    // Modal Logic
+    function openModal(caseId) {
+        const c = currentCasesData.find(item => item.id === caseId);
+        if(!c) return;
+
+        const agentLdap = c.agentEmail ? c.agentEmail.split('@')[0] : 'Unknown';
+        
+        // Helper function para criar linhas copiáveis
+        const createCopyableRow = (label, value) => `
+            <div class="detail-group">
+                <span class="detail-label">${label}</span>
+                <div class="detail-value">
+                    <span>${value || 'N/A'}</span>
+                    <button class="copy-btn" onclick="copyToClipboard('${value}', this)" title="Copiar">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('modal-body-content').innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                ${createCopyableRow('Anunciante', c.advName)}
+                ${createCopyableRow('Customer ID (CID)', c.cid)}
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                ${createCopyableRow('Task BAU', c.task)}
+                ${createCopyableRow('Case Connect ID', c.caseId)}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                ${createCopyableRow('Site do Cliente', c.site || 'Não informado')}
+                ${createCopyableRow('Disponibilidade (Agendamento)', c.availability || 'Não informado')}
+            </div>
+
+            <div class="detail-group">
+                <span class="detail-label">Agente Solicitante</span>
+                <div class="detail-value" style="justify-content: flex-start; gap: 12px;">
+                    <img src="https://moma-teams-photos.corp.google.com/photos/${agentLdap}?sz=600&type=PLUS" class="agent-photo" alt="LDAP" onerror="this.style.display='none'">
+                    <span>${c.agentEmail}</span>
+                    <button class="copy-btn" style="margin-left: auto;" onclick="copyToClipboard('${c.agentEmail}', this)">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="detail-group">
+                <span class="detail-label">Motivo / Contexto (Reason)</span>
+                <div class="detail-value" style="align-items: flex-start;">
+                    <span style="font-style: italic;">"${c.reason}"</span>
+                    <button class="copy-btn" onclick="copyToClipboard('${c.reason}', this)">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
+                    </button>
+                </div>
+            </div>
+        `;
+        document.getElementById('caseModal').classList.add('active');
+        document.body.style.overflow = 'hidden'; // Previne scroll de fundo
+    }
+
+    function closeModal(e) {
+        if(e) e.stopPropagation();
+        document.getElementById('caseModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Copy to Clipboard com Toast
+    function copyToClipboard(text, btnElement) {
+        navigator.clipboard.writeText(text).then(() => {
+            // Efeito visual no botão
+            const icon = btnElement.querySelector('span');
+            icon.textContent = 'check';
+            icon.style.color = 'var(--success)';
+            setTimeout(() => {
+                icon.textContent = 'content_copy';
+                icon.style.color = '';
+            }, 2000);
+
+            // Toast Notification
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        });
+    }
+
+    function processAction(id, newStatus, btnElement) {
+        if(!confirm(`Confirma a alteração para ${newStatus === 'CREATED' ? 'CRIADO' : 'DESCARTADO'}? O agente será notificado.`)) return;
+
+        const rowDiv = document.getElementById(`row-${id}`);
+        const actionsDiv = btnElement.parentElement;
+        Array.from(actionsDiv.children).forEach(b => b.disabled = true);
+        
+        btnElement.innerHTML = `<span class="material-symbols-rounded spinner" style="font-size: 20px;">progress_activity</span>`;
+        
+        google.script.run
+            .withSuccessHandler(() => {
+                rowDiv.style.transform = 'scale(0.98)';
+                rowDiv.style.opacity = '0.3';
+                rowDiv.style.boxShadow = newStatus === 'CREATED' ? '0 0 30px rgba(168, 199, 250, 0.2)' : 'none';
+                setTimeout(() => rowDiv.remove(), 400);
+            })
+            .updateBAUCaseStatus(id, newStatus);
+    }
+</script>
+</body>
+</html>
