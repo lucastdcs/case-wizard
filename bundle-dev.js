@@ -2225,7 +2225,7 @@ E-mail: ${A.clientEmail||"---"}`;ae&&(ae.value=h),oe&&(oe.style.display="block",
                     </div>
                 </div>
             `;return}d.innerHTML=`
-        <img src="https://moma-teams-photos.corp.google.com/photos/${C.ldap}?sz=600&type=PLUS"
+        <img src="https://moma-teams-photos.corp.google.com/photos/${u}?sz=600&type=PLUS"
              class="cw-profile-avatar" alt="User Photo"
              onerror="this.style.display='none'">
         <div class="cw-profile-info">
