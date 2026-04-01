@@ -62,11 +62,24 @@ jobs:
       - name: Instalar o Google Clasp
         run: npm install -g @google/clasp
 
-      - name: Autenticar Clasp (Injetando o Secret)
+      - name: Autenticar Clasp (Forçando credencial local)
         run: |
-          cat << 'EOF' > ~/.clasprc.json
+          # 1. Entra na pasta do backend
+          cd gas-backend
+          
+          # 2. Cria o arquivo de credenciais localmente (dentro da gas-backend)
+          cat << 'EOF' > .clasprc.json
           ${{ secrets.CLASPRC_JSON }}
           EOF
+          
+          # 3. Copia também para o global por garantia
+          cp .clasprc.json ~/.clasprc.json
+
+      - name: Validar integridade do JSON
+        run: |
+          cd gas-backend
+          # Testa se o arquivo é um JSON válido. Se não for, o erro aparece AQUI, antes do Clasp.
+          jq . .clasprc.json >/dev/null || (echo "ERRO: O Secret CLASPRC_JSON não é um JSON válido!" && exit 1)
 
       - name: Push para o Apps Script
         run: |
