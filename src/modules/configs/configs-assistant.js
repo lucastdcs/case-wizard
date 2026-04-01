@@ -1,7 +1,7 @@
 // src/modules/configs/configs-assistant.js
 
 import { stylePopup, showToast } from "../shared/utils.js";
-import { getPageData, getAgentName } from "../shared/page-data.js";
+import { getPageData, getAgentEmail } from "../shared/page-data.js";
 import { fetchUserProfile } from "../shared/data-service.js"; // Importação crucial adicionada
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
@@ -137,54 +137,59 @@ export function initConfigsAssistant() {
                 <div class="cw-skeleton cw-skeleton-text" style="margin-top: 8px;"></div>
             </div>
         `;
+        setTimeout(async () => {
+            try {
+                // Busca o LDAP real do usuário logado
+                const agentEmail = getAgentEmail();
+                const ldap = agentEmail ? agentEmail.split('@')[0] : "user";
 
-        try {
-            // Busca o LDAP real do usuário logado
-            const agentEmail = getAgentName();
-            const ldap = agentEmail ? agentEmail.split('@')[0] : "user";
-            
-            // Faz a chamada real para a base de dados via JSONP
-            const profile = await fetchUserProfile(ldap);
+                // Faz a chamada real para a base de dados via JSONP
+                const profile = await fetchUserProfile(ldap);
 
-            if (!profile) {
-                profileSection.innerHTML = `
-                    <div class="cw-profile-avatar" style="background: #e8eaed; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #5f6368; font-weight: bold;">
-                        ${ldap.charAt(0).toUpperCase()}
-                    </div>
-                    <div class="cw-profile-info">
-                        <h2 class="cw-profile-ldap">@${ldap}</h2>
-                        <div class="cw-profile-badges">
-                            <span class="cw-profile-badge">Consultor</span>
-                        </div>
-                        <div style="font-size: 12px; color: ${COLORS.textSub}; margin-top: 4px;">
-                            Perfil não localizado na base de dados.
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            profileSection.innerHTML = `
-                <img src="https://moma-teams-photos.corp.google.com/photos/${profile.ldap}?sz=600&type=PLUS"
-                     class="cw-profile-avatar" alt="User Photo"
-                     onerror="this.style.display='none'">
+                if (!profile) {
+                    profileSection.innerHTML = `
+                <div class="cw-profile-avatar" style="background: #e8eaed; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #5f6368; font-weight: bold;">
+                    ${ldap.charAt(0).toUpperCase()}
+                </div>
                 <div class="cw-profile-info">
-                    <h2 class="cw-profile-ldap">@${profile.ldap}</h2>
+                    <h2 class="cw-profile-ldap">@${ldap}</h2>
                     <div class="cw-profile-badges">
-                        <span class="cw-profile-badge">${profile.roleCategory || 'N/A'}</span>
-                        <span class="cw-profile-badge">${profile.segment || 'N/A'}</span>
-                        <span class="cw-profile-badge">${profile.defaultLanguage || 'N/A'}</span>
-                        ${profile.isOverhead ? '<span class="cw-profile-badge overhead">Gestão / Overhead</span>' : ''}
+                        <span class="cw-profile-badge">Consultor</span>
                     </div>
                     <div style="font-size: 12px; color: ${COLORS.textSub}; margin-top: 4px;">
-                        ${profile.role || ''}
+                        Perfil não localizado na base de dados.
                     </div>
                 </div>
             `;
-        } catch (e) {
-            console.warn("Erro ao renderizar perfil:", e);
-            profileSection.style.display = "none";
-        }
+                    return;
+                }
+
+                profileSection.innerHTML = `
+        <img src="https://moma-teams-photos.corp.google.com/photos/${profile.ldap}?sz=600&type=PLUS"
+             class="cw-profile-avatar" alt="User Photo"
+             onerror="this.style.display='none'">
+        <div class="cw-profile-info">
+            <h2 class="cw-profile-ldap">@${profile.ldap}</h2>
+            <div class="cw-profile-badges">
+                <span class="cw-profile-badge">${profile.roleCategory || 'N/A'}</span>
+                <span class="cw-profile-badge">${profile.segment || 'N/A'}</span>
+                <span class="cw-profile-badge">${profile.defaultLanguage || 'N/A'}</span>
+                ${profile.isOverhead ? '<span class="cw-profile-badge overhead">Gestão / Overhead</span>' : ''}
+            </div>
+            <div style="font-size: 12px; color: ${COLORS.textSub}; margin-top: 4px;">
+                ${profile.role || ''}
+            </div>
+        </div>
+    `;
+            } catch (e) {
+                console.warn("Erro ao renderizar perfil:", e);
+                profileSection.style.display = "none";
+            }
+
+        }, 3000)
+
+
+
     }
     renderUserProfile();
 
