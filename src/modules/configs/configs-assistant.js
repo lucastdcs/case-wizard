@@ -165,7 +165,7 @@ export function initConfigsAssistant() {
                 }
 
                 profileSection.innerHTML = `
-        <img src="https://moma-teams-photos.corp.google.com/photos/${profile.ldap}?sz=600&type=PLUS"
+        <img src="https://moma-teams-photos.corp.google.com/photos/${ldap}?sz=600&type=PLUS"
              class="cw-profile-avatar" alt="User Photo"
              onerror="this.style.display='none'">
         <div class="cw-profile-info">
