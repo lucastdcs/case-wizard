@@ -48,8 +48,7 @@ jobs:
   # ==========================================
   deploy-backend-gas:
     runs-on: ubuntu-latest
-    # Segurança: Só atualiza o banco/lógica no Google se a mudança for oficial (main)
-    if: github.ref == 'refs/heads/main'
+    # Removendo a trava do 'if' para que rode em ambas as branches
     
     steps:
       - name: Checkout do código
