@@ -1,7 +1,7 @@
 // src/modules/configs/configs-assistant.js
 
 import { stylePopup, showToast } from "../shared/utils.js";
-import { getPageData, getAgentEmail } from "../shared/page-data.js";
+import { getPageData, getAgentName } from "../shared/page-data.js";
 import { fetchUserProfile } from "../shared/data-service.js"; // Importação crucial adicionada
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
@@ -140,7 +140,7 @@ export function initConfigsAssistant() {
 
         try {
             // Busca o LDAP real do usuário logado
-            const agentEmail = getAgentEmail();
+            const agentEmail = getAgentName();
             const ldap = agentEmail ? agentEmail.split('@')[0] : "user";
             
             // Faz a chamada real para a base de dados via JSONP
