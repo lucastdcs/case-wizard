@@ -2507,84 +2507,93 @@ E-mail: ${A.clientEmail||"---"}`;ae&&(ae.value=h),oe&&(oe.style.display="block",
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 300px;
-        height: 300px;
-        transform: translate(-50%, -50%);
-        background: radial-gradient(circle, rgba(30, 142, 62, 0.15) 0%, rgba(26, 115, 232, 0.1) 50%, transparent 70%);
-        filter: blur(40px);
+        width: 320px;
+        height: 320px;
+        background: radial-gradient(circle, rgba(30, 142, 62, 0.25) 0%, rgba(26, 115, 232, 0.15) 45%, transparent 75%);
+        filter: blur(45px);
         z-index: -1;
         opacity: 0;
-        animation: bauFadeIn 1s ${Ue} 0.2s forwards;
+        animation: bauAuraEntry 1.2s ${Ue} 0.2s forwards, bauAuraPulse 4s ease-in-out 1.4s infinite alternate;
+    }
+
+    @keyframes bauAuraEntry {
+      from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+      to { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+    }
+
+    @keyframes bauAuraPulse {
+      from { transform: translate(-50%, -50%) scale(1.1); filter: blur(45px); }
+      to { transform: translate(-50%, -50%) scale(1.3); filter: blur(60px); }
     }
 
     @keyframes bau-success-pop {
-      0% { transform: scale(0.5); opacity: 0; }
-      70% { transform: scale(1.1); opacity: 1; }
+      0% { transform: scale(0.4); opacity: 0; }
+      75% { transform: scale(1.08); opacity: 1; }
       100% { transform: scale(1); opacity: 1; }
     }
 
     @keyframes bauCheckDraw {
-        from { stroke-dashoffset: 30; }
+        from { stroke-dashoffset: 35; }
         to { stroke-dashoffset: 0; }
     }
 
     @keyframes bauSlideUpFade {
-        from { transform: translateY(15px); opacity: 0; }
+        from { transform: translateY(12px); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
     }
 
     @keyframes bauBtnShimmer {
-        0% { transform: translateX(-100%) skewX(-15deg); }
-        30%, 100% { transform: translateX(250%) skewX(-15deg); }
+        0% { transform: translateX(-150%) skewX(-15deg); }
+        35%, 100% { transform: translateX(250%) skewX(-15deg); }
     }
 
     .bau-success-icon {
-        width: 84px;
-        height: 84px;
-        background: rgba(30, 142, 62, 0.1);
-        backdrop-filter: blur(12px);
+        width: 88px;
+        height: 88px;
+        background: rgba(30, 142, 62, 0.12);
+        backdrop-filter: blur(16px);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-bottom: 24px;
         color: ${St.green};
-        animation: bau-success-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 10px 25px rgba(30, 142, 62, 0.15);
-        border: 1px solid rgba(30, 142, 62, 0.2);
+        animation: bau-success-pop 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6), 0 12px 32px rgba(30, 142, 62, 0.2);
+        border: 0.5px solid rgba(255, 255, 255, 0.25);
     }
 
     .bau-success-icon svg {
-        width: 42px;
-        height: 42px;
+        width: 44px;
+        height: 44px;
     }
 
     .bau-check-path {
-        stroke-dasharray: 30;
-        stroke-dashoffset: 30;
-        animation: bauCheckDraw 0.5s ${Ue} 0.6s forwards;
+        stroke-dasharray: 35;
+        stroke-dashoffset: 35;
+        animation: bauCheckDraw 0.55s ${Ue} 0.75s forwards;
     }
 
     .bau-success-title {
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 700;
         color: #202124;
         margin: 0 0 8px 0;
         opacity: 0;
-        animation: bauSlideUpFade 0.5s ${Ue} 0.7s forwards;
+        animation: bauSlideUpFade 0.6s ${Ue} 0.85s forwards;
     }
 
     .bau-success-message {
         font-size: 15px;
         color: #5F6368;
-        margin-bottom: 32px;
+        margin-bottom: 36px;
         opacity: 0;
-        animation: bauSlideUpFade 0.5s ${Ue} 0.8s forwards;
+        animation: bauSlideUpFade 0.6s ${Ue} 0.95s forwards;
     }
 
     #bau-success-back-btn {
         opacity: 0;
-        animation: bauSlideUpFade 0.5s ${Ue} 0.9s forwards;
+        animation: bauSlideUpFade 0.6s ${Ue} 1.05s forwards;
         position: relative;
         overflow: hidden;
     }
@@ -2594,11 +2603,11 @@ E-mail: ${A.clientEmail||"---"}`;ae&&(ae.value=h),oe&&(oe.style.display="block",
         position: absolute;
         top: 0;
         left: 0;
-        width: 40%;
+        width: 50%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        transform: translateX(-100%) skewX(-15deg);
-        animation: bauBtnShimmer 2s ease-in-out 1.5s forwards;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        transform: translateX(-150%) skewX(-15deg);
+        animation: bauBtnShimmer 2.5s ease-in-out 1.8s forwards;
     }
     
     /* STICKY FAB */
