@@ -228,12 +228,11 @@ sendBAUEscalation: async (payload, userEmail) => {
         try {
             console.log(`Buscando perfil para: ${ldap}`);
 
-            const response = await jsonpFetch('get_user_profile');
+            // AQUI ESTÁ A CORREÇÃO: Enviando o parâmetro 'ldap' para o backend
+            const response = await jsonpFetch('get_user_profile', { ldap: ldap });
             console.log("Resposta bruta do servidor:", response);
     
-
             if (response && response.status === 'success' && response.profile) {
-
                 return response.profile;
             }
             
