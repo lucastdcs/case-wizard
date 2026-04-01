@@ -373,6 +373,116 @@ export function initBAUForm() {
         }
     }
 
+    function openCaseDetails(c, cardEl) {
+        if (!c) return;
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'bau-details-backdrop';
+
+        const modal = document.createElement('div');
+        modal.className = 'bau-details-modal';
+
+        const rect = cardEl.getBoundingClientRect();
+        modal.style.top = `${rect.top}px`;
+        modal.style.left = `${rect.left}px`;
+        modal.style.width = `${rect.width}px`;
+        modal.style.height = `${rect.height}px`;
+
+        const getStatusData = (status) => {
+            switch(status) {
+                case 'PENDING_TL_CREATION': return { text: "Aguardando TL", class: "status-yellow" };
+                case 'CREATED': return { text: "Aprovado / Criado", class: "status-green" };
+                case 'DISCARDED': return { text: "Descartado pelo TL", class: "status-red" };
+                case 'CANCELED_BY_AGENT': return { text: "Cancelado", class: "status-gray" };
+                default: return { text: status || "Pendente", class: "status-gray" };
+            }
+        };
+        const statusData = getStatusData(c.status);
+
+        modal.innerHTML = `
+            <div class="bau-details-header">
+                <h2 class="bau-details-title">Detalhes do Caso</h2>
+                <button class="bau-details-close-btn">${ICONS.back}</button>
+            </div>
+            <div class="bau-details-content">
+                <div class="bau-details-grid">
+                    <div class="bau-details-row">
+                        <span class="bau-details-label">Anunciante</span>
+                        <span class="bau-details-value">${c.advName || '---'}</span>
+                    </div>
+                    <div class="bau-details-row">
+                        <span class="bau-details-label">Status</span>
+                        <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
+                    </div>
+                    <div class="bau-details-row">
+                        <span class="bau-details-label">CID</span>
+                        <span class="bau-details-value">${c.cid || '---'}</span>
+                    </div>
+                    <div class="bau-details-row">
+                        <span class="bau-details-label">Case ID</span>
+                        <span class="bau-details-value">${c.caseId || '---'}</span>
+                    </div>
+
+                    <div class="bau-details-divider full-width"></div>
+
+                    <div class="bau-details-row full-width">
+                        <span class="bau-details-label">Motivo BAU</span>
+                        <span class="bau-details-value">${c.reason || 'Não informado'}</span>
+                    </div>
+                    <div class="bau-details-row full-width">
+                        <span class="bau-details-label">Tasks solicitadas</span>
+                        <span class="bau-details-value">${c.taskType || 'Nenhuma'}</span>
+                    </div>
+
+                    <div class="bau-details-divider full-width"></div>
+
+                    <div class="bau-details-row full-width">
+                        <span class="bau-details-label">Justificativa</span>
+                        <span class="bau-details-value">${c.nonImplementationReason || '---'}</span>
+                    </div>
+                    <div class="bau-details-row full-width">
+                        <span class="bau-details-label">Descrição detalhada</span>
+                        <span class="bau-details-value">${c.description || '---'}</span>
+                    </div>
+                    <div class="bau-details-row full-width">
+                        <span class="bau-details-label">Disponibilidade</span>
+                        <span class="bau-details-value">${c.availability || '---'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(backdrop);
+        document.body.appendChild(modal);
+
+        const closeModal = () => {
+            modal.classList.remove('active');
+            backdrop.classList.remove('active');
+
+            const endRect = cardEl.getBoundingClientRect();
+            modal.style.top = `${endRect.top}px`;
+            modal.style.left = `${endRect.left}px`;
+            modal.style.width = `${endRect.width}px`;
+            modal.style.height = `${endRect.height}px`;
+            modal.style.transform = 'translate(0, 0) scale(1)';
+
+            setTimeout(() => {
+                modal.remove();
+                backdrop.remove();
+            }, 500);
+            SoundManager.playSwoosh();
+        };
+
+        backdrop.onclick = closeModal;
+        modal.querySelector('.bau-details-close-btn').onclick = closeModal;
+
+        requestAnimationFrame(() => {
+            backdrop.classList.add('active');
+            modal.classList.add('active');
+            SoundManager.playClick();
+        });
+    }
+
     function renderCaseCard(c) {
         if (!c) return '';
 
@@ -489,7 +599,12 @@ export function initBAUForm() {
         const olderCases = safeCases.slice(5);
 
         recentCases.forEach(caseItem => {
-            listEl.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
+            const cardHtml = renderCaseCard(caseItem);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = cardHtml;
+            const cardEl = tempDiv.firstElementChild;
+            cardEl.addEventListener('click', () => openCaseDetails(caseItem, cardEl));
+            listEl.appendChild(cardEl);
         });
 
         if (olderCases.length > 0) {
@@ -504,7 +619,12 @@ export function initBAUForm() {
             olderCasesList.className = 'bau-case-list bau-accordion-content';
             olderCasesList.style.display = 'none'; 
             olderCases.forEach(caseItem => {
-                olderCasesList.insertAdjacentHTML('beforeend', renderCaseCard(caseItem));
+                const cardHtml = renderCaseCard(caseItem);
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = cardHtml;
+                const cardEl = tempDiv.firstElementChild;
+                cardEl.addEventListener('click', () => openCaseDetails(caseItem, cardEl));
+                olderCasesList.appendChild(cardEl);
             });
 
             toggleButton.addEventListener('click', () => {

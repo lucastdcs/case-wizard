@@ -758,6 +758,122 @@ export const injectStyles = () => {
     .bau-data-error-hint { font-size: 10px; color: #D93025; margin-top: 4px; font-weight: 500; }
     .bau-pulse-attention { animation: pulseGlow 2s infinite; }
     @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(217, 48, 37, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0); } }
+
+    /* --- BAU DETAILS MODAL (Liquid Glass) --- */
+    .bau-details-backdrop {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0);
+        backdrop-filter: blur(0px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        transition: background 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), backdrop-filter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .bau-details-backdrop.active {
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        pointer-events: auto;
+    }
+
+    .bau-details-modal {
+        position: fixed;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(16px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+        z-index: 10001;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        pointer-events: none;
+        opacity: 0;
+        transform-origin: center center;
+    }
+
+    .bau-details-modal.active {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 500px !important;
+        height: auto !important;
+        max-height: 80vh !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) scale(1) !important;
+    }
+
+    .bau-details-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .bau-details-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: #202124;
+    }
+
+    .bau-details-close-btn {
+        background: transparent;
+        border: none;
+        color: #5F6368;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 50%;
+        display: flex;
+        transition: background 0.2s ease;
+    }
+    .bau-details-close-btn:hover { background: rgba(0, 0, 0, 0.05); color: #202124; }
+
+    .bau-details-content {
+        padding: 24px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .bau-details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .bau-details-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .bau-details-row.full-width { grid-column: 1 / -1; }
+
+    .bau-details-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #5F6368;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+
+    .bau-details-value {
+        font-size: 14px;
+        font-weight: 500;
+        color: #202124;
+        line-height: 1.5;
+    }
+
+    .bau-details-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0,0,0,0.05), transparent);
+        margin: 8px 0;
+    }
   `;
   document.head.appendChild(style);
 };
