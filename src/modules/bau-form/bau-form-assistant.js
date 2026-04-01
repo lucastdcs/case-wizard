@@ -86,8 +86,31 @@ function createField(fieldConfig) {
                 `;
                 input.appendChild(fieldWrapper);
             });
+
+            const disclaimer = document.createElement('div');
+            disclaimer.className = 'bau-availability-disclaimer';
+            disclaimer.innerHTML = `
+                <div class="bau-disclaimer-text">
+                    <strong>Atenção:</strong> Para clientes fora do fuso horário do Brasil, o horário inserido deve corresponder sempre ao horário local do cliente, e não ao do agente.
+                </div>
+                <button type="button" class="bau-timezone-link" id="bau-open-timezone">
+                    ${ICONS.refresh}
+                    Consultar Time Zone
+                </button>
+            `;
+
+            disclaimer.querySelector('#bau-open-timezone').onclick = () => {
+                const tzBtn = document.getElementById('cw-btn-timezone');
+                if (tzBtn) {
+                    tzBtn.click();
+                    SoundManager.playClick();
+                } else {
+                    showToast("Módulo Time Zone não encontrado.", { error: true });
+                }
+            };
+
             wrapper.appendChild(input);
-            wrapper.appendChild(document.createElement('div'));
+            wrapper.appendChild(disclaimer);
             return wrapper;
 
         case 'text-with-button':
@@ -690,30 +713,81 @@ export function initBAUForm() {
         if (!container) return;
 
         const tasksText = tasks.length > 0 ? tasks.join(', ') : "Nenhuma";
-        const availabilityText = [data.availability_1, data.availability_2, data.availability_3]
-            .filter(d => d && d.trim())
-            .map(d => d.replace('T', ' '))
-            .join(', ') || 'Não definida';
 
         container.innerHTML = `
             <div class="bau-confirmation-grid">
-                <div class="bau-confirm-row"><span class="bau-confirm-label">Anunciante</span><span class="bau-confirm-value">${data.advName || '---'}</span></div>
-                <div class="bau-confirm-row"><span class="bau-confirm-label">CID</span><span class="bau-confirm-value">${data.cid || '---'}</span></div>
-                <div class="bau-confirm-row"><span class="bau-confirm-label">AM</span><span class="bau-confirm-value">${data.amName || '---'}</span></div>
-                <div class="bau-confirm-row"><span class="bau-confirm-label">Speakeasy ID</span><span class="bau-confirm-value">${data.seId || 'Não informado'}</span></div>
+                <div class="bau-confirm-row">
+                    <span class="bau-confirm-label">Anunciante</span>
+                    <input class="bau-confirm-value-input" data-field="advName" value="${data.advName || ''}" placeholder="---">
+                </div>
+                <div class="bau-confirm-row">
+                    <span class="bau-confirm-label">CID</span>
+                    <input class="bau-confirm-value-input" data-field="cid" value="${data.cid || ''}" placeholder="---">
+                </div>
+                <div class="bau-confirm-row">
+                    <span class="bau-confirm-label">AM</span>
+                    <input class="bau-confirm-value-input" data-field="amName" value="${data.amName || ''}" placeholder="---">
+                </div>
+                <div class="bau-confirm-row">
+                    <span class="bau-confirm-label">Speakeasy ID</span>
+                    <input class="bau-confirm-value-input" data-field="seId" value="${data.seId || ''}" placeholder="Não informado">
+                </div>
 
                 <div class="bau-confirm-divider"></div>
 
-                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">O que deve ser feito</span><span class="bau-confirm-value">${data.reason || '---'}</span></div>
-                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">Tasks</span><span class="bau-confirm-value">${tasksText}</span></div>
+                <div class="bau-confirm-row full-width">
+                    <span class="bau-confirm-label">O que deve ser feito</span>
+                    <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="reason" placeholder="---">${data.reason || ''}</textarea>
+                </div>
+                <div class="bau-confirm-row full-width">
+                    <span class="bau-confirm-label">Tasks</span>
+                    <span class="bau-confirm-value-input" style="cursor: default; opacity: 0.8;" title="Para editar as tasks, volte ao Passo 2">${tasksText}</span>
+                </div>
 
                 <div class="bau-confirm-divider"></div>
 
-                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">Justificativa BAU</span><span class="bau-confirm-value">${data.nonImplementationReason || '---'}</span></div>
-                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">Descrição</span><span class="bau-confirm-value">${data.description || '---'}</span></div>
-                <div class="bau-confirm-row full-width"><span class="bau-confirm-label">Disponibilidade</span><span class="bau-confirm-value">${availabilityText}</span></div>
+                <div class="bau-confirm-row full-width">
+                    <span class="bau-confirm-label">Justificativa BAU</span>
+                    <select class="bau-confirm-value-input" data-field="nonImplementationReason">
+                        <option value="Tempo da consultoria esgotado" ${data.nonImplementationReason === 'Tempo da consultoria esgotado' ? 'selected' : ''}>Tempo da consultoria esgotado</option>
+                        <option value="Solicitação de reagendamento pelo anunciante" ${data.nonImplementationReason === 'Solicitação de reagendamento pelo anunciante' ? 'selected' : ''}>Solicitação de reagendamento pelo anunciante</option>
+                        <option value="Falta de acessos ou backup do site" ${data.nonImplementationReason === 'Falta de acessos ou backup do site' ? 'selected' : ''}>Falta de acessos ou backup do site</option>
+                        <option value="Anunciante indisponível ou não preparado" ${data.nonImplementationReason === 'Anunciante indisponível ou não preparado' ? 'selected' : ''}>Anunciante indisponível ou não preparado</option>
+                        <option value="Implementação parcial (nem todas as tasks concluídas)" ${data.nonImplementationReason === 'Implementação parcial (nem todas as tasks concluídas)' ? 'selected' : ''}>Implementação parcial (nem todas as tasks concluídas)</option>
+                        <option value="Solicitação de tarefas (tasks) adicionais" ${data.nonImplementationReason === 'Solicitação de tarefas (tasks) adicionais' ? 'selected' : ''}>Solicitação de tarefas (tasks) adicionais</option>
+                        <option value="Necessidade de novas alterações (fase de acompanhamento)" ${data.nonImplementationReason === 'Necessidade de novas alterações (fase de acompanhamento)' ? 'selected' : ''}>Necessidade de novas alterações (fase de acompanhamento)</option>
+                        <option value="Retorno de contato após prazo de 14 dias expirado" ${data.nonImplementationReason === 'Retorno de contato após prazo de 14 dias expirado' ? 'selected' : ''}>Retorno de contato após prazo de 14 dias expirado</option>
+                    </select>
+                </div>
+                <div class="bau-confirm-row full-width">
+                    <span class="bau-confirm-label">Descrição</span>
+                    <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="description" placeholder="---">${data.description || ''}</textarea>
+                </div>
+
+                <div class="bau-confirm-row full-width">
+                    <span class="bau-confirm-label">Disponibilidade (Prioridade)</span>
+                    <input type="datetime-local" class="bau-confirm-value-input" data-field="availability_1" value="${data.availability_1 || ''}">
+                </div>
             </div>
         `;
+
+        // Listen for changes and sync back to the original form
+        container.querySelectorAll('.bau-confirm-value-input').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const fieldName = e.target.dataset.field;
+                if (!fieldName) return;
+
+                const originalInput = form.querySelector(`[name="${fieldName}"]`);
+                if (originalInput) {
+                    originalInput.value = e.target.value;
+
+                    // Specific logic for CID validation if edited here
+                    if (fieldName === 'cid') {
+                        validateStep(1);
+                    }
+                }
+            });
+        });
     }
     form.onsubmit = async (e) => {
         e.preventDefault();

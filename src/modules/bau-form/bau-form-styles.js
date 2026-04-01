@@ -488,7 +488,24 @@ export const injectStyles = () => {
         100% { transform: translate(10%, 10%) scale(1.1); }
     }
 
-    .bau-highlight-item { display: flex; flex-direction: column; gap: 4px; z-index: 1; }
+    .bau-highlight-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 1;
+      padding: 8px 12px;
+      border-radius: 10px;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      cursor: default;
+    }
+
+    .bau-highlight-item:hover {
+      transform: scale(1.05);
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
     .bau-highlight-label { font-size: 11px; color: #5F6368; text-transform: uppercase; letter-spacing: 0.5px; }
     .bau-highlight-value { font-size: 14px; font-weight: 500; color: #202124; }
 
@@ -538,6 +555,51 @@ export const injectStyles = () => {
     .bau-availability-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
     .bau-field-hint { font-size: 11px; color: #5F6368; }
 
+    .bau-availability-disclaimer {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #FFF8E1;
+      border: 1px solid #FFE082;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .bau-disclaimer-text {
+      font-size: 12px;
+      color: #795548;
+      line-height: 1.5;
+    }
+
+    .bau-timezone-link {
+      background: #FFFFFF;
+      border: 1px solid #DADCE0;
+      color: #1A73E8;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      align-self: flex-start;
+    }
+
+    .bau-timezone-link:hover {
+      background: #F1F3F4;
+      border-color: #1A73E8;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .bau-timezone-link svg {
+      width: 14px;
+      height: 14px;
+    }
+
     /* BADGES */
     .bau-context-badges-grid {
       display: flex;
@@ -553,6 +615,16 @@ export const injectStyles = () => {
       display: flex;
       gap: 6px;
       font-size: 11px;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      cursor: default;
+    }
+
+    .bau-context-badge:hover {
+      transform: scale(1.08);
+      background: rgba(26, 115, 232, 0.05);
+      border-color: #1A73E8;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 8px rgba(26,115,232,0.1);
     }
     .bau-badge-label { color: #5F6368; }
     .bau-badge-value { color: #202124; font-weight: 500; }
@@ -572,10 +644,12 @@ export const injectStyles = () => {
       background: #F8F9FA;
       border-radius: 10px;
       border: 1px solid #DADCE0;
-      transition: background 0.2s ease;
+      transition: all 0.2s ease;
+      position: relative;
     }
     .bau-confirm-row:hover {
       background: #F1F3F4;
+      border-color: #1A73E8;
     }
     .bau-confirm-row.full-width {
       grid-column: 1 / -1;
@@ -586,12 +660,36 @@ export const injectStyles = () => {
       text-transform: uppercase;
       letter-spacing: 0.8px;
       font-weight: 700;
+      margin-bottom: 2px;
     }
-    .bau-confirm-value {
+    .bau-confirm-value-input {
+      font-family: inherit;
       font-size: 13px;
       color: #202124;
       line-height: 1.5;
-      word-break: break-word;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 4px 8px;
+      margin-left: -8px;
+      width: calc(100% + 16px);
+      outline: none;
+      transition: all 0.2s ease;
+      cursor: text;
+      box-sizing: border-box;
+    }
+    .bau-confirm-row:hover .bau-confirm-value-input {
+      background: #FFFFFF;
+      border-color: #DADCE0;
+    }
+    .bau-confirm-value-input:focus {
+      background: #FFFFFF;
+      border-color: #1A73E8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+    .bau-confirm-textarea {
+      resize: vertical;
+      min-height: 40px;
     }
     .bau-confirm-divider {
       grid-column: 1 / -1;
