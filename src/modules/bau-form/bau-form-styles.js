@@ -258,7 +258,7 @@ export const injectStyles = () => {
     .bau-case-status-badge.status-red { background: rgba(217, 48, 37, 0.2); color: #D93025; }
     .bau-case-status-badge.status-gray { background: rgba(128, 134, 139, 0.2); color: #5F6368; }
 
-    .bau-empty-state, .bau-success-view {
+    .bau-empty-state {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -271,36 +271,56 @@ export const injectStyles = () => {
     .bau-empty-state svg { margin-bottom: 16px; opacity: 0.5; }
     .bau-empty-title { font-size: 16px; font-weight: 600; color: #202124; margin: 0 0 4px 0; }
 
+    .bau-success-view {
+        display: none;
+    }
+
+    .bau-success-view.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      text-align: center;
+      height: 100%;
+      background: #FFFFFF;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 100;
+    }
+
     .bau-success-content {
         position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
         z-index: 1;
+        width: 100%;
     }
 
-    .bau-success-content::before {
+    .bau-success-view.active .bau-success-content::before {
         content: '';
         position: absolute;
         top: 50%;
         left: 50%;
         width: 320px;
         height: 320px;
+        transform: translate(-50%, -50%) scale(0.8);
         background: radial-gradient(circle, rgba(30, 142, 62, 0.25) 0%, rgba(26, 115, 232, 0.15) 45%, transparent 75%);
         filter: blur(45px);
         z-index: -1;
         opacity: 0;
-        animation: bauAuraEntry 1.2s ${EASE} 0.2s forwards, bauAuraPulse 4s ease-in-out 1.4s infinite alternate;
+        animation: bauAuraCombined 5s ${EASE} 0.2s infinite;
     }
 
-    @keyframes bauAuraEntry {
-      from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
-      to { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
-    }
-
-    @keyframes bauAuraPulse {
-      from { transform: translate(-50%, -50%) scale(1.1); filter: blur(45px); }
-      to { transform: translate(-50%, -50%) scale(1.3); filter: blur(60px); }
+    @keyframes bauAuraCombined {
+      0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+      20% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+      50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.6; }
+      100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
     }
 
     @keyframes bau-success-pop {
@@ -315,7 +335,7 @@ export const injectStyles = () => {
     }
 
     @keyframes bauSlideUpFade {
-        from { transform: translateY(12px); opacity: 0; }
+        from { transform: translateY(15px); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
     }
 
@@ -324,7 +344,7 @@ export const injectStyles = () => {
         35%, 100% { transform: translateX(250%) skewX(-15deg); }
     }
 
-    .bau-success-icon {
+    .bau-success-view.active .bau-success-icon {
         width: 88px;
         height: 88px;
         background: rgba(30, 142, 62, 0.12);
@@ -340,18 +360,18 @@ export const injectStyles = () => {
         border: 0.5px solid rgba(255, 255, 255, 0.25);
     }
 
-    .bau-success-icon svg {
+    .bau-success-view.active .bau-success-icon svg {
         width: 44px;
         height: 44px;
     }
 
-    .bau-check-path {
+    .bau-success-view.active .bau-check-path {
         stroke-dasharray: 35;
         stroke-dashoffset: 35;
         animation: bauCheckDraw 0.55s ${EASE} 0.75s forwards;
     }
 
-    .bau-success-title {
+    .bau-success-view.active .bau-success-title {
         font-size: 24px;
         font-weight: 700;
         color: #202124;
@@ -360,7 +380,7 @@ export const injectStyles = () => {
         animation: bauSlideUpFade 0.6s ${EASE} 0.85s forwards;
     }
 
-    .bau-success-message {
+    .bau-success-view.active .bau-success-subtitle {
         font-size: 15px;
         color: #5F6368;
         margin-bottom: 36px;
@@ -368,14 +388,14 @@ export const injectStyles = () => {
         animation: bauSlideUpFade 0.6s ${EASE} 0.95s forwards;
     }
 
-    #bau-success-back-btn {
+    .bau-success-view.active #bau-success-back-btn {
         opacity: 0;
         animation: bauSlideUpFade 0.6s ${EASE} 1.05s forwards;
         position: relative;
         overflow: hidden;
     }
 
-    #bau-success-back-btn::after {
+    .bau-success-view.active #bau-success-back-btn::after {
         content: '';
         position: absolute;
         top: 0;

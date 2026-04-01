@@ -276,7 +276,7 @@ export function initBAUForm() {
         <div class="bau-success-content">
             <div class="bau-success-icon" style="color: ${COLORS.green};">${ICONS.check}</div>
             <h2 class="bau-success-title">Caso enviado com sucesso!</h2>
-            <p class="bau-success-message">Sua solicitação foi recebida e será processada em breve.</p>
+            <p class="bau-success-subtitle">Sua solicitação foi recebida e será processada em breve.</p>
             <button class="bau-btn-primary" id="bau-success-back-btn">Voltar ao Dashboard</button>
         </div>
     `;
