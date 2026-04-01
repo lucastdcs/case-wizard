@@ -227,7 +227,7 @@ sendBAUEscalation: async (payload, userEmail) => {
     fetchUserProfile: async (ldap) => {
         try {
             console.log(`Buscando perfil para: ${ldap}`);
-            const response = await jsonpFetch('people');
+            const response = await jsonpFetch('get_user_profile');
 
             if (response && response.status === 'success' && response.people) {
                 const user = response.people.find(p => p.ldap.toLowerCase() === ldap.toLowerCase());
