@@ -17,6 +17,10 @@
             --text-primary: #e3e3e3;
             --text-secondary: #c4c7c5;
             --text-tertiary: #8e918f;
+
+            /* Vibrancy Tokens */
+            --label: var(--text-primary);
+            --secondaryLabel: var(--text-tertiary);
             
             /* Gradientes e Auras */
             --gemini-blue: #a8c7fa;
@@ -54,7 +58,7 @@
 
         /* Top Navigation - Branding Cases Wizard */
         .topnav {
-            background: rgba(19, 19, 20, 0.8);
+            background: rgba(19, 19, 20, 0.7);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             padding: 0 32px;
@@ -66,6 +70,7 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid var(--border-subtle);
+            background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
         }
 
         .topnav::after {
@@ -237,18 +242,20 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
             display: flex; justify-content: center; align-items: center;
-            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            z-index: 1000; opacity: 0; pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .modal-overlay.active { opacity: 1; pointer-events: all; }
 
         .modal-content {
-            background: var(--surface-level-1); border: 1px solid var(--border-subtle);
+            background: rgba(30, 31, 32, 0.95); border: 1px solid var(--border-subtle);
             border-radius: var(--radius-lg); width: 100%; max-width: 600px;
-            box-shadow: 0 24px 48px rgba(0,0,0,0.4); transform: translateY(20px);
-            transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+            box-shadow: 0 24px 48px rgba(0,0,0,0.4); transform: scale(0.9); opacity: 0;
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
             max-height: 90vh; overflow-y: auto;
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
         }
-        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-overlay.active .modal-content { transform: scale(1); opacity: 1; }
 
         .modal-header {
             padding: 24px 32px; border-bottom: 1px solid var(--border-subtle);
@@ -269,6 +276,13 @@
             padding: 4px; border-radius: 4px; transition: color 0.2s, background 0.2s; display: flex;
         }
         .copy-btn:hover { color: var(--gemini-blue); background: rgba(168, 199, 250, 0.1); }
+
+        @keyframes copyBounce {
+            0%, 100% { transform: scale(1); }
+            40% { transform: scale(1.2); }
+            60% { transform: scale(0.95); }
+        }
+        .copy-active { animation: copyBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
         /* Estilo da Foto LDAP */
         .agent-profile { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
@@ -463,9 +477,9 @@
         // Helper function para criar linhas copiáveis
         const createCopyableRow = (label, value) => `
             <div class="detail-group">
-                <span class="detail-label">${label}</span>
+                <span class="detail-label" style="color: var(--secondaryLabel)">${label}</span>
                 <div class="detail-value">
-                    <span>${value || 'N/A'}</span>
+                    <span style="color: var(--label)">${value || 'N/A'}</span>
                     <button class="copy-btn" onclick="copyToClipboard('${value}', this)" title="Copiar">
                         <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
                     </button>
@@ -490,10 +504,10 @@
             </div>
 
             <div class="detail-group">
-                <span class="detail-label">Agente Solicitante</span>
+                <span class="detail-label" style="color: var(--secondaryLabel)">Agente Solicitante</span>
                 <div class="detail-value" style="justify-content: flex-start; gap: 12px;">
                     <img src="https://moma-teams-photos.corp.google.com/photos/${agentLdap}?sz=600&type=PLUS" class="agent-photo" alt="LDAP" onerror="this.style.display='none'">
-                    <span>${c.agentEmail}</span>
+                    <span style="color: var(--label)">${c.agentEmail}</span>
                     <button class="copy-btn" style="margin-left: auto;" onclick="copyToClipboard('${c.agentEmail}', this)">
                         <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
                     </button>
@@ -501,9 +515,9 @@
             </div>
 
             <div class="detail-group">
-                <span class="detail-label">Motivo / Contexto (Reason)</span>
+                <span class="detail-label" style="color: var(--secondaryLabel)">Motivo / Contexto (Reason)</span>
                 <div class="detail-value" style="align-items: flex-start;">
-                    <span style="font-style: italic;">"${c.reason}"</span>
+                    <span style="font-style: italic; color: var(--label)">"${c.reason}"</span>
                     <button class="copy-btn" onclick="copyToClipboard('${c.reason}', this)">
                         <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
                     </button>
@@ -524,13 +538,16 @@
     function copyToClipboard(text, btnElement) {
         navigator.clipboard.writeText(text).then(() => {
             // Efeito visual no botão
+            btnElement.classList.add('copy-active');
             const icon = btnElement.querySelector('span');
             icon.textContent = 'check';
             icon.style.color = 'var(--success)';
+
             setTimeout(() => {
+                btnElement.classList.remove('copy-active');
                 icon.textContent = 'content_copy';
                 icon.style.color = '';
-            }, 2000);
+            }, 400);
 
             // Toast Notification
             const toast = document.getElementById('toast');
