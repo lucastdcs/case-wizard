@@ -2,8 +2,16 @@
 
 import { getAgentEmail } from './page-data.js'; 
 
-// URL da API atualizada
-const API_URL = "https://script.google.com/a/macros/google.com/s/AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg/exec";
+// 1. Verifica se está rodando localmente (Live Server no VS Code/Workstation)
+const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// 2. Isola o ID do seu script para manter o código limpo
+const SCRIPT_ID = "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg";
+
+// 3. Roteia automaticamente para o endpoint correto
+const API_URL = isDevelopment 
+    ? `https://script.google.com/a/macros/google.com/s/${SCRIPT_ID}/dev` 
+    : `https://script.google.com/a/macros/google.com/s/${SCRIPT_ID}/exec`;
 
 const CACHE_KEY_BROADCAST = "cw_data_broadcast";
 const CACHE_KEY_TIPS = "cw_data_tips";
