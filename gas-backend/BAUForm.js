@@ -4,7 +4,10 @@
 function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail) {
   const template = HtmlService.createHtmlOutputFromFile('EmailTemplateDynamic').getContent();
   
-  // 1. Variáveis Padrão
+  // 1. Variáveis Padrão e Captura do Usuário (LDAP)
+  const senderEmail = Session.getActiveUser().getEmail();
+  const senderLdap = senderEmail ? senderEmail.split('@')[0] : "Equipe BAU"; // Fallback de segurança
+  
   let themeColor = "#8ab4f8"; // Azul
   let headerIcon = "⚡";
   let headerSubtitle = "BAU Escalation Hub";
@@ -85,17 +88,18 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail) {
       break;
   }
 
-  // 5. Substituição final e Envio
+  // 5. Substituição final e Envio (Agora com o LDAP mapeado corretamente)
   const htmlBody = template
     .replace("{{HEADER_ICON}}", headerIcon)
     .replace("{{HEADER_SUBTITLE}}", headerSubtitle)
     .replace("{{THEME_COLOR}}", themeColor)
-    .replace(/{{THEME_COLOR}}/g, themeColor) // Substitui no Footer também
+    .replace(/{{THEME_COLOR}}/g, themeColor) 
     .replace("{{GREETING}}", greeting)
     .replace("{{MAIN_MESSAGE}}", mainMessage)
     .replace("{{URGENCY_BADGE}}", urgencyBadge)
     .replace("{{FOOTER_BADGE}}", footerBadge)
     .replace(/{{CASE_ID}}/g, data.caseId || "0-0000000000000")
+    .replace(/{{SENDER_LDAP}}/g, senderLdap) // <-- AQUI ESTÁ A CHAVE DE OURO
     .replace("{{SITE}}", data.site || "N/A")
     .replace("{{AVAILABILITY}}", dataFormatada)
     .replace("{{CID}}", data.cid || "N/A")
@@ -110,4 +114,3 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail) {
     name: "Cases Wizard"
   });
 }
-
