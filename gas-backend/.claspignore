@@ -1,4 +1,4 @@
-**/**
-!appsscript.json
-!*.js
-!*.html
+node_modules/
+.git/
+.github/
+*.md
