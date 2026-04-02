@@ -506,7 +506,7 @@
             <div class="detail-group">
                 <span class="detail-label" style="color: var(--secondaryLabel)">Agente Solicitante</span>
                 <div class="detail-value" style="justify-content: flex-start; gap: 12px;">
-                    <img src="https://moma-teams-photos.corp.google.com/photos/${agentLdap}?sz=600&type=PLUS" class="agent-photo" alt="LDAP" onerror="this.style.display='none'">
+                   <img src="https://moma-teams-photos.corp.google.com/photos/${c.agentEmail.split('@')[0]}?sz=600&type=PLUS" class="agent-photo" alt="LDAP" onerror="this.style.display='none'">
                     <span style="color: var(--label)">${c.agentEmail}</span>
                     <button class="copy-btn" style="margin-left: auto;" onclick="copyToClipboard('${c.agentEmail}', this)">
                         <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
