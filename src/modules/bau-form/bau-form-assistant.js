@@ -177,6 +177,11 @@ export function initBAUForm() {
     viewContainer.className = 'bau-view-container';
     popup.appendChild(viewContainer);
 
+    const detailsView = document.createElement('div');
+    detailsView.id = 'bau-view-details';
+    detailsView.className = 'bau-details-view';
+    viewContainer.appendChild(detailsView);
+
     const dashboardView = document.createElement('div');
     dashboardView.id = 'bau-view-dashboard';
     dashboardView.className = 'bau-view active';
@@ -373,20 +378,8 @@ export function initBAUForm() {
         }
     }
 
-    function openCaseDetails(c, cardEl) {
+    function openCaseDetails(c) {
         if (!c) return;
-
-        const backdrop = document.createElement('div');
-        backdrop.className = 'bau-details-backdrop';
-
-        const modal = document.createElement('div');
-        modal.className = 'bau-details-modal';
-
-        const rect = cardEl.getBoundingClientRect();
-        modal.style.top = `${rect.top}px`;
-        modal.style.left = `${rect.left}px`;
-        modal.style.width = `${rect.width}px`;
-        modal.style.height = `${rect.height}px`;
 
         const getStatusData = (status) => {
             switch(status) {
@@ -399,86 +392,99 @@ export function initBAUForm() {
         };
         const statusData = getStatusData(c.status);
 
-        modal.innerHTML = `
+        const copyToClipboard = (text, btn) => {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Copiado para a área de transferência!");
+                SoundManager.playClick();
+                const originalColor = btn.style.color;
+                btn.style.color = '#1E8E3E';
+                setTimeout(() => { btn.style.color = originalColor; }, 800);
+            });
+        };
+
+        detailsView.innerHTML = `
             <div class="bau-details-header">
                 <h2 class="bau-details-title">Detalhes do Caso</h2>
-                <button class="bau-details-close-btn">${ICONS.back}</button>
+                <button class="bau-details-close-btn">
+                    ${ICONS.back}
+                    Voltar
+                </button>
             </div>
             <div class="bau-details-content">
                 <div class="bau-details-grid">
-                    <div class="bau-details-row">
-                        <span class="bau-details-label">Anunciante</span>
-                        <span class="bau-details-value">${c.advName || '---'}</span>
+                    <div class="bau-details-card">
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Anunciante</span>
+                            <span class="bau-details-value">${c.advName || '---'}</span>
+                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                        </div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Status</span>
+                            <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
+                        </div>
                     </div>
-                    <div class="bau-details-row">
-                        <span class="bau-details-label">Status</span>
-                        <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
-                    </div>
-                    <div class="bau-details-row">
-                        <span class="bau-details-label">CID</span>
-                        <span class="bau-details-value">${c.cid || '---'}</span>
-                    </div>
-                    <div class="bau-details-row">
-                        <span class="bau-details-label">Case ID</span>
-                        <span class="bau-details-value">${c.caseId || '---'}</span>
-                    </div>
-
-                    <div class="bau-details-divider full-width"></div>
-
-                    <div class="bau-details-row full-width">
-                        <span class="bau-details-label">Motivo BAU</span>
-                        <span class="bau-details-value">${c.reason || 'Não informado'}</span>
-                    </div>
-                    <div class="bau-details-row full-width">
-                        <span class="bau-details-label">Tasks solicitadas</span>
-                        <span class="bau-details-value">${c.taskType || 'Nenhuma'}</span>
+                    <div class="bau-details-card">
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">CID</span>
+                            <span class="bau-details-value">${c.cid || '---'}</span>
+                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                        </div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Case ID</span>
+                            <span class="bau-details-value">${c.caseId || '---'}</span>
+                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                        </div>
                     </div>
 
-                    <div class="bau-details-divider full-width"></div>
+                    <div class="bau-details-card full-width">
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Motivo BAU</span>
+                            <span class="bau-details-value">${c.reason || 'Não informado'}</span>
+                        </div>
+                        <div class="bau-details-divider"></div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Tasks solicitadas</span>
+                            <span class="bau-details-value">${c.taskType || 'Nenhuma'}</span>
+                        </div>
+                    </div>
 
-                    <div class="bau-details-row full-width">
-                        <span class="bau-details-label">Justificativa</span>
-                        <span class="bau-details-value">${c.nonImplementationReason || '---'}</span>
-                    </div>
-                    <div class="bau-details-row full-width">
-                        <span class="bau-details-label">Descrição detalhada</span>
-                        <span class="bau-details-value">${c.description || '---'}</span>
-                    </div>
-                    <div class="bau-details-row full-width">
-                        <span class="bau-details-label">Disponibilidade</span>
-                        <span class="bau-details-value">${c.availability || '---'}</span>
+                    <div class="bau-details-card full-width">
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Justificativa</span>
+                            <span class="bau-details-value">${c.nonImplementationReason || '---'}</span>
+                        </div>
+                        <div class="bau-details-divider"></div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Descrição detalhada</span>
+                            <span class="bau-details-value">${c.description || '---'}</span>
+                        </div>
+                        <div class="bau-details-divider"></div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Disponibilidade</span>
+                            <span class="bau-details-value">${c.availability || '---'}</span>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
 
-        document.body.appendChild(backdrop);
-        document.body.appendChild(modal);
-
-        const closeModal = () => {
-            modal.classList.remove('active');
-            backdrop.classList.remove('active');
-
-            const endRect = cardEl.getBoundingClientRect();
-            modal.style.top = `${endRect.top}px`;
-            modal.style.left = `${endRect.left}px`;
-            modal.style.width = `${endRect.width}px`;
-            modal.style.height = `${endRect.height}px`;
-            modal.style.transform = 'translate(0, 0) scale(1)';
-
-            setTimeout(() => {
-                modal.remove();
-                backdrop.remove();
-            }, 500);
+        const closeBtn = detailsView.querySelector('.bau-details-close-btn');
+        closeBtn.onclick = () => {
+            detailsView.classList.remove('active');
             SoundManager.playSwoosh();
+            setTimeout(() => { detailsView.style.display = 'none'; }, 600);
         };
 
-        backdrop.onclick = closeModal;
-        modal.querySelector('.bau-details-close-btn').onclick = closeModal;
+        detailsView.querySelectorAll('.bau-copy-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const value = e.target.closest('.bau-details-row').querySelector('.bau-details-value').textContent;
+                copyToClipboard(value, btn);
+            };
+        });
 
+        detailsView.style.display = 'flex';
         requestAnimationFrame(() => {
-            backdrop.classList.add('active');
-            modal.classList.add('active');
+            detailsView.classList.add('active');
             SoundManager.playClick();
         });
     }
@@ -603,7 +609,7 @@ export function initBAUForm() {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = cardHtml;
             const cardEl = tempDiv.firstElementChild;
-            cardEl.addEventListener('click', () => openCaseDetails(caseItem, cardEl));
+            cardEl.addEventListener('click', () => openCaseDetails(caseItem));
             listEl.appendChild(cardEl);
         });
 
@@ -623,7 +629,7 @@ export function initBAUForm() {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = cardHtml;
                 const cardEl = tempDiv.firstElementChild;
-                cardEl.addEventListener('click', () => openCaseDetails(caseItem, cardEl));
+                cardEl.addEventListener('click', () => openCaseDetails(caseItem));
                 olderCasesList.appendChild(cardEl);
             });
 
