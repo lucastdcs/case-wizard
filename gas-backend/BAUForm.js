@@ -18,13 +18,35 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail) {
   let subject = `Notificação TechSol: ${data.advName || "Caso"}`;
 
   // 2. Formatação da Data (Aproveitada para o cálculo de urgência)
-  let dataFormatada = data.availability || "N/A";
-  let dateObj = null;
-  if (dataFormatada.includes("T")) {
-    const partes = dataFormatada.split("T");
-    dataFormatada = `${partes[0].split("-").reverse().join("/")} às ${partes[1]}`;
-    dateObj = new Date(data.availability);
+  function formatGASDate(isoStr) {
+    if (!isoStr || isoStr === "N/A" || isoStr === "undefined") return "Data indisponível";
+
+    // Suporte para múltiplas datas separadas por pipe
+    if (String(isoStr).includes(' | ')) {
+      return isoStr.split(' | ')
+        .map(function(part) { return formatGASDate(part.trim()); })
+        .filter(function(f) { return f !== "Data indisponível"; })
+        .join(' | ');
+    }
+
+    try {
+      var d = new Date(isoStr);
+      if (isNaN(d.getTime())) return "Data indisponível";
+
+      var day = ("0" + d.getDate()).slice(-2);
+      var month = ("0" + (d.getMonth() + 1)).slice(-2);
+      var year = d.getFullYear();
+      var hours = ("0" + d.getHours()).slice(-2);
+      var minutes = ("0" + d.getMinutes()).slice(-2);
+
+      return day + "/" + month + "/" + year + " às " + hours + ":" + minutes;
+    } catch (e) {
+      return "Data indisponível";
+    }
   }
+
+  let dataFormatada = formatGASDate(data.availability);
+  let dateObj = (data.availability && !data.availability.includes('|')) ? new Date(data.availability) : null;
 
   // 3. Calculadora de Urgência (Para a Liderança)
   function getUrgencyHtml(targetDate) {

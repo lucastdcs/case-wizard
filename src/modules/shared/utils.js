@@ -967,6 +967,42 @@ export function makeResizable(element, handle) {
 }
 
 /**
+ * Formata uma string de data ISO para um formato amigável ao usuário.
+ * @param {string} isoString - A data no formato ISO 8601.
+ * @returns {string} - Data formatada como DD/MM/YYYY às HH:MM ou fallback.
+ */
+export function formatToLocalUserDate(isoString) {
+  if (!isoString || isoString === "N/A" || isoString === "undefined") return "Data indisponível";
+
+  // Suporte para múltiplas datas separadas por pipe (comum no campo availability)
+  if (String(isoString).includes(' | ')) {
+    return isoString.split(' | ')
+      .map(part => formatToLocalUserDate(part.trim()))
+      .filter(f => f !== "Data indisponível")
+      .join(' | ');
+  }
+
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "Data indisponível";
+
+    const datePart = date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    const timePart = date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    return `${datePart} às ${timePart}`;
+  } catch (e) {
+    return "Data indisponível";
+  }
+}
+
+/**
  * Converte shortcodes do Slack/System (:frog-eat:) para Emojis reais (🐸).
  * @param {string} text - O texto cru com códigos
  * @returns {string} - Texto formatado com emojis

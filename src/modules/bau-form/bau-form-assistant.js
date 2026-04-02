@@ -2,7 +2,7 @@
 import { injectStyles, COLORS } from './bau-form-styles.js';
 import { createStandardHeader } from '../shared/header-factory.js';
 import { toggleGenieAnimation } from '../shared/animations.js';
-import { showToast } from '../shared/utils.js';
+import { showToast, formatToLocalUserDate } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { sendBAUEscalation, readAgentBAU } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
@@ -461,7 +461,7 @@ export function initBAUForm() {
                         <div class="bau-details-divider"></div>
                         <div class="bau-details-row">
                             <span class="bau-details-label">Disponibilidade</span>
-                            <span class="bau-details-value">${c.availability || '---'}</span>
+                            <span class="bau-details-value">${formatToLocalUserDate(c.availability)}</span>
                         </div>
                     </div>
                 </div>
@@ -502,7 +502,7 @@ export function initBAUForm() {
             }
         };
         const statusData = getStatusData(c?.status);
-        const dateStr = c?.date ? new Date(c.date).toLocaleDateString('pt-BR') : '';
+        const dateStr = formatToLocalUserDate(c?.date);
 
         let slaBadge = '';
         let pulseClass = '';
