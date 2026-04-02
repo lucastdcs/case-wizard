@@ -759,79 +759,66 @@ export const injectStyles = () => {
     .bau-pulse-attention { animation: pulseGlow 2s infinite; }
     @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(217, 48, 37, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0); } }
 
-    /* --- BAU DETAILS MODAL (Liquid Glass) --- */
-    .bau-details-backdrop {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0, 0, 0, 0);
-        backdrop-filter: blur(0px);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        pointer-events: none;
-        transition: background 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), backdrop-filter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .bau-details-backdrop.active {
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(8px);
-        pointer-events: auto;
-    }
-
-    .bau-details-modal {
-        position: fixed;
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(16px);
-        border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
-        z-index: 10001;
-        overflow: hidden;
-        display: flex;
+    /* --- BAU DETAILS INTERNAL VIEW (Standard Regular Material) --- */
+    .bau-details-view {
+        position: absolute;
+        top: 56px;
+        left: 0;
+        width: 100%;
+        height: calc(100% - 56px);
+        background: #F8F9FA;
+        z-index: 200;
+        display: none;
         flex-direction: column;
-        transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
         pointer-events: none;
         opacity: 0;
-        transform-origin: center center;
+        transform: scale(0.95) translateY(10px);
+        transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                    transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        border-radius: 0 0 16px 16px;
+        overflow: hidden;
     }
 
-    .bau-details-modal.active {
-        opacity: 1 !important;
-        pointer-events: auto !important;
-        width: 500px !important;
-        height: auto !important;
-        max-height: 80vh !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) scale(1) !important;
+    .bau-details-view.active {
+        display: flex;
+        opacity: 1;
+        pointer-events: auto;
+        transform: scale(1) translateY(0);
     }
 
     .bau-details-header {
-        padding: 20px 24px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 16px 24px;
+        background: #FFFFFF;
+        border-bottom: 1px solid #DADCE0;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-shrink: 0;
     }
 
     .bau-details-title {
         margin: 0;
-        font-size: 18px;
-        font-weight: 700;
+        font-size: 16px;
+        font-weight: 600;
         color: #202124;
     }
 
     .bau-details-close-btn {
-        background: transparent;
-        border: none;
+        background: #F1F3F4;
+        border: 1px solid #DADCE0;
         color: #5F6368;
         cursor: pointer;
-        padding: 4px;
-        border-radius: 50%;
+        padding: 6px 16px;
+        border-radius: 100px;
         display: flex;
-        transition: background 0.2s ease;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s ease;
     }
-    .bau-details-close-btn:hover { background: rgba(0, 0, 0, 0.05); color: #202124; }
+    .bau-details-close-btn:hover { background: #E8EAED; color: #202124; transform: scale(1.02); }
+    .bau-details-close-btn:active { transform: scale(0.95); transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
     .bau-details-content {
         padding: 24px;
@@ -839,6 +826,7 @@ export const injectStyles = () => {
         display: flex;
         flex-direction: column;
         gap: 20px;
+        scrollbar-width: thin;
     }
 
     .bau-details-grid {
@@ -847,12 +835,24 @@ export const injectStyles = () => {
         gap: 16px;
     }
 
+    .bau-details-card {
+        background: #FFFFFF;
+        border: 1px solid #DADCE0;
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transition: transform 0.2s ease;
+    }
+
     .bau-details-row {
         display: flex;
         flex-direction: column;
         gap: 4px;
+        position: relative;
     }
-    .bau-details-row.full-width { grid-column: 1 / -1; }
+    .bau-details-card.full-width { grid-column: 1 / -1; }
 
     .bau-details-label {
         font-size: 11px;
@@ -869,9 +869,26 @@ export const injectStyles = () => {
         line-height: 1.5;
     }
 
+    .bau-copy-btn {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: transparent;
+        border: none;
+        color: #1A73E8;
+        cursor: pointer;
+        padding: 4px;
+        opacity: 0;
+        transition: all 0.2s ease;
+        border-radius: 6px;
+    }
+    .bau-details-row:hover .bau-copy-btn { opacity: 1; background: #E8F0FE; }
+    .bau-copy-btn:active { transform: scale(0.85); transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
     .bau-details-divider {
+        grid-column: 1 / -1;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(0,0,0,0.05), transparent);
+        background: #DADCE0;
         margin: 8px 0;
     }
   `;
