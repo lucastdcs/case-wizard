@@ -60,7 +60,7 @@ export function initCommandCenter(actions) {
                 position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
                 background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px);
                 z-index: 2147483646; opacity: 0; pointer-events: none;
-                transition: opacity 0.4s ease;
+                transition: opacity 0.3s ease;
             }
             .cw-focus-backdrop.active { opacity: 1; pointer-events: auto; }
 
@@ -83,12 +83,16 @@ export function initCommandCenter(actions) {
 
                 /* ABRIR: A pílula expande PRIMEIRO */
                 transition: 
-                    width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
-                    max-height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
-                    padding 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
-                    opacity 0.3s ease,
-                    transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                    opacity 0.2s ease,
+                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill { transition: opacity 0.2s ease !important; transform: none !important; }
+            }
+
             .cw-pill.docked { opacity: 1; transform: translateX(0) scale(1); }
 
             /* --- ESTADO COLAPSADO (FECHANDO) --- */
@@ -102,14 +106,17 @@ export function initCommandCenter(actions) {
                 
                 overflow: hidden !important; 
 
-                /* FECHAR: A pílula colapsa DEPOIS dos ícones (delay 0.3s) */
+                /* FECHAR: A pílula colapsa DEPOIS dos ícones (delay 0.15s) */
                 transition: 
-                    width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s,
-                    max-height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s,
-                    padding 0.5s ease 0.3s,
-                    border-radius 0.5s ease 0.3s,
-                    opacity 0.3s ease 0s,
-                    transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s !important;
+                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
+                    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
+                    padding 0.3s ease 0.15s,
+                    border-radius 0.3s ease 0.15s,
+                    opacity 0.2s ease 0s,
+                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s !important;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill.collapsed { transition: opacity 0.2s ease !important; }
             }
             
             /* --- LOGO DA BOLINHA --- */
@@ -127,13 +134,13 @@ export function initCommandCenter(actions) {
             .cw-pill:not(.collapsed) .cw-main-logo {
                 transform: rotate(360deg) scale(0);
                 opacity: 0;
-                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             }
             .cw-pill.collapsed .cw-main-logo { 
                 opacity: 1; 
                 transform: rotate(0) scale(1);
                 /* Aparece depois que a pílula colapsou */
-                transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
             }
             .cw-pill.collapsed:hover .cw-main-logo {
                 background-image: linear-gradient(135deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%);
@@ -147,35 +154,39 @@ export function initCommandCenter(actions) {
             /* --- CONTEÚDO INTERNO --- */
             .cw-pill > *:not(.cw-main-logo) {
                 opacity: 1; transform: scale(1) translateY(0); visibility: visible;
-                /* Aparece depois que a pílula expandiu */
+                /* Aparece depois que a pílula expandiu (delay 0.15s para ser produtivo) */
                 transition:
-                    opacity 0.3s ease 0.4s,
-                    transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s,
-                    visibility 0s linear 0.4s,
-                    filter 0.3s ease 0.4s;
+                    opacity 0.2s ease 0.15s,
+                    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
+                    visibility 0s linear 0.15s,
+                    filter 0.15s ease 0.15s;
             }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill > *:not(.cw-main-logo) { transition: opacity 0.2s ease 0.1s !important; transform: none !important; }
+            }
+
             .cw-pill.collapsed > *:not(.cw-main-logo) {
                 opacity: 0; pointer-events: none; visibility: hidden;
                 transform: scale(0.5); filter: blur(8px);
                 /* Desaparece imediatamente */
                 transition:
-                    opacity 0.2s ease 0s,
-                    transform 0.2s ease 0s,
-                    filter 0.2s ease 0s,
-                    visibility 0s linear 0.2s;
+                    opacity 0.15s ease 0s,
+                    transform 0.15s ease 0s,
+                    filter 0.15s ease 0s,
+                    visibility 0s linear 0.15s;
             }
 
             /* --- CASCATAS DE ENTRADA --- */
-            .cw-pill:not(.collapsed) > *:nth-child(2) { transition-delay: 0.40s; } /* Grip */
-            .cw-pill:not(.collapsed) > *:nth-child(3) { transition-delay: 0.43s; } /* Notes */
-            .cw-pill:not(.collapsed) > *:nth-child(4) { transition-delay: 0.46s; } /* Email */
-            .cw-pill:not(.collapsed) > *:nth-child(5) { transition-delay: 0.49s; } /* Script */
-            .cw-pill:not(.collapsed) > *:nth-child(6) { transition-delay: 0.52s; } /* Links */
-            .cw-pill:not(.collapsed) > *:nth-child(7) { transition-delay: 0.55s; } /* Library */
-            .cw-pill:not(.collapsed) > *:nth-child(8) { transition-delay: 0.58s; } /* Timezone */
-            .cw-pill:not(.collapsed) > *:nth-child(9) { transition-delay: 0.61s; } /* Configs */
-            .cw-pill:not(.collapsed) > *:nth-child(10) { transition-delay: 0.64s; } /* Sep */
-            .cw-pill:not(.collapsed) > *:nth-child(11) { transition-delay: 0.67s; } /* Broadcast */
+            .cw-pill:not(.collapsed) > *:nth-child(2) { transition-delay: 0.15s; } /* Grip */
+            .cw-pill:not(.collapsed) > *:nth-child(3) { transition-delay: 0.18s; } /* Notes */
+            .cw-pill:not(.collapsed) > *:nth-child(4) { transition-delay: 0.21s; } /* Email */
+            .cw-pill:not(.collapsed) > *:nth-child(5) { transition-delay: 0.24s; } /* Script */
+            .cw-pill:not(.collapsed) > *:nth-child(6) { transition-delay: 0.27s; } /* Links */
+            .cw-pill:not(.collapsed) > *:nth-child(7) { transition-delay: 0.30s; } /* Library */
+            .cw-pill:not(.collapsed) > *:nth-child(8) { transition-delay: 0.33s; } /* Timezone */
+            .cw-pill:not(.collapsed) > *:nth-child(9) { transition-delay: 0.36s; } /* Configs */
+            .cw-pill:not(.collapsed) > *:nth-child(10) { transition-delay: 0.39s; } /* Sep */
+            .cw-pill:not(.collapsed) > *:nth-child(11) { transition-delay: 0.42s; } /* Broadcast */
 
             /* --- ESTILOS DOS BOTÕES --- */
             .cw-btn {
@@ -184,12 +195,18 @@ export function initCommandCenter(actions) {
                 display: flex; align-items: center; justify-content: center; 
                 cursor: pointer; position: relative; color: ${COLORS.iconIdle};
                 flex-shrink: 0;
-                transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-btn { transition: background 0.2s ease, color 0.2s ease !important; }
             }
             .cw-btn:hover {
                 background: ${COLORS.glassHighlight};
                 color: ${COLORS.iconActive};
                 transform: scale(1.18) translateY(-2px) !important;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-btn:hover { transform: none !important; }
             }
 
             .cw-btn.notes.active { color: ${COLORS.blue} !important; background: rgba(138, 180, 248, 0.15); }
@@ -215,7 +232,10 @@ export function initCommandCenter(actions) {
                 content: ''; position: absolute; bottom: 2px; left: 50%; width: 4px; height: 4px; border-radius: 50%;
                 background-color: currentColor; box-shadow: 0 0 6px currentColor;
                 transform: translateX(-50%) scale(0); opacity: 0; visibility: hidden;
-                transition: transform 0.3s, opacity 0.2s; pointer-events: none;
+                transition: transform 0.2s, opacity 0.2s; pointer-events: none;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-btn::before { transition: opacity 0.2s ease !important; transform: translateX(-50%) !important; }
             }
             .cw-btn.active::before { transform: translateX(-50%) scale(1); opacity: 1; visibility: visible; }
             
@@ -230,6 +250,10 @@ export function initCommandCenter(actions) {
                 border: 1px solid rgba(255,255,255,0.15); z-index: 2147483648; 
             }
             .cw-btn:hover::after { opacity: 1; visibility: visible; transform: translateY(-50%) scale(1); }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-btn::after { transition: opacity 0.2s ease !important; }
+                .cw-btn:hover::after { transform: translateY(-50%) !important; }
+            }
             .cw-pill.side-right .cw-btn::after { right: 55px; transform-origin: right center; }
             .cw-pill.side-left .cw-btn::after { left: 55px; transform-origin: left center; }
 
@@ -243,6 +267,9 @@ export function initCommandCenter(actions) {
             .cw-grip { width: 100%; height: 24px; display: flex; align-items: center; justify-content: center; cursor: grab; margin-bottom: 2px; }
             .cw-grip-bar { width: 24px; height: 4px; background-color: ${COLORS.iconIdle}; border-radius: 4px; opacity: 0.4; transition: all 0.3s; }
             .cw-grip:hover .cw-grip-bar { opacity: 1; background-color: #FFFFFF; transform: scaleY(1.2); }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-grip:hover .cw-grip-bar { transform: none !important; }
+            }
             .cw-pill.dragging .cw-grip-bar { background-color: ${COLORS.blue}; width: 16px; opacity: 1; }
 
             .cw-pill.dragging {
@@ -252,6 +279,9 @@ export function initCommandCenter(actions) {
                 filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
                 transform: scale(1.02) !important;
                 transition: box-shadow 0.2s ease, filter 0.2s ease, transform 0.2s ease !important;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill.dragging { transform: none !important; }
             }
 
             /* ============================================================
@@ -280,8 +310,11 @@ export function initCommandCenter(actions) {
                 display: flex; flex-direction: column; align-items: center; 
                 gap: 20px;
                 width: 100%; opacity: 0; 
-                animation: fadeIn 0.4s ease forwards 0.1s; 
+                animation: fadeIn 0.3s ease forwards 0.1s;
                 position: relative; 
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-center-stage { animation: fadeIn 0.3s ease forwards; }
             }
             
             .cw-center-dots { display: flex; gap: 8px; margin-bottom: 4px; }
@@ -301,8 +334,11 @@ export function initCommandCenter(actions) {
                 letter-spacing: 0.2px;
                 opacity: 0; 
                 transform: translateY(10px); 
-                animation: textSlideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
-                animation-delay: 0.2s; 
+                animation: textSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                animation-delay: 0.1s;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-center-text { animation: fadeIn 0.3s ease forwards; transform: none !important; }
             }
 
             .cw-dot-dirty {
@@ -331,7 +367,7 @@ export function initCommandCenter(actions) {
                 letter-spacing: 0.5px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.2);
                 border: 1px solid rgba(255,255,255,0.2);
-                transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 pointer-events: none;
                 z-index: 20;
                 white-space: nowrap;
@@ -342,7 +378,10 @@ export function initCommandCenter(actions) {
             
             .cw-center-success { display: none; color: ${COLORS.green}; margin-bottom: 10px; }
             .cw-center-success svg { width: 48px; height: 48px; }
-            .cw-center-success.show { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+            .cw-center-success.show { display: block; animation: popIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-center-success.show { animation: fadeIn 0.3s ease forwards; }
+            }
             
             .cw-abort-btn { 
                 position: relative; 
@@ -364,6 +403,18 @@ export function initCommandCenter(actions) {
             @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
             @keyframes googleBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
             @keyframes textSlideUp { to { opacity: 1; transform: translateY(0); } }
+
+            @keyframes cw-system-ready {
+                0% { transform: scale(1); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
+                50% { transform: scale(1.02); box-shadow: 0 0 20px ${COLORS.blue}; }
+                100% { transform: scale(1); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
+            }
+            .cw-pill.system-ready {
+                animation: cw-system-ready 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill.system-ready { animation: fadeIn 0.3s ease; }
+            }
         `;
     document.head.appendChild(style);
   }
@@ -490,8 +541,14 @@ export function initCommandCenter(actions) {
     await esperar(300);
     const items = pill.querySelectorAll(".cw-btn");
     pill.querySelectorAll(".cw-sep").forEach((s) => s.classList.add("visible"));
-    for (let i = 0; i < items.length; i++) { items[i].classList.add("popped"); await esperar(90); }
-    await esperar(200); pill.classList.add("system-check");
+    for (let i = 0; i < items.length; i++) { items[i].classList.add("popped"); await esperar(40); }
+    await esperar(100);
+    pill.classList.add("system-check");
+
+    // Microinteração 'Ready'
+    await esperar(100);
+    pill.classList.add("system-ready");
+    setTimeout(() => pill.classList.remove("system-ready"), 400);
   })();
 
   // 5. DRAG & DROP
@@ -548,7 +605,7 @@ export function initCommandCenter(actions) {
       let targetTop = Math.max(24, Math.min(rect.top, screenH - rect.height - 24));
 
       setTimeout(() => {
-        pill.style.setProperty('transition', 'left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)', 'important');
+        pill.style.setProperty('transition', 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), top 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
         pill.style.left = `${targetLeft}px`;
         pill.style.top = `${targetTop}px`;
         pill.style.bottom = "auto";

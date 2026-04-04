@@ -437,7 +437,6 @@ export const stylePopup = {
   `,
 
   border: "1px solid rgba(255, 255, 255, 0.6)", // Borda interna de luz
-  zIndex: "9999",
   display: "flex",
   flexDirection: "column",
   fontFamily: "'Google Sans', Roboto, sans-serif",
