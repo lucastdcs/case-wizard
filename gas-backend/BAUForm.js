@@ -1,11 +1,12 @@
 // =========================================================
 // FUNÇÃO MESTRA DE E-MAILS DINÂMICOS
 // =========================================================
-function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail) {
+function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, authorEmailOverride) {
   const template = HtmlService.createHtmlOutputFromFile('EmailTemplateDynamic').getContent();
   
   // 1. Variáveis Padrão e Captura do Usuário (LDAP)
-  const senderEmail = Session.getActiveUser().getEmail();
+  // Rastreabilidade: Prioriza o e-mail injetado pelo sistema (autor real) em vez do dono do script
+  const senderEmail = authorEmailOverride || Session.getActiveUser().getEmail();
   const senderLdap = senderEmail ? senderEmail.split('@')[0] : "Equipe BAU"; // Fallback de segurança
   
   let themeColor = "#8ab4f8"; // Azul

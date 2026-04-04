@@ -162,10 +162,10 @@ export async function captureClientEmail() {
     }
 }
 
-// --- 5. CAPTURA DE EMAIL INTERNO (@google) ---
+// --- 5. CAPTURA DE EMAIL INTERNO (Rastreabilidade) ---
 export function captureInternalEmail() {
     try {
-        // Busca o input de busca/conta no topo
+        // Busca o input de busca/conta no topo (Identificador Único do Usuário no CRM)
         const inputWrapper = document.querySelector('material-input[debug-id="account-id-input"]');
 
         if (inputWrapper) {
@@ -173,9 +173,9 @@ export function captureInternalEmail() {
             if (inputElement) {
                 const val = inputElement.value.trim();
 
-                // Se tiver valor, verifica se precisa adicionar o domínio
+                // Se tiver valor, resolve dinamicamente o e-mail completo
                 if (val) {
-                    // Se tiver @ devolve, se for só ldap adiciona @google.com
+                    // Se já for um e-mail completo, retorna. Caso contrário, anexa o domínio corporativo.
                     return val.includes('@') ? val : `${val}@google.com`;
                 }
             }
