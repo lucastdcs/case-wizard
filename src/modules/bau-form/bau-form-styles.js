@@ -453,6 +453,82 @@ export const injectStyles = () => {
       display: none;
       padding-bottom: 80px;
     }
+
+    /* --- BRANCHING (STEP 0) --- */
+    .bau-branching-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      padding: 10px 0;
+    }
+
+    .bau-branching-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(218, 220, 224, 0.5);
+      border-radius: 16px;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bau-branching-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, rgba(26, 115, 232, 0.05) 0%, rgba(161, 75, 255, 0.05) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .bau-branching-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      border-color: #1A73E8;
+      box-shadow: 0 12px 32px rgba(26, 115, 232, 0.15);
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .bau-branching-card:hover::before {
+      opacity: 1;
+    }
+
+    .bau-branching-icon {
+      width: 56px;
+      height: 56px;
+      background: #F8F9FA;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      color: #1A73E8;
+      transition: all 0.3s ease;
+    }
+
+    .bau-branching-card:hover .bau-branching-icon {
+      background: #1A73E8;
+      color: #FFFFFF;
+      transform: rotate(5deg);
+    }
+
+    .bau-branching-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #202124;
+      margin-bottom: 8px;
+    }
+
+    .bau-branching-subtitle {
+      font-size: 12px;
+      color: #5F6368;
+      line-height: 1.5;
+    }
     .bau-step.active {
       display: block;
       animation: bauFadeIn 0.3s;

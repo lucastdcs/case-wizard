@@ -46,12 +46,26 @@ function createField(fieldConfig) {
 
         case 'select':
             input = document.createElement('select');
-            fieldConfig.options.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt.value;
-                option.textContent = opt.text;
-                input.appendChild(option);
-            });
+            if (fieldConfig.groups) {
+                fieldConfig.groups.forEach(group => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = group.label;
+                    group.options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt.value;
+                        option.textContent = opt.text;
+                        optgroup.appendChild(option);
+                    });
+                    input.appendChild(optgroup);
+                });
+            } else if (fieldConfig.options) {
+                fieldConfig.options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.value;
+                    option.textContent = opt.text;
+                    input.appendChild(option);
+                });
+            }
             wrapper.appendChild(input);
             break;
 
@@ -153,7 +167,8 @@ export function initBAUForm() {
     let isVisible = false;
     let currentView = 'dashboard';
     let currentContextData = null;
-    let currentStep = 1;
+    let currentStep = 0;
+    let requestType = 'BAU';
     const totalSteps = FORM_CONFIG.steps.length;
 
     const popup = document.createElement("div");
@@ -223,12 +238,39 @@ export function initBAUForm() {
     form.id = "bau-escalation-form";
     formUiContainer.appendChild(form);
     
-    FORM_CONFIG.steps.forEach((stepConfig, index) => {
+    FORM_CONFIG.steps.forEach((stepConfig) => {
         const stepEl = document.createElement('div');
-        stepEl.className = 'bau-step' + (index === 0 ? ' active' : '');
+        stepEl.className = 'bau-step' + (stepConfig.id === currentStep ? ' active' : '');
         stepEl.id = `bau-step-${stepConfig.id}`;
         
-        if (stepConfig.isConfirmation) {
+        if (stepConfig.isBranching) {
+            stepEl.innerHTML = `
+                <div class="bau-branching-container">
+                    <div class="bau-branching-card" id="bau-opt-full">
+                        <div class="bau-branching-icon">${ICONS.add}</div>
+                        <h3 class="bau-branching-title">Abrir caso para BAU</h3>
+                        <p class="bau-branching-subtitle">Fluxo completo para implementações técnicas e suporte especializado.</p>
+                    </div>
+                    <div class="bau-branching-card" id="bau-opt-discard">
+                        <div class="bau-branching-icon">${ICONS.empty}</div>
+                        <h3 class="bau-branching-title">Solicitar Descarte</h3>
+                        <p class="bau-branching-subtitle">Fluxo simplificado para casos que não requerem implementação.</p>
+                    </div>
+                </div>
+            `;
+            stepEl.querySelector('#bau-opt-full').onclick = () => {
+                requestType = 'BAU';
+                currentStep = 1;
+                updateWizardState();
+                SoundManager.playClick();
+            };
+            stepEl.querySelector('#bau-opt-discard').onclick = () => {
+                requestType = 'DISCARD';
+                currentStep = 5;
+                updateWizardState();
+                SoundManager.playClick();
+            };
+        } else if (stepConfig.isConfirmation) {
             stepEl.innerHTML = `
                 <div class="bau-card">
                     <h3 class="bau-step-title">Confirme os dados antes de enviar</h3>
@@ -648,22 +690,37 @@ export function initBAUForm() {
     }
 
     function updateWizardState() {
-        form.querySelectorAll('.bau-step').forEach((step, index) => {
-            const isActive = (index + 1) === currentStep;
+        form.querySelectorAll('.bau-step').forEach((step) => {
+            const stepId = parseInt(step.id.replace('bau-step-', ''));
+            const isActive = stepId === currentStep;
             step.classList.toggle('active', isActive);
             step.style.display = isActive ? 'block' : 'none';
         });
-        progressIndicator.innerHTML = '';
-        for (let i = 1; i <= totalSteps; i++) {
-            const stepDot = document.createElement('div');
-            stepDot.className = `bau-progress-step ${i === currentStep ? 'active' : (i < currentStep ? 'completed' : '')}`;
-            stepDot.textContent = i;
-            progressIndicator.appendChild(stepDot);
+
+        const isBranching = currentStep === 0;
+        progressIndicator.style.display = isBranching ? 'none' : 'flex';
+
+        if (!isBranching) {
+            progressIndicator.innerHTML = '';
+            const flowSteps = requestType === 'BAU' ? [1, 2, 3, 4] : [5, 4];
+            flowSteps.forEach((stepId, index) => {
+                const stepDot = document.createElement('div');
+                const isStepActive = stepId === currentStep;
+                const stepIndex = flowSteps.indexOf(currentStep);
+                const isStepCompleted = index < stepIndex;
+
+                stepDot.className = `bau-progress-step ${isStepActive ? 'active' : (isStepCompleted ? 'completed' : '')}`;
+                stepDot.textContent = index + 1;
+                progressIndicator.appendChild(stepDot);
+            });
         }
-        backBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
-        nextBtn.style.display = currentStep < totalSteps ? 'inline-block' : 'none';
-        submitBtn.style.display = currentStep === totalSteps ? 'flex' : 'none';
-        if (currentStep === totalSteps) renderConfirmation();
+
+        const isConfirmation = currentStep === 4;
+        backBtn.style.display = currentStep > 0 ? 'inline-block' : 'none';
+        nextBtn.style.display = (!isBranching && !isConfirmation) ? 'inline-block' : 'none';
+        submitBtn.style.display = isConfirmation ? 'flex' : 'none';
+
+        if (isConfirmation) renderConfirmation();
     }
     
     function validateStep(step) {
@@ -672,7 +729,7 @@ export function initBAUForm() {
 
         for (const fieldConfig of stepConfig.fields) {
             if (fieldConfig.validation) {
-                const input = form.querySelector(`[name="${fieldConfig.name}"]`);
+                const input = form.querySelector(`#bau-step-${step} [name="${fieldConfig.name}"]`);
                 if (input && input.value.trim()) {
                     const regex = new RegExp(fieldConfig.validation.regex);
                     if (!regex.test(input.value.trim())) {
@@ -699,18 +756,18 @@ export function initBAUForm() {
         for (const fieldConfig of stepConfig.fields) {
             if (fieldConfig.required) {
                 if (fieldConfig.type === 'checkbox-grid') {
-                    if (!form.querySelector(`input[name="${fieldConfig.name}"]:checked`)) {
+                    if (!form.querySelector(`#bau-step-${step} input[name="${fieldConfig.name}"]:checked`)) {
                         showToast(`Erro: Selecione pelo menos uma opção para "${fieldConfig.label}".`, { error: true });
                         return false;
                     }
                 } else if (fieldConfig.type === 'datetime-group') {
-                    const firstInput = form.querySelector(`input[name="${fieldConfig.fields[0].name}"]`);
+                    const firstInput = form.querySelector(`#bau-step-${step} input[name="${fieldConfig.fields[0].name}"]`);
                     if (!firstInput || !firstInput.value.trim()) {
                         showToast(`Erro: O campo "${fieldConfig.fields[0].label}" é obrigatório.`, { error: true });
                         return false;
                     }
                 } else {
-                    const input = form.querySelector(`[name="${fieldConfig.name}"]`);
+                    const input = form.querySelector(`#bau-step-${step} [name="${fieldConfig.name}"]`);
                     if (!input || !input.value.trim()) {
                         showToast(`Erro: O campo '${fieldConfig.label}' é obrigatório.`, { error: true });
                         return false;
@@ -723,7 +780,12 @@ export function initBAUForm() {
 
     nextBtn.addEventListener('click',() => {
         if (validateStep(currentStep) && validateRequiredFields(currentStep)) {
-            currentStep++;
+            if (requestType === 'BAU') {
+                currentStep++;
+            } else {
+                if (currentStep === 5) currentStep = 4;
+                else currentStep++;
+            }
             updateWizardState();
             const contentArea = popup.querySelector('.bau-content');
             if (contentArea) contentArea.scrollTop = 0;
@@ -732,8 +794,14 @@ export function initBAUForm() {
     });
 
     backBtn.addEventListener('click',() => {
-        if (currentStep > 1) {
-            currentStep--;
+        if (currentStep > 0) {
+            if (requestType === 'BAU') {
+                currentStep--;
+            } else {
+                if (currentStep === 4) currentStep = 5;
+                else if (currentStep === 5) currentStep = 0;
+                else currentStep--;
+            }
             updateWizardState();
             SoundManager.playClick();
         }
@@ -775,15 +843,27 @@ export function initBAUForm() {
                 step.fields.forEach(field => {
                     if (field.isSmart) {
                         const value = pageData[field.id];
-                        const input = form.querySelector(`[name="${field.name}"]`);
-                        const wrapper = popup.querySelector(`#wrapper-${field.id}`);
+                        const input = form.querySelector(`#bau-step-${step.id} [name="${field.name}"]`);
+                        const wrapper = form.querySelector(`#bau-step-${step.id} #wrapper-${field.id}`);
 
-                        if (input) input.value = (value && value !== "N/A") ? value : "";
+                        if (input) {
+                            input.value = (value && value !== "N/A") ? value : "";
+                            // Special case: Language/Idioma should be read-only if valid
+                            if (field.id === 'language' && value && value !== "N/A") {
+                                input.readOnly = true;
+                                input.style.background = '#F1F3F4';
+                                input.style.cursor = 'not-allowed';
+                            }
+                        }
 
                         if (wrapper) {
                             const isValid = value && value !== "" && value !== "N/A" && value !== "undefined" && value !== "null";
-                            // Smart Rendering: Hide editable input if data is present
-                            wrapper.style.display = isValid ? 'none' : 'block';
+                            // Smart Rendering: Hide editable input if data is present, except for fields we want to keep visible but read-only
+                            if (field.id === 'language') {
+                                wrapper.style.display = 'block';
+                            } else {
+                                wrapper.style.display = isValid ? 'none' : 'block';
+                            }
                         }
                     }
                 });
@@ -834,76 +914,107 @@ export function initBAUForm() {
     function renderConfirmation() {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-        const tasks = formData.getAll('taskType');
         const container = popup.querySelector('#bau-confirmation-details');
         if (!container) return;
 
-        const tasksText = tasks.length > 0 ? tasks.join(', ') : "Nenhuma";
+        if (requestType === 'BAU') {
+            const tasks = formData.getAll('taskType');
+            const tasksText = tasks.length > 0 ? tasks.join(', ') : "Nenhuma";
 
-        container.innerHTML = `
-            <div class="bau-confirmation-grid">
-                <div class="bau-confirm-row">
-                    <span class="bau-confirm-label">Anunciante</span>
-                    <input class="bau-confirm-value-input" data-field="advName" value="${data.advName || ''}" placeholder="---">
-                </div>
-                <div class="bau-confirm-row">
-                    <span class="bau-confirm-label">CID</span>
-                    <input class="bau-confirm-value-input" data-field="cid" value="${data.cid || ''}" placeholder="---">
-                </div>
-                <div class="bau-confirm-row">
-                    <span class="bau-confirm-label">AM</span>
-                    <input class="bau-confirm-value-input" data-field="amName" value="${data.amName || ''}" placeholder="---">
-                </div>
-                <div class="bau-confirm-row">
-                    <span class="bau-confirm-label">Speakeasy ID</span>
-                    <input class="bau-confirm-value-input" data-field="seId" value="${data.seId || ''}" placeholder="Não informado">
-                </div>
+            container.innerHTML = `
+                <div class="bau-confirmation-grid">
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">Anunciante</span>
+                        <input class="bau-confirm-value-input" data-field="advName" data-step="1" value="${data.advName || ''}" placeholder="---">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">CID</span>
+                        <input class="bau-confirm-value-input" data-field="cid" data-step="1" value="${data.cid || ''}" placeholder="---">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">AM</span>
+                        <input class="bau-confirm-value-input" data-field="amName" data-step="1" value="${data.amName || ''}" placeholder="---">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">Speakeasy ID</span>
+                        <input class="bau-confirm-value-input" data-field="seId" data-step="1" value="${data.seId || ''}" placeholder="Não informado">
+                    </div>
 
-                <div class="bau-confirm-divider"></div>
+                    <div class="bau-confirm-divider"></div>
 
-                <div class="bau-confirm-row full-width">
-                    <span class="bau-confirm-label">O que deve ser feito</span>
-                    <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="reason" placeholder="---">${data.reason || ''}</textarea>
-                </div>
-                <div class="bau-confirm-row full-width">
-                    <span class="bau-confirm-label">Tasks</span>
-                    <span class="bau-confirm-value-input" style="cursor: default; opacity: 0.8;" title="Para editar as tasks, volte ao Passo 2">${tasksText}</span>
-                </div>
+                    <div class="bau-confirm-row full-width">
+                        <span class="bau-confirm-label">O que deve ser feito</span>
+                        <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="reason" data-step="2" placeholder="---">${data.reason || ''}</textarea>
+                    </div>
+                    <div class="bau-confirm-row full-width">
+                        <span class="bau-confirm-label">Tasks</span>
+                        <span class="bau-confirm-value-input" style="cursor: default; opacity: 0.8;" title="Para editar as tasks, volte ao Passo 2">${tasksText}</span>
+                    </div>
 
-                <div class="bau-confirm-divider"></div>
+                    <div class="bau-confirm-divider"></div>
 
-                <div class="bau-confirm-row full-width">
-                    <span class="bau-confirm-label">Justificativa BAU</span>
-                    <select class="bau-confirm-value-input" data-field="nonImplementationReason">
-                        <option value="Tempo da consultoria esgotado" ${data.nonImplementationReason === 'Tempo da consultoria esgotado' ? 'selected' : ''}>Tempo da consultoria esgotado</option>
-                        <option value="Solicitação de reagendamento pelo anunciante" ${data.nonImplementationReason === 'Solicitação de reagendamento pelo anunciante' ? 'selected' : ''}>Solicitação de reagendamento pelo anunciante</option>
-                        <option value="Falta de acessos ou backup do site" ${data.nonImplementationReason === 'Falta de acessos ou backup do site' ? 'selected' : ''}>Falta de acessos ou backup do site</option>
-                        <option value="Anunciante indisponível ou não preparado" ${data.nonImplementationReason === 'Anunciante indisponível ou não preparado' ? 'selected' : ''}>Anunciante indisponível ou não preparado</option>
-                        <option value="Implementação parcial (nem todas as tasks concluídas)" ${data.nonImplementationReason === 'Implementação parcial (nem todas as tasks concluídas)' ? 'selected' : ''}>Implementação parcial (nem todas as tasks concluídas)</option>
-                        <option value="Solicitação de tarefas (tasks) adicionais" ${data.nonImplementationReason === 'Solicitação de tarefas (tasks) adicionais' ? 'selected' : ''}>Solicitação de tarefas (tasks) adicionais</option>
-                        <option value="Necessidade de novas alterações (fase de acompanhamento)" ${data.nonImplementationReason === 'Necessidade de novas alterações (fase de acompanhamento)' ? 'selected' : ''}>Necessidade de novas alterações (fase de acompanhamento)</option>
-                        <option value="Retorno de contato após prazo de 14 dias expirado" ${data.nonImplementationReason === 'Retorno de contato após prazo de 14 dias expirado' ? 'selected' : ''}>Retorno de contato após prazo de 14 dias expirado</option>
-                    </select>
-                </div>
-                <div class="bau-confirm-row full-width">
-                    <span class="bau-confirm-label">Descrição</span>
-                    <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="description" placeholder="---">${data.description || ''}</textarea>
-                </div>
+                    <div class="bau-confirm-row full-width">
+                        <span class="bau-confirm-label">Justificativa BAU</span>
+                        <select class="bau-confirm-value-input" data-field="nonImplementationReason" data-step="3">
+                            <option value="Tempo da consultoria esgotado" ${data.nonImplementationReason === 'Tempo da consultoria esgotado' ? 'selected' : ''}>Tempo da consultoria esgotado</option>
+                            <option value="Solicitação de reagendamento pelo anunciante" ${data.nonImplementationReason === 'Solicitação de reagendamento pelo anunciante' ? 'selected' : ''}>Solicitação de reagendamento pelo anunciante</option>
+                            <option value="Falta de acessos ou backup do site" ${data.nonImplementationReason === 'Falta de acessos ou backup do site' ? 'selected' : ''}>Falta de acessos ou backup do site</option>
+                            <option value="Anunciante indisponível ou não preparado" ${data.nonImplementationReason === 'Anunciante indisponível ou não preparado' ? 'selected' : ''}>Anunciante indisponível ou não preparado</option>
+                            <option value="Implementação parcial (nem todas as tasks concluídas)" ${data.nonImplementationReason === 'Implementação parcial (nem todas as tasks concluídas)' ? 'selected' : ''}>Implementação parcial (nem todas as tasks concluídas)</option>
+                            <option value="Solicitação de tarefas (tasks) adicionais" ${data.nonImplementationReason === 'Solicitação de tarefas (tasks) adicionais' ? 'selected' : ''}>Solicitação de tarefas (tasks) adicionais</option>
+                            <option value="Necessidade de novas alterações (fase de acompanhamento)" ${data.nonImplementationReason === 'Necessidade de novas alterações (fase de acompanhamento)' ? 'selected' : ''}>Necessidade de novas alterações (fase de acompanhamento)</option>
+                            <option value="Retorno de contato após prazo de 14 dias expirado" ${data.nonImplementationReason === 'Retorno de contato após prazo de 14 dias expirado' ? 'selected' : ''}>Retorno de contato após prazo de 14 dias expirado</option>
+                        </select>
+                    </div>
+                    <div class="bau-confirm-row full-width">
+                        <span class="bau-confirm-label">Descrição</span>
+                        <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="description" data-step="3" placeholder="---">${data.description || ''}</textarea>
+                    </div>
 
-                <div class="bau-confirm-row full-width">
-                    <span class="bau-confirm-label">Disponibilidade (Prioridade)</span>
-                    <input type="datetime-local" class="bau-confirm-value-input" data-field="availability_1" value="${data.availability_1 || ''}">
+                    <div class="bau-confirm-row full-width">
+                        <span class="bau-confirm-label">Disponibilidade (Prioridade)</span>
+                        <input type="datetime-local" class="bau-confirm-value-input" data-field="availability_1" data-step="3" value="${data.availability_1 || ''}">
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="bau-confirmation-grid">
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">Case ID</span>
+                        <input class="bau-confirm-value-input" data-field="caseId" data-step="5" value="${data.caseId || ''}" placeholder="---">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">Idioma</span>
+                        <input class="bau-confirm-value-input" data-field="language" data-step="5" value="${data.language || ''}" placeholder="---" readonly style="opacity: 0.7;">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">Speakeasy ID</span>
+                        <input class="bau-confirm-value-input" data-field="seId" data-step="5" value="${data.seId || ''}" placeholder="---">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">Motivo do Descarte</span>
+                        <input class="bau-confirm-value-input" data-field="reason" data-step="5" value="${data.reason || ''}" placeholder="---" readonly style="opacity: 0.7;">
+                    </div>
+
+                    <div class="bau-confirm-divider"></div>
+
+                    <div class="bau-confirm-row full-width">
+                        <span class="bau-confirm-label">Descrição do Descarte</span>
+                        <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="description" data-step="5" placeholder="---">${data.description || ''}</textarea>
+                    </div>
+                </div>
+            `;
+        }
 
         // Listen for changes and sync back to the original form
         container.querySelectorAll('.bau-confirm-value-input').forEach(input => {
             input.addEventListener('input', (e) => {
                 const fieldName = e.target.dataset.field;
-                if (!fieldName) return;
+                const stepId = e.target.dataset.step;
+                if (!fieldName || !stepId) return;
 
-                const originalInput = form.querySelector(`[name="${fieldName}"]`);
+                const originalInput = form.querySelector(`#bau-step-${stepId} [name="${fieldName}"]`);
                 if (originalInput) {
                     originalInput.value = e.target.value;
 
@@ -918,11 +1029,10 @@ export function initBAUForm() {
     form.onsubmit = async (e) => {
         e.preventDefault();
         
-        for(let i=1; i <= totalSteps; i++){
-            const stepConfig = FORM_CONFIG.steps.find(s => s.id === i);
-            if (stepConfig?.isConfirmation) continue;
-            if(!validateStep(i) || !validateRequiredFields(i)) {
-                currentStep = i;
+        const stepsToValidate = requestType === 'BAU' ? [1, 2, 3] : [5];
+        for (const stepId of stepsToValidate) {
+            if(!validateStep(stepId) || !validateRequiredFields(stepId)) {
+                currentStep = stepId;
                 updateWizardState();
                 return;
             }
@@ -934,25 +1044,44 @@ export function initBAUForm() {
         
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-        const tasks = formData.getAll('taskType');
         const context = currentContextData || {};
         
-        const disponibilidadeUnificada = [data.availability_1, data.availability_2, data.availability_3]
-            .filter(d => d && d.trim() !== '')
-            .join(' | ');
-
-        const payload = { 
+        let payload = {
             ...context,
-            ...data, 
+            ...data,
+            requestType: requestType,
             advEmail: context.email || "", 
-            website: context.site || "",
-            taskType: tasks.join(', '), 
-            availability: disponibilidadeUnificada
+            website: context.site || ""
         };
+
+        if (requestType === 'BAU') {
+            const tasks = formData.getAll('taskType');
+            const disponibilidadeUnificada = [data.availability_1, data.availability_2, data.availability_3]
+                .filter(d => d && d.trim() !== '')
+                .join(' | ');
+
+            payload.taskType = tasks.join(', ');
+            payload.availability = disponibilidadeUnificada;
+        } else {
+            // Discard Flow: KISS Principle - nullify irrelevant fields
+            payload.taskType = "";
+            payload.availability = "";
+            payload.nonImplementationReason = "";
+            payload.reason = data.reason; // This comes from step 5 'reason' field
+        }
 
         try {
             await sendBAUEscalation(payload, context.agentEmail || "anon");
             SoundManager.playSuccess();
+
+            // Dynamic Success Message
+            const successTitle = popup.querySelector('.bau-success-title');
+            if (successTitle) {
+                successTitle.textContent = requestType === 'DISCARD'
+                    ? 'Caso enviado para descarte com sucesso!'
+                    : 'Caso enviado com sucesso!';
+            }
+
             switchView('success');
         } catch (error) {
             showToast("Erro: " + (error.message || "Erro desconhecido"), { error: true });
@@ -965,9 +1094,18 @@ export function initBAUForm() {
 
     function resetForm() {
         form.reset();
-        currentStep = 1;
+        currentStep = 0;
+        requestType = 'BAU';
         updateWizardState();
         form.querySelectorAll('.bau-task-item.active').forEach(item => item.classList.remove('active'));
+
+        // Ensure language input is reset from readOnly
+        const langInput = form.querySelector('[name="language"]');
+        if (langInput) {
+            langInput.readOnly = false;
+            langInput.style.background = '';
+            langInput.style.cursor = '';
+        }
     }
 
     popup.querySelector('#bau-new-case-btn').addEventListener('click',() => {
