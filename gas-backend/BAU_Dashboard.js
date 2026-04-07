@@ -62,12 +62,13 @@ function updateBAUCaseStatus(id, newStatus) {
           reason: rowData[14]
         };
         const agentEmail = rowData[2];
+        const tlEmail = Session.getActiveUser().getEmail(); // Captura o TL logado no momento
 
         // Chama a função de e-mail que você já configurou!
         if (newStatus === "CREATED") {
-          sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_BAU_CREATED');
+          sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_BAU_CREATED', tlEmail);
         } else if (newStatus === "DISCARDED") {
-          sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_DISCARD_DONE');
+          sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_DISCARD_DONE', tlEmail);
         }
         
         return { success: true, newStatus: newStatus };

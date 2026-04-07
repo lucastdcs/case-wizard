@@ -39,7 +39,8 @@ function handleBAUEscalation(ss, p) {
     // Tenta enviar o e-mail transacional. Falhas de e-mail não devem quebrar a criação.
     try {
       if (typeof sendDynamicTechSolEmail === "function") {
-        sendDynamicTechSolEmail(userEmail, p, newId, 'AGENT_BAU_SENT');
+        // Rastreabilidade: O agente (p.user) é o autor real desta criação
+        sendDynamicTechSolEmail(userEmail, p, newId, 'AGENT_BAU_SENT', userEmail);
       }
     } catch(e) {
       console.warn("Aviso: Falha ao enviar email do agente", e);
@@ -175,6 +176,8 @@ function updateBAUCaseStatus(id, newStatus) {
         // Dispara e-mail para o Agente informando a decisão do TL
         try {
           const agentEmail = data[i][2];
+          const tlEmail = Session.getActiveUser().getEmail(); // Captura o TL logado no momento
+
           // Recria o objeto P para o template de e-mail ler os dados básicos
           const pData = {
             advName: data[i][7],
@@ -186,9 +189,9 @@ function updateBAUCaseStatus(id, newStatus) {
           };
           
           if (newStatus === 'CREATED') {
-            sendDynamicTechSolEmail(agentEmail, pData, id, 'AGENT_BAU_CREATED');
+            sendDynamicTechSolEmail(agentEmail, pData, id, 'AGENT_BAU_CREATED', tlEmail);
           } else if (newStatus === 'DISCARDED') {
-            sendDynamicTechSolEmail(agentEmail, pData, id, 'AGENT_DISCARD_DONE');
+            sendDynamicTechSolEmail(agentEmail, pData, id, 'AGENT_DISCARD_DONE', tlEmail);
           }
         } catch (emailError) {
           console.error("Erro ao notificar decisão do TL:", emailError);
