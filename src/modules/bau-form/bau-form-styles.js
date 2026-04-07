@@ -891,6 +891,37 @@ export const injectStyles = () => {
         background: #DADCE0;
         margin: 8px 0;
     }
+
+    .bau-input-group {
+      display: flex;
+    }
+
+    .bau-input-group > .bau-input {
+      border-radius: 8px 0 0 8px;
+    }
+
+    .bau-mini-btn-input {
+      background: #F8F9FA;
+      border: 1px solid #DADCE0;
+      color: #5F6368;
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-left: -1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bau-mini-btn-input:hover {
+      background: #F1F3F4;
+      color: #202124;
+      border-color: #5F6368;
+      z-index: 1;
+    }
   `;
   document.head.appendChild(style);
 };
