@@ -2,6 +2,11 @@
 export const FORM_CONFIG = {
     steps: [
         {
+            id: 0,
+            title: 'Selecione o tipo de atendimento',
+            isBranching: true
+        },
+        {
             id: 1,
             title: 'Contexto e Validação',
             fields: [
@@ -130,6 +135,71 @@ export const FORM_CONFIG = {
             id: 4,
             title: 'Confirmação',
             isConfirmation: true
+        },
+        {
+            id: 5,
+            title: 'Solicitar Descarte',
+            fields: [
+                {
+                    id: 'caseId',
+                    name: 'caseId',
+                    label: 'Case ID',
+                    type: 'text',
+                    placeholder: 'Case ID',
+                    required: true,
+                    isSmart: true
+                },
+                {
+                    id: 'language',
+                    name: 'language',
+                    label: 'Idioma',
+                    type: 'text',
+                    placeholder: 'Idioma',
+                    required: true,
+                    isSmart: true
+                },
+                {
+                    id: 'seId',
+                    name: 'seId',
+                    label: 'Speakeasy ID (SE ID)',
+                    type: 'text',
+                    placeholder: 'Speakeasy ID',
+                    required: true,
+                    isSmart: true
+                },
+                {
+                    id: 'description',
+                    name: 'description',
+                    label: 'Descrição',
+                    type: 'textarea',
+                    placeholder: 'Descreva o motivo do descarte...',
+                    required: true
+                },
+                {
+                    id: 'discardReason',
+                    name: 'reason',
+                    label: 'Motivo do Descarte',
+                    type: 'select',
+                    required: true,
+                    groups: [
+                        {
+                            label: 'Live Appointments',
+                            options: [
+                                { value: "Caso Filho gerado no atendimento", text: "Caso Filho gerado no atendimento" },
+                                { value: "3ª Tentativa de contato sem sucesso", text: "3ª Tentativa de contato sem sucesso" }
+                            ]
+                        },
+                        {
+                            label: 'Live Meet',
+                            options: [
+                                { value: "Apenas o AM presente", text: "Apenas o AM presente" },
+                                { value: "Estouro de tempo para conclusão", text: "Estouro de tempo para conclusão" },
+                                { value: "Geração de caso BAU (Reagendamento)", text: "Geração de caso BAU (Reagendamento)" }
+                            ]
+                        }
+                    ]
+                }
+            ]
         }
     ]
 };
