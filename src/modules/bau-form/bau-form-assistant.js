@@ -750,32 +750,49 @@ export function initBAUForm() {
     }
 
      function validateRequiredFields(step) {
-        const stepConfig = FORM_CONFIG.steps.find(s => s.id === step);
-        if (!stepConfig || !stepConfig.fields) return true;
+        const stepEl = form.querySelector(`#bau-step-${step}`);
+        if (!stepEl) return false;
 
+        const originalDisplay = stepEl.style.display;
+        stepEl.style.display = 'block';
+
+        const stepConfig = FORM_CONFIG.steps.find(s => s.id === step);
+        if (!stepConfig || !stepConfig.fields) {
+            stepEl.style.display = originalDisplay;
+            return true;
+        }
+
+        let isValid = true;
         for (const fieldConfig of stepConfig.fields) {
             if (fieldConfig.required) {
+                let isFieldValid = true;
                 if (fieldConfig.type === 'checkbox-grid') {
                     if (!form.querySelector(`#bau-step-${step} input[name="${fieldConfig.name}"]:checked`)) {
                         showToast(`Erro: Selecione pelo menos uma opção para "${fieldConfig.label}".`, { error: true });
-                        return false;
+                        isFieldValid = false;
                     }
                 } else if (fieldConfig.type === 'datetime-group') {
                     const firstInput = form.querySelector(`#bau-step-${step} input[name="${fieldConfig.fields[0].name}"]`);
                     if (!firstInput || !firstInput.value.trim()) {
                         showToast(`Erro: O campo "${fieldConfig.fields[0].label}" é obrigatório.`, { error: true });
-                        return false;
+                        isFieldValid = false;
                     }
                 } else {
                     const input = form.querySelector(`#bau-step-${step} [name="${fieldConfig.name}"]`);
                     if (!input || !input.value.trim()) {
                         showToast(`Erro: O campo '${fieldConfig.label}' é obrigatório.`, { error: true });
-                        return false;
+                        isFieldValid = false;
                     }
+                }
+                if (!isFieldValid) {
+                    isValid = false;
+                    break; 
                 }
             }
         }
-        return true;
+        
+        stepEl.style.display = originalDisplay;
+        return isValid;
     }
 
     nextBtn.addEventListener('click',() => {
