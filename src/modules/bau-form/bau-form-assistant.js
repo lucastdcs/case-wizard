@@ -236,6 +236,7 @@ export function initBAUForm() {
 
     const form = document.createElement("form");
     form.id = "bau-escalation-form";
+    form.noValidate = true;
     formUiContainer.appendChild(form);
     
     FORM_CONFIG.steps.forEach((stepConfig) => {
@@ -690,11 +691,20 @@ export function initBAUForm() {
     }
 
     function updateWizardState() {
+        const flowSteps = (requestType === 'BAU') ? [1, 2, 3, 4] : [5, 4];
+
         form.querySelectorAll('.bau-step').forEach((step) => {
             const stepId = parseInt(step.id.replace('bau-step-', ''));
             const isActive = stepId === currentStep;
+            const isPartOfFlow = flowSteps.includes(stepId) || stepId === 0;
+
             step.classList.toggle('active', isActive);
             step.style.display = isActive ? 'block' : 'none';
+
+            // Disable fields NOT in the current flow path to avoid name collisions and skip native validation
+            step.querySelectorAll('input, select, textarea').forEach(input => {
+                input.disabled = !isPartOfFlow;
+            });
         });
 
         const isBranching = currentStep === 0;
@@ -725,14 +735,18 @@ export function initBAUForm() {
     
     function validateStep(step) {
         const stepConfig = FORM_CONFIG.steps.find(s => s.id === step);
-        if (!stepConfig || !stepConfig.fields) return true;
+        if (!stepConfig || !stepConfig.fields || stepConfig.isConfirmation) return true;
 
         for (const fieldConfig of stepConfig.fields) {
+            const wrapper = form.querySelector(`#bau-step-${step} #wrapper-${fieldConfig.id}`);
+            if (wrapper && wrapper.style.display === 'none') continue;
+
             if (fieldConfig.validation) {
                 const input = form.querySelector(`#bau-step-${step} [name="${fieldConfig.name}"]`);
-                if (input && input.value.trim()) {
+                if (input && input.offsetParent !== null && input.value.trim()) {
                     const regex = new RegExp(fieldConfig.validation.regex);
                     if (!regex.test(input.value.trim())) {
+                        console.warn(`Validation failed for field "${fieldConfig.name}" in step ${step}: Regex mismatch.`);
                         showToast(`Erro: ${fieldConfig.validation.error}`, { error: true });
                         input.classList.add('invalid-cid');
                         const errorHint = form.querySelector('#bau-cid-error');
@@ -749,49 +763,58 @@ export function initBAUForm() {
         return true;
     }
 
-     function validateRequiredFields(step) {
+    function validateRequiredFields(step) {
         const stepEl = form.querySelector(`#bau-step-${step}`);
         if (!stepEl) return false;
 
-        const originalDisplay = stepEl.style.display;
-        stepEl.style.display = 'block';
-
         const stepConfig = FORM_CONFIG.steps.find(s => s.id === step);
-        if (!stepConfig || !stepConfig.fields) {
-            stepEl.style.display = originalDisplay;
-            return true;
-        }
+        if (!stepConfig || !stepConfig.fields || stepConfig.isConfirmation) return true;
 
         let isValid = true;
         for (const fieldConfig of stepConfig.fields) {
+            const wrapper = form.querySelector(`#bau-step-${step} #wrapper-${fieldConfig.id}`);
+            // Se o wrapper está explicitamente oculto via style.display ou se o campo pertence ao fluxo não selecionado
+            if (wrapper && wrapper.style.display === 'none') continue;
+
             if (fieldConfig.required) {
                 let isFieldValid = true;
+                let failureReason = "";
+
                 if (fieldConfig.type === 'checkbox-grid') {
-                    if (!form.querySelector(`#bau-step-${step} input[name="${fieldConfig.name}"]:checked`)) {
+                    const checked = form.querySelector(`#bau-step-${step} input[name="${fieldConfig.name}"]:checked`);
+                    if (!checked) {
+                        failureReason = "No option selected in checkbox-grid";
                         showToast(`Erro: Selecione pelo menos uma opção para "${fieldConfig.label}".`, { error: true });
                         isFieldValid = false;
                     }
                 } else if (fieldConfig.type === 'datetime-group') {
                     const firstInput = form.querySelector(`#bau-step-${step} input[name="${fieldConfig.fields[0].name}"]`);
-                    if (!firstInput || !firstInput.value.trim()) {
+                    if (!firstInput || firstInput.offsetParent === null) continue; // Skip if input itself is hidden
+
+                    if (!firstInput.value.trim()) {
+                        failureReason = "Datetime group first field is empty";
                         showToast(`Erro: O campo "${fieldConfig.fields[0].label}" é obrigatório.`, { error: true });
                         isFieldValid = false;
                     }
                 } else {
                     const input = form.querySelector(`#bau-step-${step} [name="${fieldConfig.name}"]`);
-                    if (!input || !input.value.trim()) {
+                    // Skip validation if input is not part of the active path (hidden)
+                    if (!input || input.offsetParent === null) continue;
+
+                    if (!input.value.trim()) {
+                        failureReason = "Field is empty";
                         showToast(`Erro: O campo '${fieldConfig.label}' é obrigatório.`, { error: true });
                         isFieldValid = false;
                     }
                 }
+
                 if (!isFieldValid) {
+                    console.warn(`Validation failed for required field "${fieldConfig.name}" in step ${step}: ${failureReason}`);
                     isValid = false;
-                    break; 
+                    break;
                 }
             }
         }
-        
-        stepEl.style.display = originalDisplay;
         return isValid;
     }
 
@@ -859,7 +882,13 @@ export function initBAUForm() {
             if(step.fields) {
                 step.fields.forEach(field => {
                     if (field.isSmart) {
-                        const value = pageData[field.id];
+                        let value = pageData[field.id];
+
+                        // Smart Binding for Language: priority to profile data over scraping
+                        if (field.id === 'language' && pageData.userProfile?.defaultLanguage) {
+                            value = pageData.userProfile.defaultLanguage;
+                        }
+
                         const input = form.querySelector(`#bau-step-${step.id} [name="${field.name}"]`);
                         const wrapper = form.querySelector(`#bau-step-${step.id} #wrapper-${field.id}`);
 
@@ -1048,7 +1077,11 @@ export function initBAUForm() {
         
         const stepsToValidate = requestType === 'BAU' ? [1, 2, 3] : [5];
         for (const stepId of stepsToValidate) {
+            const stepConfig = FORM_CONFIG.steps.find(s => s.id === stepId);
+            if (stepConfig?.isConfirmation) continue;
+
             if(!validateStep(stepId) || !validateRequiredFields(stepId)) {
+                console.warn(`Form submission blocked by validation failure in step ${stepId}`);
                 currentStep = stepId;
                 updateWizardState();
                 return;
