@@ -2,13 +2,7 @@
 // FUNÇÃO MESTRA DE E-MAILS DINÂMICOS
 // =========================================================
 function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, authorEmailOverride) {
-  // Roteamento de Template baseado no status ou tipo de e-mail
-  let templateFile = 'EmailTemplateDynamic';
-  if (data.status === 'PENDING_TL_DISCARD' || tipoEmail === 'LEADERSHIP_DISCARD_RECEIVED' || tipoEmail === 'AGENT_DISCARD_SENT') {
-    templateFile = 'EmailTemplateDiscard';
-  }
-
-  const template = HtmlService.createHtmlOutputFromFile(templateFile).getContent();
+  const template = HtmlService.createHtmlOutputFromFile('EmailTemplateDynamic').getContent();
   
   // 1. Variáveis Padrão e Captura do Usuário (LDAP)
   // Rastreabilidade: Prioriza o e-mail injetado pelo sistema (autor real) em vez do dono do script
@@ -87,15 +81,6 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
       subject = `🚨 Requer Ação BAU: ${data.advName}`;
       break;
 
-    case 'LEADERSHIP_DISCARD_RECEIVED':
-      themeColor = "#f28b82"; // Vermelho Suave
-      headerIcon = "🗑️";
-      greeting = `Atenção Liderança,`;
-      mainMessage = `Uma nova solicitação de **DESCARTE** para o anunciante <strong style="color:#202124;">${data.advName}</strong> aguarda sua aprovação.`;
-      footerBadge = "AVALIAÇÃO DE DESCARTE";
-      subject = `🚨 Requer Aprovação de Descarte: ${data.advName}`;
-      break;
-
     case 'AGENT_BAU_CREATED':
       themeColor = "#81c995"; // Verde
       headerIcon = "✅";
@@ -128,23 +113,22 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
 
   // 5. Substituição final e Envio (Agora com o LDAP mapeado corretamente)
   const htmlBody = template
-    .replace(/{{HEADER_ICON}}/g, headerIcon)
-    .replace(/{{HEADER_SUBTITLE}}/g, headerSubtitle)
-    .replace(/{{THEME_COLOR}}/g, themeColor)
-    .replace(/{{GREETING}}/g, greeting)
-    .replace(/{{MAIN_MESSAGE}}/g, mainMessage)
-    .replace(/{{URGENCY_BADGE}}/g, urgencyBadge)
-    .replace(/{{FOOTER_BADGE}}/g, footerBadge)
+    .replace("{{HEADER_ICON}}", headerIcon)
+    .replace("{{HEADER_SUBTITLE}}", headerSubtitle)
+    .replace("{{THEME_COLOR}}", themeColor)
+    .replace(/{{THEME_COLOR}}/g, themeColor) 
+    .replace("{{GREETING}}", greeting)
+    .replace("{{MAIN_MESSAGE}}", mainMessage)
+    .replace("{{URGENCY_BADGE}}", urgencyBadge)
+    .replace("{{FOOTER_BADGE}}", footerBadge)
     .replace(/{{CASE_ID}}/g, data.caseId || "0-0000000000000")
-    .replace(/{{SENDER_LDAP}}/g, senderLdap)
-    .replace(/{{SITE}}/g, data.site || "N/A")
-    .replace(/{{AVAILABILITY}}/g, dataFormatada)
-    .replace(/{{CID}}/g, data.cid || "N/A")
-    .replace(/{{TASK}}/g, data.taskType || "N/A")
-    .replace(/{{REASON}}/g, data.reason || "N/A")
-    .replace(/{{LANGUAGE}}/g, data.language || "N/A")
-    .replace(/{{DESCRIPTION}}/g, data.description || data.nonImplementationReason || "N/A")
-    .replace(/{{ID_ESCALACAO}}/g, escalacaoId);
+    .replace(/{{SENDER_LDAP}}/g, senderLdap) // <-- AQUI ESTÁ A CHAVE DE OURO
+    .replace("{{SITE}}", data.site || "N/A")
+    .replace("{{AVAILABILITY}}", dataFormatada)
+    .replace("{{CID}}", data.cid || "N/A")
+    .replace("{{TASK}}", data.taskType || "N/A")
+    .replace("{{REASON}}", data.reason || "N/A")
+    .replace("{{ID_ESCALACAO}}", escalacaoId);
   
   MailApp.sendEmail({
     to: destinatario,

@@ -2,62 +2,58 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notificação de Descarte | BAU Central</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Estilos Globais e Resets */
-        body, table, td, a { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        body { margin: 0; padding: 0; background-color: #202124; font-family: 'Google Sans', Roboto, Helvetica, Arial, sans-serif; color: #E8EAED; }
-        table { border-collapse: collapse; }
-        a { color: #8AB4F8; text-decoration: none; }
-        p { margin: 0; }
-
-        /* Media Queries para Responsividade */
-        @media screen and (max-width: 600px) {
-            .container { width: 100% !important; padding: 0 16px !important; }
-            .content-padding { padding: 24px !important; }
-            .header-padding { padding: 24px !important; }
-            .title { font-size: 22px !important; }
-            .footer-links td { display: block !important; width: 100% !important; padding-bottom: 12px !important; }
-            .mobile-hide { display: none !important; }
-            .mobile-full-width { width: 100% !important; }
+        /* CSS Reset Universal para E-mail */
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; }
+        
+        body {
+            margin: 0; 
+            padding: 0; 
+            background-color: #202124; 
+            font-family: 'Google Sans', Roboto, Helvetica, Arial, sans-serif; 
+            -webkit-font-smoothing: antialiased; 
+            color: #E8EAED;
         }
 
-        /* Efeitos e Animações */
+        /* Animação Grata de Entrada */
+        .animate-up { animation: fadeUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        
         .ambient-glow-bg {
             background-color: #202124;
-            background-image: radial-gradient(ellipse at top center, rgba(138, 180, 248, 0.12) 0%, rgba(32, 33, 36, 0) 70%);
+            background-image: radial-gradient(ellipse at top center, rgba(155, 114, 203, 0.12) 0%, rgba(32, 33, 36, 0) 70%);
         }
+
         @keyframes fadeUp {
             0% { opacity: 0; transform: translateY(15px); }
             100% { opacity: 1; transform: translateY(0); }
         }
-        
-        /* Classes Utilitárias */
+
+        /* Classes Utilitárias (Fallbacks Inline Abaixo) */
         .text-mono { font-family: 'Roboto Mono', Courier, monospace; }
         .word-break { word-break: break-word; word-wrap: break-word; overflow-wrap: break-word; }
     </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #202124; font-family: 'Google Sans', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #E8EAED;">
-
+    
     <table width="100%" cellpadding="0" cellspacing="0" border="0" class="ambient-glow-bg" style="background-color: #202124;">
         <tr>
             <td align="center" style="padding: 64px 20px;">
-
-                <table class="container" width="640" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px; width: 100%; background-color: #2D2F31; border-radius: 32px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); margin: 0 auto;">
-
+                
+                <table class="animate-up" width="100%" max-width="640" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px; width: 100%; background-color: #2D2F31; border-radius: 32px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); margin: 0 auto;">
+                    
                     <tr>
-                        <td>
+                        <td style="padding: 0;">
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: rgba(45,47,49,0.9); border-bottom: 1px solid rgba(255,255,255,0.12);">
                                 <tr>
-                                    <td class="header-padding" align="center" style="padding: 32px; position: relative;">
-                                        <div style="position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, #8AB4F8, #F9BC05, #F28B82); opacity: 0.8;"></div>
-
-                                        <div class="title" style="font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px;">
-                                            <span style="color: #FFFFFF; vertical-align: middle;">BAU Central | {{HEADER_TITLE}}</span>
+                                    <td align="center" style="padding: 32px 32px 24px 32px; position: relative;">
+                                        <div style="position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); opacity: 0.8;"></div>
+                                        
+                                        <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px;">
+                                            <span style="color: #A8C7FA; font-size: 26px; vertical-align: middle; margin-right: 6px;">✦</span>
+                                            <span style="color: #FFFFFF; vertical-align: middle;">BAU Central</span>
                                         </div>
                                         <p style="margin: 0; font-size: 13px; color: #8AB4F8; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">
                                             {{HEADER_SUBTITLE}}
@@ -67,68 +63,138 @@
                             </table>
                         </td>
                     </tr>
-
+                    
                     <tr>
-                        <td class="content-padding" style="padding: 32px;">
-
+                        <td style="padding: 32px;">
+                            
                             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 24px;">
                                 <tr>
                                     <td>
-                                        <p style="color: #BDC1C6; font-size: 16px; line-height: 1.6;">
-                                            Olá, <strong style="color: #E8EAED;">{{TEAM_LEAD_NAME}}</strong>,
-                                        </p>
-                                        <br>
-                                        <p style="color: #BDC1C6; font-size: 16px; line-height: 1.6;">
-                                            O agente <strong style="color: #E8EAED;">{{AGENT_NAME}}</strong> enviou um novo caso para sua revisão. Por favor, analise os detalhes e tome a ação necessária.
-                                        </p>
+                                        <p style="margin: 0 0 8px 0; font-size: 18px; color: #FFFFFF; font-weight: 500; letter-spacing: -0.2px;">{{GREETING}}</p>
+                                        <div style="font-size: 13px; color: #9AA0A6; font-weight: 500;">
+                                            Solicitado por: 
+                                            <a href="https://moma.corp.google.com/chat?with={{SENDER_LDAP}}" target="_blank" style="color: #8AB4F8; text-decoration: none; font-weight: 600;">@{{SENDER_LDAP}}</a>
+                                        </div>
                                     </td>
                                 </tr>
                             </table>
-
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: rgba(255,255,255,0.05); border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); padding: 24px;">
+                            
+                            <p style="margin: 0 0 32px 0; font-size: 15px; line-height: 1.6; color: #F8F9FA;">
+                                {{MAIN_MESSAGE}}
+                            </p>
+                            
+                            <div style="margin-bottom: 24px;">
+                                {{URGENCY_BADGE}}
+                            </div>
+                            
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #202124; border-radius: 24px; margin-bottom: 32px; border: 1px solid rgba(255,255,255,0.06);">
                                 <tr>
-                                    <td>
+                                    <td style="padding: 24px;">
                                         <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                                            <!-- Aqui entram os campos dinâmicos -->
-                                            {{DYNAMIC_FIELDS}}
+                                            <tr>
+                                                <td valign="top" width="28" style="padding-right: 16px;">
+                                                    <img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/format_quote/default/48px.svg" width="28" height="28" alt="Quote" style="filter: invert(65%) sepia(35%) saturate(836%) hue-rotate(235deg) brightness(102%) contrast(96%); display: block;" />
+                                                </td>
+                                                <td valign="top">
+                                                    <div style="font-size: 12px; color: #9AA0A6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600;">Contexto / Motivo</div>
+                                                    <div style="font-size: 15px; color: #FFFFFF; line-height: 1.6;">
+                                                        "{{REASON}}"
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         </table>
                                     </td>
                                 </tr>
                             </table>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="content-padding" style="padding: 0 32px 32px 32px;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #3C4043; border-radius: 24px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 32px;">
                                 <tr>
-                                    <td align="center">
-                                        <a href="{{QUICK_ACTION_LINK}}" target="_blank" style="display: inline-block; background-color: #8AB4F8; color: #202124; font-size: 15px; font-weight: 600; padding: 14px 28px; border-radius: 50px; text-transform: uppercase; letter-spacing: 0.8px;">
-                                            Processar no CRM
-                                        </a>
+                                    <td style="padding: 24px;">
+                                        
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 24px;">
+                                            <tr>
+                                                <td valign="top" style="width: 30%; padding-right: 16px;">
+                                                    <div style="font-size: 12px; color: #9AA0A6; font-weight: 500; margin-bottom: 6px;">Case Connect</div>
+                                                    <a href="https://cases.connect.corp.google.com/#/case/{{CASE_ID}}" target="_blank" style="font-size: 15px; color: #8AB4F8; font-weight: 500; text-decoration: none; display: inline-block;">
+                                                        <span style="vertical-align: middle;">{{CASE_ID}}</span>
+                                                        <img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/arrow_outward/default/48px.svg" width="14" height="14" alt="" style="filter: invert(80%) sepia(21%) saturate(760%) hue-rotate(186deg) brightness(102%) contrast(97%); vertical-align: middle; margin-left: 2px;" />
+                                                    </a>
+                                                </td>
+                                                
+                                                <td valign="top" style="width: 35%; padding-right: 16px;">
+                                                    <div style="font-size: 12px; color: #9AA0A6; font-weight: 500; margin-bottom: 6px;">Domínio Final</div>
+                                                    <div class="word-break" style="font-size: 15px; color: #A8C7FA; font-weight: 600;">{{SITE}}</div>
+                                                </td>
+                                                
+                                                <td valign="top" style="width: 35%;">
+                                                    <div style="font-size: 12px; color: #9AA0A6; font-weight: 500; margin-bottom: 6px;">Agendamento (SLA)</div>
+                                                    <div style="font-size: 13px; color: #E8EAED; background-color: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 6px; display: inline-block; border: 1px solid rgba(255,255,255,0.08);">
+                                                        <img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/schedule/default/48px.svg" width="14" height="14" alt="" style="filter: invert(99%) sepia(2%) saturate(464%) hue-rotate(187deg) brightness(96%) contrast(90%); vertical-align: middle; margin-right: 6px;" />
+                                                        <span class="text-mono" style="vertical-align: middle;">{{AVAILABILITY}}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td valign="top" style="width: 30%; padding-right: 16px;">
+                                                    <div style="font-size: 12px; color: #9AA0A6; font-weight: 500; margin-bottom: 6px;">Customer ID</div>
+                                                    <div class="text-mono" style="font-size: 14px; color: #8AB4F8; background-color: rgba(138, 180, 248, 0.1); padding: 6px 10px; border-radius: 6px; display: inline-block; border: 1px solid rgba(138, 180, 248, 0.2);">
+                                                        {{CID}}
+                                                    </div>
+                                                </td>
+                                                
+                                                <td valign="top" style="width: 70%;">
+                                                    <div style="font-size: 12px; color: #9AA0A6; font-weight: 500; margin-bottom: 6px;">Procedimento / Task BAU</div>
+                                                    <div class="word-break" style="font-size: 15px; color: #FFFFFF; line-height: 1.5;">{{TASK}}</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+
                                     </td>
                                 </tr>
                             </table>
+                            
+                            <div style="text-align: center;">
+                                <table cellpadding="0" cellspacing="0" border="0" align="center">
+                                    <tr>
+                                        <td align="center" style="border-radius: 100px; background-image: linear-gradient(135deg, #FFFFFF 0%, #F1F3F4 100%);">
+                                            <span style="display: inline-block; color: #202124; font-size: 14px; font-weight: 600; font-family: 'Google Sans', sans-serif; padding: 14px 32px; text-decoration: none; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                                                {{FOOTER_BADGE}}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td style="padding: 32px; text-align: center; border-top: 1px solid rgba(255,255,255,0.08);">
+                            
+                            <div style="margin-bottom: 24px;">
+                                <span style="display: inline-block; background-color: rgba(255,255,255,0.05); color: #E8EAED; font-size: 12px; font-weight: 500; padding: 8px 20px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.08);">
+                                    Automated by <a href="https://moma.corp.google.com/chat?with=lucaste" target="_blank" style="color: #8AB4F8; text-decoration: none; font-weight: 600;">@lucaste</a>
+                                </span>
+                            </div>
+
+                            <p style="margin: 0 0 16px 0; font-size: 12px; color: #9AA0A6;">
+                                Rastreio: <span class="text-mono" style="color: #E8EAED; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">{{ID_ESCALACAO}}</span>
+                            </p>
+
+                            <div>
+                                <a href="https://forms.gle/AJX3NXz1TpJRm3mC7" target="_blank" style="color: #8AB4F8; text-decoration: none; font-size: 12px; font-weight: 500; display: inline-block; opacity: 0.8;">
+                                    Report Bug / Feature Request
+                                </a>
+                            </div>
+                            
                         </td>
                     </tr>
 
-                     <!-- Pie de página -->
-                    <tr>
-                        <td style="padding: 24px; border-top: 1px solid rgba(255,255,255,0.1);">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                                <tr>
-                                    <td align="center" style="font-size: 12px; color: #9AA0A6;">
-                                        <p>Esta é uma notificação automática do BAU Central.</p>
-                                        <p style="margin-top: 8px;">
-                                            <a href="https://interno.techsolution.com/docs/assistente-de-casos-bau" target="_blank" style="color: #8AB4F8; text-decoration: underline;">Documentação</a>
-                                            <span class="mobile-hide" style="padding: 0 8px;">&bull;</span>
-                                            <a href="https://interno.techsolution.com/support" target="_blank" style="color: #8AB4F8; text-decoration: underline;">Suporte</a>
-                                        </p>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
                 </table>
+                
             </td>
         </tr>
     </table>

@@ -10,54 +10,35 @@
         rel="stylesheet" />
     <style>
         :root {
-            /* Paleta Gemini AI / Google Materials */
-            --bg-base: #0f0f10;
-            --surface-level-1: #1c1c1e;
-            --surface-level-2: #2c2c2e;
-            --surface-level-3: #3a3a3c;
+            /* Paleta Gemini AI */
+            --bg-base: #131314;
+            --surface-level-1: #1e1f20;
+            --surface-level-2: #282a2c;
+            --surface-level-3: #3c4043;
             --border-subtle: rgba(255, 255, 255, 0.08);
 
-            --text-primary: #f2f2f2;
-            --text-secondary: #a1a1aa;
-            --text-tertiary: #71717a;
+            --text-primary: #e3e3e3;
+            --text-secondary: #c4c7c5;
+            --text-tertiary: #8e918f;
 
             /* Vibrancy Tokens */
             --label: var(--text-primary);
-            --secondaryLabel: var(--text-secondary);
-            --tertiaryLabel: var(--text-tertiary);
+            --secondaryLabel: var(--text-tertiary);
 
             /* Gradientes e Auras */
-            --gemini-blue: #8ab4f8;
+            --gemini-blue: #a8c7fa;
             --gemini-purple: #c58af9;
             --gemini-peach: #f2b8b5;
             --gemini-gradient: linear-gradient(90deg, #4285f4, #9b72cb, #d96570);
-            --discard-gradient: linear-gradient(135deg, #442726 0%, #1c1c1e 100%);
+            --gemini-gradient-subtle: linear-gradient(90deg, rgba(66, 133, 244, 0.15), rgba(155, 114, 203, 0.15));
 
             --success: #81c995;
             --danger: #f28b82;
-            --warning: #fdd663;
 
-            --radius-sm: 12px;
-            --radius-md: 18px;
-            --radius-lg: 28px;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
             --radius-pill: 100px;
-
-            /* Motion Tokens - Springs */
-            --spring-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
-            --spring-expressive: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            --spring-spatial: cubic-bezier(0.34, 1.56, 0.64, 1); /* Bounce */
-            --spring-spatial-functional: cubic-bezier(0.2, 0, 0, 1); /* No bounce */
-            --spring-effects: cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Fallback for reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-                scroll-behavior: auto !important;
-            }
         }
 
         body {
@@ -67,16 +48,26 @@
             color: var(--text-primary);
             -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
-            min-height: 100vh;
         }
 
-        /* Top Navigation - Liquid Glass */
+        .ambient-glow {
+            position: fixed;
+            top: -20vh;
+            left: 10vw;
+            width: 80vw;
+            height: 50vh;
+            background: radial-gradient(ellipse at center, rgba(155, 114, 203, 0.08) 0%, rgba(19, 19, 20, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Top Navigation - Branding Cases Wizard */
         .topnav {
-            background: rgba(15, 15, 16, 0.7);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            padding: 0 40px;
-            height: 80px;
+            background: rgba(19, 19, 20, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 0 32px;
+            height: 72px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -84,6 +75,7 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid var(--border-subtle);
+            background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
         }
 
         .topnav::after {
@@ -94,22 +86,32 @@
             width: 100%;
             height: 1px;
             background: var(--gemini-gradient);
-            opacity: 0.3;
+            opacity: 0.5;
         }
 
         .brand-container {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 16px;
         }
 
         .brand-main {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 22px;
+            gap: 8px;
+            font-size: 20px;
             font-weight: 500;
             letter-spacing: -0.5px;
+        }
+
+        .brand-powered {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
         }
 
         .brand-icon {
@@ -117,176 +119,242 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-variation-settings: 'FILL' 1;
-            font-size: 28px !important;
+            animation: pulseGlow 3s infinite alternate;
+            font-size: 24px !important;
         }
 
-        /* Perfil do Usuário no Header */
-        .user-profile-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 6px 16px 6px 6px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: var(--radius-pill);
+        @keyframes pulseGlow {
+            0% {
+                filter: brightness(1) drop-shadow(0 0 4px rgba(155, 114, 203, 0.4));
+            }
+
+            100% {
+                filter: brightness(1.2) drop-shadow(0 0 12px rgba(66, 133, 244, 0.6));
+            }
+        }
+
+        .btn-icon {
+            background: transparent;
             border: 1px solid var(--border-subtle);
-        }
-
-        .user-photo-container {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            background: var(--surface-level-3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .user-photo {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .user-ldap {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        /* Tab System */
-        .tab-container {
-            display: flex;
-            gap: 8px;
-            background: var(--surface-level-1);
-            padding: 6px;
-            border-radius: var(--radius-pill);
-            width: fit-content;
-            margin: 32px auto;
-            border: 1px solid var(--border-subtle);
-        }
-
-        .tab-item {
-            padding: 10px 24px;
-            border-radius: var(--radius-pill);
-            font-size: 14px;
-            font-weight: 500;
             color: var(--text-secondary);
-            cursor: pointer;
-            transition: all 0.25s var(--spring-standard);
+            height: 40px;
+            padding: 0 20px;
+            border-radius: var(--radius-pill);
             display: flex;
             align-items: center;
             gap: 8px;
-            border: 1px solid transparent;
+            font-weight: 500;
+            font-family: 'Google Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
         }
 
-        .tab-item:hover {
+        .btn-icon:hover {
+            background: var(--surface-level-2);
             color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
-        .tab-item.active {
-            background: var(--text-primary);
-            color: var(--bg-base);
-        }
-
-        .tab-item.tab-discard.active {
-            background: #f28b82;
-            color: #000;
-        }
-
-        .tab-badge {
-            font-size: 11px;
-            background: rgba(0,0,0,0.1);
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-weight: 700;
-        }
-
-        /* Workspace & Grid */
         .workspace {
-            max-width: 1280px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 40px 80px 40px;
+            padding: 40px 32px;
         }
 
-        .case-grid {
+        .table-header {
             display: grid;
-            gap: 20px;
-            opacity: 1;
-            transition: opacity 0.3s var(--spring-standard);
+            grid-template-columns: 2.5fr 2fr 1.5fr 1fr;
+            padding: 0 24px 16px 24px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 16px;
         }
 
-        .case-grid.loading {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
-        .case-card {
+        .case-row {
             background: var(--surface-level-1);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-md);
             padding: 24px;
-            display: grid;
-            grid-template-columns: 2fr 2fr 1.5fr 1fr;
-            align-items: center;
-            gap: 32px;
-            transition: transform 0.3s var(--spring-spatial), background 0.2s var(--spring-standard), box-shadow 0.3s var(--spring-standard);
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
             position: relative;
             overflow: hidden;
             cursor: pointer;
-            height: auto;
-            max-height: 500px;
-            opacity: 1;
+            /* Indica que a linha é clicável */
         }
 
-        .case-card:hover {
+        .case-row:hover {
             background: var(--surface-level-2);
-            border-color: rgba(255, 255, 255, 0.12);
-            transform: translateY(-4px) scale(1.01);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
         }
 
-        .case-card.removing {
-            max-height: 0 !important;
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            margin-top: 0 !important;
-            margin-bottom: -20px !important;
-            opacity: 0 !important;
-            transform: scale(0.95) translateY(10px);
-            transition: all 300ms var(--spring-spatial-functional) !important;
-            pointer-events: none;
+        .row-main-data {
+            display: grid;
+            grid-template-columns: 2.5fr 2fr 1.5fr 1fr;
+            align-items: center;
+            gap: 24px;
         }
 
-        .case-card.success-glow {
-            animation: successGlow 0.6s var(--spring-effects);
+        /* Prevenir que cliques nos botões abram o modal */
+        .action-group,
+        .link {
+            position: relative;
+            z-index: 2;
         }
 
-        @keyframes successGlow {
-            0% { box-shadow: 0 0 0 0 rgba(129, 201, 149, 0); }
-            50% { box-shadow: 0 0 40px 10px rgba(129, 201, 149, 0.3); }
-            100% { box-shadow: 0 0 0 0 rgba(129, 201, 149, 0); }
+        .text-primary {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            letter-spacing: 0.2px;
         }
 
-        /* Custom Modal - Thick Material */
+        .text-secondary {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .text-mono {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            color: var(--gemini-blue);
+            background: rgba(168, 199, 250, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: var(--radius-pill);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            margin-bottom: 12px;
+            width: fit-content;
+        }
+
+        .badge-create {
+            background: var(--gemini-gradient-subtle);
+            color: var(--gemini-blue);
+            border: 1px solid rgba(168, 199, 250, 0.2);
+        }
+
+        .badge-discard {
+            background: rgba(242, 139, 130, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(242, 139, 130, 0.2);
+        }
+
+        .action-group {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            height: 40px;
+            padding: 0 20px;
+            border-radius: var(--radius-pill);
+            font-size: 14px;
+            font-weight: 500;
+            font-family: 'Google Sans', sans-serif;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: var(--text-primary);
+            color: var(--bg-base);
+        }
+
+        .btn-primary:hover {
+            background: #ffffff;
+            box-shadow: 0 0 20px rgba(168, 199, 250, 0.4);
+            transform: scale(1.02);
+        }
+
+        .btn-danger-outline {
+            background: transparent;
+            color: var(--text-secondary);
+            border-color: var(--border-subtle);
+        }
+
+        .btn-danger-outline:hover {
+            background: rgba(242, 139, 130, 0.1);
+            color: var(--danger);
+            border-color: rgba(242, 139, 130, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .reason-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .reason-box .material-symbols-rounded {
+            color: var(--gemini-purple);
+            font-size: 20px;
+            font-variation-settings: 'wght' 300;
+        }
+
+        .link {
+            color: var(--gemini-blue);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: opacity 0.2s;
+        }
+
+        .link:hover {
+            opacity: 0.8;
+        }
+
+        /* Estilos do Modal (Pop-up) */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1000;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s var(--spring-standard);
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .modal-overlay.active {
@@ -295,425 +363,451 @@
         }
 
         .modal-content {
-            background: var(--surface-level-1);
+            background: rgba(30, 31, 32, 0.95);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-lg);
-            width: 90%;
-            max-width: 560px;
-            transform: translateY(40px) scale(0.95);
-            transition: transform 0.3s var(--spring-spatial);
-            overflow: hidden;
-            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.6);
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+            transform: scale(0.9);
+            opacity: 0;
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
         }
 
         .modal-overlay.active .modal-content {
-            transform: translateY(0) scale(1);
+            transform: scale(1);
+            opacity: 1;
         }
 
         .modal-header {
-            padding: 32px 40px 16px 40px;
-            font-size: 24px;
-            font-weight: 500;
-            color: var(--label); /* Vibrancy */
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface-level-2);
+            position: sticky;
+            top: 0;
+            z-index: 2;
         }
 
         .modal-body {
-            padding: 16px 40px 32px 40px;
-            color: var(--secondaryLabel); /* Vibrancy */
-            line-height: 1.6;
-            font-size: 16px;
-        }
-
-        .modal-footer {
-            padding: 24px 40px;
-            background: rgba(255, 255, 255, 0.03);
+            padding: 32px;
             display: flex;
-            justify-content: flex-end;
-            gap: 16px;
+            flex-direction: column;
+            gap: 24px;
         }
 
-        /* Buttons with Expressive Spring */
-        .btn {
-            height: 48px;
-            padding: 0 28px;
-            border-radius: var(--radius-pill);
+        .detail-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
             font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            transition: transform 100ms var(--spring-expressive), background 200ms;
-            border: none;
-        }
-
-        .btn:active {
-            transform: scale(0.92); /* Spatial Spring / Tactile bounce via spring-expressive */
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--text-secondary);
-        }
-
-        .btn-ghost:hover {
-            background: rgba(255, 255, 255, 0.05);
             color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            word-break: break-word;
         }
 
-        .btn-primary {
-            background: var(--text-primary);
-            color: var(--bg-base);
+        .copy-btn {
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s, background 0.2s;
+            display: flex;
         }
 
-        .btn-danger {
-            background: var(--danger);
-            color: #000;
+        .copy-btn:hover {
+            color: var(--gemini-blue);
+            background: rgba(168, 199, 250, 0.1);
         }
 
-        /* Toast */
+        @keyframes copyBounce {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            40% {
+                transform: scale(1.2);
+            }
+
+            60% {
+                transform: scale(0.95);
+            }
+        }
+
+        .copy-active {
+            animation: copyBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Estilo da Foto LDAP */
+        .agent-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 4px;
+        }
+
+        .agent-photo {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid var(--border-subtle);
+            background: var(--surface-level-3);
+        }
+
+        /* Toast Notification */
         .toast {
             position: fixed;
-            bottom: 40px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%) translateY(100px);
-            background: var(--surface-level-3);
-            color: var(--text-primary);
-            padding: 14px 28px;
+            background: var(--text-primary);
+            color: var(--bg-base);
+            padding: 12px 24px;
             border-radius: var(--radius-pill);
             font-size: 14px;
-            border: 1px solid var(--border-subtle);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.4);
-            transition: transform 0.3s var(--spring-standard);
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
             z-index: 2000;
         }
 
         .toast.show {
             transform: translateX(-50%) translateY(0);
+            opacity: 1;
         }
 
-        /* Loader */
-        .shimmer {
-            background: linear-gradient(90deg, var(--surface-level-1) 25%, var(--surface-level-2) 50%, var(--surface-level-1) 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite linear;
+        .loader {
+            padding: 60px;
+            text-align: center;
+            color: var(--gemini-blue);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
         }
 
-        @keyframes shimmer {
-            from { background-position: 200% 0; }
-            to { background-position: -200% 0; }
+        .spinner {
+            animation: spin 1.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+            font-size: 32px;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-state {
+            padding: 80px 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
         }
     </style>
 </head>
 
 <body>
+
+    <div class="ambient-glow"></div>
+
+    <div id="toast" class="toast">Copiado para a área de transferência</div>
+
+    <div id="caseModal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div style="font-size: 18px; font-weight: 500;">Detalhes do Caso</div>
+                <button class="btn-icon" style="height: 32px; padding: 0 8px; border: none;"
+                    onclick="closeModal(event)">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body-content">
+            </div>
+        </div>
+    </div>
+
     <nav class="topnav">
         <div class="brand-container">
             <div class="brand-main">
                 <span class="material-symbols-rounded brand-icon">auto_awesome</span>
                 Cases Wizard
             </div>
-            <div style="width: 1px; height: 28px; background: var(--border-subtle);"></div>
-            <div style="display: flex; flex-direction: column;">
-                <span style="font-size: 14px; font-weight: 500;">BAU Central</span>
-                <span style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 1px;">TL Dashboard</span>
+            <div style="width: 1px; height: 24px; background: var(--border-subtle);"></div>
+            <div class="brand-powered">
+                <span style="color: var(--text-primary); font-size: 14px; letter-spacing: -0.2px;">BAU Central</span>
+                <span>TL Dashboard</span>
             </div>
         </div>
-
-        <div class="user-profile-header" id="header-user-profile">
-            <div class="user-photo-container">
-                <span class="material-symbols-rounded" style="font-size: 20px; color: var(--text-tertiary);">person</span>
-            </div>
-            <span class="user-ldap">Carregando...</span>
-        </div>
+        <button class="btn-icon" onclick="loadCases()">
+            <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
+            Atualizar Dados
+        </button>
     </nav>
 
-    <div class="tab-container">
-        <div class="tab-item active" onclick="switchTab('creation', this)">
-            <span class="material-symbols-rounded" style="font-size: 18px;">add_circle</span>
-            Criação
-            <span class="tab-badge" id="badge-creation">0</span>
-        </div>
-        <div class="tab-item tab-discard" onclick="switchTab('discard', this)">
-            <span class="material-symbols-rounded" style="font-size: 18px;">delete_sweep</span>
-            Descarte
-            <span class="tab-badge" id="badge-discard">0</span>
-        </div>
-        <div class="tab-item" onclick="switchTab('history', this)">
-            <span class="material-symbols-rounded" style="font-size: 18px;">history</span>
-            Histórico
-        </div>
-    </div>
-
     <main class="workspace">
-        <div id="case-grid" class="case-grid">
-            <!-- Cases will be rendered here -->
+        <div class="table-header">
+            <div>ANUNCIANTE & ID</div>
+            <div>SOLICITAÇÃO & REFERÊNCIA</div>
+            <div>AGENDAMENTO</div>
+            <div style="text-align: right;">AÇÃO</div>
         </div>
+
+        <div id="loader" class="loader" style="display: none;">
+            <span class="material-symbols-rounded spinner">progress_activity</span>
+            <span style="color: var(--text-secondary); font-size: 15px;">Sincronizando com a base...</span>
+        </div>
+
+        <div id="cases-container"></div>
     </main>
 
-    <!-- Custom Modal Structure -->
-    <div id="custom-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header" id="modal-title">Título do Modal</div>
-            <div class="modal-body" id="modal-body">Mensagem de corpo do modal.</div>
-            <div class="modal-footer" id="modal-footer">
-                <!-- Buttons will be injected here -->
-            </div>
-        </div>
-    </div>
-
-    <div id="toast" class="toast">Notificação</div>
-
     <script>
-        let currentData = {
-            pendingCreation: [],
-            pendingDiscard: [],
-            history: []
-        };
-        let activeTab = 'creation';
-        let currentUser = null;
+        window.onload = loadCases;
+        let currentCasesData = []; // Armazena dados globais para o modal
 
-        window.onload = () => {
-            loadUserData();
-            loadDashboard();
-        };
-
-        function loadUserData() {
-            google.script.run
-                .withSuccessHandler(user => {
-                    currentUser = user;
-                    const container = document.getElementById('header-user-profile');
-                    const ldap = user.ldap;
-                    const photoUrl = `https://moma-teams-photos.corp.google.com/photos/${ldap}?sz=600&type=PLUS`;
-
-                    container.innerHTML = `
-                        <div class="user-photo-container">
-                            <img src="${photoUrl}" class="user-photo" onerror="handleImageError(this, '${ldap[0].toUpperCase()}')">
-                        </div>
-                        <span class="user-ldap">${ldap}</span>
-                    `;
-                })
-                .getTLUserInfo();
-        }
-
-        function handleImageError(img, initial) {
-            const container = img.parentElement;
-            container.innerHTML = `<span style="font-weight: 700; color: var(--gemini-purple); font-size: 18px;">${initial}</span>`;
-        }
-
-        function loadDashboard() {
-            const grid = document.getElementById('case-grid');
-            grid.classList.add('loading');
+        function loadCases() {
+            document.getElementById('loader').style.display = 'flex';
+            document.getElementById('cases-container').innerHTML = '';
 
             google.script.run
-                .withSuccessHandler(data => {
-                    currentData = data;
-                    grid.classList.remove('loading');
-                    updateBadges();
-                    renderActiveTab();
-                })
-                .getTLDashboardData();
+                .withSuccessHandler(renderCases)
+                .getPendingBAUCases();
         }
 
-        function updateBadges() {
-            document.getElementById('badge-creation').textContent = currentData.pendingCreation.length;
-            document.getElementById('badge-discard').textContent = currentData.pendingDiscard.length;
-        }
+        function renderCases(cases) {
+            document.getElementById('loader').style.display = 'none';
+            const container = document.getElementById('cases-container');
+            currentCasesData = cases; // Salva
 
-        function switchTab(tab, el) {
-            if (activeTab === tab) return;
-
-            document.querySelectorAll('.tab-item').forEach(item => item.classList.remove('active'));
-            el.classList.add('active');
-
-            activeTab = tab;
-            renderActiveTab();
-        }
-
-        function renderActiveTab() {
-            const grid = document.getElementById('case-grid');
-            let list = [];
-
-            if (activeTab === 'creation') list = currentData.pendingCreation;
-            else if (activeTab === 'discard') list = currentData.pendingDiscard;
-            else list = currentData.history;
-
-            if (list.length === 0) {
-                grid.innerHTML = `
-                    <div style="padding: 100px; text-align: center; color: var(--text-tertiary);">
-                        <span class="material-symbols-rounded" style="font-size: 64px; margin-bottom: 16px;">task_alt</span>
-                        <div style="font-size: 18px;">Fila vazia. Tudo em dia!</div>
-                    </div>
-                `;
+            if (cases.length === 0) {
+                container.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-symbols-rounded" style="font-size: 48px; color: var(--border-subtle);">task_alt</span>
+                    <div style="font-size: 18px; font-weight: 500; color: var(--text-primary);">Fila perfeitamente alinhada</div>
+                    <div style="font-size: 14px;">Nenhum caso requer a sua aprovação no momento.</div>
+                </div>`;
                 return;
             }
 
-            grid.innerHTML = list.map(c => renderCaseCard(c)).join('');
-        }
+            cases.forEach(c => {
+                const isDiscard = c.status === "PENDING_DISCARD";
+                const badgeClass = isDiscard ? "badge-discard" : "badge-create";
+                const badgeIcon = isDiscard ? "delete" : "add_circle";
+                const badgeText = isDiscard ? "Avaliar Descarte" : "Aprovar Criação";
 
-        function renderCaseCard(c) {
-            const isHistory = activeTab === 'history';
-            const isDiscard = c.status.includes('DISCARD');
-            const date = new Date(c.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                let dataFormatada = c.availability || "Não informado";
+                if (dataFormatada.includes("T")) {
+                    const p = dataFormatada.split("T");
+                    dataFormatada = `${p[0].split("-").reverse().join("/")} às ${p[1]}`;
+                }
 
-            return `
-                <div class="case-card" id="card-${c.id}" onclick="openDetails('${c.id}')">
+                const dataEnvio = new Date(c.date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const agentLdap = c.agentEmail ? c.agentEmail.split('@')[0] : 'Unknown';
+
+                const row = document.createElement('div');
+                row.className = 'case-row';
+                row.id = `row-${c.id}`;
+                // Clique na linha abre o modal, passando o ID
+                row.onclick = () => openModal(c.id);
+
+                row.innerHTML = `
+                <div class="row-main-data">
                     <div>
-                        <div style="font-size: 16px; font-weight: 500; margin-bottom: 4px;">${c.advName}</div>
-                        <div style="font-size: 13px; color: var(--text-tertiary);">CID: <span style="font-family: monospace; color: var(--gemini-blue);">${c.cid}</span></div>
+                        <div class="status-badge ${badgeClass}">
+                            <span class="material-symbols-rounded" style="font-size: 14px;">${badgeIcon}</span>
+                            ${badgeText}
+                        </div>
+                        <div class="text-primary">${c.advName}</div>
+                        <div class="text-secondary">CID: <span class="text-mono">${c.cid}</span></div>
                     </div>
+
                     <div>
-                        <div style="font-size: 15px; margin-bottom: 4px;">${c.task}</div>
-                        <div style="font-size: 13px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px;">
-                            <span class="material-symbols-rounded" style="font-size: 14px;">calendar_today</span>
-                            ${date}
+                        <div class="text-primary">${c.task}</div>
+                        <div class="text-secondary" style="margin-top: 6px;">
+                            <a href="https://cases.connect.corp.google.com/#/case/${c.caseId}" target="_blank" class="link" onclick="event.stopPropagation()">
+                                <span class="material-symbols-rounded" style="font-size: 16px;">arrow_outward</span>
+                                ${c.caseId}
+                            </a>
                         </div>
                     </div>
+
                     <div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">${c.agentEmail.split('@')[0]}</div>
-                        <div style="font-size: 11px; color: var(--text-tertiary);">${c.caseId}</div>
+                        <div class="text-primary" style="display: flex; align-items: center; gap: 6px;">
+                            <span class="material-symbols-rounded" style="font-size: 18px; color: var(--text-tertiary);">schedule</span>
+                            ${dataFormatada}
+                        </div>
+                        
+                        <div class="agent-profile">
+                                              <img src="https://moma-teams-photos.corp.google.com/photos/${c.agentEmail.split('@')[0]}?sz=600&type=PLUS" class="agent-photo" alt="LDAP" onerror="this.style.display='none'">
+
+                                <div class="text-secondary" style="font-size: 13px; color: var(--text-primary);">${agentLdap}</div>
+                                <div class="text-secondary" style="font-size: 11px;">Enviado em ${dataEnvio}</div>
+                            </div>
+                        </div>
+
                     </div>
-                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                        ${isHistory ? renderHistoryBadge(c.status) : renderActionButtons(c.id, isDiscard)}
+
+                    <div class="action-group">
+                        <button class="btn btn-danger-outline" onclick="event.stopPropagation(); processAction('${c.id}', 'DISCARDED', this)" title="Rejeitar/Descartar">
+                            <span class="material-symbols-rounded" style="font-size: 20px;">close</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="event.stopPropagation(); processAction('${c.id}', 'CREATED', this)">
+                            <span class="material-symbols-rounded" style="font-size: 20px;">check</span>
+                            Aprovar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="reason-box">
+                    <span class="material-symbols-rounded">format_quote</span>
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Contexto fornecido</div>
+                        "${c.reason}"
                     </div>
                 </div>
             `;
+                container.appendChild(row);
+            });
         }
 
-        function renderHistoryBadge(status) {
-            let color = 'var(--text-tertiary)';
-            let icon = 'info';
-            if (status === 'CREATED') { color = 'var(--success)'; icon = 'check_circle'; }
-            if (status === 'DISCARDED' || status === 'REJECTED') { color = 'var(--danger)'; icon = 'cancel'; }
+        // Modal Logic
+        function openModal(caseId) {
+            const c = currentCasesData.find(item => item.id === caseId);
+            if (!c) return;
 
-            return `
-                <div style="display: flex; align-items: center; gap: 6px; color: ${color}; font-size: 13px; font-weight: 500;">
-                    <span class="material-symbols-rounded" style="font-size: 18px;">${icon}</span>
-                    ${status}
+            const agentLdap = c.agentEmail ? c.agentEmail.split('@')[0] : 'Unknown';
+
+            // Helper function para criar linhas copiáveis
+            const createCopyableRow = (label, value) => `
+            <div class="detail-group">
+                <span class="detail-label" style="color: var(--secondaryLabel)">${label}</span>
+                <div class="detail-value">
+                    <span style="color: var(--label)">${value || 'N/A'}</span>
+                    <button class="copy-btn" onclick="copyToClipboard('${value}', this)" title="Copiar">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
+                    </button>
                 </div>
-            `;
-        }
+            </div>
+        `;
 
-        function renderActionButtons(id, isDiscard) {
-            return `
-                <button class="btn btn-ghost" style="width: 40px; height: 40px; padding: 0; min-width: 40px;" onclick="event.stopPropagation(); requestDiscard('${id}')">
-                    <span class="material-symbols-rounded">close</span>
-                </button>
-                <button class="btn btn-primary" style="width: 40px; height: 40px; padding: 0; min-width: 40px;" onclick="event.stopPropagation(); requestApprove('${id}')">
-                    <span class="material-symbols-rounded">check</span>
-                </button>
-            `;
-        }
-
-        // Custom Modal Logic
-        function showModal({ title, body, confirmText, cancelText, onConfirm, type = 'primary' }) {
-            const modal = document.getElementById('custom-modal');
-            const titleEl = document.getElementById('modal-title');
-            const bodyEl = document.getElementById('modal-body');
-            const footerEl = document.getElementById('modal-footer');
-
-            titleEl.textContent = title;
-            bodyEl.innerHTML = body;
+            document.getElementById('modal-body-content').innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                ${createCopyableRow('Anunciante', c.advName)}
+                ${createCopyableRow('Customer ID (CID)', c.cid)}
+            </div>
             
-            footerEl.innerHTML = `
-                <button class="btn btn-ghost" id="modal-cancel">${cancelText || 'Cancelar'}</button>
-                <button class="btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'}" id="modal-confirm">${confirmText || 'Confirmar'}</button>
-            `;
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                ${createCopyableRow('Task BAU', c.task)}
+                ${createCopyableRow('Case Connect ID', c.caseId)}
+            </div>
 
-            document.getElementById('modal-cancel').onclick = closeModal;
-            document.getElementById('modal-confirm').onclick = () => {
-                onConfirm();
-                closeModal();
-            };
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                ${createCopyableRow('Site do Cliente', c.site || 'Não informado')}
+                ${createCopyableRow('Disponibilidade (Agendamento)', c.availability || 'Não informado')}
+            </div>
 
-            modal.classList.add('active');
+            <div class="detail-group">
+                <span class="detail-label" style="color: var(--secondaryLabel)">Agente Solicitante</span>
+                <div class="detail-value" style="justify-content: flex-start; gap: 12px;">
+                   <img src="https://moma-teams-photos.corp.google.com/photos/${c.agentEmail.split('@')[0]}?sz=600&type=PLUS" class="agent-photo" alt="LDAP" onerror="this.style.display='none'">
+                    <span style="color: var(--label)">${c.agentEmail}</span>
+                    <button class="copy-btn" style="margin-left: auto;" onclick="copyToClipboard('${c.agentEmail}', this)">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="detail-group">
+                <span class="detail-label" style="color: var(--secondaryLabel)">Motivo / Contexto (Reason)</span>
+                <div class="detail-value" style="align-items: flex-start;">
+                    <span style="font-style: italic; color: var(--label)">"${c.reason}"</span>
+                    <button class="copy-btn" onclick="copyToClipboard('${c.reason}', this)">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
+                    </button>
+                </div>
+            </div>
+        `;
+            document.getElementById('caseModal').classList.add('active');
+            document.body.style.overflow = 'hidden'; // Previne scroll de fundo
         }
 
-        function closeModal() {
-            document.getElementById('custom-modal').classList.remove('active');
+        function closeModal(e) {
+            if (e) e.stopPropagation();
+            document.getElementById('caseModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
         }
 
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
+        // Copy to Clipboard com Toast
+        function copyToClipboard(text, btnElement) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Efeito visual no botão
+                btnElement.classList.add('copy-active');
+                const icon = btnElement.querySelector('span');
+                icon.textContent = 'check';
+                icon.style.color = 'var(--success)';
 
-        // Actions
-        function requestApprove(id) {
-            showModal({
-                title: 'Confirmar Aprovação',
-                body: 'Você deseja aprovar este caso? O agente será notificado imediatamente.',
-                confirmText: 'Aprovar',
-                onConfirm: () => processAction(id, 'CREATED')
+                setTimeout(() => {
+                    btnElement.classList.remove('copy-active');
+                    icon.textContent = 'content_copy';
+                    icon.style.color = '';
+                }, 400);
+
+                // Toast Notification
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2500);
             });
         }
 
-        function requestDiscard(id) {
-            showModal({
-                title: 'Confirmar Descarte',
-                body: 'Tem certeza que deseja descartar este caso? Esta ação não pode ser desfeita.',
-                confirmText: 'Descartar',
-                type: 'danger',
-                onConfirm: () => processAction(id, 'DISCARDED')
-            });
-        }
+        function processAction(id, newStatus, btnElement) {
+            if (!confirm(`Confirma a alteração para ${newStatus === 'CREATED' ? 'CRIADO' : 'DESCARTADO'}? O agente será notificado.`)) return;
 
-        function processAction(id, newStatus) {
-            const card = document.getElementById(`card-${id}`);
-            card.classList.add('success-glow');
+            const rowDiv = document.getElementById(`row-${id}`);
+            const actionsDiv = btnElement.parentElement;
+            Array.from(actionsDiv.children).forEach(b => b.disabled = true);
+
+            btnElement.innerHTML = `<span class="material-symbols-rounded spinner" style="font-size: 20px;">progress_activity</span>`;
 
             google.script.run
                 .withSuccessHandler(() => {
-                    card.classList.add('removing');
-                    setTimeout(() => {
-                        card.remove();
-                        loadDashboard(); // Refresh data to sync tabs and badges
-                        showToast(newStatus === 'CREATED' ? 'Caso aprovado com sucesso!' : 'Caso descartado.');
-                    }, 300);
+                    rowDiv.style.transform = 'scale(0.98)';
+                    rowDiv.style.opacity = '0.3';
+                    rowDiv.style.boxShadow = newStatus === 'CREATED' ? '0 0 30px rgba(168, 199, 250, 0.2)' : 'none';
+                    setTimeout(() => rowDiv.remove(), 400);
                 })
                 .updateBAUCaseStatus(id, newStatus);
         }
-
-        function openDetails(id) {
-            const list = [...currentData.pendingCreation, ...currentData.pendingDiscard, ...currentData.history];
-            const c = list.find(item => item.id === id);
-            if (!c) return;
-
-            showModal({
-                title: 'Detalhes do Caso',
-                body: `
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div>
-                            <div style="font-size: 11px; text-transform: uppercase; color: var(--tertiaryLabel);">Anunciante</div>
-                            <div style="color: var(--label);">${c.advName}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 11px; text-transform: uppercase; color: var(--tertiaryLabel);">CID</div>
-                            <div style="color: var(--label); font-family: monospace;">${c.cid}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 11px; text-transform: uppercase; color: var(--tertiaryLabel);">Task</div>
-                            <div style="color: var(--label);">${c.task}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 11px; text-transform: uppercase; color: var(--tertiaryLabel);">Case ID</div>
-                            <div style="color: var(--label);">${c.caseId}</div>
-                        </div>
-                    </div>
-                    <div style="margin-top: 20px;">
-                        <div style="font-size: 11px; text-transform: uppercase; color: var(--tertiaryLabel);">Motivo / Justificativa</div>
-                        <div style="color: var(--label); font-style: italic; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; margin-top: 4px;">
-                            "${c.reason}"
-                        </div>
-                    </div>
-                `,
-                confirmText: 'Fechar',
-                cancelText: '',
-                onConfirm: () => {}
-            });
-        }
     </script>
 </body>
+
 </html>
