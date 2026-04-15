@@ -9,8 +9,8 @@ function handleBAUEscalation(ss, p) {
     const timestamp = p.date || new Date().toISOString();
     const userEmail = p.user || 'anon';
     
-    // Define o status inicial. Se for um motivo de descarte conhecido, podemos rotear no futuro.
-    const status = "PENDING_TL_CREATION"; 
+    // Define o status inicial vindo do payload ou fallback para criação
+    const status = p.status || "PENDING_TL_CREATION";
 
     // Monta a linha respeitando a ordem estrita das 18 colunas do Code.gs
     const novaLinha = [
@@ -36,11 +36,12 @@ function handleBAUEscalation(ss, p) {
 
     sheet.appendRow(novaLinha);
 
-    // Tenta enviar o e-mail transacional. Falhas de e-mail não devem quebrar a criação.
+    // Feedback transacional para o Agente
     try {
       if (typeof sendDynamicTechSolEmail === "function") {
-        // Rastreabilidade: O agente (p.user) é o autor real desta criação
-        sendDynamicTechSolEmail(userEmail, p, newId, 'AGENT_BAU_SENT', userEmail);
+        // Define o tipo de e-mail de feedback com base no status
+        const tipoEmail = (status === 'PENDING_TL_DISCARD') ? 'AGENT_DISCARD_SENT' : 'AGENT_BAU_SENT';
+        sendDynamicTechSolEmail(userEmail, p, newId, tipoEmail, userEmail);
       }
     } catch(e) {
       console.warn("Aviso: Falha ao enviar email do agente", e);
