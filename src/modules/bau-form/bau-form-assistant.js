@@ -262,12 +262,14 @@ export function initBAUForm() {
             stepEl.querySelector('#bau-opt-full').onclick = () => {
                 requestType = 'BAU';
                 currentStep = 1;
+                form.querySelectorAll('.bau-highlight-panel').forEach(p => p.classList.remove('discard-theme'));
                 updateWizardState();
                 SoundManager.playClick();
             };
             stepEl.querySelector('#bau-opt-discard').onclick = () => {
                 requestType = 'DISCARD';
                 currentStep = 5;
+                form.querySelectorAll('.bau-highlight-panel').forEach(p => p.classList.add('discard-theme'));
                 updateWizardState();
                 SoundManager.playClick();
             };
@@ -282,11 +284,11 @@ export function initBAUForm() {
             const card = document.createElement('div');
             card.className = 'bau-card';
 
-            if (stepConfig.id === 1) {
+            if (stepConfig.id === 1 || stepConfig.id === 5) {
                 card.innerHTML = `
-                    <div id="bau-vital-highlights" class="bau-highlight-panel"></div>
+                    <div class="bau-vital-highlights bau-highlight-panel"></div>
                     <div class="bau-dynamic-inputs-container"></div>
-                    <div id="bau-all-data"></div>
+                    <div class="bau-all-data"></div>
                 `;
                 const fieldsContainer = card.querySelector('.bau-dynamic-inputs-container');
                 stepConfig.fields.forEach(fieldConfig => {
@@ -857,8 +859,8 @@ export function initBAUForm() {
         currentContextData = pageData;
 
         // Render "Captured Data Hero" panel
-        const highlightsContainer = form.querySelector('#bau-vital-highlights');
-        if (highlightsContainer) {
+        const highlightsContainers = form.querySelectorAll('.bau-vital-highlights');
+        highlightsContainers.forEach(container => {
             const vitals = [
                 { label: "Anunciante", value: pageData.advName },
                 { label: "CID", value: pageData.cid },
@@ -866,7 +868,7 @@ export function initBAUForm() {
                 { label: "Case ID", value: pageData.caseId }
             ];
 
-            highlightsContainer.innerHTML = vitals.map(v => {
+            container.innerHTML = vitals.map(v => {
                 const displayValue = (v.value && v.value !== "N/A" && v.value !== "undefined" && v.value !== "null") ? v.value : "Não capturado";
                 return `
                     <div class="bau-highlight-item">
@@ -875,7 +877,7 @@ export function initBAUForm() {
                     </div>
                 `;
             }).join('');
-        }
+        });
 
         // Smart Rendering Logic
         FORM_CONFIG.steps.forEach(step => {
@@ -917,8 +919,8 @@ export function initBAUForm() {
         });
 
         // Context Badges Grid (Read-only visible even if hidden in inputs)
-        const allDataContainer = popup.querySelector('#bau-all-data');
-        if (allDataContainer) {
+        const allDataContainers = form.querySelectorAll('.bau-all-data');
+        allDataContainers.forEach(container => {
             const displayFields = [
                 { label: "Anunciante", value: pageData.advName },
                 { label: "CID", value: pageData.cid },
@@ -932,7 +934,7 @@ export function initBAUForm() {
                 { label: "Idioma", value: pageData.language }
             ];
 
-            allDataContainer.innerHTML = `
+            container.innerHTML = `
                 <div class="bau-context-badges-grid">
                     ${displayFields
                         .filter(f => f.value && f.value !== "N/A" && f.value !== "---" && f.value !== "undefined" && f.value !== "null")
@@ -944,7 +946,7 @@ export function initBAUForm() {
                         `).join('')}
                 </div>
             `;
-        }
+        });
     }
 
     popup.querySelector('#bau-top-se-search')?.addEventListener('click', (e) => {
