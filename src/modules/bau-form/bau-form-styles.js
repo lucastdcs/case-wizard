@@ -559,6 +559,10 @@ export const injectStyles = () => {
         animation: geminiPulse 8s infinite alternate;
     }
 
+    .bau-highlight-panel.discard-theme::before {
+        background: radial-gradient(circle, rgba(217, 48, 37, 0.12) 0%, transparent 70%);
+    }
+
     @keyframes geminiPulse {
         0% { transform: translate(-10%, -10%) scale(1); }
         100% { transform: translate(10%, 10%) scale(1.1); }
