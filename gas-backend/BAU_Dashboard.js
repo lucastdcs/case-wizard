@@ -14,7 +14,7 @@ function getPendingBAUCases() {
     const row = data[i];
     const status = row[3]; 
     
-    if (status === "PENDING_TL_CREATION" || status === "PENDING_DISCARD") {
+    if (status === "PENDING_TL_CREATION" || status === "PENDING_TL_DISCARD") {
       // Usamos String() e checagem de Data para garantir que NENHUM objeto complexo quebre o front-end
       cases.push({
         id: String(row[0] || ""),
