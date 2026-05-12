@@ -229,6 +229,28 @@ sendBAUEscalation: async (payload, userEmail) => {
         }
     },
 
+    updateBAUEscalation: async (id, payload) => {
+        const agentEmail = getAgentEmail();
+        const fullPayload = {
+            ...payload,
+            id: id,
+            user: agentEmail,
+            date_edited: new Date().toISOString()
+        };
+        try {
+            console.log(`Executando update_bau para ${id}...`, fullPayload);
+            const response = await jsonpFetch('update_bau', fullPayload);
+            if (response && response.status === 'success') {
+                console.log("Sucesso: update_bau");
+                return response;
+            }
+            throw new Error(response?.error || response?.message || "Falha na atualização BAU");
+        } catch (e) {
+            console.error("Erro JSONP (Update BAU):", e);
+            throw e;
+        }
+    },
+
     // ==========================================
     // 5. USER PROFILE SYSTEM (Dynamic)
     // ==========================================
@@ -255,4 +277,5 @@ sendBAUEscalation: async (payload, userEmail) => {
 export const sendBAUEscalation = DataService.sendBAUEscalation;
 export const readAgentBAU = DataService.readAgentBAU;
 export const updateBAUStatus = DataService.updateBAUStatus;
+export const updateBAUEscalation = DataService.updateBAUEscalation;
 export const fetchUserProfile = DataService.fetchUserProfile;

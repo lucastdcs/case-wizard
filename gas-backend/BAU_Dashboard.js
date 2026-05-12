@@ -95,16 +95,26 @@ function getAgentCases(ss, userEmail) {
     const rowEmail = String(row[2]).toLowerCase().trim();
     const status = String(row[3]);
     
-    // Agora traz TODOS os casos do agente (Pendentes, Criados, Descartados)
+    // Agora traz TODOS os campos para permitir edição completa no frontend
     if (rowEmail === userEmail.toLowerCase().trim()) {
       myCases.push({
         id: row[0],
         date: row[1] instanceof Date ? row[1].toISOString() : String(row[1]),
+        agentEmail: row[2],
         status: status,
         caseId: row[4],
+        cid: row[5],
+        seId: row[6],
         advName: row[7],
-        task: row[15],
+        advEmail: row[8],
+        site: row[9],
+        timezone: row[10],
+        language: row[11],
+        amName: row[12],
+        salesProgram: row[13],
         reason: row[14],
+        task: row[15],
+        description: row[16],
         availability: row[17] instanceof Date ? row[17].toISOString() : String(row[17])
       });
       
@@ -116,9 +126,9 @@ function getAgentCases(ss, userEmail) {
 }
 
 // =========================================================
-// UPDATE: EDITAR UM CASO PENDENTE
+// UPDATE: EDITAR UM CASO PENDENTE (Otimizado com setValues)
 // =========================================================
-function updateBAUCase(ss, p) {
+function update_bau_case(ss, p) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -133,16 +143,38 @@ function updateBAUCase(ss, p) {
           throw new Error("Acesso negado. Você só pode editar seus próprios casos.");
         }
         // Só edita se estiver pendente
-        if (!String(data[i][3]).includes("PENDING")) {
+        const currentStatus = String(data[i][3]);
+        if (!currentStatus.includes("PENDING")) {
           throw new Error("Este caso já foi processado pelo TL e não pode mais ser alterado.");
         }
         
-        // Atualiza as células específicas (Ex: Coluna P=Task, O=Reason, R=Disponibilidade)
-        // Lembre-se que i+1 é a linha real, e as colunas começam no 1
-        if (p.taskType) sheet.getRange(i + 1, 16).setValue(p.taskType);
-        if (p.reason) sheet.getRange(i + 1, 15).setValue(p.reason);
-        if (p.description) sheet.getRange(i + 1, 17).setValue(p.description);
-        if (p.availability) sheet.getRange(i + 1, 18).setValue(p.availability);
+        let newStatus = currentStatus;
+        if (p.requestType) {
+             newStatus = p.requestType === 'DISCARD' ? 'PENDING_TL_DISCARD' : 'PENDING_TL_CREATION';
+        }
+
+        // Prepara o array de valores para atualização em massa (Colunas D até R, índices 3 a 17)
+        // Mantemos os valores atuais se não forem passados no payload (p)
+        const rowUpdate = [
+            newStatus,                                          // Col D (Índice 3)
+            p.caseId !== undefined ? p.caseId : data[i][4],     // Col E (Índice 4)
+            p.cid !== undefined ? p.cid : data[i][5],           // Col F (Índice 5)
+            p.seId !== undefined ? p.seId : data[i][6],         // Col G (Índice 6)
+            p.advName !== undefined ? p.advName : data[i][7],   // Col H (Índice 7)
+            p.advEmail !== undefined ? p.advEmail : data[i][8], // Col I (Índice 8)
+            p.website !== undefined ? p.website : data[i][9],   // Col J (Índice 9)
+            p.timezone !== undefined ? p.timezone : data[i][10],// Col K (Índice 10)
+            p.language !== undefined ? p.language : data[i][11],// Col L (Índice 11)
+            p.amName !== undefined ? p.amName : data[i][12],     // Col M (Índice 12)
+            p.salesProgram !== undefined ? p.salesProgram : data[i][13], // Col N (Índice 13)
+            p.reason !== undefined ? p.reason : data[i][14],     // Col O (Índice 14)
+            p.taskType !== undefined ? p.taskType : data[i][15], // Col P (Índice 15)
+            p.description !== undefined ? p.description : data[i][16], // Col Q (Índice 16)
+            p.availability !== undefined ? p.availability : data[i][17] // Col R (Índice 17)
+        ];
+
+        // Aplica a atualização em uma única chamada ao SpreadsheetApp (Performance)
+        sheet.getRange(i + 1, 4, 1, rowUpdate.length).setValues([rowUpdate]);
         
         return { status: 'success', message: 'Caso atualizado com sucesso.' };
       }

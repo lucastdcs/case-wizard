@@ -4,7 +4,7 @@ import { createStandardHeader } from '../shared/header-factory.js';
 import { toggleGenieAnimation } from '../shared/animations.js';
 import { showToast, formatToLocalUserDate } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
-import { sendBAUEscalation, readAgentBAU } from '../shared/data-service.js';
+import { sendBAUEscalation, readAgentBAU, updateBAUEscalation } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
 import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.js';
 import { FORM_CONFIG } from './bau-form-config.js';
@@ -18,7 +18,8 @@ const ICONS = {
     folder: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`,
     empty: `<svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.44 2s2.75-.81 3.44-2H19v3zm0-5h-4.99c0 1.1-.9 2-2 2s-2-.9-2-2H5V5h14v9z"/></svg>`,
     refresh: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`,
-    expand: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>`
+    expand: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>`,
+    edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`
 };
 
 function createField(fieldConfig) {
@@ -169,6 +170,8 @@ export function initBAUForm() {
     let currentContextData = null;
     let currentStep = 0;
     let requestType = 'BAU';
+    let isEditing = false;
+    let editingCaseId = null;
     const totalSteps = FORM_CONFIG.steps.length;
 
     const popup = document.createElement("div");
@@ -366,10 +369,19 @@ export function initBAUForm() {
         const subtitleEl = header.querySelector('.cw-module-header-subtitle') || header.querySelector('p');
 
         if (titleEl) {
-            titleEl.textContent = (viewName === 'form') ? 'Novo Caso BAU' : 'BAU Central';
+            if (viewName === 'form') {
+                titleEl.textContent = isEditing ? `Editando Caso #${editingCaseId}` : 'Novo Caso BAU';
+            } else {
+                titleEl.textContent = 'BAU Central';
+            }
         }
         if (subtitleEl) {
             subtitleEl.textContent = (viewName === 'form') ? 'Preencha os detalhes abaixo' : 'Dashboard de Casos BAU';
+        }
+
+        const submitBtn = form.querySelector('.bau-btn-submit');
+        if (submitBtn) {
+            submitBtn.innerHTML = isEditing ? `${ICONS.send} Salvar Alterações` : `${ICONS.send} Enviar para o TL`;
         }
     }
 
@@ -589,6 +601,12 @@ export function initBAUForm() {
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
                     <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
+                    ${c?.status && c.status.includes('PENDING') ? `
+                        <button class="bau-case-edit-btn" data-id="${c.id}" title="Editar Solicitação">
+                            ${ICONS.edit}
+                            Editar
+                        </button>
+                    ` : ''}
                 </div>
             </li>
         `;
@@ -654,7 +672,20 @@ export function initBAUForm() {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = cardHtml;
             const cardEl = tempDiv.firstElementChild;
-            cardEl.addEventListener('click', () => openCaseDetails(caseItem));
+
+            cardEl.addEventListener('click', (e) => {
+                if (e.target.closest('.bau-case-edit-btn')) return;
+                openCaseDetails(caseItem);
+            });
+
+            const editBtn = cardEl.querySelector('.bau-case-edit-btn');
+            if (editBtn) {
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    handleEditCase(caseItem);
+                };
+            }
+
             listEl.appendChild(cardEl);
         });
 
@@ -674,7 +705,20 @@ export function initBAUForm() {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = cardHtml;
                 const cardEl = tempDiv.firstElementChild;
-                cardEl.addEventListener('click', () => openCaseDetails(caseItem));
+
+                cardEl.addEventListener('click', (e) => {
+                    if (e.target.closest('.bau-case-edit-btn')) return;
+                    openCaseDetails(caseItem);
+                });
+
+                const editBtn = cardEl.querySelector('.bau-case-edit-btn');
+                if (editBtn) {
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        handleEditCase(caseItem);
+                    };
+                }
+
                 olderCasesList.appendChild(cardEl);
             });
 
@@ -970,6 +1014,7 @@ export function initBAUForm() {
             const tasksText = tasks.length > 0 ? tasks.join(', ') : "Nenhuma";
 
             container.innerHTML = `
+                ${isEditing ? `<div class="bau-highlight-panel" style="margin-bottom: 16px; padding: 12px; border: 1px solid ${COLORS.yellow}; background: rgba(255, 186, 0, 0.05); border-radius: 8px; font-weight: 500;">Você está editando o caso #<span style="color: ${COLORS.yellow}">${editingCaseId}</span></div>` : ''}
                 <div class="bau-confirmation-grid">
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">Anunciante</span>
@@ -1027,6 +1072,7 @@ export function initBAUForm() {
             `;
         } else {
             container.innerHTML = `
+                ${isEditing ? `<div class="bau-highlight-panel discard-theme" style="margin-bottom: 16px; padding: 12px; border: 1px solid ${COLORS.red}; background: rgba(217, 48, 37, 0.05); border-radius: 8px; font-weight: 500;">Você está editando o descarte do caso #<span style="color: ${COLORS.red}">${editingCaseId}</span></div>` : ''}
                 <div class="bau-confirmation-grid">
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">Case ID</span>
@@ -1074,6 +1120,77 @@ export function initBAUForm() {
             });
         });
     }
+    async function handleEditCase(c) {
+        resetForm();
+        isEditing = true;
+        editingCaseId = c.id;
+        requestType = (c.status === 'PENDING_TL_DISCARD' || (c.reason && !c.task)) ? 'DISCARD' : 'BAU';
+
+        switchView('form');
+        await populateContextData();
+
+        // Overwrite some context data with actual case data
+        currentContextData = {
+            ...currentContextData,
+            advName: c.advName || currentContextData.advName,
+            cid: c.cid || currentContextData.cid,
+            caseId: c.caseId || currentContextData.caseId,
+            seId: c.seId || currentContextData.seId,
+            site: c.site || currentContextData.site,
+            email: c.advEmail || currentContextData.email,
+            timezone: c.timezone || currentContextData.timezone,
+            language: c.language || currentContextData.language,
+            amName: c.amName || currentContextData.amName,
+            salesProgram: c.salesProgram || currentContextData.salesProgram
+        };
+
+        // Populate fields
+        const availabilitySlots = c.availability ? c.availability.split('|').map(s => s.trim()) : [];
+
+        form.querySelectorAll('input, select, textarea').forEach(input => {
+            const fieldName = input.name;
+
+            // Map common field names to data keys
+            const keyMap = {
+                'advEmail': 'advEmail',
+                'website': 'site',
+                'site': 'site'
+            };
+
+            if (fieldName === 'taskType') {
+                const tasks = (c.task || c.taskType || "").split(',').map(t => t.trim());
+                if (input.type === 'checkbox') {
+                    input.checked = tasks.includes(input.value);
+                    input.closest('.bau-task-item')?.classList.toggle('active', input.checked);
+                }
+            } else if (fieldName.startsWith('availability_')) {
+                const index = parseInt(fieldName.split('_')[1]) - 1;
+                const slot = availabilitySlots[index];
+                if (slot && input.type === 'datetime-local') {
+                    try {
+                        const date = new Date(slot);
+                        if (!isNaN(date.getTime())) {
+                            const localISO = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                            input.value = localISO;
+                        }
+                    } catch(e) {}
+                }
+            } else if (c[fieldName] !== undefined) {
+                input.value = c[fieldName];
+            } else if (fieldName === 'reason') {
+                input.value = c.reason;
+            } else if (fieldName === 'description') {
+                input.value = c.description;
+            } else if (fieldName === 'nonImplementationReason') {
+                input.value = c.nonImplementationReason || "";
+            }
+        });
+
+        currentStep = (requestType === 'BAU') ? 1 : 5;
+        updateWizardState();
+        SoundManager.playClick();
+    }
+
     form.onsubmit = async (e) => {
         e.preventDefault();
         
@@ -1101,10 +1218,15 @@ export function initBAUForm() {
         let payload = {
             ...context,
             ...data,
-            requestType: requestType,
-            advEmail: context.email || "", 
-            website: context.site || ""
+            requestType: requestType
         };
+
+        // Ensure fields that might have different names in context/form match backend expectations
+        if (data.advEmail) payload.advEmail = data.advEmail;
+        else if (context.email) payload.advEmail = context.email;
+
+        if (data.website) payload.website = data.website;
+        else if (context.site) payload.website = context.site;
 
         if (requestType === 'BAU') {
             const tasks = formData.getAll('taskType');
@@ -1123,15 +1245,24 @@ export function initBAUForm() {
         }
 
         try {
-            await sendBAUEscalation(payload, context.agentEmail || "anon");
+            if (isEditing) {
+                await updateBAUEscalation(editingCaseId, payload);
+            } else {
+                await sendBAUEscalation(payload, context.agentEmail || "anon");
+            }
+
             SoundManager.playSuccess();
 
             // Dynamic Success Message
             const successTitle = popup.querySelector('.bau-success-title');
             if (successTitle) {
-                successTitle.textContent = requestType === 'DISCARD'
-                    ? 'Caso enviado para descarte com sucesso!'
-                    : 'Caso enviado com sucesso!';
+                if (isEditing) {
+                    successTitle.textContent = 'Caso atualizado com sucesso!';
+                } else {
+                    successTitle.textContent = requestType === 'DISCARD'
+                        ? 'Caso enviado para descarte com sucesso!'
+                        : 'Caso enviado com sucesso!';
+                }
             }
 
             switchView('success');
@@ -1148,6 +1279,8 @@ export function initBAUForm() {
         form.reset();
         currentStep = 0;
         requestType = 'BAU';
+        isEditing = false;
+        editingCaseId = null;
         updateWizardState();
         form.querySelectorAll('.bau-task-item.active').forEach(item => item.classList.remove('active'));
 

@@ -43,7 +43,7 @@ function doGet(e) {
       result = getAgentCases(ss, p.user); // NOVO: Traz os casos do agente
     } 
     else if (op === 'update_bau') {
-      result = updateBAUCase(ss, p); // NOVO: Edita um caso
+      result = update_bau_case(ss, p); // NOVO: Edita um caso
     } 
     else if (op === 'delete_bau') {
       result = deleteBAUCase(ss, p); // NOVO: Cancela um caso
