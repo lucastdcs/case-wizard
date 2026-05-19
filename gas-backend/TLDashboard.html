@@ -421,6 +421,50 @@
         .btn-icon-close { background: transparent; border: none; color: var(--text-tertiary); cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.2s; }
         .btn-icon-close:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
 
+        /* Skeleton Loading */
+        .skeleton-row {
+            height: 140px;
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 24px;
+        }
+
+        .skeleton-item {
+            background: var(--surface-level-3);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .skeleton-row::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            transform: translateX(-100%);
+            background-image: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0,
+                rgba(255, 255, 255, 0.05) 20%,
+                rgba(255, 255, 255, 0.1) 60%,
+                rgba(255, 255, 255, 0)
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+
     </style>
 </head>
 
@@ -519,14 +563,38 @@
         let currentTab = 'CREATION';
 
         function loadCases() {
-            document.getElementById('loader').style.display = 'flex';
-            document.getElementById('cases-container').innerHTML = '';
+            const container = document.getElementById('cases-container');
+            const loader = document.getElementById('loader');
+
+            loader.style.display = 'flex';
+            container.innerHTML = `
+                <div class="skeleton-row">
+                    <div class="skeleton-item" style="width: 30%; height: 24px;"></div>
+                    <div class="skeleton-item" style="width: 60%; height: 16px;"></div>
+                    <div class="skeleton-item" style="width: 40%; height: 16px;"></div>
+                </div>
+                <div class="skeleton-row">
+                    <div class="skeleton-item" style="width: 35%; height: 24px;"></div>
+                    <div class="skeleton-item" style="width: 55%; height: 16px;"></div>
+                    <div class="skeleton-item" style="width: 45%; height: 16px;"></div>
+                </div>
+                <div class="skeleton-row">
+                    <div class="skeleton-item" style="width: 25%; height: 24px;"></div>
+                    <div class="skeleton-item" style="width: 65%; height: 16px;"></div>
+                    <div class="skeleton-item" style="width: 35%; height: 16px;"></div>
+                </div>
+            `;
 
             google.script.run
                 .withSuccessHandler(data => {
                     allCases = data;
                     updateBadges();
                     renderCases();
+                })
+                .withFailureHandler(err => {
+                    console.error("Erro ao carregar casos:", err);
+                    showToast("Erro ao sincronizar com o servidor", "error");
+                    renderCases(); // Garante que o loading saia mesmo em erro
                 })
                 .getPendingBAUCases();
         }
@@ -687,6 +755,10 @@
             const icon = document.getElementById('confirm-icon');
             const submitBtn = document.getElementById('confirm-submit-btn');
 
+            // Reset state
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Confirmar';
+
             title.textContent = isApprove ? 'Confirmar Aprovação' : 'Confirmar Rejeição';
             message.textContent = isApprove
                 ? 'Ao aprovar, o agente receberá uma notificação e o caso seguirá para a próxima etapa.'
@@ -697,11 +769,12 @@
 
             caseInfo.textContent = `${c.advName} | ${c.task}`;
 
-            submitBtn.className = isApprove ? 'btn btn-primary' : 'btn btn-primary'; // Poderia ser btn-danger
-            if(!isApprove) submitBtn.style.background = 'var(--danger)'; else submitBtn.style.background = '';
+            submitBtn.className = 'btn btn-primary';
+            submitBtn.style.background = isApprove ? '' : 'var(--danger)';
 
             submitBtn.onclick = () => {
-                closeModal('confirmModal');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Processando...';
                 processAction(id, action);
             };
 
@@ -709,33 +782,42 @@
         }
 
         function processAction(id, newStatus) {
-            const row = document.getElementById(`row-${id}`);
-            const btnGroup = row.querySelector('.action-group');
-
-            // Visual Loading em linha
-            Array.from(btnGroup.querySelectorAll('.btn')).forEach(b => b.disabled = true);
-
             google.script.run
                 .withSuccessHandler(() => {
-                    row.classList.add('row-exit');
+                    closeModal('confirmModal');
                     showToast(newStatus === 'CREATED' ? 'Solicitação aprovada com sucesso' : 'Solicitação descartada');
+                    // OBRIGATORIAMENTE buscar a verdade do servidor após a ação
+                    loadCases();
+                })
+                .withFailureHandler(err => {
+                    console.error("Erro na ação:", err);
+                    showToast("Falha ao processar ação. Tente novamente.", "error");
 
-                    setTimeout(() => {
-                        allCases = allCases.filter(c => c.id !== id);
-                        updateBadges();
-                        row.remove();
-                        if (allCases.filter(c => {
-                            if (currentTab === 'CREATION') return c.status === 'PENDING_TL_CREATION';
-                            return c.status === 'PENDING_TL_DISCARD';
-                        }).length === 0) renderCases();
-                    }, 400);
+                    // Reabilita o botão se falhar
+                    const submitBtn = document.getElementById('confirm-submit-btn');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Confirmar';
                 })
                 .updateBAUCaseStatus(id, newStatus);
         }
 
-        function showToast(msg) {
+        function showToast(msg, type = "success") {
             const toast = document.getElementById('toast');
-            document.getElementById('toast-message').textContent = msg;
+            const icon = document.getElementById('toast-icon');
+            const message = document.getElementById('toast-message');
+
+            if (message) message.textContent = msg;
+
+            if (type === "error") {
+                toast.style.background = "var(--danger)";
+                toast.style.color = "white";
+                icon.textContent = "error";
+            } else {
+                toast.style.background = "";
+                toast.style.color = "";
+                icon.textContent = "check_circle";
+            }
+
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
