@@ -700,8 +700,13 @@
                 <div class="reason-box">
                     <span class="material-symbols-rounded">format_quote</span>
                     <div>
-                        <div style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Justificativa do Agente</div>
+                        <div style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">O que deve ser feito</div>
                         "${c.reason}"
+                        ${c.description ? `
+                        <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border-subtle);">
+                            <div style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Justificativa / Detalhes</div>
+                            "${c.description}"
+                        </div>` : ''}
                     </div>
                 </div>
                 `;
@@ -737,8 +742,12 @@
             ${createRow('Agendamento', c.availability)}
             ${createRow('Agente', c.agentEmail)}
             <div class="detail-group">
-                <span class="detail-label">Contexto Completo</span>
+                <span class="detail-label">O que deve ser feito</span>
                 <div class="detail-value" style="display: block; font-style: italic;">"${c.reason}"</div>
+            </div>
+            <div class="detail-group">
+                <span class="detail-label">Justificativa / Detalhes</span>
+                <div class="detail-value" style="display: block; font-style: italic;">"${c.description || '---'}"</div>
             </div>
             `;
             document.getElementById('caseModal').classList.add('active');

@@ -30,7 +30,9 @@ function handleBAUEscalation(ss, p) {
       p.salesProgram || '',     // 14. Sales_Program
       p.reason || '',           // 15. Reason
       p.taskType || '',         // 16. Task_Type
-      p.description || p.nonImplementationReason || '', // 17. Description
+      (p.requestType === 'BAU' && p.nonImplementationReason)
+        ? p.nonImplementationReason + " | " + (p.description || "")
+        : (p.description || p.nonImplementationReason || ''), // 17. Description
       p.availability || ''      // 18. Availability
     ];
 
@@ -80,6 +82,7 @@ function getAgentCases(ss, userEmail) {
         advName: row[7],
         reason: row[14],
         task: row[15],
+        description: row[16],
         availability: row[17] instanceof Date ? row[17].toISOString() : String(row[17])
       });
       

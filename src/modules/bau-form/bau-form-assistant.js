@@ -1236,6 +1236,13 @@ export function initBAUForm() {
 
             payload.taskType = tasks.join(', ');
             payload.availability = disponibilidadeUnificada;
+
+            // Fallback preventivo e Auditoria de Dados (Garantir que cheguem à planilha)
+            payload.nonImplementationReason = data.nonImplementationReason || "";
+            payload.description = data.description || "";
+
+            if (!payload.nonImplementationReason) console.warn("Aviso: Campo 'Justificativa' (nonImplementationReason) está saindo vazio.");
+            if (!payload.description) console.warn("Aviso: Campo 'Descrição detalhada' (description) está saindo vazio.");
         } else {
             // Discard Flow: KISS Principle - nullify irrelevant fields
             payload.taskType = "";
