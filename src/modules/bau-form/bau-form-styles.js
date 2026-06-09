@@ -78,7 +78,10 @@ export const injectStyles = () => {
       overflow: hidden; /* Garante que o conteúdo não vaze */
       margin-top: 18px;
     }
-    .bau-view.active { display: flex; }
+    .bau-view.active {
+        display: flex;
+        overflow: hidden;
+    }
     @keyframes bauFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
     /* --- 3. ESTILOS GERAIS E CLASSES ADICIONAIS --- */
@@ -257,6 +260,26 @@ export const injectStyles = () => {
     .bau-case-status-badge.status-green { background: rgba(30, 142, 62, 0.2); color: #1E8E3E; }
     .bau-case-status-badge.status-red { background: rgba(217, 48, 37, 0.2); color: #D93025; }
     .bau-case-status-badge.status-gray { background: rgba(128, 134, 139, 0.2); color: #5F6368; }
+
+    .bau-case-edit-btn {
+      border: 1px solid #DADCE0;
+      background: transparent;
+      color: #5F6368;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .bau-case-edit-btn:hover {
+      background: rgba(26, 115, 232, 0.08);
+      border-color: #1A73E8;
+      color: #1A73E8;
+    }
 
     .bau-empty-state {
       display: flex;
@@ -907,6 +930,8 @@ export const injectStyles = () => {
         flex-direction: column;
         gap: 20px;
         scrollbar-width: thin;
+        flex: 1;
+        max-height: 100vh;
     }
 
     .bau-details-grid {

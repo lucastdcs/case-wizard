@@ -2,7 +2,7 @@
 import { injectStyles, COLORS } from './bau-form-styles.js';
 import { createStandardHeader } from '../shared/header-factory.js';
 import { toggleGenieAnimation } from '../shared/animations.js';
-import { showToast, formatToLocalUserDate } from '../shared/utils.js';
+import { showToast, formatToLocalUserDate, confirmDialog } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { sendBAUEscalation, readAgentBAU, updateBAUEscalation } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
@@ -528,6 +528,7 @@ export function initBAUForm() {
         const closeBtn = detailsView.querySelector('.bau-details-close-btn');
         closeBtn.onclick = () => {
             detailsView.classList.remove('active');
+            document.body.style.overflow = '';
             SoundManager.playSwoosh();
             setTimeout(() => { detailsView.style.display = 'none'; }, 600);
         };
@@ -540,6 +541,7 @@ export function initBAUForm() {
         });
 
         detailsView.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
         requestAnimationFrame(() => {
             detailsView.classList.add('active');
             SoundManager.playClick();
@@ -680,9 +682,15 @@ export function initBAUForm() {
 
             const editBtn = cardEl.querySelector('.bau-case-edit-btn');
             if (editBtn) {
-                editBtn.onclick = (e) => {
+                editBtn.onclick = async (e) => {
                     e.stopPropagation();
-                    handleEditCase(caseItem);
+                    const confirmed = await confirmDialog(
+                        "Atenção: Para editar este formulário, você precisa estar com a página deste Caso específica aberta no Cases. Caso contrário, o sistema não conseguirá capturar os dados corretamente.",
+                        { confirmText: "Entendi, Continuar" }
+                    );
+                    if (confirmed) {
+                        handleEditCase(caseItem);
+                    }
                 };
             }
 
@@ -713,9 +721,15 @@ export function initBAUForm() {
 
                 const editBtn = cardEl.querySelector('.bau-case-edit-btn');
                 if (editBtn) {
-                    editBtn.onclick = (e) => {
+                    editBtn.onclick = async (e) => {
                         e.stopPropagation();
-                        handleEditCase(caseItem);
+                        const confirmed = await confirmDialog(
+                            "Atenção: Para editar este formulário, você precisa estar com a página deste Caso específica aberta no Cases. Caso contrário, o sistema não conseguirá capturar os dados corretamente.",
+                            { confirmText: "Entendi, Continuar" }
+                        );
+                        if (confirmed) {
+                            handleEditCase(caseItem);
+                        }
                     };
                 }
 
@@ -1305,6 +1319,9 @@ export function initBAUForm() {
     async function toggleVisibility() {
         isVisible = !isVisible;
         popup.style.display = isVisible ? "flex" : "none";
+        if (!isVisible) {
+            document.body.style.overflow = '';
+        }
         if (isVisible) {
             switchView('dashboard');
             loadDashboardData(); 
