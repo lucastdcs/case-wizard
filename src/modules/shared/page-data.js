@@ -8,6 +8,29 @@ let cachedUserProfile = null;
 
 const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Garante que a página esteja no idioma original caso o recurso de tradução do CRM esteja ativo.
+ * Isso evita falhas de mapeamento e regex durante a raspagem de dados.
+ */
+export async function ensureOriginalLanguage() {
+    try {
+        const translateBtn = document.querySelector('material-button[debug-id="toggle-translation-button"]');
+
+        if (translateBtn) {
+            const text = translateBtn.textContent.toLowerCase();
+            // Verifica se o botão indica que a página está traduzida (exibindo opção de mostrar original)
+            if (text.includes('show original') || text.includes('mostrar original')) {
+                console.log("TechSol: Tradução detectada. Revertendo para o idioma original...");
+                translateBtn.click();
+                await esperar(400); // Aguarda renderização da interface original
+            }
+        }
+    } catch (e) {
+        // Silencioso: não deve interromper o fluxo principal se o botão falhar
+        console.warn("TechSol: Erro ao tentar reverter tradução:", e);
+    }
+}
+
 // --- 1. SHERLOCK HOLMES (Captura Silenciosa do Nome do Agente) ---
 export async function captureNameWithMagic() {
     // Se já temos nome E email, retorna rápido
@@ -378,6 +401,9 @@ export function isCurrentUserOverhead() {
 
 // --- 9. COMPILADOR DE DADOS DA PÁGINA ---
 export async function getPageData() {
+    // Garante que os dados estejam no idioma original para evitar falhas de raspagem
+    await ensureOriginalLanguage();
+
     // Garante que a identidade foi capturada antes de prosseguir
     if (!cachedAgentEmail) {
         await captureNameWithMagic();

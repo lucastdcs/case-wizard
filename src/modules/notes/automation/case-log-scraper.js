@@ -1,6 +1,7 @@
 // src/modules/automation/case-log-scraper.js
 import { showToast } from '../../shared/utils.js';
 import { SoundManager } from '../../shared/sound-manager.js';
+import { ensureOriginalLanguage } from '../../shared/page-data.js';
 
 const esperar = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -89,6 +90,9 @@ function toggleLoadingOverlay(show) {
  */
 export async function fetchAndInsertSpeakeasyId(targetInputId) {
     console.log("🚀 Iniciando extração automática...");
+
+    // Garante que a página esteja no idioma original antes de iniciar a extração
+    await ensureOriginalLanguage();
 
     const inputWidget = document.getElementById(targetInputId);
     let originalPlaceholder = "";
