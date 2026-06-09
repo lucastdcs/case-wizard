@@ -27,6 +27,7 @@ function getPendingBAUCases() {
         site: String(row[9] || ""),
         reason: String(row[14] || ""),
         task: String(row[15] || ""),
+        description: String(row[16] || ""),
         // O SEGUNDO VILÃO ESTAVA AQUI: A disponibilidade também é lida como Data pelo Sheets
         availability: row[17] instanceof Date ? row[17].toISOString() : String(row[17] || "")
       });
@@ -169,7 +170,9 @@ function update_bau_case(ss, p) {
             p.salesProgram !== undefined ? p.salesProgram : data[i][13], // Col N (Índice 13)
             p.reason !== undefined ? p.reason : data[i][14],     // Col O (Índice 14)
             p.taskType !== undefined ? p.taskType : data[i][15], // Col P (Índice 15)
-            p.description !== undefined ? p.description : data[i][16], // Col Q (Índice 16)
+            (p.requestType === 'BAU' && p.nonImplementationReason)
+              ? p.nonImplementationReason + " | " + (p.description || "")
+              : (p.description !== undefined ? p.description : data[i][16]), // Col Q (Índice 16)
             p.availability !== undefined ? p.availability : data[i][17] // Col R (Índice 17)
         ];
 
