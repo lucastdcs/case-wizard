@@ -145,6 +145,24 @@ function update_bau_case(ss, p) {
              newStatus = p.requestType === 'DISCARD' ? 'PENDING_TL_DISCARD' : 'PENDING_TL_CREATION';
         }
 
+        // Column 17 Logic (Description) - Smart Merge for BAU
+        let finalDescription = data[i][16];
+        if (p.requestType === 'BAU') {
+          const currentDesc = String(data[i][16] || "");
+          const parts = currentDesc.split(" | ");
+          let oldNIR = parts[0] || "";
+          let oldDetail = parts.slice(1).join(" | ") || "";
+
+          const newNIR = p.nonImplementationReason !== undefined ? p.nonImplementationReason : oldNIR;
+          const newDetail = p.description !== undefined ? p.description : oldDetail;
+
+          if (p.nonImplementationReason !== undefined || p.description !== undefined) {
+            finalDescription = newNIR + " | " + newDetail;
+          }
+        } else if (p.description !== undefined) {
+          finalDescription = p.description;
+        }
+
         const rowUpdate = [
             newStatus,
             p.caseId !== undefined ? p.caseId : data[i][4],
@@ -159,9 +177,7 @@ function update_bau_case(ss, p) {
             p.salesProgram !== undefined ? p.salesProgram : data[i][13],
             p.reason !== undefined ? p.reason : data[i][14],
             p.taskType !== undefined ? p.taskType : data[i][15],
-            (p.requestType === 'BAU' && p.nonImplementationReason)
-              ? p.nonImplementationReason + " | " + (p.description || "")
-              : (p.description !== undefined ? p.description : data[i][16]),
+            finalDescription,
             p.availability !== undefined ? p.availability : data[i][17]
         ];
 

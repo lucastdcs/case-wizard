@@ -1237,18 +1237,40 @@ export function initBAUForm() {
             payload.taskType = tasks.join(', ');
             payload.availability = disponibilidadeUnificada;
 
-            // Fallback preventivo e Auditoria de Dados (Garantir que cheguem à planilha)
-            payload.nonImplementationReason = data.nonImplementationReason || "";
-            payload.description = data.description || "";
+            if (isEditing) {
+                // Shielding: Only send if present and not empty to avoid "Data Wiping"
+                if (data.nonImplementationReason) payload.nonImplementationReason = data.nonImplementationReason;
+                else delete payload.nonImplementationReason;
 
-            if (!payload.nonImplementationReason) console.warn("Aviso: Campo 'Justificativa' (nonImplementationReason) está saindo vazio.");
-            if (!payload.description) console.warn("Aviso: Campo 'Descrição detalhada' (description) está saindo vazio.");
+                if (data.description) payload.description = data.description;
+                else delete payload.description;
+            } else {
+                // Creation flow: empty strings are acceptable fallbacks
+                payload.nonImplementationReason = data.nonImplementationReason || "";
+                payload.description = data.description || "";
+
+                if (!payload.nonImplementationReason) console.warn("Aviso: Campo 'Justificativa' (nonImplementationReason) está saindo vazio.");
+                if (!payload.description) console.warn("Aviso: Campo 'Descrição detalhada' (description) está saindo vazio.");
+            }
         } else {
-            // Discard Flow: KISS Principle - nullify irrelevant fields
-            payload.taskType = "";
-            payload.availability = "";
-            payload.nonImplementationReason = "";
-            payload.reason = data.reason; // This comes from step 5 'reason' field
+            // Discard Flow: KISS Principle
+            payload.reason = data.reason;
+
+            if (isEditing) {
+                // Shielding for Discard Edit
+                if (data.description) payload.description = data.description;
+                else delete payload.description;
+
+                // Remove BAU specific fields to preserve them if they exist in the DB
+                delete payload.taskType;
+                delete payload.availability;
+                delete payload.nonImplementationReason;
+            } else {
+                payload.taskType = "";
+                payload.availability = "";
+                payload.nonImplementationReason = "";
+                payload.description = data.description || "";
+            }
         }
 
         try {
