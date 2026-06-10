@@ -2,7 +2,7 @@
 import { injectStyles, COLORS } from './bau-form-styles.js';
 import { createStandardHeader } from '../shared/header-factory.js';
 import { toggleGenieAnimation } from '../shared/animations.js';
-import { showToast, formatToLocalUserDate } from '../shared/utils.js';
+import { showToast, formatToLocalUserDate, confirmDialog } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { sendBAUEscalation, readAgentBAU, updateBAUEscalation } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
@@ -1121,6 +1121,13 @@ export function initBAUForm() {
         });
     }
     async function handleEditCase(c) {
+        const confirmed = await confirmDialog(
+            "Atenção: Para editar as informações, você deve estar com a página deste Caso específico aberta no sistema. Caso contrário, os dados capturados estarão incorretos.",
+            { confirmText: "Estou na página correta" }
+        );
+
+        if (!confirmed) return;
+
         resetForm();
         isEditing = true;
         editingCaseId = c.id;
