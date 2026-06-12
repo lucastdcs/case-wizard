@@ -996,6 +996,45 @@ export const injectStyles = () => {
       justify-content: center;
     }
 
+    /* --- LOADING OVERLAY --- */
+    .bau-form-loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      animation: bauFadeIn 0.3s ease;
+    }
+
+    .bau-form-loading-overlay.active {
+      display: flex;
+    }
+
+    .bau-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(26, 115, 232, 0.1);
+      border-top-color: #1A73E8;
+      border-radius: 50%;
+      animation: rotate 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    .bau-loading-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1A73E8;
+      letter-spacing: 0.3px;
+    }
+
     .bau-mini-btn-input:hover {
       background: #F1F3F4;
       color: #202124;
