@@ -233,6 +233,19 @@ export function initBAUForm() {
     formUiContainer.className = "bau-content";
     formView.appendChild(formUiContainer);
 
+    // Inject loading overlay for edit mode transitions
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.className = 'bau-form-loading-overlay';
+    loadingOverlay.innerHTML = `
+        <div class="bau-spinner"></div>
+        <div class="bau-loading-text">Configurando Edição...</div>
+    `;
+    formUiContainer.appendChild(loadingOverlay);
+
+    const showFormLoading = (show) => {
+        loadingOverlay.classList.toggle('active', show);
+    };
+
     const progressIndicator = document.createElement("div");
     progressIndicator.className = "bau-progress-indicator";
     formUiContainer.appendChild(progressIndicator);
@@ -908,7 +921,7 @@ export function initBAUForm() {
             const vitals = [
                 { label: "Anunciante", value: pageData.advName },
                 { label: "CID", value: pageData.cid },
-                { label: "Website", value: pageData.site || pageData.website },
+                { label: "Website", value: pageData.website || pageData.site },
                 { label: "Case ID", value: pageData.caseId }
             ];
 
@@ -970,7 +983,7 @@ export function initBAUForm() {
                 { label: "CID", value: pageData.cid },
                 { label: "AM", value: pageData.amName },
                 { label: "SE ID", value: pageData.seId },
-                { label: "Site", value: pageData.site },
+                { label: "Site", value: pageData.website || pageData.site },
                 { label: "Email", value: pageData.email },
                 { label: "Timezone", value: pageData.timezone },
                 { label: "Case ID", value: pageData.caseId },
@@ -1027,6 +1040,10 @@ export function initBAUForm() {
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">AM</span>
                         <input class="bau-confirm-value-input" data-field="amName" data-step="1" value="${data.amName || ''}" placeholder="---">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">Website</span>
+                        <input class="bau-confirm-value-input" data-field="website" data-step="1" value="${data.website || ''}" placeholder="---">
                     </div>
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">Speakeasy ID</span>
@@ -1128,6 +1145,8 @@ export function initBAUForm() {
 
         if (!confirmed) return;
 
+        showFormLoading(true);
+
         resetForm();
         isEditing = true;
         editingCaseId = c.id;
@@ -1143,7 +1162,7 @@ export function initBAUForm() {
             cid: c.cid || currentContextData.cid,
             caseId: c.caseId || currentContextData.caseId,
             seId: c.seId || currentContextData.seId,
-            site: c.site || currentContextData.site,
+            site: c.site || c.website || currentContextData.site || currentContextData.website,
             email: c.advEmail || currentContextData.email,
             timezone: c.timezone || currentContextData.timezone,
             language: c.language || currentContextData.language,
@@ -1157,12 +1176,14 @@ export function initBAUForm() {
         form.querySelectorAll('input, select, textarea').forEach(input => {
             const fieldName = input.name;
 
-            // Map common field names to data keys
+            // Map common field names to data keys for correct population
             const keyMap = {
                 'advEmail': 'advEmail',
                 'website': 'site',
                 'site': 'site'
             };
+
+            const dataKey = keyMap[fieldName] || fieldName;
 
             if (fieldName === 'taskType') {
                 const tasks = (c.task || c.taskType || "").split(',').map(t => t.trim());
@@ -1182,8 +1203,8 @@ export function initBAUForm() {
                         }
                     } catch(e) {}
                 }
-            } else if (c[fieldName] !== undefined) {
-                input.value = c[fieldName];
+            } else if (c[dataKey] !== undefined) {
+                input.value = c[dataKey];
             } else if (fieldName === 'reason') {
                 input.value = c.reason;
             } else if (fieldName === 'description') {
@@ -1196,6 +1217,8 @@ export function initBAUForm() {
         currentStep = (requestType === 'BAU') ? 1 : 5;
         updateWizardState();
         SoundManager.playClick();
+
+        setTimeout(() => showFormLoading(false), 500);
     }
 
     form.onsubmit = async (e) => {
@@ -1233,6 +1256,7 @@ export function initBAUForm() {
         else if (context.email) payload.advEmail = context.email;
 
         if (data.website) payload.website = data.website;
+        else if (context.website) payload.website = context.website;
         else if (context.site) payload.website = context.site;
 
         if (requestType === 'BAU') {

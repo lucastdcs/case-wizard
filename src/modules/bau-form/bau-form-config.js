@@ -43,6 +43,15 @@ export const FORM_CONFIG = {
                     isSmart: true
                 },
                 {
+                    id: 'website',
+                    name: 'website',
+                    label: 'Website',
+                    type: 'text',
+                    placeholder: 'https://www.exemplo.com',
+                    required: true,
+                    isSmart: true
+                },
+                {
                     id: 'seId',
                     name: 'seId',
                     label: 'Speakeasy ID (SE ID)',
