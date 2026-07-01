@@ -2532,6 +2532,33 @@ E-mail: ${x.clientEmail||"---"}`;E&&(E.value=g),T&&(T.style.display="block",T.st
     .bau-case-status-badge.status-red { background: rgba(217, 48, 37, 0.2); color: #D93025; }
     .bau-case-status-badge.status-gray { background: rgba(128, 134, 139, 0.2); color: #5F6368; }
 
+    .bau-case-edit-btn {
+      background: transparent;
+      border: 1px solid #DADCE0;
+      color: #5F6368;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .bau-case-edit-btn:hover {
+      background: rgba(26, 115, 232, 0.08);
+      color: #1A73E8;
+      border-color: #1A73E8;
+    }
+
+    .bau-case-edit-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
     .bau-empty-state {
       display: flex;
       flex-direction: column;
