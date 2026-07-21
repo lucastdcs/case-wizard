@@ -87,6 +87,51 @@ export function initPersonalLibrary() {
                 background-size: 200% 100%;
                 animation: shimmer 1.5s infinite;
             }
+            #library-popup {
+                width: 650px !important;
+                max-width: 95vw !important;
+                height: 700px !important;
+                max-height: 90vh !important;
+            }
+            .cw-lib-loading-overlay {
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(8px);
+                z-index: 1000;
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                border-radius: 16px;
+                animation: cwLibFadeIn 0.3s ease;
+            }
+            .cw-lib-loading-overlay.active {
+                display: flex;
+            }
+            .cw-lib-spinner {
+                width: 40px;
+                height: 40px;
+                border: 3px solid rgba(26, 115, 232, 0.1);
+                border-top-color: #1a73e8;
+                border-radius: 50%;
+                animation: cwLibRotate 0.8s linear infinite;
+                margin-bottom: 12px;
+            }
+            .cw-lib-loading-text {
+                font-size: 14px;
+                font-weight: 600;
+                color: #1a73e8;
+                letter-spacing: 0.3px;
+            }
+            @keyframes cwLibRotate {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            @keyframes cwLibFadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -119,15 +164,24 @@ export function initPersonalLibrary() {
         tabActive: { color: COLORS.primary, borderBottomColor: COLORS.primary, fontWeight: '600', background: 'rgba(26, 115, 232, 0.04)' },
 
         // List
-        listContainer: { flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' },
-        emptyState: { padding: '60px 24px', textAlign: 'center', color: COLORS.textSub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' },
+        listContainer: {
+            flex: 1,
+            overflowY: 'auto',
+            padding: '24px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: '16px',
+            alignContent: 'start'
+        },
+        emptyState: { padding: '60px 24px', textAlign: 'center', color: COLORS.textSub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', gridColumn: '1 / -1' },
 
         // Card
         card: {
             background: COLORS.surface, borderRadius: '24px', padding: '20px',
             border: `1px solid ${COLORS.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
             transition: 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)', cursor: 'default',
-            position: 'relative'
+            position: 'relative',
+            display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
         },
         cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' },
         cardTitle: { fontSize: '15px', fontWeight: '600', color: COLORS.text, letterSpacing: '-0.01em' },
@@ -184,7 +238,8 @@ export function initPersonalLibrary() {
     popup.id = "library-popup";
     popup.classList.add("cw-module-window");
     Object.assign(popup.style, stylePopup, { 
-        right: "auto", left: "50%", width: "400px", height: "600px", 
+        right: "auto", left: "50%", width: "650px", height: "700px",
+        maxHeight: "90vh",
         transform: "translateX(-50%) scale(0.05)"
     });
 
@@ -269,6 +324,15 @@ export function initPersonalLibrary() {
     saveBtn.onclick = handleSave;
     edFooter.appendChild(saveBtn);
     editorOverlay.appendChild(edFooter);
+
+    // Blocking Loading Overlay
+    const libLoadingOverlay = document.createElement("div");
+    libLoadingOverlay.className = "cw-lib-loading-overlay";
+    libLoadingOverlay.innerHTML = `
+        <div class="cw-lib-spinner"></div>
+        <div class="cw-lib-loading-text">Salvando...</div>
+    `;
+    editorOverlay.appendChild(libLoadingOverlay);
 
     container.appendChild(editorOverlay);
 
@@ -482,14 +546,28 @@ export function initPersonalLibrary() {
             payload.subject = subject;
         }
 
-        saveBtn.textContent = "Salvando...";
-        await SnippetService.save(payload);
-        
-        saveBtn.textContent = "Salvar";
-        closeEditor();
-        renderList();
-        showToast("Salvo com sucesso!");
-        SoundManager.playSuccess();
+        // Exibe overlay de carregamento bloqueante
+        libLoadingOverlay.classList.add('active');
+        saveBtn.disabled = true;
+
+        try {
+            await SnippetService.save(payload);
+
+            // Re-renderiza a lista automaticamente por trás da tela
+            renderList();
+
+            // Fecha o editor automaticamente
+            closeEditor();
+
+            showToast("Salvo com sucesso!");
+            SoundManager.playSuccess();
+        } catch (error) {
+            console.error("Erro ao salvar nota:", error);
+            showToast("Erro ao salvar nota.", { error: true });
+        } finally {
+            libLoadingOverlay.classList.remove('active');
+            saveBtn.disabled = false;
+        }
     }
 
     // --- HELPER DE UI ---
@@ -609,7 +687,12 @@ export function initPersonalLibrary() {
     function toggleVisibility() {
         visible = !visible;
         toggleGenieAnimation(visible, popup, "cw-btn-library");
-        if(visible) renderList(); // Refresh ao abrir
+        if (visible) {
+            document.body.style.overflow = "hidden";
+            renderList(); // Refresh ao abrir
+        } else {
+            document.body.style.overflow = "";
+        }
     }
 
     return toggleVisibility;

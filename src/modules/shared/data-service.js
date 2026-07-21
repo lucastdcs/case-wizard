@@ -271,6 +271,49 @@ sendBAUEscalation: async (payload, userEmail) => {
             console.error("Erro ao buscar perfil:", e);
             return null;
         }
+    },
+
+    getUserSnippets: async (userEmail) => {
+        try {
+            console.log("Buscando snippets para:", userEmail);
+            const response = await jsonpFetch('get_user_snippets', { user: userEmail });
+            return response;
+        } catch (e) {
+            console.error("Erro ao carregar snippets:", e);
+            return { status: 'error', snippets: [] };
+        }
+    },
+
+    saveSnippet: async (snippet, userEmail) => {
+        const payload = {
+            id: snippet.id,
+            type: snippet.type,
+            title: snippet.title,
+            content: snippet.content,
+            subject: snippet.subject || '',
+            isCode: snippet.isCode,
+            isRich: snippet.isRich,
+            user: userEmail
+        };
+        try {
+            console.log("Salvando snippet na nuvem:", payload);
+            const response = await jsonpFetch('save_snippet', payload);
+            return response && response.status === 'success';
+        } catch (e) {
+            console.error("Erro ao salvar snippet:", e);
+            return false;
+        }
+    },
+
+    deleteSnippet: async (id, userEmail) => {
+        try {
+            console.log(`Deletando snippet ${id}...`);
+            const response = await jsonpFetch('delete_snippet', { id: id, user: userEmail });
+            return response && response.status === 'success';
+        } catch (e) {
+            console.error("Erro ao deletar snippet:", e);
+            return false;
+        }
     }
 };
 
@@ -279,3 +322,6 @@ export const readAgentBAU = DataService.readAgentBAU;
 export const updateBAUStatus = DataService.updateBAUStatus;
 export const updateBAUEscalation = DataService.updateBAUEscalation;
 export const fetchUserProfile = DataService.fetchUserProfile;
+export const getUserSnippets = DataService.getUserSnippets;
+export const saveSnippet = DataService.saveSnippet;
+export const deleteSnippet = DataService.deleteSnippet;
