@@ -79,7 +79,7 @@ export function initPersonalLibrary() {
             }
             .cw-tactile { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
             .cw-tactile:active { transform: scale(0.96) !important; }
-            .cw-toolbar-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s; color: #474747; }
+            .cw-toolbar-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s; color: #474747; }
             .cw-toolbar-btn:hover { background: rgba(0,0,0,0.04); color: #1a73e8; }
             .cw-toolbar-btn.active { background: rgba(26, 115, 232, 0.1); color: #1a73e8; border-color: rgba(26, 115, 232, 0.2); }
             .cw-shimmer {
@@ -155,7 +155,7 @@ export function initPersonalLibrary() {
         // Tabs
         tabHeader: { display: 'flex', padding: '16px 24px 0 24px', background: 'transparent', borderBottom: `1px solid ${COLORS.border}`, gap: '8px' },
         tabBtn: { 
-            flex: 1, padding: '14px 16px', textAlign: 'center', cursor: 'pointer',
+            flex: 1, padding: '16px 16px', textAlign: 'center', cursor: 'pointer',
             fontSize: '14px', fontWeight: '500', color: COLORS.textSub,
             borderBottom: '3px solid transparent', transition: 'all 0.3s ease', userSelect: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
@@ -173,29 +173,29 @@ export function initPersonalLibrary() {
             gap: '16px',
             alignContent: 'start'
         },
-        emptyState: { padding: '60px 24px', textAlign: 'center', color: COLORS.textSub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', gridColumn: '1 / -1' },
+        emptyState: { padding: '64px 24px', textAlign: 'center', color: COLORS.textSub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', gridColumn: '1 / -1' },
 
         // Card
         card: {
-            background: COLORS.surface, borderRadius: '24px', padding: '20px',
+            background: COLORS.surface, borderRadius: '24px', padding: '24px',
             border: `1px solid ${COLORS.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
             transition: 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)', cursor: 'default',
             position: 'relative',
             display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
         },
-        cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' },
+        cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
         cardTitle: { fontSize: '15px', fontWeight: '600', color: COLORS.text, letterSpacing: '-0.01em' },
         cardPreview: { fontSize: '13px', color: COLORS.textSub, lineHeight: '1.6', display: '-webkit-box', webkitLineClamp: '3', webkitBoxOrient: 'vertical', overflow: 'hidden' },
         
         // Actions
         cardActions: { 
-            display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px',
+            display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '16px',
             paddingTop: '16px', borderTop: `1px solid ${COLORS.border}`
         },
         actionBtn: { 
-            padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '500',
+            padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
             cursor: 'pointer', border: 'none', background: 'transparent', transition: 'all 0.2s',
-            display: 'flex', alignItems: 'center', gap: '6px'
+            display: 'flex', alignItems: 'center', gap: '8px'
         },
 
         // Floating Action Button (FAB)
@@ -225,9 +225,9 @@ export function initPersonalLibrary() {
         
         // Inputs
         inputGroup: { marginBottom: '24px' },
-        label: { display: 'block', fontSize: '13px', fontWeight: '600', color: COLORS.textSub, marginBottom: '10px', letterSpacing: '0.02em' },
+        label: { display: 'block', fontSize: '13px', fontWeight: '600', color: COLORS.textSub, marginBottom: '8px', letterSpacing: '0.02em' },
         input: {
-            width: '100%', padding: '14px 18px', borderRadius: '14px', border: `1px solid ${COLORS.border}`,
+            width: '100%', padding: '16px 16px', borderRadius: '16px', border: `1px solid ${COLORS.border}`,
             fontSize: '15px', fontFamily: 'inherit', outline: 'none', background: COLORS.surface,
             transition: 'all 0.2s ease', boxSizing: 'border-box'
         }
@@ -320,7 +320,7 @@ export function initPersonalLibrary() {
     
     const saveBtn = document.createElement("button");
     saveBtn.textContent = "Salvar";
-    saveBtn.style.cssText = "padding:12px 32px; background:linear-gradient(135deg, #1a73e8, #0059c1); color:white; border:none; border-radius:14px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(26,115,232,0.3); transition: all 0.2s;";
+    saveBtn.style.cssText = "padding:12px 32px; background:linear-gradient(135deg, #1a73e8, #0059c1); color:white; border:none; border-radius:16px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(26,115,232,0.3); transition: all 0.2s;";
     saveBtn.onclick = handleSave;
     edFooter.appendChild(saveBtn);
     editorOverlay.appendChild(edFooter);
@@ -582,7 +582,7 @@ export function initPersonalLibrary() {
         let input;
         if (options.isRich) {
             const toolbar = document.createElement("div");
-            toolbar.style.cssText = "display:flex; gap:8px; margin-bottom:14px; background:rgba(255, 255, 255, 0.5); padding:8px; border-radius:14px; border:1px solid rgba(0,0,0,0.06); backdrop-filter: blur(10px); width: fit-content;";
+            toolbar.style.cssText = "display:flex; gap:8px; margin-bottom:16px; background:rgba(255, 255, 255, 0.5); padding:8px; border-radius:16px; border:1px solid rgba(0,0,0,0.06); backdrop-filter: blur(10px); width: fit-content;";
 
             toolbar.innerHTML = `
                 <button type="button" class="cw-toolbar-btn cw-tb-bold cw-tactile" title="Negrito">
