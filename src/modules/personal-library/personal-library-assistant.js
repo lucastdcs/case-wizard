@@ -79,13 +79,58 @@ export function initPersonalLibrary() {
             }
             .cw-tactile { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
             .cw-tactile:active { transform: scale(0.96) !important; }
-            .cw-toolbar-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s; color: #474747; }
+            .cw-toolbar-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s; color: #474747; }
             .cw-toolbar-btn:hover { background: rgba(0,0,0,0.04); color: #1a73e8; }
             .cw-toolbar-btn.active { background: rgba(26, 115, 232, 0.1); color: #1a73e8; border-color: rgba(26, 115, 232, 0.2); }
             .cw-shimmer {
                 background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
                 background-size: 200% 100%;
                 animation: shimmer 1.5s infinite;
+            }
+            #library-popup {
+                width: 650px !important;
+                max-width: 95vw !important;
+                height: 700px !important;
+                max-height: 90vh !important;
+            }
+            .cw-lib-loading-overlay {
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(8px);
+                z-index: 1000;
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                border-radius: 16px;
+                animation: cwLibFadeIn 0.3s ease;
+            }
+            .cw-lib-loading-overlay.active {
+                display: flex;
+            }
+            .cw-lib-spinner {
+                width: 40px;
+                height: 40px;
+                border: 3px solid rgba(26, 115, 232, 0.1);
+                border-top-color: #1a73e8;
+                border-radius: 50%;
+                animation: cwLibRotate 0.8s linear infinite;
+                margin-bottom: 12px;
+            }
+            .cw-lib-loading-text {
+                font-size: 14px;
+                font-weight: 600;
+                color: #1a73e8;
+                letter-spacing: 0.3px;
+            }
+            @keyframes cwLibRotate {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            @keyframes cwLibFadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
             }
         `;
         document.head.appendChild(style);
@@ -110,7 +155,7 @@ export function initPersonalLibrary() {
         // Tabs
         tabHeader: { display: 'flex', padding: '16px 24px 0 24px', background: 'transparent', borderBottom: `1px solid ${COLORS.border}`, gap: '8px' },
         tabBtn: { 
-            flex: 1, padding: '14px 16px', textAlign: 'center', cursor: 'pointer',
+            flex: 1, padding: '16px 16px', textAlign: 'center', cursor: 'pointer',
             fontSize: '14px', fontWeight: '500', color: COLORS.textSub,
             borderBottom: '3px solid transparent', transition: 'all 0.3s ease', userSelect: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
@@ -119,29 +164,38 @@ export function initPersonalLibrary() {
         tabActive: { color: COLORS.primary, borderBottomColor: COLORS.primary, fontWeight: '600', background: 'rgba(26, 115, 232, 0.04)' },
 
         // List
-        listContainer: { flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' },
-        emptyState: { padding: '60px 24px', textAlign: 'center', color: COLORS.textSub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' },
+        listContainer: {
+            flex: 1,
+            overflowY: 'auto',
+            padding: '24px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: '16px',
+            alignContent: 'start'
+        },
+        emptyState: { padding: '64px 24px', textAlign: 'center', color: COLORS.textSub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', gridColumn: '1 / -1' },
 
         // Card
         card: {
-            background: COLORS.surface, borderRadius: '24px', padding: '20px',
+            background: COLORS.surface, borderRadius: '24px', padding: '24px',
             border: `1px solid ${COLORS.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
             transition: 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)', cursor: 'default',
-            position: 'relative'
+            position: 'relative',
+            display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
         },
-        cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' },
+        cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
         cardTitle: { fontSize: '15px', fontWeight: '600', color: COLORS.text, letterSpacing: '-0.01em' },
         cardPreview: { fontSize: '13px', color: COLORS.textSub, lineHeight: '1.6', display: '-webkit-box', webkitLineClamp: '3', webkitBoxOrient: 'vertical', overflow: 'hidden' },
         
         // Actions
         cardActions: { 
-            display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px',
+            display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '16px',
             paddingTop: '16px', borderTop: `1px solid ${COLORS.border}`
         },
         actionBtn: { 
-            padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '500',
+            padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
             cursor: 'pointer', border: 'none', background: 'transparent', transition: 'all 0.2s',
-            display: 'flex', alignItems: 'center', gap: '6px'
+            display: 'flex', alignItems: 'center', gap: '8px'
         },
 
         // Floating Action Button (FAB)
@@ -171,9 +225,9 @@ export function initPersonalLibrary() {
         
         // Inputs
         inputGroup: { marginBottom: '24px' },
-        label: { display: 'block', fontSize: '13px', fontWeight: '600', color: COLORS.textSub, marginBottom: '10px', letterSpacing: '0.02em' },
+        label: { display: 'block', fontSize: '13px', fontWeight: '600', color: COLORS.textSub, marginBottom: '8px', letterSpacing: '0.02em' },
         input: {
-            width: '100%', padding: '14px 18px', borderRadius: '14px', border: `1px solid ${COLORS.border}`,
+            width: '100%', padding: '16px 16px', borderRadius: '16px', border: `1px solid ${COLORS.border}`,
             fontSize: '15px', fontFamily: 'inherit', outline: 'none', background: COLORS.surface,
             transition: 'all 0.2s ease', boxSizing: 'border-box'
         }
@@ -184,7 +238,8 @@ export function initPersonalLibrary() {
     popup.id = "library-popup";
     popup.classList.add("cw-module-window");
     Object.assign(popup.style, stylePopup, { 
-        right: "auto", left: "50%", width: "400px", height: "600px", 
+        right: "auto", left: "50%", width: "650px", height: "700px",
+        maxHeight: "90vh",
         transform: "translateX(-50%) scale(0.05)"
     });
 
@@ -265,10 +320,19 @@ export function initPersonalLibrary() {
     
     const saveBtn = document.createElement("button");
     saveBtn.textContent = "Salvar";
-    saveBtn.style.cssText = "padding:12px 32px; background:linear-gradient(135deg, #1a73e8, #0059c1); color:white; border:none; border-radius:14px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(26,115,232,0.3); transition: all 0.2s;";
+    saveBtn.style.cssText = "padding:12px 32px; background:linear-gradient(135deg, #1a73e8, #0059c1); color:white; border:none; border-radius:16px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(26,115,232,0.3); transition: all 0.2s;";
     saveBtn.onclick = handleSave;
     edFooter.appendChild(saveBtn);
     editorOverlay.appendChild(edFooter);
+
+    // Blocking Loading Overlay
+    const libLoadingOverlay = document.createElement("div");
+    libLoadingOverlay.className = "cw-lib-loading-overlay";
+    libLoadingOverlay.innerHTML = `
+        <div class="cw-lib-spinner"></div>
+        <div class="cw-lib-loading-text">Salvando...</div>
+    `;
+    editorOverlay.appendChild(libLoadingOverlay);
 
     container.appendChild(editorOverlay);
 
@@ -482,14 +546,28 @@ export function initPersonalLibrary() {
             payload.subject = subject;
         }
 
-        saveBtn.textContent = "Salvando...";
-        await SnippetService.save(payload);
-        
-        saveBtn.textContent = "Salvar";
-        closeEditor();
-        renderList();
-        showToast("Salvo com sucesso!");
-        SoundManager.playSuccess();
+        // Exibe overlay de carregamento bloqueante
+        libLoadingOverlay.classList.add('active');
+        saveBtn.disabled = true;
+
+        try {
+            await SnippetService.save(payload);
+
+            // Re-renderiza a lista automaticamente por trás da tela
+            renderList();
+
+            // Fecha o editor automaticamente
+            closeEditor();
+
+            showToast("Salvo com sucesso!");
+            SoundManager.playSuccess();
+        } catch (error) {
+            console.error("Erro ao salvar nota:", error);
+            showToast("Erro ao salvar nota.", { error: true });
+        } finally {
+            libLoadingOverlay.classList.remove('active');
+            saveBtn.disabled = false;
+        }
     }
 
     // --- HELPER DE UI ---
@@ -504,7 +582,7 @@ export function initPersonalLibrary() {
         let input;
         if (options.isRich) {
             const toolbar = document.createElement("div");
-            toolbar.style.cssText = "display:flex; gap:8px; margin-bottom:14px; background:rgba(255, 255, 255, 0.5); padding:8px; border-radius:14px; border:1px solid rgba(0,0,0,0.06); backdrop-filter: blur(10px); width: fit-content;";
+            toolbar.style.cssText = "display:flex; gap:8px; margin-bottom:16px; background:rgba(255, 255, 255, 0.5); padding:8px; border-radius:16px; border:1px solid rgba(0,0,0,0.06); backdrop-filter: blur(10px); width: fit-content;";
 
             toolbar.innerHTML = `
                 <button type="button" class="cw-toolbar-btn cw-tb-bold cw-tactile" title="Negrito">
@@ -609,7 +687,12 @@ export function initPersonalLibrary() {
     function toggleVisibility() {
         visible = !visible;
         toggleGenieAnimation(visible, popup, "cw-btn-library");
-        if(visible) renderList(); // Refresh ao abrir
+        if (visible) {
+            document.body.style.overflow = "hidden";
+            renderList(); // Refresh ao abrir
+        } else {
+            document.body.style.overflow = "";
+        }
     }
 
     return toggleVisibility;

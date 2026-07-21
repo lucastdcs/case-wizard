@@ -62,17 +62,19 @@ export const SnippetService = {
         SnippetService._saveToLocal(updatedList);
 
         // B. Envia para Nuvem (Async)
-        // Não esperamos o await para retornar true para a UI
-        DataService.saveSnippet(newSnippet, userEmail).then(success => {
+        try {
+            const success = await DataService.saveSnippet(newSnippet, userEmail);
             if (success) {
-                // Opcional: Marcar como "Sincronizado" internamente
                 console.log("☁️ Snippet salvo na nuvem!");
             } else {
                 console.warn("⚠️ Falha ao salvar na nuvem. Dados apenas locais.");
             }
+        } catch (e) {
+            console.error("Erro na nuvem:", e);
+        } finally {
             // Abre o cadeado 2 segundos após a nuvem responder
             setTimeout(() => { isMutating = false; }, 2000);
-        });
+        }
 
         return newSnippet;
     },
