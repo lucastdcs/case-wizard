@@ -57,6 +57,8 @@ export function initPersonalLibrary() {
                 border: 1px solid rgba(255, 255, 255, 0.4) !important;
                 position: relative;
                 z-index: 1;
+                border-radius: 24px !important;
+                box-sizing: border-box !important;
             }
             .cw-aura-card::before {
                 content: '';
@@ -67,6 +69,8 @@ export function initPersonalLibrary() {
                 z-index: -1;
                 opacity: 0;
                 transition: opacity 0.5s ease;
+                border-radius: inherit;
+                box-sizing: border-box;
             }
             .cw-aura-card:hover {
                 transform: translateY(-6px) scale(1.01);
@@ -169,7 +173,7 @@ export function initPersonalLibrary() {
             overflowY: 'auto',
             padding: '24px',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
             gap: '16px',
             alignContent: 'start'
         },
@@ -177,11 +181,12 @@ export function initPersonalLibrary() {
 
         // Card
         card: {
-            background: COLORS.surface, borderRadius: '24px', padding: '24px',
+            background: COLORS.surface, borderRadius: '24px', padding: '16px',
             border: `1px solid ${COLORS.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
             transition: 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)', cursor: 'default',
             position: 'relative',
-            display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+            display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+            boxSizing: 'border-box'
         },
         cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
         cardTitle: { fontSize: '15px', fontWeight: '600', color: COLORS.text, letterSpacing: '-0.01em' },
@@ -189,13 +194,14 @@ export function initPersonalLibrary() {
         
         // Actions
         cardActions: { 
-            display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '16px',
-            paddingTop: '16px', borderTop: `1px solid ${COLORS.border}`
+            display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px',
+            paddingTop: '16px', borderTop: `1px solid ${COLORS.border}`,
+            flexWrap: 'wrap'
         },
         actionBtn: { 
-            padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+            padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '500',
             cursor: 'pointer', border: 'none', background: 'transparent', transition: 'all 0.2s',
-            display: 'flex', alignItems: 'center', gap: '8px'
+            display: 'flex', alignItems: 'center', gap: '4px'
         },
 
         // Floating Action Button (FAB)
