@@ -5,7 +5,7 @@ import { showToast } from './utils.js';
 import { SoundManager } from './sound-manager.js';
 import { ADMINS } from './config.js';
 import { getAgentEmail } from './page-data.js';
-import { esperar } from './dom-utils.js';
+import { esperar, clamp } from './dom-utils.js';
 
 // --- 1. CONFIGURAÇÃO VISUAL ---
 const COLORS = {
@@ -601,7 +601,7 @@ export function initCommandCenter(actions) {
         targetLeft = screenW - rect.width - 24;
         pill.classList.remove("side-left"); pill.classList.add("side-right");
       }
-      let targetTop = Math.max(24, Math.min(rect.top, screenH - rect.height - 24));
+      let targetTop = clamp(rect.top, 24, screenH - rect.height - 24);
 
       setTimeout(() => {
         pill.style.setProperty('transition', 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), top 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');

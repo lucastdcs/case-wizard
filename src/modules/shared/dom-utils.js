@@ -28,3 +28,9 @@ export function objectToCss(obj) {
     if (!obj) return "";
     return Object.entries(obj).map(([k, v]) => `${k.replace(/[A-Z]/g, m => "-" + m.toLowerCase())}:${v}`).join(';');
 }
+
+// Prende um valor entre [min, max]. Usado para não deixar elementos
+// arrastáveis saírem da viewport (cada chamador mantém seu próprio padding).
+export function clamp(value, min, max) {
+    return Math.max(min, Math.min(value, max));
+}
