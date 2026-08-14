@@ -2,6 +2,7 @@
 
 import { captureNameWithMagic, getSmartGreeting } from "./page-data.js";
 import { SoundManager } from "./sound-manager.js";
+import { esperar } from "./dom-utils.js";
 
 // Variável global para controlar a pilha de janelas
 let highestZIndex = 10000;
@@ -685,8 +686,6 @@ export function triggerGoogleAnimation(element) {
 // =========================================
 // --- SPLASH SCREEN (Animation Engine) ---
 // =========================================
-
-const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function humanTypeWriter(element, text) {
   if (!element) return;

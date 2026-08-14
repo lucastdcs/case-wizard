@@ -1,15 +1,6 @@
 // src/modules/notes/notes-bridge.js
 import { showToast } from '../shared/utils.js';
-
-const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-function simularCliqueReal(elemento) {
-    if (!elemento) return;
-    const opts = { bubbles: true, cancelable: true, view: window };
-    ['mouseover', 'mousedown', 'mouseup', 'click'].forEach(evt => 
-        elemento.dispatchEvent(new MouseEvent(evt, opts))
-    );
-}
+import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
 
 export function copyHtmlToClipboard(html) {
     const container = document.createElement('div');

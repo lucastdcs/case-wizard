@@ -1,12 +1,11 @@
 // src/modules/shared/page-data.js
 import { fetchUserProfile } from './data-service.js';
+import { esperar } from './dom-utils.js';
 
 // Variável que guarda o nome para usar nos emails depois
 let cachedAgentName = "";
 let cachedAgentEmail = "";
 let cachedUserProfile = null;
-
-const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Garante que a página esteja no idioma original caso o recurso de tradução do CRM esteja ativo.

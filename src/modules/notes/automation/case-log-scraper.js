@@ -2,15 +2,7 @@
 import { showToast } from '../../shared/utils.js';
 import { SoundManager } from '../../shared/sound-manager.js';
 import { ensureOriginalLanguage } from '../../shared/page-data.js';
-
-const esperar = (ms) => new Promise(r => setTimeout(r, ms));
-
-function simularClique(el) {
-    if (!el) return;
-    ['mousedown', 'mouseup', 'click'].forEach(evt => 
-        el.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }))
-    );
-}
+import { esperar, simularClique } from '../../shared/dom-utils.js';
 
 const styleId = 'cw-automation-styles';
 if (!document.getElementById(styleId)) {
