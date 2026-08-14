@@ -2,7 +2,7 @@
 
 import { captureNameWithMagic, getSmartGreeting } from "./page-data.js";
 import { SoundManager } from "./sound-manager.js";
-import { esperar } from "./dom-utils.js";
+import { esperar, clamp } from "./dom-utils.js";
 
 // Variável global para controlar a pilha de janelas
 let highestZIndex = 10000;
@@ -354,13 +354,9 @@ function elementDrag(e) {
     const elW = element.offsetWidth;
     const elH = element.offsetHeight;
 
-    // Trava Horizontal
-    if (nextLeft < padding) nextLeft = padding; // Borda Esquerda
-    else if (nextLeft + elW > winW - padding) nextLeft = winW - elW - padding; // Borda Direita
-
-    // Trava Vertical
-    if (nextTop < padding) nextTop = padding; // Topo
-    else if (nextTop + elH > winH - padding) nextTop = winH - elH - padding; // Base
+    // Trava Horizontal e Vertical (clamp dentro dos limites da tela)
+    nextLeft = clamp(nextLeft, padding, winW - elW - padding);
+    nextTop = clamp(nextTop, padding, winH - elH - padding);
 
     // Aplica a posição travada
     element.style.top = nextTop + "px";
@@ -855,8 +851,8 @@ export function constrainToViewport(element) {
     let currentLeft = parseFloat(element.style.left) || rect.left;
     let currentTop = parseFloat(element.style.top) || rect.top;
 
-    let newLeft = Math.max(padding, Math.min(currentLeft, maxLeft));
-    let newTop = Math.max(padding, Math.min(currentTop, maxTop));
+    let newLeft = clamp(currentLeft, padding, maxLeft);
+    let newTop = clamp(currentTop, padding, maxTop);
 
     // 4. Aplica a correção APENAS se necessário (para não acionar reflow à toa)
     if (newLeft !== currentLeft || newTop !== currentTop) {
