@@ -5,6 +5,7 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { SnippetService } from "./snippet-service.js";
+import { objectToCss } from "../shared/dom-utils.js";
 
 export function initPersonalLibrary() {
     const CURRENT_VERSION = "v1.1";
@@ -678,10 +679,6 @@ export function initPersonalLibrary() {
 
         div.appendChild(input);
         return div;
-    }
-
-    function objectToCss(obj) {
-        return Object.entries(obj).map(([k, v]) => `${k.replace(/[A-Z]/g, m => "-" + m.toLowerCase())}:${v}`).join(';');
     }
 
     function toggleVisibility() {

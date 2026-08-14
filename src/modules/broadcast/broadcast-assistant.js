@@ -13,7 +13,8 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { BROADCAST_MESSAGES, setBroadcastMessages } from "./broadcast-data.js"; 
 import { DataService } from "../shared/data-service.js";
-import { getAgentEmail } from "../shared/page-data.js"; 
+import { getAgentEmail } from "../shared/page-data.js";
+import { objectToCss } from "../shared/dom-utils.js";
 import { ADMINS } from "../shared/config.js";
 
 // --- CONFIGURAÇÃO ---
@@ -172,11 +173,6 @@ export function initBroadcastAssistant() {
   };
 
   // --- PARSERS & UTILS ---
-  function objectToCss(obj) {
-      if (!obj) return ""; 
-      return Object.entries(obj).map(([k, v]) => `${k.replace(/[A-Z]/g, m => "-" + m.toLowerCase())}:${v}`).join(';');
-  }
-
   function parseMessageText(rawText) {
       if (!rawText || typeof rawText !== 'string') return ""; 
       let html = rawText;

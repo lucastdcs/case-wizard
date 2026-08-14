@@ -21,3 +21,10 @@ export function simularClique(el) {
         el.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }))
     );
 }
+
+// Converte um objeto de estilos JS (camelCase) numa string CSS inline
+// (kebab-case), para montar innerHTML com style="..." dinâmico.
+export function objectToCss(obj) {
+    if (!obj) return "";
+    return Object.entries(obj).map(([k, v]) => `${k.replace(/[A-Z]/g, m => "-" + m.toLowerCase())}:${v}`).join(';');
+}

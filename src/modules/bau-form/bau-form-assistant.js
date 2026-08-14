@@ -22,6 +22,16 @@ const ICONS = {
     edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`
 };
 
+function getStatusData(status) {
+    switch (status) {
+        case 'PENDING_TL_CREATION': return { text: "Aguardando TL", class: "status-yellow", aura: "status-yellow-aura" };
+        case 'CREATED': return { text: "Aprovado / Criado", class: "status-green", aura: "status-green-aura" };
+        case 'DISCARDED': return { text: "Descartado pelo TL", class: "status-red", aura: "status-red-aura" };
+        case 'CANCELED_BY_AGENT': return { text: "Cancelado", class: "status-gray", aura: "" };
+        default: return { text: status || "Pendente", class: "status-gray", aura: "" };
+    }
+}
+
 function createField(fieldConfig) {
     const wrapper = document.createElement('div');
     wrapper.className = 'bau-dynamic-input';
@@ -451,15 +461,6 @@ export function initBAUForm() {
     function openCaseDetails(c) {
         if (!c) return;
 
-        const getStatusData = (status) => {
-            switch(status) {
-                case 'PENDING_TL_CREATION': return { text: "Aguardando TL", class: "status-yellow" };
-                case 'CREATED': return { text: "Aprovado / Criado", class: "status-green" };
-                case 'DISCARDED': return { text: "Descartado pelo TL", class: "status-red" };
-                case 'CANCELED_BY_AGENT': return { text: "Cancelado", class: "status-gray" };
-                default: return { text: status || "Pendente", class: "status-gray" };
-            }
-        };
         const statusData = getStatusData(c.status);
 
         const copyToClipboard = (text, btn) => {
@@ -562,15 +563,6 @@ export function initBAUForm() {
     function renderCaseCard(c) {
         if (!c) return '';
 
-        const getStatusData = (status) => {
-            switch(status) {
-                case 'PENDING_TL_CREATION': return { text: "Aguardando TL", class: "status-yellow", aura: "status-yellow-aura" };
-                case 'CREATED': return { text: "Aprovado / Criado", class: "status-green", aura: "status-green-aura" };
-                case 'DISCARDED': return { text: "Descartado pelo TL", class: "status-red", aura: "status-red-aura" };
-                case 'CANCELED_BY_AGENT': return { text: "Cancelado", class: "status-gray", aura: "" };
-                default: return { text: status || "Pendente", class: "status-gray", aura: "" };
-            }
-        };
         const statusData = getStatusData(c?.status);
         const dateStr = formatToLocalUserDate(c?.date);
 
