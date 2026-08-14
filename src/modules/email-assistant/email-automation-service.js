@@ -1,11 +1,10 @@
 // src/modules/email/email-automation.js
 import { showToast } from '../shared/utils.js';
-import { getPageData } from '../shared/page-data.js'; 
+import { getPageData } from '../shared/page-data.js';
 import { getAgentName } from '../shared/page-data.js';
+import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
 
 // --- UTILITÁRIOS ---
-const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 function log(msg, type = 'info') {
     const styles = {
         info: 'background: #e8f0fe; color: #1a73e8; padding: 2px 5px; border-radius: 3px;',
@@ -14,14 +13,6 @@ function log(msg, type = 'info') {
         success: 'background: #e6f4ea; color: #137333; padding: 2px 5px; border-radius: 3px;'
     };
     console.log(`%c[EMAIL-BOT] ${msg}`, styles[type] || styles.info);
-}
-
-function simularCliqueReal(elemento) {
-    if (!elemento) return;
-    const opts = { bubbles: true, cancelable: true, view: window };
-    ['mouseover', 'mousedown', 'mouseup', 'click'].forEach(evt => 
-        elemento.dispatchEvent(new MouseEvent(evt, opts))
-    );
 }
 
 // --- UTILITÁRIO: POPUP DE ALERTA (Google Style) ---

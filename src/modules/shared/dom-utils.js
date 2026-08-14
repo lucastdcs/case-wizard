@@ -1,0 +1,23 @@
+// src/modules/shared/dom-utils.js
+// Pequenos helpers de DOM/timing reaproveitados por vários módulos
+// (extraídos de duplicatas idênticas espalhadas pelo projeto).
+
+export const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Simula uma sequência completa de clique (com hover) para elementos
+// que dependem de listeners nativos do Angular do CRM.
+export function simularCliqueReal(elemento) {
+    if (!elemento) return;
+    const opts = { bubbles: true, cancelable: true, view: window };
+    ['mouseover', 'mousedown', 'mouseup', 'click'].forEach(evt =>
+        elemento.dispatchEvent(new MouseEvent(evt, opts))
+    );
+}
+
+// Versão reduzida (sem mouseover) usada em fluxos onde o hover não é necessário.
+export function simularClique(el) {
+    if (!el) return;
+    ['mousedown', 'mouseup', 'click'].forEach(evt =>
+        el.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }))
+    );
+}

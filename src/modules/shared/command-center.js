@@ -5,6 +5,7 @@ import { showToast } from './utils.js';
 import { SoundManager } from './sound-manager.js';
 import { ADMINS } from './config.js';
 import { getAgentEmail } from './page-data.js';
+import { esperar } from './dom-utils.js';
 
 // --- 1. CONFIGURAÇÃO VISUAL ---
 const COLORS = {
@@ -25,8 +26,6 @@ const COLORS = {
   pink: "#F48FB1", // [NOVO] Cor para a Biblioteca
   gray: "#9AA0A6", // [NOVO] Cor para Configurações
 };
-
-const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // --- FUNÇÕES EXPORTADAS ---
 
