@@ -1,6 +1,15 @@
 import { TASKS_DB } from "../data/notes-data.js";
-import { screenshotRules } from "../data/screenshot-rules.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
+
+// Tarefas que, com Tag Support já usado, dispensam screenshot de evidência
+// (a menos que o agente force manualmente via "Incluir mesmo assim").
+function isTagSupportTarget(key) {
+  return key === 'ads_conversion_tracking' || key === 'ads_enhanced_conversions';
+}
+
+function shouldSuppressScreenshots(key, notesState) {
+  return notesState.tagSupportUsed && isTagSupportTarget(key) && !notesState.forcedScreenshots.has(key);
+}
 
 // --- 1. DESIGN SYSTEM & CONFIG ---
 const DS = {
@@ -72,8 +81,7 @@ const ICONS = {
 };
 
 export function createStepTasksComponent(onUpdateCallback, t, notesState) {
-  const selection = {}; 
-  let currentMode = "implementation";
+  const selection = {};
 
   // Subscribe to state changes to react to Tag Support
   if (notesState) {
@@ -529,6 +537,17 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
   const statusText = container.querySelector(".cw-status-text");
   const footerIcons = container.querySelector(".cw-footer-icons");
 
+  // Clicar no card/linha (fora do stepper) alterna a tarefa: liga com
+  // quantidade 1 se estava zerada, zera se já tinha alguma marcada. Usado
+  // tanto pelo card do Hero quanto pela linha da lista/busca.
+  function makeToggleHandler(key, task) {
+    return (e) => {
+      if (e.target.closest(".cw-step-btn")) return;
+      const current = selection[key] ? selection[key].count : 0;
+      updateTask(key, current > 0 ? -current : 1, task);
+    };
+  }
+
   // 1. Heroes
   heroTasks.forEach(([key, task]) => {
     const brand = getBrand(task.name);
@@ -551,11 +570,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             </div>
         `;
 
-    card.onclick = (e) => {
-      if (e.target.closest(".cw-step-btn")) return;
-      const current = selection[key] ? selection[key].count : 0;
-      updateTask(key, current > 0 ? -current : 1, task);
-    };
+    card.onclick = makeToggleHandler(key, task);
     card.querySelector(".minus").onclick = () => updateTask(key, -1, task);
     card.querySelector(".plus").onclick = () => updateTask(key, 1, task);
 
@@ -587,11 +602,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             </div>
         `;
 
-    row.onclick = (e) => {
-      if (e.target.closest(".cw-step-btn")) return;
-      const current = selection[key] ? selection[key].count : 0;
-      updateTask(key, current > 0 ? -current : 1, task);
-    };
+    row.onclick = makeToggleHandler(key, task);
     row.querySelector(".minus").onclick = () => updateTask(key, -1, task);
     row.querySelector(".plus").onclick = () => updateTask(key, 1, task);
 
@@ -649,8 +660,6 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
   }
 
   function updateUI() {
-    const tsUsed = notesState.tagSupportUsed;
-
     heroTasks.forEach(([key]) => {
       const card = heroGrid.querySelector(`#hero-${key}`);
       if (!card) return;
@@ -661,12 +670,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
         card.querySelector(".cw-step-val").textContent = sel.count;
         card.querySelector(".cw-step-val").style.color = card.dataset.color;
 
-        const isTsTarget = key === 'ads_conversion_tracking' || key === 'ads_enhanced_conversions';
-        if (tsUsed && isTsTarget && !notesState.forcedScreenshots.has(key)) {
-            card.classList.add("ts-success");
-        } else {
-            card.classList.remove("ts-success");
-        }
+        card.classList.toggle("ts-success", shouldSuppressScreenshots(key, notesState));
       } else {
         card.classList.remove("active");
         card.classList.remove("ts-success");
@@ -682,12 +686,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
         row.classList.add("selected");
         row.querySelector(".cw-step-val").textContent = sel.count;
 
-        const isTsTarget = key === 'ads_conversion_tracking' || key === 'ads_enhanced_conversions';
-        if (tsUsed && isTsTarget && !notesState.forcedScreenshots.has(key)) {
-            row.classList.add("ts-success");
-        } else {
-            row.classList.remove("ts-success");
-        }
+        row.classList.toggle("ts-success", shouldSuppressScreenshots(key, notesState));
       } else {
         row.classList.remove("selected");
         row.classList.remove("ts-success");
@@ -775,8 +774,6 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
       return;
     }
 
-    const tsUsed = notesState.tagSupportUsed;
-
     const disclaimer = document.createElement("div");
     disclaimer.className = "cw-info-banner";
     disclaimer.innerHTML = `
@@ -792,8 +789,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
       const taskCount = selection[key].count;
       const brand = selection[key].brand;
 
-      const isTsTarget = key === 'ads_conversion_tracking' || key === 'ads_enhanced_conversions';
-      const useTsLogic = tsUsed && isTsTarget && !notesState.forcedScreenshots.has(key);
+      const useTsLogic = shouldSuppressScreenshots(key, notesState);
 
       const mode = notesState.screenshotMode || "implementation";
       const screenshotLabels = task.screenshots?.[mode] || [];

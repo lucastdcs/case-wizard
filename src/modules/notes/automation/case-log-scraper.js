@@ -1,4 +1,4 @@
-// src/modules/automation/case-log-scraper.js
+// src/modules/notes/automation/case-log-scraper.js
 import { showToast } from '../../shared/utils.js';
 import { SoundManager } from '../../shared/sound-manager.js';
 import { ensureOriginalLanguage } from '../../shared/page-data.js';
@@ -81,8 +81,6 @@ function toggleLoadingOverlay(show) {
  * Executa a varredura no Case Log e insere o ID no input alvo.
  */
 export async function fetchAndInsertSpeakeasyId(targetInputId) {
-    console.log("🚀 Iniciando extração automática...");
-
     // Garante que a página esteja no idioma original antes de iniciar a extração
     await ensureOriginalLanguage();
 
@@ -158,7 +156,6 @@ export async function fetchAndInsertSpeakeasyId(targetInputId) {
                 const isExpanded = header.getAttribute('aria-expanded') === 'true';
                 
                 if (!isExpanded) {
-                    console.log("📂 Expandindo mensagem de chamada...", header);
                     if(inputWidget) inputWidget.placeholder = "Lendo mensagem...";
                     
                     simularClique(header);
