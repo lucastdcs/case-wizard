@@ -219,13 +219,13 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             }
             .cw-hero-card.active .cw-hero-stepper { opacity: 1; transform: translateY(0); pointer-events: auto; }
             
-            /* Botões do Stepper */
-            .cw-step-btn {
+            /* Botões do Stepper (Hero: circular) */
+            .cw-step-btn-hero {
                 width: 24px; height: 24px; border-radius: 50%; background: #F3F4F6;
                 color: ${DS.textMain}; display: flex; align-items: center; justify-content: center;
                 font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s;
             }
-            .cw-step-btn:hover { background: #E5E7EB; color: var(--hero-color); }            /* LIST SECTION */
+            .cw-step-btn-hero:hover { background: #E5E7EB; color: var(--hero-color); }            /* LIST SECTION */
             .cw-list-section { padding: 24px 24px; }
             .cw-search-input {
                 width: 100%; box-sizing: border-box; padding: 10px 12px 10px 36px;
@@ -276,13 +276,13 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             .cw-list-stepper { display: none; align-items: center; gap: 6px; }
             .cw-task-item.selected .cw-list-stepper { display: flex; }
 
-            /* BUTTONS */
-            .cw-step-btn {
+            /* BUTTONS (Lista: quadrado) */
+            .cw-step-btn-list {
                 width: 24px; height: 24px; border-radius: 6px; background: #F3F4F6;
                 color: ${DS.textMain}; display: flex; align-items: center; justify-content: center;
                 font-size: 14px; font-weight: bold; transition: background 0.1s; cursor: pointer;
             }
-            .cw-step-btn:hover { background: #E5E7EB; }
+            .cw-step-btn-list:hover { background: #E5E7EB; }
             .cw-step-val { font-size: 13px; font-weight: 600; min-width: 14px; text-align: center; color: ${DS.blue}; }
 
             /* STATUS BAR (Footer) */
@@ -301,12 +301,12 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             .cw-status-text { font-size: 13px; font-weight: 500; color: ${DS.textMain}; }
             
             .cw-footer-icons { display: flex; flex-direction: row-reverse; padding-left: 8px; }
-            .cw-mini-icon { 
+            .cw-mini-icon-status {
                 width: 24px; height: 24px; border-radius: 50%; border: 2px solid white;
                 color: white; display: flex; align-items: center; justify-content: center;
                 box-shadow: 0 1px 2px rgba(0,0,0,0.15); position: relative; margin-left: -8px;
             }
-            .cw-mini-icon svg { width: 12px; height: 12px; fill: currentColor; }
+            .cw-mini-icon-status svg { width: 12px; height: 12px; fill: currentColor; }
 
             @keyframes cwSlideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -437,14 +437,14 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             .cw-info-link:hover { text-decoration: underline; }
 
             /* FOOTER ICONS (Limpo & Original) */
-            .cw-mini-icon { 
-                width: 26px; height: 26px; border-radius: 50%; 
+            .cw-mini-icon-screenshot {
+                width: 26px; height: 26px; border-radius: 50%;
                 background: #FFFFFF; border: 1px solid #E0E0E0;
                 display: flex; align-items: center; justify-content: center;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05);
                 margin-left: -8px; position: relative; z-index: 1;
             }
-            .cw-mini-icon svg { width: 14px; height: 14px; } 
+            .cw-mini-icon-screenshot svg { width: 14px; height: 14px; }
 
             /* INPUTS (Campos de Link) */
             .cw-input-group { margin-bottom: 16px; position: relative; }
@@ -542,7 +542,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
   // tanto pelo card do Hero quanto pela linha da lista/busca.
   function makeToggleHandler(key, task) {
     return (e) => {
-      if (e.target.closest(".cw-step-btn")) return;
+      if (e.target.closest(".cw-step-btn-hero, .cw-step-btn-list")) return;
       const current = selection[key] ? selection[key].count : 0;
       updateTask(key, current > 0 ? -current : 1, task);
     };
@@ -564,9 +564,9 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             </div>
             
             <div class="cw-hero-stepper">
-                <div class="cw-step-btn minus">−</div>
+                <div class="cw-step-btn-hero minus">−</div>
                 <div class="cw-step-val">1</div>
-                <div class="cw-step-btn plus">+</div>
+                <div class="cw-step-btn-hero plus">+</div>
             </div>
         `;
 
@@ -596,9 +596,9 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 <div class="cw-task-label">${task.name}</div>
             </div>
             <div class="cw-list-stepper">
-                <div class="cw-step-btn minus">−</div>
+                <div class="cw-step-btn-list minus">−</div>
                 <div class="cw-step-val">1</div>
-                <div class="cw-step-btn plus">+</div>
+                <div class="cw-step-btn-list plus">+</div>
             </div>
         `;
 
@@ -715,7 +715,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
       footerIcons.innerHTML = "";
       iconStack.forEach((brand) => {
         const mini = document.createElement("div");
-        mini.className = "cw-mini-icon";
+        mini.className = "cw-mini-icon-status";
 
         mini.innerHTML = ICONS[brand.icon] || ICONS.default;
 
@@ -764,6 +764,14 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
 
 
   function renderScreenshots() {
+    // Preserva o que já foi digitado nos campos de link antes de reconstruir
+    // os cards do zero — trocar a seleção de uma tarefa não pode apagar o
+    // que o agente já preencheu em outra.
+    const savedFieldValues = {};
+    screenList.querySelectorAll(".cw-input-field").forEach((input) => {
+      savedFieldValues[input.id] = input.value;
+    });
+
     screenList.innerHTML = "";
     const keys = Object.keys(selection);
     let hasAny = false;
@@ -860,6 +868,11 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 pInput.id = `screen-${key}-${i}-${idx}`;
                 pInput.placeholder = "Cole o link aqui...";
                 pInput.setAttribute("autocomplete", "off");
+
+                if (savedFieldValues[pInput.id]) {
+                  pInput.value = savedFieldValues[pInput.id];
+                  if (pInput.value.trim().length > 5) pInput.classList.add("filled");
+                }
 
                 pInput.addEventListener("input", () => {
                   if (pInput.value.trim().length > 5) pInput.classList.add("filled");
