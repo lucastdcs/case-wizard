@@ -94,8 +94,35 @@ jobs:
       # SCRIPT_ID usado em src/modules/shared/data-service.js nesta branch —
       # se ele for rotacionado algum dia, atualize os dois em conjunto).
       # A implantação de produção (usada pela `main`) continua manual, de propósito.
+      #
+      # A descrição da implantação (com data/hora + commit) fica visível em
+      # "Gerenciar implantações" no editor do Apps Script, e o mesmo resumo
+      # também vai pro Job Summary desta execução do Actions — assim dá pra
+      # confirmar "a implantação de dev está na versão de tal commit, feita
+      # às tal hora" sem precisar adivinhar ou disparar uma automação manual
+      # só pra checar.
       - name: Promover implantação de desenvolvimento
         if: github.ref == 'refs/heads/refactor-structure'
+        env:
+          DEPLOYMENT_ID: "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg"
         run: |
           cd gas-backend
-          clasp deploy -i "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg" -d "Auto-deploy via GitHub Actions ($GITHUB_SHA)"
+
+          TIMESTAMP="$(date -u +'%Y-%m-%d %H:%M UTC')"
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          DESCRIPTION="Deploy automático - $TIMESTAMP - commit $SHORT_SHA"
+
+          DEPLOY_OUTPUT="$(clasp deploy -i "$DEPLOYMENT_ID" -d "$DESCRIPTION")"
+          echo "$DEPLOY_OUTPUT"
+
+          {
+            echo "## 🚀 Implantação de desenvolvimento atualizada"
+            echo ""
+            echo "- **Quando:** $TIMESTAMP"
+            echo "- **Commit:** \`$SHORT_SHA\` ($GITHUB_SHA)"
+            echo "- **Deployment ID:** \`$DEPLOYMENT_ID\`"
+            echo ""
+            echo '```'
+            echo "$DEPLOY_OUTPUT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
