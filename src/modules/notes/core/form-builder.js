@@ -1,5 +1,5 @@
 // src/modules/notes/core/form-builder.js
-import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, translations } from "../data/notes-data.js";
+import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, translations, optionalFields, requiredFields } from "../data/notes-data.js";
 import { fetchAndInsertSpeakeasyId } from "../automation/case-log-scraper.js";
 import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
@@ -18,8 +18,15 @@ export function buildDynamicForm(subStatusKey, container, state) {
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
         label.textContent = t(fieldName.toLowerCase()) !== fieldName.toLowerCase() ? t(fieldName.toLowerCase()) : fieldName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) + ":";
         Object.assign(label.style, { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", color: COLORS.textSub, marginBottom: "8px", marginTop: "24px", textTransform: "uppercase", letterSpacing: "0.5px" });
+        const isRequired = requiredFields.includes(fieldName);
         const labelText = document.createElement("span");
         labelText.textContent = label.textContent;
+        if (isRequired) {
+            const asterisk = document.createElement("span");
+            asterisk.textContent = " *";
+            asterisk.style.color = COLORS.error;
+            labelText.appendChild(asterisk);
+        }
         label.innerHTML = "";
         label.appendChild(labelText);
 
@@ -33,20 +40,22 @@ export function buildDynamicForm(subStatusKey, container, state) {
             label.appendChild(btnSearch);
         }
 
-        const btnDelete = document.createElement('button');
-        btnDelete.innerHTML = "✕";
-        btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
-        btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
-        btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
-        btnDelete.onclick = async (e) => {
-            e.preventDefault();
-            const confirmed = await confirmDialog(`Tem certeza que deseja remover o campo "${labelText.textContent.replace(':', '')}"?`);
-            if (confirmed) {
-                state.removeField(fieldName);
-                buildDynamicForm(subStatusKey, container, state);
-            }
-        };
-        label.appendChild(btnDelete);
+        if (!isRequired) {
+            const btnDelete = document.createElement('button');
+            btnDelete.innerHTML = "✕";
+            btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
+            btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
+            btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
+            btnDelete.onclick = async (e) => {
+                e.preventDefault();
+                const confirmed = await confirmDialog(`Tem certeza que deseja remover o campo "${labelText.textContent.replace(':', '')}"?`);
+                if (confirmed) {
+                    state.removeField(fieldName);
+                    buildDynamicForm(subStatusKey, container, state);
+                }
+            };
+            label.appendChild(btnDelete);
+        }
         let field;
         if (textareaListFields.includes(fieldName)) {
             field = document.createElement("textarea"); field.classList.add("bullet-textarea", "cw-textarea");
@@ -81,5 +90,38 @@ export function buildDynamicForm(subStatusKey, container, state) {
 
         container.appendChild(consentLabel);
         container.appendChild(consentSelect);
+    }
+
+    // Campos opcionais do template (ver optionalFields em data/notes-data.js)
+    // que ainda não estão ativos: ficam escondidos por padrão pra reduzir a
+    // carga cognitiva, mas continuam a 1 clique de distância.
+    const hiddenOptional = (templateData.templateFields || []).filter(
+        (fieldName) => optionalFields.includes(fieldName) && !state.activeFields.includes(fieldName)
+    );
+    if (hiddenOptional.length > 0) {
+        const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
+        const addWrap = document.createElement("div");
+        Object.assign(addWrap.style, { display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "24px" });
+
+        hiddenOptional.forEach((fieldName) => {
+            const rawLabel = t(fieldName.toLowerCase()) !== fieldName.toLowerCase()
+                ? t(fieldName.toLowerCase())
+                : fieldName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) + ":";
+
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.textContent = `+ ${rawLabel.replace(/:$/, '')}`;
+            chip.style.cssText = `font-size: 12px; font-weight: 600; color: ${COLORS.primary}; background-color: ${COLORS.primaryBg}; border: none; border-radius: ${RADIUS.pill}; padding: 6px 14px; cursor: pointer; transition: all 0.2s ${EASE};`;
+            chip.onmouseenter = () => chip.style.backgroundColor = "#d2e3fc";
+            chip.onmouseleave = () => chip.style.backgroundColor = COLORS.primaryBg;
+            chip.onclick = (e) => {
+                e.preventDefault();
+                state.addFieldAt(fieldName, state.activeFields.length);
+                buildDynamicForm(subStatusKey, container, state);
+            };
+            addWrap.appendChild(chip);
+        });
+
+        container.appendChild(addWrap);
     }
 }

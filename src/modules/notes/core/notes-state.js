@@ -7,7 +7,6 @@ export class NotesState {
         this.visible = false; this.isSplitView = false; this.currentStatus = "";
         this.currentSubStatus = ""; this.formData = {}; this.activeTasks = [];
         this.screenshotsData = {}; this.tagSupportState = null; this.isDirty = false;
-        this.excludedFields = new Set();
         this.activeFields = [];
         const savedFavorites = typeof localStorage !== 'undefined' ? localStorage.getItem('cw-notes-favorites') : null;
         this.favorites = new Set(JSON.parse(savedFavorites || '[]'));
@@ -68,17 +67,6 @@ export class NotesState {
     toggleForcedScreenshot(taskKey, val) {
         if (val) this.forcedScreenshots.add(taskKey);
         else this.forcedScreenshots.delete(taskKey);
-        this.isDirty = true;
-        this.notify();
-    }
-    setExcludedFields(fieldsArray) {
-        this.excludedFields = new Set(fieldsArray);
-        this.isDirty = true;
-        this.notify();
-    }
-    toggleFieldExclusion(fieldId, isExcluded) {
-        if (isExcluded) this.excludedFields.add(fieldId);
-        else this.excludedFields.delete(fieldId);
         this.isDirty = true;
         this.notify();
     }

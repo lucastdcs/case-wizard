@@ -328,6 +328,18 @@ export const TASKS_DB = {
     }
 };
 
+// Campos presentes em quase todo template (17 dos 18) mas de baixo valor por
+// padrão — em vez de aparecer sempre pra todo mundo, ficam escondidos até o
+// agente clicar pra adicionar (buildDynamicForm em core/form-builder.js).
+// Não é por-template de propósito: são universais o bastante pra um único
+// corte servir em qualquer substatus que os contenha.
+export const optionalFields = ['GTM_GA4_VERIFICADO', 'MULTIPLE_CIDS'];
+
+// Campo obrigatório em todo template (presente nos 18) — o motivo/narrativa
+// do caso. Validado em handleGenerate() (notes-assistant.js) e marcado
+// visualmente em core/form-builder.js.
+export const requiredFields = ['REASON_COMMENTS'];
+
 // ==================================================================
 //               NOVA ESTRUTURA: SUBSTATUS_TEMPLATES
 // ==================================================================

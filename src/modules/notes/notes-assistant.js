@@ -20,7 +20,9 @@ import {
     translations,
     scenarioSnippets,
     textareaListFields,
-    TASKS_DB
+    TASKS_DB,
+    optionalFields,
+    requiredFields
 } from "./data/notes-data.js";
 import {
     copyHtmlToClipboard,
@@ -461,8 +463,12 @@ export function initCaseNotesAssistant() {
         actionsSection.style.display = "grid";
 
         // 1. Initialize Active Fields from Template
+        // Campos em optionalFields começam escondidos (baixo valor por
+        // padrão) — o agente adiciona pelo "+ adicionar campo" se precisar.
         if (templateData && templateData.templateFields) {
-            notesState.setActiveFields(templateData.templateFields);
+            notesState.setActiveFields(
+                templateData.templateFields.filter((f) => !optionalFields.includes(f))
+            );
         }
 
         // 2. Adjust for Case Type (LM/BAU) and Portugal Case
@@ -491,13 +497,6 @@ export function initCaseNotesAssistant() {
 
         const mode = subStatusKey === "SO_Education_Only" ? "education" : "implementation";
         notesState.setScreenshotMode(mode);
-
-        // Auto-hide ON_CALL for LM
-        if (notesState.currentCaseType === "lm") {
-            notesState.toggleFieldExclusion("field-ON_CALL", true);
-        } else {
-            notesState.toggleFieldExclusion("field-ON_CALL", false);
-        }
 
         stepTasks.updateSubStatus(subStatusKey);
         updateTagSupport();
@@ -684,6 +683,23 @@ export function initCaseNotesAssistant() {
             showToast(t('select_substatus'), { error: true });
             return;
         }
+
+        const missingRequired = requiredFields.filter((fieldName) => {
+            if (!notesState.activeFields.includes(fieldName)) return false;
+            const value = notesState.formData[`field-${fieldName}`];
+            return !value || !value.trim();
+        });
+        if (missingRequired.length > 0) {
+            showToast(`Preencha o campo obrigatório antes de gerar: ${t(missingRequired[0].toLowerCase())}`, { error: true });
+            return;
+        }
+
+        const templateData = SUBSTATUS_TEMPLATES[notesState.currentSubStatus];
+        if (templateData?.requiresTasks && stepTasks.getCheckedElements().length === 0) {
+            showToast("Selecione ao menos uma tarefa antes de gerar a nota.", { error: true });
+            return;
+        }
+
         const html = generateOutputHtml(notesState, stepTasks, tagSupport, getEvidenceData());
 
         copyHtmlToClipboard(html);
@@ -809,7 +825,6 @@ export function initCaseNotesAssistant() {
             consent: notesState.consent,
             tagSupportUsed: notesState.tagSupportUsed,
             forcedScreenshots: [...notesState.forcedScreenshots],
-            excludedFields: [...notesState.excludedFields],
             activeFields: notesState.activeFields,
             status: notesState.currentStatus,
             subStatus: notesState.currentSubStatus,
@@ -829,7 +844,6 @@ export function initCaseNotesAssistant() {
         notesState.setCaseType(draft.currentCaseType || "bau");
         notesState.setPortugalCase(draft.isPortugalCase || false);
         notesState.setConsent(draft.consent || false);
-        notesState.setExcludedFields(draft.excludedFields || []);
         if (draft.activeFields) {
             notesState.setActiveFields(draft.activeFields);
         }
