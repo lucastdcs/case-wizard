@@ -35,6 +35,14 @@ export function initGlobalStylesAndFont() {
             --cw-ease-elastic: cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
+        /* RESET DE BOX MODEL (Escopado só ao app, nunca ao CRM host) */
+        /* Sem isso, qualquer elemento com width + padding "estoura" o container,
+           porque o padding some do cálculo em vez de ser incluído na largura. */
+        .cw-pill, .cw-pill *,
+        .cw-module-window, .cw-module-window * {
+            box-sizing: border-box;
+        }
+
         /* Rollbar e Ajustes Globais */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
