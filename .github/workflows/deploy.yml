@@ -85,3 +85,17 @@ jobs:
         run: |
           cd gas-backend
           clasp push -f
+
+      # --- PROMOÇÃO AUTOMÁTICA DA IMPLANTAÇÃO (Apenas na refactor-structure) ---
+      # `clasp push` só atualiza o HEAD do projeto (visível no editor); a URL
+      # de produção (/exec) fica travada numa versão até alguém promover uma
+      # implantação existente pra uma versão nova. Aqui automatizamos essa
+      # promoção só pro deployment de desenvolvimento (o ID abaixo é o mesmo
+      # SCRIPT_ID usado em src/modules/shared/data-service.js nesta branch —
+      # se ele for rotacionado algum dia, atualize os dois em conjunto).
+      # A implantação de produção (usada pela `main`) continua manual, de propósito.
+      - name: Promover implantação de desenvolvimento
+        if: github.ref == 'refs/heads/refactor-structure'
+        run: |
+          cd gas-backend
+          clasp deploy -i "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg" -d "Auto-deploy via GitHub Actions ($GITHUB_SHA)"
