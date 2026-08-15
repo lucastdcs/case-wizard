@@ -146,7 +146,7 @@ O front-end injeta em cima do CRM real, então não existe um "localhost" tradic
 3.  Rode `npm run build` (gera `dist/bundle.js`, minificado) ou `npm run dev` (gera `dist/bundle-dev.js`, sem minificação). O GitHub Actions roda o build automaticamente a cada push — veja `docs/WORKFLOW.md`.
 4.  Use o **Bookmarklet de Dev** para testar as alterações em tempo real no ambiente de produção.
 
-**Backend (Google Apps Script):** o código do backend vive em `gas-backend/` e é sincronizado com o projeto Apps Script via [`clasp`](https://github.com/google/clasp) (`clasp push`/`clasp pull`), separado do pipeline de build do front-end.
+**Backend (Google Apps Script):** o código do backend vive em `gas-backend/` e é sincronizado com o projeto Apps Script via [`clasp`](https://github.com/google/clasp). O `clasp push` já é automático — roda no mesmo `.github/workflows/deploy.yml`, num job separado do build do front-end, a cada push em `main` ou `refactor-structure`. A **promoção da implantação de desenvolvimento** (o que torna o código novo realmente ativo na URL usada pelo bookmarklet de dev) também é automática, só na `refactor-structure`. A implantação de **produção** (usada pela `main`) continua sendo promovida manualmente, de propósito.
 
 -----
 
