@@ -5,337 +5,382 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { SnippetService } from "./snippet-service.js";
-import { objectToCss } from "../shared/dom-utils.js";
+
+// --- ÍCONES (Material Symbols, estilo outline) ---
+const ICONS = {
+    tabs: {
+        general: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`,
+        note: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"></path><path d="M15 3v6h6"></path><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="15" y2="17"></line></svg>`,
+        email: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`
+    },
+    search: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
+    clear: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+    copy: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+    more: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg>`,
+    edit: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
+    delete: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
+    add: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
+    back: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
+    bold: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>`,
+    italic: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>`,
+    code: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
+    image: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`,
+    media: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`,
+    empty: `<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>`
+};
+
+const TABS = [
+    { id: 'general', label: 'Geral', icon: ICONS.tabs.general },
+    { id: 'note', label: 'Notas', icon: ICONS.tabs.note },
+    { id: 'email', label: 'Emails', icon: ICONS.tabs.email }
+];
+
+// --- FOLHA DE ESTILOS DEDICADA (Material 3 + Glass) ---
+// Substitui o antigo padrão de montar style="..." via objectToCss() elemento a
+// elemento: além de mais fácil de manter, evita a classe de bug de vendor-prefix
+// que esse padrão tinha (ex: "webkitLineClamp" virava "webkit-line-clamp" sem o
+// hífen inicial, uma propriedade CSS inválida — por isso a prévia dos cards nunca
+// truncava direito).
+function injectStyles() {
+    if (document.getElementById('cw-lib-styles-v2')) return;
+    const style = document.createElement('style');
+    style.id = 'cw-lib-styles-v2';
+    style.textContent = `
+        #library-popup {
+            width: 620px !important;
+            max-width: 95vw !important;
+            height: 680px !important;
+            max-height: 90vh !important;
+        }
+
+        .cw-lib-container {
+            display: flex; flex-direction: column; height: 100%;
+            background: linear-gradient(180deg, #FAFBFC 0%, #F1F3F9 100%);
+            font-family: 'Google Sans', Roboto, sans-serif;
+            position: relative; overflow: hidden;
+        }
+
+        /* --- TOOLBAR: BUSCA + ABAS SEGMENTADAS --- */
+        .cw-lib-toolbar { padding: 16px 20px 12px 20px; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; }
+
+        .cw-lib-search-wrap { position: relative; }
+        .cw-lib-search-icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            color: #80868b; pointer-events: none; display: flex;
+        }
+        .cw-lib-search {
+            width: 100%; box-sizing: border-box; height: 40px;
+            padding: 0 38px 0 40px; border-radius: 12px; border: 1px solid transparent;
+            background: rgba(255,255,255,0.75); backdrop-filter: blur(8px);
+            font-size: 13.5px; font-family: inherit; color: #202124; outline: none;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .cw-lib-search::placeholder { color: #9aa0a6; }
+        .cw-lib-search:focus { background: #fff; border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.14); }
+        .cw-lib-search-clear {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            width: 22px; height: 22px; border-radius: 50%; display: none;
+            align-items: center; justify-content: center; color: #80868b; cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .cw-lib-search-clear:hover { background: rgba(0,0,0,0.06); }
+        .cw-lib-search-clear.visible { display: flex; }
+
+        .cw-lib-tabs {
+            display: flex; gap: 4px; padding: 4px;
+            background: rgba(0,0,0,0.045); border-radius: 100px;
+        }
+        .cw-lib-tab {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 8px 10px; border-radius: 100px; cursor: pointer; user-select: none;
+            font-size: 12.5px; font-weight: 500; color: #5f6368;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .cw-lib-tab svg { flex-shrink: 0; }
+        .cw-lib-tab:hover { color: #202124; }
+        .cw-lib-tab.active { background: #fff; color: #1a73e8; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+
+        /* --- GRID DE CARDS --- */
+        .cw-lib-grid {
+            flex: 1; overflow-y: auto; padding: 4px 20px 96px 20px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px;
+            align-content: start;
+        }
+
+        .cw-lib-card {
+            background: rgba(255,255,255,0.68); backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 18px; padding: 16px 16px 12px 16px;
+            position: relative; overflow: hidden; isolation: isolate;
+            box-shadow: 0 1px 3px rgba(60,64,67,0.08);
+            transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s ease;
+            display: flex; flex-direction: column;
+        }
+        .cw-lib-card::before {
+            content: ''; position: absolute; inset: 0; z-index: -1;
+            background: linear-gradient(135deg, rgba(138,180,248,0.16), rgba(197,138,249,0.16), rgba(242,139,130,0.16));
+            background-size: 300% 300%; opacity: 0; transition: opacity 0.4s ease;
+        }
+        .cw-lib-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(60,64,67,0.14); border-color: rgba(255,255,255,0.9); }
+        .cw-lib-card:hover::before { opacity: 1; animation: cwLibAura 8s ease infinite; }
+        .cw-lib-card.is-code { border-left: 3px solid #1a73e8; }
+        @keyframes cwLibAura { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        .cw-lib-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+        .cw-lib-card-title { font-size: 14px; font-weight: 600; color: #202124; letter-spacing: -0.01em; line-height: 1.35; }
+        .cw-lib-card-badges { display: flex; gap: 4px; flex-shrink: 0; }
+        .cw-lib-badge { font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; padding: 2px 6px; border-radius: 5px; white-space: nowrap; }
+        .cw-lib-badge.code { background: rgba(26,115,232,0.1); color: #1a73e8; font-family: 'Roboto Mono', monospace; }
+        .cw-lib-badge.template { background: rgba(0,0,0,0.05); color: #5f6368; }
+
+        .cw-lib-media-tag {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: rgba(26,115,232,0.1); color: #1a73e8;
+            padding: 2px 8px; border-radius: 8px; font-size: 10.5px; font-weight: 600;
+            margin-bottom: 6px; width: fit-content;
+        }
+
+        .cw-lib-card-preview {
+            font-size: 12.5px; color: #5f6368; line-height: 1.55; flex: 1;
+            display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+            word-break: break-word;
+        }
+        .cw-lib-card-preview.code { font-family: 'Roboto Mono', monospace; font-size: 11.5px; background: rgba(0,0,0,0.03); padding: 8px 10px; border-radius: 8px; }
+
+        .cw-lib-card-foot { display: flex; align-items: center; justify-content: flex-end; gap: 2px; margin-top: 10px; }
+        .cw-lib-icon-btn {
+            width: 30px; height: 30px; border-radius: 50%; border: none; background: transparent;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; color: #5f6368;
+            transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+            position: relative;
+        }
+        .cw-lib-icon-btn:hover { background: rgba(26,115,232,0.1); color: #1a73e8; }
+        .cw-lib-icon-btn:active { transform: scale(0.92); }
+        .cw-lib-icon-btn.danger:hover { background: rgba(217,48,37,0.1); color: #d93025; }
+
+        /* --- MENU DE OVERFLOW (Editar / Excluir) --- */
+        .cw-lib-menu {
+            position: absolute; top: calc(100% + 4px); right: 0; z-index: 30;
+            background: rgba(255,255,255,0.96); backdrop-filter: blur(16px);
+            border: 1px solid rgba(0,0,0,0.06); border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.16); padding: 6px; min-width: 140px;
+            opacity: 0; transform: translateY(-4px) scale(0.96); pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease; transform-origin: top right;
+        }
+        .cw-lib-menu.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+        .cw-lib-menu-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px;
+            font-size: 13px; font-weight: 500; color: #3c4043; cursor: pointer; transition: background 0.12s ease;
+        }
+        .cw-lib-menu-item:hover { background: rgba(0,0,0,0.05); }
+        .cw-lib-menu-item.danger { color: #d93025; }
+        .cw-lib-menu-item.danger:hover { background: rgba(217,48,37,0.08); }
+
+        /* --- ESTADO VAZIO --- */
+        .cw-lib-empty {
+            grid-column: 1 / -1; padding: 56px 24px; text-align: center;
+            display: flex; flex-direction: column; align-items: center; gap: 12px; color: #80868b;
+        }
+        .cw-lib-empty-title { font-weight: 600; font-size: 15px; color: #3c4043; }
+        .cw-lib-empty-sub { font-size: 13px; max-width: 260px; line-height: 1.5; }
+
+        /* --- FAB --- */
+        .cw-lib-fab {
+            position: absolute; bottom: 24px; right: 24px; z-index: 15;
+            width: 56px; height: 56px; border-radius: 18px;
+            background: linear-gradient(135deg, #1a73e8, #0059c1); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 20px rgba(26,115,232,0.42); cursor: pointer;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+        }
+        .cw-lib-fab:hover { transform: scale(1.08) rotate(90deg); box-shadow: 0 10px 28px rgba(26,115,232,0.5); }
+        .cw-lib-fab:active { transform: scale(0.94) rotate(90deg); }
+
+        /* --- SHEET DO EDITOR (Apple glass, translúcido de verdade) --- */
+        .cw-lib-sheet {
+            position: absolute; inset: 0; z-index: 25;
+            background: rgba(250,251,252,0.6); backdrop-filter: blur(36px) saturate(180%); -webkit-backdrop-filter: blur(36px) saturate(180%);
+            transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; flex-direction: column;
+        }
+        .cw-lib-sheet.open { transform: translateY(0); }
+        .cw-lib-sheet-handle { display: flex; justify-content: center; padding: 10px 0 4px 0; flex-shrink: 0; }
+        .cw-lib-sheet-handle::after { content: ''; width: 36px; height: 4px; border-radius: 3px; background: rgba(0,0,0,0.15); }
+        .cw-lib-sheet-head {
+            padding: 8px 20px 16px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+        .cw-lib-sheet-back {
+            width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: #5f6368; cursor: pointer; transition: background 0.15s ease; flex-shrink: 0;
+        }
+        .cw-lib-sheet-back:hover { background: rgba(0,0,0,0.06); }
+        .cw-lib-sheet-title { font-weight: 700; font-size: 16px; color: #202124; flex: 1; }
+        .cw-lib-sheet-body { flex: 1; overflow-y: auto; padding: 20px; }
+        .cw-lib-sheet-foot { padding: 16px 20px; border-top: 1px solid rgba(0,0,0,0.06); display: flex; justify-content: flex-end; }
+
+        .cw-lib-field { margin-bottom: 20px; }
+        .cw-lib-label { display: block; font-size: 12px; font-weight: 700; color: #5f6368; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.4px; }
+        .cw-lib-input {
+            width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.1); font-size: 14px; font-family: inherit; outline: none;
+            background: #fff; transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .cw-lib-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.14); }
+
+        .cw-lib-toolbar-mini { display: flex; gap: 4px; margin-bottom: 12px; background: rgba(255,255,255,0.6); padding: 6px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06); width: fit-content; }
+        .cw-lib-tb-btn {
+            width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; color: #474747;
+            transition: all 0.15s ease;
+        }
+        .cw-lib-tb-btn:hover { background: rgba(0,0,0,0.05); color: #1a73e8; }
+        .cw-lib-tb-btn.active { background: rgba(26,115,232,0.12); color: #1a73e8; }
+
+        .cw-lib-editable {
+            min-height: 180px; max-height: 340px; overflow-y: auto; white-space: pre-wrap;
+            line-height: 1.65; outline: none;
+        }
+
+        .cw-lib-save-btn {
+            padding: 11px 28px; border-radius: 100px; border: none; cursor: pointer;
+            background: linear-gradient(135deg, #1a73e8, #0059c1); color: #fff; font-weight: 600; font-size: 14px;
+            box-shadow: 0 4px 14px rgba(26,115,232,0.35); transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+        }
+        .cw-lib-save-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(26,115,232,0.44); }
+        .cw-lib-save-btn:active { transform: scale(0.97); }
+        .cw-lib-save-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+        .cw-lib-loading {
+            position: absolute; inset: 0; z-index: 40; background: rgba(255,255,255,0.7); backdrop-filter: blur(6px);
+            display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+        }
+        .cw-lib-loading.active { display: flex; }
+        .cw-lib-spinner { width: 34px; height: 34px; border: 3px solid rgba(26,115,232,0.15); border-top-color: #1a73e8; border-radius: 50%; animation: cwLibSpin 0.8s linear infinite; }
+        @keyframes cwLibSpin { to { transform: rotate(360deg); } }
+        .cw-lib-loading-text { font-size: 13px; font-weight: 600; color: #1a73e8; }
+
+        .cw-tactile { transition: transform 0.15s ease; }
+        .cw-tactile:active { transform: scale(0.94); }
+    `;
+    document.head.appendChild(style);
+}
 
 export function initPersonalLibrary() {
-    const CURRENT_VERSION = "v1.1";
+    const CURRENT_VERSION = "v2.0";
     let visible = false;
-    let currentTab = 'general'; // general, note, email
-    let editorOverlay = null;
+    let currentTab = 'general';
+    let searchTerm = "";
     let currentEditingId = null;
+    let openMenuCard = null; // Referência ao card com o menu de overflow aberto (só um por vez)
 
-    // --- GEMINI ASSETS ---
-    const GEMINI_ASSETS = {
-        tabs: {
-            general: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`,
-            note: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"></path><path d="M15 3v6h6"></path><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="15" y2="17"></line></svg>`,
-            email: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0 1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`
-        },
-        actions: {
-            copy: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
-            edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
-            delete: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`,
-            add: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`
-        },
-        toolbar: {
-            bold: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>`,
-            italic: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>`,
-            code: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
-            image: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`
-        },
-        empty: `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(26, 115, 232, 0.2)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>`,
-        media: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`
-    };
-
-    // --- INJEÇÃO DE ESTILOS GLOBAIS (GEMINI AURA) ---
-    if (!document.getElementById('cw-lib-styles')) {
-        const style = document.createElement('style');
-        style.id = 'cw-lib-styles';
-        style.innerHTML = `
-            @keyframes geminiAura {
-                0% { background-position: 0% 50%; }
-                50% { background-position: 100% 50%; }
-                100% { background-position: 0% 50%; }
-            }
-            @keyframes shimmer {
-                0% { background-position: -200% 0; }
-                100% { background-position: 200% 0; }
-            }
-            .cw-aura-card {
-                transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-                background: rgba(255, 255, 255, 0.7) !important;
-                backdrop-filter: blur(16px) !important;
-                border: 1px solid rgba(255, 255, 255, 0.4) !important;
-                position: relative;
-                z-index: 1;
-            }
-            .cw-aura-card::before {
-                content: '';
-                position: absolute;
-                top: 0; left: 0; right: 0; bottom: 0;
-                background: linear-gradient(135deg, rgba(138, 180, 248, 0.15), rgba(197, 138, 249, 0.15), rgba(242, 139, 130, 0.15));
-                background-size: 400% 400%;
-                z-index: -1;
-                opacity: 0;
-                transition: opacity 0.5s ease;
-            }
-            .cw-aura-card:hover {
-                transform: translateY(-6px) scale(1.01);
-                box-shadow: 0 20px 40px rgba(0,0,0,0.08) !important;
-                border-color: rgba(255, 255, 255, 0.8) !important;
-            }
-            .cw-aura-card:hover::before {
-                opacity: 1;
-                animation: geminiAura 8s ease infinite;
-            }
-            .cw-tactile { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-            .cw-tactile:active { transform: scale(0.96) !important; }
-            .cw-toolbar-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s; color: #474747; }
-            .cw-toolbar-btn:hover { background: rgba(0,0,0,0.04); color: #1a73e8; }
-            .cw-toolbar-btn.active { background: rgba(26, 115, 232, 0.1); color: #1a73e8; border-color: rgba(26, 115, 232, 0.2); }
-            .cw-shimmer {
-                background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
-                background-size: 200% 100%;
-                animation: shimmer 1.5s infinite;
-            }
-            #library-popup {
-                width: 650px !important;
-                max-width: 95vw !important;
-                height: 700px !important;
-                max-height: 90vh !important;
-            }
-            .cw-lib-loading-overlay {
-                position: absolute;
-                top: 0; left: 0; right: 0; bottom: 0;
-                background: rgba(255, 255, 255, 0.7);
-                backdrop-filter: blur(8px);
-                z-index: 1000;
-                display: none;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                border-radius: 16px;
-                animation: cwLibFadeIn 0.3s ease;
-            }
-            .cw-lib-loading-overlay.active {
-                display: flex;
-            }
-            .cw-lib-spinner {
-                width: 40px;
-                height: 40px;
-                border: 3px solid rgba(26, 115, 232, 0.1);
-                border-top-color: #1a73e8;
-                border-radius: 50%;
-                animation: cwLibRotate 0.8s linear infinite;
-                margin-bottom: 12px;
-            }
-            .cw-lib-loading-text {
-                font-size: 14px;
-                font-weight: 600;
-                color: #1a73e8;
-                letter-spacing: 0.3px;
-            }
-            @keyframes cwLibRotate {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            @keyframes cwLibFadeIn {
-                from { opacity: 0; transform: translateY(10px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    // --- DESIGN SYSTEM ---
-    const COLORS = {
-        bg: "linear-gradient(180deg, #F8FAFD 0%, #EEF2F8 100%)",
-        surface: "rgba(255, 255, 255, 0.85)",
-        glass: "rgba(255, 255, 255, 0.7)",
-        primary: "#1a73e8",
-        primaryLight: "rgba(26, 115, 232, 0.1)",
-        text: "#1f1f1f",
-        textSub: "#474747",
-        border: "rgba(0, 0, 0, 0.06)",
-        danger: "#d93025"
-    };
-
-    const styles = {
-        container: { display: 'flex', flexDirection: 'column', height: '100%', background: COLORS.bg, fontFamily: "'Google Sans', Roboto, sans-serif" },
-        
-        // Tabs
-        tabHeader: { display: 'flex', padding: '16px 24px 0 24px', background: 'transparent', borderBottom: `1px solid ${COLORS.border}`, gap: '8px' },
-        tabBtn: { 
-            flex: 1, padding: '16px 16px', textAlign: 'center', cursor: 'pointer',
-            fontSize: '14px', fontWeight: '500', color: COLORS.textSub,
-            borderBottom: '3px solid transparent', transition: 'all 0.3s ease', userSelect: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-            borderRadius: '12px 12px 0 0'
-        },
-        tabActive: { color: COLORS.primary, borderBottomColor: COLORS.primary, fontWeight: '600', background: 'rgba(26, 115, 232, 0.04)' },
-
-        // List
-        listContainer: {
-            flex: 1,
-            overflowY: 'auto',
-            padding: '24px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-            gap: '16px',
-            alignContent: 'start'
-        },
-        emptyState: { padding: '64px 24px', textAlign: 'center', color: COLORS.textSub, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', gridColumn: '1 / -1' },
-
-        // Card
-        card: {
-            background: COLORS.surface, borderRadius: '24px', padding: '24px',
-            border: `1px solid ${COLORS.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-            transition: 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)', cursor: 'default',
-            position: 'relative',
-            display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
-        },
-        cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
-        cardTitle: { fontSize: '15px', fontWeight: '600', color: COLORS.text, letterSpacing: '-0.01em' },
-        cardPreview: { fontSize: '13px', color: COLORS.textSub, lineHeight: '1.6', display: '-webkit-box', webkitLineClamp: '3', webkitBoxOrient: 'vertical', overflow: 'hidden' },
-        
-        // Actions
-        cardActions: { 
-            display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '16px',
-            paddingTop: '16px', borderTop: `1px solid ${COLORS.border}`
-        },
-        actionBtn: { 
-            padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
-            cursor: 'pointer', border: 'none', background: 'transparent', transition: 'all 0.2s',
-            display: 'flex', alignItems: 'center', gap: '8px'
-        },
-
-        // Floating Action Button (FAB)
-        fab: {
-            position: 'absolute', bottom: '32px', right: '32px',
-            width: '64px', height: '64px', borderRadius: '20px',
-            background: `linear-gradient(135deg, ${COLORS.primary}, #0059c1)`, color: '#FFF',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 24px rgba(26, 115, 232, 0.4)',
-            cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 10
-        },
-
-        // Editor Overlay
-        editorOverlay: {
-            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-            background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(30px) saturate(180%)',
-            webkitBackdropFilter: 'blur(30px) saturate(180%)',
-            zIndex: 20, transform: 'translateY(100%)',
-            transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
-            display: 'flex', flexDirection: 'column'
-        },
-        editorHeader: {
-            padding: '24px 32px', background: 'transparent', borderBottom: `1px solid ${COLORS.border}`,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-        },
-        editorBody: { flex: 1, padding: '32px', overflowY: 'auto' },
-        
-        // Inputs
-        inputGroup: { marginBottom: '24px' },
-        label: { display: 'block', fontSize: '13px', fontWeight: '600', color: COLORS.textSub, marginBottom: '8px', letterSpacing: '0.02em' },
-        input: {
-            width: '100%', padding: '16px 16px', borderRadius: '16px', border: `1px solid ${COLORS.border}`,
-            fontSize: '15px', fontFamily: 'inherit', outline: 'none', background: COLORS.surface,
-            transition: 'all 0.2s ease', boxSizing: 'border-box'
-        }
-    };
+    injectStyles();
 
     // --- POPUP SETUP ---
     const popup = document.createElement("div");
     popup.id = "library-popup";
     popup.classList.add("cw-module-window");
-    Object.assign(popup.style, stylePopup, { 
-        right: "auto", left: "50%", width: "650px", height: "700px",
+    Object.assign(popup.style, stylePopup, {
+        right: "auto", left: "50%", width: "620px", height: "680px",
         maxHeight: "90vh",
         transform: "translateX(-50%) scale(0.05)"
     });
 
     const animRefs = { popup };
     const header = createStandardHeader(
-        popup, "Minha Biblioteca", CURRENT_VERSION, 
-        "Gerencie seus snippets, textos e templates.", 
+        popup, "Minha Biblioteca", CURRENT_VERSION,
+        "Gerencie seus snippets, textos e templates.",
         animRefs, () => toggleVisibility()
     );
     popup.appendChild(header);
 
     const container = document.createElement("div");
-    Object.assign(container.style, styles.container);
+    container.className = "cw-lib-container";
     popup.appendChild(container);
 
-    // --- TABS ---
-    const tabHeader = document.createElement("div");
-    Object.assign(tabHeader.style, styles.tabHeader);
+    // --- TOOLBAR: BUSCA + ABAS ---
+    const toolbar = document.createElement("div");
+    toolbar.className = "cw-lib-toolbar";
 
-    const tabs = [
-        { id: 'general', label: 'Geral', icon: GEMINI_ASSETS.tabs.general },
-        { id: 'note', label: 'Notas', icon: GEMINI_ASSETS.tabs.note },
-        { id: 'email', label: 'Emails', icon: GEMINI_ASSETS.tabs.email }
-    ];
+    const searchWrap = document.createElement("div");
+    searchWrap.className = "cw-lib-search-wrap";
+    const searchIcon = document.createElement("div");
+    searchIcon.className = "cw-lib-search-icon";
+    searchIcon.innerHTML = ICONS.search;
+    const searchInput = document.createElement("input");
+    searchInput.className = "cw-lib-search no-drag";
+    searchInput.placeholder = "Buscar por título ou conteúdo...";
+    searchInput.type = "text";
+    const searchClear = document.createElement("div");
+    searchClear.className = "cw-lib-search-clear cw-tactile";
+    searchClear.innerHTML = ICONS.clear;
+    searchWrap.append(searchIcon, searchInput, searchClear);
 
-    tabs.forEach(t => {
+    const tabsRow = document.createElement("div");
+    tabsRow.className = "cw-lib-tabs";
+    TABS.forEach(t => {
         const btn = document.createElement("div");
-        btn.innerHTML = `${t.icon} <span>${t.label}</span>`;
+        btn.className = "cw-lib-tab" + (t.id === currentTab ? " active" : "");
         btn.id = `lib-tab-${t.id}`;
-        Object.assign(btn.style, styles.tabBtn);
-        if(t.id === currentTab) Object.assign(btn.style, styles.tabActive);
-        
+        btn.innerHTML = `${t.icon}<span>${t.label}</span>`;
         btn.onmouseenter = () => SoundManager.playHover();
         btn.onclick = () => switchTab(t.id);
-        tabHeader.appendChild(btn);
+        tabsRow.appendChild(btn);
     });
-    container.appendChild(tabHeader);
 
-    // --- LISTA ---
-    const listContainer = document.createElement("div");
-    Object.assign(listContainer.style, styles.listContainer);
-    container.appendChild(listContainer);
+    toolbar.append(searchWrap, tabsRow);
+    container.appendChild(toolbar);
 
-    // --- FAB (Add Button) ---
+    // --- GRID ---
+    const grid = document.createElement("div");
+    grid.className = "cw-lib-grid";
+    container.appendChild(grid);
+
+    // --- FAB ---
     const fab = document.createElement("div");
-    fab.className = "cw-fab cw-tactile";
-    Object.assign(fab.style, styles.fab);
-    fab.innerHTML = GEMINI_ASSETS.actions.add;
-    fab.onmouseenter = () => { fab.style.transform = "scale(1.1)"; fab.style.boxShadow = "0 12px 32px rgba(26, 115, 232, 0.5)"; };
-    fab.onmouseleave = () => { fab.style.transform = "scale(1)"; fab.style.boxShadow = "0 8px 24px rgba(26, 115, 232, 0.4)"; };
+    fab.className = "cw-lib-fab cw-tactile";
+    fab.title = "Novo item";
+    fab.innerHTML = ICONS.add;
     fab.onclick = () => openEditor();
     container.appendChild(fab);
 
-    // --- EDITOR OVERLAY ---
-    editorOverlay = document.createElement("div");
-    Object.assign(editorOverlay.style, styles.editorOverlay);
-    
-    // Header do Editor
-    const edHead = document.createElement("div");
-    Object.assign(edHead.style, styles.editorHeader);
-    edHead.innerHTML = `<span style="font-weight:700; font-size:16px;">Novo Item</span>`;
-    
-    const closeEd = document.createElement("button");
-    closeEd.innerHTML = "Cancelar";
-    closeEd.style.cssText = "background:none; border:none; color:#5f6368; font-weight:600; cursor:pointer;";
-    closeEd.onclick = closeEditor;
-    edHead.appendChild(closeEd);
-    editorOverlay.appendChild(edHead);
+    // --- SHEET DO EDITOR ---
+    const sheet = document.createElement("div");
+    sheet.className = "cw-lib-sheet";
 
-    // Body do Editor
-    const edBody = document.createElement("div");
-    Object.assign(edBody.style, styles.editorBody);
-    editorOverlay.appendChild(edBody);
+    const sheetHandle = document.createElement("div");
+    sheetHandle.className = "cw-lib-sheet-handle";
 
-    // Footer do Editor (Save)
-    const edFooter = document.createElement("div");
-    edFooter.style.cssText = "padding:24px 32px; border-top:1px solid rgba(0,0,0,0.06); background:transparent; display:flex; justify-content:flex-end;";
-    
+    const sheetHead = document.createElement("div");
+    sheetHead.className = "cw-lib-sheet-head";
+    const sheetBack = document.createElement("div");
+    sheetBack.className = "cw-lib-sheet-back no-drag";
+    sheetBack.innerHTML = ICONS.back;
+    sheetBack.title = "Cancelar";
+    sheetBack.onclick = closeEditor;
+    const sheetTitle = document.createElement("span");
+    sheetTitle.className = "cw-lib-sheet-title";
+    sheetTitle.textContent = "Novo Item";
+    sheetHead.append(sheetBack, sheetTitle);
+
+    const sheetBody = document.createElement("div");
+    sheetBody.className = "cw-lib-sheet-body";
+
+    const sheetFoot = document.createElement("div");
+    sheetFoot.className = "cw-lib-sheet-foot";
     const saveBtn = document.createElement("button");
+    saveBtn.className = "cw-lib-save-btn no-drag";
     saveBtn.textContent = "Salvar";
-    saveBtn.style.cssText = "padding:12px 32px; background:linear-gradient(135deg, #1a73e8, #0059c1); color:white; border:none; border-radius:16px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(26,115,232,0.3); transition: all 0.2s;";
     saveBtn.onclick = handleSave;
-    edFooter.appendChild(saveBtn);
-    editorOverlay.appendChild(edFooter);
+    sheetFoot.appendChild(saveBtn);
 
-    // Blocking Loading Overlay
-    const libLoadingOverlay = document.createElement("div");
-    libLoadingOverlay.className = "cw-lib-loading-overlay";
-    libLoadingOverlay.innerHTML = `
-        <div class="cw-lib-spinner"></div>
-        <div class="cw-lib-loading-text">Salvando...</div>
-    `;
-    editorOverlay.appendChild(libLoadingOverlay);
+    const loadingOverlay = document.createElement("div");
+    loadingOverlay.className = "cw-lib-loading";
+    loadingOverlay.innerHTML = `<div class="cw-lib-spinner"></div><div class="cw-lib-loading-text">Salvando...</div>`;
 
-    container.appendChild(editorOverlay);
+    sheet.append(sheetHandle, sheetHead, sheetBody, sheetFoot, loadingOverlay);
+    container.appendChild(sheet);
 
     // --- RESIZE HANDLE ---
     const resizeHandle = document.createElement("div");
@@ -346,349 +391,349 @@ export function initPersonalLibrary() {
 
     document.body.appendChild(popup);
 
+    // Fecha qualquer menu de card aberto ao clicar fora dele
+    document.addEventListener('mousedown', (e) => {
+        if (openMenuCard && !openMenuCard.contains(e.target)) closeCardMenu();
+    });
+
     // --- LÓGICA ---
 
     function switchTab(id) {
         SoundManager.playClick();
         currentTab = id;
-        
-        // Atualiza UI Tabs
-        tabs.forEach(t => {
-            const btn = document.getElementById(`lib-tab-${t.id}`);
-            if (t.id === id) {
-                Object.assign(btn.style, styles.tabActive);
-            } else {
-                Object.assign(btn.style, styles.tabBtn);
-            }
+        TABS.forEach(t => {
+            document.getElementById(`lib-tab-${t.id}`).classList.toggle('active', t.id === id);
         });
-
         renderList();
     }
 
+    function closeCardMenu() {
+        if (openMenuCard) {
+            const menu = openMenuCard.querySelector('.cw-lib-menu');
+            if (menu) menu.classList.remove('open');
+            openMenuCard = null;
+        }
+    }
+
+    function matchesSearch(item, term) {
+        if (!term) return true;
+        const haystack = `${item.title} ${item.content}`.toLowerCase();
+        return haystack.includes(term);
+    }
+
     function renderList() {
-        listContainer.innerHTML = "";
-        const items = SnippetService.getSnippets(currentTab);
+        closeCardMenu();
+        grid.innerHTML = "";
+        const term = searchTerm.trim().toLowerCase();
+        const items = SnippetService.getSnippets(currentTab).filter(item => matchesSearch(item, term));
 
         if (items.length === 0) {
-            listContainer.innerHTML = `
-                <div style="${objectToCss(styles.emptyState)}">
-                    <div style="opacity:0.8;">${GEMINI_ASSETS.empty}</div>
-                    <div style="font-weight:600; font-size:16px; color:${COLORS.text};">Nada aqui ainda.</div>
-                    <div style="font-size:14px; opacity:0.7;">Clique no botão de adicionar para começar sua coleção.</div>
-                </div>
+            const empty = document.createElement("div");
+            empty.className = "cw-lib-empty";
+            const isSearching = term.length > 0;
+            empty.innerHTML = `
+                <div style="opacity:0.5;">${ICONS.empty}</div>
+                <div class="cw-lib-empty-title">${isSearching ? 'Nada encontrado' : 'Nada aqui ainda'}</div>
+                <div class="cw-lib-empty-sub">${isSearching ? `Nenhum item bate com "${searchTerm.trim()}" nesta aba.` : 'Clique no + para começar sua coleção.'}</div>
             `;
+            grid.appendChild(empty);
             return;
         }
 
-        items.forEach(item => {
-            const card = document.createElement("div");
-            card.className = "cw-aura-card";
-            Object.assign(card.style, styles.card);
+        items.forEach(item => grid.appendChild(createCard(item)));
+    }
 
-            if (item.isCode) {
-                card.style.borderLeft = `4px solid ${COLORS.primary}`;
-                card.style.background = "rgba(26, 115, 232, 0.02)";
-            }
+    function createCard(item) {
+        const card = document.createElement("div");
+        card.className = "cw-lib-card" + (item.isCode ? " is-code" : "");
 
-            // Sanitização básica ou processamento para preview
-            let previewContent = item.content;
-            let mediaIndicator = "";
-            if (item.isRich) {
-                const temp = document.createElement('div');
-                temp.innerHTML = item.content;
-                const hasImages = temp.querySelector('img');
-                previewContent = temp.innerText.substring(0, 150) + (temp.innerText.length > 150 ? '...' : '');
-                if (hasImages) {
-                    mediaIndicator = `<span style="display:inline-flex; align-items:center; background:rgba(26, 115, 232, 0.1); color:#1a73e8; padding:2px 8px; border-radius:10px; font-size:11px; margin-bottom:8px; font-weight:600;">${GEMINI_ASSETS.media} Media</span>`;
-                }
-            }
+        let previewContent = item.content;
+        let mediaTag = "";
+        if (item.isRich) {
+            const temp = document.createElement('div');
+            temp.innerHTML = item.content;
+            const hasImages = !!temp.querySelector('img');
+            previewContent = temp.innerText.substring(0, 200);
+            if (hasImages) mediaTag = `<span class="cw-lib-media-tag">${ICONS.media} Mídia</span>`;
+        }
 
-            card.innerHTML = `
-                <div style="${objectToCss(styles.cardHeader)}">
-                    <div style="${objectToCss(styles.cardTitle)}">${item.title}</div>
-                    <div style="display:flex; gap:6px;">
-                        ${item.isCode ? `<span style="font-size:10px; background:rgba(0,0,0,0.05); color:#474747; padding:3px 8px; border-radius:6px; font-family:monospace; font-weight:700;">CODE</span>` : ''}
-                        ${currentTab === 'email' ? `<span style="font-size:10px; background:rgba(26, 115, 232, 0.1); color:#1a73e8; padding:3px 8px; border-radius:6px; font-weight:700;">TEMPLATE</span>` : ''}
-                    </div>
+        const badges = [
+            item.isCode ? `<span class="cw-lib-badge code">CODE</span>` : '',
+            currentTab === 'email' ? `<span class="cw-lib-badge template">TEMPLATE</span>` : ''
+        ].join('');
+
+        card.innerHTML = `
+            <div class="cw-lib-card-head">
+                <div class="cw-lib-card-title">${escapeHtml(item.title)}</div>
+                <div class="cw-lib-card-badges">${badges}</div>
+            </div>
+            ${mediaTag}
+            <div class="cw-lib-card-preview${item.isCode ? ' code' : ''}">${escapeHtml(previewContent)}</div>
+            <div class="cw-lib-card-foot">
+                <div class="cw-lib-icon-btn cw-act-copy cw-tactile" title="Copiar">${ICONS.copy}</div>
+                <div class="cw-lib-icon-btn cw-act-more cw-tactile" title="Mais ações">${ICONS.more}</div>
+                <div class="cw-lib-menu">
+                    <div class="cw-lib-menu-item cw-act-edit">${ICONS.edit} Editar</div>
+                    <div class="cw-lib-menu-item danger cw-act-del">${ICONS.delete} Excluir</div>
                 </div>
-                ${mediaIndicator}
-                <div style="${objectToCss(styles.cardPreview)}; ${item.isCode ? "font-family:'Roboto Mono', monospace; font-size:12px; background:rgba(0,0,0,0.02); padding:12px; border-radius:12px;" : ""}">${previewContent}</div>
-                <div style="${objectToCss(styles.cardActions)}">
-                    <button class="cw-act-copy cw-tactile" title="Copiar" style="${objectToCss(styles.actionBtn)}; color:#1a73e8;">
-                        ${GEMINI_ASSETS.actions.copy}
-                        <span>Copiar</span>
-                    </button>
-                    <button class="cw-act-edit cw-tactile" title="Editar" style="${objectToCss(styles.actionBtn)}; color:#474747;">
-                        ${GEMINI_ASSETS.actions.edit}
-                        <span>Editar</span>
-                    </button>
-                    <button class="cw-act-del cw-tactile" title="Excluir" style="${objectToCss(styles.actionBtn)}; color:#d93025;">
-                        ${GEMINI_ASSETS.actions.delete}
-                        <span>Excluir</span>
-                    </button>
-                </div>
-            `;
+            </div>
+        `;
 
-            // Listeners
-            card.onmouseenter = () => { 
-                SoundManager.playHover();
-                // O efeito de lift agora é via classe CSS cw-lib-card
-            };
+        card.querySelector('.cw-act-copy').onclick = (e) => {
+            e.stopPropagation();
+            SoundManager.playClick();
+            copyItem(item);
+        };
 
-            card.querySelector('.cw-act-copy').onclick = (e) => {
-                e.stopPropagation();
-                SoundManager.playClick();
+        const moreBtn = card.querySelector('.cw-act-more');
+        const menu = card.querySelector('.cw-lib-menu');
+        moreBtn.onclick = (e) => {
+            e.stopPropagation();
+            SoundManager.playClick();
+            const isOpen = menu.classList.contains('open');
+            closeCardMenu();
+            if (!isOpen) {
+                menu.classList.add('open');
+                openMenuCard = card;
+            }
+        };
 
-                if (item.isRich) {
-                    const blob = new Blob([item.content], { type: 'text/html' });
-                    const plainText = document.createElement('div');
-                    plainText.style.whiteSpace = 'pre-wrap'; // Mantém formatação de código
-                    plainText.innerHTML = item.content;
-                    const blobText = new Blob([plainText.innerText], { type: 'text/plain' });
-                    const data = [new ClipboardItem({ 'text/html': blob, 'text/plain': blobText })];
-                    navigator.clipboard.write(data);
-                } else {
-                    navigator.clipboard.writeText(item.content);
-                }
+        card.querySelector('.cw-act-edit').onclick = (e) => {
+            e.stopPropagation();
+            SoundManager.playClick();
+            closeCardMenu();
+            openEditor(item);
+        };
 
-                showToast("Copiado!");
-            };
+        card.querySelector('.cw-act-del').onclick = async (e) => {
+            e.stopPropagation();
+            SoundManager.playClick();
+            closeCardMenu();
+            const confirmed = await confirmDialog(`Excluir "${item.title}"?`);
+            if (confirmed) {
+                SnippetService.delete(item.id);
+                renderList();
+                showToast("Item excluído.");
+            }
+        };
 
-            card.querySelector('.cw-act-edit').onclick = (e) => {
-                e.stopPropagation();
-                SoundManager.playClick();
-                openEditor(item);
-            };
+        return card;
+    }
 
-            card.querySelector('.cw-act-del').onclick = async (e) => {
-                e.stopPropagation();
-                SoundManager.playClick();
-                const confirmed = await confirmDialog("Excluir este item?");
-                if(confirmed) {
-                    SnippetService.delete(item.id);
-                    renderList();
-                    showToast("Item excluído.");
-                }
-            };
-
-            listContainer.appendChild(card);
-        });
+    function copyItem(item) {
+        if (item.isRich) {
+            const blob = new Blob([item.content], { type: 'text/html' });
+            const plainText = document.createElement('div');
+            plainText.innerHTML = item.content;
+            const blobText = new Blob([plainText.innerText], { type: 'text/plain' });
+            navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': blobText })]);
+        } else {
+            navigator.clipboard.writeText(item.content);
+        }
+        showToast("Copiado!");
     }
 
     function openEditor(item = null) {
         currentEditingId = item ? item.id : null;
-        
-        // Limpa e Reconstrói o Form baseado na Tab
-        edBody.innerHTML = "";
-        
-        // Campo Título (Comum a todos)
-        edBody.appendChild(createInputBlock("title", "Título / Nome", item ? item.title : ""));
+        sheetBody.innerHTML = "";
 
-        // Campos Específicos
+        sheetBody.appendChild(createField("title", "Título / Nome", item ? item.title : ""));
+
         if (currentTab === 'email') {
-            edBody.appendChild(createInputBlock("subject", "Assunto do Email", item ? item.subject : ""));
+            sheetBody.appendChild(createField("subject", "Assunto do Email", item ? item.subject : ""));
         }
 
-        // Campo Conteúdo (Comum, mas label varia)
         let contentLabel = "Conteúdo";
         if (currentTab === 'email') contentLabel = "Corpo do Email (HTML)";
-        if (currentTab === 'note') contentLabel = "Texto da Nota (Reason)";
-        
-        edBody.appendChild(createInputBlock("content", contentLabel, item ? item.content : "", {
+        if (currentTab === 'note') contentLabel = "Texto da Nota";
+
+        sheetBody.appendChild(createField("content", contentLabel, item ? item.content : "", {
             isRich: true,
             isCode: item ? item.isCode : false
         }));
 
-        // Feedback visual da abertura
-        edHead.querySelector("span").textContent = item ? "Editar Item" : "Novo Item";
-        editorOverlay.style.transform = "translateY(0)";
-        
+        sheetTitle.textContent = item ? "Editar Item" : "Novo Item";
+        saveBtn.textContent = item ? "Salvar Alterações" : "Salvar";
+        sheet.classList.add('open');
+
         setTimeout(() => {
-            const firstInput = edBody.querySelector("input");
-            if(firstInput) firstInput.focus();
-        }, 300);
+            const firstInput = sheetBody.querySelector("input");
+            if (firstInput) firstInput.focus();
+        }, 350);
     }
 
     function closeEditor() {
-        editorOverlay.style.transform = "translateY(100%)";
-        // Pequeno delay para resetar estado
-        setTimeout(() => currentEditingId = null, 300);
+        SoundManager.playSwoosh();
+        sheet.classList.remove('open');
+        setTimeout(() => { currentEditingId = null; }, 300);
     }
 
     async function handleSave() {
-        const titleInput = edBody.querySelector("#cw-inp-title");
-        const contentInput = edBody.querySelector("#cw-inp-content");
-        
+        const titleInput = sheetBody.querySelector("#cw-lib-inp-title");
+        const contentInput = sheetBody.querySelector("#cw-lib-inp-content");
+
         const title = titleInput.value.trim();
-        // Se for contenteditable, pegamos o innerHTML
         const content = contentInput.contentEditable === "true" ? contentInput.innerHTML : contentInput.value.trim();
         const isCode = contentInput.getAttribute('data-is-code') === 'true';
 
-        if (!title || (!content || content === '<br>')) {
+        if (!title || !content || content === '<br>') {
             showToast("Preencha título e conteúdo.", { error: true });
             return;
         }
 
         const payload = {
-            id: currentEditingId, // Se null, cria novo
+            id: currentEditingId,
             type: currentTab,
-            title: title,
-            content: content,
-            isCode: isCode,
+            title, content, isCode,
             isRich: contentInput.contentEditable === "true"
         };
 
         if (currentTab === 'email') {
-            const subject = edBody.querySelector("#cw-inp-subject").value.trim();
-            if(!subject) {
+            const subject = sheetBody.querySelector("#cw-lib-inp-subject").value.trim();
+            if (!subject) {
                 showToast("Assunto é obrigatório para emails.", { error: true });
                 return;
             }
             payload.subject = subject;
         }
 
-        // Exibe overlay de carregamento bloqueante
-        libLoadingOverlay.classList.add('active');
+        loadingOverlay.classList.add('active');
         saveBtn.disabled = true;
 
         try {
-            await SnippetService.save(payload);
-
-            // Re-renderiza a lista automaticamente por trás da tela
+            const saved = await SnippetService.save(payload);
             renderList();
-
-            // Fecha o editor automaticamente
             closeEditor();
 
-            showToast("Salvo com sucesso!");
-            SoundManager.playSuccess();
+            if (saved && saved.synced === false) {
+                showToast("Salvo localmente — sem conexão com a nuvem no momento.", { error: true });
+            } else {
+                showToast("Salvo e sincronizado!");
+                SoundManager.playSuccess();
+            }
         } catch (error) {
-            console.error("Erro ao salvar nota:", error);
-            showToast("Erro ao salvar nota.", { error: true });
+            console.error("Erro ao salvar item da biblioteca:", error);
+            showToast("Erro ao salvar item.", { error: true });
         } finally {
-            libLoadingOverlay.classList.remove('active');
+            loadingOverlay.classList.remove('active');
             saveBtn.disabled = false;
         }
     }
 
-    // --- HELPER DE UI ---
-    function createInputBlock(id, labelText, value, options = {}) {
-        const div = document.createElement("div");
-        Object.assign(div.style, styles.inputGroup);
-        
+    function createField(id, labelText, value, options = {}) {
+        const wrap = document.createElement("div");
+        wrap.className = "cw-lib-field";
+
         const label = document.createElement("label");
+        label.className = "cw-lib-label";
         label.textContent = labelText;
-        Object.assign(label.style, styles.label);
-        
+        wrap.appendChild(label);
+
         let input;
         if (options.isRich) {
-            const toolbar = document.createElement("div");
-            toolbar.style.cssText = "display:flex; gap:8px; margin-bottom:16px; background:rgba(255, 255, 255, 0.5); padding:8px; border-radius:16px; border:1px solid rgba(0,0,0,0.06); backdrop-filter: blur(10px); width: fit-content;";
-
-            toolbar.innerHTML = `
-                <button type="button" class="cw-toolbar-btn cw-tb-bold cw-tactile" title="Negrito">
-                    ${GEMINI_ASSETS.toolbar.bold}
-                </button>
-                <button type="button" class="cw-toolbar-btn cw-tb-italic cw-tactile" title="Itálico">
-                    ${GEMINI_ASSETS.toolbar.italic}
-                </button>
-                <button type="button" class="cw-toolbar-btn cw-tb-code cw-tactile" title="Formato Código">
-                    ${GEMINI_ASSETS.toolbar.code}
-                </button>
-                <button type="button" class="cw-toolbar-btn cw-tb-img cw-tactile" title="Inserir Imagem">
-                    ${GEMINI_ASSETS.toolbar.image}
-                </button>
+            const mini = document.createElement("div");
+            mini.className = "cw-lib-toolbar-mini";
+            mini.innerHTML = `
+                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-bold" title="Negrito">${ICONS.bold}</button>
+                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-italic" title="Itálico">${ICONS.italic}</button>
+                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-code" title="Formato código">${ICONS.code}</button>
+                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-img" title="Inserir imagem">${ICONS.image}</button>
             `;
 
             input = document.createElement("div");
+            input.className = "cw-lib-input cw-lib-editable";
             input.contentEditable = "true";
-            Object.assign(input.style, styles.input, {
-                minHeight: '180px', maxHeight: '350px', overflowY: 'auto',
-                whiteSpace: 'pre-wrap', lineHeight: '1.6', outline: 'none'
-            });
             input.innerHTML = value || "";
 
             if (options.isCode) {
                 input.style.fontFamily = "'Roboto Mono', monospace";
-                input.style.backgroundColor = "#F8F9FA";
+                input.style.background = "#F8F9FA";
                 input.setAttribute('data-is-code', 'true');
+                mini.querySelector('.cw-tb-code').classList.add('active');
             }
 
-            toolbar.querySelectorAll('.cw-toolbar-btn').forEach(btn => {
+            mini.querySelectorAll('.cw-lib-tb-btn').forEach(btn => {
                 btn.onmouseenter = () => SoundManager.playHover();
                 btn.onmousedown = () => SoundManager.playClick();
             });
 
-            toolbar.querySelector('.cw-tb-bold').onclick = () => { document.execCommand('bold'); input.focus(); };
-            toolbar.querySelector('.cw-tb-italic').onclick = () => { document.execCommand('italic'); input.focus(); };
-            toolbar.querySelector('.cw-tb-code').onclick = (e) => {
-                 const isCode = input.getAttribute('data-is-code') === 'true';
-                 const newState = !isCode;
-                 input.setAttribute('data-is-code', newState);
-                 input.style.fontFamily = newState ? "'Roboto Mono', monospace" : "inherit";
-                 input.style.backgroundColor = newState ? "rgba(0, 122, 255, 0.03)" : COLORS.surface;
-
-                 if (newState) {
-                     e.currentTarget.classList.add('active');
-                 } else {
-                     e.currentTarget.classList.remove('active');
-                 }
-                 input.focus();
+            mini.querySelector('.cw-tb-bold').onclick = () => { document.execCommand('bold'); input.focus(); };
+            mini.querySelector('.cw-tb-italic').onclick = () => { document.execCommand('italic'); input.focus(); };
+            mini.querySelector('.cw-tb-code').onclick = (e) => {
+                const isCode = input.getAttribute('data-is-code') === 'true';
+                const newState = !isCode;
+                input.setAttribute('data-is-code', String(newState));
+                input.style.fontFamily = newState ? "'Roboto Mono', monospace" : "inherit";
+                input.style.background = newState ? "#F8F9FA" : "#fff";
+                e.currentTarget.classList.toggle('active', newState);
+                input.focus();
             };
-
-            toolbar.querySelector('.cw-tb-img').onclick = async () => {
+            mini.querySelector('.cw-tb-img').onclick = async () => {
                 const url = await promptDialog("Cole a URL da imagem:");
-                if(url) {
+                if (url) {
                     document.execCommand('insertImage', false, url);
-                    const imgs = input.querySelectorAll('img');
-                    imgs.forEach(img => { img.style.maxWidth = '100%'; img.style.borderRadius = '8px'; });
+                    input.querySelectorAll('img').forEach(img => {
+                        img.style.maxWidth = '100%';
+                        img.style.borderRadius = '8px';
+                    });
                 }
             };
-
             input.onpaste = (e) => {
-                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-                for (const item of items) {
-                    if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const clipItems = (e.clipboardData || e.originalEvent.clipboardData).items;
+                for (const clipItem of clipItems) {
+                    if (clipItem.kind === 'file' && clipItem.type.startsWith('image/')) {
                         e.preventDefault();
-                        const blob = item.getAsFile();
                         const reader = new FileReader();
-                        reader.onload = (event) => {
-                            const img = `<img src="${event.target.result}" style="max-width:100%; border-radius:8px; margin:8px 0; display:block;">`;
-                            document.execCommand('insertHTML', false, img);
+                        reader.onload = (ev) => {
+                            document.execCommand('insertHTML', false, `<img src="${ev.target.result}" style="max-width:100%;border-radius:8px;margin:8px 0;display:block;">`);
                         };
-                        reader.readAsDataURL(blob);
+                        reader.readAsDataURL(clipItem.getAsFile());
                     }
                 }
             };
 
-            div.appendChild(label);
-            div.appendChild(toolbar);
+            wrap.appendChild(mini);
         } else {
             input = document.createElement("input");
+            input.className = "cw-lib-input";
             input.type = "text";
-            Object.assign(input.style, styles.input);
             input.value = value || "";
-            div.appendChild(label);
         }
-        
-        input.id = `cw-inp-${id}`;
-        
-        // Efeito focus
-        input.onfocus = () => { input.style.borderColor = COLORS.primary; input.style.boxShadow = `0 0 0 2px ${COLORS.primaryBg}`; };
-        input.onblur = () => { input.style.borderColor = COLORS.border; input.style.boxShadow = "none"; };
 
-        div.appendChild(input);
-        return div;
+        input.id = `cw-lib-inp-${id}`;
+        wrap.appendChild(input);
+        return wrap;
     }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str || "";
+        return div.innerHTML;
+    }
+
+    // --- BUSCA ---
+    searchInput.addEventListener("input", (e) => {
+        searchTerm = e.target.value;
+        searchClear.classList.toggle('visible', searchTerm.length > 0);
+        renderList();
+    });
+    searchClear.onclick = () => {
+        searchInput.value = "";
+        searchTerm = "";
+        searchClear.classList.remove('visible');
+        renderList();
+        searchInput.focus();
+    };
 
     function toggleVisibility() {
         visible = !visible;
         toggleGenieAnimation(visible, popup, "cw-btn-library");
         if (visible) {
             document.body.style.overflow = "hidden";
-            renderList(); // Refresh ao abrir
+            renderList();
         } else {
             document.body.style.overflow = "";
+            closeCardMenu();
         }
     }
 

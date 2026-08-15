@@ -62,9 +62,14 @@ export const SnippetService = {
         SnippetService._saveToLocal(updatedList);
 
         // B. Envia para Nuvem (Async)
+        // `synced` é transiente — não é gravado no localStorage nem enviado ao
+        // backend, só existe no objeto retornado pra quem chamou save() saber
+        // se a sincronia deu certo (a UI usa isso pra avisar o usuário em vez
+        // de deixar uma falha de nuvem só no console, como acontecia antes).
+        let synced = false;
         try {
-            const success = await DataService.saveSnippet(newSnippet, userEmail);
-            if (success) {
+            synced = await DataService.saveSnippet(newSnippet, userEmail);
+            if (synced) {
                 console.log("☁️ Snippet salvo na nuvem!");
             } else {
                 console.warn("⚠️ Falha ao salvar na nuvem. Dados apenas locais.");
@@ -76,7 +81,7 @@ export const SnippetService = {
             setTimeout(() => { isMutating = false; }, 2000);
         }
 
-        return newSnippet;
+        return { ...newSnippet, synced };
     },
 
     delete: async (id) => {
