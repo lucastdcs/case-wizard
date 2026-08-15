@@ -706,6 +706,14 @@ export function initCaseNotesAssistant() {
             showToast(t('inserido_copiado'));
             SoundManager.playSuccess();
             resetModule();
+        } else {
+            // ensureNoteCardIsOpen() não achou/abriu o editor de nota no CRM
+            // a tempo. O HTML já foi copiado pra área de transferência antes
+            // (linha acima), então o conteúdo não se perde — mas o popup
+            // tinha sido fechado como se tivesse dado certo, deixando o
+            // agente sem nenhum aviso de que a nota não foi inserida.
+            showToast("Não foi possível abrir a nota no CRM. O conteúdo já está copiado — cole manualmente.", { error: true });
+            toggleVisibility();
         }
         finishLoading();
     }
