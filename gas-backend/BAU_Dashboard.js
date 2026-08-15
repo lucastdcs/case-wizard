@@ -4,6 +4,8 @@
 // =========================================================
 
 function getPendingBAUCases() {
+  assertCallerIsOverhead();
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = getOrCreateSheet(ss, SHEET_BAU_FORM); 
   const data = sheet.getDataRange().getValues();
@@ -35,11 +37,13 @@ function getPendingBAUCases() {
 }
 
 function updateBAUCaseStatus(id, newStatus) {
+  assertCallerIsOverhead();
+
   const lock = LockService.getScriptLock();
-  
+
   try {
-    lock.waitLock(10000); 
-    
+    lock.waitLock(10000);
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = getOrCreateSheet(ss, SHEET_BAU_FORM);
     const data = sheet.getDataRange().getValues();
