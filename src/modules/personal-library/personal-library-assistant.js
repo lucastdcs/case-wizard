@@ -569,43 +569,55 @@ export function initPersonalLibrary() {
     }
 
     async function handleSave() {
-        const titleInput = sheetBody.querySelector("#cw-lib-inp-title");
-        const contentInput = sheetBody.querySelector("#cw-lib-inp-content");
-
-        const title = titleInput.value.trim();
-        const content = contentInput.contentEditable === "true" ? contentInput.innerHTML : contentInput.value.trim();
-        const isCode = contentInput.getAttribute('data-is-code') === 'true';
-
-        if (!title || !content || content === '<br>') {
-            showToast("Preencha título e conteúdo.", { error: true });
-            return;
-        }
-
-        const payload = {
-            id: currentEditingId,
-            type: currentTab,
-            title, content, isCode,
-            isRich: contentInput.contentEditable === "true"
-        };
-
-        if (currentTab === 'email') {
-            const subject = sheetBody.querySelector("#cw-lib-inp-subject").value.trim();
-            if (!subject) {
-                showToast("Assunto é obrigatório para emails.", { error: true });
-                return;
-            }
-            payload.subject = subject;
-        }
-
         loadingOverlay.classList.add('active');
         saveBtn.disabled = true;
 
         try {
+            const titleInput = sheetBody.querySelector("#cw-lib-inp-title");
+            const contentInput = sheetBody.querySelector("#cw-lib-inp-content");
+
+            const title = titleInput.value.trim();
+            const content = contentInput.contentEditable === "true" ? contentInput.innerHTML : contentInput.value.trim();
+            const isCode = contentInput.getAttribute('data-is-code') === 'true';
+
+            if (!title || !content || content === '<br>') {
+                showToast("Preencha título e conteúdo.", { error: true });
+                return;
+            }
+
+            const payload = {
+                id: currentEditingId,
+                type: currentTab,
+                title, content, isCode,
+                isRich: contentInput.contentEditable === "true"
+            };
+
+            if (currentTab === 'email') {
+                const subject = sheetBody.querySelector("#cw-lib-inp-subject").value.trim();
+                if (!subject) {
+                    showToast("Assunto é obrigatório para emails.", { error: true });
+                    return;
+                }
+                payload.subject = subject;
+            }
+
             const saved = await SnippetService.save(payload);
+
+            // SnippetService.save() retorna o booleano `false` (não um objeto) quando
+            // não dá pra identificar o usuário — nesse caso NADA foi salvo, nem local
+            // nem na nuvem. `saved && saved.synced === false` cai pro `else` (sucesso)
+            // quando `saved` é `false`, escondendo essa falha por trás de um toast de
+            // sucesso falso e fechando o editor com o item perdido — era isso que
+            // fazia parecer que "nenhuma função rodava".
+            if (saved === false) {
+                showToast("Não foi possível salvar: usuário não identificado. Recarregue a página e tente de novo.", { error: true });
+                return;
+            }
+
             renderList();
             closeEditor();
 
-            if (saved && saved.synced === false) {
+            if (saved.synced === false) {
                 showToast("Salvo localmente — sem conexão com a nuvem no momento.", { error: true });
             } else {
                 showToast("Salvo e sincronizado!");
