@@ -64,6 +64,22 @@ function getAgentCases(ss, userEmail) {
     const status = String(row[3]);
     
     if (rowEmail === userEmail.toLowerCase().trim()) {
+      // Coluna 16 guarda "Motivo | Descrição" mesclados (ver handleBAUEscalation
+      // e update_bau_case) só para o fluxo BAU — o fluxo DISCARD nunca mescla,
+      // grava só a descrição pura. Desfazemos a mesma mescla aqui, senão o
+      // formulário de edição nunca consegue pré-preencher o dropdown de motivo
+      // e acaba jogando a string inteira ("Motivo | Descrição") no campo de texto.
+      const rawDescription = String(row[16] || "");
+      const isDiscardFlow = status === 'PENDING_TL_DISCARD' || status === 'DISCARDED';
+      let nonImplementationReason = "";
+      let description = rawDescription;
+
+      if (!isDiscardFlow && rawDescription.includes(" | ")) {
+        const descParts = rawDescription.split(" | ");
+        nonImplementationReason = descParts[0] || "";
+        description = descParts.slice(1).join(" | ") || "";
+      }
+
       myCases.push({
         id: String(row[0]),
         date: row[1] instanceof Date ? row[1].toISOString() : String(row[1]),
@@ -81,11 +97,12 @@ function getAgentCases(ss, userEmail) {
         salesProgram: String(row[13] || ""),
         reason: String(row[14] || ""),
         task: String(row[15] || ""),
-        description: String(row[16] || ""),
+        nonImplementationReason: nonImplementationReason,
+        description: description,
         availability: row[17] instanceof Date ? row[17].toISOString() : String(row[17] || "")
       });
-      
-      if (myCases.length >= 30) break; 
+
+      if (myCases.length >= 30) break;
     }
   }
   return { status: 'success', cases: myCases };
