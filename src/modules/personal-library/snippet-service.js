@@ -52,20 +52,17 @@ export const SnippetService = {
             subject: snippet.subject || '',
             isCode: snippet.isCode || false,
             isRich: snippet.isRich || false,
-            updated: now
+            updated: now,
+            _pendingSync: true // otimista até a nuvem confirmar (ou não) logo abaixo
         };
 
         // Remove versão antiga se existir (Update) ou adiciona (Create)
         const updatedList = localData.filter(s => s.id !== newSnippet.id);
         updatedList.unshift(newSnippet); // Adiciona no topo
-        
+
         SnippetService._saveToLocal(updatedList);
 
         // B. Envia para Nuvem (Async)
-        // `synced` é transiente — não é gravado no localStorage nem enviado ao
-        // backend, só existe no objeto retornado pra quem chamou save() saber
-        // se a sincronia deu certo (a UI usa isso pra avisar o usuário em vez
-        // de deixar uma falha de nuvem só no console, como acontecia antes).
         let synced = false;
         try {
             synced = await DataService.saveSnippet(newSnippet, userEmail);
@@ -80,6 +77,14 @@ export const SnippetService = {
             // Abre o cadeado 2 segundos após a nuvem responder
             setTimeout(() => { isMutating = false; }, 2000);
         }
+
+        // Grava se a sincronia realmente confirmou ou não — _pendingSync é o
+        // que impede _syncWithServer() de descartar esse item do cache local
+        // caso a resposta do servidor ainda não o inclua (ver nota lá embaixo).
+        newSnippet._pendingSync = !synced;
+        const finalList = SnippetService._loadFromLocal().filter(s => s.id !== newSnippet.id);
+        finalList.unshift(newSnippet);
+        SnippetService._saveToLocal(finalList);
 
         return { ...newSnippet, synced };
     },
@@ -120,18 +125,23 @@ export const SnippetService = {
         if (response && response.status === 'success' && Array.isArray(response.snippets)) {
             const serverData = response.snippets;
             const localData = SnippetService._loadFromLocal();
-            
-            // Comparação simples: Se o tamanho ou o timestamp do mais recente mudou
-            // (Para uma sincronia real bidirecional precisaríamos de lógica de merge, 
-            // mas aqui assumimos que o Server é a verdade absoluta em caso de conflito)
-            
-            const serverJSON = JSON.stringify(serverData);
+
+            // O servidor é a verdade absoluta pra tudo que ele já conhece —
+            // mas um item local com _pendingSync (a última tentativa de save
+            // dele falhou) não pode ser descartado só porque ainda não
+            // aparece na resposta do servidor. Sobrescrever a lista local
+            // inteira pela do servidor apagava exatamente esses itens assim
+            // que a próxima sincronia de fundo rodava (ex: ao trocar de aba).
+            const pendingLocal = localData.filter(s => s._pendingSync);
+            const merged = [...pendingLocal, ...serverData];
+
+            const mergedJSON = JSON.stringify(merged);
             const localJSON = JSON.stringify(localData);
 
-            if (serverJSON !== localJSON) {
+            if (mergedJSON !== localJSON) {
                 console.log("📥 Atualização encontrada! Atualizando cache.");
-                SnippetService._saveToLocal(serverData);
-                
+                SnippetService._saveToLocal(merged);
+
                 // Dispara evento para a UI se atualizar (Opcional, se a UI for reativa)
                 // window.dispatchEvent(new Event('cw_library_updated'));
             }

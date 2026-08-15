@@ -112,13 +112,13 @@ function injectStyles() {
             background: rgba(255,255,255,0.68); backdrop-filter: blur(14px);
             border: 1px solid rgba(255,255,255,0.5);
             border-radius: 18px; padding: 16px 16px 12px 16px;
-            position: relative; overflow: hidden; isolation: isolate;
+            position: relative; isolation: isolate;
             box-shadow: 0 1px 3px rgba(60,64,67,0.08);
             transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s ease;
             display: flex; flex-direction: column;
         }
         .cw-lib-card::before {
-            content: ''; position: absolute; inset: 0; z-index: -1;
+            content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
             background: linear-gradient(135deg, rgba(138,180,248,0.16), rgba(197,138,249,0.16), rgba(242,139,130,0.16));
             background-size: 300% 300%; opacity: 0; transition: opacity 0.4s ease;
         }
