@@ -117,6 +117,11 @@ function injectStyles() {
             transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s ease;
             display: flex; flex-direction: column;
         }
+        /* isolation:isolate dá a cada card seu próprio contexto de empilhamento,
+           então um z-index alto só no .cw-lib-menu não basta pra ele ficar
+           acima do card da linha seguinte (que vem depois no DOM e por isso
+           pinta por cima por padrão) — precisa levantar o card inteiro. */
+        .cw-lib-card.menu-open { z-index: 5; }
         .cw-lib-card::before {
             content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
             background: linear-gradient(135deg, rgba(138,180,248,0.16), rgba(197,138,249,0.16), rgba(242,139,130,0.16));
@@ -411,6 +416,7 @@ export function initPersonalLibrary() {
         if (openMenuCard) {
             const menu = openMenuCard.querySelector('.cw-lib-menu');
             if (menu) menu.classList.remove('open');
+            openMenuCard.classList.remove('menu-open');
             openMenuCard = null;
         }
     }
@@ -494,6 +500,7 @@ export function initPersonalLibrary() {
             closeCardMenu();
             if (!isOpen) {
                 menu.classList.add('open');
+                card.classList.add('menu-open');
                 openMenuCard = card;
             }
         };
