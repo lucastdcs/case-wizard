@@ -294,10 +294,15 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 border-bottom-right-radius: 11px;
                 display: flex; align-items: center; justify-content: space-between;
                 transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                visibility: hidden;
                 box-shadow: ${DS.shadowFloat}; z-index: 10;
                 margin-top: auto;
             }
-            .cw-status-bar.visible { transform: translateY(0); }
+            /* .cw-zen-container usa overflow:visible (pros cards do hero não
+               cortarem sombra/hover), então sem visibility a barra "escondida"
+               via transform continua sendo pintada logo abaixo do card,
+               encostando/sobrepondo o que vem depois no layout. */
+            .cw-status-bar.visible { transform: translateY(0); visibility: visible; }
             .cw-status-text { font-size: 13px; font-weight: 500; color: ${DS.textMain}; }
             
             .cw-footer-icons { display: flex; flex-direction: row-reverse; padding-left: 8px; }
@@ -729,6 +734,8 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
       });
     } else {
       statusBar.classList.remove("visible");
+      statusText.textContent = "";
+      footerIcons.innerHTML = "";
     }
   }
 

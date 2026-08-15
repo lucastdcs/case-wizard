@@ -89,7 +89,9 @@ export function createDraftsManager(callbacks) {
     historyBtnWrapper.style.cssText = "position: relative; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s; margin-right: 8px;";
     
     // Ícone de Relógio/Histórico
-    historyBtnWrapper.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#5f6368"><path d="M3 3v5h5"></path><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path><path d="M12 7v5l4 2"></path></svg>`;
+    // Cor alinhada com o botão de Split & Transfer ao lado (createSplitToggleButton
+    // em notes-assistant.js), que usa #9AA0A6 — convenção dos ícones do header.
+    historyBtnWrapper.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#9AA0A6"><path d="M3 3v5h5"></path><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path><path d="M12 7v5l4 2"></path></svg>`;
     
     // Badge Vermelho (Contador)
     const badge = document.createElement("div");

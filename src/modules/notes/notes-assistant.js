@@ -21,8 +21,8 @@ import {
     scenarioSnippets,
     textareaListFields,
     TASKS_DB,
-    optionalFields,
-    requiredFields
+    getEffectiveRequiredFields,
+    getEffectiveOptionalFields
 } from "./data/notes-data.js";
 import {
     copyHtmlToClipboard,
@@ -463,11 +463,12 @@ export function initCaseNotesAssistant() {
         actionsSection.style.display = "grid";
 
         // 1. Initialize Active Fields from Template
-        // Campos em optionalFields começam escondidos (baixo valor por
-        // padrão) — o agente adiciona pelo "+ adicionar campo" se precisar.
+        // Campos opcionais (sensíveis ao template — ver getEffectiveOptionalFields)
+        // começam escondidos — o agente adiciona pelo "+ adicionar campo" se precisar.
         if (templateData && templateData.templateFields) {
+            const optionalNow = getEffectiveOptionalFields(templateData);
             notesState.setActiveFields(
-                templateData.templateFields.filter((f) => !optionalFields.includes(f))
+                templateData.templateFields.filter((f) => !optionalNow.includes(f))
             );
         }
 
@@ -573,7 +574,7 @@ export function initCaseNotesAssistant() {
         div.className = "cw-actions-section";
         div.style.cssText = `
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
             padding: 10px;
             margin-top: 16px;
@@ -624,7 +625,7 @@ export function initCaseNotesAssistant() {
 
         const emailRow = document.createElement("div");
         emailRow.id = "email-automation-toggle-row";
-        emailRow.style.cssText = "grid-column: span 2; display: none; align-items: center; justify-content: center; padding-bottom: 6px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 2px;";
+        emailRow.style.cssText = "grid-column: 1 / -1; display: none; align-items: center; justify-content: center; padding-bottom: 6px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 2px;";
         emailRow.innerHTML = `
             <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 10.5px; font-weight: 600; color: ${COLORS.textSub};">
                 <input type="checkbox" id="email-automation-checkbox" checked style="width: 13px; height: 13px; accent-color: ${COLORS.primary};">
@@ -651,7 +652,7 @@ export function initCaseNotesAssistant() {
         const btnGenerate = document.createElement("button");
         btnGenerate.className = "cw-btn-primary js-btn-generate";
         btnGenerate.textContent = t('preencher');
-        btnGenerate.style.cssText = `width: 100%; height: 38px; background: ${COLORS.primary}; color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; grid-column: span 2; font-size: 12.5px; box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2); margin-top: 0px;`;
+        btnGenerate.style.cssText = `width: 100%; height: 38px; background: ${COLORS.primary}; color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; grid-column: 1 / -1; font-size: 12.5px; box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2); margin-top: 0px;`;
         btnGenerate.onclick = () => handleGenerate();
 
         div.appendChild(emailRow);
@@ -684,7 +685,9 @@ export function initCaseNotesAssistant() {
             return;
         }
 
-        const missingRequired = requiredFields.filter((fieldName) => {
+        const templateData = SUBSTATUS_TEMPLATES[notesState.currentSubStatus];
+
+        const missingRequired = getEffectiveRequiredFields(templateData).filter((fieldName) => {
             if (!notesState.activeFields.includes(fieldName)) return false;
             const value = notesState.formData[`field-${fieldName}`];
             return !value || !value.trim();
@@ -694,7 +697,6 @@ export function initCaseNotesAssistant() {
             return;
         }
 
-        const templateData = SUBSTATUS_TEMPLATES[notesState.currentSubStatus];
         if (templateData?.requiresTasks && stepTasks.getCheckedElements().length === 0) {
             showToast("Selecione ao menos uma tarefa antes de gerar a nota.", { error: true });
             return;
