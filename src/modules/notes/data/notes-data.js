@@ -48,7 +48,7 @@ export const translations = {
         'speakeasy_id': '🆔 Speakeasy ID:',
         'on_call': '📞 On Call signaled on time?',
         'tasks_solicitadas': '🎯 Task(s) solicitada(s):',
-        'passos_executados': '👣 Seguimos com os passos:',
+        'passos_executados': '👣 O que foi feito:',
         'resultado': '🏆 Resultado:',
         'duvidas': '❓ Dúvidas do anunciante:',
         'problemas': '⚠️ Problema inicial:',
@@ -119,7 +119,7 @@ export const translations = {
         'speakeasy_id': '🆔 Speakeasy ID:',
         'on_call': '📞 On Call signaled on time?',
         'tasks_solicitadas': '🎯 Tarea(s) solicitada(s):',
-        'passos_executados': '👣 Pasos ejecutados:',
+        'passos_executados': '👣 Qué se hizo:',
         'resultado': '🏆 Resultado:',
         'duvidas': '❓ Dudas del anunciante:',
         'problemas': '⚠️ Problema inicial:',
@@ -340,6 +340,24 @@ export const optionalFields = ['GTM_GA4_VERIFICADO', 'MULTIPLE_CIDS'];
 // visualmente em core/form-builder.js.
 export const requiredFields = ['REASON_COMMENTS'];
 
+// requiredFields/optionalFields acima são a regra padrão (mesma pra todo
+// template). Alguns campos precisam de uma regra sensível ao template atual
+// — hoje só GTM_GA4_VERIFICADO, que vira obrigatório quando o template exige
+// tarefa implementada (requiresTasks), já que não faz sentido pular a
+// verificação de GTM/GA4 quando algo foi de fato implementado. Um template
+// também pode declarar `extraOptionalFields` pra esconder por padrão um
+// campo que só faz sentido pra ele (ver SO_Implementation_Only).
+export function getEffectiveRequiredFields(templateData) {
+    const fields = [...requiredFields];
+    if (templateData?.requiresTasks) fields.push('GTM_GA4_VERIFICADO');
+    return fields;
+}
+export function getEffectiveOptionalFields(templateData) {
+    const base = [...optionalFields, ...(templateData?.extraOptionalFields || [])];
+    const required = getEffectiveRequiredFields(templateData);
+    return base.filter(f => !required.includes(f));
+}
+
 // ==================================================================
 //               NOVA ESTRUTURA: SUBSTATUS_TEMPLATES
 // ==================================================================
@@ -445,10 +463,15 @@ export const SUBSTATUS_TEMPLATES = {
 
     // --- SO (Solution Offered) ---
     'SO_Implementation_Only': {
-        status: 'SO', 
+        status: 'SO',
         name: 'SO - Implementation Only',
         requiresTasks: true,
-        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'TASKS_SOLICITADAS', 'TASKS_IMPLEMENTADAS_CALL', 'PASSOS_EXECUTADOS', 'RESULTADO', 'PROXIMOS_PASSOS', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        // TASKS_SOLICITADAS/TASKS_IMPLEMENTADAS_CALL removidos: redundantes
+        // com o que já aparece a partir das tarefas marcadas no catálogo
+        // (TAGS_IMPLEMENTED). PROXIMOS_PASSOS só faz sentido quando o caso
+        // tem acompanhamento, então fica em extraOptionalFields.
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'PASSOS_EXECUTADOS', 'RESULTADO', 'PROXIMOS_PASSOS', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        extraOptionalFields: ['PROXIMOS_PASSOS'],
         fieldPrefixes: {
             'REASON_COMMENTS': 'Task implementada com sucesso.'
         }

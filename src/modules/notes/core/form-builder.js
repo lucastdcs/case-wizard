@@ -1,5 +1,5 @@
 // src/modules/notes/core/form-builder.js
-import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, translations, optionalFields, requiredFields } from "../data/notes-data.js";
+import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, translations, getEffectiveRequiredFields, getEffectiveOptionalFields } from "../data/notes-data.js";
 import { fetchAndInsertSpeakeasyId } from "../automation/case-log-scraper.js";
 import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
@@ -10,6 +10,8 @@ export function buildDynamicForm(subStatusKey, container, state) {
     const templateData = SUBSTATUS_TEMPLATES[subStatusKey];
     if (!templateData) return;
 
+    const requiredNow = getEffectiveRequiredFields(templateData);
+
     state.activeFields.forEach((fieldName) => {
         if (["TAGS_IMPLEMENTED", "SCREENSHOTS_LIST", "CONSENTIU_GRAVACAO", "CASO_PORTUGAL", "label_substatus"].includes(fieldName)) return;
 
@@ -18,7 +20,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
         label.textContent = t(fieldName.toLowerCase()) !== fieldName.toLowerCase() ? t(fieldName.toLowerCase()) : fieldName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) + ":";
         Object.assign(label.style, { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", color: COLORS.textSub, marginBottom: "8px", marginTop: "24px", textTransform: "uppercase", letterSpacing: "0.5px" });
-        const isRequired = requiredFields.includes(fieldName);
+        const isRequired = requiredNow.includes(fieldName);
         const labelText = document.createElement("span");
         labelText.textContent = label.textContent;
         if (isRequired) {
@@ -95,8 +97,9 @@ export function buildDynamicForm(subStatusKey, container, state) {
     // Campos opcionais do template (ver optionalFields em data/notes-data.js)
     // que ainda não estão ativos: ficam escondidos por padrão pra reduzir a
     // carga cognitiva, mas continuam a 1 clique de distância.
+    const optionalNow = getEffectiveOptionalFields(templateData);
     const hiddenOptional = (templateData.templateFields || []).filter(
-        (fieldName) => optionalFields.includes(fieldName) && !state.activeFields.includes(fieldName)
+        (fieldName) => optionalNow.includes(fieldName) && !state.activeFields.includes(fieldName)
     );
     if (hiddenOptional.length > 0) {
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
