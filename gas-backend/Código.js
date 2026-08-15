@@ -182,60 +182,10 @@ function doGet(e) {
     else if (op === 'get_user_profile') {
       const userEmail = p.user || "";
       const ldap = (p.ldap || userEmail.split('@')[0]).toLowerCase().trim();
-      
+
       if (!ldap) throw new Error("LDAP/User is required");
 
-      const sheet = ss.getSheetByName(SHEET_PEOPLE);
-      
-      // Objeto de fallback super restrito (caso o LDAP não esteja na planilha)
-      let profile = {
-        ldap: ldap,
-        role: "Unknown",
-        roleCategory: "Agent", // Por segurança, desconhecidos são tratados como Agentes (sem admin)
-        segment: "PT",
-        defaultLanguage: "PT-BR",
-        isOverhead: false 
-      };
-
-      if (sheet) {
-        const data = sheet.getDataRange().getValues();
-        
-        // Pula o cabeçalho (i=1) e varre a lista
-        for (let i = 1; i < data.length; i++) {
-          const rowLdap = String(data[i][0]).toLowerCase().trim();
-          
-          if (rowLdap === ldap) {
-            const role = String(data[i][1] || "").trim();
-            const roleCategory = String(data[i][2] || "").trim();
-            const segment = String(data[i][3] || "").trim();
-            
-            // Regra 1: Permissões (Overhead). Bloqueia APENAS Agent e Apprentice.
-            const catLower = roleCategory.toLowerCase();
-            const isOverhead = !(catLower.includes('agent') || catLower.includes('apprentice'));
-            
-            // Regra 2: Idiomas. Staff = PT. PT = PT. ES = ES.
-            let lang = "PT-BR"; // Padrão
-            const segLower = segment.toLowerCase();
-            if (segLower === 'es') {
-              lang = "ES";
-            } else if (segLower === 'en') {
-              lang = "EN";
-            }
-            
-            profile = {
-              ldap: ldap,
-              role: role,                 // Capturado exato para a futura Badge
-              roleCategory: roleCategory,
-              segment: segment,
-              defaultLanguage: lang,
-              isOverhead: isOverhead
-            };
-            break; // Achou o usuário, para o loop
-          }
-        }
-      }
-      
-      result = { status: 'success', profile: profile };
+      result = { status: 'success', profile: getUserProfileByLdap(ldap) };
     }
 
   } catch (err) {
@@ -255,6 +205,84 @@ function doGet(e) {
 // =========================================================
 //  FUNÇÕES AUXILIARES (HELPERS)
 // =========================================================
+
+// Busca o perfil (papel/segmento/permissão) de um LDAP na planilha "People".
+// Extraído do handler de 'get_user_profile' para poder ser reaproveitado
+// pela checagem de permissão (assertCallerIsOverhead).
+function getUserProfileByLdap(ldap) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_PEOPLE);
+
+  // Objeto de fallback super restrito (caso o LDAP não esteja na planilha)
+  let profile = {
+    ldap: ldap,
+    role: "Unknown",
+    roleCategory: "Agent", // Por segurança, desconhecidos são tratados como Agentes (sem admin)
+    segment: "PT",
+    defaultLanguage: "PT-BR",
+    isOverhead: false
+  };
+
+  if (sheet) {
+    const data = sheet.getDataRange().getValues();
+
+    // Pula o cabeçalho (i=1) e varre a lista
+    for (let i = 1; i < data.length; i++) {
+      const rowLdap = String(data[i][0]).toLowerCase().trim();
+
+      if (rowLdap === ldap) {
+        const role = String(data[i][1] || "").trim();
+        const roleCategory = String(data[i][2] || "").trim();
+        const segment = String(data[i][3] || "").trim();
+
+        // Regra 1: Permissões (Overhead). Bloqueia APENAS Agent e Apprentice.
+        const catLower = roleCategory.toLowerCase();
+        const isOverhead = !(catLower.includes('agent') || catLower.includes('apprentice'));
+
+        // Regra 2: Idiomas. Staff = PT. PT = PT. ES = ES.
+        let lang = "PT-BR"; // Padrão
+        const segLower = segment.toLowerCase();
+        if (segLower === 'es') {
+          lang = "ES";
+        } else if (segLower === 'en') {
+          lang = "EN";
+        }
+
+        profile = {
+          ldap: ldap,
+          role: role,                 // Capturado exato para a futura Badge
+          roleCategory: roleCategory,
+          segment: segment,
+          defaultLanguage: lang,
+          isOverhead: isOverhead
+        };
+        break; // Achou o usuário, para o loop
+      }
+    }
+  }
+
+  return profile;
+}
+
+// Garante que quem está chamando (identidade real, vinda de Session.getActiveUser(),
+// não de um parâmetro enviado pelo cliente) tem papel de liderança (isOverhead).
+// Lança erro se não tiver — para ser usada no início de ações restritas ao TL,
+// chamadas via google.script.run a partir do TLDashboard.html.
+function assertCallerIsOverhead() {
+  const email = Session.getActiveUser().getEmail();
+  const ldap = email ? email.split('@')[0].toLowerCase().trim() : "";
+
+  if (!ldap) {
+    throw new Error("Não foi possível identificar o usuário autenticado.");
+  }
+
+  const profile = getUserProfileByLdap(ldap);
+  if (!profile.isOverhead) {
+    throw new Error("Acesso negado: esta ação é restrita à liderança (TL).");
+  }
+
+  return profile;
+}
 
 function handleLog(p) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
