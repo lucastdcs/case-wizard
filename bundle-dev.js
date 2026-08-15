@@ -10,6 +10,14 @@
             --cw-ease-elastic: cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
+        /* RESET DE BOX MODEL (Escopado s\xF3 ao app, nunca ao CRM host) */
+        /* Sem isso, qualquer elemento com width + padding "estoura" o container,
+           porque o padding some do c\xE1lculo em vez de ser inclu\xEDdo na largura. */
+        .cw-pill, .cw-pill *,
+        .cw-module-window, .cw-module-window * {
+            box-sizing: border-box;
+        }
+
         /* Rollbar e Ajustes Globais */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
