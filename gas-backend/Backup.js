@@ -51,3 +51,35 @@ function runWeeklyBackup() {
     console.log("ℹ️ Nenhum caso finalizado precisava de backup hoje.");
   }
 }
+
+/**
+ * ⚠️ AÇÃO MANUAL NECESSÁRIA — rode esta função UMA VEZ pelo editor do Apps Script
+ * (seleciona "setupWeeklyBackupTrigger" no dropdown de funções → Executar).
+ *
+ * Não existia nenhum gatilho (Trigger) configurado por código pra runWeeklyBackup
+ * em nenhum lugar do projeto — ela só executava se alguém tivesse configurado um
+ * acionador manualmente pela UI (Acionadores ⏰), o que não deixa rastro no código
+ * e é fácil de perder/esquecer numa reconfiguração do projeto.
+ *
+ * Essa função cria (ou recria, se já existir) um acionador baseado em tempo que
+ * roda runWeeklyBackup toda segunda-feira de madrugada, no fuso do projeto
+ * (America/Sao_Paulo, ver appsscript.json). É idempotente: rodar de novo não
+ * duplica o acionador, só substitui pelo mesmo agendamento.
+ *
+ * Criar acionadores exige uma execução autorizada interativa — não dá pra fazer
+ * isso automaticamente via `clasp push`/deploy, por isso precisa ser rodada manualmente.
+ */
+function setupWeeklyBackupTrigger() {
+  const existing = ScriptApp.getProjectTriggers().filter(
+    t => t.getHandlerFunction() === 'runWeeklyBackup'
+  );
+  existing.forEach(t => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger('runWeeklyBackup')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.MONDAY)
+    .atHour(3)
+    .create();
+
+  console.log("✅ Acionador semanal configurado: runWeeklyBackup toda segunda-feira, por volta das 03h.");
+}
