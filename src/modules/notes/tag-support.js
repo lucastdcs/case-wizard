@@ -3,6 +3,7 @@
 // Importamos estilos genéricos do utils para manter consistência
 import { styleLabel } from '../shared/utils.js';
 import {styleCheckboxInput} from '../notes/notes-styles.js'
+import { notesState } from './core/notes-state.js';
 
 // Estilos locais específicos deste módulo
 const styleContainer = { 
@@ -75,11 +76,11 @@ export function createTagSupportModule(t) {
     // --- 2. EVENTOS INTERNOS ---
     rSim.onchange = () => {
         reasonDiv.style.display = 'none';
-        import('./core/notes-state.js').then(m => m.notesState.setTagSupportUsed(true));
+        notesState.setTagSupportUsed(true);
     };
     rNao.onchange = () => {
         reasonDiv.style.display = 'block';
-        import('./core/notes-state.js').then(m => m.notesState.setTagSupportUsed(false));
+        notesState.setTagSupportUsed(false);
     };
 
     // --- 3. API PÚBLICA (Métodos que o pai vai chamar) ---
@@ -101,7 +102,7 @@ export function createTagSupportModule(t) {
             container.style.display = 'block';
         } else {
             reset();
-            import('./core/notes-state.js').then(m => m.notesState.setTagSupportUsed(false));
+            notesState.setTagSupportUsed(false);
         }
     }
 

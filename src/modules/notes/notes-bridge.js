@@ -38,8 +38,6 @@ function getAllEditors() {
 
 // --- LÓGICA BLINDADA: ABRIR NOVA NOTA ---
 export async function ensureNoteCardIsOpen() {
-    console.log("Iniciando processo de Nova Nota...");
-
     // 1. SNAPSHOT: Guarda quem já estava na tela antes do clique
     const editoresAntes = getAllEditors();
     const qtdAntes = editoresAntes.length;
