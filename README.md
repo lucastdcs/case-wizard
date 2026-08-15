@@ -29,10 +29,15 @@ Assista à suite em ação, desde a inicialização com Sound UX até a automaç
 | <img src="docs/media/email-assistant.png" width="400"> | <img src="docs/media/call-script.png" width="400"> |
 | *Templates dinâmicos e rascunhos automáticos.* | *Roteiros guiados para chamadas com clientes.* |
 
-| **Timezone Assistant** |
+| **Timezone Assistant** | **BAU Central** |
+| :---: | :---: |
+| <img src="docs/media/timezone-assistant.png" width="400"> | <img src="docs/media/bau-dashboard.png" width="400"> |
+| *Conversão de fusos horários e planejamento de reuniões.* | *Dashboard de escalação BAU com fluxo de aprovação.* |
+
+| **Configurações & Perfil** |
 | :---: |
-| <img src="docs/media/timezone-assistant.png" width="400"> |
-| *Conversão de fusos horários e planejamento de reuniões.* |
+| <img src="docs/media/configs-profile.png" width="400"> |
+| *Perfil do agente, papel/segmento e preferências.* |
 
 -----
 
@@ -86,14 +91,40 @@ Uma vez carregado, o `bundle.js`:
 
 ## 📦 Funcionalidades Principais
 
-### 📧 Automação de E-mail
+### 📝 Case Notes
+
+  * Gera notas de caso padronizadas (BAU/LM, PT/ES) a partir de Status → Sub-status → template.
+  * Seletor visual de tasks, cenários rápidos, suporte a tags de implementação e captura automática de Speakeasy ID.
+  * Sistema de rascunhos "estacionados" com autosave de emergência.
+
+### 📧 Email Assistant
 
   * **Detecção de Rascunho:** Algoritmo de *polling* que identifica, descarta e limpa rascunhos "fantasmas" antes de inserir um novo template.
-  * **Quick Responses:** Inserção inteligente de texto rico (HTML) com substituição de variáveis (`{{cliente}}`, `{{data}}`).
+  * **Templates dinâmicos:** biblioteca de templates com placeholders + atalhos "Smart CR" ligados aos sub-status do Case Notes.
+
+### 📞 Call Script Assistant
+
+  * Checklist interativo de roteiro de chamada (PT/ES/EN × BAU/LT), com barra de progresso e captura ao vivo de CID/e-mail do cliente.
+
+### 🌎 Timezone Assistant
+
+  * Monitoramento de horário local por país atendido e planejador de horário de reunião com o cliente.
+
+### 🅿️ BAU Central
+
+  * Wizard de escalação de caso para BAU (abertura ou descarte), dashboard de acompanhamento dos próprios casos e fluxo de edição.
+
+### 📚 Minha Biblioteca
+
+  * Snippets pessoais (notas, e-mails, textos gerais) com sincronia entre dispositivos via Google Sheets.
+
+### ⚙️ Configurações
+
+  * Perfil do agente (papel, segmento, idioma), preferências de som e link de feedback/reporte de bug.
 
 ### 📢 Broadcast System
 
-  * Sistema de avisos globais consumindo JSON remoto.
+  * Sistema de avisos globais consumindo dados do backend.
   * Persistência de leitura via `localStorage`.
   * Suporte a emojis customizados (parser interno de shortcodes).
 
@@ -106,14 +137,16 @@ Uma vez carregado, o `bundle.js`:
 
 ## 💻 Desenvolvimento Local
 
-Este projeto não possui um servidor local (localhost) devido às restrições de HTTPS e CORS do CRM alvo.
+O front-end injeta em cima do CRM real, então não existe um "localhost" tradicional para ele — mas o repositório inclui um `mock-crm.html` (HTML estático que imita o layout do CRM) usado pelo `generate-portfolio.py` (Playwright) para gerar os prints/vídeo deste README sem depender do ambiente de produção.
 
 **Fluxo de Trabalho Sugerido:**
 
-1.  Faça alterações nos arquivos `.js` locais (`src/`).
-2.  Compile o projeto (se houver build step) para `bundle-dev.js`.
-3.  Faça push para o branch que alimenta o GitHub Pages.
+1.  `npm install` (primeira vez).
+2.  Edite os arquivos em `src/`.
+3.  Rode `npm run build` (gera `dist/bundle.js`, minificado) ou `npm run dev` (gera `dist/bundle-dev.js`, sem minificação). O GitHub Actions roda o build automaticamente a cada push — veja `docs/WORKFLOW.md`.
 4.  Use o **Bookmarklet de Dev** para testar as alterações em tempo real no ambiente de produção.
+
+**Backend (Google Apps Script):** o código do backend vive em `gas-backend/` e é sincronizado com o projeto Apps Script via [`clasp`](https://github.com/google/clasp) (`clasp push`/`clasp pull`), separado do pipeline de build do front-end.
 
 -----
 
@@ -124,5 +157,5 @@ Este projeto não possui um servidor local (localhost) devido às restrições d
 
 -----
 
-> **Status do Projeto:** 🟢 Estável (v2.5)
-> **Mantenedor:** [Seu Nome/Time TechSol]
+> **Status do Projeto:** 🟢 Estável (v5.2)
+> **Mantenedor:** Lucas Teixeira / Time TechSol

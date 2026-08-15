@@ -1,5 +1,7 @@
 # Diagnóstico do TL Dashboard
 
+> ⚠️ **Status: Backlog / não implementado.** Apesar do nome, este arquivo não descreve o comportamento atual do TL Dashboard — é uma lista de melhorias propostas que ainda não foram construídas. Confirme no código (`gas-backend/BAU_Dashboard.js`, `gas-backend/TLDashboard.html`) antes de assumir que algo aqui já existe.
+
 Para que o TL Dashboard reflita essas edições em tempo real, as seguintes alterações no arquivo **TLDashboard.html** serão necessárias no futuro:
 
 1.  **Auto-Refresh (Polling):** Implementar um mecanismo de atualização automática utilizando `setInterval` que execute a função `loadCases()` em intervalos regulares (ex: a cada 3 ou 5 minutos), garantindo que a lista de casos pendentes esteja sempre sincronizada sem depender exclusivamente do clique manual em "Sincronizar".
