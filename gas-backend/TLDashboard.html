@@ -561,11 +561,23 @@
         window.onload = loadCases;
         let allCases = [];
         let currentTab = 'CREATION';
+        let loadError = false;
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
         function loadCases() {
             const container = document.getElementById('cases-container');
             const loader = document.getElementById('loader');
 
+            loadError = false;
             loader.style.display = 'flex';
             container.innerHTML = `
                 <div class="skeleton-row">
@@ -594,7 +606,10 @@
                 .withFailureHandler(err => {
                     console.error("Erro ao carregar casos:", err);
                     showToast("Erro ao sincronizar com o servidor", "error");
-                    renderCases(); // Garante que o loading saia mesmo em erro
+                    loadError = true;
+                    allCases = [];
+                    updateBadges();
+                    renderCases();
                 })
                 .getPendingBAUCases();
         }
@@ -624,6 +639,20 @@
                 if (currentTab === 'DISCARD') return c.status === 'PENDING_TL_DISCARD';
                 return false;
             });
+
+            if (loadError) {
+                container.innerHTML = `
+                <div class="empty-state">
+                    <span class="material-symbols-rounded" style="font-size: 48px; color: var(--danger);">error</span>
+                    <div style="font-size: 18px; font-weight: 500; color: var(--text-primary);">Não foi possível carregar os casos</div>
+                    <div style="font-size: 14px;">Falha ao conectar com o servidor. Tente sincronizar novamente.</div>
+                    <button class="btn" style="background: var(--surface-level-2); border: 1px solid var(--border-subtle); color: var(--text-secondary); margin-top: 8px;" onclick="loadCases()">
+                        <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
+                        Tentar novamente
+                    </button>
+                </div>`;
+                return;
+            }
 
             if (filtered.length === 0) {
                 container.innerHTML = `
@@ -658,16 +687,16 @@
                             <span class="material-symbols-rounded" style="font-size: 14px;">${isDiscardFlow ? 'delete' : 'add_circle'}</span>
                             ${isDiscardFlow ? 'Solicitação de Descarte' : 'Criação de BAU'}
                         </div>
-                        <div class="text-primary">${c.advName}</div>
-                        <div class="text-secondary">CID: <span class="text-mono">${c.cid}</span></div>
+                        <div class="text-primary">${escapeHtml(c.advName)}</div>
+                        <div class="text-secondary">CID: <span class="text-mono">${escapeHtml(c.cid)}</span></div>
                     </div>
 
                     <div>
-                        <div class="text-primary">${c.task}</div>
+                        <div class="text-primary">${escapeHtml(c.task)}</div>
                         <div class="text-secondary" style="margin-top: 6px;">
-                            <a href="https://cases.connect.corp.google.com/#/case/${c.caseId}" target="_blank" class="link" onclick="event.stopPropagation()">
+                            <a href="https://cases.connect.corp.google.com/#/case/${encodeURIComponent(c.caseId || '')}" target="_blank" class="link" onclick="event.stopPropagation()">
                                 <span class="material-symbols-rounded" style="font-size: 16px;">arrow_outward</span>
-                                ${c.caseId}
+                                ${escapeHtml(c.caseId)}
                             </a>
                         </div>
                     </div>
@@ -678,19 +707,19 @@
                             ${dataFormatada}
                         </div>
                         <div class="agent-profile">
-                            <img src="https://moma-teams-photos.corp.google.com/photos/${agentLdap}?sz=600" class="agent-photo" onerror="this.src='https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg'">
+                            <img src="https://moma-teams-photos.corp.google.com/photos/${encodeURIComponent(agentLdap)}?sz=600" class="agent-photo" onerror="this.src='https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg'">
                             <div>
-                                <div class="text-secondary" style="color: var(--text-primary);">${agentLdap}</div>
+                                <div class="text-secondary" style="color: var(--text-primary);">${escapeHtml(agentLdap)}</div>
                                 <div class="text-secondary" style="font-size: 11px;">Enviado em ${dataEnvio}</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="action-group">
-                        <button class="btn btn-danger-outline" onclick="event.stopPropagation(); confirmAction('${c.id}', 'DISCARDED')" title="Rejeitar Solicitação">
+                        <button class="btn btn-danger-outline" onclick="event.stopPropagation(); confirmAction('${c.id}', '${isDiscardFlow ? 'CREATED' : 'DISCARDED'}')" title="${isDiscardFlow ? 'Manter Caso Ativo' : 'Rejeitar Solicitação'}">
                             <span class="material-symbols-rounded">close</span>
                         </button>
-                        <button class="btn btn-primary" onclick="event.stopPropagation(); confirmAction('${c.id}', 'CREATED')" title="Aprovar e Notificar">
+                        <button class="btn btn-primary" onclick="event.stopPropagation(); confirmAction('${c.id}', '${isDiscardFlow ? 'DISCARDED' : 'CREATED'}')" title="${isDiscardFlow ? 'Confirmar Descarte' : 'Aprovar e Notificar'}">
                             <span class="material-symbols-rounded">check</span>
                             ${isDiscardFlow ? 'Confirmar' : 'Aprovar'}
                         </button>
@@ -701,11 +730,11 @@
                     <span class="material-symbols-rounded">format_quote</span>
                     <div>
                         <div style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">O que deve ser feito</div>
-                        "${c.reason}"
+                        "${escapeHtml(c.reason)}"
                         ${c.description ? `
                         <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border-subtle);">
                             <div style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Justificativa / Detalhes</div>
-                            "${c.description}"
+                            "${escapeHtml(c.description)}"
                         </div>` : ''}
                     </div>
                 </div>
@@ -720,10 +749,10 @@
 
             const createRow = (label, value) => `
             <div class="detail-group">
-                <span class="detail-label">${label}</span>
+                <span class="detail-label">${escapeHtml(label)}</span>
                 <div class="detail-value">
-                    <span>${value || '---'}</span>
-                    <button class="copy-btn" onclick="copyText('${value}', this)">
+                    <span>${value ? escapeHtml(value) : '---'}</span>
+                    <button class="copy-btn" data-copy-value="${escapeHtml(value || '')}" onclick="copyText(this)">
                         <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
                     </button>
                 </div>
@@ -738,16 +767,28 @@
                 ${createRow('Task', c.task)}
                 ${createRow('Case ID', c.caseId)}
             </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                ${createRow('Speakeasy ID', c.speakeasyId)}
+                ${createRow('Email do Anunciante', c.advEmail)}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                ${createRow('Timezone', c.timezone)}
+                ${createRow('Idioma', c.language)}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                ${createRow('AM Responsável', c.amName)}
+                ${createRow('Programa de Vendas', c.salesProgram)}
+            </div>
             ${createRow('Site', c.site)}
             ${createRow('Agendamento', c.availability)}
             ${createRow('Agente', c.agentEmail)}
             <div class="detail-group">
                 <span class="detail-label">O que deve ser feito</span>
-                <div class="detail-value" style="display: block; font-style: italic;">"${c.reason}"</div>
+                <div class="detail-value" style="display: block; font-style: italic;">"${escapeHtml(c.reason)}"</div>
             </div>
             <div class="detail-group">
                 <span class="detail-label">Justificativa / Detalhes</span>
-                <div class="detail-value" style="display: block; font-style: italic;">"${c.description || '---'}"</div>
+                <div class="detail-value" style="display: block; font-style: italic;">"${c.description ? escapeHtml(c.description) : '---'}"</div>
             </div>
             `;
             document.getElementById('caseModal').classList.add('active');
@@ -755,7 +796,8 @@
 
         function confirmAction(id, action) {
             const c = allCases.find(item => item.id === id);
-            const isApprove = action === 'CREATED';
+            const isDiscardFlow = c.status === 'PENDING_TL_DISCARD';
+            const isPositive = action === 'CREATED';
 
             const modal = document.getElementById('confirmModal');
             const title = document.getElementById('confirm-title');
@@ -768,18 +810,25 @@
             submitBtn.disabled = false;
             submitBtn.textContent = 'Confirmar';
 
-            title.textContent = isApprove ? 'Confirmar Aprovação' : 'Confirmar Rejeição';
-            message.textContent = isApprove
-                ? 'Ao aprovar, o agente receberá uma notificação e o caso seguirá para a próxima etapa.'
-                : 'Você está prestes a rejeitar esta solicitação. Esta ação é irreversível.';
+            if (isDiscardFlow) {
+                title.textContent = isPositive ? 'Manter Caso Ativo' : 'Confirmar Descarte';
+                message.textContent = isPositive
+                    ? 'O caso permanecerá ativo e o agente será avisado que o pedido de descarte não foi aceito.'
+                    : 'Ao confirmar, o agente será notificado e o caso será marcado como descartado. Esta ação é irreversível.';
+            } else {
+                title.textContent = isPositive ? 'Confirmar Aprovação' : 'Confirmar Rejeição';
+                message.textContent = isPositive
+                    ? 'Ao aprovar, o agente receberá uma notificação e o caso seguirá para a próxima etapa.'
+                    : 'Você está prestes a rejeitar esta solicitação. Esta ação é irreversível.';
+            }
 
-            icon.textContent = isApprove ? 'check_circle' : 'warning';
-            icon.style.color = isApprove ? 'var(--success)' : 'var(--danger)';
+            icon.textContent = isPositive ? 'check_circle' : 'warning';
+            icon.style.color = isPositive ? 'var(--success)' : 'var(--danger)';
 
             caseInfo.textContent = `${c.advName} | ${c.task}`;
 
             submitBtn.className = 'btn btn-primary';
-            submitBtn.style.background = isApprove ? '' : 'var(--danger)';
+            submitBtn.style.background = isPositive ? '' : 'var(--danger)';
 
             submitBtn.onclick = () => {
                 submitBtn.disabled = true;
@@ -791,10 +840,19 @@
         }
 
         function processAction(id, newStatus) {
+            const c = allCases.find(item => item.id === id);
+            const wasDiscardFlow = c && c.status === 'PENDING_TL_DISCARD';
+
             google.script.run
                 .withSuccessHandler(() => {
                     closeModal('confirmModal');
-                    showToast(newStatus === 'CREATED' ? 'Solicitação aprovada com sucesso' : 'Solicitação descartada');
+                    let msg;
+                    if (wasDiscardFlow) {
+                        msg = newStatus === 'DISCARDED' ? 'Descarte confirmado' : 'Caso mantido ativo';
+                    } else {
+                        msg = newStatus === 'CREATED' ? 'Solicitação aprovada com sucesso' : 'Solicitação rejeitada';
+                    }
+                    showToast(msg);
                     // OBRIGATORIAMENTE buscar a verdade do servidor após a ação
                     loadCases();
                 })
@@ -835,7 +893,8 @@
             document.getElementById(id).classList.remove('active');
         }
 
-        function copyText(text, btn) {
+        function copyText(btn) {
+            const text = btn.dataset.copyValue || '';
             navigator.clipboard.writeText(text);
             const icon = btn.querySelector('span');
             icon.textContent = 'check';
