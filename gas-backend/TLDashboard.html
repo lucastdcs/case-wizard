@@ -151,36 +151,18 @@
             100% { filter: brightness(1.2) drop-shadow(0 0 12px rgba(66, 133, 244, 0.6)); }
         }
 
-        /* Faixa de boas-vindas - "tela de login" com foto + saudação de quem acessou */
-        .welcome-banner {
-            max-width: 1200px;
-            margin: 24px auto 0 auto;
-            padding: 0 32px;
-        }
-
-        .welcome-card {
-            background: var(--surface-level-1);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: 16px 24px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-        }
-
+        /* Boas-vindas de quem acessou (foto + saudação), compacta dentro da própria nav */
+        .tl-welcome { display: flex; align-items: center; gap: 8px; }
         .tl-avatar {
-            width: 48px;
-            height: 48px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             object-fit: cover;
-            border: 2px solid var(--surface-level-2);
-            background: var(--surface-level-3);
+            border: 1px solid var(--nav-border);
+            background: var(--nav-surface);
             flex-shrink: 0;
         }
-
-        .welcome-greeting { font-size: 16px; font-weight: 600; color: var(--text-primary); }
-        .welcome-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+        .welcome-greeting { font-size: 13px; font-weight: 500; color: var(--nav-text-primary); white-space: nowrap; }
 
         /* Tabs System */
         .tab-section {
@@ -585,6 +567,11 @@
             </div>
         </div>
         <div style="display: flex; align-items: center; gap: 16px;">
+            <div id="tl-welcome" class="tl-welcome" title="">
+                <img id="tl-avatar" class="tl-avatar" src="" alt="" onerror="this.src='https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg'">
+                <span id="welcome-greeting" class="welcome-greeting"></span>
+            </div>
+            <div style="width: 1px; height: 24px; background: var(--nav-border);"></div>
             <span id="last-synced-label" style="font-size: 12px; color: var(--nav-text-secondary);"></span>
             <button class="btn" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);" onclick="SoundKit.click(); loadCases()">
                 <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
@@ -592,16 +579,6 @@
             </button>
         </div>
     </nav>
-
-    <div class="welcome-banner">
-        <div class="welcome-card">
-            <img id="tl-avatar" class="tl-avatar" src="" alt="" onerror="this.src='https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg'">
-            <div>
-                <div class="welcome-greeting" id="welcome-greeting">Olá!</div>
-                <div class="welcome-subtitle" id="welcome-subtitle"></div>
-            </div>
-        </div>
-    </div>
 
     <div class="tab-section">
         <button class="tab-btn active" onclick="switchTab('CREATION')" id="tab-creation">
@@ -655,11 +632,11 @@
                 .withSuccessHandler(profile => {
                     if (!profile || !profile.ldap) return;
                     const avatar = document.getElementById('tl-avatar');
-                    avatar.src = `https://moma-teams-photos.corp.google.com/photos/${encodeURIComponent(profile.ldap)}?sz=600`;
+                    avatar.src = 'https://moma-teams-photos.corp.google.com/photos/' + encodeURIComponent(profile.ldap) + '?sz=600';
 
-                    const { greeting, subtitle } = getTLGreeting(profile.ldap);
-                    document.getElementById('welcome-greeting').textContent = greeting;
-                    document.getElementById('welcome-subtitle').textContent = subtitle;
+                    const g = getTLGreeting(profile.ldap);
+                    document.getElementById('welcome-greeting').textContent = g.greeting;
+                    document.getElementById('tl-welcome').title = g.subtitle;
                 })
                 .withFailureHandler(err => {
                     console.warn("Não foi possível carregar o perfil do TL:", err);
@@ -691,7 +668,7 @@
             }
 
             const subtitle = phrases[Math.floor(Math.random() * phrases.length)];
-            return { greeting: `${prefix}, ${ldap}`, subtitle };
+            return { greeting: prefix + ', ' + ldap, subtitle: subtitle };
         }
 
         // Sons de feedback: mesma técnica de síntese via Web Audio já usada em
