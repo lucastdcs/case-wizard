@@ -151,6 +151,37 @@
             100% { filter: brightness(1.2) drop-shadow(0 0 12px rgba(66, 133, 244, 0.6)); }
         }
 
+        /* Faixa de boas-vindas - "tela de login" com foto + saudação de quem acessou */
+        .welcome-banner {
+            max-width: 1200px;
+            margin: 24px auto 0 auto;
+            padding: 0 32px;
+        }
+
+        .welcome-card {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .tl-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--surface-level-2);
+            background: var(--surface-level-3);
+            flex-shrink: 0;
+        }
+
+        .welcome-greeting { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+        .welcome-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
         /* Tabs System */
         .tab-section {
             display: flex;
@@ -555,12 +586,22 @@
         </div>
         <div style="display: flex; align-items: center; gap: 16px;">
             <span id="last-synced-label" style="font-size: 12px; color: var(--nav-text-secondary);"></span>
-            <button class="btn" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);" onclick="loadCases()">
+            <button class="btn" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);" onclick="SoundKit.click(); loadCases()">
                 <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
                 Sincronizar
             </button>
         </div>
     </nav>
+
+    <div class="welcome-banner">
+        <div class="welcome-card">
+            <img id="tl-avatar" class="tl-avatar" src="" alt="" onerror="this.src='https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg'">
+            <div>
+                <div class="welcome-greeting" id="welcome-greeting">Olá!</div>
+                <div class="welcome-subtitle" id="welcome-subtitle"></div>
+            </div>
+        </div>
+    </div>
 
     <div class="tab-section">
         <button class="tab-btn active" onclick="switchTab('CREATION')" id="tab-creation">
@@ -594,6 +635,7 @@
     <script>
         window.onload = () => {
             loadCases();
+            loadCurrentTLProfile();
             // Sincronização automática em segundo plano: silenciosa (sem skeleton),
             // pausa enquanto qualquer modal estiver aberto pra não puxar o tapete
             // de uma revisão em andamento. 60s é ponto de partida, fácil de ajustar.
@@ -603,6 +645,127 @@
                 if (document.visibilityState === 'visible') loadCases({ silent: true });
             });
         };
+
+        // Faixa de boas-vindas: foto (mesmo padrão de URL já usado na foto do
+        // agente nos cards) + saudação inteligente por horário/dia, mesma ideia
+        // de getSmartGreeting() em src/modules/shared/page-data.js - essa página
+        // roda fora do bundle do bookmarklet, então a lógica é replicada aqui.
+        function loadCurrentTLProfile() {
+            google.script.run
+                .withSuccessHandler(profile => {
+                    if (!profile || !profile.ldap) return;
+                    const avatar = document.getElementById('tl-avatar');
+                    avatar.src = `https://moma-teams-photos.corp.google.com/photos/${encodeURIComponent(profile.ldap)}?sz=600`;
+
+                    const { greeting, subtitle } = getTLGreeting(profile.ldap);
+                    document.getElementById('welcome-greeting').textContent = greeting;
+                    document.getElementById('welcome-subtitle').textContent = subtitle;
+                })
+                .withFailureHandler(err => {
+                    console.warn("Não foi possível carregar o perfil do TL:", err);
+                })
+                .getCurrentTLProfile();
+        }
+
+        function getTLGreeting(ldap) {
+            const now = new Date();
+            const h = now.getHours();
+            const d = now.getDay();
+
+            let prefix = "Olá";
+            if (h >= 5 && h < 12) prefix = "Bom dia";
+            else if (h >= 12 && h < 18) prefix = "Boa tarde";
+            else prefix = "Boa noite";
+
+            let phrases;
+            if (d === 0 || d === 6) {
+                phrases = ["Obrigado por dar uma olhada mesmo no fim de semana.", "Sua dedicação não passa despercebida."];
+            } else if (h >= 0 && h < 5) {
+                phrases = ["Revisão de madrugada - respeito.", "Vamos manter a fila em dia."];
+            } else if (d === 1) {
+                phrases = ["Vamos começar a semana organizando a fila.", "Nova semana, fila zerada."];
+            } else if (d === 5) {
+                phrases = ["Reta final da semana - vamos fechar a fila.", "Sexta produtiva por aqui."];
+            } else {
+                phrases = ["Vamos manter a fila em dia.", "Tudo sob controle por aqui.", "Bora revisar as solicitações."];
+            }
+
+            const subtitle = phrases[Math.floor(Math.random() * phrases.length)];
+            return { greeting: `${prefix}, ${ldap}`, subtitle };
+        }
+
+        // Sons de feedback: mesma técnica de síntese via Web Audio já usada em
+        // src/modules/shared/sound-manager.js (osciladores/ruído filtrado, sem
+        // arquivo externo) - só o subconjunto que faz sentido numa tela de
+        // revisão (sem hover-sound em cada linha, sem fanfarra de abertura).
+        const SoundKit = (() => {
+            let ctx = null;
+            const GAIN = 0.25;
+
+            function getCtx() {
+                if (!ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) ctx = new AudioContext();
+                }
+                if (ctx && ctx.state === 'suspended') ctx.resume();
+                return ctx;
+            }
+
+            function noiseBuffer(c) {
+                const buffer = c.createBuffer(1, c.sampleRate * 0.05, c.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+                return buffer;
+            }
+
+            return {
+                click: () => {
+                    const c = getCtx();
+                    if (!c) return;
+                    const t = c.currentTime;
+                    const source = c.createBufferSource();
+                    source.buffer = noiseBuffer(c);
+                    const filter = c.createBiquadFilter();
+                    filter.type = 'highpass';
+                    filter.frequency.value = 4000;
+                    const gain = c.createGain();
+                    gain.gain.setValueAtTime(GAIN * 0.8, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
+                    source.connect(filter); filter.connect(gain); gain.connect(c.destination);
+                    source.start(t); source.stop(t + 0.02);
+                },
+                success: () => {
+                    const c = getCtx();
+                    if (!c) return;
+                    const t = c.currentTime;
+                    [1046.5, 1567.9].forEach(f => {
+                        const osc = c.createOscillator();
+                        const gain = c.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = f;
+                        gain.gain.setValueAtTime(0, t);
+                        gain.gain.linearRampToValueAtTime(GAIN * 0.6, t + 0.05);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+                        osc.connect(gain); gain.connect(c.destination);
+                        osc.start(t); osc.stop(t + 0.7);
+                    });
+                },
+                error: () => {
+                    const c = getCtx();
+                    if (!c) return;
+                    const t = c.currentTime;
+                    const osc = c.createOscillator();
+                    const gain = c.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(120, t);
+                    osc.frequency.exponentialRampToValueAtTime(80, t + 0.1);
+                    gain.gain.setValueAtTime(GAIN, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                    osc.connect(gain); gain.connect(c.destination);
+                    osc.start(t); osc.stop(t + 0.2);
+                }
+            };
+        })();
         let allCases = [];
         let currentTab = 'CREATION';
         let loadError = false;
@@ -701,6 +864,7 @@
                     // Uma falha de tick silencioso não deve interromper a tela com
                     // um estado de erro - só a próxima tentativa (ou o clique manual).
                     if (!silent) {
+                        SoundKit.error();
                         showToast("Erro ao sincronizar com o servidor", "error");
                         loadError = true;
                         allCases = [];
@@ -720,6 +884,7 @@
         }
 
         function switchTab(tab) {
+            SoundKit.click();
             currentTab = tab;
             document.getElementById('tab-creation').classList.toggle('active', tab === 'CREATION');
             document.getElementById('tab-discard').classList.toggle('active', tab === 'DISCARD');
@@ -743,7 +908,7 @@
                     <span class="material-symbols-rounded" style="font-size: 48px; color: var(--danger);">error</span>
                     <div style="font-size: 18px; font-weight: 500; color: var(--text-primary);">Não foi possível carregar os casos</div>
                     <div style="font-size: 14px;">Falha ao conectar com o servidor. Tente sincronizar novamente.</div>
-                    <button class="btn" style="background: var(--surface-level-2); border: 1px solid var(--border-subtle); color: var(--text-secondary); margin-top: 8px;" onclick="loadCases()">
+                    <button class="btn" style="background: var(--surface-level-2); border: 1px solid var(--border-subtle); color: var(--text-secondary); margin-top: 8px;" onclick="SoundKit.click(); loadCases()">
                         <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
                         Tentar novamente
                     </button>
@@ -767,7 +932,7 @@
                 row.className = `case-row row-enter ${isDiscardFlow ? 'discard-theme' : ''}`;
                 row.style.animationDelay = `${idx * 30}ms`;
                 row.id = `row-${c.id}`;
-                row.onclick = () => openDetails(c.id);
+                row.onclick = () => { SoundKit.click(); openDetails(c.id); };
 
                 const dataFormatada = formatAvailability(c.availability);
 
@@ -934,6 +1099,7 @@
             submitBtn.style.background = isPositive ? '' : 'var(--danger)';
 
             submitBtn.onclick = () => {
+                SoundKit.click();
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Processando...';
                 document.getElementById('confirm-cancel-btn').disabled = true;
@@ -950,6 +1116,7 @@
             google.script.run
                 .withSuccessHandler((result) => {
                     closeModal('confirmModal');
+                    SoundKit.success();
                     let msg;
                     if (wasDiscardFlow) {
                         msg = newStatus === 'DISCARDED' ? 'Descarte confirmado' : 'Caso mantido ativo';
@@ -968,6 +1135,7 @@
                 })
                 .withFailureHandler(err => {
                     console.error("Erro na ação:", err);
+                    SoundKit.error();
                     showToast("Falha ao processar ação. Tente novamente.", "error");
 
                     // Reabilita os botões se falhar
