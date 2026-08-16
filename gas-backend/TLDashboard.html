@@ -593,6 +593,23 @@
             else label.textContent = `Sincronizado há ${Math.floor(diffSec / 60)}min`;
         }
 
+        // Formata uma disponibilidade (ISO 8601, opcionalmente múltiplas datas
+        // separadas por " | ") pro fuso do projeto (America/Sao_Paulo, igual
+        // gas-backend/appsscript.json e o mesmo fuso que EmailEngine.js já usa
+        // pros emails) - sem isso, o texto cru mostrava milissegundos e "Z" no
+        // final (ex: "14:00:00.000Z") direto do ISO string, sem formatação.
+        function formatAvailability(raw) {
+            if (!raw) return "Não informado";
+            if (String(raw).includes(' | ')) {
+                return String(raw).split(' | ').map(formatAvailability).join(' | ');
+            }
+            const d = new Date(raw);
+            if (isNaN(d.getTime())) return "Não informado";
+            const datePart = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+            const timePart = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+            return `${datePart} às ${timePart}`;
+        }
+
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
             return String(str)
@@ -720,11 +737,7 @@
                 row.id = `row-${c.id}`;
                 row.onclick = () => openDetails(c.id);
 
-                let dataFormatada = c.availability || "Não informado";
-                if (dataFormatada.includes("T")) {
-                    const p = dataFormatada.split("T");
-                    dataFormatada = `${p[0].split("-").reverse().join("/")} às ${p[1]}`;
-                }
+                const dataFormatada = formatAvailability(c.availability);
 
                 const dataEnvio = new Date(c.date).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const agentLdap = c.agentEmail ? c.agentEmail.split('@')[0] : 'Unknown';
@@ -829,7 +842,7 @@
                 ${createRow('Programa de Vendas', c.salesProgram)}
             </div>
             ${createRow('Site', c.site)}
-            ${createRow('Agendamento', c.availability)}
+            ${createRow('Agendamento', formatAvailability(c.availability))}
             ${createRow('Agente', c.agentEmail)}
             <div class="detail-group">
                 <span class="detail-label">O que deve ser feito</span>
