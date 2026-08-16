@@ -515,7 +515,7 @@ export function initBAUForm() {
                         <div class="bau-details-divider"></div>
                         <div class="bau-details-row">
                             <span class="bau-details-label">Tasks solicitadas</span>
-                            <span class="bau-details-value">${c.taskType || 'Nenhuma'}</span>
+                            <span class="bau-details-value">${c.task || c.taskType || 'Nenhuma'}</span>
                         </div>
                     </div>
 

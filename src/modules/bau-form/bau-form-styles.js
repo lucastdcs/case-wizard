@@ -951,6 +951,13 @@ export const injectStyles = () => {
         flex-direction: column;
         gap: 12px;
         transition: transform 0.2s ease;
+        /* min-width:0 é necessário pra célula de grid poder encolher abaixo
+           do conteúdo — sem isso, um texto sem quebra (URL, ID de rastreio)
+           força a coluna a ficar larga, estoura o grid, e o pai com
+           overflow:hidden corta/sobrepõe em vez de rolar. Casos já
+           resolvidos tendem a ter os campos mais preenchidos, por isso o
+           problema aparecia mais neles. */
+        min-width: 0;
     }
 
     .bau-details-row {
@@ -974,6 +981,8 @@ export const injectStyles = () => {
         font-weight: 500;
         color: #202124;
         line-height: 1.5;
+        overflow-wrap: break-word;
+        word-break: break-word;
     }
 
     .bau-copy-btn {
