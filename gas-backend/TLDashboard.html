@@ -48,10 +48,13 @@
             --radius-pill: 100px;
 
             /* Nav (topo) continua escura de propósito - âncora visual do
-               produto, "um pouco dark, um pouco light" em vez do corpo inteiro. */
-            --nav-bg: #131314;
-            --nav-surface: #1E1F20;
-            --nav-border: rgba(255, 255, 255, 0.08);
+               produto, "um pouco dark, um pouco light" em vez do corpo inteiro.
+               Mesma cor da pílula flutuante do Command Center (glassBg em
+               src/modules/shared/command-center.js) - a única identidade
+               visual escura que já existia no bookmarklet inteiro. */
+            --nav-bg: #3D3D3D;
+            --nav-surface: #333333;
+            --nav-border: rgba(255, 255, 255, 0.15);
             --nav-text-primary: #E3E3E3;
             --nav-text-secondary: #9AA0A6;
 
@@ -82,7 +85,7 @@
 
         /* Top Navigation - continua escura de propósito, âncora visual do produto */
         .topnav {
-            background: rgba(19, 19, 20, 0.92);
+            background: rgba(61, 61, 61, 0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             padding: 0 32px;
