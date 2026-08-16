@@ -612,7 +612,10 @@
     <script>
         window.onload = () => {
             loadCases();
-            loadCurrentTLProfile();
+            // getCurrentTLProfile() só é disparado depois que o primeiro loadCases()
+            // termina (ver loadCases() abaixo) - dois google.script.run em paralelo
+            // logo no carregamento inicial travavam o "Acessando base de dados..."
+            // pra sempre (só um clique manual em Sincronizar, sozinho, funcionava).
             // Sincronização automática em segundo plano: silenciosa (sem skeleton),
             // pausa enquanto qualquer modal estiver aberto pra não puxar o tapete
             // de uma revisão em andamento. 60s é ponto de partida, fácil de ajustar.
@@ -632,7 +635,7 @@
                 .withSuccessHandler(profile => {
                     if (!profile || !profile.ldap) return;
                     const avatar = document.getElementById('tl-avatar');
-                    avatar.src = 'https://moma-teams-photos.corp.google.com/photos/' + encodeURIComponent(profile.ldap) + '?sz=600';
+                    avatar.src = 'https://moma-teams-photos.corp.google.com/photos/' + encodeURIComponent(profile.ldap) + '?sz=600&type=PLUS';
 
                     const g = getTLGreeting(profile.ldap);
                     document.getElementById('welcome-greeting').textContent = g.greeting;
@@ -748,6 +751,13 @@
         let loadError = false;
         let lastSyncedAt = null;
         let syncInFlight = false;
+        let tlProfileLoaded = false;
+
+        function loadCurrentTLProfileOnce() {
+            if (tlProfileLoaded) return;
+            tlProfileLoaded = true;
+            loadCurrentTLProfile();
+        }
 
         function isAnyModalOpen() {
             return document.getElementById('caseModal').classList.contains('active') ||
@@ -834,6 +844,7 @@
                     loadError = false;
                     updateBadges();
                     renderCases();
+                    loadCurrentTLProfileOnce();
                 })
                 .withFailureHandler(err => {
                     syncInFlight = false;
@@ -848,6 +859,7 @@
                         updateBadges();
                         renderCases();
                     }
+                    loadCurrentTLProfileOnce();
                 })
                 .getPendingBAUCases();
         }
