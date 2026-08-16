@@ -5,7 +5,6 @@ import {
     makeResizable,
     showToast,
     constrainToViewport,
-    makeDraggable,
     styleResizeHandle
 } from "../shared/utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
@@ -17,66 +16,213 @@ import { triggerProcessingAnimation } from "../shared/command-center.js";
 import { SUBSTATUS_SHORTCODES } from '../notes/data/notes-data.js';
 import { SnippetService } from "../personal-library/snippet-service.js";
 
+// --- ESTILOS (Apple Inspired) ---
+const COLORS = {
+    bgApp: "#F5F5F7",
+    bgSurface: "#FFFFFF",
+    borderSubtle: "rgba(0, 0, 0, 0.07)",
+    primary: "#007AFF",
+    primaryBg: "rgba(0, 122, 255, 0.1)",
+    textPrimary: "#1D1D1F",
+    textSecondary: "#6E6E73",
+    warning: "#E67E22",
+    shadowCard: "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)"
+};
+
+// --- FOLHA DE ESTILOS DEDICADA ---
+// Substitui os Object.assign(el.style, {...}) espalhados pelo arquivo (hover
+// trocado na mão em onmouseenter/onmouseleave em quase todo botão/item) por
+// classes reais — mesmo padrão já usado em broadcast/links/personal-library.
+function injectStyles() {
+    if (document.getElementById('cw-email-styles')) return;
+    const style = document.createElement("style");
+    style.id = 'cw-email-styles';
+    style.textContent = `
+        #email-template-list::-webkit-scrollbar { width: 4px; }
+        #email-template-list::-webkit-scrollbar-track { background: transparent; }
+        #email-template-list::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 10px; }
+        #email-template-list::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
+
+        @keyframes cw-floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .cw-animate-float { animation: cw-floating 3s ease-in-out infinite; }
+
+        .cw-email-popup {
+            width: 850px; height: 650px;
+            font-family: '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+            border-radius: 12px; overflow: hidden;
+        }
+        .cw-email-main { display: flex; flex: 1; overflow: hidden; background-color: ${COLORS.bgApp}; }
+
+        /* --- PAINEL ESQUERDO --- */
+        .cw-email-left-panel { width: 320px; background-color: #EFEFF0; border-right: 1px solid ${COLORS.borderSubtle}; display: flex; flex-direction: column; flex-shrink: 0; }
+        .cw-email-search-container { padding: 16px; border-bottom: 1px solid ${COLORS.borderSubtle}; position: relative; }
+        .cw-email-search-input {
+            width: 100%; box-sizing: border-box; padding: 10px 14px 10px 36px;
+            border-radius: 10px; border: 1.5px solid transparent; background-color: #E3E3E8;
+            font-size: 15px; outline: none; color: ${COLORS.textPrimary};
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%238A8A8E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+            background-repeat: no-repeat; background-position: 12px center;
+            transition: all 0.2s ease-in-out;
+        }
+        .cw-email-search-input:focus {
+            background-color: #FFFFFF; border-color: ${COLORS.primary};
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1); transform: scale(1.02);
+        }
+        .cw-email-clear-btn {
+            position: absolute; right: 26px; top: 50%; transform: translateY(-50%);
+            font-size: 10px; color: #fff; cursor: pointer; display: none;
+            background-color: #C7C7CC; width: 16px; height: 16px; border-radius: 50%;
+            text-align: center; line-height: 16px; font-weight: bold;
+        }
+
+        #email-template-list { flex: 1; overflow-y: auto; padding: 8px; scroll-behavior: smooth; }
+
+        .cw-email-list-empty { padding: 40px 20px; text-align: center; color: ${COLORS.textSecondary}; opacity: 0.6; }
+        .cw-email-list-empty-icon { font-size: 32px; margin-bottom: 12px; }
+        .cw-email-list-empty-text { font-size: 14px; font-weight: 500; }
+
+        .cw-email-cat-header {
+            padding: 12px 16px 12px 24px; font-size: 11px; font-weight: 700; color: ${COLORS.textSecondary};
+            text-transform: uppercase; letter-spacing: 0.8px; position: sticky; top: -8px;
+            background-color: rgba(239, 239, 240, 0.9); z-index: 10; backdrop-filter: blur(20px);
+            margin: 0 -8px 8px -8px; border-bottom: 0.5px solid ${COLORS.borderSubtle};
+            cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+            user-select: none; transition: background-color 0.2s ease;
+        }
+        .cw-email-cat-header:hover { background-color: rgba(230, 230, 232, 0.9); }
+        .cw-email-cat-right { display: flex; align-items: center; }
+        .cw-email-cat-badge { background-color: rgba(0, 0, 0, 0.05); padding: 2px 8px; border-radius: 10px; font-size: 10px; color: ${COLORS.textSecondary}; }
+        .cw-email-cat-arrow { margin-left: 8px; transition: transform 0.3s ease; }
+
+        .cw-email-list-item {
+            padding: 12px 14px; font-size: 14px; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); border-radius: 10px;
+            color: ${COLORS.textPrimary}; margin: 4px 6px; display: flex; align-items: center; gap: 12px;
+            background-color: ${COLORS.bgSurface}; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border: 1px solid ${COLORS.borderSubtle}; position: relative; overflow: hidden;
+        }
+        .cw-email-list-item:hover:not(.selected) {
+            background-color: #f8f8f9; transform: translateY(-1px) scale(1.01);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08); border-color: rgba(0, 122, 255, 0.2);
+        }
+        .cw-email-list-item:active:not(.selected) { transform: scale(0.98); }
+        .cw-email-list-item.selected {
+            background-color: ${COLORS.primary}; box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+            border: none; color: #fff; font-weight: 600;
+        }
+        .cw-email-list-item.selected:active { transform: scale(0.97); }
+        .cw-email-list-indicator { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background-color: #fff; border-radius: 0 4px 4px 0; }
+        .cw-email-list-icon { font-size: 12px; opacity: 0.7; flex-shrink: 0; }
+        .cw-email-list-item.selected .cw-email-list-icon { opacity: 1; }
+        .cw-email-list-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+
+        /* --- PAINEL DIREITO --- */
+        .cw-email-right-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background-color: ${COLORS.bgApp}; transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
+        .cw-email-fields-section { padding: 20px; border-bottom: 1px solid ${COLORS.borderSubtle}; background-color: ${COLORS.bgSurface}; max-height: 250px; overflow-y: auto; display: none; }
+        .cw-email-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .cw-email-field-label { display: block; font-size: 11px; font-weight: 700; color: ${COLORS.textSecondary}; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cw-email-field-input {
+            width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px;
+            border: 1.5px solid ${COLORS.borderSubtle}; background-color: #FBFBFD; font-size: 14px;
+            transition: all 0.2s ease; outline: none;
+        }
+        .cw-email-field-input:focus { border-color: ${COLORS.primary}; background-color: #FFFFFF; box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1); }
+
+        .cw-email-smartcr-hint {
+            padding: 12px; font-size: 13px; color: #856404; background: #FFF3CD; border: 1px solid #FFEEBA;
+            border-radius: 8px; display: flex; align-items: center; gap: 8px;
+        }
+        .cw-email-smartcr-hint-icon { font-size: 18px; }
+
+        .cw-email-preview-section { flex: 1; display: flex; flex-direction: column; padding: 20px; background-color: ${COLORS.bgApp}; overflow: hidden; }
+        .cw-email-preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .cw-email-preview-title { font-size: 12px; font-weight: 600; color: ${COLORS.textSecondary}; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cw-email-preview-actions { display: flex; gap: 8px; }
+        .cw-email-preview-content {
+            flex: 1; background-color: ${COLORS.bgSurface}; border: 1px solid ${COLORS.borderSubtle};
+            border-radius: 8px; padding: 20px; font-size: 15px; line-height: 1.6; color: ${COLORS.textPrimary};
+            overflow-y: auto; outline: none; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        /* --- BOTÕES DE AÇÃO --- */
+        .cw-email-btn {
+            padding: 8px 14px; border-radius: 10px; border: 1.5px solid ${COLORS.primary};
+            background: transparent; color: ${COLORS.primary}; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .cw-email-btn:hover { background-color: rgba(0, 122, 255, 0.05); }
+        .cw-email-btn:active { transform: scale(0.94); }
+        .cw-email-btn.primary {
+            border: none; background: ${COLORS.primary}; color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+        }
+        .cw-email-btn.primary:hover { background-color: #0062CC; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 122, 255, 0.4); }
+        .cw-email-btn.warning { border-color: ${COLORS.warning}; color: ${COLORS.warning}; display: none; }
+        .cw-email-btn.warning:hover { background-color: rgba(230, 126, 34, 0.08); }
+    `;
+    document.head.appendChild(style);
+}
+
+// --- GERAÇÃO DA LISTA (templates + Smart CRs + snippets pessoais) ---
+// A lista junta 3 fontes bem diferentes num só resultado. Cada uma tem sua
+// própria função de busca/normalização, e getAllListItems() só concatena.
+
+function getFilteredTemplates(templates, searchTerm) {
+    return templates.filter(t =>
+        t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+}
+
+function getMatchingSmartCRs(searchTerm) {
+    return Object.entries(SUBSTATUS_SHORTCODES)
+        .filter(([key, code]) => code && (key.toLowerCase().includes(searchTerm.toLowerCase()) || code.toLowerCase().includes(searchTerm.toLowerCase())))
+        .map(([key, code]) => ({ id: key, name: key.replace(/_/g, ' '), category: "⚡ Smart CRs", code: code, isSmartCR: true }));
+}
+
+function getMatchingSnippets(searchTerm) {
+    return SnippetService.getSnippets('email')
+        .filter(s => s.title.toLowerCase().includes(searchTerm.toLowerCase()) || (s.subject && s.subject.toLowerCase().includes(searchTerm.toLowerCase())))
+        .map(s => {
+            const placeholders = [];
+            const matches = s.content.match(/\[([^\]]+)\]/g);
+            if (matches) {
+                [...new Set(matches)].forEach(m => {
+                    placeholders.push({ key: m, label: m.replace('[', '').replace(']', ''), type: m.toLowerCase().includes('data') ? 'date' : 'text', auto: m.toLowerCase().includes('nome') && m.toLowerCase().includes('seu') ? 'agentName' : null });
+                });
+            }
+            return { id: s.id || `snippet-${Math.random()}`, name: s.title, category: "👤 Pessoal", subject: s.subject || "Sem Assunto", template: s.content, placeholders: placeholders };
+        });
+}
+
+function getAllListItems(templates, searchTerm) {
+    return [
+        ...getFilteredTemplates(templates, searchTerm),
+        ...getMatchingSmartCRs(searchTerm),
+        ...getMatchingSnippets(searchTerm)
+    ];
+}
+
 export function initEmailAssistant() {
     const CURRENT_VERSION = "v6.0.0";
     let visible = false;
     let templates = [];
     let selectedTemplate = null;
     let searchTerm = "";
-    let activeCategory = "Todos";
     let expandedCategories = new Set();
 
-    // --- ESTILOS (Apple Inspired) ---
-    const COLORS = {
-        bgApp: "#F5F5F7",
-        bgSurface: "#FFFFFF",
-        borderSubtle: "rgba(0, 0, 0, 0.07)",
-        primary: "#007AFF",
-        primaryBg: "rgba(0, 122, 255, 0.1)",
-        textPrimary: "#1D1D1F",
-        textSecondary: "#6E6E73",
-        shadowCard: "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)"
-    };
+    injectStyles();
 
     const popup = document.createElement("div");
     popup.id = "email-assistant-popup";
-    popup.classList.add("cw-module-window");
-
-    // Custom Scrollbar styles
-    const scrollStyles = document.createElement("style");
-    scrollStyles.textContent = `
-        #email-template-list::-webkit-scrollbar {
-            width: 4px;
-        }
-        #email-template-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        #email-template-list::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
-        }
-        #email-template-list::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.2);
-        }
-        @keyframes cw-floating {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-        .cw-animate-float {
-            animation: cw-floating 3s ease-in-out infinite;
-        }
-    `;
-    document.head.appendChild(scrollStyles);
-    Object.assign(popup.style, stylePopup, {
-        width: "850px",
-        height: "650px",
-        display: "none",
-        flexDirection: "column",
-        fontFamily: `'-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif`,
-        borderRadius: '12px',
-        overflow: 'hidden'
-    });
+    popup.classList.add("cw-module-window", "cw-email-popup");
+    Object.assign(popup.style, stylePopup);
+    popup.style.display = "none";
+    popup.style.flexDirection = "column";
 
     const header = createStandardHeader(
         popup,
@@ -88,90 +234,25 @@ export function initEmailAssistant() {
     );
 
     const mainContent = document.createElement("div");
-    Object.assign(mainContent.style, {
-        display: "flex",
-        flex: "1",
-        overflow: "hidden",
-        backgroundColor: COLORS.bgApp
-    });
+    mainContent.className = "cw-email-main";
 
     // --- PAINEL ESQUERDO (LISTA DE TEMPLATES) ---
     const leftPanel = document.createElement("div");
-    Object.assign(leftPanel.style, {
-        width: "320px",
-        backgroundColor: '#EFEFF0',
-        borderRight: `1px solid ${COLORS.borderSubtle}`,
-        display: "flex",
-        flexDirection: "column",
-        flexShrink: "0"
-    });
+    leftPanel.className = "cw-email-left-panel";
 
     const searchContainer = document.createElement("div");
-    Object.assign(searchContainer.style, {
-        padding: "16px",
-        borderBottom: `1px solid ${COLORS.borderSubtle}`,
-        position: 'relative'
-    });
+    searchContainer.className = "cw-email-search-container";
 
     const searchInput = document.createElement("input");
+    searchInput.className = "cw-email-search-input";
     searchInput.placeholder = "Buscar templates...";
-    Object.assign(searchInput.style, {
-        width: "100%",
-        padding: "10px 14px 10px 36px",
-        borderRadius: "10px",
-        border: '1.5px solid transparent',
-        backgroundColor: '#E3E3E8',
-        fontSize: "15px",
-        outline: "none",
-        boxSizing: "border-box",
-        color: COLORS.textPrimary,
-        backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%238A8A8E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>')`,
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "12px center",
-        transition: 'all 0.2s ease-in-out'
-    });
-    searchInput.onfocus = () => {
-        searchInput.style.backgroundColor = '#FFFFFF';
-        searchInput.style.borderColor = COLORS.primary;
-        searchInput.style.boxShadow = '0 0 0 4px rgba(0, 122, 255, 0.1)';
-        searchInput.style.transform = 'scale(1.02)';
-    };
-    searchInput.onblur = () => {
-        searchInput.style.backgroundColor = '#E3E3E8';
-        searchInput.style.borderColor = 'transparent';
-        searchInput.style.boxShadow = 'none';
-        searchInput.style.transform = 'scale(1)';
-    };
-
 
     const templateList = document.createElement("div");
     templateList.id = "email-template-list";
-    Object.assign(templateList.style, {
-        flex: "1",
-        overflowY: "auto",
-        padding: "8px",
-        scrollBehavior: "smooth"
-    });
 
     const clearSearch = document.createElement("div");
+    clearSearch.className = "cw-email-clear-btn";
     clearSearch.innerHTML = "✕";
-    Object.assign(clearSearch.style, {
-        position: 'absolute',
-        right: '26px',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        fontSize: '10px',
-        color: '#fff',
-        cursor: 'pointer',
-        display: 'none',
-        backgroundColor: '#C7C7CC',
-        width: '16px',
-        height: '16px',
-        borderRadius: '50%',
-        textAlign: 'center',
-        lineHeight: '16px',
-        fontWeight: 'bold'
-    });
     clearSearch.onclick = () => {
         searchInput.value = "";
         searchTerm = "";
@@ -187,106 +268,35 @@ export function initEmailAssistant() {
 
     // --- PAINEL DIREITO (PREVIEW) ---
     const rightPanel = document.createElement("div");
-    Object.assign(rightPanel.style, {
-        flex: "1",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        backgroundColor: COLORS.bgApp,
-        transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
-    });
+    rightPanel.className = "cw-email-right-panel";
 
-    // Seção de Campos (Topo)
     const fieldsSection = document.createElement("div");
-    Object.assign(fieldsSection.style, {
-        padding: "20px",
-        borderBottom: `1px solid ${COLORS.borderSubtle}`,
-        backgroundColor: COLORS.bgSurface,
-        maxHeight: "250px",
-        overflowY: "auto",
-        display: "none"
-    });
+    fieldsSection.className = "cw-email-fields-section";
 
-    // Seção de Preview (Embaixo)
     const previewSection = document.createElement("div");
-    Object.assign(previewSection.style, {
-        flex: "1",
-        display: "flex",
-        flexDirection: "column",
-        padding: "20px",
-        backgroundColor: COLORS.bgApp,
-        overflow: "hidden"
-    });
+    previewSection.className = "cw-email-preview-section";
 
     const previewHeader = document.createElement("div");
-    Object.assign(previewHeader.style, {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "12px"
-    });
+    previewHeader.className = "cw-email-preview-header";
 
     const previewTitle = document.createElement("span");
     previewTitle.textContent = "Preview do E-mail";
-    Object.assign(previewTitle.style, {
-        fontSize: "12px",
-        fontWeight: "600",
-        color: COLORS.textSecondary,
-        textTransform: "uppercase",
-        letterSpacing: "0.5px"
-    });
+    previewTitle.className = "cw-email-preview-title";
 
     const previewActions = document.createElement("div");
-    Object.assign(previewActions.style, {
-        display: "flex",
-        gap: "8px"
-    });
+    previewActions.className = "cw-email-preview-actions";
 
     const createButton = (text, primary = false) => {
         const btn = document.createElement("button");
         btn.textContent = text;
-        Object.assign(btn.style, {
-            padding: "8px 14px",
-            borderRadius: "10px",
-            border: primary ? 'none' : `1.5px solid ${COLORS.primary}`,
-            background: primary ? COLORS.primary : "transparent",
-            color: primary ? "#fff" : COLORS.primary,
-            fontSize: "13px",
-            fontWeight: "600",
-            cursor: "pointer",
-            transition: 'all 0.2s cubic-bezier(0.25, 1, 0.5, 1)',
-            boxShadow: primary ? '0 4px 12px rgba(0, 122, 255, 0.3)' : 'none'
-        });
-        btn.onmouseenter = () => {
-            if (primary) {
-                btn.style.backgroundColor = '#0062CC';
-                btn.style.transform = 'translateY(-1px)';
-                btn.style.boxShadow = '0 6px 16px rgba(0, 122, 255, 0.4)';
-            } else {
-                btn.style.backgroundColor = 'rgba(0, 122, 255, 0.05)';
-            }
-        };
-        btn.onmouseleave = () => {
-            if (primary) {
-                btn.style.backgroundColor = COLORS.primary;
-                btn.style.transform = 'translateY(0)';
-                btn.style.boxShadow = '0 4px 12px rgba(0, 122, 255, 0.3)';
-            } else {
-                btn.style.backgroundColor = 'transparent';
-                btn.style.transform = 'translateY(0)';
-            }
-        };
-        btn.onmousedown = () => btn.style.transform = 'scale(0.94)';
-        btn.onmouseup = () => btn.style.transform = 'scale(1)';
+        btn.className = "cw-email-btn" + (primary ? " primary" : "");
         return btn;
     }
 
     const btnCopy = createButton("Copiar HTML");
     const btnFill = createButton("Preencher no CRM", true);
     const btnSmartCR = createButton("Smart CR");
-    btnSmartCR.style.borderColor = '#E67E22';
-    btnSmartCR.style.color = '#E67E22';
-    btnSmartCR.style.display = 'none';
+    btnSmartCR.classList.add("warning");
 
     previewActions.appendChild(btnSmartCR);
     previewActions.appendChild(btnCopy);
@@ -296,19 +306,7 @@ export function initEmailAssistant() {
 
     const previewContent = document.createElement("div");
     previewContent.contentEditable = "true";
-    Object.assign(previewContent.style, {
-        flex: "1",
-        backgroundColor: COLORS.bgSurface,
-        border: `1px solid ${COLORS.borderSubtle}`,
-        borderRadius: "8px",
-        padding: "20px",
-        fontSize: "15px",
-        lineHeight: "1.6",
-        color: COLORS.textPrimary,
-        overflowY: "auto",
-        outline: "none",
-        boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
-    });
+    previewContent.className = "cw-email-preview-content";
 
     previewSection.appendChild(previewHeader);
     previewSection.appendChild(previewContent);
@@ -350,199 +348,91 @@ export function initEmailAssistant() {
         renderTemplateList();
     }
 
+    function createCategoryHeader(cat, count, isExpanded) {
+        const catHeader = document.createElement("div");
+        catHeader.className = "cw-email-cat-header";
+
+        const headerText = document.createElement("span");
+        headerText.textContent = cat;
+        catHeader.appendChild(headerText);
+
+        const badge = document.createElement("span");
+        badge.className = "cw-email-cat-badge";
+        badge.textContent = count;
+
+        const arrow = document.createElement("span");
+        arrow.className = "cw-email-cat-arrow";
+        arrow.textContent = isExpanded ? '▾' : '▸';
+
+        const rightSide = document.createElement("div");
+        rightSide.className = "cw-email-cat-right";
+        rightSide.appendChild(badge);
+        rightSide.appendChild(arrow);
+        catHeader.appendChild(rightSide);
+
+        catHeader.onclick = () => {
+            if (expandedCategories.has(cat)) {
+                expandedCategories.delete(cat);
+            } else {
+                expandedCategories.add(cat);
+            }
+            renderTemplateList();
+        };
+
+        return catHeader;
+    }
+
+    function createTemplateListItem(template) {
+        const isSelected = selectedTemplate && selectedTemplate.id === template.id;
+        const item = document.createElement("div");
+        item.className = "cw-email-list-item" + (isSelected ? " selected" : "");
+
+        if (isSelected) {
+            const indicator = document.createElement("div");
+            indicator.className = "cw-email-list-indicator";
+            item.appendChild(indicator);
+        }
+
+        const icon = document.createElement("span");
+        icon.className = "cw-email-list-icon";
+        icon.innerHTML = template.isSmartCR ? '⚡' : (template.category === '👤 Pessoal' ? '👤' : '📄');
+        item.appendChild(icon);
+
+        const text = document.createElement("span");
+        text.className = "cw-email-list-text";
+        text.textContent = template.name;
+        item.appendChild(text);
+
+        item.onclick = () => selectTemplate(template);
+
+        return item;
+    }
+
     function renderTemplateList() {
         templateList.innerHTML = "";
-        const filteredTemplates = templates.filter(t =>
-            t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            t.category.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        const smartCRs = Object.entries(SUBSTATUS_SHORTCODES)
-            .filter(([key, code]) => code && (key.toLowerCase().includes(searchTerm.toLowerCase()) || code.toLowerCase().includes(searchTerm.toLowerCase())))
-            .map(([key, code]) => ({ id: key, name: key.replace(/_/g, ' '), category: "⚡ Smart CRs", code: code, isSmartCR: true }));
-
-        const snippets = SnippetService.getSnippets('email')
-            .filter(s => s.title.toLowerCase().includes(searchTerm.toLowerCase()) || (s.subject && s.subject.toLowerCase().includes(searchTerm.toLowerCase())))
-            .map(s => {
-                const placeholders = [];
-                const matches = s.content.match(/\[([^\]]+)\]/g);
-                if (matches) {
-                    [...new Set(matches)].forEach(m => {
-                        placeholders.push({ key: m, label: m.replace('[', '').replace(']', ''), type: m.toLowerCase().includes('data') ? 'date' : 'text', auto: m.toLowerCase().includes('nome') && m.toLowerCase().includes('seu') ? 'agentName' : null });
-                    });
-                }
-                return { id: s.id || `snippet-${Math.random()}`, name: s.title, category: "👤 Pessoal", subject: s.subject || "Sem Assunto", template: s.content, placeholders: placeholders };
-            });
-
-        const allItems = [...filteredTemplates, ...smartCRs, ...snippets];
+        const allItems = getAllListItems(templates, searchTerm);
 
         if (allItems.length === 0) {
             templateList.innerHTML = `
-                <div style="padding: 40px 20px; text-align: center; color: ${COLORS.textSecondary}; opacity: 0.6;">
-                    <div style="font-size: 32px; margin-bottom: 12px;">🔍</div>
-                    <div style="font-size: 14px; font-weight: 500;">Nenhum resultado para "${searchTerm}"</div>
+                <div class="cw-email-list-empty">
+                    <div class="cw-email-list-empty-icon">🔍</div>
+                    <div class="cw-email-list-empty-text">Nenhum resultado para "${searchTerm}"</div>
                 </div>`;
             return;
         }
 
-        const categories = [...new Set(allItems.map(t => t.category))].sort((a,b) => a.localeCompare(b));
+        const categories = [...new Set(allItems.map(t => t.category))].sort((a, b) => a.localeCompare(b));
 
         categories.forEach(cat => {
             const isExpanded = expandedCategories.has(cat) || searchTerm.length > 0;
             const categoryItems = allItems.filter(t => t.category === cat);
 
-            const catHeader = document.createElement("div");
-            Object.assign(catHeader.style, {
-                padding: "12px 16px 12px 24px",
-                fontSize: "11px",
-                fontWeight: "700",
-                color: COLORS.textSecondary,
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-                position: "sticky",
-                top: "-8px",
-                backgroundColor: 'rgba(239, 239, 240, 0.9)',
-                zIndex: "10",
-                backdropFilter: "blur(20px)",
-                margin: "0 -8px 8px -8px",
-                borderBottom: `0.5px solid ${COLORS.borderSubtle}`,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                userSelect: 'none',
-                transition: 'background-color 0.2s ease'
-            });
-
-            catHeader.onmouseenter = () => catHeader.style.backgroundColor = 'rgba(230, 230, 232, 0.9)';
-            catHeader.onmouseleave = () => catHeader.style.backgroundColor = 'rgba(239, 239, 240, 0.9)';
-
-            const headerText = document.createElement("span");
-            headerText.textContent = cat;
-            catHeader.appendChild(headerText);
-
-            const badge = document.createElement("span");
-            badge.textContent = categoryItems.length;
-            Object.assign(badge.style, {
-                backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                padding: '2px 8px',
-                borderRadius: '10px',
-                fontSize: '10px',
-                color: COLORS.textSecondary
-            });
-
-            const arrow = document.createElement("span");
-            arrow.innerHTML = isExpanded ? '􀄪' : '􀄫'; // SF Pro symbols (fallback if not available)
-            // Using simpler chevrons if SF Pro is not there
-            arrow.innerHTML = isExpanded ? '▾' : '▸';
-            arrow.style.marginLeft = '8px';
-            arrow.style.transition = 'transform 0.3s ease';
-
-            const rightSide = document.createElement("div");
-            rightSide.style.display = 'flex';
-            rightSide.style.alignItems = 'center';
-            rightSide.appendChild(badge);
-            rightSide.appendChild(arrow);
-            catHeader.appendChild(rightSide);
-
-            catHeader.onclick = () => {
-                if (expandedCategories.has(cat)) {
-                    expandedCategories.delete(cat);
-                } else {
-                    expandedCategories.add(cat);
-                }
-                renderTemplateList();
-            };
-
-            templateList.appendChild(catHeader);
+            templateList.appendChild(createCategoryHeader(cat, categoryItems.length, isExpanded));
 
             if (!isExpanded) return;
 
             categoryItems.forEach(template => {
-                const isSelected = selectedTemplate && selectedTemplate.id === template.id;
-                const item = document.createElement("div");
-
-                Object.assign(item.style, {
-                    padding: "12px 14px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)",
-                    borderRadius: "10px",
-                    color: COLORS.textPrimary,
-                    margin: '4px 6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    backgroundColor: isSelected ? COLORS.primary : COLORS.bgSurface,
-                    boxShadow: isSelected ? '0 4px 12px rgba(0, 122, 255, 0.3)' : '0 1px 2px rgba(0,0,0,0.05)',
-                    border: isSelected ? 'none' : `1px solid ${COLORS.borderSubtle}`,
-                    position: 'relative',
-                    overflow: 'hidden'
-                });
-
-                if (isSelected) {
-                    const indicator = document.createElement("div");
-                    Object.assign(indicator.style, {
-                        position: 'absolute',
-                        left: '0',
-                        top: '0',
-                        bottom: '0',
-                        width: '4px',
-                        backgroundColor: '#fff',
-                        borderRadius: '0 4px 4px 0'
-                    });
-                    item.appendChild(indicator);
-                }
-
-                const icon = document.createElement("span");
-                icon.innerHTML = template.isSmartCR ? '⚡' : (template.category === '👤 Pessoal' ? '👤' : '📄');
-                icon.style.fontSize = '12px';
-                icon.style.opacity = '0.7';
-                icon.style.flexShrink = '0';
-                item.appendChild(icon);
-
-                const text = document.createElement("span");
-                text.textContent = template.name;
-                text.style.overflow = "hidden";
-                text.style.textOverflow = "ellipsis";
-                text.style.whiteSpace = "nowrap";
-                text.style.flex = "1";
-                item.appendChild(text);
-
-                if (isSelected) {
-                    item.style.color = "#fff";
-                    item.style.fontWeight = "600";
-                    icon.style.opacity = '1';
-                }
-
-                item.onmouseenter = () => {
-                    if (!isSelected) {
-                        item.style.backgroundColor = '#f8f8f9';
-                        item.style.transform = 'translateY(-1px) scale(1.01)';
-                        item.style.boxShadow = '0 4px 8px rgba(0,0,0,0.08)';
-                        item.style.borderColor = 'rgba(0, 122, 255, 0.2)';
-                    }
-                };
-                item.onmouseleave = () => {
-                    if (!isSelected) {
-                        item.style.backgroundColor = COLORS.bgSurface;
-                        item.style.transform = 'translateY(0) scale(1)';
-                        item.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-                        item.style.borderColor = COLORS.borderSubtle;
-                    }
-                };
-
-                item.onmousedown = () => {
-                    item.style.transform = isSelected ? 'scale(0.97)' : 'scale(0.98)';
-                };
-                item.onmouseup = () => {
-                    item.style.transform = isSelected ? 'scale(1)' : 'translateY(-1px) scale(1.01)';
-                };
-                item.onclick = () => {
-                    selectTemplate(template);
-                };
-
-                templateList.appendChild(item);
+                templateList.appendChild(createTemplateListItem(template));
             });
         });
     }
@@ -578,8 +468,8 @@ export function initEmailAssistant() {
         if (!selectedTemplate || selectedTemplate.isSmartCR) {
             if (selectedTemplate?.isSmartCR) {
                 fieldsSection.style.display = "block";
-                fieldsSection.innerHTML = `<div style="padding: 12px; font-size: 13px; color: #856404; background: #FFF3CD; border: 1px solid #FFEEBA; border-radius: 8px; display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 18px;">💡</span>
+                fieldsSection.innerHTML = `<div class="cw-email-smartcr-hint">
+                    <span class="cw-email-smartcr-hint-icon">💡</span>
                     <span>Este é um <b>Smart CR</b>. Clique no botão laranja acima para aplicar o atalho diretamente no CRM.</span>
                 </div>`;
             } else {
@@ -594,50 +484,18 @@ export function initEmailAssistant() {
         if (!hasPlaceholders) return;
 
         const grid = document.createElement("div");
-        Object.assign(grid.style, {
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px"
-        });
+        grid.className = "cw-email-fields-grid";
 
         (selectedTemplate.placeholders || []).forEach(ph => {
             const container = document.createElement("div");
             const label = document.createElement("label");
+            label.className = "cw-email-field-label";
             label.textContent = ph.label;
-            Object.assign(label.style, {
-                display: "block",
-                fontSize: "11px",
-                fontWeight: "700",
-                color: COLORS.textSecondary,
-                marginBottom: "8px",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px"
-            });
+
             const input = document.createElement("input");
+            input.className = "cw-email-field-input";
             input.type = ph.type || "text";
             input.dataset.key = ph.key;
-            Object.assign(input.style, {
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "8px",
-                border: `1.5px solid ${COLORS.borderSubtle}`,
-                backgroundColor: '#FBFBFD',
-                fontSize: "14px",
-                boxSizing: "border-box",
-                transition: 'all 0.2s ease',
-                outline: 'none'
-            });
-
-            input.onfocus = () => {
-                input.style.borderColor = COLORS.primary;
-                input.style.backgroundColor = '#FFFFFF';
-                input.style.boxShadow = '0 0 0 4px rgba(0, 122, 255, 0.1)';
-            };
-            input.onblur = () => {
-                input.style.borderColor = COLORS.borderSubtle;
-                input.style.backgroundColor = '#FBFBFD';
-                input.style.boxShadow = 'none';
-            };
 
             if (ph.auto === "agentName") { input.value = getAgentName().split(' ')[0]; }
             input.addEventListener("input", updatePreview);
@@ -657,14 +515,14 @@ export function initEmailAssistant() {
                             <circle cx="60" cy="60" r="55" fill="#f8f9fa"/>
                             <!-- Envelope Base -->
                             <path d="M30 40C30 37.7909 31.7909 36 34 36H86C88.2091 36 90 37.7909 90 40V80C90 82.2091 88.2091 84 86 84H34C31.7909 84 30 82.2091 30 80V40Z" fill="white" stroke="#e8eaed" stroke-width="2"/>
-                            <!-- Google Colors Stripes on the envelope flap -->
-                            <path d="M30 40L60 60L90 40" stroke="#4285F4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M30 80L50 65" stroke="#EA4335" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
-                            <path d="M90 80L70 65" stroke="#FBBC05" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+                            <!-- Detalhes decorativos (paleta Apple do módulo, não mais as cores oficiais do Google) -->
+                            <path d="M30 40L60 60L90 40" stroke="${COLORS.primary}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M30 80L50 65" stroke="#FF3B30" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+                            <path d="M90 80L70 65" stroke="#FF9500" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
                             <!-- Small Floating icons -->
-                            <circle cx="95" cy="30" r="8" fill="#34A853"/>
+                            <circle cx="95" cy="30" r="8" fill="#34C759"/>
                             <path d="M92 30H98M95 27V33" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                            <rect x="20" y="70" width="12" height="12" rx="3" fill="#4285F4" opacity="0.8"/>
+                            <rect x="20" y="70" width="12" height="12" rx="3" fill="${COLORS.primary}" opacity="0.8"/>
                         </svg>
                     </div>
                     <div style="font-family: 'Google Sans', sans-serif; font-size: 18px; font-weight: 600; color: ${COLORS.textPrimary}; margin-bottom: 8px;">
