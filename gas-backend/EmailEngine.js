@@ -10,7 +10,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   const senderLdap = senderEmail ? senderEmail.split('@')[0] : "Equipe BAU"; // Fallback de segurança
   
   let themeColor = "#8ab4f8"; // Azul
-  let headerIcon = "⚡";
+  let headerIconName = "bolt"; // Material Symbol - trocado do emoji anterior por espaço/consistência
   let headerSubtitle = "BAU Escalation Hub";
   let greeting = "Olá,";
   let mainMessage = "";
@@ -97,7 +97,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
 
     case 'AGENT_BAU_CREATED':
       themeColor = "#81c995"; // Verde
-      headerIcon = "✅";
+      headerIconName = "check_circle"; // mesmo ícone do toast de sucesso do TL Dashboard
       greeting = `Boas notícias!`;
       mainMessage = `A liderança acabou de **CRIAR O CASO BAU** para o anunciante <strong style="color:#202124;">${data.advName}</strong>. Tudo pronto para o atendimento.`;
       footerBadge = "SOLICITAÇÃO CONCLUÍDA";
@@ -106,7 +106,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
 
     case 'AGENT_DISCARD_SENT':
       themeColor = "#f28b82"; // Vermelho Suave
-      headerIcon = "🗑️";
+      headerIconName = "delete_sweep"; // mesmo ícone da aba "Aprovação de Descarte" no TL Dashboard
       headerSubtitle = "Descarte Evaluation";
       greeting = `Olá, Agente!`;
       mainMessage = `Sua solicitação de **DESCARTE** para o anunciante <strong style="color:#202124;">${data.advName}</strong> foi enviada para avaliação do TL.`;
@@ -116,7 +116,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
 
     case 'AGENT_DISCARD_DONE':
       themeColor = "#ea4335"; // Vermelho Forte
-      headerIcon = "❌";
+      headerIconName = "delete"; // mesmo ícone do badge de status da linha em descarte, no TL Dashboard
       headerSubtitle = "Descarte Concluído";
       greeting = `Aviso Importante,`;
       mainMessage = `O descarte do caso do anunciante <strong style="color:#202124;">${data.advName}</strong> foi **APROVADO E CONCLUÍDO** pela liderança.`;
@@ -126,8 +126,14 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   }
 
   // 5. Substituição final e Envio (Agora com o LDAP mapeado corretamente)
+  // Ícone do header como Material Symbol (mesmo CDN já usado no resto do template),
+  // pintado de branco via filter (confiável pra qualquer SVG, sem precisar acertar
+  // um filtro de matiz por cor dinâmica) - a cor por tipo de email já é contada pelo
+  // {{THEME_COLOR}} no subtítulo, não precisa se repetir no ícone.
+  const headerIconHtml = `<img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/${headerIconName}/default/48px.svg" width="26" height="26" alt="" style="vertical-align: middle; margin-right: 8px; filter: brightness(0) invert(1);" />`;
+
   const htmlBody = template
-    .replace("{{HEADER_ICON}}", headerIcon)
+    .replace("{{HEADER_ICON}}", headerIconHtml)
     .replace("{{HEADER_SUBTITLE}}", headerSubtitle)
     .replace(/{{THEME_COLOR}}/g, themeColor)
     .replace("{{GREETING}}", greeting)
