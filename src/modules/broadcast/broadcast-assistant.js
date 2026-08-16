@@ -46,7 +46,12 @@ function injectStyles() {
         .cw-btn-interactive:active { transform: scale(0.96); }
 
         /* --- BUSCA --- */
-        .cw-bc-search-wrap { position: relative; padding: 12px 24px 0 24px; flex-shrink: 0; background: #FAFAFA; }
+        /* padding vertical simétrico (12px em cima E embaixo) é o que importa
+           aqui: os ícones são posicionados com top:50% relativo à caixa do
+           wrap, que inclui o padding. Com padding-top/bottom diferentes
+           (era 12px/0), os 50% do wrap não batiam com o centro vertical
+           real do input — os ícones ficavam "flutuando" alguns pixels acima. */
+        .cw-bc-search-wrap { position: relative; padding: 12px 24px; flex-shrink: 0; background: #FAFAFA; }
         .cw-bc-search-icon { position: absolute; left: 36px; top: 50%; transform: translateY(-50%); color: #80868b; pointer-events: none; display: flex; }
         .cw-bc-search-input {
             width: 100%; box-sizing: border-box; height: 36px; padding: 0 34px 0 34px;
@@ -109,13 +114,28 @@ function injectStyles() {
         .cw-bc-history-divider { display: flex; align-items: center; justify-content: center; margin: 20px 0; cursor: pointer; color: #1a73e8; font-size: 13px; font-weight: 500; gap: 8px; padding: 8px 16px; border-radius: 20px; background: #E8F0FE; }
         .cw-bc-history-container { display: none; flex-direction: column; gap: 16px; opacity: 0.8; }
 
-        /* --- WIDGET BAU (destaque proposital, paleta roxa própria) --- */
-        .cw-bc-bau { margin: 16px 24px 0 24px; padding: 16px; background: #F3E8FD; border: 1px solid #D8B4FE; border-radius: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.1); }
-        .cw-bc-bau-header { display: flex; align-items: center; justify-content: space-between; gap: 2px; margin-bottom: 8px; }
-        .cw-bc-bau-timestamp { font-size: 10px; opacity: 0.7; color: #7E22CE; }
-        .cw-bc-live-indicator { display: flex; align-items: center; gap: 8px; }
-        .cw-bc-pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #9333EA; box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.7); animation: cw-bc-pulse 2s infinite; }
-        .cw-bc-bau-label { font-size: 11px; font-weight: 800; color: #7E22CE; text-transform: uppercase; letter-spacing: 0.8px; }
+        /* --- WIDGET BAU (destaque proposital, paleta roxa própria) ---
+           Papel secundário por padrão: só a faixa de resumo (cw-bc-bau-header)
+           fica sempre visível, compacta. O conteúdo completo (mesmo layout de
+           sempre — slots, botões, texto integral) só aparece expandido, com
+           1 clique na faixa. Quem usa BAU com frequência (LM) expande e o
+           app lembra disso enquanto o popup ficar aberto; pra todo mundo
+           que só passa o olho nos avisos gerais, ele ocupa bem menos espaço. */
+        .cw-bc-bau { margin: 16px 24px 0 24px; padding: 12px 16px; background: #F3E8FD; border: 1px solid #D8B4FE; border-radius: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.1); transition: padding 0.25s ease; }
+        .cw-bc-bau.expanded { padding: 16px; }
+        .cw-bc-bau-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
+        .cw-bc-bau.expanded .cw-bc-bau-header { margin-bottom: -4px; }
+        .cw-bc-bau-timestamp { font-size: 10px; opacity: 0.7; color: #7E22CE; flex-shrink: 0; }
+        .cw-bc-live-indicator { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .cw-bc-pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #9333EA; box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.7); animation: cw-bc-pulse 2s infinite; flex-shrink: 0; }
+        .cw-bc-bau-label { font-size: 11px; font-weight: 800; color: #7E22CE; text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cw-bc-bau-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .cw-bc-bau-hint { font-size: 11px; font-weight: 600; color: #6D28D9; white-space: nowrap; }
+        .cw-bc-bau.expanded .cw-bc-bau-hint { display: none; }
+        .cw-bc-bau-chevron { color: #7E22CE; transition: transform 0.25s ease; flex-shrink: 0; }
+        .cw-bc-bau.expanded .cw-bc-bau-chevron { transform: rotate(180deg); }
+        .cw-bc-bau-detail { display: none; flex-direction: column; gap: 12px; }
+        .cw-bc-bau.expanded .cw-bc-bau-detail { display: flex; }
         .cw-bc-bau-slots { display: flex; justify-content: space-between; align-items: center; }
         .cw-bc-bau-slots-row { flex: 1; display: flex; gap: 8px; }
         .cw-bc-bau-slot { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.5); border-radius: 8px; flex: 1; justify-content: center; }
@@ -240,6 +260,9 @@ export function initBroadcastAssistant() {
   let pollInterval = null;
   let currentEditingId = null;
   let searchTerm = "";
+  // Sobrevive a re-renders (busca, polling) enquanto o popup ficar aberto —
+  // mesma ideia do searchTerm logo acima.
+  let bauExpanded = false;
 
   // Estado de admin — escopo do módulo em vez de window (nada mais no repo
   // lê essas 3 variáveis; não precisavam estar globais).
@@ -589,7 +612,11 @@ export function initBroadcastAssistant() {
 
   // Monta e insere o widget de "Disponibilidade BAU" logo após o status.
   // Widget fica sempre visível quando existe (não é filtrado pela busca —
-  // é um card operacional fixo, não uma "mensagem" pra procurar).
+  // é um card operacional fixo, não uma "mensagem" pra procurar), mas tem
+  // papel secundário por padrão: só a faixa de resumo aparece de cara, o
+  // conteúdo completo (mesmo de sempre) só mostra expandido — a maioria de
+  // quem abre a Central de Avisos não é LM e não precisa ver isso em
+  // destaque toda vez.
   function renderBauWidget(bauMessage) {
       const oldBau = popup.querySelector('#cw-bau-widget');
       if (oldBau) oldBau.remove();
@@ -636,23 +663,41 @@ export function initBroadcastAssistant() {
           `;
       }
 
+      const uniqueFlags = [...new Set(extractedSlots.map(s => s.flag))].join('');
+      const hintText = extractedSlots.length > 0
+          ? `${uniqueFlags} · ${extractedSlots.length} ${extractedSlots.length > 1 ? 'datas' : 'data'}`
+          : 'Ver detalhes';
+
+      bauWidget.className = "cw-bc-bau" + (bauExpanded ? " expanded" : "");
       bauWidget.innerHTML = `
-          <div class="cw-bc-bau-header">
+          <div class="cw-bc-bau-header cw-btn-interactive">
               <div class="cw-bc-live-indicator">
                   <div class="cw-bc-pulse-dot"></div>
                   <span class="cw-bc-bau-label">Disponibilidade BAU</span>
               </div>
-              <div class="cw-bc-bau-timestamp">${formatFriendlyDate(bauMessage.date)}</div>
+              <div class="cw-bc-bau-right">
+                  <span class="cw-bc-bau-hint">${hintText}</span>
+                  <span class="cw-bc-bau-timestamp">${formatFriendlyDate(bauMessage.date)}</span>
+                  <svg class="cw-bc-bau-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </div>
           </div>
-          ${contentHTML}
+          <div class="cw-bc-bau-detail">${contentHTML}</div>
       `;
 
       statusEl.after(bauWidget);
 
+      const headerRow = bauWidget.querySelector('.cw-bc-bau-header');
+      headerRow.onclick = () => {
+          bauExpanded = !bauExpanded;
+          bauWidget.classList.toggle('expanded', bauExpanded);
+          SoundManager.playClick();
+      };
+
       const toggleBtn = bauWidget.querySelector('#cw-bau-toggle-btn');
       const fullText = bauWidget.querySelector('#cw-bau-full');
       if (toggleBtn && fullText) {
-          toggleBtn.onclick = () => {
+          toggleBtn.onclick = (e) => {
+              e.stopPropagation();
               const isHidden = fullText.style.display === "none" || !fullText.style.display;
               fullText.style.display = isHidden ? "block" : "none";
               toggleBtn.textContent = isHidden ? "Ocultar" : "Detalhes";
@@ -660,7 +705,7 @@ export function initBroadcastAssistant() {
       }
       if (isAdmin) {
           const editBtn = bauWidget.querySelector('.cw-bau-edit');
-          if (editBtn) editBtn.onclick = () => openEditor(bauMessage);
+          if (editBtn) editBtn.onclick = (e) => { e.stopPropagation(); openEditor(bauMessage); };
       }
   }
 
