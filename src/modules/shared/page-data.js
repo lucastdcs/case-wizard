@@ -478,6 +478,7 @@ export async function getPageData() {
         // Aliases for BAU Form compatibility
         advName: advertiserName,
         site: websiteUrl,
+        website: websiteUrl, // bau-form-config.js's campo 'website' lê pageData.website, não .site
         email: clientEmail,
         salesProgram: salesProgram,
         language: language,
