@@ -9,7 +9,7 @@ function handleBAUEscalation(ss, p) {
     const timestamp = p.date || new Date().toISOString();
     const userEmail = p.user || 'anon';
     
-    const status = "PENDING_TL_CREATION"; 
+    const status = p.requestType === 'DISCARD' ? "PENDING_TL_DISCARD" : "PENDING_TL_CREATION";
 
     const novaLinha = [
       newId,                    // 1. ID

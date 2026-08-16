@@ -507,6 +507,47 @@ export function initBAUForm() {
                         </div>
                     </div>
 
+                    <div class="bau-details-card">
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Speakeasy ID</span>
+                            <span class="bau-details-value">${c.seId || '---'}</span>
+                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                        </div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Email do Anunciante</span>
+                            <span class="bau-details-value">${c.advEmail || '---'}</span>
+                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                        </div>
+                    </div>
+                    <div class="bau-details-card">
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Site</span>
+                            <span class="bau-details-value">${c.site || '---'}</span>
+                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                        </div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Timezone</span>
+                            <span class="bau-details-value">${c.timezone || '---'}</span>
+                        </div>
+                    </div>
+
+                    <div class="bau-details-card full-width">
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Idioma</span>
+                            <span class="bau-details-value">${c.language || '---'}</span>
+                        </div>
+                        <div class="bau-details-divider"></div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">AM Responsável</span>
+                            <span class="bau-details-value">${c.amName || '---'}</span>
+                        </div>
+                        <div class="bau-details-divider"></div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">Programa de Vendas</span>
+                            <span class="bau-details-value">${c.salesProgram || '---'}</span>
+                        </div>
+                    </div>
+
                     <div class="bau-details-card full-width">
                         <div class="bau-details-row">
                             <span class="bau-details-label">Motivo BAU</span>
