@@ -36,15 +36,17 @@ function handleBAUEscalation(ss, p) {
 
     sheet.appendRow(novaLinha);
 
+    let emailSent = false;
     try {
       if (typeof sendDynamicTechSolEmail === "function") {
         sendDynamicTechSolEmail(userEmail, p, newId, 'AGENT_BAU_SENT', userEmail);
+        emailSent = true;
       }
     } catch(e) {
       console.warn("Aviso: Falha ao enviar email do agente", e);
     }
 
-    return { status: 'success', message: 'Caso BAU enviado com sucesso.', id: newId };
+    return { status: 'success', message: 'Caso BAU enviado com sucesso.', id: newId, emailSent: emailSent };
     
   } finally {
     lock.releaseLock();
@@ -200,6 +202,27 @@ function update_bau_case(ss, p) {
 
         sheet.getRange(i + 1, 4, 1, rowUpdate.length).setValues([rowUpdate]);
         console.log("Caso atualizado com sucesso. ID:", p.id, "Row:", i+1);
+
+        // Confirmação de pedido de descarte: só dispara na transição de entrada
+        // (evita reenviar a cada edição de um caso que já está em PENDING_TL_DISCARD).
+        const enteringDiscardFlow = p.requestType === 'DISCARD' && currentStatus !== 'PENDING_TL_DISCARD';
+        if (enteringDiscardFlow) {
+          try {
+            if (typeof sendDynamicTechSolEmail === "function") {
+              const emailData = {
+                advName: rowUpdate[4],
+                caseId: rowUpdate[1],
+                cid: rowUpdate[2],
+                website: rowUpdate[6],
+                reason: rowUpdate[11],
+                availability: rowUpdate[14]
+              };
+              sendDynamicTechSolEmail(userEmail, emailData, p.id, 'AGENT_DISCARD_SENT', userEmail);
+            }
+          } catch (e) {
+            console.warn("Aviso: Falha ao enviar email de confirmação de descarte", e);
+          }
+        }
 
         return { status: 'success', message: 'Caso atualizado com sucesso.' };
       }
