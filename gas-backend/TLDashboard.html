@@ -611,7 +611,13 @@
 
     <script>
         window.onload = () => {
-            loadCases();
+            // Pequeno atraso antes da primeiríssima chamada: em alguns carregamentos
+            // "frios", o bridge do google.script.run ainda não estava pronto bem no
+            // instante do window.onload dentro do iframe sandboxado do Apps Script,
+            // e a chamada travava sem nunca chamar success/failure. loadCases() também
+            // tem seu próprio watchdog (abaixo) como rede de segurança pra esse mesmo
+            // sintoma, então essa espera aqui é só a primeira linha de defesa.
+            setTimeout(loadCases, 50);
             // getCurrentTLProfile() só é disparado depois que o primeiro loadCases()
             // termina (ver loadCases() abaixo) - dois google.script.run em paralelo
             // logo no carregamento inicial travavam o "Acessando base de dados..."
@@ -752,6 +758,7 @@
         let lastSyncedAt = null;
         let syncInFlight = false;
         let tlProfileLoaded = false;
+        let loadCasesWatchdog = null;
 
         function loadCurrentTLProfileOnce() {
             if (tlProfileLoaded) return;
@@ -835,8 +842,20 @@
                 `;
             }
 
+            // Watchdog: já vimos ao vivo a primeiríssima chamada de google.script.run
+            // da página travar de vez, sem nunca chamar success nem failure, ficando
+            // presa em "Acessando base de dados..." até um clique manual em Sincronizar.
+            // Se isso acontecer de novo, tenta sozinho em vez de depender do TL notar.
+            clearTimeout(loadCasesWatchdog);
+            loadCasesWatchdog = setTimeout(() => {
+                console.warn("loadCases() não respondeu a tempo, tentando de novo...");
+                syncInFlight = false;
+                loadCases(opts);
+            }, 10000);
+
             google.script.run
                 .withSuccessHandler(data => {
+                    clearTimeout(loadCasesWatchdog);
                     syncInFlight = false;
                     lastSyncedAt = new Date();
                     updateLastSyncedLabel();
@@ -847,6 +866,7 @@
                     loadCurrentTLProfileOnce();
                 })
                 .withFailureHandler(err => {
+                    clearTimeout(loadCasesWatchdog);
                     syncInFlight = false;
                     console.error("Erro ao carregar casos:", err);
                     // Uma falha de tick silencioso não deve interromper a tela com
