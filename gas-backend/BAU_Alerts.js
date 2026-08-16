@@ -56,7 +56,11 @@ function checkBAUPendingVolume() {
 // dashboard/emails (gas-backend/TLDashboard.html, gas-backend/EmailTemplateDynamic.html),
 // pra nascer visualmente consistente.
 function sendBAUVolumeAlertEmail(pendingCount, creationCount, discardCount) {
-  const dashboardUrl = ScriptApp.getService().getUrl() + "?page=tl";
+  // Fixo (não ScriptApp.getService().getUrl()): esse email é enviado por gatilho de
+  // tempo, e nesse contexto getUrl() pode devolver a URL de OUTRA implantação do
+  // projeto (não a implantação fixa usada em produção, pinada via clasp deploy -i
+  // em .github/workflows/deploy.yml e referenciada em src/modules/shared/data-service.js).
+  const dashboardUrl = "https://script.google.com/a/macros/google.com/s/AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg/exec?page=tl";
 
   const html = `
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8F9FA;">
