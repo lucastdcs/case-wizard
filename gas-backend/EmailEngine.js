@@ -61,7 +61,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   }
 
   let dataFormatada = formatGASDate(data.availability);
-  let dateObj = (data.availability && !data.availability.includes('|')) ? new Date(data.availability) : null;
+  let dateObj = (data.availability && !String(data.availability).includes('|')) ? new Date(data.availability) : null;
 
   // 3. Calculadora de Urgência (Para a Liderança)
   function getUrgencyHtml(targetDate) {
