@@ -472,14 +472,14 @@
 
     <div class="ambient-glow"></div>
 
-    <div id="toast" class="toast">
+    <div id="toast" class="toast" role="status" aria-live="polite">
         <span class="material-symbols-rounded" id="toast-icon">check_circle</span>
         <span id="toast-message">Ação realizada com sucesso</span>
     </div>
 
     <!-- Modal Detalhes -->
     <div id="caseModal" class="modal-overlay" onclick="closeModal('caseModal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-content" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div style="font-size: 18px; font-weight: 500;">Detalhes da Solicitação</div>
                 <button class="btn-icon-close" onclick="closeModal('caseModal')">
@@ -492,7 +492,7 @@
 
     <!-- Modal Confirmação Customizado -->
     <div id="confirmModal" class="modal-overlay">
-        <div class="modal-content modal-confirm-content">
+        <div class="modal-content modal-confirm-content" role="dialog" aria-modal="true">
             <div class="modal-body">
                 <span class="material-symbols-rounded confirm-icon" id="confirm-icon">help</span>
                 <div id="confirm-title" style="font-size: 20px; font-weight: 500; margin-bottom: 8px;">Confirmar Ação</div>
@@ -504,7 +504,7 @@
                 </div>
             </div>
             <div class="confirm-footer">
-                <button class="btn btn-danger-outline" onclick="closeModal('confirmModal')" style="flex: 1;">Cancelar</button>
+                <button class="btn btn-danger-outline" id="confirm-cancel-btn" onclick="closeModal('confirmModal')" style="flex: 1;">Cancelar</button>
                 <button class="btn btn-primary" id="confirm-submit-btn" style="flex: 1;">Confirmar</button>
             </div>
         </div>
@@ -522,10 +522,13 @@
                 <span>TL Dashboard</span>
             </div>
         </div>
-        <button class="btn" style="background: var(--surface-level-2); border: 1px solid var(--border-subtle); color: var(--text-secondary);" onclick="loadCases()">
-            <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
-            Sincronizar
-        </button>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <span id="last-synced-label" style="font-size: 12px; color: var(--text-tertiary);"></span>
+            <button class="btn" style="background: var(--surface-level-2); border: 1px solid var(--border-subtle); color: var(--text-secondary);" onclick="loadCases()">
+                <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
+                Sincronizar
+            </button>
+        </div>
     </nav>
 
     <div class="tab-section">
@@ -558,10 +561,37 @@
     </main>
 
     <script>
-        window.onload = loadCases;
+        window.onload = () => {
+            loadCases();
+            // Sincronização automática em segundo plano: silenciosa (sem skeleton),
+            // pausa enquanto qualquer modal estiver aberto pra não puxar o tapete
+            // de uma revisão em andamento. 60s é ponto de partida, fácil de ajustar.
+            setInterval(() => loadCases({ silent: true }), 60000);
+            setInterval(updateLastSyncedLabel, 15000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') loadCases({ silent: true });
+            });
+        };
         let allCases = [];
         let currentTab = 'CREATION';
         let loadError = false;
+        let lastSyncedAt = null;
+        let syncInFlight = false;
+
+        function isAnyModalOpen() {
+            return document.getElementById('caseModal').classList.contains('active') ||
+                document.getElementById('confirmModal').classList.contains('active');
+        }
+
+        function updateLastSyncedLabel() {
+            const label = document.getElementById('last-synced-label');
+            if (!label) return;
+            if (!lastSyncedAt) { label.textContent = ''; return; }
+            const diffSec = Math.floor((Date.now() - lastSyncedAt.getTime()) / 1000);
+            if (diffSec < 10) label.textContent = 'Sincronizado agora';
+            else if (diffSec < 60) label.textContent = `Sincronizado há ${diffSec}s`;
+            else label.textContent = `Sincronizado há ${Math.floor(diffSec / 60)}min`;
+        }
 
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
@@ -573,43 +603,62 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function loadCases() {
+        function loadCases(opts = {}) {
+            const silent = !!opts.silent;
+
+            // Ticks silenciosos não competem com uma requisição já em voo, nem
+            // interrompem o TL no meio da revisão de um caso.
+            if (silent && (syncInFlight || isAnyModalOpen())) return;
+
             const container = document.getElementById('cases-container');
             const loader = document.getElementById('loader');
 
-            loadError = false;
-            loader.style.display = 'flex';
-            container.innerHTML = `
-                <div class="skeleton-row">
-                    <div class="skeleton-item" style="width: 30%; height: 24px;"></div>
-                    <div class="skeleton-item" style="width: 60%; height: 16px;"></div>
-                    <div class="skeleton-item" style="width: 40%; height: 16px;"></div>
-                </div>
-                <div class="skeleton-row">
-                    <div class="skeleton-item" style="width: 35%; height: 24px;"></div>
-                    <div class="skeleton-item" style="width: 55%; height: 16px;"></div>
-                    <div class="skeleton-item" style="width: 45%; height: 16px;"></div>
-                </div>
-                <div class="skeleton-row">
-                    <div class="skeleton-item" style="width: 25%; height: 24px;"></div>
-                    <div class="skeleton-item" style="width: 65%; height: 16px;"></div>
-                    <div class="skeleton-item" style="width: 35%; height: 16px;"></div>
-                </div>
-            `;
+            syncInFlight = true;
+
+            if (!silent) {
+                loadError = false;
+                loader.style.display = 'flex';
+                container.innerHTML = `
+                    <div class="skeleton-row">
+                        <div class="skeleton-item" style="width: 30%; height: 24px;"></div>
+                        <div class="skeleton-item" style="width: 60%; height: 16px;"></div>
+                        <div class="skeleton-item" style="width: 40%; height: 16px;"></div>
+                    </div>
+                    <div class="skeleton-row">
+                        <div class="skeleton-item" style="width: 35%; height: 24px;"></div>
+                        <div class="skeleton-item" style="width: 55%; height: 16px;"></div>
+                        <div class="skeleton-item" style="width: 45%; height: 16px;"></div>
+                    </div>
+                    <div class="skeleton-row">
+                        <div class="skeleton-item" style="width: 25%; height: 24px;"></div>
+                        <div class="skeleton-item" style="width: 65%; height: 16px;"></div>
+                        <div class="skeleton-item" style="width: 35%; height: 16px;"></div>
+                    </div>
+                `;
+            }
 
             google.script.run
                 .withSuccessHandler(data => {
+                    syncInFlight = false;
+                    lastSyncedAt = new Date();
+                    updateLastSyncedLabel();
                     allCases = data;
+                    loadError = false;
                     updateBadges();
                     renderCases();
                 })
                 .withFailureHandler(err => {
+                    syncInFlight = false;
                     console.error("Erro ao carregar casos:", err);
-                    showToast("Erro ao sincronizar com o servidor", "error");
-                    loadError = true;
-                    allCases = [];
-                    updateBadges();
-                    renderCases();
+                    // Uma falha de tick silencioso não deve interromper a tela com
+                    // um estado de erro - só a próxima tentativa (ou o clique manual).
+                    if (!silent) {
+                        showToast("Erro ao sincronizar com o servidor", "error");
+                        loadError = true;
+                        allCases = [];
+                        updateBadges();
+                        renderCases();
+                    }
                 })
                 .getPendingBAUCases();
         }
@@ -809,6 +858,7 @@
             // Reset state
             submitBtn.disabled = false;
             submitBtn.textContent = 'Confirmar';
+            document.getElementById('confirm-cancel-btn').disabled = false;
 
             if (isDiscardFlow) {
                 title.textContent = isPositive ? 'Manter Caso Ativo' : 'Confirmar Descarte';
@@ -833,6 +883,7 @@
             submitBtn.onclick = () => {
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Processando...';
+                document.getElementById('confirm-cancel-btn').disabled = true;
                 processAction(id, action);
             };
 
@@ -844,7 +895,7 @@
             const wasDiscardFlow = c && c.status === 'PENDING_TL_DISCARD';
 
             google.script.run
-                .withSuccessHandler(() => {
+                .withSuccessHandler((result) => {
                     closeModal('confirmModal');
                     let msg;
                     if (wasDiscardFlow) {
@@ -853,19 +904,44 @@
                         msg = newStatus === 'CREATED' ? 'Solicitação aprovada com sucesso' : 'Solicitação rejeitada';
                     }
                     showToast(msg);
-                    // OBRIGATORIAMENTE buscar a verdade do servidor após a ação
-                    loadCases();
+
+                    if (result && result.emailSent === false) {
+                        setTimeout(() => {
+                            showToast("Ação registrada, mas o email de confirmação ao agente falhou.", "warning");
+                        }, 3200);
+                    }
+
+                    removeCaseOptimistically(id);
                 })
                 .withFailureHandler(err => {
                     console.error("Erro na ação:", err);
                     showToast("Falha ao processar ação. Tente novamente.", "error");
 
-                    // Reabilita o botão se falhar
+                    // Reabilita os botões se falhar
                     const submitBtn = document.getElementById('confirm-submit-btn');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Confirmar';
+                    document.getElementById('confirm-cancel-btn').disabled = false;
                 })
                 .updateBAUCaseStatus(id, newStatus);
+        }
+
+        // Tira a linha da tela na hora (animação já existia no CSS, nunca era usada -
+        // antes disso o TL só via o caso sumir depois de um loadCases() completo, com
+        // flash de skeleton, o que parecia "não mudar nada" na tela.
+        function removeCaseOptimistically(id) {
+            const row = document.getElementById('row-' + id);
+            const finish = () => {
+                allCases = allCases.filter(c => c.id !== id);
+                updateBadges();
+                renderCases();
+            };
+            if (row) {
+                row.classList.add('row-exit');
+                setTimeout(finish, 420);
+            } else {
+                finish();
+            }
         }
 
         function showToast(msg, type = "success") {
@@ -879,6 +955,11 @@
                 toast.style.background = "var(--danger)";
                 toast.style.color = "white";
                 icon.textContent = "error";
+            } else if (type === "warning") {
+                // TODO(PR B): trocar pelos tokens --yellow/--amber-text da nova paleta clara
+                toast.style.background = "#F9AB00";
+                toast.style.color = "#202124";
+                icon.textContent = "warning";
             } else {
                 toast.style.background = "";
                 toast.style.color = "";

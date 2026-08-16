@@ -63,7 +63,7 @@ function updateBAUCaseStatus(id, newStatus) {
           advName: rowData[7],
           caseId: rowData[4],
           site: rowData[9],
-          availability: rowData[17],
+          availability: rowData[17] instanceof Date ? rowData[17].toISOString() : String(rowData[17] || ""),
           cid: rowData[5],
           taskType: rowData[15],
           reason: rowData[14]
@@ -71,13 +71,22 @@ function updateBAUCaseStatus(id, newStatus) {
         const agentEmail = rowData[2];
         const tlEmail = Session.getActiveUser().getEmail();
 
-        if (newStatus === "CREATED") {
-          sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_BAU_CREATED', tlEmail);
-        } else if (newStatus === "DISCARDED") {
-          sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_DISCARD_DONE', tlEmail);
+        // O status já foi gravado na planilha (linha acima) antes de chegar aqui -
+        // uma falha no envio do email não pode mais derrubar a ação inteira pro
+        // cliente (google.script.run reportaria falha mesmo com o status já salvo).
+        let emailSent = true;
+        try {
+          if (newStatus === "CREATED") {
+            sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_BAU_CREATED', tlEmail);
+          } else if (newStatus === "DISCARDED") {
+            sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_DISCARD_DONE', tlEmail);
+          }
+        } catch (e) {
+          emailSent = false;
+          console.warn("Aviso: Falha ao enviar email de confirmação de status", e);
         }
-        
-        return { success: true, newStatus: newStatus };
+
+        return { success: true, newStatus: newStatus, emailSent: emailSent };
       }
     }
     throw new Error("Caso não encontrado.");

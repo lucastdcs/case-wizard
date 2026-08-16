@@ -1,13 +1,13 @@
 # Diagnóstico do TL Dashboard
 
-> ⚠️ **Status: Backlog / não implementado.** Apesar do nome, este arquivo não descreve o comportamento atual do TL Dashboard — é uma lista de melhorias propostas que ainda não foram construídas. Confirme no código (`gas-backend/BAU_Dashboard.js`, `gas-backend/TLDashboard.html`) antes de assumir que algo aqui já existe.
+> ⚠️ **Status: parcialmente implementado.** Os itens marcados ✅ abaixo já existem no código atual (`gas-backend/BAU_Dashboard.js`, `gas-backend/TLDashboard.html`). Os demais continuam sendo apenas propostas — confirme no código antes de assumir que algo aqui já existe.
 
-Para que o TL Dashboard reflita essas edições em tempo real, as seguintes alterações no arquivo **TLDashboard.html** serão necessárias no futuro:
+No arquivo **TLDashboard.html**:
 
-1.  **Auto-Refresh (Polling):** Implementar um mecanismo de atualização automática utilizando `setInterval` que execute a função `loadCases()` em intervalos regulares (ex: a cada 3 ou 5 minutos), garantindo que a lista de casos pendentes esteja sempre sincronizada sem depender exclusivamente do clique manual em "Sincronizar".
-2.  **Destaque Visual de Mudanças:** Na função `withSuccessHandler` do `loadCases`, comparar o novo array de casos com o estado anterior (`allCases`). Caso um ID existente possua dados diferentes (como mudança no `reason` ou `task`), aplicar uma classe CSS de animação (ex: um breve pulse ou glow) na linha correspondente para alertar visualmente o TL sobre a edição.
-3.  **Badge de Edição:** Adicionar uma propriedade `date_edited` ao objeto retornado pelo backend e, no frontend, exibir um pequeno ícone ou badge de "Editado" nos cards que foram modificados pelo agente após a criação inicial.
-4.  **Notificação de Sistema (Toasts):** Se o Auto-Refresh detectar que um caso foi alterado enquanto o TL estava com a aba aberta, disparar um Toast informativo: "O caso [ID] foi atualizado pelo agente".
+1.  ✅ **Auto-Refresh (Polling):** implementado — `setInterval` silencioso chamando `loadCases({ silent: true })` a cada 60s, mais um refresh ao focar a aba de novo (`visibilitychange`). Pausa enquanto qualquer modal está aberto. Sem o `setInterval` de 3-5min originalmente cogitado aqui — 60s pareceu um ponto de partida melhor para dar sensação de "tempo real"; é um valor único, fácil de ajustar se ficar muito frequente.
+2.  **Destaque Visual de Mudanças:** ainda não implementado. Continua como proposta: comparar o novo array de casos com o estado anterior (`allCases`) no `withSuccessHandler` do `loadCases`, e aplicar uma classe CSS de animação (pulse/glow) na linha correspondente quando um ID existente mudar de dados.
+3.  **Badge de Edição:** ainda não implementado. Continua como proposta: propriedade `date_edited` no objeto retornado pelo backend + badge "Editado" no frontend.
+4.  ~~Notificação de Sistema (Toasts) quando um caso é alterado enquanto a aba está aberta~~ — depende dos itens 2-3 acima (que ainda não existem), então também não implementado.
 
 No arquivo **BAU_Dashboard.js**:
-1.  Incluir a coluna de `description` (Índice 16) no objeto retornado pela função `getPendingBAUCases`, permitindo que o TL visualize detalhes adicionais que podem ter sido corrigidos durante a edição.
+1.  ✅ **Incluir a coluna de `description`** no retorno de `getPendingBAUCases` — já implementado, junto com Speakeasy ID, Adv Email, Timezone, Language, AM Name e Sales Program.
