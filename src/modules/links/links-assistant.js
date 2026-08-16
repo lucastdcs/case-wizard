@@ -1,4 +1,4 @@
-// src/modules/lm-report/lm-repot-assistant.js
+// src/modules/links/links-assistant.js
 
 import { stylePopup, showToast } from "../shared/utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
@@ -117,7 +117,7 @@ const LINKS_DB = {
 
 const CATEGORY_ICONS = {
     tasks: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
-    lm: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`, 
+    lm: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`,
     qa: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>`,
     suporte: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>`,
     ads: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`,
@@ -126,6 +126,17 @@ const CATEGORY_ICONS = {
     tech: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>`,
     hr: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`,
     history: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>`
+};
+
+// --- DESIGN SYSTEM (tokens unificados — antes eram COLORS + CAT_THEMES
+// desconectados; mesmas cores de sempre, só num lugar só) ---
+const COLORS = {
+    bgApp: "#F8F9FA",
+    bgSidebar: "#FFFFFF",
+    bgSurface: "#FFFFFF",
+    textPrimary: "#202124",
+    textSecondary: "#5F6368",
+    borderSubtle: "rgba(0,0,0,0.06)"
 };
 
 const CAT_THEMES = {
@@ -140,6 +151,131 @@ const CAT_THEMES = {
     suporte: { color: "#0B57D0", bg: "#D3E3FD" }, // Light Blue
     history: { color: "#5F6368", bg: "#FFFFFF" }  // Default
 };
+
+// --- FOLHA DE ESTILOS DEDICADA ---
+// Substitui os cssText espalhados (cada elemento montado com string CSS
+// crua, hover trocado na mão via onmouseenter/onmouseleave) por classes
+// reais — mesmo padrão já usado em broadcast/personal-library/call-script.
+function injectStyles() {
+    if (document.getElementById('cw-links-styles')) return;
+    const style = document.createElement("style");
+    style.id = 'cw-links-styles';
+    style.textContent = `
+        .cw-links-layout { display: flex; height: calc(100% - 56px); width: 100%; position: relative; }
+
+        /* --- SIDEBAR --- */
+        .cw-links-sidebar {
+            width: 80px; flex-shrink: 0; background: ${COLORS.bgSidebar};
+            border-right: 1px solid ${COLORS.borderSubtle};
+            display: flex; flex-direction: column; align-items: center;
+            padding: 16px 0; overflow-y: auto; gap: 8px;
+            scrollbar-width: none; z-index: 2;
+        }
+        .cw-links-nav-btn {
+            width: 56px; height: 56px; border-radius: 16px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; color: ${COLORS.textSecondary};
+            transition: background 0.2s cubic-bezier(0.2, 0.0, 0.2, 1), color 0.2s ease;
+            position: relative; background: transparent;
+        }
+        .cw-links-nav-btn:hover:not(.active) { background: #F1F3F4; }
+        .cw-links-nav-btn:hover:not(.active) .cw-links-nav-icon { transform: scale(1.1); }
+        .cw-links-nav-btn.active { background: var(--cat-bg); color: var(--cat-color); }
+        .cw-links-nav-btn.active .cw-links-nav-icon { transform: scale(1.1); }
+        .cw-links-nav-btn.history-open { background: #3C4043; color: #FFFFFF; }
+        .cw-links-nav-icon { width: 24px; height: 24px; margin-bottom: 2px; transition: transform 0.2s; }
+        .cw-links-nav-label { font-size: 9px; font-weight: 600; opacity: 0.7; letter-spacing: 0.3px; }
+        .cw-links-nav-sep { width: 32px; height: 1px; background: rgba(0,0,0,0.08); margin: 4px 0; }
+
+        /* --- CONTEÚDO --- */
+        .cw-links-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: ${COLORS.bgApp}; position: relative; z-index: 1; }
+
+        .cw-links-search-bar { padding: 16px 24px; flex-shrink: 0; }
+        .cw-links-search-wrap {
+            position: relative; width: 100%; height: 44px;
+            border-radius: 12px; border: 1px solid transparent;
+            background: #FFFFFF; transition: all 0.2s;
+            display: flex; align-items: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04); box-sizing: border-box;
+        }
+        .cw-links-search-wrap:focus-within { box-shadow: 0 4px 12px rgba(26,115,232,0.15); border-color: #1a73e8; }
+        .cw-links-search-icon { margin-left: 14px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .cw-links-search-input {
+            flex: 1; height: 100%; border: none; background: transparent;
+            padding: 0 12px; font-size: 14px; color: ${COLORS.textPrimary};
+            outline: none; box-sizing: border-box; font-family: 'Google Sans', Roboto, sans-serif;
+        }
+
+        .cw-links-scroll { flex: 1; overflow-y: auto; padding: 0 24px 40px 24px; scroll-behavior: smooth; }
+        .cw-links-search-results-label { font-size: 12px; font-weight: 700; color: #5f6368; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cw-links-empty { text-align: center; padding: 60px; color: #999; font-size: 13px; }
+
+        .cw-links-cat-header {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: 800; color: var(--cat-color);
+            text-transform: uppercase; letter-spacing: 0.5px;
+            margin: 32px 0 12px 0; padding-top: 10px;
+        }
+        .cw-links-cat-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cat-color); }
+        .cw-links-cat-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+        .cw-links-spacer { height: 80px; }
+
+        /* --- CARD --- */
+        .cw-links-card {
+            display: flex; align-items: center; gap: 16px;
+            padding: 12px 16px;
+            background: #FFFFFF;
+            border: 1px solid transparent;
+            border-left: 4px solid transparent;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s ease;
+            position: relative; overflow: hidden; box-sizing: border-box;
+        }
+        .cw-links-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            border-color: rgba(0,0,0,0.05);
+            border-left-color: var(--cat-color);
+        }
+        .cw-links-card:hover .cw-links-copy-btn { opacity: 1; background: #F1F3F4; }
+
+        .cw-links-icon-box {
+            width: 40px; height: 40px; border-radius: 12px;
+            background: var(--cat-bg); color: var(--cat-color);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .cw-links-icon-box svg { width: 22px; height: 22px; }
+
+        .cw-links-card-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+        .cw-links-card-title { font-size: 14px; font-weight: 600; color: ${COLORS.textPrimary}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cw-links-card-desc { font-size: 12px; color: ${COLORS.textSecondary}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .cw-links-copy-btn {
+            width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent;
+            display: flex; align-items: center; justify-content: center;
+            color: #9AA0A6; transition: all 0.2s; opacity: 0; cursor: pointer; flex-shrink: 0;
+        }
+
+        /* --- OVERLAY DE HISTÓRICO --- */
+        .cw-links-history-overlay {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.98); z-index: 20;
+            display: flex; flex-direction: column;
+            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+        }
+        .cw-links-history-head { padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #F1F3F4; }
+        .cw-links-history-title { font-size: 16px; font-weight: 700; color: #202124; }
+        .cw-links-history-close { background: none; border: none; cursor: pointer; color: #5f6368; padding: 4px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s; }
+        .cw-links-history-close:hover { background: #F1F3F4; }
+        .cw-links-history-list { flex: 1; overflow-y: auto; padding: 20px; background: #F8F9FA; }
+        .cw-links-history-empty { text-align: center; color: #999; margin-top: 60px; font-size: 13px; }
+    `;
+    document.head.appendChild(style);
+}
 
 // --- LOGICA DE HISTÓRICO ---
 const HISTORY_KEY = 'cw_link_history_v4';
@@ -160,30 +296,22 @@ function getHistory() {
     } catch (e) { return []; }
 }
 
-export function initFeedbackAssistant() {
+export function initLinksAssistant() {
   const CURRENT_VERSION = "v4.6";
   let searchTerm = "";
   let visible = false;
   let activeCategoryKey = null;
   let isHistoryOpen = false; // Controle de estado do histórico
 
-  // --- DESIGN SYSTEM ---
-  const COLORS = {
-      bgApp: "#F8F9FA",
-      bgSidebar: "#FFFFFF", // Sidebar branca fica mais limpa com ícones coloridos
-      bgSurface: "#FFFFFF",
-      textPrimary: "#202124",
-      textSecondary: "#5F6368",
-      borderSubtle: "rgba(0,0,0,0.06)"
-  };
+  injectStyles();
 
   // --- POPUP ---
   const popup = document.createElement("div");
   popup.id = "links-popup";
   popup.classList.add("cw-module-window");
-  Object.assign(popup.style, stylePopup, { 
-      right: "100px", width: "600px", height: "650px", 
-      background: COLORS.bgApp, overflow: "hidden" 
+  Object.assign(popup.style, stylePopup, {
+      right: "100px", width: "600px", height: "650px",
+      background: COLORS.bgApp, overflow: "hidden"
   });
 
   const animRefs = { popup, googleLine: null };
@@ -198,60 +326,35 @@ export function initFeedbackAssistant() {
 
   // --- LAYOUT PRINCIPAL ---
   const mainLayout = document.createElement("div");
-  mainLayout.style.cssText = "display: flex; height: calc(100% - 56px); width: 100%; position: relative;";
+  mainLayout.className = "cw-links-layout";
   popup.appendChild(mainLayout);
 
   // 2. SIDEBAR
   const sidebar = document.createElement("div");
-  sidebar.style.cssText = `
-      width: 80px; flex-shrink: 0; background: ${COLORS.bgSidebar};
-      border-right: 1px solid ${COLORS.borderSubtle};
-      display: flex; flex-direction: column; align-items: center;
-      padding: 16px 0; overflow-y: auto; gap: 8px;
-      scrollbar-width: none; z-index: 2;
-  `;
+  sidebar.className = "cw-links-sidebar";
   mainLayout.appendChild(sidebar);
 
   // 3. CONTEÚDO
   const contentWrapper = document.createElement("div");
-  contentWrapper.style.cssText = "flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #F8F9FA; position: relative; z-index: 1;";
+  contentWrapper.className = "cw-links-content";
   mainLayout.appendChild(contentWrapper);
 
   // 3.1. Barra de Busca
   const searchBar = document.createElement("div");
-  searchBar.style.cssText = "padding: 16px 24px; flex-shrink: 0; background: transparent;";
-  
+  searchBar.className = "cw-links-search-bar";
+
   const searchInputWrapper = document.createElement("div");
-  searchInputWrapper.style.cssText = `
-      position: relative; width: 100%; height: 44px;
-      border-radius: 12px; border: 1px solid transparent;
-      background: #FFFFFF; transition: all 0.2s;
-      display: flex; align-items: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-  `;
+  searchInputWrapper.className = "cw-links-search-wrap";
 
   const searchIcon = document.createElement("div");
+  searchIcon.className = "cw-links-search-icon";
   searchIcon.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
-  searchIcon.style.cssText = "margin-left: 14px; display: flex; align-items: center; justify-content: center; pointer-events: none;";
 
   const searchInput = document.createElement("input");
+  searchInput.className = "cw-links-search-input";
   searchInput.type = "text";
   searchInput.placeholder = "Buscar ferramenta ou SOP...";
-  searchInput.style.cssText = `
-      flex: 1; height: 100%; border: none; background: transparent;
-      padding: 0 12px; font-size: 14px; color: ${COLORS.textPrimary};
-      outline: none; box-sizing: border-box; font-family: 'Google Sans', Roboto, sans-serif;
-  `;
-  
-  searchInput.onfocus = () => { 
-      searchInputWrapper.style.boxShadow = "0 4px 12px rgba(26,115,232,0.15)"; 
-      searchInputWrapper.style.border = "1px solid #1a73e8";
-  };
-  searchInput.onblur = () => { 
-      searchInputWrapper.style.boxShadow = "0 2px 6px rgba(0,0,0,0.04)"; 
-      searchInputWrapper.style.border = "1px solid transparent";
-  };
-  
+
   searchInputWrapper.appendChild(searchIcon);
   searchInputWrapper.appendChild(searchInput);
   searchBar.appendChild(searchInputWrapper);
@@ -259,7 +362,7 @@ export function initFeedbackAssistant() {
 
   // 3.2. Scroll Content
   const scrollContent = document.createElement("div");
-  scrollContent.style.cssText = "flex: 1; overflow-y: auto; padding: 0 24px 40px 24px; scroll-behavior: smooth;";
+  scrollContent.className = "cw-links-scroll";
   contentWrapper.appendChild(scrollContent);
 
   // --- OVERLAY DE HISTÓRICO ---
@@ -269,39 +372,36 @@ export function initFeedbackAssistant() {
       if (historyOverlay) return;
 
       historyOverlay = document.createElement("div");
-      historyOverlay.style.cssText = `
-          position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(255,255,255,0.98); z-index: 20;
-          display: flex; flex-direction: column;
-          transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-          box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-      `;
+      historyOverlay.className = "cw-links-history-overlay";
 
       const hHead = document.createElement("div");
-      hHead.style.cssText = "padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #F1F3F4;";
-      hHead.innerHTML = `<span style="font-size: 16px; font-weight: 700; color: #202124;">🕒 Recentes</span>`;
-      
+      hHead.className = "cw-links-history-head";
+      hHead.innerHTML = `<span class="cw-links-history-title">🕒 Recentes</span>`;
+
       const closeBtn = document.createElement("button");
+      closeBtn.className = "cw-links-history-close";
       closeBtn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-      closeBtn.style.cssText = "background: none; border: none; cursor: pointer; color: #5f6368;";
-      
+
       // Fecha ao clicar no X
-      closeBtn.onclick = () => {
-          hideHistoryOverlay();
-          // Atualiza estado do botão da sidebar
-          isHistoryOpen = false;
-          updateSidebarVisuals();
-      };
-      
+      closeBtn.onclick = () => closeHistory();
+
       hHead.appendChild(closeBtn);
       historyOverlay.appendChild(hHead);
 
       const hList = document.createElement("div");
       hList.id = "cw-history-list";
-      hList.style.cssText = "flex: 1; overflow-y: auto; padding: 20px; background: #F8F9FA;";
+      hList.className = "cw-links-history-list";
       historyOverlay.appendChild(hList);
 
       contentWrapper.appendChild(historyOverlay);
+  }
+
+  // Fecha o histórico e sincroniza o estado (usado pelo X, clique fora e Esc)
+  function closeHistory() {
+      if (!isHistoryOpen) return;
+      isHistoryOpen = false;
+      hideHistoryOverlay();
+      updateSidebarVisuals();
   }
 
   function showHistoryOverlay() {
@@ -309,9 +409,9 @@ export function initFeedbackAssistant() {
       const list = historyOverlay.querySelector("#cw-history-list");
       list.innerHTML = "";
       const history = getHistory();
-      
+
       if (history.length === 0) {
-          list.innerHTML = `<div style="text-align: center; color: #999; margin-top: 60px; font-size:13px;">Nada por aqui ainda.</div>`;
+          list.innerHTML = `<div class="cw-links-history-empty">Nada por aqui ainda.</div>`;
       } else {
           history.forEach(link => {
               const card = createLinkCard(link, CATEGORY_ICONS[link._originalCat], true, link._originalCat);
@@ -325,17 +425,27 @@ export function initFeedbackAssistant() {
       if (historyOverlay) historyOverlay.style.transform = "translateY(100%)";
   }
 
+  // Fecha o histórico clicando fora dele (mesmo padrão de outros
+  // overlays/drawers do app, ex: a gaveta de rascunhos do notes/) ou com Esc.
+  document.addEventListener('mousedown', (e) => {
+      if (!isHistoryOpen || !historyOverlay) return;
+      if (!historyOverlay.contains(e.target) && !sidebar.contains(e.target)) {
+          closeHistory();
+      }
+  });
+  document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isHistoryOpen) closeHistory();
+  });
+
   // --- RENDERIZAÇÃO ---
 
   function renderSidebar() {
       sidebar.innerHTML = "";
-      
+
       // Botão "Recentes" (Com Toggle)
       const histBtn = createNavBtn('history', 'Recentes', CATEGORY_ICONS.history);
-      
-      // ID para manipular estilo facilmente
       histBtn.id = "cw-sidebar-btn-history";
-      
+
       histBtn.onclick = () => {
           SoundManager.playClick();
           isHistoryOpen = !isHistoryOpen; // Inverte Estado
@@ -347,12 +457,12 @@ export function initFeedbackAssistant() {
           }
           updateSidebarVisuals();
       };
-      
+
       sidebar.appendChild(histBtn);
 
       // Separador
       const div = document.createElement('div');
-      div.style.cssText = "width: 32px; height: 1px; background: rgba(0,0,0,0.08); margin: 4px 0;";
+      div.className = "cw-links-nav-sep";
       sidebar.appendChild(div);
 
       // Botões de Categoria
@@ -360,14 +470,11 @@ export function initFeedbackAssistant() {
           const cat = LINKS_DB[key];
           const btn = createNavBtn(key, cat.label, CATEGORY_ICONS[key]);
           btn.id = `cw-sidebar-btn-${key}`;
-          
+
           btn.onclick = () => {
               SoundManager.playClick();
               // Se clicar numa categoria, fecha o histórico se estiver aberto
-              if (isHistoryOpen) {
-                  isHistoryOpen = false;
-                  hideHistoryOverlay();
-              }
+              if (isHistoryOpen) closeHistory();
               scrollToSection(key);
           };
           sidebar.appendChild(btn);
@@ -376,40 +483,26 @@ export function initFeedbackAssistant() {
 
   function createNavBtn(key, label, iconSvg) {
       const btn = document.createElement("div");
-      btn.style.cssText = `
-          width: 56px; height: 56px; border-radius: 16px;
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          cursor: pointer; color: ${COLORS.textSecondary}; 
-          transition: all 0.2s cubic-bezier(0.2, 0.0, 0.2, 1);
-          position: relative;
-      `;
+      btn.className = "cw-links-nav-btn";
       btn.title = label;
       btn.dataset.key = key;
 
+      const theme = CAT_THEMES[key];
+      if (theme) {
+          btn.style.setProperty('--cat-color', theme.color);
+          btn.style.setProperty('--cat-bg', theme.bg);
+      }
+
       const iconDiv = document.createElement("div");
-      iconDiv.style.cssText = "width: 24px; height: 24px; margin-bottom: 2px; transition: transform 0.2s;";
+      iconDiv.className = "cw-links-nav-icon";
       iconDiv.innerHTML = iconSvg || CATEGORY_ICONS.tasks;
 
       const labelDiv = document.createElement("div");
-      labelDiv.style.cssText = "font-size: 9px; font-weight: 600; opacity: 0.7; letter-spacing: 0.3px;";
+      labelDiv.className = "cw-links-nav-label";
       labelDiv.textContent = label;
 
       btn.appendChild(iconDiv);
       btn.appendChild(labelDiv);
-
-      // Efeito Hover sutil
-      btn.onmouseenter = () => { 
-          if(activeCategoryKey !== key && !(key === 'history' && isHistoryOpen)) {
-              btn.style.background = "#F1F3F4";
-              iconDiv.style.transform = "scale(1.1)";
-          }
-      };
-      btn.onmouseleave = () => { 
-          if(activeCategoryKey !== key && !(key === 'history' && isHistoryOpen)) {
-              btn.style.background = "transparent";
-              iconDiv.style.transform = "scale(1)";
-          }
-      };
 
       return btn;
   }
@@ -428,30 +521,12 @@ export function initFeedbackAssistant() {
       Object.keys(LINKS_DB).forEach(key => {
           const btn = sidebar.querySelector(`#cw-sidebar-btn-${key}`);
           if(!btn) return;
-          
-          if (activeCategoryKey === key && !isHistoryOpen) {
-              const theme = CAT_THEMES[key];
-              btn.style.background = theme.bg;
-              btn.style.color = theme.color;
-              btn.querySelector('div:first-child').style.transform = "scale(1.1)";
-          } else {
-              btn.style.background = "transparent";
-              btn.style.color = COLORS.textSecondary;
-              btn.querySelector('div:first-child').style.transform = "scale(1)";
-          }
+          btn.classList.toggle('active', activeCategoryKey === key && !isHistoryOpen);
       });
 
       // 2. Atualiza Botão de Histórico
       const histBtn = sidebar.querySelector(`#cw-sidebar-btn-history`);
-      if(histBtn) {
-          if (isHistoryOpen) {
-              histBtn.style.background = "#3C4043"; // Escuro para destacar
-              histBtn.style.color = "#FFFFFF";
-          } else {
-              histBtn.style.background = "transparent";
-              histBtn.style.color = COLORS.textSecondary;
-          }
-      }
+      if (histBtn) histBtn.classList.toggle('history-open', isHistoryOpen);
   }
 
   function renderContent() {
@@ -461,7 +536,7 @@ export function initFeedbackAssistant() {
       if (searchTerm.trim() !== "") {
           let results = [];
           Object.entries(LINKS_DB).forEach(([key, cat]) => {
-              const filtered = cat.links.filter(l => 
+              const filtered = cat.links.filter(l =>
                   l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   l.desc.toLowerCase().includes(searchTerm.toLowerCase())
               );
@@ -469,13 +544,13 @@ export function initFeedbackAssistant() {
           });
 
           if(results.length === 0) {
-              scrollContent.innerHTML = `<div style="text-align:center; padding: 60px; color:#999; font-size:13px;">Nada encontrado.</div>`;
+              scrollContent.innerHTML = `<div class="cw-links-empty">Nada encontrado.</div>`;
               return;
           }
 
           const searchHeader = document.createElement("div");
-          searchHeader.innerHTML = "Resultados da busca";
-          searchHeader.style.cssText = "font-size:12px; font-weight:700; color:#5f6368; margin:20px 0 10px; text-transform:uppercase; letter-spacing:0.5px;";
+          searchHeader.className = "cw-links-search-results-label";
+          searchHeader.textContent = "Resultados da busca";
           scrollContent.appendChild(searchHeader);
 
           results.forEach(link => {
@@ -489,80 +564,53 @@ export function initFeedbackAssistant() {
       Object.entries(LINKS_DB).forEach(([key, cat]) => {
           const theme = CAT_THEMES[key];
           const catSection = document.createElement("div");
-          
+
           const catHeader = document.createElement("div");
           catHeader.id = `cat-anchor-${key}`;
-          // Título com cor temática
-          catHeader.style.cssText = `
-              display: flex; align-items: center; gap: 8px;
-              font-size: 13px; font-weight: 800; color: ${theme.color}; 
-              text-transform: uppercase; letter-spacing: 0.5px;
-              margin: 32px 0 12px 0; padding-top: 10px;
-          `;
-          
-          // Bolinha colorida antes do nome
-          catHeader.innerHTML = `
-            <div style="width:8px; height:8px; border-radius:50%; background:${theme.color};"></div>
-            ${cat.label}
-          `;
-          
+          catHeader.className = "cw-links-cat-header";
+          catHeader.style.setProperty('--cat-color', theme.color);
+          catHeader.innerHTML = `<div class="cw-links-cat-dot"></div>${cat.label}`;
+
           catSection.appendChild(catHeader);
 
           const grid = document.createElement("div");
-          grid.style.cssText = "display: grid; grid-template-columns: 1fr; gap: 8px;";
+          grid.className = "cw-links-cat-grid";
 
           cat.links.forEach(link => {
               const card = createLinkCard(link, CATEGORY_ICONS[key], false, key);
               grid.appendChild(card);
           });
-          
+
           catSection.appendChild(grid);
           scrollContent.appendChild(catSection);
       });
-      
+
       const spacer = document.createElement("div");
-      spacer.style.height = "80px";
+      spacer.className = "cw-links-spacer";
       scrollContent.appendChild(spacer);
   }
 
   function createLinkCard(link, iconSvg, isHistory, catKey) {
       const card = document.createElement("div");
+      card.className = "cw-links-card";
       const theme = CAT_THEMES[catKey] || CAT_THEMES.history; // Pega o tema da categoria
-
-      card.style.cssText = `
-          display: flex; align-items: center; gap: 16px;
-          padding: 12px 16px; 
-          background: #FFFFFF; 
-          border: 1px solid transparent;
-          border-radius: 16px; 
-          cursor: pointer;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-          transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-          position: relative; overflow: hidden;
-      `;
+      card.style.setProperty('--cat-color', theme.color);
+      card.style.setProperty('--cat-bg', theme.bg);
 
       // Icon Box Colorido
       const iconBox = document.createElement("div");
-      iconBox.style.cssText = `
-          width: 40px; height: 40px; border-radius: 12px;
-          background: ${theme.bg}; color: ${theme.color};
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; transition: all 0.2s;
-      `;
-      
+      iconBox.className = "cw-links-icon-box";
       iconBox.innerHTML = iconSvg || CATEGORY_ICONS.tasks;
-      const svg = iconBox.querySelector('svg');
-      if(svg) { svg.style.width = "22px"; svg.style.height = "22px"; }
 
       const meta = document.createElement("div");
-      meta.style.cssText = "flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden;";
-      
+      meta.className = "cw-links-card-meta";
+
       const title = document.createElement("div");
-      title.style.cssText = `font-size: 14px; font-weight: 600; color: ${COLORS.textPrimary}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
+      title.className = "cw-links-card-title";
       title.textContent = link.name;
 
       const desc = document.createElement("div");
-      desc.style.cssText = `font-size: 12px; color: ${COLORS.textSecondary}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
+      desc.className = "cw-links-card-desc";
       desc.textContent = link.desc;
 
       meta.appendChild(title);
@@ -570,33 +618,9 @@ export function initFeedbackAssistant() {
 
       // Botão de Copiar (Só aparece no hover)
       const copyBtn = document.createElement("div");
+      copyBtn.className = "cw-links-copy-btn";
       copyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-      copyBtn.style.cssText = `
-          width: 32px; height: 32px; border-radius: 8px;
-          display: flex; align-items: center; justify-content: center;
-          color: #9AA0A6; transition: all 0.2s; opacity: 0;
-      `;
       copyBtn.title = "Copiar URL";
-
-      card.onmouseenter = () => {
-          card.style.transform = "translateY(-2px)";
-          card.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)";
-          card.style.borderColor = "rgba(0,0,0,0.05)";
-          // Efeito: Borda esquerda colorida
-          card.style.borderLeft = `4px solid ${theme.color}`;
-          
-          copyBtn.style.opacity = "1";
-          copyBtn.style.background = "#F1F3F4";
-      };
-      
-      card.onmouseleave = () => {
-          card.style.transform = "translateY(0)";
-          card.style.boxShadow = "0 1px 3px rgba(0,0,0,0.05)";
-          card.style.border = "1px solid transparent"; // Reseta borda
-          
-          copyBtn.style.opacity = "0";
-          copyBtn.style.background = "transparent";
-      };
 
       card.onclick = () => {
           if(!isHistory && catKey) addToHistory(link, catKey);
@@ -605,10 +629,13 @@ export function initFeedbackAssistant() {
 
       copyBtn.onclick = (e) => {
           e.stopPropagation();
-          SoundManager.playClick();
-          navigator.clipboard.writeText(link.url);
-          if(!isHistory && catKey) addToHistory(link, catKey);
-          showToast("Link copiado!");
+          navigator.clipboard.writeText(link.url).then(() => {
+              SoundManager.playClick();
+              if(!isHistory && catKey) addToHistory(link, catKey);
+              showToast("Link copiado!");
+          }).catch(() => {
+              showToast("Não foi possível copiar o link.", { error: true });
+          });
       };
 
       card.appendChild(iconBox);

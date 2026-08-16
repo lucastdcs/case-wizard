@@ -4,7 +4,7 @@
 import { initCaseNotesAssistant } from './modules/notes/notes-assistant.js';
 import { initEmailAssistant } from './modules/email-assistant/email-assistant.js';
 import { initCallScriptAssistant } from './modules/call-script/call-script-assistant.js';
-import { initFeedbackAssistant } from './modules/lm-report/lm-repot-assistant.js'; 
+import { initLinksAssistant } from './modules/links/links-assistant.js';
 import { initBroadcastAssistant } from './modules/broadcast/broadcast-assistant.js'; 
 import { initOnboarding } from './modules/onboarding/onboarding-wizard.js';
 import { checkAndShowChangelog } from './modules/changelog/changelog-wizard.js';
@@ -57,7 +57,7 @@ function initApp() {
         const toggleNotes = initCaseNotesAssistant();
         const toggleEmail = initEmailAssistant();
         const toggleScript = initCallScriptAssistant();
-        const toggleLinks = initFeedbackAssistant();
+        const toggleLinks = initLinksAssistant();
         const toggleTimezone = initTimezoneAssistant();
         const toggleLibrary = initPersonalLibrary(); // [NOVO] Inicializa a Biblioteca
         const toggleConfigs = initConfigsAssistant();
