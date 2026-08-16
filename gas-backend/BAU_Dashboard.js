@@ -3,6 +3,14 @@
 // Responsabilidade: Lógica exclusiva da tela do Team Leader
 // =========================================================
 
+// Identidade de quem está acessando o dashboard agora - reaproveita o mesmo
+// profile (ldap, role, etc.) que assertCallerIsOverhead() já busca na
+// planilha People pra checar permissão, exposto pro cliente montar a faixa
+// de boas-vindas (foto + saudação).
+function getCurrentTLProfile() {
+  return assertCallerIsOverhead();
+}
+
 function getPendingBAUCases() {
   assertCallerIsOverhead();
 
