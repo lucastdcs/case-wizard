@@ -46,6 +46,20 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
     }
   }
 
+  // Selo do rodapé do email de submissão: uma frase de identidade sorteada a cada
+  // envio, no mesmo espírito do getSmartGreeting() em shared/page-data.js.
+  const SUBMISSION_BADGE_PHRASES = [
+    "✨ MAIS UM CASO, MAIS UM PASSO",
+    "🚀 RODANDO LISO COM O CASES WIZARD",
+    "🎯 CASO REGISTRADO COM SUCESSO",
+    "🤝 TIME TECHSOL CUIDANDO DISSO",
+    "📌 SEU CASO ESTÁ NO RADAR",
+    "✅ MAIS UM ITEM RISCADO DA LISTA"
+  ];
+  function getRandomSubmissionBadge() {
+    return SUBMISSION_BADGE_PHRASES[Math.floor(Math.random() * SUBMISSION_BADGE_PHRASES.length)];
+  }
+
   let dataFormatada = formatGASDate(data.availability);
   let dateObj = (data.availability && !data.availability.includes('|')) ? new Date(data.availability) : null;
 
@@ -69,7 +83,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
     case 'AGENT_BAU_SENT':
       greeting = `Olá, Agente!`;
       mainMessage = `A solicitação para o anunciante <strong style="color:#202124;">${data.advName}</strong> foi materializada e já aguarda a análise da liderança.`;
-      footerBadge = "⏳ +5 MIN ECONOMIZADOS";
+      footerBadge = getRandomSubmissionBadge();
       subject = `⚡ Caso na Fila BAU: ${data.advName}`;
       break;
       
@@ -115,15 +129,14 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   const htmlBody = template
     .replace("{{HEADER_ICON}}", headerIcon)
     .replace("{{HEADER_SUBTITLE}}", headerSubtitle)
-    .replace("{{THEME_COLOR}}", themeColor)
-    .replace(/{{THEME_COLOR}}/g, themeColor) 
+    .replace(/{{THEME_COLOR}}/g, themeColor)
     .replace("{{GREETING}}", greeting)
     .replace("{{MAIN_MESSAGE}}", mainMessage)
     .replace("{{URGENCY_BADGE}}", urgencyBadge)
     .replace("{{FOOTER_BADGE}}", footerBadge)
     .replace(/{{CASE_ID}}/g, data.caseId || "0-0000000000000")
     .replace(/{{SENDER_LDAP}}/g, senderLdap) // <-- AQUI ESTÁ A CHAVE DE OURO
-    .replace("{{SITE}}", data.site || "N/A")
+    .replace("{{SITE}}", data.website || data.site || "N/A")
     .replace("{{AVAILABILITY}}", dataFormatada)
     .replace("{{CID}}", data.cid || "N/A")
     .replace("{{TASK}}", data.taskType || "N/A")

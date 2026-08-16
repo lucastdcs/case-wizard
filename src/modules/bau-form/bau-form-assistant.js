@@ -1338,10 +1338,11 @@ export function initBAUForm() {
         }
 
         try {
+            let escalationResult = null;
             if (isEditing) {
                 await updateBAUEscalation(editingCaseId, payload);
             } else {
-                await sendBAUEscalation(payload, context.agentEmail || "anon");
+                escalationResult = await sendBAUEscalation(payload, context.agentEmail || "anon");
             }
 
             SoundManager.playSuccess();
@@ -1359,6 +1360,10 @@ export function initBAUForm() {
             }
 
             switchView('success');
+
+            if (!isEditing && escalationResult && escalationResult.emailSent === false) {
+                showToast("Caso criado, mas não conseguimos confirmar por email.", { error: true });
+            }
         } catch (error) {
             showToast("Erro: " + (error.message || "Erro desconhecido"), { error: true });
             console.error("Payload que tentou enviar:", payload); 
