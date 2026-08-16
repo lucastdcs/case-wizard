@@ -19,11 +19,14 @@ function dispararTestesDeEmails() {
   
   // 3. Email de Sucesso (TL criou o caso)
   sendDynamicTechSolEmail(meuEmail, dataMock, id, 'AGENT_BAU_CREATED');
-  
-  // 4. Email de Descarte (Aprovado)
+
+  // 4. Email de Pedido de Descarte Enviado (Agente solicitou, aguardando TL)
+  sendDynamicTechSolEmail(meuEmail, dataMock, id, 'AGENT_DISCARD_SENT');
+
+  // 5. Email de Descarte (Aprovado)
   sendDynamicTechSolEmail(meuEmail, dataMock, id, 'AGENT_DISCARD_DONE');
-  
-  Logger.log("✅ 4 e-mails enviados para sua caixa de entrada. Veja as diferenças!");
+
+  Logger.log("✅ 5 e-mails enviados para sua caixa de entrada. Veja as diferenças!");
 }
 
 /**

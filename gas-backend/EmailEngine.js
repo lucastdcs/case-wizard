@@ -70,11 +70,11 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays <= 1) {
-      return `<div style="background-color: #450a0a; border: 1px solid #ef4444; color: #fca5a5; padding: 12px; border-radius: 8px; margin-bottom: 24px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">🚨 URGENTE: Agendado para Hoje/Amanhã!</div>`;
+      return `<div style="background-color: #FCE8E6; border: 1px solid rgba(217, 48, 37, 0.35); color: #D93025; padding: 12px; border-radius: 8px; margin-bottom: 24px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">🚨 URGENTE: Agendado para Hoje/Amanhã!</div>`;
     } else if (diffDays <= 3) {
-      return `<div style="background-color: #422006; border: 1px solid #f97316; color: #fdba74; padding: 12px; border-radius: 8px; margin-bottom: 24px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">⚠️ ATENÇÃO: Agendado para os próximos 3 dias</div>`;
+      return `<div style="background-color: #FEF7E0; border: 1px solid rgba(249, 171, 0, 0.35); color: #B06000; padding: 12px; border-radius: 8px; margin-bottom: 24px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">⚠️ ATENÇÃO: Agendado para os próximos 3 dias</div>`;
     } else {
-      return `<div style="background-color: #064e3b; border: 1px solid #10b981; color: #6ee7b7; padding: 12px; border-radius: 8px; margin-bottom: 24px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">📅 STATUS VERDE: Agendado para +5 dias</div>`;
+      return `<div style="background-color: #E6F4EA; border: 1px solid rgba(30, 142, 62, 0.35); color: #1E8E3E; padding: 12px; border-radius: 8px; margin-bottom: 24px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">📅 STATUS VERDE: Agendado para +5 dias</div>`;
     }
   }
 
