@@ -33,6 +33,19 @@ export function initGlobalStylesAndFont() {
             --cw-text: #202124;
             --cw-text-sub: #5f6368;
             --cw-ease-elastic: cubic-bezier(0.25, 0.8, 0.25, 1);
+
+            /* --- TOKENS DE MOVIMENTO --- */
+            /* 4 curvas canônicas, escolhidas a partir das que já dominavam o
+               projeto (por contagem de uso) - não curvas novas. O resto do
+               código tinha ~15 variantes cubic-bezier distintas, várias delas
+               diferindo por 1 dígito sem nenhuma escolha deliberada por trás
+               (ex: 0.2,0.8,0.2,1 vs 0.25,0.8,0.25,1, usadas quase o mesmo
+               número de vezes em arquivos que nunca se falaram). Todo código
+               novo deveria escolher entre essas 4 em vez de inventar mais uma. */
+            --cw-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);      /* Material padrão - já a curva mais usada do projeto */
+            --cw-ease-decelerate: cubic-bezier(0.19, 1, 0.22, 1);  /* Entrada - a curva do genie abrindo */
+            --cw-ease-accelerate: cubic-bezier(0.5, 0, 1, 1);      /* Saída - a curva do genie fechando */
+            --cw-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* Bounce/overshoot - já é o EASE de notes-styles.js */
         }
 
         /* RESET DE BOX MODEL (Escopado só ao app, nunca ao CRM host) */
@@ -236,6 +249,17 @@ export function initGlobalStylesAndFont() {
     background-color: #E8F0FE;
     font-weight: 500;
 }
+
+/* Sistema de diálogo (alertDialog/confirmDialog/promptDialog): é o ponto de
+   maior consequência do app - toda ação destrutiva passa por aqui, várias
+   vezes por turno - e não tinha nenhuma proteção de reduced-motion, ao
+   contrário da pílula (a mais bem coberta do projeto). O overlay usa a
+   classe .cw-dialog-overlay (createBaseOverlay em utils.js); a caixa do
+   diálogo é sempre o filho direto dela. */
+@media (prefers-reduced-motion: reduce) {
+    .cw-dialog-overlay { transition: opacity 0.15s ease !important; }
+    .cw-dialog-overlay > div { transition: opacity 0.15s ease !important; transform: none !important; }
+}
     `;
     document.head.appendChild(style);
 }
@@ -265,7 +289,7 @@ export function showToast(message, opts = {}) {
     lineHeight: "20px",
     zIndex: "9999999",
     opacity: "0",
-    transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)", // Efeito Mola
+    transition: "all 0.4s var(--cw-ease-spring)", // Efeito Mola
     pointerEvents: "none",
   });
 
@@ -378,7 +402,7 @@ function closeDragElement() {
 
     setTimeout(() => {
         // ... (seu código existente de restaurar transition) ...
-        element.style.transition = "all 0.5s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.3s ease";
+        element.style.transition = "all 0.5s var(--cw-ease-decelerate), opacity 0.3s ease";
         element.setAttribute("data-dragging", "false");
 
         // --- ADICIONE ESTA LINHA ---
@@ -408,7 +432,7 @@ export const styleFloatingButton = {
   boxShadow: "0 4px 16px rgba(26, 115, 232, 0.4)", // Glow azul
   zIndex: "9999",
   border: "none",
-  transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease",
+  transition: "transform 0.2s var(--cw-ease-spring), box-shadow 0.2s ease",
   transform: "scale(1)",
   fontFamily: "'Google Sans', 'Roboto'",
 };
@@ -666,7 +690,7 @@ export function injectGoogleAnimationStyles() {
             50% { box-shadow: 0 0 0 20px rgba(251, 188, 5, 0); }
             100% { box-shadow: 0 0 0 30px rgba(52, 168, 83, 0); }
         }
-        .google-animate-click { animation: google-pulse-ring 0.6s cubic-bezier(0.215, 0.61, 0.355, 1); }
+        .google-animate-click { animation: google-pulse-ring 0.6s var(--cw-ease-spring); }
         .google-active-state { position: relative !important; overflow: visible !important; }
         .google-active-state::before {
             content: ''; position: absolute; top: -1px; left: -1px; right: -1px; bottom: -1px; border-radius: 50%;
@@ -726,7 +750,9 @@ export async function playStartupAnimation() {
     const style = document.createElement("style");
     style.id = "google-splash-style";
     style.innerHTML = `
-            @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap');
+            /* Google Sans já vem via <link> logo acima em initGlobalStylesAndFont(),
+               chamada antes da splash - esse @import era uma 3a requisição redundante
+               pra fonte (a 1a é o <link>, a 2a era o do command-center.js). */
             .splash-container { font-family: 'Google Sans', sans-serif; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #202124; z-index: 2147483647; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.5s cubic-bezier(0.4, 0.0, 0.2, 1); }
             .splash-exit { animation: focus-out 0.9s cubic-bezier(0.4, 0.0, 0.2, 1) forwards; }
             @keyframes focus-out { 0% { opacity: 1; transform: scale(1); filter: blur(0); } 100% { opacity: 0; transform: scale(1.15); filter: blur(15px); } }
@@ -736,11 +762,11 @@ export async function playStartupAnimation() {
             .text-name { font-size: 32px; font-weight: 700; background: linear-gradient(90deg, #8AB4F8, #C58AF9, #F28B82); -webkit-background-clip: text; -webkit-text-fill-color: transparent; opacity: 0; }
             .text-footer { font-size: 20px; color: #9AA0A6; font-weight: 400; width: 100%; text-align: center; margin-top: 12px; opacity: 0; transform: translateY(10px); transition: all 1s cubic-bezier(0.0, 0.0, 0.2, 1); }
 
-            .sextou-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; padding: 6px 16px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #F28B82; font-size: 14px; font-weight: 500; opacity: 0; transform: scale(0.8); transition: all 1s cubic-bezier(0.34, 1.56, 0.64, 1); }
+            .sextou-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; padding: 6px 16px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #F28B82; font-size: 14px; font-weight: 500; opacity: 0; transform: scale(0.8); transition: all 1s var(--cw-ease-spring); }
             .cursor { color: #8AB4F8; -webkit-text-fill-color: #8AB4F8; font-weight: 100; margin-left: 1px; animation: blink 1s infinite; }
 
             .brand-logo { position: absolute; top: 40px; font-size: 20px; font-weight: 500; color: #5f6368; letter-spacing: 1px; text-transform: uppercase; opacity: 0; animation: fade-in-down 0.8s ease forwards; }
-            .weather-icon { width: 42px; height: 42px; margin-bottom: 24px; opacity: 0; transform: scale(0.8); transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+            .weather-icon { width: 42px; height: 42px; margin-bottom: 24px; opacity: 0; transform: scale(0.8); transition: all 0.6s var(--cw-ease-spring); }
             .credit-pro { position: absolute; bottom: 30px; font-size: 11px; color: #5f6368; letter-spacing: 0.5px; opacity: 0; animation: fade-in-simple 1.5s ease 1s forwards; }
             .credit-pro span { color: #8AB4F8; font-weight: 500; opacity: 0.9; }
 
@@ -750,12 +776,26 @@ export async function playStartupAnimation() {
             @keyframes fade-in-down { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes load-line { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
             @keyframes fade-in-simple { to { opacity: 1; } }
+
+            /* A primeira tela que qualquer agente vê, todo santo dia - e não
+               tinha nenhuma proteção de reduced-motion, apesar de combinar
+               blur(15px) + scale(1.15) na saída (o efeito de "zoom" mais
+               forte do app inteiro) e um cursor piscando em loop infinito. */
+            @media (prefers-reduced-motion: reduce) {
+                .splash-container { transition: opacity 0.2s ease !important; }
+                .splash-exit { animation: fade-out-simple 0.2s ease forwards !important; }
+                @keyframes fade-out-simple { to { opacity: 0; } }
+                .text-footer { transition: opacity 0.3s ease !important; transform: none !important; }
+                .sextou-badge, .weather-icon { transition: opacity 0.2s ease !important; transform: none !important; }
+                .cursor { animation: none !important; opacity: 1 !important; }
+            }
         `;
     document.head.appendChild(style);
   }
 
   // 2. Monta HTML
   const splash = document.createElement("div");
+  splash.id = "techsol-splash-screen"; // guard do topo desta função checa esse id - nunca era setado, então nunca protegia nada
   splash.className = "splash-container";
   splash.innerHTML = `
         <div class="brand-logo">Case Wizard</div>
@@ -866,7 +906,7 @@ export function constrainToViewport(element) {
     if (newLeft !== currentLeft || newTop !== currentTop) {
         // Adiciona uma transição rápida para o "pulo" ser suave se for um resize
         const originalTransition = element.style.transition;
-        element.style.transition = "left 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)";
+        element.style.transition = "left 0.3s var(--cw-ease-elastic), top 0.3s var(--cw-ease-elastic)";
 
         element.style.left = `${newLeft}px`;
         element.style.top = `${newTop}px`;
@@ -1064,6 +1104,7 @@ export function parseEmojiCodes(text) {
 
 function createBaseOverlay() {
     const overlay = document.createElement('div');
+    overlay.className = 'cw-dialog-overlay';
     Object.assign(overlay.style, {
         position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
         background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)',
@@ -1078,7 +1119,7 @@ function createBaseDialog() {
     Object.assign(dialog.style, {
         background: 'rgba(255, 255, 255, 0.95)', padding: '24px', borderRadius: '20px',
         boxShadow: '0 24px 60px rgba(0,0,0,0.3)', width: '340px',
-        textAlign: 'center', transform: 'scale(0.85)', transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        textAlign: 'center', transform: 'scale(0.85)', transition: 'transform 0.4s var(--cw-ease-spring)',
         fontFamily: "'Google Sans', Roboto, sans-serif", border: '1px solid rgba(255,255,255,0.4)'
     });
     return dialog;

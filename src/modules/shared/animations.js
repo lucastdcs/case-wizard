@@ -11,7 +11,7 @@ if (!document.getElementById('cw-module-styles')) {
             /* Animação Apple Spring (Ida e Volta) */
             transition: 
                 opacity 0.3s ease,
-                transform 0.45s cubic-bezier(0.25, 1, 0.5, 1), 
+                transform 0.45s var(--cw-ease-decelerate),
                 filter 0.3s ease,
                 box-shadow 0.3s ease;
             
@@ -59,12 +59,40 @@ if (!document.getElementById('cw-module-styles')) {
     document.head.appendChild(style);
 }
 
+// --- ESC GLOBAL: fecha qualquer popup de módulo aberto ---
+// Todo módulo (Notes, Email, Call Script, Links, Biblioteca, Timezone,
+// Configs, BAU Form, Broadcast) compartilha a mesma marcação via
+// createStandardHeader() (.cw-module-window + botão .cw-header-close), então
+// um único listener genérico cobre o app inteiro sem cada módulo precisar
+// implementar o próprio Esc. Cede a vez se um dialog customizado
+// (alertDialog/confirmDialog/promptDialog) estiver por cima, para não fechar
+// os dois de uma vez só.
+if (!window._cwEscapeListenerActive) {
+    window._cwEscapeListenerActive = true;
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (document.querySelector('.cw-dialog-overlay')) return;
+
+        const openWindow = document.querySelector('.cw-module-window.open');
+        if (!openWindow) return;
+
+        const closeBtn = openWindow.querySelector('.cw-header-close');
+        if (closeBtn) closeBtn.click();
+    });
+}
+
 /**
  * Gerencia a animação Genie e o Foco
  */
 export function toggleGenieAnimation(show, popup, buttonId) {
     const btn = document.getElementById(buttonId);
     if (!popup) return;
+
+    // A animação mais disparada do app inteiro (9 módulos, várias aberturas
+    // por turno) não tinha nenhuma proteção de reduced-motion - a física de
+    // voo (translate+scale) some, mas a posição final é aplicada do mesmo
+    // jeito, só sem o trajeto animado.
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Verifica se é a primeira vez (Centro) ou se já foi movido (Customizado)
     const isCustomPosition = popup.getAttribute("data-moved") === "true";
@@ -113,6 +141,12 @@ export function toggleGenieAnimation(show, popup, buttonId) {
         popup.style.transition = 'none';
         popup.style.opacity = '0';
         popup.style.pointerEvents = 'auto';
+        // will-change só durante a animação em si (~500ms) - este popup é 1
+        // de ~9 janelas de módulo que existem no DOM o tempo todo, então
+        // deixar isso ligado sempre desperdiçaria memória de GPU nas 8 que
+        // estão fechadas e paradas.
+        popup.style.willChange = 'transform, opacity';
+        setTimeout(() => { popup.style.willChange = 'auto'; }, 550);
 
         // B. POSIÇÃO DE PARTIDA (NO BOTÃO)
         if (!isCustomPosition) {
@@ -132,7 +166,9 @@ export function toggleGenieAnimation(show, popup, buttonId) {
             if (btn) btn.classList.add('active');
 
             // Física Apple
-            popup.style.transition = "opacity 0.4s ease-out, transform 0.5s cubic-bezier(0.19, 1, 0.22, 1)";
+            popup.style.transition = reduceMotion
+                ? "opacity 0.15s ease"
+                : "opacity 0.4s ease-out, transform 0.5s var(--cw-ease-decelerate)";
             popup.style.opacity = '1';
 
             // POSIÇÃO FINAL (DESTINO)
@@ -152,8 +188,11 @@ export function toggleGenieAnimation(show, popup, buttonId) {
         // --- FECHAR ---
 SoundManager.playSwoosh();
         // A. CONFIGURA SAÍDA
-        popup.style.transition = "opacity 0.25s ease, transform 0.3s cubic-bezier(0.5, 0, 1, 1)";
+        popup.style.transition = reduceMotion
+            ? "opacity 0.15s ease"
+            : "opacity 0.25s ease, transform 0.3s var(--cw-ease-accelerate)";
         popup.style.pointerEvents = 'none';
+        popup.style.willChange = 'transform, opacity';
 
         // B. ANIMAÇÃO DE SAÍDA (VOLTA PRO BOTÃO)
         requestAnimationFrame(() => {
@@ -173,7 +212,8 @@ SoundManager.playSwoosh();
             
             // Limpa estilos
             popup.style.transition = '';
-            popup.style.transform = ''; 
+            popup.style.transform = '';
+            popup.style.willChange = 'auto';
             // IMPORTANTE: Não limpamos top/left aqui, para a memória persistir
         }, 300);
 

@@ -3,6 +3,7 @@
 import { DataService } from "../shared/data-service.js";
 import { getAgentEmail } from "../shared/page-data.js";
 import { showToast } from "../shared/utils.js";
+import { SoundManager } from "../shared/sound-manager.js";
 
 const STORAGE_KEY = "cw_personal_library_v1";
 
@@ -34,6 +35,7 @@ export const SnippetService = {
     save: async (snippet) => {
         const userEmail = getAgentEmail();
         if (!userEmail) {
+            SoundManager.playError();
             showToast("Erro: Usuário não identificado.", { error: true });
             return false;
         }

@@ -6,6 +6,7 @@ import { fetchUserProfile } from "../shared/data-service.js"; // Importação cr
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
+import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 
 export function initConfigsAssistant() {
     const CURRENT_VERSION = "v1.0";
@@ -92,6 +93,31 @@ export function initConfigsAssistant() {
             @keyframes shine {
                 to { background-position-x: -200%; }
             }
+
+            /* --- TOGGLE SWITCH --- */
+            /* O checkbox nativo continua no DOM (checked/foco/teclado de graça),
+               só o visual é trocado - único controle de OS "cru" que sobrava
+               no popup inteiro, destoando do resto do design system. */
+            .cw-toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+            .cw-toggle-switch input {
+                position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+                opacity: 0; cursor: pointer; z-index: 1;
+            }
+            .cw-toggle-track {
+                position: absolute; inset: 0; background: ${COLORS.border};
+                border-radius: 100px; transition: background-color 0.2s ease; pointer-events: none;
+            }
+            .cw-toggle-track::before {
+                content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+                background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .cw-toggle-switch input:checked + .cw-toggle-track { background: ${COLORS.primary}; }
+            .cw-toggle-switch input:checked + .cw-toggle-track::before { transform: translateX(18px); }
+            .cw-toggle-switch input:focus-visible + .cw-toggle-track { outline: 2px solid ${COLORS.primary}; outline-offset: 2px; }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-toggle-track, .cw-toggle-track::before { transition: none !important; }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -137,7 +163,7 @@ export function initConfigsAssistant() {
                 <div class="cw-skeleton cw-skeleton-text" style="margin-top: 8px;"></div>
             </div>
         `;
-        setTimeout(async () => {
+        (async () => {
             try {
                 // Busca o LDAP real do usuário logado
                 const agentEmail = getAgentEmail();
@@ -185,11 +211,7 @@ export function initConfigsAssistant() {
                 console.warn("Erro ao renderizar perfil:", e);
                 profileSection.style.display = "none";
             }
-
-        }, 3000)
-
-
-
+        })();
     }
     renderUserProfile();
 
@@ -204,7 +226,10 @@ export function initConfigsAssistant() {
                     <div class="cw-configs-label">Efeitos Sonoros</div>
                     <div class="cw-configs-desc">Ativar ou desativar sons de interface.</div>
                 </div>
-                <input type="checkbox" id="cw-config-sound-toggle" ${SoundManager.isMuted() ? '' : 'checked'} style="cursor:pointer; width:20px; height:20px;">
+                <label class="cw-toggle-switch">
+                    <input type="checkbox" id="cw-config-sound-toggle" ${SoundManager.isMuted() ? '' : 'checked'}>
+                    <span class="cw-toggle-track"></span>
+                </label>
             </div>
         </div>
     `;
@@ -232,7 +257,10 @@ export function initConfigsAssistant() {
         visible = !visible;
         toggleGenieAnimation(visible, popup, 'cw-btn-configs');
         if (visible) {
+            lockBodyScroll();
             SoundManager.playClick();
+        } else {
+            unlockBodyScroll();
         }
     }
 

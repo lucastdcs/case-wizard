@@ -57,7 +57,6 @@ export const injectStyles = () => {
       
       transform-origin: center center;
       animation: cw-genie-effect-in 0.4s ${EASE};
-      transition: all 0.3s ease;
       color: #202124;
     }
 
@@ -125,7 +124,7 @@ export const injectStyles = () => {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        transition: all 0.2s ease;
+        transition: background-color 0.2s ease, color 0.2s ease;
         margin-bottom: 24px;
     }
     .bau-accordion-toggle:hover { background-color: #F1F3F4; color: #202124; }
@@ -166,7 +165,7 @@ export const injectStyles = () => {
       gap: 8px;
       font-size: 13px;
       font-weight: 600;
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
       height: 60px; /* Alinha com os cards de métricas */
     }
     .bau-metrics-refresh-btn:hover {
@@ -220,14 +219,16 @@ export const injectStyles = () => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: default;
       position: relative;
       overflow: hidden;
     }
 
     .bau-case-card:hover {
-      transform: translateY(-2px);
+      /* Sem transform no próprio card: hit-box parado evita o flicker
+         hover-liga/desliga perto da borda superior quando ele "sobe". A
+         elevação vem só da sombra crescendo. */
       box-shadow: 0 8px 24px rgba(0,0,0,0.1);
       border-color: rgba(26, 115, 232, 0.4);
       background: #F1F3F4;
@@ -270,7 +271,7 @@ export const injectStyles = () => {
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
       white-space: nowrap;
     }
 
@@ -382,7 +383,7 @@ export const injectStyles = () => {
         justify-content: center;
         margin-bottom: 24px;
         color: ${COLORS.green};
-        animation: bau-success-pop 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        animation: bau-success-pop 0.7s var(--cw-ease-spring) forwards;
         box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6), 0 12px 32px rgba(30, 142, 62, 0.2);
         border: 0.5px solid rgba(255, 255, 255, 0.25);
     }
@@ -451,12 +452,11 @@ export const injectStyles = () => {
       gap: 10px;
       cursor: pointer;
       box-shadow: 0 6px 16px rgba(26,115,232,0.4);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 10;
     }
     .bau-dashboard-fab:hover {
       background: #1557b0;
-      transform: translateY(-4px);
       box-shadow: 0 8px 24px rgba(26,115,232,0.5);
     }
 
@@ -472,7 +472,7 @@ export const injectStyles = () => {
 
     .bau-progress-indicator { display: flex; justify-content: space-between; margin-bottom: 24px; position: relative; }
     .bau-progress-indicator::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #DADCE0; z-index: 1; transform: translateY(-50%); }
-    .bau-progress-step { width: 28px; height: 28px; border-radius: 50%; background: #FFFFFF; border: 2px solid #DADCE0; color: #5F6368; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; position: relative; z-index: 2; transition: all 0.3s ease; }
+    .bau-progress-step { width: 28px; height: 28px; border-radius: 50%; background: #FFFFFF; border: 2px solid #DADCE0; color: #5F6368; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; position: relative; z-index: 2; transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease; }
     .bau-progress-step.active { border-color: #1A73E8; background: #1A73E8; color: #FFFFFF; }
     .bau-progress-step.completed { border-color: #1E8E3E; background: #1E8E3E; color: #FFFFFF; }
 
@@ -500,7 +500,7 @@ export const injectStyles = () => {
       align-items: center;
       text-align: center;
       cursor: pointer;
-      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: transform 0.4s var(--cw-ease-spring), border-color 0.4s var(--cw-ease-spring), box-shadow 0.4s var(--cw-ease-spring), background-color 0.4s var(--cw-ease-spring);
       position: relative;
       overflow: hidden;
     }
@@ -515,7 +515,10 @@ export const injectStyles = () => {
     }
 
     .bau-branching-card:hover {
-      transform: translateY(-8px) scale(1.02);
+      /* Era o pior caso do arquivo: -8px + scale no próprio card, maior
+         chance de flicker de hit-box de todo o app. A elevação continua
+         nítida só com sombra+borda; o "movimento" fica com o ícone filho
+         (:hover .bau-branching-icon, abaixo). */
       border-color: #1A73E8;
       box-shadow: 0 12px 32px rgba(26, 115, 232, 0.15);
       background: rgba(255, 255, 255, 0.9);
@@ -535,7 +538,7 @@ export const injectStyles = () => {
       justify-content: center;
       margin-bottom: 20px;
       color: #1A73E8;
-      transition: all 0.3s ease;
+      transition: background-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
     }
 
     .bau-branching-card:hover .bau-branching-icon {
@@ -602,12 +605,11 @@ export const injectStyles = () => {
       z-index: 1;
       padding: 8px 12px;
       border-radius: 10px;
-      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       cursor: default;
     }
 
     .bau-highlight-item:hover {
-      transform: scale(1.05);
       background: rgba(255, 255, 255, 0.4);
       backdrop-filter: blur(8px);
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
@@ -626,7 +628,7 @@ export const injectStyles = () => {
       padding: 12px 16px;
       color: #202124;
       font-size: 14px;
-      transition: all 0.2s ease;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
       box-sizing: border-box;
     }
 
@@ -652,7 +654,7 @@ export const injectStyles = () => {
       display: flex;
       align-items: center;
       gap: 10px;
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     }
     .bau-task-item:hover { background: #F1F3F4; border-color: #5F6368; }
     .bau-task-item.active { background: rgba(26, 115, 232, 0.1); border-color: #1A73E8; color: #1A73E8; }
@@ -692,7 +694,7 @@ export const injectStyles = () => {
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
       align-self: flex-start;
     }
 
@@ -722,7 +724,7 @@ export const injectStyles = () => {
       display: flex;
       gap: 6px;
       font-size: 11px;
-      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       cursor: default;
     }
 
@@ -751,7 +753,7 @@ export const injectStyles = () => {
       background: #F8F9FA;
       border-radius: 10px;
       border: 1px solid #DADCE0;
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
       position: relative;
     }
     .bau-confirm-row:hover {
@@ -781,7 +783,7 @@ export const injectStyles = () => {
       margin-left: -8px;
       width: calc(100% + 16px);
       outline: none;
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
       cursor: text;
       box-sizing: border-box;
     }
@@ -829,7 +831,7 @@ export const injectStyles = () => {
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -846,7 +848,7 @@ export const injectStyles = () => {
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
     }
     .bau-btn-secondary:hover { background: #F1F3F4; color: #202124; border-color: #5F6368; }
 
@@ -922,7 +924,7 @@ export const injectStyles = () => {
         gap: 8px;
         font-size: 13px;
         font-weight: 500;
-        transition: all 0.2s ease;
+        transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
     }
     .bau-details-close-btn:hover { background: #E8EAED; color: #202124; transform: scale(1.02); }
     .bau-details-close-btn:active { transform: scale(0.95); transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -995,7 +997,7 @@ export const injectStyles = () => {
         cursor: pointer;
         padding: 4px;
         opacity: 0;
-        transition: all 0.2s ease;
+        transition: opacity 0.2s ease, background-color 0.2s ease;
         border-radius: 6px;
     }
     .bau-details-row:hover .bau-copy-btn { opacity: 1; background: #E8F0FE; }
@@ -1025,7 +1027,7 @@ export const injectStyles = () => {
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
       margin-left: -1px;
       display: flex;
       align-items: center;
@@ -1076,6 +1078,43 @@ export const injectStyles = () => {
       color: #202124;
       border-color: #5F6368;
       z-index: 1;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      /* Auras/pulsos puramente decorativos - infinitos, sem função de status.
+         Spinners (.bau-spinner, .bau-metrics-refresh-btn.spinning svg) e o
+         .bau-shimmer de skeleton ficam de fora: carregam estado de "carregando"
+         real, mesmo padrão adotado no cwLibSpin da Biblioteca Pessoal. */
+      .bau-success-view.active .bau-success-content::before,
+      .bau-highlight-panel::before,
+      .bau-pulse-attention {
+        animation: none !important;
+      }
+
+      /* Sequência de sucesso (ao submeter um caso) simplificada pra fade puro -
+         mesmo tratamento dado à splash screen em utils.js. */
+      .bau-success-view.active .bau-success-icon,
+      .bau-success-view.active .bau-success-title,
+      .bau-success-view.active .bau-success-subtitle,
+      .bau-success-view.active #bau-success-back-btn {
+        animation-name: bauFadeIn !important;
+        transform: none !important;
+      }
+      .bau-success-view.active #bau-success-back-btn::after {
+        animation: none !important;
+      }
+
+      .bau-case-card:hover,
+      .bau-dashboard-fab:hover,
+      .bau-branching-card:hover,
+      .bau-branching-card:hover .bau-branching-icon,
+      .bau-highlight-item:hover,
+      .bau-btn-primary:hover, .bau-btn-submit:hover,
+      .bau-details-close-btn:hover,
+      .bau-details-close-btn:active,
+      .bau-copy-btn:active {
+        transform: none !important;
+      }
     }
   `;
   document.head.appendChild(style);

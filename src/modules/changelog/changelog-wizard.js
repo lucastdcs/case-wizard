@@ -2,6 +2,7 @@
 
 import { stylePopup, showToast } from "../shared/utils.js";
 import { SoundManager } from "../shared/sound-manager.js";
+import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { RELEASE_NOTES } from "./changelog-data.js";
 
 export function checkAndShowChangelog(currentAppVersion) {
@@ -66,6 +67,9 @@ function initChangelogModal(version) {
     // --- DOM ---
     const overlay = document.createElement("div");
     Object.assign(overlay.style, styles.overlay);
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "cw-changelog-title");
 
     const card = document.createElement("div");
     Object.assign(card.style, styles.card);
@@ -79,6 +83,7 @@ function initChangelogModal(version) {
     Object.assign(iconEl.style, styles.icon);
 
     const titleEl = document.createElement("div");
+    titleEl.id = "cw-changelog-title";
     Object.assign(titleEl.style, styles.title);
 
     const textEl = document.createElement("div");
@@ -101,6 +106,7 @@ function initChangelogModal(version) {
     card.appendChild(btnNext);
     overlay.appendChild(card);
     document.body.appendChild(overlay);
+    lockBodyScroll();
 
     // --- LOGICA ---
     function renderSlide(index) {
@@ -130,12 +136,14 @@ function initChangelogModal(version) {
     function close() {
         // Atualiza a versão no cache para não mostrar mais
         localStorage.setItem("cw_last_version", version);
-        
+
         overlay.style.opacity = "0";
         card.style.transform = "translateY(30px)";
         setTimeout(() => overlay.remove(), 400);
         SoundManager.playSuccess();
         showToast(`TechSol atualizado para ${version}!`);
+        document.removeEventListener("keydown", handleKeydown);
+        unlockBodyScroll();
     }
 
     btnNext.onclick = () => {
@@ -148,10 +156,24 @@ function initChangelogModal(version) {
         }
     };
 
+    // Enter avança slide a slide (ou fecha no último); Esc dispensa direto -
+    // não há "pular" aqui, só o aviso do que mudou.
+    function handleKeydown(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            btnNext.click();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            close();
+        }
+    }
+    document.addEventListener("keydown", handleKeydown);
+
     // Start
     renderSlide(0);
     requestAnimationFrame(() => {
         overlay.style.opacity = "1";
         card.style.transform = "translateY(0)";
     });
+    setTimeout(() => btnNext.focus(), 450);
 }

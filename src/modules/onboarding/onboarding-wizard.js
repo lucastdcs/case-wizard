@@ -2,6 +2,7 @@
 
 import { stylePopup, showToast, confirmDialog } from "../shared/utils.js";
 import { SoundManager } from "../shared/sound-manager.js";
+import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 
 export function initOnboarding() {
     // 1. Verificação de Segurança (Já viu?)
@@ -75,6 +76,9 @@ export function initOnboarding() {
     // --- CONSTRUÇÃO DA UI ---
     const overlay = document.createElement("div");
     Object.assign(overlay.style, styles.overlay);
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "cw-onboarding-title");
 
     const card = document.createElement("div");
     Object.assign(card.style, styles.card);
@@ -84,6 +88,7 @@ export function initOnboarding() {
     Object.assign(iconEl.style, styles.icon);
 
     const titleEl = document.createElement("div");
+    titleEl.id = "cw-onboarding-title";
     Object.assign(titleEl.style, styles.title);
 
     const textEl = document.createElement("div");
@@ -119,6 +124,7 @@ export function initOnboarding() {
     card.appendChild(actionsEl);
     overlay.appendChild(card);
     document.body.appendChild(overlay);
+    lockBodyScroll();
 
     // --- LÓGICA DE RENDERIZAÇÃO ---
     function renderSlide(index) {
@@ -157,6 +163,8 @@ export function initOnboarding() {
         setTimeout(() => overlay.remove(), 400);
         SoundManager.playSuccess();
         showToast("Tudo pronto! Use o menu flutuante.");
+        document.removeEventListener("keydown", handleKeydown);
+        unlockBodyScroll();
     }
 
     // --- LISTENERS ---
@@ -175,10 +183,27 @@ export function initOnboarding() {
         if(confirmed) closeWizard();
     };
 
+    // Enter avança para o próximo slide, Esc equivale a "Pular" - o wizard é
+    // linear e essa é a primeira tela que um usuário novo vê, então navegar
+    // sem tirar a mão do teclado importa mais aqui do que em qualquer outro popup.
+    function handleKeydown(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            btnNext.click();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            btnSkip.click();
+        }
+    }
+    document.addEventListener("keydown", handleKeydown);
+
     // Iniciar Animação de Entrada
     renderSlide(0);
     requestAnimationFrame(() => {
         overlay.style.opacity = "1";
         card.style.transform = "translateY(0)";
     });
+    // Foco inicial no botão de ação principal - primeiro dialog modal que um
+    // usuário novo vê, então precisa entrar já com foco em algo operável.
+    setTimeout(() => btnNext.focus(), 450);
 }

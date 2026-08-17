@@ -18,6 +18,7 @@ import { DataService } from './modules/shared/data-service.js';
 
 // 2. Importação do Núcleo Compartilhado
 import { initCommandCenter } from './modules/shared/command-center.js';
+import { initCommandPalette } from './modules/shared/command-palette.js';
 import { initGlobalStylesAndFont, playStartupAnimation, showToast } from './modules/shared/utils.js';
 
 // --- Gerenciador de Som ---
@@ -40,9 +41,11 @@ function initApp() {
         initGlobalStylesAndFont();
 
         // --- Inicialização Sonora ---
+        // O som de boot ("TA-DUM") já é disparado dentro de playStartupAnimation(),
+        // sincronizado com o momento em que o "Bom dia" aparece na splash. Chamá-lo
+        // aqui também fazia o som tocar duas vezes se sobrepondo (cauda de 3.6s).
         try {
-            SoundManager.initGlobalListeners(); 
-            SoundManager.playStartup(); 
+            SoundManager.initGlobalListeners();
         } catch (audioErr) {
             console.warn("Áudio bloqueado:", audioErr);
         }
@@ -51,7 +54,10 @@ function initApp() {
         DataService.fetchTips();
 
         // C. Animação de Entrada (Aqui o 'Sherlock' começa a buscar o nome)
-        playStartupAnimation();
+        // playStartupAnimation() já é async e só resolve depois que a splash
+        // sai do DOM de vez - guardamos essa promise pra passar adiante em vez
+        // de deixar a pílula (abaixo) adivinhar seu próprio tempo de boot.
+        const splashDone = playStartupAnimation();
 
         // D. Inicializa os Módulos
         const toggleNotes = initCaseNotesAssistant();
@@ -63,10 +69,9 @@ function initApp() {
         const toggleConfigs = initConfigsAssistant();
         const toggleBAUForm = initBAUForm();
         
-        const broadcastControl = initBroadcastAssistant(); 
+        const broadcastControl = initBroadcastAssistant();
 
-        // E. Inicializa a Barra de Comando
-        initCommandCenter({
+        const moduleActions = {
             toggleNotes,
             toggleEmail,
             toggleScript,
@@ -76,7 +81,18 @@ function initApp() {
             toggleConfigs,
             toggleBAUForm,
             broadcastControl
-        });
+        };
+
+        // E. Inicializa a Barra de Comando
+        // A pílula só "dockeia" depois que a splash de fato terminou (ver
+        // splashDone acima) - antes ela tinha um tempo fixo próprio que quase
+        // nunca batia com a duração real da splash (variável, depende do
+        // tamanho do nome digitado no typewriter).
+        initCommandCenter(moduleActions, splashDone);
+
+        // E.1. Command Palette (Ctrl/Cmd+K) - mesma lista de módulos, só um
+        // jeito mais rápido de chegar neles sem tirar a mão do teclado.
+        initCommandPalette(moduleActions);
 
         // F. Logs e Modais (COM DELAY TÁTICO)
         // Esperamos 2.5s para garantir que a animação capturou o e-mail do agente
@@ -96,6 +112,7 @@ function initApp() {
 
     } catch (error) {
         console.error("Erro fatal na inicialização:", error);
+        SoundManager.playError();
         showToast("Erro crítico ao iniciar o Case Wizard.", { error: true });
     }
 }

@@ -1,5 +1,6 @@
 import { TASKS_DB } from "../data/notes-data.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
+import { createEmptyState, enableArrowKeyNav } from "../../shared/dom-utils.js";
 
 // Tarefas que, com Tag Support já usado, dispensam screenshot de evidência
 // (a menos que o agente force manualmente via "Incluir mesmo assim").
@@ -154,7 +155,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 position: relative; 
                 height: 90px;
                 display: flex; flex-direction: column; align-items: center; justify-content: center;
-                transition: all 0.4s cubic-bezier(0.25, 1, 0.3, 1);
+                transition: all 0.4s var(--cw-ease-decelerate);
                 box-shadow: 0 2px 6px rgba(0,0,0,0.02);
                 overflow: hidden;
             }
@@ -165,6 +166,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             /* Interação */
             .cw-hero-card:hover { border-color: var(--hero-color); box-shadow: 0 8px 20px rgba(0,0,0,0.06); transform: translateY(-3px); }
             .cw-hero-card:active { transform: scale(0.96) translateY(0); }
+            .cw-hero-card:focus-visible { outline: 2px solid var(--hero-color); outline-offset: 2px; }
 
             /* HERO ACTIVE STATE (Borda Colorida Apenas) */
             .cw-hero-card.active {
@@ -225,7 +227,15 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 color: ${DS.textMain}; display: flex; align-items: center; justify-content: center;
                 font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s;
             }
-            .cw-step-btn-hero:hover { background: #E5E7EB; color: var(--hero-color); }            /* LIST SECTION */
+            .cw-step-btn-hero:hover { background: #E5E7EB; color: var(--hero-color); }            /* Some SR (Screen Reader) só - o placeholder do campo de busca já
+               é a dica visual; isso dá o mesmo texto pra quem usa leitor de
+               tela, sem duplicar nada na tela pra quem enxerga. */
+            .cw-sr-only {
+                position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+                overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+            }
+
+            /* LIST SECTION */
             .cw-list-section { padding: 24px 24px; }
             .cw-search-input {
                 width: 100%; box-sizing: border-box; padding: 10px 12px 10px 36px;
@@ -258,6 +268,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             }
             .cw-task-item:last-child { border-bottom: none; }
             .cw-task-item:hover { background: #F3F4F6; }
+            .cw-task-item:focus-visible, .cw-acc-header:focus-visible { outline: 2px solid ${DS.blue}; outline-offset: -2px; }
             .cw-task-item.selected { background: ${DS.blueLight}; }
             .cw-task-item.ts-success { background: #F0FDF4 !important; border-left: 4px solid #22C55E; }
             .cw-task-item.ts-success .cw-task-label { color: #166534 !important; }
@@ -331,7 +342,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 
                 padding: 24px;
                 position: relative;
-                transition: all 0.4s cubic-bezier(0.25, 1, 0.3, 1);
+                transition: all 0.4s var(--cw-ease-decelerate);
                 box-shadow: 0 4px 12px rgba(0,0,0,0.03);
                 margin-bottom: 16px;
             }
@@ -467,7 +478,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 border: 1.5px solid #f1f3f4;
                 background: #f8f9fa;
                 font-size: 14px; color: #374151;
-                transition: all 0.25s cubic-bezier(0.25, 1, 0.3, 1); outline: none;
+                transition: all 0.25s var(--cw-ease-decelerate); outline: none;
             }
 
             /* Foco no Input: Usa a cor da marca */
@@ -487,13 +498,26 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
 
             /* Check Icon Animado */
             .cw-input-check {
-                position: absolute; right: 10px; bottom: 10px; 
+                position: absolute; right: 10px; bottom: 10px;
                 color: #16A34A; width: 16px; height: 16px;
-                opacity: 0; transform: scale(0.5); 
-                transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                opacity: 0; transform: scale(0.5);
+                transition: all 0.3s var(--cw-ease-spring);
                 pointer-events: none;
             }
             .cw-input-field.filled + .cw-input-check { opacity: 1; transform: scale(1); }
+
+            /* Esta é a etapa mais repetida do app inteiro (escolher a task do
+               caso) e não tinha nenhuma proteção de reduced-motion, apesar
+               dos hero cards, do accordion e do "check verde" animarem
+               transform em praticamente toda interação. */
+            @media (prefers-reduced-motion: reduce) {
+                .cw-hero-card, .cw-hero-card:hover, .cw-hero-main, .cw-hero-stepper,
+                .cw-task-item, .cw-acc-icon, .cw-status-bar, .cw-input-check {
+                    transition: opacity 0.15s ease !important;
+                    transform: none !important;
+                }
+                .cw-acc-group.open .cw-acc-body { animation: none !important; }
+            }
         `;
     document.head.appendChild(style);
   }
@@ -521,7 +545,8 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
 
             <div class="cw-list-section">
                 <div class="cw-search-wrapper">
-                    <input class="cw-search-input" placeholder="${t('buscar_catalogo')}">
+                    <label class="cw-sr-only" for="cw-task-search-input">${t('buscar_catalogo')}</label>
+                    <input id="cw-task-search-input" class="cw-search-input" placeholder="${t('buscar_catalogo')}">
                 </div>
                 <div class="cw-acc-container"></div>
                 <div class="cw-results-container" style="display:none"></div>
@@ -538,6 +563,10 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
   const accContainer = container.querySelector(".cw-acc-container");
   const resultsContainer = container.querySelector(".cw-results-container");
   const searchInput = container.querySelector(".cw-search-input");
+  // ↓/↑ anda entre cabeçalhos de categoria e itens visíveis (do acordeão ou
+  // dos resultados de busca, ambos dentro de `container`) sem precisar
+  // reconstruir nada quando a lista muda.
+  enableArrowKeyNav(container, ".cw-acc-header, .cw-task-item");
   const statusBar = container.querySelector(".cw-status-bar");
   const statusText = container.querySelector(".cw-status-text");
   const footerIcons = container.querySelector(".cw-footer-icons");
@@ -579,6 +608,18 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
     card.querySelector(".minus").onclick = () => updateTask(key, -1, task);
     card.querySelector(".plus").onclick = () => updateTask(key, 1, task);
 
+    // Cards eram só clicáveis por mouse - a etapa de escolher a task é a
+    // interação central do módulo de Notes, então precisa funcionar por teclado.
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-pressed", "false");
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        card.click();
+      }
+    });
+
     card.dataset.color = brand.color;
 
     heroGrid.appendChild(card);
@@ -611,6 +652,17 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
     row.querySelector(".minus").onclick = () => updateTask(key, -1, task);
     row.querySelector(".plus").onclick = () => updateTask(key, 1, task);
 
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.setAttribute("aria-pressed", "false");
+    row.setAttribute("aria-label", task.name);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        row.click();
+      }
+    });
+
     return row;
   }
 
@@ -628,12 +680,25 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             </div>
             <div class="cw-acc-icon">▼</div>
         `;
+    header.tabIndex = 0;
+    header.setAttribute("role", "button");
+    header.setAttribute("aria-expanded", "false");
     header.onclick = () => {
       accContainer.querySelectorAll(".cw-acc-group.open").forEach((g) => {
-        if (g !== group) g.classList.remove("open");
+        if (g !== group) {
+          g.classList.remove("open");
+          g.querySelector(".cw-acc-header")?.setAttribute("aria-expanded", "false");
+        }
       });
-      group.classList.toggle("open");
+      const isOpen = group.classList.toggle("open");
+      header.setAttribute("aria-expanded", String(isOpen));
     };
+    header.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        header.click();
+      }
+    });
 
     const body = document.createElement("div");
     body.className = "cw-acc-body";
@@ -672,12 +737,14 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
 
       if (sel) {
         card.classList.add("active");
+        card.setAttribute("aria-pressed", "true");
         card.querySelector(".cw-step-val").textContent = sel.count;
         card.querySelector(".cw-step-val").style.color = card.dataset.color;
 
         card.classList.toggle("ts-success", shouldSuppressScreenshots(key, notesState));
       } else {
         card.classList.remove("active");
+        card.setAttribute("aria-pressed", "false");
         card.classList.remove("ts-success");
       }
     });
@@ -689,11 +756,13 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
       const sel = selection[key];
       if (sel) {
         row.classList.add("selected");
+        row.setAttribute("aria-pressed", "true");
         row.querySelector(".cw-step-val").textContent = sel.count;
 
         row.classList.toggle("ts-success", shouldSuppressScreenshots(key, notesState));
       } else {
         row.classList.remove("selected");
+        row.setAttribute("aria-pressed", "false");
         row.classList.remove("ts-success");
       }
     });
@@ -754,6 +823,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
           const item = createListItem(key, task);
           if (selection[key]) {
             item.classList.add("selected");
+            item.setAttribute("aria-pressed", "true");
             item.querySelector(".cw-step-val").textContent =
               selection[key].count;
           }
@@ -784,7 +854,10 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
     let hasAny = false;
 
     if (keys.length === 0) {
-      screenList.innerHTML = `<div class="cw-empty-state">${t('selecione_tarefas')}</div>`;
+      screenList.appendChild(createEmptyState({
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>`,
+        title: t('selecione_tarefas'),
+      }));
       screenshotsContainer.style.display = "none";
       return;
     }

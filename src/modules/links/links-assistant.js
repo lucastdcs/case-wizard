@@ -4,6 +4,7 @@ import { stylePopup, showToast } from "../shared/utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from '../shared/animations.js';
 import { SoundManager } from "../shared/sound-manager.js";
+import { lockBodyScroll, unlockBodyScroll, createEmptyState } from "../shared/dom-utils.js";
 
 // --- DADOS (Links) ---
 const LINKS_DB = {
@@ -175,7 +176,7 @@ function injectStyles() {
             width: 56px; height: 56px; border-radius: 16px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             cursor: pointer; color: ${COLORS.textSecondary};
-            transition: background 0.2s cubic-bezier(0.2, 0.0, 0.2, 1), color 0.2s ease;
+            transition: background 0.2s var(--cw-ease-standard), color 0.2s ease;
             position: relative; background: transparent;
         }
         .cw-links-nav-btn:hover:not(.active) { background: #F1F3F4; }
@@ -229,8 +230,9 @@ function injectStyles() {
             border-left: 4px solid transparent;
             border-radius: 16px;
             cursor: pointer;
+            text-decoration: none; color: inherit;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s ease;
+            transition: transform 0.2s var(--cw-ease-elastic), box-shadow 0.2s var(--cw-ease-elastic), border-color 0.2s ease;
             position: relative; overflow: hidden; box-sizing: border-box;
         }
         .cw-links-card:hover {
@@ -240,6 +242,7 @@ function injectStyles() {
             border-left-color: var(--cat-color);
         }
         .cw-links-card:hover .cw-links-copy-btn { opacity: 1; background: #F1F3F4; }
+        .cw-links-card:focus-visible { outline: 2px solid var(--cat-color); outline-offset: 2px; }
 
         .cw-links-icon-box {
             width: 40px; height: 40px; border-radius: 12px;
@@ -264,7 +267,7 @@ function injectStyles() {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255,255,255,0.98); z-index: 20;
             display: flex; flex-direction: column;
-            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transform: translateY(100%); transition: transform 0.3s var(--cw-ease-elastic);
             box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
         }
         .cw-links-history-head { padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #F1F3F4; }
@@ -273,19 +276,27 @@ function injectStyles() {
         .cw-links-history-close:hover { background: #F1F3F4; }
         .cw-links-history-list { flex: 1; overflow-y: auto; padding: 20px; background: #F8F9FA; }
         .cw-links-history-empty { text-align: center; color: #999; margin-top: 60px; font-size: 13px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .cw-links-card, .cw-links-nav-btn, .cw-links-nav-icon, .cw-links-history-overlay {
+                transition: opacity 0.15s ease, background 0.15s ease !important;
+                transform: none !important;
+            }
+        }
     `;
     document.head.appendChild(style);
 }
 
 // --- LOGICA DE HISTÓRICO ---
 const HISTORY_KEY = 'cw_link_history_v4';
+const HISTORY_MAX = 10; // Era 3 - pouco pra quem alterna entre várias ferramentas no mesmo turno
 
 function addToHistory(linkObj, catKey) {
     try {
         let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
         history = history.filter(h => h.url !== linkObj.url);
         history.unshift({ ...linkObj, _originalCat: catKey });
-        history = history.slice(0, 3); // Mantém apenas 3
+        history = history.slice(0, HISTORY_MAX);
         localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     } catch (e) { console.warn("Erro ao salvar histórico", e); }
 }
@@ -411,7 +422,11 @@ export function initLinksAssistant() {
       const history = getHistory();
 
       if (history.length === 0) {
-          list.innerHTML = `<div class="cw-links-history-empty">Nada por aqui ainda.</div>`;
+          list.appendChild(createEmptyState({
+              icon: CATEGORY_ICONS.history,
+              title: "Nada por aqui ainda",
+              subtitle: "Os links que você abrir aparecem aqui pra acesso rápido depois.",
+          }));
       } else {
           history.forEach(link => {
               const card = createLinkCard(link, CATEGORY_ICONS[link._originalCat], true, link._originalCat);
@@ -544,7 +559,11 @@ export function initLinksAssistant() {
           });
 
           if(results.length === 0) {
-              scrollContent.innerHTML = `<div class="cw-links-empty">Nada encontrado.</div>`;
+              scrollContent.appendChild(createEmptyState({
+                  icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
+                  title: "Nada encontrado",
+                  subtitle: `Nenhum link bate com "${searchTerm.trim()}".`,
+              }));
               return;
           }
 
@@ -591,8 +610,14 @@ export function initLinksAssistant() {
   }
 
   function createLinkCard(link, iconSvg, isHistory, catKey) {
-      const card = document.createElement("div");
+      // <a> real em vez de <div onclick> + window.open(): preserva Ctrl/Cmd-click
+      // e clique do meio para abrir em nova aba, e fica focável/ativável por
+      // teclado (Enter) de graça, sem precisar de tabindex nem handler próprio.
+      const card = document.createElement("a");
       card.className = "cw-links-card";
+      card.href = link.url;
+      card.target = "_blank";
+      card.rel = "noopener noreferrer";
       const theme = CAT_THEMES[catKey] || CAT_THEMES.history; // Pega o tema da categoria
       card.style.setProperty('--cat-color', theme.color);
       card.style.setProperty('--cat-bg', theme.bg);
@@ -624,16 +649,20 @@ export function initLinksAssistant() {
 
       card.onclick = () => {
           if(!isHistory && catKey) addToHistory(link, catKey);
-          window.open(link.url, '_blank');
+          // A navegação em si já acontece nativamente via href/target do <a>.
       };
 
       copyBtn.onclick = (e) => {
+          // preventDefault, não só stopPropagation: sem isso o clique no botão
+          // de copiar, por estar dentro do <a>, ainda dispararia a navegação.
+          e.preventDefault();
           e.stopPropagation();
           navigator.clipboard.writeText(link.url).then(() => {
               SoundManager.playClick();
               if(!isHistory && catKey) addToHistory(link, catKey);
               showToast("Link copiado!");
           }).catch(() => {
+              SoundManager.playError();
               showToast("Não foi possível copiar o link.", { error: true });
           });
       };
@@ -654,6 +683,7 @@ export function initLinksAssistant() {
   // --- INIT ---
   function toggleVisibility() {
       visible = !visible;
+      if (visible) lockBodyScroll(); else unlockBodyScroll();
       toggleGenieAnimation(visible, popup, 'cw-btn-links');
   }
 

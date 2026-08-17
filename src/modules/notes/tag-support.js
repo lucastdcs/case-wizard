@@ -4,6 +4,7 @@
 import { styleLabel } from '../shared/utils.js';
 import {styleCheckboxInput} from '../notes/notes-styles.js'
 import { notesState } from './core/notes-state.js';
+import { SoundManager } from '../shared/sound-manager.js';
 
 // Estilos locais específicos deste módulo
 const styleContainer = { 
@@ -62,7 +63,7 @@ export function createTagSupportModule(t) {
 
     const warningText = document.createElement("div");
     warningText.className = "js-ts-warning";
-    warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" style="color:#e37400; text-decoration:underline;">Link aqui</a>`;
+    warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" rel="noopener noreferrer" style="color:#e37400; text-decoration:underline;">Link aqui</a>`;
     Object.assign(warningText.style, styleWarning);
 
     reasonDiv.appendChild(reasonLabel);
@@ -75,10 +76,12 @@ export function createTagSupportModule(t) {
 
     // --- 2. EVENTOS INTERNOS ---
     rSim.onchange = () => {
+        SoundManager.playClick();
         reasonDiv.style.display = 'none';
         notesState.setTagSupportUsed(true);
     };
     rNao.onchange = () => {
+        SoundManager.playClick();
         reasonDiv.style.display = 'block';
         notesState.setTagSupportUsed(false);
     };
@@ -122,7 +125,7 @@ export function createTagSupportModule(t) {
         t = newT;
         mainLabel.textContent = t('utilizou_tag_support');
         reasonLabel.textContent = t('motivo_ts');
-        warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" style="color:#b06000; text-decoration:underline;">Link aqui</a>`;
+        warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" rel="noopener noreferrer" style="color:#b06000; text-decoration:underline;">Link aqui</a>`;
     }
 
     // Reseta o estado (chamado ao mudar de passo)

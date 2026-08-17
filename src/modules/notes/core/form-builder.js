@@ -3,7 +3,7 @@ import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, trans
 import { fetchAndInsertSpeakeasyId } from "../automation/case-log-scraper.js";
 import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
-import { confirmDialog } from "../../shared/utils.js";
+import { SoundManager } from "../../shared/sound-manager.js";
 
 export function buildDynamicForm(subStatusKey, container, state) {
     container.innerHTML = "";
@@ -38,7 +38,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
             btnSearch.style.cssText = `font-size: 11px; font-weight: 700; color: ${COLORS.primary}; background-color: ${COLORS.primaryBg}; border: none; border-radius: ${RADIUS.pill}; padding: 6px 14px; margin-left: 10px; cursor: pointer; transition: all 0.2s ${EASE};`;
             btnSearch.onmouseenter = () => btnSearch.style.backgroundColor = "#d2e3fc";
             btnSearch.onmouseleave = () => btnSearch.style.backgroundColor = COLORS.primaryBg;
-            btnSearch.onclick = (e) => { e.preventDefault(); fetchAndInsertSpeakeasyId(fieldId); };
+            btnSearch.onclick = (e) => { e.preventDefault(); SoundManager.playClick(); fetchAndInsertSpeakeasyId(fieldId); };
             label.appendChild(btnSearch);
         }
 
@@ -48,13 +48,15 @@ export function buildDynamicForm(subStatusKey, container, state) {
             btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
             btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
             btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
-            btnDelete.onclick = async (e) => {
+            // Sem confirmDialog aqui: remover um campo opcional é reversível
+            // num clique só (o chip "+ campo" reaparece logo abaixo), então
+            // bloquear com um modal só atrapalhava a velocidade sem
+            // proteger nada de fato irreversível.
+            btnDelete.onclick = (e) => {
                 e.preventDefault();
-                const confirmed = await confirmDialog(`Tem certeza que deseja remover o campo "${labelText.textContent.replace(':', '')}"?`);
-                if (confirmed) {
-                    state.removeField(fieldName);
-                    buildDynamicForm(subStatusKey, container, state);
-                }
+                SoundManager.playClick();
+                state.removeField(fieldName);
+                buildDynamicForm(subStatusKey, container, state);
             };
             label.appendChild(btnDelete);
         }
@@ -119,6 +121,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
             chip.onmouseleave = () => chip.style.backgroundColor = COLORS.primaryBg;
             chip.onclick = (e) => {
                 e.preventDefault();
+                SoundManager.playClick();
                 state.addFieldAt(fieldName, state.activeFields.length);
                 buildDynamicForm(subStatusKey, container, state);
             };
