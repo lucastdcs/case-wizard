@@ -1,7 +1,7 @@
 // src/modules/configs/configs-assistant.js
 
 import { stylePopup, showToast } from "../shared/utils.js";
-import { getPageData, getAgentEmail } from "../shared/page-data.js";
+import { getAgentEmail, captureNameWithMagic } from "../shared/page-data.js";
 import { fetchUserProfile } from "../shared/data-service.js"; // Importação crucial adicionada
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
@@ -165,6 +165,17 @@ export function initConfigsAssistant() {
         `;
         (async () => {
             try {
+                // renderUserProfile() roda no boot, síncrono, logo depois de
+                // initConfigsAssistant() ser chamado em app.js - a captura real
+                // da identidade (captureNameWithMagic, disparada dentro de
+                // playStartupAnimation) só começa ~200ms depois e nunca é
+                // esperada ali. Sem esse guard, getAgentEmail() sempre voltava
+                // null nesse ponto, o LDAP caía no fallback "user", e como
+                // isso só roda uma vez, o card ficava preso no genérico pra
+                // sempre (mesmo abrindo Configs bem depois, com a identidade
+                // já capturada). Mesmo guard que getPageData() já usa.
+                if (!getAgentEmail()) await captureNameWithMagic();
+
                 // Busca o LDAP real do usuário logado
                 const agentEmail = getAgentEmail();
                 const ldap = agentEmail ? agentEmail.split('@')[0] : "user";
