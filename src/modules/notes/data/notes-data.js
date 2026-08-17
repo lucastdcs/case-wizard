@@ -73,7 +73,8 @@ export const translations = {
         'evidencias_contato': 'Evidências de Contato',
         'ligacao_1': 'Ligação 1',
         'ligacao_2': 'Ligação 2',
-        'mensagem_am': 'Mensagem para AM'
+        'mensagem_am': 'Mensagem para AM',
+        'tentativa_ligacao': '📞 Tentativa de ligação:'
     },
     'es': {
         'idioma': 'Idioma:',
@@ -144,7 +145,8 @@ export const translations = {
         'evidencias_contato': 'Evidencias de Contacto',
         'ligacao_1': 'Llamada 1',
         'ligacao_2': 'Llamada 2',
-        'mensagem_am': 'Mensaje para AM'
+        'mensagem_am': 'Mensaje para AM',
+        'tentativa_ligacao': '📞 Intento de llamada:'
     }
 };
 
@@ -419,10 +421,14 @@ export const SUBSTATUS_TEMPLATES = {
         templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Not_Reachable': {
-        status: 'IN', 
+        status: 'IN',
         name: 'IN - Not Reachable',
         requiresTasks: false,
-        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
+        // TENTATIVA_LIGACAO: input simples e dedicado pro link de evidência
+        // da tentativa de ligação (pedido direto, ver histórico) - SCREENSHOTS_LIST
+        // não serve pra isso, é a lista de screenshots gerada a partir de
+        // tasks selecionadas no catálogo (TASKS_DB), não um campo livre.
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'TENTATIVA_LIGACAO', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Not_Interested': {
         status: 'IN', 
@@ -741,7 +747,6 @@ export const scenarioSnippets = {
         'field-REASON_COMMENTS': "Sem resposta ao 2 Day Rule.",
         'field-ON_CALL': "N/A",
         'field-COMENTARIOS': "• O caso foi gerado e entrei na chamada no horário agendado.\n• O anunciante não compareceu à reunião.\n• Segui o protocolo de espera (BAU): realizei duas tentativas de ligação, sem sucesso.\n• Nenhuma das ligações foi atendida (ex: Caixa Postal).\n• Caso inativado após 2 Day Rule.",
-        'field-SCREENSHOTS': "• Tentativa 1 - \n• Tentativa 2  - \n• Tentativa 3 - ",
         'field-GTM_GA4_VERIFICADO': "N/A"
     },
     'quickfill-in-2-6-final': {
