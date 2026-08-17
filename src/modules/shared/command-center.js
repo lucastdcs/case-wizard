@@ -1,11 +1,12 @@
 // src/modules/shared/command-center.js
 
-import { DataService } from './data-service.js'; 
-import { showToast } from './utils.js';
+import { DataService } from './data-service.js';
+import { showToast, triggerGoogleAnimation } from './utils.js';
 import { SoundManager } from './sound-manager.js';
 import { ADMINS } from './config.js';
 import { getAgentEmail } from './page-data.js';
 import { esperar, clamp } from './dom-utils.js';
+import { getCaseStreakToday, incrementCaseStreak } from './streak-tracker.js';
 
 // --- 1. CONFIGURAÇÃO VISUAL ---
 const COLORS = {
@@ -46,14 +47,45 @@ export function updateNotesBadge(hasDrafts) {
   }
 }
 
-export function initCommandCenter(actions) {
+// Sincroniza o badge visual com o valor já salvo (chamado no boot, pra
+// mostrar o número certo mesmo se o agente já tiver casos hoje antes de
+// concluir mais nenhum nesta sessão).
+export function syncStreakBadge() {
+  const badge = document.getElementById('cw-streak-badge');
+  const countEl = document.getElementById('cw-streak-count');
+  if (!badge || !countEl) return;
+  const count = getCaseStreakToday();
+  countEl.textContent = count;
+  badge.classList.toggle('visible', count > 0);
+}
+
+// Chamado quando um caso é efetivamente concluído (nota gerada e inserida).
+// Incrementa o contador do dia e, em marcos redondos, toca uma
+// microcelebração discreta - mesmo precedente do easter egg "Sextou" em
+// utils.js: o produto já aceita um toque de personalidade sem virar
+// gamificação forçada.
+export function registerCaseCompleted() {
+  const { count, isMilestone } = incrementCaseStreak();
+  syncStreakBadge();
+
+  if (isMilestone) {
+    const pill = document.querySelector('.cw-pill');
+    SoundManager.playSuccess();
+    if (pill) triggerGoogleAnimation(pill);
+    showToast(`🔥 ${count} casos hoje!`);
+  }
+}
+
+export function initCommandCenter(actions, splashDone) {
   // 1. ESTILOS
   const styleId = "cw-command-center-style";
   if (!document.getElementById(styleId)) {
     const style = document.createElement("style");
     style.id = styleId;
     style.innerHTML = `
-            @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@500&display=swap');
+            /* Google Sans (400/500/700) já vem via <link> em initGlobalStylesAndFont()
+               (utils.js), que roda antes de qualquer módulo inicializar - esse @import
+               era uma segunda requisição redundante e bloqueava o parse do CSSOM. */
 
             .cw-focus-backdrop {
                 position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -74,10 +106,14 @@ export function initCommandCenter(actions) {
                 border: 1px solid ${COLORS.glassBorder}; border-radius: 50px;
                 box-shadow: 0 12px 32px rgba(0,0,0,0.25); z-index: 2147483647;
                 
-                opacity: 0; 
+                opacity: 0;
                 width: 56px;
-                
-                
+                /* Único elemento persistente do app que anima quase o tempo
+                   todo (hover em 9 botões, abrir/fechar, drag) - único caso
+                   onde will-change estático (em vez de ligar/desligar por
+                   interação) compensa, já que é sempre 1 elemento só. */
+                will-change: transform, opacity, width;
+
                 overflow: visible;
 
                 /* ABRIR: A pílula expande PRIMEIRO */
@@ -164,7 +200,7 @@ export function initCommandCenter(actions) {
                 .cw-pill > *:not(.cw-main-logo) { transition: opacity 0.2s ease 0.1s !important; transform: none !important; }
             }
 
-            .cw-pill.collapsed > *:not(.cw-main-logo) {
+            .cw-pill.collapsed > *:not(.cw-main-logo):not(#cw-streak-badge) {
                 opacity: 0; pointer-events: none; visibility: hidden;
                 transform: scale(0.5); filter: blur(8px);
                 /* Desaparece imediatamente */
@@ -194,7 +230,7 @@ export function initCommandCenter(actions) {
                 display: flex; align-items: center; justify-content: center; 
                 cursor: pointer; position: relative; color: ${COLORS.iconIdle};
                 flex-shrink: 0;
-                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-btn { transition: background 0.2s ease, color 0.2s ease !important; }
@@ -202,7 +238,11 @@ export function initCommandCenter(actions) {
             .cw-btn:hover {
                 background: ${COLORS.glassHighlight};
                 color: ${COLORS.iconActive};
-                transform: scale(1.18) translateY(-2px) !important;
+                /* Só scale (cresce do centro), sem translateY: botões redondos
+                   colados lado a lado numa fileira única - um lift vertical
+                   é o caso clássico de flicker quando o mouse passa raspando
+                   a borda entre dois ícones adjacentes. */
+                transform: scale(1.18) !important;
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-btn:hover { transform: none !important; }
@@ -374,7 +414,29 @@ export function initCommandCenter(actions) {
             .cw-pill:not(.collapsed) .cw-admin-badge.visible {
                 transform: translateX(-50%) scale(1);
             }
-            
+
+            /* --- RITMO DO TURNO (contador de casos hoje) --- */
+            /* Só aparece com a pílula fechada/idle - é um indicador ambiente,
+               não uma notificação; some assim que o menu abre pra não competir
+               com nada. Fica de fora da regra geral de "esconder no collapsed"
+               (seletor lá em cima) de propósito. */
+            .cw-streak-badge {
+                position: absolute; top: -6px; right: -6px;
+                background: #202124; color: #FDD663;
+                font-size: 10px; font-weight: 800;
+                padding: 3px 7px; border-radius: 100px;
+                display: flex; align-items: center; gap: 3px;
+                border: 1px solid rgba(255,255,255,0.15);
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                pointer-events: none; z-index: 25;
+                opacity: 0; transform: scale(0.5);
+                transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            .cw-pill.collapsed .cw-streak-badge.visible { opacity: 1; transform: scale(1); }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-streak-badge { transition: opacity 0.15s ease !important; transform: none !important; }
+            }
+
             .cw-center-success { display: none; color: ${COLORS.green}; margin-bottom: 10px; }
             .cw-center-success svg { width: 48px; height: 48px; }
             .cw-center-success.show { display: block; animation: popIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -439,8 +501,9 @@ export function initCommandCenter(actions) {
 
   pill.innerHTML = `
         <div id="cw-command-center" style="display:none;"></div>
-        <div class="cw-main-logo">${ICONS.main}</div>
+        <div class="cw-main-logo" title="Busca rápida: Ctrl/Cmd+K">${ICONS.main}</div>
         <div id="cw-admin-tag" class="cw-admin-badge">Admin</div>
+        <div id="cw-streak-badge" class="cw-streak-badge" title="Casos concluídos hoje">🔥 <span id="cw-streak-count">0</span></div>
 
         <div class="cw-grip" title="Arrastar">
             <div class="cw-grip-bar"></div>
@@ -465,6 +528,7 @@ export function initCommandCenter(actions) {
   overlay.className = 'cw-focus-backdrop';
   document.body.appendChild(overlay);
   document.body.appendChild(pill);
+  syncStreakBadge();
 
   // 3. LISTENERS
   const toggleModule = (btnClass, actionFn) => {
@@ -536,7 +600,20 @@ export function initCommandCenter(actions) {
     };
     checkAdmin();
 
-    await esperar(2800); pill.classList.add("docked");
+    // A pílula só assume a cena depois que a splash de fato terminou e saiu
+    // do DOM - antes disso era um esperar(2800) fixo, adivinhado sem relação
+    // com a duração real da splash (que varia com o tamanho do nome no
+    // typewriter). Os dois podiam ficar até ~1.5s fora de sincronia: a
+    // pílula já 100% visível, botões "popados", por cima de uma splash ainda
+    // intacta. Fallback pro tempo antigo só se por algum motivo a promise não
+    // for passada (nunca deve travar o boot por causa disso).
+    if (splashDone && typeof splashDone.then === 'function') {
+      try { await splashDone; } catch (e) { /* a splash já trata os próprios erros; só não travamos o dock por causa disso */ }
+      await esperar(150);
+    } else {
+      await esperar(2800);
+    }
+    pill.classList.add("docked");
     await esperar(300);
     const items = pill.querySelectorAll(".cw-btn");
     pill.querySelectorAll(".cw-sep").forEach((s) => s.classList.add("visible"));

@@ -4,6 +4,7 @@ import { stylePopup, styleResizeHandle, makeResizable, showToast, confirmDialog,
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
+import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { SnippetService } from "./snippet-service.js";
 
 // --- ÍCONES (Material Symbols, estilo outline) ---
@@ -34,6 +35,31 @@ const TABS = [
     { id: 'note', label: 'Notas', icon: ICONS.tabs.note },
     { id: 'email', label: 'Emails', icon: ICONS.tabs.email }
 ];
+
+// --- USADOS RECENTEMENTE ---
+// Só guarda IDs (não o conteúdo) - a lista de itens de verdade continua
+// vindo do SnippetService, isso aqui é só "última ordem de uso" por aba.
+const RECENT_KEY = 'cw_lib_recent_v1';
+const RECENT_MAX = 4;
+
+function trackRecentUse(itemId) {
+    try {
+        let recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        recent = recent.filter(id => id !== itemId);
+        recent.unshift(itemId);
+        recent = recent.slice(0, RECENT_MAX * 3); // folga pra sobreviver a filtros por aba
+        localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+    } catch (e) { console.warn("Erro ao salvar uso recente", e); }
+}
+
+function getRecentItems(tab) {
+    try {
+        const recentIds = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        if (recentIds.length === 0) return [];
+        const itemsById = new Map(SnippetService.getSnippets(tab).map(item => [item.id, item]));
+        return recentIds.map(id => itemsById.get(id)).filter(Boolean).slice(0, RECENT_MAX);
+    } catch (e) { return []; }
+}
 
 // --- FOLHA DE ESTILOS DEDICADA (Material 3 + Glass) ---
 // Substitui o antigo padrão de montar style="..." via objectToCss() elemento a
@@ -95,7 +121,7 @@ function injectStyles() {
             flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
             padding: 8px 10px; border-radius: 100px; cursor: pointer; user-select: none;
             font-size: 12.5px; font-weight: 500; color: #5f6368;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: background-color 0.25s var(--cw-ease-standard), color 0.25s var(--cw-ease-standard), box-shadow 0.25s var(--cw-ease-standard);
         }
         .cw-lib-tab svg { flex-shrink: 0; }
         .cw-lib-tab:hover { color: #202124; }
@@ -114,7 +140,7 @@ function injectStyles() {
             border-radius: 18px; padding: 16px 16px 12px 16px;
             position: relative; isolation: isolate;
             box-shadow: 0 1px 3px rgba(60,64,67,0.08);
-            transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s ease;
+            transition: box-shadow 0.35s var(--cw-ease-elastic), border-color 0.35s ease;
             display: flex; flex-direction: column;
         }
         /* isolation:isolate dá a cada card seu próprio contexto de empilhamento,
@@ -127,7 +153,9 @@ function injectStyles() {
             background: linear-gradient(135deg, rgba(138,180,248,0.16), rgba(197,138,249,0.16), rgba(242,139,130,0.16));
             background-size: 300% 300%; opacity: 0; transition: opacity 0.4s ease;
         }
-        .cw-lib-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(60,64,67,0.14); border-color: rgba(255,255,255,0.9); }
+        /* Sem transform no próprio card - hit-box parado evita flicker de
+           hover perto da borda. Elevação só por sombra/borda. */
+        .cw-lib-card:hover { box-shadow: 0 10px 24px rgba(60,64,67,0.14); border-color: rgba(255,255,255,0.9); }
         .cw-lib-card:hover::before { opacity: 1; animation: cwLibAura 8s ease infinite; }
         .cw-lib-card.is-code { border-left: 3px solid #1a73e8; }
         @keyframes cwLibAura { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -190,6 +218,23 @@ function injectStyles() {
         .cw-lib-empty-title { font-weight: 600; font-size: 15px; color: #3c4043; }
         .cw-lib-empty-sub { font-size: 13px; max-width: 260px; line-height: 1.5; }
 
+        /* --- USADOS RECENTEMENTE --- */
+        .cw-lib-recent-section { grid-column: 1 / -1; margin-bottom: 4px; }
+        .cw-lib-recent-title {
+            font-size: 11px; font-weight: 700; color: #80868b; text-transform: uppercase;
+            letter-spacing: 0.6px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+        }
+        .cw-lib-recent-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .cw-lib-recent-chip {
+            display: flex; align-items: center; gap: 6px; padding: 7px 14px;
+            background: rgba(26,115,232,0.08); border: 1px solid rgba(26,115,232,0.18);
+            border-radius: 100px; font-size: 12.5px; font-weight: 600; color: #1a73e8;
+            cursor: pointer; max-width: 220px; transition: background-color 0.15s ease, transform 0.15s ease;
+        }
+        .cw-lib-recent-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cw-lib-recent-chip:hover { background: rgba(26,115,232,0.14); }
+        .cw-lib-recent-chip:focus-visible { outline: 2px solid #1a73e8; outline-offset: 2px; }
+
         /* --- FAB --- */
         .cw-lib-fab {
             position: absolute; bottom: 24px; right: 24px; z-index: 15;
@@ -206,7 +251,7 @@ function injectStyles() {
         .cw-lib-sheet {
             position: absolute; inset: 0; z-index: 25;
             background: rgba(250,251,252,0.6); backdrop-filter: blur(36px) saturate(180%); -webkit-backdrop-filter: blur(36px) saturate(180%);
-            transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(100%); transition: transform 0.5s var(--cw-ease-decelerate);
             display: flex; flex-direction: column;
         }
         .cw-lib-sheet.open { transform: translateY(0); }
@@ -238,7 +283,7 @@ function injectStyles() {
         .cw-lib-tb-btn {
             width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent;
             display: flex; align-items: center; justify-content: center; cursor: pointer; color: #474747;
-            transition: all 0.15s ease;
+            transition: background-color 0.15s ease, color 0.15s ease;
         }
         .cw-lib-tb-btn:hover { background: rgba(0,0,0,0.05); color: #1a73e8; }
         .cw-lib-tb-btn.active { background: rgba(26,115,232,0.12); color: #1a73e8; }
@@ -268,6 +313,19 @@ function injectStyles() {
 
         .cw-tactile { transition: transform 0.15s ease; }
         .cw-tactile:active { transform: scale(0.94); }
+
+        /* O spinner de carregamento fica de fora de propósito - é
+           informativo (comunica "ainda trabalhando"), não decorativo.
+           O resto (aura infinita no hover, cards, FAB, painel deslizando)
+           é puro movimento e não tinha nenhuma proteção. */
+        @media (prefers-reduced-motion: reduce) {
+            .cw-lib-card::before { animation: none !important; }
+            .cw-lib-card, .cw-lib-recent-chip, .cw-lib-fab, .cw-lib-save-btn,
+            .cw-lib-menu, .cw-lib-sheet {
+                transition: opacity 0.15s ease, background-color 0.15s ease !important;
+                transform: none !important;
+            }
+        }
     `;
     document.head.appendChild(style);
 }
@@ -427,11 +485,42 @@ export function initPersonalLibrary() {
         return haystack.includes(term);
     }
 
+    function createRecentSection(recentItems) {
+        const section = document.createElement("div");
+        section.className = "cw-lib-recent-section";
+        section.innerHTML = `<div class="cw-lib-recent-title">🕒 Usados recentemente</div>`;
+
+        const row = document.createElement("div");
+        row.className = "cw-lib-recent-row";
+        recentItems.forEach(item => {
+            const chip = document.createElement("div");
+            chip.className = "cw-lib-recent-chip";
+            chip.tabIndex = 0;
+            chip.setAttribute("role", "button");
+            chip.title = item.title;
+            chip.innerHTML = `<span>${escapeHtml(item.title)}</span>`;
+            chip.onclick = () => { SoundManager.playClick(); copyItem(item); };
+            chip.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); chip.click(); }
+            });
+            row.appendChild(chip);
+        });
+        section.appendChild(row);
+        return section;
+    }
+
     function renderList() {
         closeCardMenu();
         grid.innerHTML = "";
         const term = searchTerm.trim().toLowerCase();
         const items = SnippetService.getSnippets(currentTab).filter(item => matchesSearch(item, term));
+
+        // Atalho de acesso rápido: um clique copia direto, sem abrir o card
+        // inteiro - só aparece fora de busca, pra não competir com resultados.
+        if (!term) {
+            const recentItems = getRecentItems(currentTab);
+            if (recentItems.length > 0) grid.appendChild(createRecentSection(recentItems));
+        }
 
         if (items.length === 0) {
             const empty = document.createElement("div");
@@ -537,6 +626,7 @@ export function initPersonalLibrary() {
         } else {
             navigator.clipboard.writeText(item.content);
         }
+        trackRecentUse(item.id);
         showToast("Copiado!");
     }
 
@@ -563,16 +653,19 @@ export function initPersonalLibrary() {
         saveBtn.textContent = item ? "Salvar Alterações" : "Salvar";
         sheet.classList.add('open');
 
+        // 500ms = duração real da transição de .cw-lib-sheet (transform 0.5s
+        // var(--cw-ease-decelerate)) - focar antes disso rouba o scroll no
+        // meio do slide-in.
         setTimeout(() => {
             const firstInput = sheetBody.querySelector("input");
             if (firstInput) firstInput.focus();
-        }, 350);
+        }, 500);
     }
 
     function closeEditor() {
         SoundManager.playSwoosh();
         sheet.classList.remove('open');
-        setTimeout(() => { currentEditingId = null; }, 300);
+        setTimeout(() => { currentEditingId = null; }, 500);
     }
 
     async function handleSave() {
@@ -588,6 +681,7 @@ export function initPersonalLibrary() {
             const isCode = contentInput.getAttribute('data-is-code') === 'true';
 
             if (!title || !content || content === '<br>') {
+                SoundManager.playError();
                 showToast("Preencha título e conteúdo.", { error: true });
                 return;
             }
@@ -602,6 +696,7 @@ export function initPersonalLibrary() {
             if (currentTab === 'email') {
                 const subject = sheetBody.querySelector("#cw-lib-inp-subject").value.trim();
                 if (!subject) {
+                    SoundManager.playError();
                     showToast("Assunto é obrigatório para emails.", { error: true });
                     return;
                 }
@@ -617,6 +712,7 @@ export function initPersonalLibrary() {
             // sucesso falso e fechando o editor com o item perdido — era isso que
             // fazia parecer que "nenhuma função rodava".
             if (saved === false) {
+                SoundManager.playError();
                 showToast("Não foi possível salvar: usuário não identificado. Recarregue a página e tente de novo.", { error: true });
                 return;
             }
@@ -625,6 +721,7 @@ export function initPersonalLibrary() {
             closeEditor();
 
             if (saved.synced === false) {
+                SoundManager.playError();
                 showToast("Salvo localmente — sem conexão com a nuvem no momento.", { error: true });
             } else {
                 showToast("Salvo e sincronizado!");
@@ -632,6 +729,7 @@ export function initPersonalLibrary() {
             }
         } catch (error) {
             console.error("Erro ao salvar item da biblioteca:", error);
+            SoundManager.playError();
             showToast("Erro ao salvar item.", { error: true });
         } finally {
             loadingOverlay.classList.remove('active');
@@ -748,10 +846,10 @@ export function initPersonalLibrary() {
         visible = !visible;
         toggleGenieAnimation(visible, popup, "cw-btn-library");
         if (visible) {
-            document.body.style.overflow = "hidden";
+            lockBodyScroll();
             renderList();
         } else {
-            document.body.style.overflow = "";
+            unlockBodyScroll();
             closeCardMenu();
         }
     }

@@ -13,6 +13,7 @@ import { createDraftsManager } from "./drafts/draft-ui.js";
 import { createSplitTransferComponent } from "./components/split-transfer.js";
 import { DraftService } from "./drafts/draft-service.js";
 import { SoundManager } from "../shared/sound-manager.js";
+import { enableFilledCheck, lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { getPageData } from "../shared/page-data.js";
 import {
     SUBSTATUS_TEMPLATES,
@@ -30,7 +31,7 @@ import {
     triggerInputEvents
 } from "./notes-bridge.js";
 import { runEmailAutomation } from "../email-assistant/email-automation-service.js";
-import { triggerProcessingAnimation, updateNotesBadge } from "../shared/command-center.js";
+import { triggerProcessingAnimation, updateNotesBadge, registerCaseCompleted } from "../shared/command-center.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 
 export function initCaseNotesAssistant() {
@@ -87,6 +88,7 @@ export function initCaseNotesAssistant() {
         input.style.marginBottom = "0";
         wrapper.appendChild(label);
         wrapper.appendChild(input);
+        enableFilledCheck(input, { minLength: 8 }); // link de evidência - poucos caracteres ainda não é um link válido
         evidenceInputs[id] = input;
         return wrapper;
     };
@@ -201,6 +203,7 @@ export function initCaseNotesAssistant() {
 
     function toggleVisibility() {
         notesState.visible = !notesState.visible;
+        if (notesState.visible) lockBodyScroll(); else unlockBodyScroll();
         toggleGenieAnimation(notesState.visible, popup, "cw-btn-notes");
     }
 
@@ -314,7 +317,7 @@ export function initCaseNotesAssistant() {
                 div.querySelectorAll('#lang-selector button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 updateIndicator('lang-selector', idx);
-                SoundManager.playHover();
+                SoundManager.playClick();
                 if (notesState.currentSubStatus) {
                     onSubStatusChange(notesState.currentSubStatus);
                 }
@@ -327,7 +330,7 @@ export function initCaseNotesAssistant() {
                 div.querySelectorAll('#type-selector button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 updateIndicator('type-selector', idx);
-                SoundManager.playHover();
+                SoundManager.playClick();
                 if (notesState.currentSubStatus) {
                     onSubStatusChange(notesState.currentSubStatus);
                 }
@@ -340,7 +343,7 @@ export function initCaseNotesAssistant() {
                 div.querySelectorAll('#portugal-selector button').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 updateIndicator('portugal-selector', idx);
-                SoundManager.playHover();
+                SoundManager.playClick();
                 if (notesState.currentSubStatus) {
                     onSubStatusChange(notesState.currentSubStatus);
                 }
@@ -355,7 +358,7 @@ export function initCaseNotesAssistant() {
         div.className = "cw-status-section";
         div.style.cssText = "display: flex; flex-direction: column; gap: 8px;";
         div.innerHTML = `
-            <div class="cw-section-title js-label-status" style="margin-top: 8px;">${t('status_principal')}</div>
+            <label class="cw-section-title js-label-status" for="main-status-select" style="margin-top: 8px;">${t('status_principal')}</label>
             <select id="main-status-select" class="cw-select">
                 <option value="" disabled selected>${t('select_status')}</option>
                 <option value="NI">NI - Need Info</option>
@@ -364,7 +367,7 @@ export function initCaseNotesAssistant() {
                 <option value="AS">AS - Assigned</option>
                 <option value="DC">DC - Discard</option>
             </select>
-            <div class="cw-section-title js-label-substatus" style="margin-top: 8px;">${t('substatus')}</div>
+            <label class="cw-section-title js-label-substatus" for="sub-status-select" style="margin-top: 8px;">${t('substatus')}</label>
             <select id="sub-status-select" class="cw-select" disabled>
                 <option value="">${t('select_substatus')}</option>
             </select>
@@ -403,13 +406,36 @@ export function initCaseNotesAssistant() {
             subSelect.disabled = true;
             return;
         }
+
+        // IN é a única lista longa o bastante (8 itens) pra ter um subgrupo
+        // real dentro dela: "Fora de Escopo" já é uma categoria com nome
+        // próprio nos dados (Out_of_Scope_*), então o <optgroup> aqui separa
+        // informação de verdade, não só decora. Os demais status têm poucos
+        // itens (2 a 4) e nenhum subgrupo natural — envolvê-los num optgroup
+        // não ajudaria em nada a escanear a lista.
+        const outOfScopeGroup = status === 'IN'
+            ? (() => {
+                const g = document.createElement("optgroup");
+                g.label = "Fora de Escopo";
+                return g;
+            })()
+            : null;
+
         for (const key in SUBSTATUS_TEMPLATES) {
             if (SUBSTATUS_TEMPLATES[key].status === status) {
                 const opt = document.createElement("option");
                 opt.value = key;
                 opt.textContent = SUBSTATUS_TEMPLATES[key].name;
-                subSelect.appendChild(opt);
+
+                if (outOfScopeGroup && key.startsWith('IN_Out_of_Scope')) {
+                    outOfScopeGroup.appendChild(opt);
+                } else {
+                    subSelect.appendChild(opt);
+                }
             }
+        }
+        if (outOfScopeGroup && outOfScopeGroup.children.length > 0) {
+            subSelect.appendChild(outOfScopeGroup);
         }
         subSelect.disabled = false;
     }
@@ -666,6 +692,7 @@ export function initCaseNotesAssistant() {
 
     async function handleCopy() {
         if (!notesState.currentSubStatus) {
+            SoundManager.playError();
             showToast(t('select_substatus'), { error: true });
             return;
         }
@@ -675,12 +702,14 @@ export function initCaseNotesAssistant() {
             showToast(t('copiado_sucesso'));
             SoundManager.playClick();
         } else {
+            SoundManager.playError();
             showToast(t('select_substatus'), { error: true });
         }
     }
 
     async function handleGenerate() {
         if (!notesState.currentSubStatus) {
+            SoundManager.playError();
             showToast(t('select_substatus'), { error: true });
             return;
         }
@@ -693,11 +722,13 @@ export function initCaseNotesAssistant() {
             return !value || !value.trim();
         });
         if (missingRequired.length > 0) {
+            SoundManager.playError();
             showToast(`Preencha o campo obrigatório antes de gerar: ${t(missingRequired[0].toLowerCase())}`, { error: true });
             return;
         }
 
         if (templateData?.requiresTasks && stepTasks.getCheckedElements().length === 0) {
+            SoundManager.playError();
             showToast("Selecione ao menos uma tarefa antes de gerar a nota.", { error: true });
             return;
         }
@@ -723,6 +754,7 @@ export function initCaseNotesAssistant() {
 
             showToast(t('inserido_copiado'));
             SoundManager.playSuccess();
+            registerCaseCompleted(); // nota inserida com sucesso = 1 caso concluído no ritmo do turno
             resetModule();
         } else {
             // ensureNoteCardIsOpen() não achou/abriu o editor de nota no CRM
@@ -730,6 +762,7 @@ export function initCaseNotesAssistant() {
             // (linha acima), então o conteúdo não se perde — mas o popup
             // tinha sido fechado como se tivesse dado certo, deixando o
             // agente sem nenhum aviso de que a nota não foi inserida.
+            SoundManager.playError();
             showToast("Não foi possível abrir a nota no CRM. O conteúdo já está copiado — cole manualmente.", { error: true });
             toggleVisibility();
         }

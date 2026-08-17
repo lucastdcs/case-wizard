@@ -4,6 +4,7 @@ import { stylePopup, styleSelect, showToast } from "../shared/utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
+import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 
 const PINNED_STORAGE_KEY = "cw_timezone_pinned";
 
@@ -43,7 +44,45 @@ const FILTERS = [
     { id: 'eu', label: 'Europa' }
 ];
 
+// --- FOLHA DE ESTILOS DEDICADA (estados interativos) ---
+// Este módulo ainda montava hover via onmouseenter/onmouseleave em JS
+// (único no app a não ter migrado pro padrão usado em call-script/broadcast/
+// personal-library) - isso significa nenhum :focus-visible de graça e nenhum
+// respeito a prefers-reduced-motion nesses hovers. O layout/cores estático
+// continua no objeto `styles` local (não há necessidade de reescrever tudo),
+// só os estados de interação (hover/focus) viram classes CSS reais aqui.
+function injectInteractiveStyles() {
+    if (document.getElementById('cw-timezone-interactive-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'cw-timezone-interactive-styles';
+    style.textContent = `
+        .tz-tab-btn:focus-visible,
+        .tz-chip:focus-visible,
+        .tz-hub-card:focus-visible,
+        .tz-pin-btn:focus-visible {
+            outline: 2px solid #1A73E8;
+            outline-offset: 2px;
+        }
+        .tz-chip:hover { border-color: #1A73E8; }
+        .tz-hub-card {
+            transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s ease;
+        }
+        .tz-hub-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(60,64,67,0.1);
+        }
+        .tz-pin-btn { transition: background-color 0.2s ease; }
+        .tz-pin-btn:hover { background-color: #F1F3F4; }
+        @media (prefers-reduced-motion: reduce) {
+            .tz-hub-card { transition: box-shadow 0.2s ease !important; }
+            .tz-hub-card:hover { transform: none !important; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 export function initTimezoneAssistant() {
+    injectInteractiveStyles();
     const CURRENT_VERSION = "v2.2 Pro"; 
     let visible = false;
     let updateInterval = null;
@@ -204,11 +243,23 @@ export function initTimezoneAssistant() {
     
     const btnLive = document.createElement("div");
     btnLive.textContent = "Monitoramento";
+    btnLive.className = "tz-tab-btn";
+    btnLive.tabIndex = 0;
+    btnLive.setAttribute("role", "tab");
     Object.assign(btnLive.style, styles.tabBtn, styles.tabActive);
-    
+
     const btnPlan = document.createElement("div");
     btnPlan.textContent = "Planejador";
+    btnPlan.className = "tz-tab-btn";
+    btnPlan.tabIndex = 0;
+    btnPlan.setAttribute("role", "tab");
     Object.assign(btnPlan.style, styles.tabBtn);
+
+    [btnLive, btnPlan].forEach(btn => {
+        btn.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); btn.click(); }
+        });
+    });
 
     tabContainer.appendChild(btnLive);
     tabContainer.appendChild(btnPlan);
@@ -250,22 +301,28 @@ export function initTimezoneAssistant() {
         const chip = document.createElement("div");
         chip.textContent = f.label;
         chip.id = `tz-filter-${f.id}`;
+        chip.className = "tz-chip";
+        chip.tabIndex = 0;
+        chip.setAttribute("role", "button");
         Object.assign(chip.style, styles.chip);
-        
+
         if (f.id === activeFilter) Object.assign(chip.style, styles.chipActive);
 
         chip.onclick = () => {
             SoundManager.playClick();
             activeFilter = f.id;
-            
+
             // Atualiza visual dos chips
             Array.from(chipsRow.children).forEach(c => {
                 Object.assign(c.style, styles.chip);
             });
             Object.assign(chip.style, styles.chipActive);
-            
+
             renderLive();
         };
+        chip.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); chip.click(); }
+        });
 
         chipsRow.appendChild(chip);
     });
@@ -298,7 +355,9 @@ export function initTimezoneAssistant() {
             Object.assign(btnLive.style, styles.tabActive);
             Object.assign(btnPlan.style, styles.tabBtn);
             btnPlan.style.borderBottomColor = 'transparent';
-            
+            btnLive.setAttribute("aria-selected", "true");
+            btnPlan.setAttribute("aria-selected", "false");
+
             viewLive.style.display = 'flex';
             toolbar.style.display = 'flex'; // Mostra toolbar
             viewPlan.style.display = 'none';
@@ -378,6 +437,10 @@ export function initTimezoneAssistant() {
             const isNight = hour < 6 || hour > 18;
 
             const card = document.createElement("div");
+            card.className = "tz-hub-card";
+            card.tabIndex = 0;
+            card.setAttribute("role", "button");
+            card.setAttribute("aria-label", `${hub.name}, ${timeString}`);
             Object.assign(card.style, styles.hubCard);
             if (isPinned) Object.assign(card.style, styles.hubCardPinned);
 
@@ -386,7 +449,7 @@ export function initTimezoneAssistant() {
 
             card.innerHTML = `
                 <div style="display:flex; alignItems:center; gap:16px;">
-                    <div class="cw-pin-btn" style="cursor:pointer; font-size:22px; color:${pinColor}; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; transition:background 0.2s;">${pinIcon}</div>
+                    <div class="cw-pin-btn tz-pin-btn" tabindex="0" role="button" aria-label="${isPinned ? 'Desafixar' : 'Fixar'} ${hub.name}" style="cursor:pointer; font-size:22px; color:${pinColor}; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%;">${pinIcon}</div>
                     <div style="font-size:32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">${hub.flag}</div>
                     <div>
                         <div style="font-size:15px; font-weight:600; color:${COLORS.text}; letter-spacing:-0.2px;">${hub.name}</div>
@@ -403,27 +466,29 @@ export function initTimezoneAssistant() {
                 </div>
             `;
 
-            card.onmouseenter = () => { 
-                card.style.transform = "translateY(-2px)";
-                card.style.boxShadow = "0 6px 12px rgba(60,64,67,0.1)";
-            };
-            card.onmouseleave = () => { 
-                card.style.transform = "translateY(0)";
-                card.style.boxShadow = "0 2px 6px rgba(60,64,67,0.05)";
-            };
-
             const btnPin = card.querySelector('.cw-pin-btn');
-            btnPin.onmouseenter = () => { btnPin.style.backgroundColor = "#F1F3F4"; };
-            btnPin.onmouseleave = () => { btnPin.style.backgroundColor = "transparent"; };
             btnPin.onclick = (e) => {
                 e.stopPropagation();
                 togglePin(hub.id);
             };
+            btnPin.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    togglePin(hub.id);
+                }
+            });
 
             card.onclick = () => {
                 selectedHubId = hub.id;
                 switchTab('plan');
             };
+            card.addEventListener("keydown", (e) => {
+                if ((e.key === "Enter" || e.key === " ") && e.target === card) {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
 
             viewLive.appendChild(card);
         });
@@ -619,8 +684,10 @@ export function initTimezoneAssistant() {
         toggleGenieAnimation(visible, popup, 'cw-btn-timezone'); 
         
         if (visible) {
+            lockBodyScroll();
             switchTab('live');
         } else {
+            unlockBodyScroll();
             stopClock();
         }
     }

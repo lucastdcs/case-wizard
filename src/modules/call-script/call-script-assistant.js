@@ -4,9 +4,11 @@ import {
   stylePopup,
   styleResizeHandle,
   makeResizable,
-  showToast
+  showToast,
+  confirmDialog
 } from "../shared/utils.js";
 import { SoundManager } from "../shared/sound-manager.js";
+import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
@@ -201,6 +203,19 @@ function injectStyles() {
         }
         .csa-reset-btn:hover { background: ${COLORS.dangerBg}; }
         .csa-reset-btn:active { transform: scale(0.9); }
+
+        /* Duas animações infinite (dot "ao vivo" e shimmer da barra de
+           progresso) rodando o tempo inteiro que o script fica aberto,
+           sem nenhuma proteção de reduced-motion. */
+        @media (prefers-reduced-motion: reduce) {
+            .csa-live-dot { animation: none !important; }
+            .csa-progress-fill { animation: none !important; }
+            .csa-checkbox, .csa-checkbox.pulse, .cw-step-btn-hero,
+            .csa-data-pill, .csa-segmented-indicator {
+                transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease !important;
+                transform: none !important;
+            }
+        }
     `;
     document.head.appendChild(style);
 }
@@ -282,9 +297,11 @@ export function initCallScriptAssistant() {
     toggleGenieAnimation(csaVisible, csaPopup, 'cw-btn-script');
 
     if (csaVisible) {
+        lockBodyScroll();
         updateContextData();
         if (!monitorInterval) monitorInterval = setInterval(updateContextData, 2000);
     } else {
+        unlockBodyScroll();
         if (monitorInterval) { clearInterval(monitorInterval); monitorInterval = null; }
     }
   }
@@ -426,7 +443,9 @@ export function initCallScriptAssistant() {
   const resetBtn = document.createElement("button");
   resetBtn.className = "csa-reset-btn";
   resetBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg> Resetar Script`;
-  resetBtn.onclick = () => {
+  resetBtn.onclick = async () => {
+    const confirmed = await confirmDialog("Resetar todo o progresso do script? Essa ação não pode ser desfeita.", { danger: true, confirmText: "Resetar" });
+    if (!confirmed) return;
     for (let key in csaCompletedTasks) delete csaCompletedTasks[key];
     csaBuildChecklist();
   };

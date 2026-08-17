@@ -77,7 +77,7 @@ function injectStyles() {
             border: 1.5px solid ${COLORS.border} !important;
             font-size: 14px !important;
             font-family: 'Google Sans', Roboto, sans-serif !important;
-            transition: all 0.2s ${EASE} !important;
+            transition: border-color 0.2s ${EASE}, background-color 0.2s ${EASE}, box-shadow 0.2s ${EASE} !important;
             box-sizing: border-box !important;
             background: ${COLORS.bgInput} !important;
             color: ${COLORS.text} !important;
@@ -142,7 +142,7 @@ function injectStyles() {
             padding: 12px 24px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ${EASE};
+            transition: background-color 0.2s ${EASE}, transform 0.2s ${EASE}, box-shadow 0.2s ${EASE};
             box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
             display: flex;
             align-items: center;
@@ -164,12 +164,19 @@ function injectStyles() {
             padding: 12px 24px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ${EASE};
+            transition: background-color 0.2s ${EASE}, border-color 0.2s ${EASE}, color 0.2s ${EASE};
         }
         .cw-btn-secondary:hover {
             background: ${COLORS.bgInput};
             border-color: #bdc1c6;
             color: ${COLORS.text};
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .cw-btn-primary, .cw-btn-secondary, .cw-input, .cw-textarea, .cw-select {
+                transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease !important;
+                transform: none !important;
+            }
         }
     `;
     document.head.appendChild(style);

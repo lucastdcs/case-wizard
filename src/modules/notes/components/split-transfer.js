@@ -3,6 +3,8 @@
 import { getPageData } from "../../shared/page-data.js";
 import { showToast } from "../../shared/utils.js";
 import { copyHtmlToClipboard, ensureNoteCardIsOpen, triggerInputEvents } from "../notes-bridge.js";
+import { SoundManager } from "../../shared/sound-manager.js";
+import { enableFilledCheck } from "../../shared/dom-utils.js";
 
 export function createSplitTransferComponent(onBack) {
     // --- 1. LAYOUT & STRUCTURE ---
@@ -50,14 +52,15 @@ export function createSplitTransferComponent(onBack) {
     // Generic Input Builder
     const fields = {}; // Store references for easy access later
 
-    function createField({ id, label, type = "text", placeholder = "", required = false, parent = scrollArea }) {
+    function createField({ id, label, type = "text", placeholder = "", required = false, autocomplete = "", parent = scrollArea }) {
         const wrapper = document.createElement("div");
         wrapper.style.cssText = styles.inputWrapper;
-        
+
         const lbl = document.createElement("label");
+        lbl.setAttribute("for", id);
         lbl.style.cssText = styles.label;
         lbl.innerHTML = `${label} ${required ? '<span style="color:#D93025">*</span>' : ''}`;
-        
+
         let input;
         if (type === "textarea") {
             input = document.createElement("textarea");
@@ -67,9 +70,10 @@ export function createSplitTransferComponent(onBack) {
             input.type = type;
             input.style.cssText = styles.input;
         }
-        
+
         input.id = id;
         input.placeholder = placeholder;
+        if (autocomplete) input.setAttribute("autocomplete", autocomplete);
         
         // Focus Effects
         input.addEventListener('focus', () => {
@@ -89,6 +93,10 @@ export function createSplitTransferComponent(onBack) {
 
         wrapper.appendChild(lbl);
         wrapper.appendChild(input);
+        // "Check verde" só faz sentido num campo de uma linha - numa textarea
+        // grande (descrição, checks) o ícone fixo no canto não acompanha bem
+        // o conteúdo que cresce em altura.
+        if (type !== "textarea") enableFilledCheck(input);
         parent.appendChild(wrapper);
         return wrapper;
     }
@@ -208,10 +216,10 @@ export function createSplitTransferComponent(onBack) {
     contactSection.innerHTML = `<div style="${styles.sectionTitle}">📞 Contato & Problema</div>`;
     scrollArea.appendChild(contactSection);
 
-    createField({ id: "name", label: "Advertiser Name", required: true, parent: contactSection });
-    createField({ id: "url", label: "Website URL", parent: contactSection });
-    createField({ id: "phone", label: "Phone Number", parent: contactSection });
-    createField({ id: "email", label: "Contact Email", parent: contactSection });
+    createField({ id: "name", label: "Advertiser Name", required: true, autocomplete: "name", parent: contactSection });
+    createField({ id: "url", label: "Website URL", type: "url", autocomplete: "url", parent: contactSection });
+    createField({ id: "phone", label: "Phone Number", type: "tel", autocomplete: "tel", parent: contactSection });
+    createField({ id: "email", label: "Contact Email", type: "email", autocomplete: "email", parent: contactSection });
     createField({ id: "callback", label: "Preferred Callback Time (Timezone)", parent: contactSection });
     
     createField({ id: "desc", label: "Detailed Issue Description", type: "textarea", placeholder: "Descreva o erro, passos para reproduzir...", required: true, parent: contactSection });
@@ -299,34 +307,40 @@ export function createSplitTransferComponent(onBack) {
     };
 
     // Validation Logic
+    const prefersReducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     const validate = () => {
         let isValid = true;
         let firstError = null;
+        const reduceMotion = prefersReducedMotion();
 
         Object.values(fields).forEach(field => {
             if (field.required && !field.input.value.trim()) {
                 isValid = false;
                 field.input.style.cssText += styles.inputError;
                 // Shake animation
-                field.wrapper.animate([
-                    { transform: 'translateX(0)' },
-                    { transform: 'translateX(-5px)' },
-                    { transform: 'translateX(5px)' },
-                    { transform: 'translateX(0)' }
-                ], { duration: 300 });
-                
+                if (!reduceMotion) {
+                    field.wrapper.animate([
+                        { transform: 'translateX(0)' },
+                        { transform: 'translateX(-5px)' },
+                        { transform: 'translateX(5px)' },
+                        { transform: 'translateX(0)' }
+                    ], { duration: 300 });
+                }
+
                 if (!firstError) firstError = field.input;
             }
         });
 
-        if (firstError) firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (firstError) firstError.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
         return isValid;
     };
 
     // Generation Logic
     btnGenerate.onclick = async () => {
         if (!validate()) {
-            showToast("Preencha os campos obrigatórios.", { isError: true });
+            SoundManager.playError();
+            showToast("Preencha os campos obrigatórios.", { error: true });
             return;
         }
 
@@ -373,6 +387,7 @@ ${getVal('checks')}
             if (editor.innerText.trim() === "") editor.innerHTML = "";
             document.execCommand("insertHTML", false, htmlToInsert);
             triggerInputEvents(editor);
+            SoundManager.playSuccess();
             showToast("Nota gerada e inserida!");
         } else {
             showToast("Copiado! Abra uma nota para colar.");

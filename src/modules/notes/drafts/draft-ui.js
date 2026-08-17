@@ -35,31 +35,33 @@ export function createDraftsManager(callbacks) {
         align-items: center; 
         justify-content: center;
         gap: 8px;
-        transition: all 0.2s ${EASE};
+        transition: background-color 0.2s ${EASE}, border-color 0.2s ${EASE}, color 0.2s ${EASE}, box-shadow 0.2s ${EASE}, transform 0.1s ${EASE};
         box-shadow: ${SHADOW.subtle};
         text-transform: uppercase;
         letter-spacing: 0.5px;
     `;
 
     // Micro-interações (Hover/Active)
+    // Sem transform no enter/leave: era o único botão do app cujo próprio
+    // hover-lift era disparado via onmouseenter/onmouseleave (não :hover CSS)
+    // - mesmo risco de flicker na borda, só que sem o hover "sticky" que o
+    // navegador dá pra pseudo-classe. A sombra crescendo já comunica o hover.
     parkButton.onmouseenter = () => {
         parkButton.style.backgroundColor = "#F8F9FA";
         parkButton.style.borderColor = "#202124";
         parkButton.style.color = "#202124";
         parkButton.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-        parkButton.style.transform = "translateY(-1px)";
     };
-    
+
     parkButton.onmouseleave = () => {
         parkButton.style.backgroundColor = "#FFFFFF";
         parkButton.style.borderColor = "#DADCE0";
         parkButton.style.color = "#5F6368";
         parkButton.style.boxShadow = "0 1px 2px rgba(0,0,0,0.05)";
-        parkButton.style.transform = "translateY(0)";
     };
 
     parkButton.onmousedown = () => parkButton.style.transform = "scale(0.96)";
-    parkButton.onmouseup = () => parkButton.style.transform = "scale(1) translateY(-1px)";
+    parkButton.onmouseup = () => parkButton.style.transform = "scale(1)";
 
     // LÓGICA DE SALVAR
     parkButton.onclick = async () => {
@@ -74,10 +76,12 @@ export function createDraftsManager(callbacks) {
                     SoundManager.playSuccess();
                     showToast("Rascunho salvo com sucesso!");
                 } else {
+                    SoundManager.playError();
                     showToast("Erro: Não foi possível ler os dados.", { error: true });
                 }
             } catch (e) {
                 console.error("Erro ao salvar rascunho:", e);
+                SoundManager.playError();
                 showToast("Erro ao salvar.", { error: true });
             }
         }
@@ -121,11 +125,14 @@ export function createDraftsManager(callbacks) {
             badge.style.display = "block";
             badge.textContent = count;
             // Animação de "Pop"
-            badge.animate([
-                { transform: 'scale(1)' },
-                { transform: 'scale(1.5)' },
-                { transform: 'scale(1)' }
-            ], { duration: 200 });
+            const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (!reduceMotion) {
+                badge.animate([
+                    { transform: 'scale(1)' },
+                    { transform: 'scale(1.5)' },
+                    { transform: 'scale(1)' }
+                ], { duration: 200 });
+            }
         } else {
             badge.style.display = "none";
         }
@@ -192,7 +199,7 @@ export function createDraftsManager(callbacks) {
             card.style.cssText = `
                 background: ${COLORS.surface}; padding: 20px; border-radius: ${RADIUS.large};
                 border: 1.5px solid ${COLORS.bgInput}; box-shadow: ${SHADOW.subtle};
-                position: relative; transition: all 0.3s ${EASE};
+                position: relative;
             `;
             
             // Data formatada
@@ -217,10 +224,10 @@ export function createDraftsManager(callbacks) {
                     ${tagsHtml}
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button class="cw-resume-btn" style="flex:1; padding:8px; background:#1A73E8; color:#FFF; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(26,115,232,0.3); transition:all 0.2s;">
+                    <button class="cw-resume-btn" style="flex:1; padding:8px; background:#1A73E8; color:#FFF; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(26,115,232,0.3);">
                         Retomar Caso
                     </button>
-                    <button class="cw-del-btn" style="width:36px; padding:8px; background:#FFF; border:1px solid #DADCE0; color:#5F6368; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" title="Descartar">
+                    <button class="cw-del-btn" style="width:36px; padding:8px; background:#FFF; border:1px solid #DADCE0; color:#5F6368; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Descartar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                 </div>

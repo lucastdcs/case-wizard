@@ -3,6 +3,7 @@ import { showToast } from '../shared/utils.js';
 import { getPageData } from '../shared/page-data.js';
 import { getAgentName } from '../shared/page-data.js';
 import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
+import { SoundManager } from '../shared/sound-manager.js';
 
 // --- UTILITÁRIOS ---
 function log(msg, type = 'info') {
@@ -152,6 +153,7 @@ async function openAndClearEmail() {
     }
 
     if (!emailAberto) {
+        SoundManager.playError();
         showToast("Erro: Botão de email não encontrado.", { error: true });
         return false;
     }
@@ -207,6 +209,7 @@ async function openAndClearEmail() {
     }
 
     if (!editorVisivel) {
+        SoundManager.playError();
         showToast("Erro: Editor não carregou.", { error: true });
         return false;
     }
@@ -383,10 +386,12 @@ export async function runEmailAutomation(cannedResponseText) {
                 showToast("Canned Response aplicada!");
             } else {
                 log(`❌ Timeout: Resultado '${cannedResponseText}' não apareceu após 15s.`, 'error');
+                SoundManager.playError();
                 showToast(`Timeout: Template '${cannedResponseText}' não carregou.`, { error: true });
             }
         }
     } else {
+        SoundManager.playError();
         showToast("Botão Canned Response não encontrado.", { error: true });
     }
 }
@@ -475,6 +480,7 @@ export async function runQuickEmail(template) {
         log("✅ Processo finalizado com sucesso.", 'success');
 
     } else {
+        SoundManager.playError();
         showToast("Erro ao focar no editor.", { error: true });
     }
 }

@@ -9,6 +9,7 @@ import {
   confirmDialog
 } from "../shared/utils.js";
 import { SoundManager } from "../shared/sound-manager.js";
+import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { BROADCAST_MESSAGES, setBroadcastMessages } from "./broadcast-data.js";
@@ -75,7 +76,7 @@ function injectStyles() {
         .cw-bc-card {
             background: #FFFFFF; border-radius: 16px; border: 1px solid rgba(0,0,0,0.12);
             box-shadow: 0 4px 12px rgba(60,64,67,0.08);
-            overflow: hidden; transition: all 0.3s ease; position: relative; width: 100%; box-sizing: border-box; flex-shrink: 0;
+            overflow: hidden; transition: opacity 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease; position: relative; width: 100%; box-sizing: border-box; flex-shrink: 0;
         }
         .cw-bc-card.history {
             border: 1px solid rgba(0,0,0,0.05); box-shadow: none; opacity: 0.6; filter: grayscale(0.8);
@@ -99,12 +100,12 @@ function injectStyles() {
         .cw-bc-dismiss-btn {
             width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1);
             background: #fff; color: #5f6368; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s ease; margin-left: 12px;
+            transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; margin-left: 12px;
         }
         .cw-bc-dismiss-btn:hover { color: #1e8e3e; background: #e6f4ea; border-color: #1e8e3e; }
 
         .cw-card-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 12px 20px; background: #F8F9FA; border-top: 1px solid #F1F3F4; }
-        .cw-action-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: transparent; transition: all 0.2s; }
+        .cw-action-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: transparent; transition: background-color 0.2s; }
         .cw-action-btn.edit { color: #1967D2; }
         .cw-action-btn.edit:hover { background: #E8F0FE; }
         .cw-action-btn.delete { color: #D93025; }
@@ -153,7 +154,7 @@ function injectStyles() {
         .cw-editor-overlay {
             position: absolute; inset: 0; background: rgba(255, 255, 255, 0.98);
             z-index: 200; display: flex; flex-direction: column;
-            transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transform: translateY(100%); transition: transform 0.35s var(--cw-ease-elastic);
             box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
         }
         .cw-editor-overlay.active { transform: translateY(0); }
@@ -176,7 +177,7 @@ function injectStyles() {
         .cw-radio-option {
             flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
             padding: 12px; border-radius: 12px; border: 1px solid #E0E0E0;
-            font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; position: relative; color: #5F6368;
+            font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color 0.2s, color 0.2s, border-color 0.2s; position: relative; color: #5F6368;
         }
         .cw-radio-option:hover { background: #F8F9FA; }
         .cw-radio-option input { position: absolute; opacity: 0; }
@@ -187,6 +188,14 @@ function injectStyles() {
         .cw-bc-btn-secondary { padding: 10px 20px; background: white; border: 1px solid #dadce0; color: #5f6368; border-radius: 24px; font-weight: 600; font-size: 13px; }
         .cw-bc-btn-primary { padding: 10px 24px; background: #1a73e8; color: white; border: none; border-radius: 24px; font-weight: 600; box-shadow: 0 4px 12px rgba(26,115,232,0.3); font-size: 13px; }
         .cw-bc-editor-close { background: none; border: none; color: #5f6368; padding: 8px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .cw-bc-pulse-dot { animation: none !important; }
+            .cw-bc-card, .cw-bc-bau, .cw-bc-bau-chevron, .cw-editor-overlay {
+                transition: opacity 0.15s ease !important;
+                transform: none !important;
+            }
+        }
     `;
     document.head.appendChild(style);
 }
@@ -270,6 +279,12 @@ export function initBroadcastAssistant() {
   let currentUser = null;
   let adminRetries = 0;
 
+  // IDs vistos no fetch anterior — usado só para saber se algo *novo* chegou
+  // entre polls (pra tocar playNotification só uma vez por aviso, não a cada
+  // sync). Começa null de propósito: no primeiro fetch (carga inicial) ainda
+  // não há "anterior" pra comparar, então não soa nada nesse momento.
+  let knownMessageIds = null;
+
   injectStyles();
 
   // --- UI SETUP ---
@@ -288,9 +303,12 @@ export function initBroadcastAssistant() {
     visible = !visible;
     toggleGenieAnimation(visible, popup, "cw-btn-broadcast");
     if (visible) {
+      lockBodyScroll();
       const btn = document.getElementById("cw-btn-broadcast");
       if (btn) btn.classList.remove("has-new");
       checkForUpdates();
+    } else {
+      unlockBodyScroll();
     }
   }
 
@@ -501,6 +519,7 @@ export function initBroadcastAssistant() {
       const type = typeInput ? typeInput.value : 'info';
 
       if (!inputTitle.value.trim() || !inputText.value.trim()) {
+          SoundManager.playError();
           showToast("Preencha todos os campos!", { error: true });
           return;
       }
@@ -531,6 +550,7 @@ export function initBroadcastAssistant() {
           closeEditor();
           setTimeout(() => checkForUpdates(), 1500);
       } else {
+          SoundManager.playError();
           showToast("Erro ao salvar. Verifique a conexão.", { error: true });
           btnSend.textContent = currentEditingId ? "Salvar Alterações" : "Publicar";
           btnSend.style.opacity = "1";
@@ -549,6 +569,7 @@ export function initBroadcastAssistant() {
               renderFeed();
               setTimeout(() => checkForUpdates(), 1500);
           } else {
+              SoundManager.playError();
               showToast("Erro ao excluir.", { error: true });
           }
       }
@@ -567,6 +588,17 @@ export function initBroadcastAssistant() {
       try {
           const data = await DataService.fetchData();
           if (data && data.broadcast) {
+              // Toca só quando um aviso novo e não lido chega num poll em
+              // segundo plano (pílula fechada/idle) - com o popup aberto o
+              // próprio feed atualizando já é o feedback, um som ali em cima
+              // seria redundante.
+              if (knownMessageIds && !visible) {
+                  const readMessages = JSON.parse(localStorage.getItem("cw_read_broadcasts") || "[]");
+                  const hasNewUnread = data.broadcast.some(m => !knownMessageIds.has(m.id) && !readMessages.includes(m.id));
+                  if (hasNewUnread) SoundManager.playNotification();
+              }
+              knownMessageIds = new Set(data.broadcast.map(m => m.id));
+
               setBroadcastMessages(data.broadcast);
               updateBadge();
               if (visible) {
@@ -815,13 +847,15 @@ export function initBroadcastAssistant() {
             SoundManager.playClick();
             card.style.transform = "translateX(20px)";
             card.style.opacity = "0";
+            // 300ms = duração real da transição de .cw-bc-card (opacity/transform);
+            // removia o card da lista no meio do slide-out antes.
             setTimeout(() => {
                 const currentRead = JSON.parse(localStorage.getItem("cw_read_broadcasts") || "[]");
                 currentRead.push(msg.id);
                 localStorage.setItem("cw_read_broadcasts", JSON.stringify(currentRead));
                 renderFeed();
                 updateBadge();
-            }, 200);
+            }, 300);
         };
         cardHead.appendChild(dismissBtn);
     } else {

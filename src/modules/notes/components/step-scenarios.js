@@ -4,6 +4,9 @@ import { scenarioSnippets } from "../data/notes-data.js";
 import { SoundManager } from "../../shared/sound-manager.js";
 
 export function createScenariosComponent(onSelectCallback) {
+  // Hover/preview aqui é todo via estilo inline em JS, sem classe CSS pra
+  // pendurar um @media - checa direto, igual foi feito na animação do genie.
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const container = document.createElement("div");
   container.className = "cw-step-scenarios";
@@ -38,7 +41,9 @@ export function createScenariosComponent(onSelectCallback) {
   });
 
   const previewText = document.createElement("span");
-  previewText.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+  // 0.05s bate com o setTimeout de 50ms do hover (abaixo) - o texto troca
+  // exatamente quando o fade-out termina, não no meio dele.
+  previewText.style.transition = "opacity 0.05s ease, transform 0.05s ease";
   previewText.textContent = DEFAULT_PREVIEW_TEXT;
   previewBox.appendChild(previewText);
 
@@ -72,6 +77,7 @@ export function createScenariosComponent(onSelectCallback) {
           const label = id.replace('quickfill-', '').replace(/-/g, ' ');
           chip.textContent = label;
           chip.dataset.id = id;
+          chip.dataset.sound = "hover";
 
           Object.assign(chip.style, {
             padding: "6px 12px",
@@ -95,12 +101,12 @@ export function createScenariosComponent(onSelectCallback) {
               }
 
               previewText.style.opacity = "0";
-              previewText.style.transform = "translateY(5px)";
+              if (!reduceMotion) previewText.style.transform = "translateY(5px)";
 
               hoverTimeout = setTimeout(() => {
                   previewText.textContent = textPreviewContent.substring(0, 120) + (textPreviewContent.length > 120 ? '...' : '');
                   previewText.style.opacity = "1";
-                  previewText.style.transform = "translateY(0)";
+                  if (!reduceMotion) previewText.style.transform = "translateY(0)";
               }, 50);
           };
 

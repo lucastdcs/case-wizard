@@ -225,6 +225,7 @@ export async function fetchAndInsertSpeakeasyId(targetInputId) {
 
     } catch (error) {
         console.error("Erro na automação:", error);
+        SoundManager.playError();
         showToast("Erro ao processar.", { error: true });
     } finally {
         if (inputWidget) {

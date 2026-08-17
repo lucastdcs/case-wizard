@@ -509,6 +509,28 @@
             100% { transform: translateX(100%); }
         }
 
+        /* Mesma filosofia ja usada em src/modules/shared/command-center.js:
+           animacoes continuas (glow do logo, shimmer do skeleton) somem por
+           completo - sao so decoracao; transicoes de transform viram fade
+           simples, mantendo o feedback de estado sem o movimento. */
+        @media (prefers-reduced-motion: reduce) {
+            .brand-icon { animation: none !important; }
+            .skeleton-row::after { animation: none !important; }
+            .case-row, .case-row:hover, .case-row.row-enter, .row-exit {
+                animation: none !important;
+                transition: opacity 0.2s ease !important;
+                transform: none !important;
+            }
+            .modal-content, .modal-overlay.active .modal-content {
+                transition: opacity 0.2s ease !important;
+                transform: none !important;
+            }
+            .toast, .toast.show {
+                transition: opacity 0.2s ease !important;
+                transform: translateX(-50%) !important;
+            }
+        }
+
     </style>
 </head>
 

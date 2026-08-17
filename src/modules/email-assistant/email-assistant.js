@@ -9,6 +9,8 @@ import {
 } from "../shared/utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from '../shared/animations.js';
+import { SoundManager } from "../shared/sound-manager.js";
+import { lockBodyScroll, unlockBodyScroll, enableArrowKeyNav } from "../shared/dom-utils.js";
 import { getAgentName, getPageData } from "../shared/page-data.js";
 import { EmailDataService } from "./email-data-service.js";
 import { runQuickEmail, runEmailAutomation } from "./email-automation-service.js";
@@ -66,7 +68,7 @@ function injectStyles() {
             font-size: 15px; outline: none; color: ${COLORS.textPrimary};
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%238A8A8E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
             background-repeat: no-repeat; background-position: 12px center;
-            transition: all 0.2s ease-in-out;
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
         }
         .cw-email-search-input:focus {
             background-color: #FFFFFF; border-color: ${COLORS.primary};
@@ -94,19 +96,23 @@ function injectStyles() {
             user-select: none; transition: background-color 0.2s ease;
         }
         .cw-email-cat-header:hover { background-color: rgba(230, 230, 232, 0.9); }
+        .cw-email-cat-header:focus-visible, .cw-email-list-item:focus-visible { outline: 2px solid ${COLORS.primary}; outline-offset: -2px; }
         .cw-email-cat-right { display: flex; align-items: center; }
         .cw-email-cat-badge { background-color: rgba(0, 0, 0, 0.05); padding: 2px 8px; border-radius: 10px; font-size: 10px; color: ${COLORS.textSecondary}; }
         .cw-email-cat-arrow { margin-left: 8px; transition: transform 0.3s ease; }
 
         .cw-email-list-item {
             padding: 12px 14px; font-size: 14px; cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); border-radius: 10px;
+            transition: background-color 0.3s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.3s cubic-bezier(0.25, 1, 0.5, 1), color 0.3s cubic-bezier(0.25, 1, 0.5, 1); border-radius: 10px;
             color: ${COLORS.textPrimary}; margin: 4px 6px; display: flex; align-items: center; gap: 12px;
             background-color: ${COLORS.bgSurface}; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             border: 1px solid ${COLORS.borderSubtle}; position: relative; overflow: hidden;
         }
         .cw-email-list-item:hover:not(.selected) {
-            background-color: #f8f8f9; transform: translateY(-1px) scale(1.01);
+            /* Sem transform aqui: itens empilhados verticalmente e bem juntos
+               são o caso clássico de flicker de hover quando o próprio item
+               se desloca. Sombra/borda já comunicam o hover sem mover nada. */
+            background-color: #f8f8f9;
             box-shadow: 0 4px 8px rgba(0,0,0,0.08); border-color: rgba(0, 122, 255, 0.2);
         }
         .cw-email-list-item:active:not(.selected) { transform: scale(0.98); }
@@ -121,14 +127,17 @@ function injectStyles() {
         .cw-email-list-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 
         /* --- PAINEL DIREITO --- */
-        .cw-email-right-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background-color: ${COLORS.bgApp}; transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
+        /* 0.15s bate com o setTimeout de selectTemplate() (linha ~476) - o
+           swap de conteúdo acontece exatamente quando o fade-out termina,
+           não no meio dele. */
+        .cw-email-right-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background-color: ${COLORS.bgApp}; transition: opacity 0.15s ease, transform 0.15s ease; }
         .cw-email-fields-section { padding: 20px; border-bottom: 1px solid ${COLORS.borderSubtle}; background-color: ${COLORS.bgSurface}; max-height: 250px; overflow-y: auto; display: none; }
         .cw-email-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .cw-email-field-label { display: block; font-size: 11px; font-weight: 700; color: ${COLORS.textSecondary}; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .cw-email-field-input {
             width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px;
             border: 1.5px solid ${COLORS.borderSubtle}; background-color: #FBFBFD; font-size: 14px;
-            transition: all 0.2s ease; outline: none;
+            transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease; outline: none;
         }
         .cw-email-field-input:focus { border-color: ${COLORS.primary}; background-color: #FFFFFF; box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1); }
 
@@ -152,7 +161,7 @@ function injectStyles() {
         .cw-email-btn {
             padding: 8px 14px; border-radius: 10px; border: 1.5px solid ${COLORS.primary};
             background: transparent; color: ${COLORS.primary}; font-size: 13px; font-weight: 600;
-            cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+            cursor: pointer; transition: background-color 0.2s cubic-bezier(0.25, 1, 0.5, 1), transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1, 0.5, 1);
         }
         .cw-email-btn:hover { background-color: rgba(0, 122, 255, 0.05); }
         .cw-email-btn:active { transform: scale(0.94); }
@@ -163,6 +172,14 @@ function injectStyles() {
         .cw-email-btn.primary:hover { background-color: #0062CC; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 122, 255, 0.4); }
         .cw-email-btn.warning { border-color: ${COLORS.warning}; color: ${COLORS.warning}; display: none; }
         .cw-email-btn.warning:hover { background-color: rgba(230, 126, 34, 0.08); }
+
+        @media (prefers-reduced-motion: reduce) {
+            .cw-animate-float { animation: none !important; }
+            .cw-email-search-input, .cw-email-list-item, .cw-email-btn, .cw-email-right-panel {
+                transition: opacity 0.15s ease, background-color 0.15s ease !important;
+                transform: none !important;
+            }
+        }
     `;
     document.head.appendChild(style);
 }
@@ -249,6 +266,7 @@ export function initEmailAssistant() {
 
     const templateList = document.createElement("div");
     templateList.id = "email-template-list";
+    enableArrowKeyNav(templateList, ".cw-email-cat-header, .cw-email-list-item");
 
     const clearSearch = document.createElement("div");
     clearSearch.className = "cw-email-clear-btn";
@@ -333,10 +351,12 @@ export function initEmailAssistant() {
     function toggleVisibility() {
         visible = !visible;
         if (visible) {
+            lockBodyScroll();
             popup.style.display = "flex";
             constrainToViewport(popup);
             if (templates.length === 0) loadTemplates();
         } else {
+            unlockBodyScroll();
             popup.style.display = "none";
         }
         toggleGenieAnimation(visible, popup, 'cw-btn-email');
@@ -351,6 +371,9 @@ export function initEmailAssistant() {
     function createCategoryHeader(cat, count, isExpanded) {
         const catHeader = document.createElement("div");
         catHeader.className = "cw-email-cat-header";
+        catHeader.tabIndex = 0;
+        catHeader.setAttribute("role", "button");
+        catHeader.setAttribute("aria-expanded", String(isExpanded));
 
         const headerText = document.createElement("span");
         headerText.textContent = cat;
@@ -378,6 +401,9 @@ export function initEmailAssistant() {
             }
             renderTemplateList();
         };
+        catHeader.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); catHeader.click(); }
+        });
 
         return catHeader;
     }
@@ -386,6 +412,9 @@ export function initEmailAssistant() {
         const isSelected = selectedTemplate && selectedTemplate.id === template.id;
         const item = document.createElement("div");
         item.className = "cw-email-list-item" + (isSelected ? " selected" : "");
+        item.tabIndex = 0;
+        item.setAttribute("role", "button");
+        item.setAttribute("aria-pressed", String(!!isSelected));
 
         if (isSelected) {
             const indicator = document.createElement("div");
@@ -404,6 +433,9 @@ export function initEmailAssistant() {
         item.appendChild(text);
 
         item.onclick = () => selectTemplate(template);
+        item.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); item.click(); }
+        });
 
         return item;
     }
@@ -564,7 +596,7 @@ export function initEmailAssistant() {
         const blob = new Blob([html], { type: 'text/html' });
         const text = previewContent.innerText;
         const data = [new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([text], { type: 'text/plain' }) })];
-        navigator.clipboard.write(data).then(() => showToast("E-mail copiado com sucesso!"), () => showToast("Erro ao copiar e-mail", { error: true }));
+        navigator.clipboard.write(data).then(() => showToast("E-mail copiado com sucesso!"), () => { SoundManager.playError(); showToast("Erro ao copiar e-mail", { error: true }); });
     };
 
     btnFill.onclick = async () => {
@@ -575,6 +607,7 @@ export function initEmailAssistant() {
             await runQuickEmail(filledTemplate);
             toggleVisibility();
         } catch (error) {
+            SoundManager.playError();
             showToast("Erro ao preencher e-mail", { error: true });
         } finally {
             finishLoading();
@@ -588,6 +621,7 @@ export function initEmailAssistant() {
             await runEmailAutomation(selectedTemplate.code);
             toggleVisibility();
         } catch (error) {
+            SoundManager.playError();
             showToast("Erro ao aplicar Smart CR", { error: true });
         } finally {
             finishLoading();

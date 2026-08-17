@@ -4,6 +4,7 @@ import { createStandardHeader } from '../shared/header-factory.js';
 import { toggleGenieAnimation } from '../shared/animations.js';
 import { showToast, formatToLocalUserDate, confirmDialog } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
+import { lockBodyScroll, unlockBodyScroll } from '../shared/dom-utils.js';
 import { sendBAUEscalation, readAgentBAU, updateBAUEscalation } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
 import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.js';
@@ -130,6 +131,7 @@ function createField(fieldConfig) {
                     tzBtn.click();
                     SoundManager.playClick();
                 } else {
+                    SoundManager.playError();
                     showToast("Módulo Time Zone não encontrado.", { error: true });
                 }
             };
@@ -454,6 +456,7 @@ export function initBAUForm() {
                 </div>
             `;
             popup.querySelector('#bau-retry-btn')?.addEventListener('click', () => loadDashboardData());
+            SoundManager.playError();
             showToast("Erro ao carregar Dashboard. Verifique sua conexão.", { error: true });
         }
     }
@@ -839,6 +842,7 @@ export function initBAUForm() {
                     const regex = new RegExp(fieldConfig.validation.regex);
                     if (!regex.test(input.value.trim())) {
                         console.warn(`Validation failed for field "${fieldConfig.name}" in step ${step}: Regex mismatch.`);
+                        SoundManager.playError();
                         showToast(`Erro: ${fieldConfig.validation.error}`, { error: true });
                         input.classList.add('invalid-cid');
                         const errorHint = form.querySelector('#bau-cid-error');
@@ -876,6 +880,7 @@ export function initBAUForm() {
                     const checked = form.querySelector(`#bau-step-${step} input[name="${fieldConfig.name}"]:checked`);
                     if (!checked) {
                         failureReason = "No option selected in checkbox-grid";
+                        SoundManager.playError();
                         showToast(`Erro: Selecione pelo menos uma opção para "${fieldConfig.label}".`, { error: true });
                         isFieldValid = false;
                     }
@@ -885,6 +890,7 @@ export function initBAUForm() {
 
                     if (!firstInput.value.trim()) {
                         failureReason = "Datetime group first field is empty";
+                        SoundManager.playError();
                         showToast(`Erro: O campo "${fieldConfig.fields[0].label}" é obrigatório.`, { error: true });
                         isFieldValid = false;
                     }
@@ -895,6 +901,7 @@ export function initBAUForm() {
 
                     if (!input.value.trim()) {
                         failureReason = "Field is empty";
+                        SoundManager.playError();
                         showToast(`Erro: O campo '${fieldConfig.label}' é obrigatório.`, { error: true });
                         isFieldValid = false;
                     }
@@ -1362,9 +1369,11 @@ export function initBAUForm() {
             switchView('success');
 
             if (!isEditing && escalationResult && escalationResult.emailSent === false) {
+                SoundManager.playError();
                 showToast("Caso criado, mas não conseguimos confirmar por email.", { error: true });
             }
         } catch (error) {
+            SoundManager.playError();
             showToast("Erro: " + (error.message || "Erro desconhecido"), { error: true });
             console.error("Payload que tentou enviar:", payload); 
         } finally {
@@ -1404,8 +1413,11 @@ export function initBAUForm() {
         isVisible = !isVisible;
         popup.style.display = isVisible ? "flex" : "none";
         if (isVisible) {
+            lockBodyScroll();
             switchView('dashboard');
-            loadDashboardData(); 
+            loadDashboardData();
+        } else {
+            unlockBodyScroll();
         }
         toggleGenieAnimation(isVisible, popup, "cw-btn-bauform");
     }
