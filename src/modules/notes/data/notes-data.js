@@ -809,31 +809,17 @@ export const scenarioSnippets = {
         'field-COMENTARIOS': "• Realizamos os passos de troubleshooting padrão para o problema relatado (ex: [listar testes/verificações feitas]).\n• Os passos não resolveram o problema.\n• Encaminho o caso para o time responsável ([nome do time]) para continuidade."
     },
 
-    // [PENDENTE] "Outro (Manual)" - o PDF define um substatus "IN - Other"
-    // pra cenários que não se encaixam em nenhum outro, mas isso não existe
-    // hoje em SUBSTATUS_TEMPLATES (só os 8 substatus de IN já cobertos
-    // acima). Deixei aparecendo em IN_Infeasible por ser o catch-all mais
-    // próximo que já existe, mas isso é um jeito de contornar, não uma
-    // resposta definitiva - ver pergunta sobre criar IN_Other de verdade.
+    // O PDF define um substatus "IN - Other" pra cenários que não se
+    // encaixam em nenhum outro, mas isso não existe hoje em
+    // SUBSTATUS_TEMPLATES - decidido (2026-08-17) documentar o gap e
+    // resolver na futura análise de UX, sem criar o substatus agora. Até
+    // lá, este cenário fica sem lugar pra aparecer (substatus: []) em vez
+    // de usar um catch-all impreciso.
     'quickfill-in-manual': {
         type: 'all',
-        substatus: ['IN_Infeasible'],
+        substatus: [],
         'field-REASON_COMMENTS': "Outro (Manual)",
         'field-GTM_GA4_VERIFICADO': "N/A"
-    },
-
-    // [PENDENTE] Não bate com nenhum substatus atual: fala em falta de
-    // tempo (que normalmente vira reagendamento, AS) mas pede descarte em
-    // vez de reagendar - sugere que o limite de reagendamentos já foi
-    // excedido, o que o PDF descreve como "IN - Reschedule Limit Exceed",
-    // também não implementado em SUBSTATUS_TEMPLATES hoje. Deixei sem
-    // nenhum substatus (não aparece em lugar nenhum) até decidirmos onde
-    // encaixar, pra não arriscar entrar na nota errada num caso real.
-    'quickfill-dc-lm-incomplete': {
-        type: 'all',
-        substatus: [],
-        'field-REASON_COMMENTS': "Nada foi implementado durante a consultoria (tempo insuficiente, limite de reagendamento excedido)",
-        'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, pois não houve tempo o suficiente para terminar a task relacionada e o limite de reagendamentos já foi atingido.\n\nIrei abrir caso em BAU para o dia solicitado e pedir a inativação do mesmo."
     },
 
     // ==============================================================
@@ -864,8 +850,16 @@ export const scenarioSnippets = {
     // ==============================================================
     // DC (Discard) - cenário atípico, encerramento imediato.
     // ==============================================================
-    // Vazio. O único substatus de DC no PDF é "Authentication Failed", que
-    // não existe em SUBSTATUS_TEMPLATES hoje (só existe DC_Other, que não
-    // corresponde a nada do que o PDF descreve pra DC) - ver pergunta sobre
-    // isso antes de eu escrever algo aqui.
+    // O único substatus de DC no PDF é "Authentication Failed", que não
+    // existe em SUBSTATUS_TEMPLATES hoje (gap documentado em
+    // specs/workflow/case-notes-status-rules.md, resolução adiada pra
+    // futura análise de UX). O cenário abaixo não bate com Authentication
+    // Failed nem com nenhum substatus de IN - decidido (2026-08-17) colocar
+    // em DC_Other mesmo assim.
+    'quickfill-dc-lm-incomplete': {
+        type: 'all',
+        substatus: ['DC_Other'],
+        'field-REASON_COMMENTS': "Nada foi implementado durante a consultoria (tempo insuficiente, limite de reagendamento excedido)",
+        'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, pois não houve tempo o suficiente para terminar a task relacionada e o limite de reagendamentos já foi atingido.\n\nIrei abrir caso em BAU para o dia solicitado e pedir a inativação do mesmo."
+    },
 };
