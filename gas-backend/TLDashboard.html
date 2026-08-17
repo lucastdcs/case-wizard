@@ -610,10 +610,24 @@
     </main>
 
     <script>
-        window.onload = () => {
+        // DOMContentLoaded, não window.onload: confirmado ao vivo (DevTools) que o
+        // loader ficava preso mesmo depois de 18s+, sem o watchdog de loadCases()
+        // (abaixo) sequer chegar a rodar uma vez - ou seja, o próprio window.onload
+        // nunca disparava. window.onload só dispara depois que TODO recurso da janela
+        // termina (imagens, iframes, bootstrap interno do Apps Script incluído) - e
+        // esse bootstrap (visto como uma chamada "wardeninit" presa por 18s+ na aba
+        // Network) pode demorar bem mais que isso em rede/proxy corporativo lento,
+        // travando pra sempre um listener que dependa de "load". DOMContentLoaded
+        // dispara assim que o HTML termina de ser processado, sem esperar esses
+        // recursos - e como esse <script> já roda depois de todo o HTML que ele usa
+        // (#loader, #cases-container, etc.), não há necessidade real de esperar mais
+        // que isso. Clicar em "Sincronizar" sempre funcionava porque o onclick chama
+        // loadCases() direto, sem depender de load nenhum - só reproduzindo esse
+        // mesmo comportamento aqui.
+        document.addEventListener('DOMContentLoaded', () => {
             // Pequeno atraso antes da primeiríssima chamada: em alguns carregamentos
             // "frios", o bridge do google.script.run ainda não estava pronto bem no
-            // instante do window.onload dentro do iframe sandboxado do Apps Script,
+            // instante do DOMContentLoaded dentro do iframe sandboxado do Apps Script,
             // e a chamada travava sem nunca chamar success/failure. loadCases() também
             // tem seu próprio watchdog (abaixo) como rede de segurança pra esse mesmo
             // sintoma, então essa espera aqui é só a primeira linha de defesa.
@@ -630,7 +644,7 @@
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') loadCases({ silent: true });
             });
-        };
+        });
 
         // Faixa de boas-vindas: foto (mesmo padrão de URL já usado na foto do
         // agente nos cards) + saudação inteligente por horário/dia, mesma ideia
