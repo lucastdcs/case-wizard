@@ -9,6 +9,203 @@ import { sendBAUEscalation, readAgentBAU, updateBAUEscalation } from '../shared/
 import { getPageData } from '../shared/page-data.js';
 import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.js';
 import { FORM_CONFIG } from './bau-form-config.js';
+import { bft, bfOptionText } from './bau-form-i18n.js';
+import { getLanguage, onLanguageChange } from '../shared/i18n.js';
+
+const BAU_DICT = {
+    pt: {
+        statusPending: "Aguardando TL",
+        statusApproved: "Aprovado / Criado",
+        statusDiscarded: "Descartado pelo TL",
+        statusCanceled: "Cancelado",
+        statusDefault: "Pendente",
+        timezoneWarningStrong: "Atenção:",
+        timezoneWarningText: "Para clientes fora do fuso horário do Brasil, o horário inserido deve corresponder sempre ao horário local do cliente, e não ao do agente.",
+        checkTimezone: "Consultar Time Zone",
+        timezoneModuleNotFound: "Módulo Time Zone não encontrado.",
+        headerTitle: "BAU Central",
+        headerDesc: "Dashboard de Casos BAU",
+        openBauCase: "Abrir caso para BAU",
+        openBauCaseDesc: "Fluxo completo para implementações técnicas e suporte especializado.",
+        requestDiscard: "Solicitar Descarte",
+        requestDiscardDesc: "Fluxo simplificado para casos que não requerem implementação.",
+        back: "Voltar",
+        next: "Próximo",
+        configuringEdit: "Configurando Edição...",
+        loadDashboardError: "Erro ao carregar Dashboard. Verifique sua conexão.",
+        copiedToClipboard: "Copiado para a área de transferência!",
+        noAdditionalContext: "Nenhum contexto adicional fornecido pelo agente.",
+        notCaptured: "Não capturado",
+        none: "Nenhuma",
+        language: "Idioma",
+        editPageWarning: "Atenção: Para editar as informações, você deve estar com a página deste Caso específico aberta no sistema. Caso contrário, os dados capturados estarão incorretos.",
+        onCorrectPage: "Estou na página correta",
+        sending: "Enviando...",
+        caseCreatedNoEmailConfirm: "Caso criado, mas não conseguimos confirmar por email.",
+        unknownError: "Erro desconhecido",
+        newBauCase: "Novo Caso BAU",
+        backToDashboard: "Voltar ao Dashboard",
+        confirmDataBeforeSending: "Confirme os dados antes de enviar",
+        submitToTl: "Enviar para o TL",
+        saveChanges: "Salvar Alterações",
+        editingCase: (id) => `Editando Caso #${id}`,
+        fillDetailsBelow: "Preencha os detalhes abaixo",
+        caseSentSuccess: "Caso enviado com sucesso!",
+        caseSentSuccessSub: "Sua solicitação foi recebida e será processada em breve.",
+        genericErrorTitle: "Ops! Algo deu errado",
+        genericErrorSub: "Não conseguimos carregar seus casos BAU no momento.",
+        tryAgain: "Tentar Novamente",
+        notInformed: "Não informado",
+        reasonTooltip: "O que deve ser feito em BAU",
+        reasonPrefix: "Motivo:",
+        metricAwaitingTl: "Aguardando TL",
+        caseDetailsTitle: "Detalhes do Caso",
+        copy: "Copiar",
+        advertiser: "Anunciante",
+        status: "Status",
+        cidLabel: "CID",
+        caseIdLabel: "Case ID",
+        speakeasyId: "Speakeasy ID",
+        advertiserEmail: "Email do Anunciante",
+        site: "Site",
+        timezone: "Timezone",
+        responsibleAm: "AM Responsável",
+        salesProgram: "Programa de Vendas",
+        bauReason: "Motivo BAU",
+        requestedTasks: "Tasks solicitadas",
+        justification: "Justificativa",
+        detailedDescription: "Descrição detalhada",
+        availability: "Disponibilidade",
+        urgent: "Urgente",
+        undefinedName: "Nome indefinido",
+        customerIdTooltip: "Customer ID do Anunciante",
+        cidTooltip: "CID do Anunciante (Formato: 000-000-0000)",
+        incompleteData: "Dados Incompletos",
+        invalidCid: "CID Inválido",
+        contactSupport: "Contate o Suporte",
+        editRequest: "Editar Solicitação",
+        edit: "Editar",
+        refresh: "Atualizar",
+        noRecentCases: "Nenhum caso recente",
+        casesWillAppear: "Seus casos BAU aparecerão aqui",
+        createdApproved: "Criados / Aprovados",
+        refreshDashboard: "Atualizar Dashboard",
+        errorPrefix: (msg) => `Erro: ${msg}`,
+        selectAtLeastOne: (label) => `Erro: Selecione pelo menos uma opção para "${label}".`,
+        fieldRequiredDouble: (label) => `Erro: O campo "${label}" é obrigatório.`,
+        fieldRequiredSingle: (label) => `Erro: O campo '${label}' é obrigatório.`,
+        whatMustBeDone: "O que deve ser feito",
+        editTasksHint: "Para editar as tasks, volte ao Passo 2",
+        bauJustification: "Justificativa BAU",
+        description: "Descrição",
+        availabilityPriority: "Disponibilidade (Prioridade)",
+        editingCaseHash: (id) => `Você está editando o caso #${id}`,
+        editingDiscardHash: (id) => `Você está editando o descarte do caso #${id}`,
+        discardReason: "Motivo do Descarte",
+        discardDescription: "Descrição do Descarte",
+        notInformedPlaceholder: "Não informado",
+        caseUpdatedSuccess: "Caso atualizado com sucesso!",
+        caseDiscardSentSuccess: "Caso enviado para descarte com sucesso!",
+    },
+    es: {
+        statusPending: "Esperando al TL",
+        statusApproved: "Aprobado / Creado",
+        statusDiscarded: "Descartado por el TL",
+        statusCanceled: "Cancelado",
+        statusDefault: "Pendiente",
+        timezoneWarningStrong: "Atención:",
+        timezoneWarningText: "Para clientes fuera del huso horario de Brasil, el horario ingresado siempre debe corresponder al horario local del cliente, no al del agente.",
+        checkTimezone: "Consultar Time Zone",
+        timezoneModuleNotFound: "Módulo Time Zone no encontrado.",
+        headerTitle: "BAU Central",
+        headerDesc: "Panel de Casos BAU",
+        openBauCase: "Abrir caso para BAU",
+        openBauCaseDesc: "Flujo completo para implementaciones técnicas y soporte especializado.",
+        requestDiscard: "Solicitar Descarte",
+        requestDiscardDesc: "Flujo simplificado para casos que no requieren implementación.",
+        back: "Volver",
+        next: "Siguiente",
+        configuringEdit: "Configurando Edición...",
+        loadDashboardError: "Error al cargar el Panel. Verifica tu conexión.",
+        copiedToClipboard: "¡Copiado al portapapeles!",
+        noAdditionalContext: "Ningún contexto adicional proporcionado por el agente.",
+        notCaptured: "No capturado",
+        none: "Ninguna",
+        language: "Idioma",
+        editPageWarning: "Atención: Para editar la información, debes tener abierta en el sistema la página de este Caso específico. De lo contrario, los datos capturados estarán incorrectos.",
+        onCorrectPage: "Estoy en la página correcta",
+        sending: "Enviando...",
+        caseCreatedNoEmailConfirm: "Caso creado, pero no pudimos confirmar por email.",
+        unknownError: "Error desconocido",
+        newBauCase: "Nuevo Caso BAU",
+        backToDashboard: "Volver al Panel",
+        confirmDataBeforeSending: "Confirma los datos antes de enviar",
+        submitToTl: "Enviar al TL",
+        saveChanges: "Guardar Cambios",
+        editingCase: (id) => `Editando Caso #${id}`,
+        fillDetailsBelow: "Completa los detalles a continuación",
+        caseSentSuccess: "¡Caso enviado con éxito!",
+        caseSentSuccessSub: "Tu solicitud fue recibida y será procesada en breve.",
+        genericErrorTitle: "¡Ups! Algo salió mal",
+        genericErrorSub: "No pudimos cargar tus casos BAU en este momento.",
+        tryAgain: "Intentar de Nuevo",
+        notInformed: "No informado",
+        reasonTooltip: "Qué debe hacerse en BAU",
+        reasonPrefix: "Motivo:",
+        metricAwaitingTl: "Esperando al TL",
+        caseDetailsTitle: "Detalles del Caso",
+        copy: "Copiar",
+        advertiser: "Anunciante",
+        status: "Estado",
+        cidLabel: "CID",
+        caseIdLabel: "Case ID",
+        speakeasyId: "Speakeasy ID",
+        advertiserEmail: "Email del Anunciante",
+        site: "Sitio",
+        timezone: "Timezone",
+        responsibleAm: "AM Responsable",
+        salesProgram: "Programa de Ventas",
+        bauReason: "Motivo BAU",
+        requestedTasks: "Tareas solicitadas",
+        justification: "Justificación",
+        detailedDescription: "Descripción detallada",
+        availability: "Disponibilidad",
+        urgent: "Urgente",
+        undefinedName: "Nombre indefinido",
+        customerIdTooltip: "Customer ID del Anunciante",
+        cidTooltip: "CID del Anunciante (Formato: 000-000-0000)",
+        incompleteData: "Datos Incompletos",
+        invalidCid: "CID Inválido",
+        contactSupport: "Contacta al Soporte",
+        editRequest: "Editar Solicitud",
+        edit: "Editar",
+        refresh: "Actualizar",
+        noRecentCases: "Ningún caso reciente",
+        casesWillAppear: "Tus casos BAU aparecerán aquí",
+        createdApproved: "Creados / Aprobados",
+        refreshDashboard: "Actualizar Panel",
+        errorPrefix: (msg) => `Error: ${msg}`,
+        selectAtLeastOne: (label) => `Error: Selecciona al menos una opción para "${label}".`,
+        fieldRequiredDouble: (label) => `Error: El campo "${label}" es obligatorio.`,
+        fieldRequiredSingle: (label) => `Error: El campo '${label}' es obligatorio.`,
+        whatMustBeDone: "Qué debe hacerse",
+        editTasksHint: "Para editar las tareas, vuelve al Paso 2",
+        bauJustification: "Justificación BAU",
+        description: "Descripción",
+        availabilityPriority: "Disponibilidad (Prioridad)",
+        editingCaseHash: (id) => `Estás editando el caso #${id}`,
+        editingDiscardHash: (id) => `Estás editando el descarte del caso #${id}`,
+        discardReason: "Motivo del Descarte",
+        discardDescription: "Descripción del Descarte",
+        notInformedPlaceholder: "No informado",
+        caseUpdatedSuccess: "¡Caso actualizado con éxito!",
+        caseDiscardSentSuccess: "¡Caso enviado a descarte con éxito!",
+    },
+};
+function bt(key) {
+    const lang = getLanguage();
+    return BAU_DICT[lang]?.[key] ?? BAU_DICT.pt[key];
+}
 
 const ICONS = {
     add: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
@@ -25,11 +222,11 @@ const ICONS = {
 
 function getStatusData(status) {
     switch (status) {
-        case 'PENDING_TL_CREATION': return { text: "Aguardando TL", class: "status-yellow", aura: "status-yellow-aura" };
-        case 'CREATED': return { text: "Aprovado / Criado", class: "status-green", aura: "status-green-aura" };
-        case 'DISCARDED': return { text: "Descartado pelo TL", class: "status-red", aura: "status-red-aura" };
-        case 'CANCELED_BY_AGENT': return { text: "Cancelado", class: "status-gray", aura: "" };
-        default: return { text: status || "Pendente", class: "status-gray", aura: "" };
+        case 'PENDING_TL_CREATION': return { text: bt('statusPending'), class: "status-yellow", aura: "status-yellow-aura" };
+        case 'CREATED': return { text: bt('statusApproved'), class: "status-green", aura: "status-green-aura" };
+        case 'DISCARDED': return { text: bt('statusDiscarded'), class: "status-red", aura: "status-red-aura" };
+        case 'CANCELED_BY_AGENT': return { text: bt('statusCanceled'), class: "status-gray", aura: "" };
+        default: return { text: status || bt('statusDefault'), class: "status-gray", aura: "" };
     }
 }
 
@@ -41,9 +238,9 @@ function createField(fieldConfig) {
     if (fieldConfig.label) {
         const label = document.createElement('label');
         label.className = 'bau-label';
-        label.textContent = fieldConfig.label;
+        label.textContent = bft(fieldConfig, 'label');
         if (fieldConfig.tooltip) {
-            label.setAttribute('data-tooltip', fieldConfig.tooltip);
+            label.setAttribute('data-tooltip', bft(fieldConfig, 'tooltip'));
         }
         wrapper.appendChild(label);
     }
@@ -65,7 +262,7 @@ function createField(fieldConfig) {
                     group.options.forEach(opt => {
                         const option = document.createElement('option');
                         option.value = opt.value;
-                        option.textContent = opt.text;
+                        option.textContent = bfOptionText(opt.text);
                         optgroup.appendChild(option);
                     });
                     input.appendChild(optgroup);
@@ -74,7 +271,7 @@ function createField(fieldConfig) {
                 fieldConfig.options.forEach(opt => {
                     const option = document.createElement('option');
                     option.value = opt.value;
-                    option.textContent = opt.text;
+                    option.textContent = bfOptionText(opt.text);
                     input.appendChild(option);
                 });
             }
@@ -107,7 +304,7 @@ function createField(fieldConfig) {
                 const fieldWrapper = document.createElement('div');
                 fieldWrapper.className = 'bau-availability-field';
                 fieldWrapper.innerHTML = `
-                    <span class="bau-field-hint">${f.label}</span>
+                    <span class="bau-field-hint">${bft(f, 'label')}</span>
                     <input type="datetime-local" name="${f.name}" class="bau-input" ${f.required ? 'required' : ''}>
                 `;
                 input.appendChild(fieldWrapper);
@@ -117,11 +314,11 @@ function createField(fieldConfig) {
             disclaimer.className = 'bau-availability-disclaimer';
             disclaimer.innerHTML = `
                 <div class="bau-disclaimer-text">
-                    <strong>Atenção:</strong> Para clientes fora do fuso horário do Brasil, o horário inserido deve corresponder sempre ao horário local do cliente, e não ao do agente.
+                    <strong>${bt('timezoneWarningStrong')}</strong> ${bt('timezoneWarningText')}
                 </div>
                 <button type="button" class="bau-timezone-link" id="bau-open-timezone">
                     ${ICONS.refresh}
-                    Consultar Time Zone
+                    ${bt('checkTimezone')}
                 </button>
             `;
 
@@ -132,7 +329,7 @@ function createField(fieldConfig) {
                     SoundManager.playClick();
                 } else {
                     SoundManager.playError();
-                    showToast("Módulo Time Zone não encontrado.", { error: true });
+                    showToast(bt('timezoneModuleNotFound'), { error: true });
                 }
             };
 
@@ -149,7 +346,7 @@ function createField(fieldConfig) {
             button.type = 'button';
             button.id = fieldConfig.button.id;
             button.className = 'bau-mini-btn-input';
-            button.title = fieldConfig.button.title;
+            button.title = bft(fieldConfig, 'buttonTitle') || fieldConfig.button.title;
             button.innerHTML = ICONS[fieldConfig.button.icon] || '';
             group.appendChild(input);
             group.appendChild(button);
@@ -166,7 +363,7 @@ function createField(fieldConfig) {
         input.id = `bau-form-${fieldConfig.id}`;
         input.name = fieldConfig.name;
         input.className = fieldConfig.type === 'select' ? 'bau-select' : fieldConfig.type === 'textarea' ? 'bau-textarea' : 'bau-input';
-        if (fieldConfig.placeholder) input.placeholder = fieldConfig.placeholder;
+        if (fieldConfig.placeholder) input.placeholder = bft(fieldConfig, 'placeholder');
         if (fieldConfig.required) input.required = true;
     }
 
@@ -191,11 +388,13 @@ export function initBAUForm() {
     popup.className = "bau-popup cw-module-window";
     popup.style.display = "none";
 
+    const headerTitleText = bt('headerTitle');
+    const headerDescText = bt('headerDesc');
     const header = createStandardHeader(
         popup,
-        "BAU Central",
+        headerTitleText,
         "v2.2.0",
-        "Dashboard de Casos BAU",
+        headerDescText,
         {},
         () => toggleVisibility()
     );
@@ -222,7 +421,7 @@ export function initBAUForm() {
         </div>
         <button class="bau-dashboard-fab" id="bau-new-case-btn">
             ${ICONS.add}
-            Novo Caso BAU
+            <span class="js-bau-new-case">${bt('newBauCase')}</span>
         </button>
     `;
     viewContainer.appendChild(dashboardView);
@@ -236,7 +435,7 @@ export function initBAUForm() {
     formHeader.innerHTML = `
       <button class="bau-back-btn" id="bau-form-back-btn">
         ${ICONS.back}
-        Voltar ao Dashboard
+        <span class="js-bau-back-dashboard">${bt('backToDashboard')}</span>
       </button>
     `;
     formView.appendChild(formHeader);
@@ -250,7 +449,7 @@ export function initBAUForm() {
     loadingOverlay.className = 'bau-form-loading-overlay';
     loadingOverlay.innerHTML = `
         <div class="bau-spinner"></div>
-        <div class="bau-loading-text">Configurando Edição...</div>
+        <div class="bau-loading-text js-bau-configuring-edit">${bt('configuringEdit')}</div>
     `;
     formUiContainer.appendChild(loadingOverlay);
 
@@ -277,13 +476,13 @@ export function initBAUForm() {
                 <div class="bau-branching-container">
                     <div class="bau-branching-card" id="bau-opt-full">
                         <div class="bau-branching-icon">${ICONS.add}</div>
-                        <h3 class="bau-branching-title">Abrir caso para BAU</h3>
-                        <p class="bau-branching-subtitle">Fluxo completo para implementações técnicas e suporte especializado.</p>
+                        <h3 class="bau-branching-title">${bt('openBauCase')}</h3>
+                        <p class="bau-branching-subtitle">${bt('openBauCaseDesc')}</p>
                     </div>
                     <div class="bau-branching-card" id="bau-opt-discard">
                         <div class="bau-branching-icon">${ICONS.empty}</div>
-                        <h3 class="bau-branching-title">Solicitar Descarte</h3>
-                        <p class="bau-branching-subtitle">Fluxo simplificado para casos que não requerem implementação.</p>
+                        <h3 class="bau-branching-title">${bt('requestDiscard')}</h3>
+                        <p class="bau-branching-subtitle">${bt('requestDiscardDesc')}</p>
                     </div>
                 </div>
             `;
@@ -304,7 +503,7 @@ export function initBAUForm() {
         } else if (stepConfig.isConfirmation) {
             stepEl.innerHTML = `
                 <div class="bau-card">
-                    <h3 class="bau-step-title">Confirme os dados antes de enviar</h3>
+                    <h3 class="bau-step-title">${bt('confirmDataBeforeSending')}</h3>
                     <div id="bau-confirmation-details"></div>
                 </div>
             `;
@@ -349,18 +548,18 @@ export function initBAUForm() {
     backBtn.type = "button";
     backBtn.id = "bau-step-back-btn";
     backBtn.className = "bau-btn-secondary";
-    backBtn.textContent = "Voltar";
+    backBtn.textContent = bt('back');
 
     const nextBtn = document.createElement("button");
     nextBtn.type = "button";
     nextBtn.id = "bau-step-next-btn";
     nextBtn.className = "bau-btn-primary";
-    nextBtn.textContent = "Próximo";
+    nextBtn.textContent = bt('next');
 
     const submitBtn = document.createElement("button");
     submitBtn.type = "submit";
     submitBtn.className = "bau-btn-submit";
-    submitBtn.innerHTML = `${ICONS.send} Enviar para o TL`;
+    submitBtn.innerHTML = `${ICONS.send} ${bt('submitToTl')}`;
     submitBtn.style.display = "none";
 
     footer.appendChild(backBtn);
@@ -376,9 +575,9 @@ export function initBAUForm() {
     successView.innerHTML = `
         <div class="bau-success-content">
             <div class="bau-success-icon" style="color: ${COLORS.green};">${ICONS.check}</div>
-            <h2 class="bau-success-title">Caso enviado com sucesso!</h2>
-            <p class="bau-success-subtitle">Sua solicitação foi recebida e será processada em breve.</p>
-            <button class="bau-btn-primary" id="bau-success-back-btn">Voltar ao Dashboard</button>
+            <h2 class="bau-success-title js-bau-success-title">${bt('caseSentSuccess')}</h2>
+            <p class="bau-success-subtitle js-bau-success-sub">${bt('caseSentSuccessSub')}</p>
+            <button class="bau-btn-primary js-bau-success-back" id="bau-success-back-btn">${bt('backToDashboard')}</button>
         </div>
     `;
     viewContainer.appendChild(successView);
@@ -395,18 +594,18 @@ export function initBAUForm() {
 
         if (titleEl) {
             if (viewName === 'form') {
-                titleEl.textContent = isEditing ? `Editando Caso #${editingCaseId}` : 'Novo Caso BAU';
+                titleEl.textContent = isEditing ? bt('editingCase')(editingCaseId) : bt('newBauCase');
             } else {
-                titleEl.textContent = 'BAU Central';
+                titleEl.textContent = bt('headerTitle');
             }
         }
         if (subtitleEl) {
-            subtitleEl.textContent = (viewName === 'form') ? 'Preencha os detalhes abaixo' : 'Dashboard de Casos BAU';
+            subtitleEl.textContent = (viewName === 'form') ? bt('fillDetailsBelow') : bt('headerDesc');
         }
 
         const submitBtn = form.querySelector('.bau-btn-submit');
         if (submitBtn) {
-            submitBtn.innerHTML = isEditing ? `${ICONS.send} Salvar Alterações` : `${ICONS.send} Enviar para o TL`;
+            submitBtn.innerHTML = isEditing ? `${ICONS.send} ${bt('saveChanges')}` : `${ICONS.send} ${bt('submitToTl')}`;
         }
     }
 
@@ -448,16 +647,16 @@ export function initBAUForm() {
                     <div style="color: ${COLORS.red}; margin-bottom: 16px;">
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                     </div>
-                    <h3 class="bau-empty-title">Ops! Algo deu errado</h3>
-                    <p class="bau-empty-subtitle">Não conseguimos carregar seus casos BAU no momento.</p>
+                    <h3 class="bau-empty-title">${bt('genericErrorTitle')}</h3>
+                    <p class="bau-empty-subtitle">${bt('genericErrorSub')}</p>
                     <button class="bau-btn-secondary" id="bau-retry-btn" style="margin-top: 16px;">
-                        Tentar Novamente
+                        ${bt('tryAgain')}
                     </button>
                 </div>
             `;
             popup.querySelector('#bau-retry-btn')?.addEventListener('click', () => loadDashboardData());
             SoundManager.playError();
-            showToast("Erro ao carregar Dashboard. Verifique sua conexão.", { error: true });
+            showToast(bt('loadDashboardError'), { error: true });
         }
     }
 
@@ -468,7 +667,7 @@ export function initBAUForm() {
 
         const copyToClipboard = (text, btn) => {
             navigator.clipboard.writeText(text).then(() => {
-                showToast("Copiado para a área de transferência!");
+                showToast(bt('copiedToClipboard'));
                 SoundManager.playClick();
                 const originalColor = btn.style.color;
                 btn.style.color = '#1E8E3E';
@@ -478,104 +677,104 @@ export function initBAUForm() {
 
         detailsView.innerHTML = `
             <div class="bau-details-header">
-                <h2 class="bau-details-title">Detalhes do Caso</h2>
+                <h2 class="bau-details-title">${bt('caseDetailsTitle')}</h2>
                 <button class="bau-details-close-btn">
                     ${ICONS.back}
-                    Voltar
+                    ${bt('back')}
                 </button>
             </div>
             <div class="bau-details-content">
                 <div class="bau-details-grid">
                     <div class="bau-details-card">
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Anunciante</span>
+                            <span class="bau-details-label">${bt('advertiser')}</span>
                             <span class="bau-details-value">${c.advName || '---'}</span>
-                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
                         </div>
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Status</span>
+                            <span class="bau-details-label">${bt('status')}</span>
                             <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
                         </div>
                     </div>
                     <div class="bau-details-card">
                         <div class="bau-details-row">
-                            <span class="bau-details-label">CID</span>
+                            <span class="bau-details-label">${bt('cidLabel')}</span>
                             <span class="bau-details-value">${c.cid || '---'}</span>
-                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
                         </div>
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Case ID</span>
+                            <span class="bau-details-label">${bt('caseIdLabel')}</span>
                             <span class="bau-details-value">${c.caseId || '---'}</span>
-                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
                         </div>
                     </div>
 
                     <div class="bau-details-card">
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Speakeasy ID</span>
+                            <span class="bau-details-label">${bt('speakeasyId')}</span>
                             <span class="bau-details-value">${c.seId || '---'}</span>
-                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
                         </div>
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Email do Anunciante</span>
+                            <span class="bau-details-label">${bt('advertiserEmail')}</span>
                             <span class="bau-details-value">${c.advEmail || '---'}</span>
-                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
                         </div>
                     </div>
                     <div class="bau-details-card">
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Site</span>
+                            <span class="bau-details-label">${bt('site')}</span>
                             <span class="bau-details-value">${c.site || '---'}</span>
-                            <button class="bau-copy-btn" title="Copiar">${ICONS.wand}</button>
+                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
                         </div>
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Timezone</span>
+                            <span class="bau-details-label">${bt('timezone')}</span>
                             <span class="bau-details-value">${c.timezone || '---'}</span>
                         </div>
                     </div>
 
                     <div class="bau-details-card full-width">
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Idioma</span>
+                            <span class="bau-details-label">${bt('language')}</span>
                             <span class="bau-details-value">${c.language || '---'}</span>
                         </div>
                         <div class="bau-details-divider"></div>
                         <div class="bau-details-row">
-                            <span class="bau-details-label">AM Responsável</span>
+                            <span class="bau-details-label">${bt('responsibleAm')}</span>
                             <span class="bau-details-value">${c.amName || '---'}</span>
                         </div>
                         <div class="bau-details-divider"></div>
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Programa de Vendas</span>
+                            <span class="bau-details-label">${bt('salesProgram')}</span>
                             <span class="bau-details-value">${c.salesProgram || '---'}</span>
                         </div>
                     </div>
 
                     <div class="bau-details-card full-width">
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Motivo BAU</span>
-                            <span class="bau-details-value">${c.reason || 'Não informado'}</span>
+                            <span class="bau-details-label">${bt('bauReason')}</span>
+                            <span class="bau-details-value">${c.reason || bt('notInformed')}</span>
                         </div>
                         <div class="bau-details-divider"></div>
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Tasks solicitadas</span>
-                            <span class="bau-details-value">${c.task || c.taskType || 'Nenhuma'}</span>
+                            <span class="bau-details-label">${bt('requestedTasks')}</span>
+                            <span class="bau-details-value">${c.task || c.taskType || bt('none')}</span>
                         </div>
                     </div>
 
                     <div class="bau-details-card full-width">
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Justificativa</span>
+                            <span class="bau-details-label">${bt('justification')}</span>
                             <span class="bau-details-value">${c.nonImplementationReason || '---'}</span>
                         </div>
                         <div class="bau-details-divider"></div>
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Descrição detalhada</span>
+                            <span class="bau-details-label">${bt('detailedDescription')}</span>
                             <span class="bau-details-value">${c.description || '---'}</span>
                         </div>
                         <div class="bau-details-divider"></div>
                         <div class="bau-details-row">
-                            <span class="bau-details-label">Disponibilidade</span>
+                            <span class="bau-details-label">${bt('availability')}</span>
                             <span class="bau-details-value">${formatToLocalUserDate(c.availability)}</span>
                         </div>
                     </div>
@@ -615,13 +814,13 @@ export function initBAUForm() {
         if (c?.status === 'PENDING_TL_CREATION' && c?.availability_1) {
             const availDate = new Date(c.availability_1);
             const now = new Date();
-            if (availDate <= now || (availDate - now) < 3600000 * 2) { 
-                slaBadge = `<span class="bau-sla-badge">Urgente</span>`;
+            if (availDate <= now || (availDate - now) < 3600000 * 2) {
+                slaBadge = `<span class="bau-sla-badge">${bt('urgent')}</span>`;
                 pulseClass = 'bau-pulse-attention';
             }
         }
 
-        const reasonDisplay = (c?.reason && c.reason.trim()) ? c.reason : "Nenhum contexto adicional fornecido pelo agente.";
+        const reasonDisplay = (c?.reason && c.reason.trim()) ? c.reason : bt('noAdditionalContext');
         const cidRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
         const isValidCIDCard = cidRegex.test(c?.cid || '');
         const hasDataError = !c?.caseId || c.caseId === 'N/A' || !isValidCIDCard;
@@ -636,24 +835,24 @@ export function initBAUForm() {
                     <div class="bau-case-icon">${ICONS.folder}</div>
                     <div class="bau-case-info">
                         <div class="bau-case-header">
-                            <h3 class="bau-case-title">${c?.advName || 'Nome indefinido'}</h3>
+                            <h3 class="bau-case-title">${c?.advName || bt('undefinedName')}</h3>
                             ${slaBadge}
                             <span class="bau-case-date">${dateStr}</span>
                         </div>
                         <p class="bau-case-details">
-                            <span data-tooltip="Customer ID do Anunciante">Case: ${c?.caseId || 'N/A'}</span> •
-                            <span data-tooltip="CID do Anunciante (Formato: 000-000-0000)" class="${!isValidCIDCard ? 'bau-error-text' : ''}">CID: ${c?.cid || 'N/A'}</span> •
-                            <span data-tooltip="O que deve ser feito em BAU">Motivo: ${reasonDisplay}</span>
+                            <span data-tooltip="${bt('customerIdTooltip')}">Case: ${c?.caseId || 'N/A'}</span> •
+                            <span data-tooltip="${bt('cidTooltip')}" class="${!isValidCIDCard ? 'bau-error-text' : ''}">CID: ${c?.cid || 'N/A'}</span> •
+                            <span data-tooltip="${bt('reasonTooltip')}">${bt('reasonPrefix')} ${reasonDisplay}</span>
                         </p>
-                        ${hasDataError ? `<div class="bau-data-error-hint">${!c?.caseId || c?.caseId === 'N/A' ? 'Dados Incompletos' : 'CID Inválido'} - Contate o Suporte</div>` : ''}
+                        ${hasDataError ? `<div class="bau-data-error-hint">${!c?.caseId || c?.caseId === 'N/A' ? bt('incompleteData') : bt('invalidCid')} - ${bt('contactSupport')}</div>` : ''}
                     </div>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
                     <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
                     ${c?.status && c.status.includes('PENDING') ? `
-                        <button class="bau-case-edit-btn" data-id="${c.id}" title="Editar Solicitação">
+                        <button class="bau-case-edit-btn" data-id="${c.id}" title="${bt('editRequest')}">
                             ${ICONS.edit}
-                            Editar
+                            ${bt('edit')}
                         </button>
                     ` : ''}
                 </div>
@@ -672,14 +871,14 @@ export function initBAUForm() {
             metricsEl.innerHTML = `
                 <button class="bau-metrics-refresh-btn" id="bau-refresh-dashboard">
                     ${ICONS.refresh}
-                    Atualizar
+                    ${bt('refresh')}
                 </button>
             `;
             listEl.innerHTML = `
                 <div class="bau-empty-state">
                     ${ICONS.empty}
-                    <h3 class="bau-empty-title">Nenhum caso recente</h3>
-                    <p class="bau-empty-subtitle">Seus casos BAU aparecerão aqui</p>
+                    <h3 class="bau-empty-title">${bt('noRecentCases')}</h3>
+                    <p class="bau-empty-subtitle">${bt('casesWillAppear')}</p>
                 </div>
             `;
             popup.querySelector('#bau-refresh-dashboard')?.addEventListener('click', () => loadDashboardData());
@@ -692,13 +891,13 @@ export function initBAUForm() {
         metricsEl.innerHTML = `
             <div class="bau-metric-card">
                 <span class="bau-metric-value">${pendingCount}</span>
-                <span class="bau-metric-label">Aguardando TL</span>
+                <span class="bau-metric-label">${bt('metricAwaitingTl')}</span>
             </div>
             <div class="bau-metric-card">
                 <span class="bau-metric-value">${createdCount}</span>
-                <span class="bau-metric-label">Criados / Aprovados</span>
+                <span class="bau-metric-label">${bt('createdApproved')}</span>
             </div>
-            <button class="bau-metrics-refresh-btn" id="bau-refresh-dashboard" title="Atualizar Dashboard">
+            <button class="bau-metrics-refresh-btn" id="bau-refresh-dashboard" title="${bt('refreshDashboard')}">
                 ${ICONS.refresh}
             </button>
         `;
@@ -843,7 +1042,7 @@ export function initBAUForm() {
                     if (!regex.test(input.value.trim())) {
                         console.warn(`Validation failed for field "${fieldConfig.name}" in step ${step}: Regex mismatch.`);
                         SoundManager.playError();
-                        showToast(`Erro: ${fieldConfig.validation.error}`, { error: true });
+                        showToast(bt('errorPrefix')(bft(fieldConfig, 'error') || fieldConfig.validation.error), { error: true });
                         input.classList.add('invalid-cid');
                         const errorHint = form.querySelector('#bau-cid-error');
                         if (errorHint) errorHint.style.display = 'flex';
@@ -881,7 +1080,7 @@ export function initBAUForm() {
                     if (!checked) {
                         failureReason = "No option selected in checkbox-grid";
                         SoundManager.playError();
-                        showToast(`Erro: Selecione pelo menos uma opção para "${fieldConfig.label}".`, { error: true });
+                        showToast(bt('selectAtLeastOne')(bft(fieldConfig, 'label')), { error: true });
                         isFieldValid = false;
                     }
                 } else if (fieldConfig.type === 'datetime-group') {
@@ -891,7 +1090,7 @@ export function initBAUForm() {
                     if (!firstInput.value.trim()) {
                         failureReason = "Datetime group first field is empty";
                         SoundManager.playError();
-                        showToast(`Erro: O campo "${fieldConfig.fields[0].label}" é obrigatório.`, { error: true });
+                        showToast(bt('fieldRequiredDouble')(bft(fieldConfig.fields[0], 'label')), { error: true });
                         isFieldValid = false;
                     }
                 } else {
@@ -902,7 +1101,7 @@ export function initBAUForm() {
                     if (!input.value.trim()) {
                         failureReason = "Field is empty";
                         SoundManager.playError();
-                        showToast(`Erro: O campo '${fieldConfig.label}' é obrigatório.`, { error: true });
+                        showToast(bt('fieldRequiredSingle')(bft(fieldConfig, 'label')), { error: true });
                         isFieldValid = false;
                     }
                 }
@@ -956,6 +1155,11 @@ export function initBAUForm() {
         currentContextData = pageData;
 
         // Render "Captured Data Hero" panel
+        // Labels abaixo (Anunciante/CID/Website/Case ID/AM/SE ID/Site/Email/
+        // Timezone/Programa/Idioma) não passam por bt() de propósito: são
+        // idênticas em PT e ES (siglas, termos técnicos ou palavras cognatas),
+        // então traduzi-las seria um no-op que só aumentaria a superfície de
+        // manutenção.
         const highlightsContainers = form.querySelectorAll('.bau-vital-highlights');
         highlightsContainers.forEach(container => {
             const vitals = [
@@ -966,7 +1170,7 @@ export function initBAUForm() {
             ];
 
             container.innerHTML = vitals.map(v => {
-                const displayValue = (v.value && v.value !== "N/A" && v.value !== "undefined" && v.value !== "null") ? v.value : "Não capturado";
+                const displayValue = (v.value && v.value !== "N/A" && v.value !== "undefined" && v.value !== "null") ? v.value : bt('notCaptured');
                 return `
                     <div class="bau-highlight-item">
                         <span class="bau-highlight-label">${v.label}</span>
@@ -1064,10 +1268,10 @@ export function initBAUForm() {
 
         if (requestType === 'BAU') {
             const tasks = formData.getAll('taskType');
-            const tasksText = tasks.length > 0 ? tasks.join(', ') : "Nenhuma";
+            const tasksText = tasks.length > 0 ? tasks.join(', ') : bt('none');
 
             container.innerHTML = `
-                ${isEditing ? `<div class="bau-highlight-panel" style="margin-bottom: 16px; padding: 12px; border: 1px solid ${COLORS.yellow}; background: rgba(255, 186, 0, 0.05); border-radius: 8px; font-weight: 500;">Você está editando o caso #<span style="color: ${COLORS.yellow}">${editingCaseId}</span></div>` : ''}
+                ${isEditing ? `<div class="bau-highlight-panel" style="margin-bottom: 16px; padding: 12px; border: 1px solid ${COLORS.yellow}; background: rgba(255, 186, 0, 0.05); border-radius: 8px; font-weight: 500;">${bt('editingCaseHash')(`<span style="color: ${COLORS.yellow}">${editingCaseId}</span>`)}</div>` : ''}
                 <div class="bau-confirmation-grid">
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">Anunciante</span>
@@ -1087,49 +1291,49 @@ export function initBAUForm() {
                     </div>
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">Speakeasy ID</span>
-                        <input class="bau-confirm-value-input" data-field="seId" data-step="1" value="${data.seId || ''}" placeholder="Não informado">
+                        <input class="bau-confirm-value-input" data-field="seId" data-step="1" value="${data.seId || ''}" placeholder="${bt('notInformedPlaceholder')}">
                     </div>
 
                     <div class="bau-confirm-divider"></div>
 
                     <div class="bau-confirm-row full-width">
-                        <span class="bau-confirm-label">O que deve ser feito</span>
+                        <span class="bau-confirm-label">${bt('whatMustBeDone')}</span>
                         <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="reason" data-step="2" placeholder="---">${data.reason || ''}</textarea>
                     </div>
                     <div class="bau-confirm-row full-width">
                         <span class="bau-confirm-label">Tasks</span>
-                        <span class="bau-confirm-value-input" style="cursor: default; opacity: 0.8;" title="Para editar as tasks, volte ao Passo 2">${tasksText}</span>
+                        <span class="bau-confirm-value-input" style="cursor: default; opacity: 0.8;" title="${bt('editTasksHint')}">${tasksText}</span>
                     </div>
 
                     <div class="bau-confirm-divider"></div>
 
                     <div class="bau-confirm-row full-width">
-                        <span class="bau-confirm-label">Justificativa BAU</span>
+                        <span class="bau-confirm-label">${bt('bauJustification')}</span>
                         <select class="bau-confirm-value-input" data-field="nonImplementationReason" data-step="3">
-                            <option value="Tempo da consultoria esgotado" ${data.nonImplementationReason === 'Tempo da consultoria esgotado' ? 'selected' : ''}>Tempo da consultoria esgotado</option>
-                            <option value="Solicitação de reagendamento pelo anunciante" ${data.nonImplementationReason === 'Solicitação de reagendamento pelo anunciante' ? 'selected' : ''}>Solicitação de reagendamento pelo anunciante</option>
-                            <option value="Falta de acessos ou backup do site" ${data.nonImplementationReason === 'Falta de acessos ou backup do site' ? 'selected' : ''}>Falta de acessos ou backup do site</option>
-                            <option value="Anunciante indisponível ou não preparado" ${data.nonImplementationReason === 'Anunciante indisponível ou não preparado' ? 'selected' : ''}>Anunciante indisponível ou não preparado</option>
-                            <option value="Implementação parcial (nem todas as tasks concluídas)" ${data.nonImplementationReason === 'Implementação parcial (nem todas as tasks concluídas)' ? 'selected' : ''}>Implementação parcial (nem todas as tasks concluídas)</option>
-                            <option value="Solicitação de tarefas (tasks) adicionais" ${data.nonImplementationReason === 'Solicitação de tarefas (tasks) adicionais' ? 'selected' : ''}>Solicitação de tarefas (tasks) adicionais</option>
-                            <option value="Necessidade de novas alterações (fase de acompanhamento)" ${data.nonImplementationReason === 'Necessidade de novas alterações (fase de acompanhamento)' ? 'selected' : ''}>Necessidade de novas alterações (fase de acompanhamento)</option>
-                            <option value="Retorno de contato após prazo de 14 dias expirado" ${data.nonImplementationReason === 'Retorno de contato após prazo de 14 dias expirado' ? 'selected' : ''}>Retorno de contato após prazo de 14 dias expirado</option>
+                            <option value="Tempo da consultoria esgotado" ${data.nonImplementationReason === 'Tempo da consultoria esgotado' ? 'selected' : ''}>${bfOptionText('Tempo da consultoria esgotado')}</option>
+                            <option value="Solicitação de reagendamento pelo anunciante" ${data.nonImplementationReason === 'Solicitação de reagendamento pelo anunciante' ? 'selected' : ''}>${bfOptionText('Solicitação de reagendamento pelo anunciante')}</option>
+                            <option value="Falta de acessos ou backup do site" ${data.nonImplementationReason === 'Falta de acessos ou backup do site' ? 'selected' : ''}>${bfOptionText('Falta de acessos ou backup do site')}</option>
+                            <option value="Anunciante indisponível ou não preparado" ${data.nonImplementationReason === 'Anunciante indisponível ou não preparado' ? 'selected' : ''}>${bfOptionText('Anunciante indisponível ou não preparado')}</option>
+                            <option value="Implementação parcial (nem todas as tasks concluídas)" ${data.nonImplementationReason === 'Implementação parcial (nem todas as tasks concluídas)' ? 'selected' : ''}>${bfOptionText('Implementação parcial (nem todas as tasks concluídas)')}</option>
+                            <option value="Solicitação de tarefas (tasks) adicionais" ${data.nonImplementationReason === 'Solicitação de tarefas (tasks) adicionais' ? 'selected' : ''}>${bfOptionText('Solicitação de tarefas (tasks) adicionais')}</option>
+                            <option value="Necessidade de novas alterações (fase de acompanhamento)" ${data.nonImplementationReason === 'Necessidade de novas alterações (fase de acompanhamento)' ? 'selected' : ''}>${bfOptionText('Necessidade de novas alterações (fase de acompanhamento)')}</option>
+                            <option value="Retorno de contato após prazo de 14 dias expirado" ${data.nonImplementationReason === 'Retorno de contato após prazo de 14 dias expirado' ? 'selected' : ''}>${bfOptionText('Retorno de contato após prazo de 14 dias expirado')}</option>
                         </select>
                     </div>
                     <div class="bau-confirm-row full-width">
-                        <span class="bau-confirm-label">Descrição</span>
+                        <span class="bau-confirm-label">${bt('description')}</span>
                         <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="description" data-step="3" placeholder="---">${data.description || ''}</textarea>
                     </div>
 
                     <div class="bau-confirm-row full-width">
-                        <span class="bau-confirm-label">Disponibilidade (Prioridade)</span>
+                        <span class="bau-confirm-label">${bt('availabilityPriority')}</span>
                         <input type="datetime-local" class="bau-confirm-value-input" data-field="availability_1" data-step="3" value="${data.availability_1 || ''}">
                     </div>
                 </div>
             `;
         } else {
             container.innerHTML = `
-                ${isEditing ? `<div class="bau-highlight-panel discard-theme" style="margin-bottom: 16px; padding: 12px; border: 1px solid ${COLORS.red}; background: rgba(217, 48, 37, 0.05); border-radius: 8px; font-weight: 500;">Você está editando o descarte do caso #<span style="color: ${COLORS.red}">${editingCaseId}</span></div>` : ''}
+                ${isEditing ? `<div class="bau-highlight-panel discard-theme" style="margin-bottom: 16px; padding: 12px; border: 1px solid ${COLORS.red}; background: rgba(217, 48, 37, 0.05); border-radius: 8px; font-weight: 500;">${bt('editingDiscardHash')(`<span style="color: ${COLORS.red}">${editingCaseId}</span>`)}</div>` : ''}
                 <div class="bau-confirmation-grid">
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">Case ID</span>
@@ -1144,14 +1348,14 @@ export function initBAUForm() {
                         <input class="bau-confirm-value-input" data-field="seId" data-step="5" value="${data.seId || ''}" placeholder="---">
                     </div>
                     <div class="bau-confirm-row">
-                        <span class="bau-confirm-label">Motivo do Descarte</span>
+                        <span class="bau-confirm-label">${bt('discardReason')}</span>
                         <input class="bau-confirm-value-input" data-field="reason" data-step="5" value="${data.reason || ''}" placeholder="---" readonly style="opacity: 0.7;">
                     </div>
 
                     <div class="bau-confirm-divider"></div>
 
                     <div class="bau-confirm-row full-width">
-                        <span class="bau-confirm-label">Descrição do Descarte</span>
+                        <span class="bau-confirm-label">${bt('discardDescription')}</span>
                         <textarea class="bau-confirm-value-input bau-confirm-textarea" data-field="description" data-step="5" placeholder="---">${data.description || ''}</textarea>
                     </div>
                 </div>
@@ -1179,8 +1383,8 @@ export function initBAUForm() {
     }
     async function handleEditCase(c) {
         const confirmed = await confirmDialog(
-            "Atenção: Para editar as informações, você deve estar com a página deste Caso específico aberta no sistema. Caso contrário, os dados capturados estarão incorretos.",
-            { confirmText: "Estou na página correta" }
+            bt('editPageWarning'),
+            { confirmText: bt('onCorrectPage') }
         );
 
         if (!confirmed) return;
@@ -1279,7 +1483,7 @@ export function initBAUForm() {
         
         const submitBtn = popup.querySelector('.bau-btn-submit');
         submitBtn.disabled = true;
-        submitBtn.innerHTML = "Enviando...";
+        submitBtn.innerHTML = bt('sending');
         
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
@@ -1358,11 +1562,11 @@ export function initBAUForm() {
             const successTitle = popup.querySelector('.bau-success-title');
             if (successTitle) {
                 if (isEditing) {
-                    successTitle.textContent = 'Caso atualizado com sucesso!';
+                    successTitle.textContent = bt('caseUpdatedSuccess');
                 } else {
                     successTitle.textContent = requestType === 'DISCARD'
-                        ? 'Caso enviado para descarte com sucesso!'
-                        : 'Caso enviado com sucesso!';
+                        ? bt('caseDiscardSentSuccess')
+                        : bt('caseSentSuccess');
                 }
             }
 
@@ -1370,15 +1574,15 @@ export function initBAUForm() {
 
             if (!isEditing && escalationResult && escalationResult.emailSent === false) {
                 SoundManager.playError();
-                showToast("Caso criado, mas não conseguimos confirmar por email.", { error: true });
+                showToast(bt('caseCreatedNoEmailConfirm'), { error: true });
             }
         } catch (error) {
             SoundManager.playError();
-            showToast("Erro: " + (error.message || "Erro desconhecido"), { error: true });
-            console.error("Payload que tentou enviar:", payload); 
+            showToast(bt('errorPrefix')(error.message || bt('unknownError')), { error: true });
+            console.error("Payload que tentou enviar:", payload);
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = `${ICONS.send} Enviar para o TL`;
+            submitBtn.innerHTML = `${ICONS.send} ${bt('submitToTl')}`;
         }
     };
 
@@ -1423,5 +1627,63 @@ export function initBAUForm() {
     }
 
     updateWizardState();
+
+    // Retraduz os pedaços fixos (header, botões, tela de sucesso) e refaz a
+    // view atual - dashboard/form/detalhes já são reconstruídos do zero a
+    // cada navegação, então herdam o idioma atual sozinhos na próxima visita.
+    onLanguageChange(() => {
+        const helpTitleEl = popup.querySelector('.cw-help-title');
+        if (helpTitleEl) helpTitleEl.textContent = bt('headerTitle');
+        const helpDescEl = popup.querySelector('.cw-help-description');
+        if (helpDescEl) helpDescEl.textContent = bt('headerDesc');
+        const newCaseLabel = popup.querySelector('.js-bau-new-case');
+        if (newCaseLabel) newCaseLabel.textContent = bt('newBauCase');
+        const backDashboardLabel = popup.querySelector('.js-bau-back-dashboard');
+        if (backDashboardLabel) backDashboardLabel.textContent = bt('backToDashboard');
+        const configuringEditEl = popup.querySelector('.js-bau-configuring-edit');
+        if (configuringEditEl) configuringEditEl.textContent = bt('configuringEdit');
+        const successTitleEl = popup.querySelector('.js-bau-success-title');
+        if (successTitleEl) successTitleEl.textContent = bt('caseSentSuccess');
+        const successSubEl = popup.querySelector('.js-bau-success-sub');
+        if (successSubEl) successSubEl.textContent = bt('caseSentSuccessSub');
+        const successBackEl = popup.querySelector('.js-bau-success-back');
+        if (successBackEl) successBackEl.textContent = bt('backToDashboard');
+        backBtn.textContent = bt('back');
+        nextBtn.textContent = bt('next');
+        switchView(currentView);
+        if (currentView === 'form') {
+            form.querySelectorAll('.bau-step').forEach(stepEl => {
+                const stepId = parseInt(stepEl.id.replace('bau-step-', ''), 10);
+                const stepConfig = FORM_CONFIG.steps.find(s => s.id === stepId);
+                if (!stepConfig || stepConfig.isBranching || stepConfig.isConfirmation) return;
+                stepEl.querySelectorAll('.bau-dynamic-input').forEach(wrapper => {
+                    const fieldId = wrapper.id.replace('wrapper-', '');
+                    const fieldConfig = stepConfig.fields?.find(f => f.id === fieldId);
+                    if (!fieldConfig) return;
+                    const label = wrapper.querySelector('.bau-label');
+                    if (label && fieldConfig.label) {
+                        label.textContent = bft(fieldConfig, 'label');
+                        if (fieldConfig.tooltip) label.setAttribute('data-tooltip', bft(fieldConfig, 'tooltip'));
+                    }
+                    const input = wrapper.querySelector('input, textarea, select');
+                    if (input && fieldConfig.placeholder) input.placeholder = bft(fieldConfig, 'placeholder');
+                    if (fieldConfig.type === 'select') {
+                        // Relê a partir do fieldConfig original (options/groups),
+                        // não do textContent já renderizado - senão uma volta
+                        // ES->PT não desfaria a tradução anterior.
+                        const flatOptions = fieldConfig.groups
+                            ? fieldConfig.groups.flatMap(g => g.options)
+                            : (fieldConfig.options || []);
+                        wrapper.querySelectorAll('option').forEach((opt, idx) => {
+                            const original = flatOptions[idx];
+                            if (original) opt.textContent = bfOptionText(original.text);
+                        });
+                    }
+                });
+            });
+        }
+        if (currentView === 'dashboard') loadDashboardData();
+    });
+
     return toggleVisibility;
 }
