@@ -837,6 +837,11 @@ export const scenarioSnippets = {
         substatus: ['AS_Reschedule_1'],
         'field-MOTIVO_REAGENDAMENTO': '• Precisamos reagendar o caso, já que o tempo foi insuficiente para terminar as Tasks\n• Implementamos [descrever o que foi feito]'
     },
+    'quickfill-as-no-access': {
+        type: 'all',
+        substatus: ['AS_Reschedule_1'],
+        'field-MOTIVO_REAGENDAMENTO': '• Precisamos reagendar o caso, já que o(a) anunciante não tinha acesso ao site, ao código ou ao CMS necessários para a instalação do Google Tag Manager'
+    },
 
     // --- AS_Acceptable_Reschedule: fator maior (sem internet/luz, saúde) ---
     // [NOVO] Rascunho - substatus estava sem nenhum cenário. PDF dá exemplos
