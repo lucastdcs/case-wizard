@@ -574,8 +574,9 @@ export const scenarioSnippets = {
     },
     // -----------------------------------------------
 
-    'quickfill-ni-followup-bau': { 
+    'quickfill-ni-followup-bau': {
         type: 'bau',
+        subStatus: 'NI_Awaiting_Inputs',
         'field-REASON_COMMENTS': "Aguardando informações por parte do anunciante (Follow-up BAU 2/6)",
         'field-SPEAKEASY_ID': "N/A",
         'field-ON_CALL': "N/A",

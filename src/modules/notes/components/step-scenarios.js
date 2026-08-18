@@ -56,6 +56,9 @@ export function createScenariosComponent(onSelectCallback) {
       selectedIds.clear();
       const filtered = Object.entries(scenarioSnippets).filter(([id, data]) => {
           const matchesType = !data.type || data.type === 'all' || data.type === caseType;
+          if (data.subStatus) {
+              return matchesType && data.subStatus === subStatusKey;
+          }
           let matchesSubStatus = false;
           if (subStatusKey.startsWith('NI_')) {
               matchesSubStatus = id.includes('-ni-') || id.includes('attempted');
