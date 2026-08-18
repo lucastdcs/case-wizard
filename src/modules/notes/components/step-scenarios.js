@@ -54,6 +54,12 @@ export function createScenariosComponent(onSelectCallback) {
   // Refined render version
   container.render = (subStatusKey, caseType) => {
       selectedIds.clear();
+      // Filtro por substatus real (campo `substatus` de cada snippet em
+      // notes-data.js), não mais por heurística de substring no ID (ex:
+      // "-ni-", "attempted") que só sabia distinguir o STATUS (NI/SO/AS/IN/
+      // DC), nunca o substatus - todo cenário de NI aparecia em qualquer um
+      // dos 4 substatus de NI, sem diferenciação. Regras de quais cenários
+      // pertencem a qual substatus: specs/workflow/case-notes-status-rules.md
       const filtered = Object.entries(scenarioSnippets).filter(([id, data]) => {
           const matchesType = !data.type || data.type === 'all' || data.type === caseType;
           if (data.subStatus) {

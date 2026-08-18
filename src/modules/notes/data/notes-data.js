@@ -73,7 +73,8 @@ export const translations = {
         'evidencias_contato': 'Evidências de Contato',
         'ligacao_1': 'Ligação 1',
         'ligacao_2': 'Ligação 2',
-        'mensagem_am': 'Mensagem para AM'
+        'mensagem_am': 'Mensagem para AM',
+        'tentativa_ligacao': '📞 Tentativa de ligação:'
     },
     'es': {
         'idioma': 'Idioma:',
@@ -144,7 +145,8 @@ export const translations = {
         'evidencias_contato': 'Evidencias de Contacto',
         'ligacao_1': 'Llamada 1',
         'ligacao_2': 'Llamada 2',
-        'mensagem_am': 'Mensaje para AM'
+        'mensagem_am': 'Mensaje para AM',
+        'tentativa_ligacao': '📞 Intento de llamada:'
     }
 };
 
@@ -419,10 +421,14 @@ export const SUBSTATUS_TEMPLATES = {
         templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Not_Reachable': {
-        status: 'IN', 
+        status: 'IN',
         name: 'IN - Not Reachable',
         requiresTasks: false,
-        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
+        // TENTATIVA_LIGACAO: input simples e dedicado pro link de evidência
+        // da tentativa de ligação (pedido direto, ver histórico) - SCREENSHOTS_LIST
+        // não serve pra isso, é a lista de screenshots gerada a partir de
+        // tasks selecionadas no catálogo (TASKS_DB), não um campo livre.
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'COMENTARIOS', 'TENTATIVA_LIGACAO', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
     },
     'IN_Not_Interested': {
         status: 'IN', 
@@ -539,14 +545,97 @@ export const textareaListFields = [
 
 export const textareaParagraphFields = ['CONSIDERACOES', 'COMENTARIOS'];
 
+// ==================================================================
+//               CENÁRIOS RÁPIDOS (scenarioSnippets)
+// ==================================================================
+// Reorganizado seguindo specs/workflow/case-notes-status-rules.md (regras
+// de status/substatus definidas pelo time). Cada snippet declara em qual(is)
+// substatus ele deve aparecer via `substatus: [...]` (chave de
+// SUBSTATUS_TEMPLATES, ver acima) - é isso que step-scenarios.js usa pra
+// filtrar. Marcações "[PENDENTE]" abaixo são decisões que ficaram em aberto
+// na reorganização (ver conversa) e ainda precisam de confirmação.
 export const scenarioSnippets = {
-    // --- Cenários de NI (Exclusivos) ---
+    // ==============================================================
+    // SO (Solution Offered) - só cenários que fecham/encerram o caso.
+    // ==============================================================
+
+    // --- SO_Implementation_Only: implementação de task / criação de algo ---
+    'quickfill-gtm-install': {
+        type: 'all',
+        substatus: ['SO_Implementation_Only'],
+        'field-REASON_COMMENTS': "Instalação do GTM finalizada.",
+        'field-TASKS_SOLICITADAS': "• Instalação do GTM",
+        'field-PASSOS_EXECUTADOS': "• Criamos a conta dentro do GTM\n• Instalamos dentro do CMS/Hospedagem.\n• Criamos o Vinculador de Conversões.",
+        'field-RESULTADO': "• Validei a instalação.",
+        linkedTask: 'gtm_installation'
+    },
+    'quickfill-whatsapp': {
+        type: 'all',
+        substatus: ['SO_Implementation_Only'],
+        'field-REASON_COMMENTS': "Instalação do Ads Conversion tracking para Whatsapp finalizada.",
+        'field-TASKS_SOLICITADAS': "• Criação de conversão para WHATSAPP",
+        'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM para os botões de WhatsApp.\n• Realizamos os testes e validamos o funcionamento.",
+        'field-RESULTADO': "• Task implementada com sucesso. Fecho o caso sem acompanhamento.",
+        linkedTask: 'ads_conversion_tracking'
+    },
+    'quickfill-form': {
+        type: 'all',
+        substatus: ['SO_Implementation_Only'],
+        'field-REASON_COMMENTS': "Instalação do Ads Conversion tracking para Form finalizada.",
+        'field-TASKS_SOLICITADAS': "• Criação de conversão para FORMULÁRIO (padrão, não-otimizada).",
+        'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM.\n• Realizamos os testes e validamos o funcionamento.",
+        'field-RESULTADO': "• Task implementada com sucesso. Fecho o caso sem acompanhamento.",
+        linkedTask: 'ads_conversion_tracking'
+    },
+    // [PENDENTE] Estes dois descrevem só verificação + fechamento (a
+    // implementação em si foi num atendimento anterior) - não batem 100%
+    // com nenhuma das 3 definições de SO do PDF (não é implementação nova,
+    // não tem dúvida/educação, não tem alteração/troubleshooting). Deixei
+    // só em SO_Implementation_Only por ora: cheguei a testar deixar
+    // visível também em SO_Troubleshooting_Only, mas os campos que esses
+    // dois preenchem (PASSOS_EXECUTADOS/RESULTADO) nem existem no
+    // formulário desse substatus (que usa PROBLEMAS/RESOLUCOES) - o chip
+    // apareceria lá mas preencheria só o REASON_COMMENTS, quase inútil.
+    'quickfill-ecw4-close': {
+        type: 'all',
+        substatus: ['SO_Implementation_Only'],
+        'field-REASON_COMMENTS': "Finalização do acompanhamento de EC.",
+        'field-TASKS_SOLICITADAS': "• Acompanhamento da conversão otimizada (ECW4).",
+        'field-PASSOS_EXECUTADOS': "• Após o período de acompanhamento, verifiquei o painel do Ads.\n• A conversão está sendo registrada corretamente.",
+        'field-RESULTADO': "• Valido o bom funcionamento da conversão otimizada.\n• Assim, fecho o caso.",
+        linkedTask: 'ads_enhanced_conversions'
+    },
+    'quickfill-ga4-event-close': {
+        type: 'all',
+        substatus: ['SO_Implementation_Only'],
+        'field-REASON_COMMENTS': "Finalização do Acompanhamento de GA4.",
+        'field-TASKS_SOLICITADAS': "• Acompanhamento de Eventos GA4 após 48h.",
+        'field-PASSOS_EXECUTADOS': "• Após o período de 48h de acompanhamento, verifiquei o painel.\n• O evento está sendo registrado corretamente.",
+        'field-RESULTADO': "• Valido o bom funcionamento do rastreamento de eventos.\n• Assim, fecho o caso.",
+        linkedTask: 'ga4_event_tracking'
+    },
+
+    // --- SO_Education_Only: testes/dúvidas tiradas, sem implementação ---
+    // Vazio - nenhum cenário existente descrevia esse caso (só dúvidas
+    // tiradas, nada implementado/criado). Fica pra você adicionar os
+    // cenários comuns que conhece.
+
+    // --- SO_Troubleshooting_Only: testes + alterações + fechamento ---
+    // Vazio pelo mesmo motivo acima.
+
+    // ==============================================================
+    // NI (Need Info) - aguardando algo pra seguir ou fechar.
+    // ==============================================================
+
+    // --- NI_Awaiting_Inputs: pendência do lado do anunciante ---
     'quickfill-ni-inicio-manual': {
         type: 'all',
+        substatus: ['NI_Awaiting_Inputs'],
         'field-REASON_COMMENTS': "Aguardando informações por parte do anunciante (Início 2/6)"
     },
     'quickfill-ni-cms-access': {
         type: 'all',
+        substatus: ['NI_Awaiting_Inputs'],
         'field-REASON_COMMENTS': "Aguardando informações por parte do anunciante (Início 2/6 - Sem Acesso ao CMS)",
         'field-TASKS_SOLICITADAS': "• Instalação do GTM\n• Configuração de Conversões",
         'field-CONTEXTO_CALL': "• Percebi que o(a) anunciante não tinha GTM Instalado.\n• Seguimos com a criação de conta no GTM.\n• Entretanto, a conta de acesso ao painel do site (ex: WordPress) não tinha permissão para instalar plugins ou editar o código.",
@@ -554,10 +643,30 @@ export const scenarioSnippets = {
         'field-MINHA_ACAO': "• Coloco o caso em 2/6.\n• Assim que o anunciante tiver o acesso ou a instalação for feita, abrirei um caso em BAU para dar continuidade.",
         'field-SCREENSHOTS': "• Print do painel do CMS mostrando a falta de permissão (opcional)."
     },
-    
-    // --- NOVOS CENÁRIOS NI (AWAITING VALIDATION) ---
+    // Movido de AS (estava em "quickfill-as-no-access", usando o campo
+    // MOTIVO_REAGENDAMENTO que nem existe no template de NI_Awaiting_Inputs)
+    // - falta de acesso é uma pendência do anunciante impedindo a
+    // implementação, não um reagendamento da consultoria em si. Reescrito
+    // pros campos certos do substatus, no mesmo estilo do cenário de CMS
+    // acima, mas genérico pra qualquer tipo de acesso.
+    'quickfill-ni-lack-of-access': {
+        type: 'all',
+        substatus: ['NI_Awaiting_Inputs'],
+        'field-REASON_COMMENTS': "Aguardando informações por parte do anunciante (Falta de acessos necessários)",
+        'field-CONTEXTO_CALL': "• Durante a call, identificamos que os acessos necessários para prosseguir com a implementação não estavam disponíveis.\n• Orientei o(a) anunciante sobre quais acessos são necessários e como obtê-los.",
+        'field-IMPEDIMENTO_CLIENTE': "• Anunciante precisa providenciar os acessos necessários (ex: painel do site, plataforma de anúncios, ou contato com o(a) desenvolvedor(a)) para que a implementação seja concluída.",
+        'field-MINHA_ACAO': "• Coloco o caso em 2/6.\n• Assim que o anunciante obtiver os acessos, abrirei um caso em BAU para dar continuidade."
+    },
+
+    // --- NI_In_Consult: aguardando retorno do Consult / revisão de Feed ---
+    // Vazio - nenhum cenário existente cobria esse fluxo e não tenho
+    // contexto operacional suficiente (canal, prazo típico) pra inventar
+    // um texto útil sozinho. Fica pra você adicionar.
+
+    // --- NI_Awaiting_Validation: implementação completa, aguardando registro ---
     'quickfill-ni-awaiting-ecw4': {
         type: 'all',
+        substatus: ['NI_Awaiting_Validation'],
         'field-REASON_COMMENTS': "Aguardando validação de dados (ECW4 - 7 Dias)",
         'field-TASKS_SOLICITADAS': "• Implementação de Conversões Otimizadas (ECW4)",
         'field-CONTEXTO_CALL': "• Criamos a conversão no Google Ads.\n• Configuramos o disparo das tags via GTM.\n• Adicionamos a tag de UPD (User Provided Data).\n• Testamos juntos e validamos o bom funcionamento.",
@@ -566,13 +675,13 @@ export const scenarioSnippets = {
     },
     'quickfill-ni-awaiting-ga4': {
         type: 'all',
+        substatus: ['NI_Awaiting_Validation'],
         'field-REASON_COMMENTS': "Aguardando validação de dados (GA4 Event - 48h)",
         'field-TASKS_SOLICITADAS': "• Implementação de Eventos GA4",
         'field-CONTEXTO_CALL': "• Criamos o evento no GA4.\n• Configuramos o disparo das tags via GTM.\n• Testamos juntos e validamos o bom funcionamento.",
         'field-MINHA_ACAO': "• Coloco o caso em status de Awaiting Validation para acompanhamento de 48h.",
         linkedTask: 'ga4_event_tracking'
     },
-    // -----------------------------------------------
 
     'quickfill-ni-followup-bau': {
         type: 'bau',
@@ -584,12 +693,13 @@ export const scenarioSnippets = {
         'field-TASKS_SOLICITADAS': "N/A",
         'field-IMPEDIMENTO_CLIENTE': "N/A",
         'field-MINHA_ACAO': "N/A",
-        'field-GTM_GA4_VERIFICADO': 'N/A', 
+        'field-GTM_GA4_VERIFICADO': 'N/A',
         'field-SCREENSHOTS': "• Tentativa 1 -\n• Tentativa 2 -"
     },
     'quickfill-ni-followup-lm': {
         type: 'lm',
-        'field-REASON_COMMENTS': "Aguardando informações por parte do anunciante (Follow-up LM 2/6)",
+        substatus: ['NI_Attempted_Contact'],
+        'field-REASON_COMMENTS': "Tentativa de contato sem sucesso (Follow-up LM 2/6)",
         'field-SPEAKEASY_ID': "N/A",
         'field-ON_CALL': "N/A",
         'field-CONTEXTO_CALL': "• No dia {DIA} do 2/6 enviei e-mail de follow-up (caso LM, sem tentativas de ligação), mas não obtive resposta.",
@@ -599,81 +709,43 @@ export const scenarioSnippets = {
         'field-GTM_GA4_VERIFICADO': 'N/A',
         'field-SCREENSHOTS': "• E-mail de follow-up enviado (LM) -"
     },
-
-    // --- Cenários de SO (Combináveis) ---
-    'quickfill-gtm-install': {
-        type: 'all',
-        'field-REASON_COMMENTS': "Instalação do GTM finalizada.",
-        'field-TASKS_SOLICITADAS': "• Instalação do GTM",
-        'field-PASSOS_EXECUTADOS': "• Criamos a conta dentro do GTM\n• Instalamos dentro do CMS/Hospedagem.\n• Criamos o Vinculador de Conversões.",
-        'field-RESULTADO': "• Validei a instalação.",
-        linkedTask: 'gtm_installation' 
-    },
-    'quickfill-whatsapp': {
-        type: 'all',
-        'field-REASON_COMMENTS': "Instalação do Ads Conversion tracking para Whatsapp finalizada.",
-        'field-TASKS_SOLICITADAS': "• Criação de conversão para WHATSAPP",
-        'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM para os botões de WhatsApp.\n• Realizamos os testes e validamos o funcionamento.",
-        'field-RESULTADO': "• Task implementada com sucesso. Fecho o caso sem acompanhamento.",
-        linkedTask: 'ads_conversion_tracking'
-    },
-     'quickfill-form': {
-        type: 'all',
-        'field-REASON_COMMENTS': "Instalação do Ads Conversion tracking para Form finalizada.",
-        'field-TASKS_SOLICITADAS': "• Criação de conversão para FORMULÁRIO (padrão, não-otimizada).",
-        'field-PASSOS_EXECUTADOS': "• Fizemos a criação da conversão no Ads.\n• Criamos a Tag no GTM.\n• Realizamos os testes e validamos o funcionamento.",
-        'field-RESULTADO': "• Task implementada com sucesso. Fecho o caso sem acompanhamento.",
-        linkedTask: 'ads_conversion_tracking'
-    },
-    'quickfill-ecw4-close': {
-        type: 'all',
-        'field-REASON_COMMENTS': "Finalização do acompanhamento de EC.",
-        'field-TASKS_SOLICITADAS': "• Acompanhamento da conversão otimizada (ECW4).",
-        'field-PASSOS_EXECUTADOS': "• Após o período de acompanhamento, verifiquei o painel do Ads.\n• A conversão está sendo registrada corretamente.",
-        'field-RESULTADO': "• Valido o bom funcionamento da conversão otimizada.\n• Assim, fecho o caso.",
-        linkedTask: 'ads_enhanced_conversions'
-    },
-    'quickfill-ga4-event-close': {
-        type: 'all',
-        'field-REASON_COMMENTS': "Finalização do Acompanhamento de GA4.",
-        'field-TASKS_SOLICITADAS': "• Acompanhamento de Eventos GA4 após 48h.",
-        'field-PASSOS_EXECUTADOS': "• Após o período de 48h de acompanhamento, verifiquei o painel.\n• O evento está sendo registrado corretamente.",
-        'field-RESULTADO': "• Valido o bom funcionamento do rastreamento de eventos.\n• Assim, fecho o caso.",
-        linkedTask: 'ga4_event_tracking'
-    },
-
-    // --- Cenários de AS (Combináveis) ---
-    'quickfill-as-no-show': {
-        type: 'all',
-        'field-MOTIVO_REAGENDAMENTO': '• Precisamos reagendar o caso, já que o anunciante não compareceu na meet, porém respondeu o e-mail pedindo o reagendamento'
-    },
-    'quickfill-as-insufficient-time': {
-        type: 'all',
-        'field-MOTIVO_REAGENDAMENTO': '• Precisamos reagendar o caso, já que o tempo foi insuficiente para terminar as Tasks\n• Implementamos [descrever o que foi feito]'
-    },
-    'quickfill-as-no-access': {
-        type: 'all',
-         'field-MOTIVO_REAGENDAMENTO': '• Precisamos reagendar o caso, já que o anunciante não tinha os acessos necessários para podermos implementar as tasks'
-    },
-    
-    // --- Cenários de IN (Exclusivos - Rádio) ---
-    'quickfill-in-nrp-bau': { 
+    'quickfill-ni-attempted-2day': {
         type: 'bau',
+        substatus: ['NI_Attempted_Contact'],
+        'field-REASON_COMMENTS': "Attempted Contact (Início 2 Day Rule)",
+        'field-CONTEXTO_CALL': "• Fiz a primeira tentativa de ligação, sem sucesso.\n• Enviei uma message no chat para o AM.\n• Aguardei 5 minutos e fiz a segunda tentativa de ligação, novamente sem sucesso.\n• Aguardei mais 5 minutos e agora farei o acompanhamento 2 Day Rule.",
+        'field-SCREENSHOTS': "• MSG AM -\n• Tentativa 1 -\n• Tentativa 2 -"
+    },
+
+    // ==============================================================
+    // IN (Inactive) - não vai dar pra implementar, caso será encerrado.
+    // ==============================================================
+
+    // --- IN_Not_Reachable: sem contato/resposta do anunciante ---
+    // Os 3 primeiros abaixo são bem parecidos entre si (mesma ideia: sem
+    // resposta em nenhuma tentativa, caso inativado) - fica registrado como
+    // possível redundância; mantidos separados por ora porque cada um narra
+    // um fluxo ligeiramente diferente (NRP explícito / no-show em reunião
+    // agendada / fim de acompanhamento 2/6).
+    'quickfill-in-nrp-bau': {
+        type: 'bau',
+        substatus: ['IN_Not_Reachable'],
         'field-REASON_COMMENTS': "NRP (BAU - 3 tentativas)",
         'field-COMENTARIOS': "• Duas ligações seguidas, e e-mail \"Antes dos 10 minutos\" e uma terceira e ultima tentativa de ligação.\n• Não houve resposta às tentativas de ligação ou e-mail, por isso o caso será inativado.",
         'field-SCREENSHOTS': "• Tentativa 1 -\n• Tentativa 2 -\n• Tentativa 3 -",
         'field-GTM_GA4_VERIFICADO': "N/A"
     },
-    'quickfill-in-no-show-bau': { 
+    'quickfill-in-no-show-bau': {
         type: 'bau',
+        substatus: ['IN_Not_Reachable'],
         'field-REASON_COMMENTS': "Sem resposta ao 2 Day Rule.",
-        'field-ON_CALL': "N/A", 
+        'field-ON_CALL': "N/A",
         'field-COMENTARIOS': "• O caso foi gerado e entrei na chamada no horário agendado.\n• O anunciante não compareceu à reunião.\n• Segui o protocolo de espera (BAU): realizei duas tentativas de ligação, sem sucesso.\n• Nenhuma das ligações foi atendida (ex: Caixa Postal).\n• Caso inativado após 2 Day Rule.",
-        'field-SCREENSHOTS': "• Tentativa 1 - \n• Tentativa 2  - \n• Tentativa 3 - ",
         'field-GTM_GA4_VERIFICADO': "N/A"
     },
     'quickfill-in-2-6-final': {
         type: 'all',
+        substatus: ['IN_Not_Reachable'],
         'field-REASON_COMMENTS': "Finalização (2/6)",
         'field-SPEAKEASY_ID': "-",
         'field-ON_CALL': "-",
@@ -681,33 +753,112 @@ export const scenarioSnippets = {
         'field-SCREENSHOTS': "• N/A",
         'field-GTM_GA4_VERIFICADO': "N/A"
     },
-    'quickfill-in-manual': { 
+    // Movido de DC ("quickfill-dc-lm-no-show") - o texto nunca teve nada a
+    // ver com falha de autenticação (o único substatus real de DC no PDF);
+    // era sempre "sem resposta às tentativas de contato", que é a definição
+    // exata de IN_Not_Reachable. Só removi o enquadramento de "Discard".
+    'quickfill-in-not-reachable-no-return': {
         type: 'all',
+        substatus: ['IN_Not_Reachable'],
+        'field-REASON_COMMENTS': "Inativação por ausência de retorno do anunciante",
+        'field-COMENTARIOS': "O(a) anunciante não compareceu à consultoria. Fiz as tentativas de ligação, mas não obtive retorno.\n\nIrei solicitar a inativação do caso, levando em conta a ausência de contato."
+    },
+
+    // --- IN_Not_Ready: anunciante não está pronto pra implementação ---
+    // Movido de DC ("quickfill-dc-lm-no-access") - falta de acesso pra
+    // implementar bate com a definição exata de IN_Not_Ready do PDF ("sem
+    // acesso ao site, desenvolvedor indisponível..."), não com DC.
+    'quickfill-in-not-ready-lack-of-access': {
+        type: 'all',
+        substatus: ['IN_Not_Ready'],
+        'field-REASON_COMMENTS': "Inativação por falta de acessos (Reagendamento solicitado)",
+        'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, já que o(a) anunciante não tinha os acessos necessários.\n\nIrei abrir caso em BAU para o dia solicitado e pedir a inativação do mesmo, levando em conta a falta de acessos e a solicitação de reagendamento."
+    },
+
+    // --- IN_Infeasible: inviabilidade técnica (não é problema do Google) ---
+    // [NOVO] Rascunho - substatus estava sem nenhum cenário. Revise o texto
+    // entre colchetes antes de considerar pronto.
+    'quickfill-in-infeasible': {
+        type: 'all',
+        substatus: ['IN_Infeasible'],
+        'field-REASON_COMMENTS': "Inativação por inviabilidade técnica",
+        'field-COMENTARIOS': "• Avaliamos a implementação solicitada e identificamos que não é possível realizá-la devido à complexidade técnica/estrutura do site (ex: [descrever a limitação encontrada]).\n• Não se trata de uma limitação do Google, e sim da estrutura atual do site/plataforma do anunciante.\n• Oriento o(a) anunciante sobre as opções disponíveis (ex: alteração da plataforma, apoio de um(a) desenvolvedor(a) especializado(a))."
+    },
+
+    // --- IN_Not_Interested: anunciante sem interesse em prosseguir ---
+    // [NOVO] Rascunho - mesma observação acima.
+    'quickfill-in-not-interested': {
+        type: 'all',
+        substatus: ['IN_Not_Interested'],
+        'field-REASON_COMMENTS': "Inativação por falta de interesse do anunciante",
+        'field-COMENTARIOS': "• O(a) anunciante informou que não tem interesse em prosseguir com a consultoria neste momento.\n• [Ou] O contato se limitou a perguntas gerais, sem intenção de realizar a implementação.\n• Não há mais ações pendentes da nossa parte; caso encerrado a pedido do(a) anunciante."
+    },
+
+    // --- IN_Out_of_Scope_Rerouted / Unable_to_Transfer / Email_to_Seller ---
+    // Vazios - cenários de roteamento interno bem específicos, não tenho
+    // contexto operacional (pra qual time, por qual canal) pra inventar algo
+    // útil. Fica pra você adicionar.
+
+    // --- IN_Troubleshooting_Transferred: troubleshooting não resolveu, caso transferido ---
+    // [NOVO] Rascunho - mesma observação de Infeasible/Not_Interested acima.
+    'quickfill-in-troubleshooting-transferred': {
+        type: 'all',
+        substatus: ['IN_Troubleshooting_Transferred'],
+        'field-REASON_COMMENTS': "Inativação - Troubleshooting sem sucesso, caso transferido",
+        'field-COMENTARIOS': "• Realizamos os passos de troubleshooting padrão para o problema relatado (ex: [listar testes/verificações feitas]).\n• Os passos não resolveram o problema.\n• Encaminho o caso para o time responsável ([nome do time]) para continuidade."
+    },
+
+    // O PDF define um substatus "IN - Other" pra cenários que não se
+    // encaixam em nenhum outro, mas isso não existe hoje em
+    // SUBSTATUS_TEMPLATES - decidido (2026-08-17) documentar o gap e
+    // resolver na futura análise de UX, sem criar o substatus agora. Até
+    // lá, este cenário fica sem lugar pra aparecer (substatus: []) em vez
+    // de usar um catch-all impreciso.
+    'quickfill-in-manual': {
+        type: 'all',
+        substatus: [],
         'field-REASON_COMMENTS': "Outro (Manual)",
         'field-GTM_GA4_VERIFICADO': "N/A"
     },
-    'quickfill-ni-attempted-2day': {
-        type: 'bau',
-        'field-REASON_COMMENTS': "Attempted Contact (Início 2 Day Rule)",
-        'field-CONTEXTO_CALL': "• Fiz a primeira tentativa de ligação, sem sucesso.\n• Enviei uma message no chat para o AM.\n• Aguardei 5 minutos e fiz a segunda tentativa de ligação, novamente sem sucesso.\n• Aguardei mais 5 minutos e agora farei o acompanhamento 2 Day Rule.",
-        'field-SCREENSHOTS': "• MSG AM -\n• Tentativa 1 -\n• Tentativa 2 -"
+
+    // ==============================================================
+    // AS (Assigned) - caso atribuído / precisa reagendar a consultoria.
+    // ==============================================================
+
+    // --- AS_Reschedule_1: reagendamento padrão ---
+    'quickfill-as-no-show': {
+        type: 'all',
+        substatus: ['AS_Reschedule_1'],
+        'field-MOTIVO_REAGENDAMENTO': '• Precisamos reagendar o caso, já que o anunciante não compareceu na meet, porém respondeu o e-mail pedindo o reagendamento'
+    },
+    'quickfill-as-insufficient-time': {
+        type: 'all',
+        substatus: ['AS_Reschedule_1'],
+        'field-MOTIVO_REAGENDAMENTO': '• Precisamos reagendar o caso, já que o tempo foi insuficiente para terminar as Tasks\n• Implementamos [descrever o que foi feito]'
     },
 
-        // --- Cenários de IN (Exclusivos - Rádio) ---
-    'quickfill-dc-lm-no-access': {
+    // --- AS_Acceptable_Reschedule: fator maior (sem internet/luz, saúde) ---
+    // [NOVO] Rascunho - substatus estava sem nenhum cenário. PDF dá exemplos
+    // concretos o bastante pra eu me arriscar a escrever isso sozinho.
+    'quickfill-as-force-majeure': {
         type: 'all',
-        'field-REASON_COMMENTS': "Discard - Falta de acessos (Reagendamento solicitado)",
-        'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, já que o adv não tinha os acessos.\n\nIrei abrir caso em BAU para o dia solicitado e pedir descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
+        substatus: ['AS_Acceptable_Reschedule'],
+        'field-MOTIVO_REAGENDAMENTO': '• Reagendamento por fator maior fora do controle do anunciante (ex: falta de internet/energia, motivo de saúde) - dentro dos critérios de reagendamento aceitável.\n• [Detalhar o fator específico relatado pelo anunciante]'
     },
+
+    // ==============================================================
+    // DC (Discard) - cenário atípico, encerramento imediato.
+    // ==============================================================
+    // O único substatus de DC no PDF é "Authentication Failed", que não
+    // existe em SUBSTATUS_TEMPLATES hoje (gap documentado em
+    // specs/workflow/case-notes-status-rules.md, resolução adiada pra
+    // futura análise de UX). O cenário abaixo não bate com Authentication
+    // Failed nem com nenhum substatus de IN - decidido (2026-08-17) colocar
+    // em DC_Other mesmo assim.
     'quickfill-dc-lm-incomplete': {
         type: 'all',
-        'field-REASON_COMMENTS': "Discard - Nada foi implementado durante a consultoria",
-        'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, pois não houve tempo o suficiente para terminar a task relacionada.\n\nIrei abrir caso em BAU para o dia solicitado e pedir descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
+        substatus: ['DC_Other'],
+        'field-REASON_COMMENTS': "Nada foi implementado durante a consultoria (tempo insuficiente, limite de reagendamento excedido)",
+        'field-COMENTARIOS': "Não conseguimos implementar nada durante a consultoria, pois não houve tempo o suficiente para terminar a task relacionada e o limite de reagendamentos já foi atingido.\n\nIrei abrir caso em BAU para o dia solicitado e pedir a inativação do mesmo."
     },
-    'quickfill-dc-lm-no-show': {
-        type: 'all',
-        'field-REASON_COMMENTS': "Discard - Sem contato com o Adv",
-        'field-COMENTARIOS': "O adv não compareceu na consultoria. Fiz as tentativas de ligação, mas não obtive retorno.\n\nIrei solicitar descarte do mesmo, levando em conta a falta de acessos e solicitação de reagendamento do mesmo."
-    },
-
 };
