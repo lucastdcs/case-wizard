@@ -477,10 +477,11 @@ export const SUBSTATUS_TEMPLATES = {
         }
     },
     'SO_Education_Only': {
-        status: 'SO', 
+        status: 'SO',
         name: 'SO - Education Only',
         requiresTasks: true,
         templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'DUVIDAS', 'RESOLUCOES', 'PROXIMOS_PASSOS', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        extraOptionalFields: ['PROXIMOS_PASSOS', 'CONSIDERACOES'],
         fieldPrefixes: {
             'REASON_COMMENTS': 'Consultoria utilizada para tirar dúvidas do anunciante.'
         }
