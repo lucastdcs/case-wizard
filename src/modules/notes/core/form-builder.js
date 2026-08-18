@@ -4,6 +4,7 @@ import { fetchAndInsertSpeakeasyId } from "../automation/case-log-scraper.js";
 import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
 import { SoundManager } from "../../shared/sound-manager.js";
+import { confirmDialog } from "../../shared/utils.js";
 
 export function buildDynamicForm(subStatusKey, container, state) {
     container.innerHTML = "";
@@ -48,13 +49,19 @@ export function buildDynamicForm(subStatusKey, container, state) {
             btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
             btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
             btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
-            // Sem confirmDialog aqui: remover um campo opcional é reversível
-            // num clique só (o chip "+ campo" reaparece logo abaixo), então
-            // bloquear com um modal só atrapalhava a velocidade sem
-            // proteger nada de fato irreversível.
-            btnDelete.onclick = (e) => {
+            // Só confirma se o campo já tem conteúdo digitado: nesse caso o
+            // texto some do output final ao remover o campo, então vale a
+            // pena checar. Campo vazio continua removendo direto, sem
+            // atrapalhar a velocidade por nada.
+            btnDelete.onclick = async (e) => {
                 e.preventDefault();
                 SoundManager.playClick();
+                const currentValue = (state.formData[fieldId] || "").trim();
+                if (currentValue) {
+                    const fieldLabel = labelText.textContent.replace(/:\s*$/, "").trim();
+                    const confirmed = await confirmDialog(`Remover o campo "${fieldLabel}"? O texto digitado será perdido.`, { danger: true, confirmText: "Remover" });
+                    if (!confirmed) return;
+                }
                 state.removeField(fieldName);
                 buildDynamicForm(subStatusKey, container, state);
             };
