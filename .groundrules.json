@@ -1,0 +1,73 @@
+{
+  "groundrulesVersion": "1.10.0",
+  "adopted": true,
+  "adoptedAt": "2026-08-18",
+  "bootstrappedWithVersion": null,
+  "migrations": [],
+  "answers": {
+    "projectName": "Case Wizard",
+    "adoptionMode": "map",
+    "intentSource": "Use README.md + specs/_MASTER_RULEBOOK.md",
+    "call3aCoreDocs": ["CLAUDE.md", "docs/decisions/ + docs/LEARNINGS.md", "intake/ + docs/media/ readme"],
+    "call3bOptionalDocs": ["CHANGELOG.md", "docs/GLOSSARY.md", "docs/ROADMAP.md", "RELEASE.md"],
+    "call3bDeclined": ["docs/DATA_MODEL.md", "docs/SECURITY.md", "docs/DESIGN_SYSTEM.md", "docs/I18N.md", "docs/PROCESS.md", "docs/AGENT-EVALS.md"],
+    "call3cLoopScaffolding": false,
+    "planMdFollowUp": true
+  },
+  "intent": {
+    "source": "file",
+    "files": ["README.md", "specs/_MASTER_RULEBOOK.md"],
+    "capturedIn": "intake/INTENT.md",
+    "synthesizedIn": "docs/VISION.md"
+  },
+  "appliedPractices": [],
+  "loop": { "scaffolded": false, "at": null },
+  "policies": { "noAiAttribution": false },
+  "generatedFiles": [
+    "CLAUDE.md",
+    "PLAN.md",
+    "docs/VISION.md",
+    "docs/LEARNINGS.md",
+    "docs/GLOSSARY.md",
+    "docs/ROADMAP.md",
+    "docs/decisions/README.md",
+    "docs/decisions/0000-template.md",
+    "docs/media/README.md",
+    "intake/README.md",
+    "intake/INTENT.md",
+    "CHANGELOG.md",
+    "RELEASE.md",
+    "docs/ADOPTION-LOG.md"
+  ],
+  "adoptedFiles": {
+    "README.md": "README",
+    "docs/ARCHITECTURE.md": "architecture",
+    "docs/WORKFLOW.md": "process",
+    "docs/BUSINESS_RULES.md": "business-rules (pointer stub into specs/)",
+    "docs/CORE_MODULES.md": "project-doc",
+    "docs/TL_DASHBOARD_DIAGNOSTIC.md": "project-doc",
+    "docs/verification/": "project-doc (evidence)",
+    "docs/media/": "visual-assets (pre-existing screenshots/video)",
+    "specs/_MASTER_RULEBOOK.md": "conventions + intent-source",
+    "specs/data-models/db-schema.md": "data-model",
+    "specs/data-models/api-payloads.md": "data-model",
+    "specs/ui-ux/design-system.md": "design-system",
+    "specs/ui-ux/dom-standards.md": "design-system",
+    "specs/workflow/bau-lifecycle.md": "business-rules",
+    "specs/workflow/scraping-rules.md": "business-rules",
+    "package.json": "stack-manifest",
+    ".github/workflows/deploy.yml": "ci-cd",
+    ".gitignore": "vcs-config"
+  },
+  "adoptionMode": "map",
+  "migratedFiles": {},
+  "skippedFiles": {
+    "docs/DATA_MODEL.md": "redundant with specs/data-models/db-schema.md + api-payloads.md, which already fill this role as the team's maintained source of truth",
+    "docs/DESIGN_SYSTEM.md": "redundant with specs/ui-ux/design-system.md + dom-standards.md",
+    "docs/SECURITY.md": "declined in Call 3b interview",
+    "docs/I18N.md": "declined in Call 3b interview — no formal i18n framework in use (PT/ES/EN are data-driven template strings)",
+    "docs/PROCESS.md": "declined in Call 3b interview — docs/WORKFLOW.md already documents the dev/build/deploy process",
+    "docs/AGENT-EVALS.md": "declined in Call 3b interview",
+    "loop/": "declined in Call 3c interview (HAS_LOOP=false)"
+  }
+}
