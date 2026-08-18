@@ -342,10 +342,13 @@ export const SoundManager = {
 
         // Duas notas ascendentes (Ré -> Lá, quinta justa) com um shimmer
         // (oitava acima) na segunda nota - lê como "pronto", não como alerta.
+        // Volumes na mesma faixa discreta do playSuccess/playHover (ver
+        // comentário de "Mixagem de Escritório" no topo do arquivo) - a
+        // primeira versão tocou alto demais.
         const notes = [
-            { freq: 587.33, at: 0,    dur: 0.22, vol: 0.5 },  // D5
-            { freq: 880.00, at: 0.09, dur: 0.32, vol: 0.55 }, // A5
-            { freq: 1760.0, at: 0.09, dur: 0.28, vol: 0.18 }, // A6 (shimmer)
+            { freq: 587.33, at: 0,    dur: 0.2,  vol: 0.26 }, // D5
+            { freq: 880.00, at: 0.09, dur: 0.3,  vol: 0.3 },  // A5
+            { freq: 1760.0, at: 0.09, dur: 0.26, vol: 0.08 }, // A6 (shimmer)
         ];
 
         notes.forEach((n) => {
