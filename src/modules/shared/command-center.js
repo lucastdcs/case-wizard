@@ -108,21 +108,27 @@ export function initCommandCenter(actions, splashDone) {
                 
                 opacity: 0;
                 width: 56px;
+                height: auto;
                 /* Único elemento persistente do app que anima quase o tempo
                    todo (hover em 9 botões, abrir/fechar, drag) - único caso
                    onde will-change estático (em vez de ligar/desligar por
                    interação) compensa, já que é sempre 1 elemento só. */
-                will-change: transform, opacity, width;
+                will-change: transform, opacity, width, height;
 
                 overflow: visible;
 
                 /* ABRIR: A pílula expande com a curva de entrada (decelerate) -
                    mesma assinatura do "genie" já usada no resto do app pros
                    módulos abrindo - em vez da standard simétrica, que fazia a
-                   pílula crescer sem nenhum assentamento no final. */
+                   pílula crescer sem nenhum assentamento no final.
+                   "height" é primado via JS (openPill(), abaixo) com um valor
+                   em px medido de verdade - "auto"/"none" nunca são
+                   interpoláveis em CSS, então sem isso a altura (a dimensão
+                   que mais muda ao abrir) simplesmente pulava pro tamanho
+                   final em vez de crescer, não importa a curva usada aqui. */
                 transition:
                     width 0.36s var(--cw-ease-decelerate),
-                    max-height 0.36s var(--cw-ease-decelerate),
+                    height 0.36s var(--cw-ease-decelerate),
                     padding 0.36s var(--cw-ease-decelerate),
                     opacity 0.25s ease,
                     transform 0.36s var(--cw-ease-decelerate);
@@ -148,23 +154,34 @@ export function initCommandCenter(actions, splashDone) {
 
             /* --- ESTADO COLAPSADO (FECHANDO) --- */
             .cw-pill.collapsed {
-                width: 50px !important; 
-                max-height: 50px !important;
+                width: 50px !important;
+                height: 50px !important;
                 padding: 0 !important;
                 gap: 0 !important;
                 border-radius: 50% !important;
                 cursor: pointer;
-                
+
                 overflow: hidden !important;
 
                 /* FECHAR: os ícones somem primeiro (abaixo), depois a pílula
-                   colapsa - mas agora com --cw-ease-spring no formato (leve
-                   "mola": ela encolhe passando um pouco do alvo e assenta de
-                   volta) em vez da curva standard simétrica, que fazia a
-                   pílula cair seca no círculo final. */
+                   colapsa. "width" usa --cw-ease-spring (mola com overshoot)
+                   porque o curso é pequeno (~6px) - dá aquele leve "dá e
+                   volta" sem exagero. "height" usa --cw-ease-elastic (sem
+                   overshoot) de propósito: o curso é grande (pode passar de
+                   500px), e a MESMA curva com overshoot ali faz a pílula
+                   encolher quase até sumir antes de voltar pro tamanho final
+                   - overshoot escala com a distância percorrida, não é um
+                   efeito de tamanho fixo.
+                   Importante: aqui é "height", não "max-height" - max-height
+                   não é interpolável de/para "none" (o estado aberto nunca
+                   fixa uma altura), então qualquer transição por max-height
+                   só pula pro valor final em vez de animar, e ainda brigava
+                   com o "height" primado via JS (collapsePill()) quando os
+                   dois coexistiam. "height" sozinho, primado com um valor em
+                   px real dos dois lados, é a única forma de animar isso. */
                 transition:
                     width 0.42s var(--cw-ease-spring) 0.15s,
-                    max-height 0.42s var(--cw-ease-spring) 0.15s,
+                    height 0.42s var(--cw-ease-elastic) 0.15s,
                     padding 0.36s var(--cw-ease-elastic) 0.15s,
                     border-radius 0.36s var(--cw-ease-elastic) 0.15s,
                     opacity 0.2s ease 0s,
@@ -488,18 +505,6 @@ export function initCommandCenter(actions, splashDone) {
             @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
             @keyframes googleBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
             @keyframes textSlideUp { to { opacity: 1; transform: translateY(0); } }
-
-            @keyframes cw-system-ready {
-                0% { transform: scale(1); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
-                50% { transform: scale(1.02); box-shadow: 0 0 20px ${COLORS.blue}; }
-                100% { transform: scale(1); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
-            }
-            .cw-pill.system-ready {
-                animation: cw-system-ready 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            @media (prefers-reduced-motion: reduce) {
-                .cw-pill.system-ready { animation: fadeIn 0.3s ease; }
-            }
         `;
     document.head.appendChild(style);
   }
@@ -591,6 +596,91 @@ export function initCommandCenter(actions, splashDone) {
     pill.querySelector('.broadcast').appendChild(badge);
   }
 
+  // --- ABRIR/FECHAR (animação de altura real) ---
+  // CSS não sabe interpolar de/para "auto" ou "none" (é como max-height
+  // ficava antes) - qualquer transição de altura que dependa disso pula
+  // pro tamanho final em vez de animar, não importa a curva usada. Por
+  // isso medimos a altura real do conteúdo (scrollHeight) e primamos um
+  // valor em px pros dois lados da transição, do mesmo jeito que o código
+  // já fazia pra reposicionar top/bottom durante o drag (transition:none
+  // -> escreve o valor de partida -> força reflow -> religa a transição
+  // -> escreve o valor final).
+  const prefersReducedMotion = () =>
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function openPill() {
+    if (prefersReducedMotion()) {
+      pill.classList.remove('collapsed');
+      SoundManager.playGenieOpen();
+      return;
+    }
+
+    const rect = pill.getBoundingClientRect();
+    const screenH = window.innerHeight;
+    const isBottomHalf = rect.top > (screenH / 2);
+    const startHeight = rect.height;
+
+    pill.style.setProperty('transition', 'none', 'important');
+
+    // Mede a altura aberta de verdade (com transições desligadas, senão o
+    // padding/gap ainda não teriam "assentado" no valor final e a medida
+    // sairia menor do que o real) e depois volta pro estado colapsado -
+    // esse é o frame de partida real da animação.
+    pill.classList.remove('collapsed');
+    const targetHeight = pill.scrollHeight;
+    pill.classList.add('collapsed');
+    pill.style.height = `${startHeight}px`;
+
+    if (isBottomHalf) {
+      const currentBottom = screenH - rect.bottom;
+      pill.style.top = 'auto';
+      pill.style.bottom = `${currentBottom}px`;
+    } else {
+      pill.style.bottom = 'auto';
+      pill.style.top = `${rect.top}px`;
+    }
+
+    // Contém o conteúdo enquanto a pílula cresce - a pílula fica com
+    // overflow:visible fora da transição (pros tooltips dos botões
+    // aparecerem pra fora), mas durante o crescimento isso deixava os
+    // ícones "vazando" por baixo da forma ainda curta.
+    pill.style.overflow = 'hidden';
+
+    void pill.offsetWidth;
+    pill.style.removeProperty('transition');
+    pill.classList.remove('collapsed');
+    pill.style.height = `${targetHeight}px`;
+    SoundManager.playGenieOpen();
+
+    setTimeout(() => {
+      pill.style.height = '';
+      pill.style.overflow = '';
+    }, 380);
+  }
+
+  function collapsePill(playSound = true) {
+    if (pill.classList.contains('collapsed')) return;
+
+    if (prefersReducedMotion()) {
+      pill.classList.add('collapsed');
+      if (playSound) SoundManager.playGenieOpen();
+      return;
+    }
+
+    const startHeight = pill.getBoundingClientRect().height;
+    pill.style.setProperty('transition', 'none', 'important');
+    pill.style.height = `${startHeight}px`;
+    void pill.offsetWidth;
+    pill.style.removeProperty('transition');
+    pill.classList.add('collapsed');
+    pill.style.height = '50px';
+    if (playSound) SoundManager.playGenieOpen();
+
+    setTimeout(() => {
+      pill.style.height = '';
+    }, 600);
+  }
+
   // --- LÓGICA DE FECHAMENTO AUTOMÁTICO ---
   let closeTimer = null;
 
@@ -598,8 +688,10 @@ export function initCommandCenter(actions, splashDone) {
     const isAnyActive = pill.querySelector('.cw-btn.active');
     if (isAnyActive || pill.classList.contains('processing-center')) return;
 
+    // Fechamento por ausência continua silencioso (sem playGenieOpen) -
+    // só o fechamento deliberado (clique) tem som.
     closeTimer = setTimeout(() => {
-      pill.classList.add('collapsed');
+      collapsePill(false);
     }, 3000);
   };
 
@@ -637,19 +729,13 @@ export function initCommandCenter(actions, splashDone) {
     } else {
       await esperar(2800);
     }
+    // Um único "beat" de chegada (pop elástico + som) - antes disso a
+    // pílula também dava um segundo pulso ("system-ready") ~700ms depois,
+    // o que lia como a bolinha pulando duas vezes em vez de uma chegada
+    // coesa. Ficou só o gesto de entrada.
     pill.classList.add("arriving");
     SoundManager.playReady();
-    await esperar(300);
-    const items = pill.querySelectorAll(".cw-btn");
     pill.querySelectorAll(".cw-sep").forEach((s) => s.classList.add("visible"));
-    for (let i = 0; i < items.length; i++) { items[i].classList.add("popped"); await esperar(40); }
-    await esperar(100);
-    pill.classList.add("system-check");
-
-    // Microinteração 'Ready'
-    await esperar(100);
-    pill.classList.add("system-ready");
-    setTimeout(() => pill.classList.remove("system-ready"), 400);
   })();
 
   // 5. DRAG & DROP
@@ -723,31 +809,9 @@ export function initCommandCenter(actions, splashDone) {
       const isBtnClick = e.target.closest('button');
 
       if (pill.classList.contains('collapsed')) {
-        const rect = pill.getBoundingClientRect();
-        const screenH = window.innerHeight;
-        const isBottomHalf = rect.top > (screenH / 2);
-
-        pill.style.setProperty('transition', 'none', 'important');
-
-        if (isBottomHalf) {
-          const currentBottom = screenH - rect.bottom;
-          pill.style.top = 'auto';
-          pill.style.bottom = `${currentBottom}px`;
-        } else {
-          pill.style.bottom = 'auto';
-          pill.style.top = `${rect.top}px`;
-        }
-
-        void pill.offsetWidth;
-        pill.style.removeProperty('transition');
-        pill.classList.remove('collapsed');
-        SoundManager.playGenieOpen();
-
-      } else {
-        if (!isAnyActive && !isBtnClick) {
-          pill.classList.add('collapsed');
-          SoundManager.playGenieOpen();
-        }
+        openPill();
+      } else if (!isAnyActive && !isBtnClick) {
+        collapsePill();
       }
 
       if (isBtnClick) {
