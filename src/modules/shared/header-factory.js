@@ -1,6 +1,33 @@
 // src/modules/shared/header-factory.js
 
 import { makeDraggable } from './utils.js';
+import { getLanguage, onLanguageChange } from './i18n.js';
+
+// Textos fixos do header/overlay de ajuda, compartilhados por TODO popup de
+// módulo (Notes, Email, Configs, etc.) - traduzir aqui já cobre esses
+// pedaços em todo o app, mesmo antes de cada módulo migrar seu próprio texto.
+const HEADER_DICT = {
+    pt: {
+        helpTooltip: "Sobre & Feedback",
+        closeTooltip: "Fechar",
+        version: "Versão",
+        reportLink: "Reportar Bug ou Sugestão",
+        backBtn: "Voltar",
+        createdBy: "criado por",
+    },
+    es: {
+        helpTooltip: "Acerca de y Comentarios",
+        closeTooltip: "Cerrar",
+        version: "Versión",
+        reportLink: "Reportar error o sugerencia",
+        backBtn: "Volver",
+        createdBy: "creado por",
+    },
+};
+function ht(key) {
+    const lang = getLanguage();
+    return HEADER_DICT[lang]?.[key] ?? HEADER_DICT.pt[key] ?? key;
+}
 
 // Configuração Visual do Header (Dark Glass)
 const HEADER_STYLE = {
@@ -105,7 +132,7 @@ export function createStandardHeader(popupElement, titleText, versionText, helpD
     const helpBtn = document.createElement("div");
     helpBtn.innerHTML = helpIcon;
     Object.assign(helpBtn.style, BTN_STYLE);
-    helpBtn.title = "Sobre & Feedback"; // Tooltip atualizado
+    helpBtn.title = ht('helpTooltip');
     helpBtn.classList.add('no-drag');
     
     helpBtn.onmouseenter = () => { helpBtn.style.background = 'rgba(255,255,255,0.1)'; helpBtn.style.color = '#FFF'; };
@@ -119,7 +146,7 @@ export function createStandardHeader(popupElement, titleText, versionText, helpD
     const closeBtn = document.createElement("div");
     closeBtn.innerHTML = closeIcon;
     Object.assign(closeBtn.style, BTN_STYLE);
-    closeBtn.title = "Fechar";
+    closeBtn.title = ht('closeTooltip');
     closeBtn.classList.add('no-drag', 'cw-header-close');
 
     closeBtn.onmouseenter = () => { closeBtn.style.background = 'rgba(242, 139, 130, 0.2)'; closeBtn.style.color = '#F28B82'; }; 
@@ -151,9 +178,17 @@ export function createStandardHeader(popupElement, titleText, versionText, helpD
 
     rightDiv.appendChild(helpBtn);
     rightDiv.appendChild(closeBtn);
-    
+
     header.appendChild(leftDiv);
     header.appendChild(rightDiv);
+
+    // Mantém os tooltips do header em sincronia se o idioma mudar com o
+    // popup já montado (a troca acontece em Configurações, com este popup
+    // possivelmente já criado desde o boot).
+    onLanguageChange(() => {
+        helpBtn.title = ht('helpTooltip');
+        closeBtn.title = ht('closeTooltip');
+    });
 
     return header;
 }
@@ -179,10 +214,10 @@ function createHelpOverlay(parentPopup, title, version, description) {
     });
 
     overlay.innerHTML = `
-        <div style="color: #202124; font-size: 18px; font-weight: 600; margin-bottom: 8px;">${title}</div>
-        <div style="color: #5f6368; font-size: 14px; margin-bottom: 24px;">Versão ${version}</div>
-        
-        <div style="color: #3c4043; font-size: 14px; max-width: 90%; line-height: 1.6; margin-bottom: 24px;">
+        <div class="cw-help-title" style="color: #202124; font-size: 18px; font-weight: 600; margin-bottom: 8px;">${title}</div>
+        <div class="cw-help-version" style="color: #5f6368; font-size: 14px; margin-bottom: 24px;">${ht('version')} ${version}</div>
+
+        <div class="cw-help-description" style="color: #3c4043; font-size: 14px; max-width: 90%; line-height: 1.6; margin-bottom: 24px;">
             ${description}
         </div>
 
@@ -199,19 +234,19 @@ function createHelpOverlay(parentPopup, title, version, description) {
                 text-decoration: none;
                 transition: all 0.2s ease;
             ">
-                <span>💬</span> Reportar Bug ou Sugestão
+                <span>💬</span> <span class="cw-help-report-link">${ht('reportLink')}</span>
             </a>
         </div>
 
-        <div style="font-size: 12px; color: #9aa0a6;">
-            created by <span style="color: #1a73e8; font-weight: 500;">@lucaste</span>
+        <div class="cw-help-created-by" style="font-size: 12px; color: #9aa0a6;">
+            ${ht('createdBy')} <span style="color: #1a73e8; font-weight: 500;">@lucaste</span>
         </div>
-        
+
         <button id="close-help-internal" style="margin-top: 24px; padding: 8px 24px; border: 1px solid #dadce0; background: white; border-radius: 18px; color: #5f6368; cursor: pointer; font-weight: 500; transition: background 0.2s;">
-            Voltar
+            ${ht('backBtn')}
         </button>
     `;
-    
+
     // Efeito hover no link de feedback via JS
     setTimeout(() => {
         const link = overlay.querySelector('#cw-feedback-link');
@@ -230,6 +265,17 @@ function createHelpOverlay(parentPopup, title, version, description) {
             };
         }
     }, 0);
+
+    onLanguageChange(() => {
+        const versionEl = overlay.querySelector('.cw-help-version');
+        if (versionEl) versionEl.textContent = `${ht('version')} ${version}`;
+        const reportEl = overlay.querySelector('.cw-help-report-link');
+        if (reportEl) reportEl.textContent = ht('reportLink');
+        const createdByEl = overlay.querySelector('.cw-help-created-by');
+        if (createdByEl) createdByEl.firstChild.textContent = `${ht('createdBy')} `;
+        const backBtn = overlay.querySelector('#close-help-internal');
+        if (backBtn) backBtn.textContent = ht('backBtn');
+    });
 
     parentPopup.appendChild(overlay);
     return overlay;

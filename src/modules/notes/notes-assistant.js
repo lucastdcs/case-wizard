@@ -15,6 +15,7 @@ import { DraftService } from "./drafts/draft-service.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { enableFilledCheck, lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { getPageData } from "../shared/page-data.js";
+import { getLanguage, onLanguageChange } from "../shared/i18n.js";
 import {
     SUBSTATUS_TEMPLATES,
     SUBSTATUS_SHORTCODES,
@@ -226,14 +227,6 @@ export function initCaseNotesAssistant() {
         div.innerHTML = `
             <div style="display: flex; gap: 12px; margin-bottom: 8px;">
                 <div style="flex: 1;">
-                    <div class="cw-section-title js-label-idioma" style="font-size: 10px; margin-bottom: 6px;">${t('idioma')}</div>
-                    <div class="cw-segmented-control" id="lang-selector">
-                        <div class="cw-segmented-indicator"></div>
-                        <button data-lang="pt" class="active" style="z-index:2">PT</button>
-                        <button data-lang="es" style="z-index:2">ES</button>
-                    </div>
-                </div>
-                <div style="flex: 1;">
                     <div class="cw-section-title js-label-fluxo" style="font-size: 10px; margin-bottom: 6px;">${t('fluxo')}</div>
                     <div class="cw-segmented-control" id="type-selector">
                         <div class="cw-segmented-indicator"></div>
@@ -310,19 +303,6 @@ export function initCaseNotesAssistant() {
                 indicator.style.transform = `translateX(${index * 100}%) translateX(${index * 2}px)`;
             }
         };
-
-        div.querySelectorAll('#lang-selector button').forEach((btn, idx) => {
-            btn.onclick = () => {
-                notesState.setLanguage(btn.dataset.lang);
-                div.querySelectorAll('#lang-selector button').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                updateIndicator('lang-selector', idx);
-                SoundManager.playClick();
-                if (notesState.currentSubStatus) {
-                    onSubStatusChange(notesState.currentSubStatus);
-                }
-            };
-        });
 
         div.querySelectorAll('#type-selector button').forEach((btn, idx) => {
             btn.onclick = () => {
@@ -875,7 +855,9 @@ export function initCaseNotesAssistant() {
     const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     async function restoreFullState(draft) {
-        notesState.setLanguage(draft.currentLang || "pt");
+        // O idioma da nota não é mais restaurado do rascunho: ele segue o
+        // idioma global do Case Wizard (Configurações), unificado com a
+        // interface, então continua o que já estiver ativo no momento.
         notesState.setCaseType(draft.currentCaseType || "bau");
         notesState.setPortugalCase(draft.isPortugalCase || false);
         notesState.setConsent(draft.consent || false);
@@ -884,10 +866,6 @@ export function initCaseNotesAssistant() {
         }
 
         // Update Segmented Controls visually
-        const langBtn = content.querySelector(`#lang-selector button[data-lang="${notesState.currentLang}"]`);
-        if (langBtn) langBtn.classList.add('active');
-        content.querySelectorAll('#lang-selector button').forEach(b => { if(b !== langBtn) b.classList.remove('active'); });
-
         const typeBtn = content.querySelector(`#type-selector button[data-type="${notesState.currentCaseType}"]`);
         if (typeBtn) typeBtn.classList.add('active');
         content.querySelectorAll('#type-selector button').forEach(b => { if(b !== typeBtn) b.classList.remove('active'); });
@@ -999,12 +977,15 @@ export function initCaseNotesAssistant() {
 
     function updateUIFromState(state) {
         // Sync labels when language changes
-        const lIdioma = content.querySelector('.js-label-idioma');
-        if (lIdioma) lIdioma.textContent = t('idioma');
         const lFluxo = content.querySelector('.js-label-fluxo');
         if (lFluxo) lFluxo.textContent = t('fluxo');
         const lPortugal = content.querySelector('.js-label-portugal');
         if (lPortugal) lPortugal.textContent = t('caso_portugal');
+        const portugalBtns = content.querySelectorAll('#portugal-selector button');
+        if (portugalBtns.length === 2) {
+            portugalBtns[0].textContent = t('nao');
+            portugalBtns[1].textContent = t('sim');
+        }
         const lStatus = content.querySelector('.js-label-status');
         if (lStatus) lStatus.textContent = t('status_principal');
         const lSubstatus = content.querySelector('.js-label-substatus');
@@ -1047,8 +1028,18 @@ export function initCaseNotesAssistant() {
     actionsSection.style.display = "none";
 
     // Initialize with defaults
-    notesState.setLanguage("pt");
+    notesState.setLanguage(getLanguage());
     notesState.setCaseType("bau");
+
+    // O idioma da nota acompanha o idioma global da interface (trocado em
+    // Configurações). Se houver uma nota em andamento, regenera a saída
+    // já traduzida, igual ao antigo seletor PT/ES fazia ao clicar.
+    onLanguageChange((lang) => {
+        notesState.setLanguage(lang);
+        if (notesState.currentSubStatus) {
+            onSubStatusChange(notesState.currentSubStatus);
+        }
+    });
 
     // Initial Badge Check
     refreshGlobalBadge();

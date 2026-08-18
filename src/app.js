@@ -14,7 +14,9 @@ import { initConfigsAssistant } from './modules/configs/configs-assistant.js';
 import { initBAUForm } from './modules/bau-form/bau-form-assistant.js';
 
 // Importação do Serviço de Dados
-import { DataService } from './modules/shared/data-service.js';
+import { DataService, fetchUserProfile } from './modules/shared/data-service.js';
+import { getAgentEmail } from './modules/shared/page-data.js';
+import { applyProfileLanguage } from './modules/shared/i18n.js';
 
 // 2. Importação do Núcleo Compartilhado
 import { initCommandCenter } from './modules/shared/command-center.js';
@@ -100,7 +102,17 @@ function initApp() {
             
             // 1. Agora sim, logamos o Start (já teremos o LDAP em cache)
             DataService.logEvent("App", "Start", "Session Start");
-            
+
+            // 1.1. Aplica o idioma vindo da planilha People (se a pessoa
+            // nunca trocou manualmente em Configurações neste navegador).
+            const agentEmail = getAgentEmail();
+            if (agentEmail) {
+                const ldap = agentEmail.split('@')[0];
+                fetchUserProfile(ldap)
+                    .then(profile => { if (profile) applyProfileLanguage(profile); })
+                    .catch(e => console.warn("Não foi possível resolver o idioma do perfil:", e));
+            }
+
             // 2. Verifica Tutoriais / Changelog
             initOnboarding(); 
             
