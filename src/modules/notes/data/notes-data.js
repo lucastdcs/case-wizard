@@ -684,16 +684,10 @@ export const scenarioSnippets = {
         linkedTask: 'ga4_event_tracking'
     },
 
-    // --- NI_Attempted_Contact: tentativa de contato sem sucesso ---
-    // Os dois de follow-up abaixo estavam classificados como NI genérico
-    // ("aguardando informações"), mas o conteúdo inteiro (CONTEXTO_CALL) é
-    // sobre tentativas de contato sem resposta - bate com a definição de
-    // Attempted Contact do PDF, não com Awaiting Inputs. Reclassificados;
-    // texto do REASON_COMMENTS ajustado pra refletir isso.
     'quickfill-ni-followup-bau': {
         type: 'bau',
-        substatus: ['NI_Attempted_Contact'],
-        'field-REASON_COMMENTS': "Tentativa de contato sem sucesso (Follow-up BAU 2/6)",
+        substatus: ['NI_Awaiting_Inputs'],
+        'field-REASON_COMMENTS': "Aguardando informações por parte do anunciante (Follow-up BAU 2/6)",
         'field-SPEAKEASY_ID': "N/A",
         'field-ON_CALL': "N/A",
         'field-CONTEXTO_CALL': "• No dia {DIA} do 2/6 fiz duas tentativas de contatos seguidas, mas não obtive resposta. Envio na sequência o email referente ao dia respectivo.",
