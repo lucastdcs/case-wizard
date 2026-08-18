@@ -57,6 +57,18 @@ export function syncStreakBadge() {
   const count = getCaseStreakToday();
   countEl.textContent = count;
   badge.classList.toggle('visible', count > 0);
+
+  // "Temperatura" da chama + halo da bolinha fechada (ver CSS) sobem juntos
+  // com o count, nos mesmos patamares do MILESTONES que já disparam o toast
+  // (5/15/30) - vivem na pílula (não no badge) porque o halo do ícone
+  // colapsado também lê essas classes.
+  const pill = document.querySelector('.cw-pill');
+  if (pill) {
+    pill.classList.toggle('has-streak', count > 0);
+    pill.classList.toggle('streak-tier-2', count >= 5 && count < 15);
+    pill.classList.toggle('streak-tier-3', count >= 15 && count < 30);
+    pill.classList.toggle('streak-tier-4', count >= 30);
+  }
 }
 
 // Chamado quando um caso é efetivamente concluído (nota gerada e inserida).
@@ -108,47 +120,89 @@ export function initCommandCenter(actions, splashDone) {
                 
                 opacity: 0;
                 width: 56px;
+                height: auto;
                 /* Único elemento persistente do app que anima quase o tempo
                    todo (hover em 9 botões, abrir/fechar, drag) - único caso
                    onde will-change estático (em vez de ligar/desligar por
                    interação) compensa, já que é sempre 1 elemento só. */
-                will-change: transform, opacity, width;
+                will-change: transform, opacity, width, height;
 
                 overflow: visible;
 
-                /* ABRIR: A pílula expande PRIMEIRO */
-                transition: 
-                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                /* ABRIR: A pílula expande PRIMEIRO. Curva de entrada
+                   (--cw-ease-decelerate) - mesma usada pelo genie dos módulos,
+                   pra parar de ser a única transição do app na curva
+                   "standard" sem direção. (max-height saiu da lista: o estado
+                   aberto nunca define um valor numérico pra ela, então ia de
+                   /para "none" - não interpolável, a transição não fazia nada.
+                   "height" entra no lugar dela, mas só funciona porque é
+                   primado via JS com um valor em px medido de verdade
+                   (openPill(), abaixo) - "auto" também não é interpolável, e
+                   height é a dimensão que mais muda ao abrir.) */
+                transition:
+                    width 0.3s var(--cw-ease-decelerate),
+                    height 0.3s var(--cw-ease-decelerate),
+                    padding 0.3s var(--cw-ease-decelerate),
                     opacity 0.2s ease,
-                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    transform 0.3s var(--cw-ease-decelerate);
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-pill { transition: opacity 0.2s ease !important; transform: none !important; }
             }
 
-            .cw-pill.docked { opacity: 1; transform: translateX(0) scale(1); }
+            /* --- SURGIMENTO (primeiro boot) --- */
+            /* Antes era só um fade de opacity (praticamente imperceptível).
+               Agora a pílula chega com peso: sobe, dá um leve overshoot
+               (--cw-ease-spring) e assenta - acompanhado de SoundManager.playReady(). */
+            @keyframes cw-pill-arrive {
+                from { opacity: 0; transform: translateY(28px) scale(0.4); }
+                to   { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            .cw-pill.arriving {
+                animation: cw-pill-arrive 0.6s var(--cw-ease-spring) forwards;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill.arriving { animation: fadeIn 0.3s ease forwards; }
+            }
 
             /* --- ESTADO COLAPSADO (FECHANDO) --- */
             .cw-pill.collapsed {
-                width: 50px !important; 
-                max-height: 50px !important;
+                width: 50px !important;
+                height: 50px !important;
                 padding: 0 !important;
                 gap: 0 !important;
                 border-radius: 50% !important;
                 cursor: pointer;
-                
-                overflow: hidden !important; 
 
-                /* FECHAR: A pílula colapsa DEPOIS dos ícones (delay 0.15s) */
-                transition: 
-                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
-                    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
-                    padding 0.3s ease 0.15s,
-                    border-radius 0.3s ease 0.15s,
+                overflow: hidden !important;
+
+                /* FECHAR: A pílula colapsa DEPOIS dos ícones (delay 0.15s -
+                   mesmo instante em que o logo da bolinha começa a aparecer,
+                   ver .cw-pill.collapsed .cw-main-logo abaixo, pra não sobrar
+                   uma casca vazia encolhendo sem nada dentro). width/padding/
+                   border-radius/transform usam --cw-ease-accelerate,
+                   espelhando --cw-ease-decelerate da abertura acima - cursos
+                   pequenos (poucos px), então a "chegada rápida" do
+                   accelerate não incomoda.
+                   "height" é a exceção: em vez de max-height (não
+                   interpolável de/para "none", só pulava pro valor final -
+                   por isso tinha saído da lista de transição), agora é
+                   primada via JS com um valor em px real (collapsePill()).
+                   E usa --cw-ease-elastic, não --cw-ease-accelerate: o curso
+                   é grande (pode passar de 500px), e uma curva que "acelera
+                   até o fim" nesse tamanho de percurso lê como a pílula
+                   caindo com força no círculo final - exatamente a
+                   brutalidade que devia sumir. --cw-ease-elastic desacelera
+                   suavemente até o alvo, sem overshoot (que, na mesma
+                   distância, faria a pílula encolher quase até sumir antes
+                   de voltar). */
+                transition:
+                    width 0.3s var(--cw-ease-accelerate) 0.15s,
+                    height 0.3s var(--cw-ease-elastic) 0.15s,
+                    padding 0.3s var(--cw-ease-accelerate) 0.15s,
+                    border-radius 0.3s var(--cw-ease-accelerate) 0.15s,
                     opacity 0.2s ease 0s,
-                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s !important;
+                    transform 0.3s var(--cw-ease-accelerate) 0.15s !important;
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-pill.collapsed { transition: opacity 0.2s ease !important; }
@@ -164,35 +218,65 @@ export function initCommandCenter(actions, splashDone) {
                 color: #fff;
                 transition: opacity 0.2s ease 0s, transform 0.2s ease 0s;
             }
-            .cw-main-logo svg { fill: #fff; width: 24px; height: 24px; transition: fill 0.3s; }
-            
+            /* Duas camadas de SVG empilhadas (base branca + spark com
+               gradiente já embutido no próprio <linearGradient>) que fazem
+               cross-fade de opacidade no hover - troca real e animável, em
+               vez do mask/background-image de antes: essas duas propriedades
+               não são interpoláveis em CSS, então a cor "estalava" no meio
+               de um scale que era o único pedaço realmente animando. */
+            .cw-main-logo svg { position: absolute; inset: 0; margin: auto; width: 24px; height: 24px; pointer-events: none; }
+            .cw-main-logo .cw-logo-base { fill: #fff; opacity: 1; transition: opacity 0.25s var(--cw-ease-standard); }
+            .cw-main-logo .cw-logo-spark { opacity: 0; transition: opacity 0.25s var(--cw-ease-standard); }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-main-logo .cw-logo-base, .cw-main-logo .cw-logo-spark { transition: opacity 0.15s ease !important; }
+            }
+
             .cw-pill:not(.collapsed) .cw-main-logo {
                 transform: rotate(360deg) scale(0);
                 opacity: 0;
-                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: opacity 0.2s var(--cw-ease-accelerate), transform 0.2s var(--cw-ease-accelerate);
             }
-            .cw-pill.collapsed .cw-main-logo { 
-                opacity: 1; 
+            .cw-pill.collapsed .cw-main-logo {
+                opacity: 1;
                 transform: rotate(0) scale(1);
-                /* Aparece depois que a pílula colapsou */
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
+                /* Aparece no mesmo instante em que a cápsula começa a
+                   encolher (delay 0.15s, ver .cw-pill.collapsed acima) -
+                   antes ficava 0.3s, criando ~150ms de bolha vazia entre os
+                   ícones sumindo e o logo aparecer. */
+                transition: opacity 0.3s var(--cw-ease-decelerate) 0.15s, transform 0.3s var(--cw-ease-decelerate) 0.15s;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill:not(.collapsed) .cw-main-logo,
+                .cw-pill.collapsed .cw-main-logo { transition: opacity 0.15s ease !important; transform: none !important; }
             }
             .cw-pill.collapsed:hover .cw-main-logo {
-                background-image: linear-gradient(135deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%);
-                -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/%3E%3C/svg%3E") center/24px no-repeat;
-                mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/%3E%3C/svg%3E") center/24px no-repeat;
                 transform: scale(1.15) rotate(0deg);
                 transition-delay: 0s;
             }
-            .cw-pill.collapsed:hover .cw-main-logo svg { fill: transparent; }
+            .cw-pill.collapsed:hover .cw-main-logo .cw-logo-base { opacity: 0; }
+            .cw-pill.collapsed:hover .cw-main-logo .cw-logo-spark { opacity: 1; }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill.collapsed:hover .cw-main-logo { transform: none !important; }
+            }
+
+            /* Halo quente atrás do raio quando há streak do dia, só na
+               bolinha fechada (já que o badge com o número não aparece mais
+               aí - ver .cw-streak-badge). Intensifica junto dos mesmos
+               patamares do toast de marco (5/15/30, ver MILESTONES). */
+            .cw-pill.collapsed.has-streak .cw-main-logo { filter: drop-shadow(0 0 6px rgba(253, 214, 99, 0.5)); transition: filter 0.3s ease; }
+            .cw-pill.collapsed.streak-tier-2 .cw-main-logo { filter: drop-shadow(0 0 6px rgba(251, 188, 5, 0.55)); }
+            .cw-pill.collapsed.streak-tier-3 .cw-main-logo { filter: drop-shadow(0 0 7px rgba(249, 171, 0, 0.6)); }
+            .cw-pill.collapsed.streak-tier-4 .cw-main-logo { filter: drop-shadow(0 0 8px rgba(234, 67, 53, 0.65)); }
 
             /* --- CONTEÚDO INTERNO --- */
             .cw-pill > *:not(.cw-main-logo) {
                 opacity: 1; transform: scale(1) translateY(0); visibility: visible;
-                /* Aparece depois que a pílula expandiu (delay 0.15s para ser produtivo) */
+                /* Aparece depois que a pílula expandiu (delay 0.15s), com um
+                   leve "pop" elástico (--cw-ease-spring) em vez de um scale
+                   linear seco - dá a coreografia que faltava na abertura. */
                 transition:
-                    opacity 0.2s ease 0.15s,
-                    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
+                    opacity 0.25s ease 0.15s,
+                    transform 0.3s var(--cw-ease-spring) 0.15s,
                     visibility 0s linear 0.15s,
                     filter 0.15s ease 0.15s;
             }
@@ -200,28 +284,39 @@ export function initCommandCenter(actions, splashDone) {
                 .cw-pill > *:not(.cw-main-logo) { transition: opacity 0.2s ease 0.1s !important; transform: none !important; }
             }
 
-            .cw-pill.collapsed > *:not(.cw-main-logo):not(#cw-streak-badge) {
+            .cw-pill.collapsed > *:not(.cw-main-logo) {
                 opacity: 0; pointer-events: none; visibility: hidden;
                 transform: scale(0.5); filter: blur(8px);
-                /* Desaparece imediatamente */
+                /* Desaparece imediatamente, com a curva de saída (accelerate)
+                   já usada no resto do app pra elementos saindo de cena. */
                 transition:
-                    opacity 0.15s ease 0s,
-                    transform 0.15s ease 0s,
+                    opacity 0.15s var(--cw-ease-accelerate) 0s,
+                    transform 0.15s var(--cw-ease-accelerate) 0s,
                     filter 0.15s ease 0s,
                     visibility 0s linear 0.15s;
             }
 
-            /* --- CASCATAS DE ENTRADA --- */
-            .cw-pill:not(.collapsed) > *:nth-child(2) { transition-delay: 0.15s; } /* Grip */
-            .cw-pill:not(.collapsed) > *:nth-child(3) { transition-delay: 0.18s; } /* Notes */
-            .cw-pill:not(.collapsed) > *:nth-child(4) { transition-delay: 0.21s; } /* Email */
-            .cw-pill:not(.collapsed) > *:nth-child(5) { transition-delay: 0.24s; } /* Script */
-            .cw-pill:not(.collapsed) > *:nth-child(6) { transition-delay: 0.27s; } /* Links */
-            .cw-pill:not(.collapsed) > *:nth-child(7) { transition-delay: 0.30s; } /* Library */
-            .cw-pill:not(.collapsed) > *:nth-child(8) { transition-delay: 0.33s; } /* Timezone */
-            .cw-pill:not(.collapsed) > *:nth-child(9) { transition-delay: 0.36s; } /* Configs */
-            .cw-pill:not(.collapsed) > *:nth-child(10) { transition-delay: 0.39s; } /* Sep */
-            .cw-pill:not(.collapsed) > *:nth-child(11) { transition-delay: 0.42s; } /* Broadcast */
+            /* --- CASCATAS DE ENTRADA ---
+               Índices recalculados pro DOM atual (admin-tag e streak-badge
+               entraram no meio do markup depois que isso foi escrito
+               originalmente, empurrando todo mundo 2 posições - a lista
+               antiga estava aplicando o delay do "Grip" no .cw-main-logo, o
+               do "Notes" no admin-tag, etc. Efeito colateral: o logo ganhava
+               um delay de abertura de 0.15s que não devia existir (ver
+               .cw-pill:not(.collapsed) .cw-main-logo acima, que quer delay
+               0). admin-tag/streak-badge saem da lista de propósito: cada
+               um já tem sua própria transição dedicada. */
+            .cw-pill:not(.collapsed) > *:nth-child(5) { transition-delay: 0.15s; } /* Grip */
+            .cw-pill:not(.collapsed) > *:nth-child(6) { transition-delay: 0.17s; } /* Notes */
+            .cw-pill:not(.collapsed) > *:nth-child(7) { transition-delay: 0.19s; } /* BAU Form */
+            .cw-pill:not(.collapsed) > *:nth-child(8) { transition-delay: 0.21s; } /* Email */
+            .cw-pill:not(.collapsed) > *:nth-child(9) { transition-delay: 0.23s; } /* Script */
+            .cw-pill:not(.collapsed) > *:nth-child(10) { transition-delay: 0.25s; } /* Links */
+            .cw-pill:not(.collapsed) > *:nth-child(11) { transition-delay: 0.27s; } /* Library */
+            .cw-pill:not(.collapsed) > *:nth-child(12) { transition-delay: 0.29s; } /* Timezone */
+            .cw-pill:not(.collapsed) > *:nth-child(13) { transition-delay: 0.31s; } /* Configs */
+            .cw-pill:not(.collapsed) > *:nth-child(14) { transition-delay: 0.33s; } /* Sep */
+            .cw-pill:not(.collapsed) > *:nth-child(15) { transition-delay: 0.35s; } /* Broadcast */
 
             /* --- ESTILOS DOS BOTÕES --- */
             .cw-btn {
@@ -416,10 +511,14 @@ export function initCommandCenter(actions, splashDone) {
             }
 
             /* --- RITMO DO TURNO (contador de casos hoje) --- */
-            /* Só aparece com a pílula fechada/idle - é um indicador ambiente,
-               não uma notificação; some assim que o menu abre pra não competir
-               com nada. Fica de fora da regra geral de "esconder no collapsed"
-               (seletor lá em cima) de propósito. */
+            /* Só aparece com a pílula ABERTA - é um indicador de contexto (tem
+               espaço pro número, não corta em overflow:hidden), não uma
+               notificação que precise brigar pela atenção na bolinha fechada.
+               Segue a regra geral de "esconder no collapsed" (seletor lá em
+               cima) como qualquer outro conteúdo interno; o que sobra aqui é
+               só o gate extra de "só se tiver streak" pro estado aberto -
+               mesmo formato de .cw-admin-badge.visible logo acima, que já
+               resolve esse specificity certo. */
             .cw-streak-badge {
                 position: absolute; top: -6px; right: -6px;
                 background: #202124; color: #FDD663;
@@ -429,13 +528,18 @@ export function initCommandCenter(actions, splashDone) {
                 border: 1px solid rgba(255,255,255,0.15);
                 box-shadow: 0 2px 6px rgba(0,0,0,0.3);
                 pointer-events: none; z-index: 25;
-                opacity: 0; transform: scale(0.5);
-                transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+                transition: opacity 0.2s ease, transform 0.2s var(--cw-ease-spring), color 0.3s ease;
             }
-            .cw-pill.collapsed .cw-streak-badge.visible { opacity: 1; transform: scale(1); }
+            .cw-pill:not(.collapsed) .cw-streak-badge:not(.visible) { opacity: 0; transform: scale(0.5); }
+            .cw-pill:not(.collapsed) .cw-streak-badge.visible { opacity: 1; transform: scale(1); }
             @media (prefers-reduced-motion: reduce) {
                 .cw-streak-badge { transition: opacity 0.15s ease !important; transform: none !important; }
             }
+            /* Temperatura da chama sobe com o count - mesmos patamares do
+               MILESTONES (5/15/30) que já disparam o toast de marco. */
+            .cw-pill.streak-tier-2 #cw-streak-count { color: #FBBC05; }
+            .cw-pill.streak-tier-3 #cw-streak-count { color: #F9AB00; }
+            .cw-pill.streak-tier-4 #cw-streak-count { color: #EA4335; }
 
             .cw-center-success { display: none; color: ${COLORS.green}; margin-bottom: 10px; }
             .cw-center-success svg { width: 48px; height: 48px; }
@@ -464,18 +568,6 @@ export function initCommandCenter(actions, splashDone) {
             @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
             @keyframes googleBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
             @keyframes textSlideUp { to { opacity: 1; transform: translateY(0); } }
-
-            @keyframes cw-system-ready {
-                0% { transform: scale(1); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
-                50% { transform: scale(1.02); box-shadow: 0 0 20px ${COLORS.blue}; }
-                100% { transform: scale(1); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
-            }
-            .cw-pill.system-ready {
-                animation: cw-system-ready 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            @media (prefers-reduced-motion: reduce) {
-                .cw-pill.system-ready { animation: fadeIn 0.3s ease; }
-            }
         `;
     document.head.appendChild(style);
   }
@@ -488,7 +580,11 @@ export function initCommandCenter(actions, splashDone) {
     script: `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
     links: `<svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>`,
     broadcast: `<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
-    main: `<svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>`,
+    main: `<svg class="cw-logo-base" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>`,
+    // Camada de cima do cross-fade do hover (bug/2 do fogo): mesmo path do
+    // "main", com o gradiente das 4 cores de marca já embutido no próprio
+    // SVG (em vez de mask+background-image, que não animam).
+    mainSpark: `<svg class="cw-logo-spark" viewBox="0 0 24 24"><defs><linearGradient id="cw-spark-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4285F4"/><stop offset="33%" stop-color="#EA4335"/><stop offset="66%" stop-color="#FBBC05"/><stop offset="100%" stop-color="#34A853"/></linearGradient></defs><path fill="url(#cw-spark-grad)" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
     timezone: `<svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`,
     library: `<svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>`, // [NOVO]
     configs: `<svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>`,
@@ -501,7 +597,7 @@ export function initCommandCenter(actions, splashDone) {
 
   pill.innerHTML = `
         <div id="cw-command-center" style="display:none;"></div>
-        <div class="cw-main-logo" title="Busca rápida: Ctrl/Cmd+K">${ICONS.main}</div>
+        <div class="cw-main-logo" title="Busca rápida: Ctrl/Cmd+K">${ICONS.main}${ICONS.mainSpark}</div>
         <div id="cw-admin-tag" class="cw-admin-badge">Admin</div>
         <div id="cw-streak-badge" class="cw-streak-badge" title="Casos concluídos hoje">🔥 <span id="cw-streak-count">0</span></div>
 
@@ -567,15 +663,107 @@ export function initCommandCenter(actions, splashDone) {
     pill.querySelector('.broadcast').appendChild(badge);
   }
 
+  // --- ABRIR/FECHAR (animação de altura real) ---
+  // CSS não sabe interpolar de/para "auto" ou "none" (era o problema do
+  // max-height antigo, ver comentários acima em .cw-pill/.cw-pill.collapsed)
+  // - qualquer transição de altura que dependa disso pula pro tamanho final
+  // em vez de animar, não importa a curva usada. Por isso medimos a altura
+  // real do conteúdo (scrollHeight) e primamos um valor em px pros dois
+  // lados da transição, do mesmo jeito que o código já faz pra reposicionar
+  // top/bottom durante o drag (transition:none -> escreve o valor de
+  // partida -> força reflow -> religa a transição -> escreve o valor final).
+  const prefersReducedMotion = () =>
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function openPill() {
+    if (prefersReducedMotion()) {
+      pill.classList.remove('collapsed');
+      SoundManager.playGenieOpen();
+      return;
+    }
+
+    const rect = pill.getBoundingClientRect();
+    const screenH = window.innerHeight;
+    const isBottomHalf = rect.top > (screenH / 2);
+    const startHeight = rect.height;
+
+    pill.style.setProperty('transition', 'none', 'important');
+
+    // Mede a altura aberta de verdade (com transições desligadas, senão o
+    // padding/gap ainda não teriam "assentado" no valor final e a medida
+    // sairia menor do que o real) e depois volta pro estado colapsado -
+    // esse é o frame de partida real da animação.
+    pill.classList.remove('collapsed');
+    const targetHeight = pill.scrollHeight;
+    pill.classList.add('collapsed');
+    pill.style.height = `${startHeight}px`;
+
+    if (isBottomHalf) {
+      const currentBottom = screenH - rect.bottom;
+      pill.style.top = 'auto';
+      pill.style.bottom = `${currentBottom}px`;
+    } else {
+      pill.style.bottom = 'auto';
+      pill.style.top = `${rect.top}px`;
+    }
+
+    // Contém o conteúdo enquanto a pílula cresce - a pílula fica com
+    // overflow:visible fora da transição (pros tooltips dos botões
+    // aparecerem pra fora), mas durante o crescimento isso deixava os
+    // ícones "vazando" por baixo da forma ainda curta.
+    pill.style.overflow = 'hidden';
+
+    void pill.offsetWidth;
+    pill.style.removeProperty('transition');
+    pill.classList.remove('collapsed');
+    pill.style.height = `${targetHeight}px`;
+    SoundManager.playGenieOpen();
+
+    setTimeout(() => {
+      pill.style.height = '';
+      pill.style.overflow = '';
+    }, 350);
+  }
+
+  function collapsePill(playSound = true) {
+    if (pill.classList.contains('collapsed')) return;
+
+    if (prefersReducedMotion()) {
+      pill.classList.add('collapsed');
+      if (playSound) SoundManager.playSwoosh();
+      return;
+    }
+
+    const startHeight = pill.getBoundingClientRect().height;
+    pill.style.setProperty('transition', 'none', 'important');
+    pill.style.height = `${startHeight}px`;
+    void pill.offsetWidth;
+    pill.style.removeProperty('transition');
+    pill.classList.add('collapsed');
+    pill.style.height = '50px';
+    if (playSound) SoundManager.playSwoosh();
+
+    setTimeout(() => {
+      pill.style.height = '';
+    }, 480);
+  }
+
   // --- LÓGICA DE FECHAMENTO AUTOMÁTICO ---
   let closeTimer = null;
 
   pill.onmouseleave = () => {
-    const isAnyActive = pill.querySelector('.cw-btn.active');
-    if (isAnyActive || pill.classList.contains('processing-center')) return;
+    if (pill.classList.contains('processing-center')) return;
 
+    // 'isAnyActive' precisa ser reavaliado aqui dentro, no momento em que o
+    // timer dispara - não só uma vez ao agendar. Um módulo pode abrir nesses
+    // 3s por um caminho que não passa pela pílula (ex: Command Palette,
+    // Ctrl/Cmd+K, que chama actions.toggleX direto) sem o mouse nunca
+    // reentrar pra disparar o mouseenter que cancelaria o timer; sem essa
+    // checagem no disparo, a pílula colapsava por baixo de um módulo aberto.
     closeTimer = setTimeout(() => {
-      pill.classList.add('collapsed');
+      const isAnyActive = pill.querySelector('.cw-btn.active');
+      if (isAnyActive) return;
+      collapsePill();
     }, 3000);
   };
 
@@ -613,18 +801,13 @@ export function initCommandCenter(actions, splashDone) {
     } else {
       await esperar(2800);
     }
-    pill.classList.add("docked");
-    await esperar(300);
-    const items = pill.querySelectorAll(".cw-btn");
+    // Um único "beat" de chegada (pop elástico + som) - antes disso a
+    // pílula também dava um segundo pulso ("system-ready") ~700ms depois,
+    // o que lia como a bolinha pulando duas vezes em vez de uma chegada
+    // coesa. Ficou só o gesto de entrada.
+    pill.classList.add("arriving");
+    SoundManager.playReady();
     pill.querySelectorAll(".cw-sep").forEach((s) => s.classList.add("visible"));
-    for (let i = 0; i < items.length; i++) { items[i].classList.add("popped"); await esperar(40); }
-    await esperar(100);
-    pill.classList.add("system-check");
-
-    // Microinteração 'Ready'
-    await esperar(100);
-    pill.classList.add("system-ready");
-    setTimeout(() => pill.classList.remove("system-ready"), 400);
   })();
 
   // 5. DRAG & DROP
@@ -698,31 +881,9 @@ export function initCommandCenter(actions, splashDone) {
       const isBtnClick = e.target.closest('button');
 
       if (pill.classList.contains('collapsed')) {
-        const rect = pill.getBoundingClientRect();
-        const screenH = window.innerHeight;
-        const isBottomHalf = rect.top > (screenH / 2);
-
-        pill.style.setProperty('transition', 'none', 'important');
-
-        if (isBottomHalf) {
-          const currentBottom = screenH - rect.bottom;
-          pill.style.top = 'auto';
-          pill.style.bottom = `${currentBottom}px`;
-        } else {
-          pill.style.bottom = 'auto';
-          pill.style.top = `${rect.top}px`;
-        }
-
-        void pill.offsetWidth;
-        pill.style.removeProperty('transition');
-        pill.classList.remove('collapsed');
-        SoundManager.playGenieOpen();
-
-      } else {
-        if (!isAnyActive && !isBtnClick) {
-          pill.classList.add('collapsed');
-          SoundManager.playGenieOpen();
-        }
+        openPill();
+      } else if (!isAnyActive && !isBtnClick) {
+        collapsePill();
       }
 
       if (isBtnClick) {

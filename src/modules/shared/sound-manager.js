@@ -328,6 +328,48 @@ export const SoundManager = {
         });
     },
 
+    // 6. READY (Surgimento da Pill)
+    // Ref: chime de "power on" de hardware premium - curto, ascendente,
+    // confirma que algo chegou sem soar como notificação nem como sucesso.
+    // Toca uma única vez, no instante em que a pílula surge na tela, pra dar
+    // peso sonoro a um evento que antes era puramente visual (e discreto
+    // demais pra ser percebido).
+    playReady: () => {
+        if (muted) return;
+        const ctx = getContext();
+        if (!ctx) return;
+        const t = ctx.currentTime;
+
+        // Duas notas ascendentes (Ré -> Lá, quinta justa) com um shimmer
+        // (oitava acima) na segunda nota - lê como "pronto", não como alerta.
+        // Volumes na mesma faixa discreta do playSuccess/playHover (ver
+        // comentário de "Mixagem de Escritório" no topo do arquivo) - a
+        // primeira versão tocou alto demais.
+        const notes = [
+            { freq: 587.33, at: 0,    dur: 0.2,  vol: 0.26 }, // D5
+            { freq: 880.00, at: 0.09, dur: 0.3,  vol: 0.3 },  // A5
+            { freq: 1760.0, at: 0.09, dur: 0.26, vol: 0.08 }, // A6 (shimmer)
+        ];
+
+        notes.forEach((n) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.value = n.freq;
+
+            const start = t + n.at;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(MASTER_GAIN * n.vol, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + n.dur);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + n.dur + 0.05);
+        });
+    },
+
     // Manter compatibilidade com chamadas antigas
     playSwoosh: () => { /* Alias para Genie */ SoundManager.playGenieOpen(); },
     playReset: () => { /* Alias para Error sutil */ SoundManager.playError(); },
