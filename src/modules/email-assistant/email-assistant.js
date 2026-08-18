@@ -237,7 +237,13 @@ export function initEmailAssistant() {
     const popup = document.createElement("div");
     popup.id = "email-assistant-popup";
     popup.classList.add("cw-module-window", "cw-email-popup");
-    Object.assign(popup.style, stylePopup);
+    // stylePopup traz width:400px inline (tamanho genérico dos outros
+    // popups) - sem sobrescrever aqui, esse inline vence o width:850px/
+    // height:650px do .cw-email-popup no CSS (inline sempre bate classe),
+    // e o layout de 2 painéis (320px fixo + preview) fica espremido num
+    // popup real de 400px. Mesmo padrão que call-script/personal-library/
+    // links/etc já aplicam depois do spread de stylePopup.
+    Object.assign(popup.style, stylePopup, { width: "850px", height: "650px" });
     popup.style.display = "none";
     popup.style.flexDirection = "column";
 
