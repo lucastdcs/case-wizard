@@ -176,14 +176,20 @@ export function initCommandCenter(actions, splashDone) {
 
                 overflow: hidden !important;
 
-                /* FECHAR: A pílula colapsa DEPOIS dos ícones (delay 0.15s -
-                   mesmo instante em que o logo da bolinha começa a aparecer,
-                   ver .cw-pill.collapsed .cw-main-logo abaixo, pra não sobrar
-                   uma casca vazia encolhendo sem nada dentro). width/padding/
-                   border-radius/transform usam --cw-ease-accelerate,
-                   espelhando --cw-ease-decelerate da abertura acima - cursos
-                   pequenos (poucos px), então a "chegada rápida" do
-                   accelerate não incomoda.
+                /* FECHAR: A pílula só começa a colapsar depois que a cascata
+                   de saída dos ícones termina (delay 0.38s - o último ícone,
+                   o Grip, já começou a sumir em 0.20s e leva mais 0.2s pra
+                   terminar; ver CASCATA DE SAÍDA abaixo). Antes era um delay
+                   fixo de 0.15s, pensado pra quando todo o conteúdo sumia de
+                   uma vez só - com a cascata isso deixava a cápsula
+                   encolhendo por baixo de ícones que ainda estavam saindo.
+                   O logo (ver .cw-pill.collapsed .cw-main-logo abaixo) usa o
+                   mesmo delay, pra aparecer no instante exato em que a
+                   cápsula começa a encolher.
+                   width/padding/border-radius/transform usam
+                   --cw-ease-accelerate, espelhando --cw-ease-decelerate da
+                   abertura acima - cursos pequenos (poucos px), então a
+                   "chegada rápida" do accelerate não incomoda.
                    "height" é a exceção: em vez de max-height (não
                    interpolável de/para "none", só pulava pro valor final -
                    por isso tinha saído da lista de transição), agora é
@@ -197,12 +203,12 @@ export function initCommandCenter(actions, splashDone) {
                    distância, faria a pílula encolher quase até sumir antes
                    de voltar). */
                 transition:
-                    width 0.3s var(--cw-ease-accelerate) 0.15s,
-                    height 0.3s var(--cw-ease-elastic) 0.15s,
-                    padding 0.3s var(--cw-ease-accelerate) 0.15s,
-                    border-radius 0.3s var(--cw-ease-accelerate) 0.15s,
+                    width 0.3s var(--cw-ease-accelerate) 0.38s,
+                    height 0.3s var(--cw-ease-elastic) 0.38s,
+                    padding 0.3s var(--cw-ease-accelerate) 0.38s,
+                    border-radius 0.3s var(--cw-ease-accelerate) 0.38s,
                     opacity 0.2s ease 0s,
-                    transform 0.3s var(--cw-ease-accelerate) 0.15s !important;
+                    transform 0.3s var(--cw-ease-accelerate) 0.38s !important;
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-pill.collapsed { transition: opacity 0.2s ease !important; }
@@ -240,10 +246,9 @@ export function initCommandCenter(actions, splashDone) {
                 opacity: 1;
                 transform: rotate(0) scale(1);
                 /* Aparece no mesmo instante em que a cápsula começa a
-                   encolher (delay 0.15s, ver .cw-pill.collapsed acima) -
-                   antes ficava 0.3s, criando ~150ms de bolha vazia entre os
-                   ícones sumindo e o logo aparecer. */
-                transition: opacity 0.3s var(--cw-ease-decelerate) 0.15s, transform 0.3s var(--cw-ease-decelerate) 0.15s;
+                   encolher (delay 0.38s, ver .cw-pill.collapsed acima - só
+                   depois que a cascata de saída dos ícones termina). */
+                transition: opacity 0.3s var(--cw-ease-decelerate) 0.38s, transform 0.3s var(--cw-ease-decelerate) 0.38s;
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-pill:not(.collapsed) .cw-main-logo,
@@ -287,13 +292,16 @@ export function initCommandCenter(actions, splashDone) {
             .cw-pill.collapsed > *:not(.cw-main-logo) {
                 opacity: 0; pointer-events: none; visibility: hidden;
                 transform: scale(0.5); filter: blur(8px);
-                /* Desaparece imediatamente, com a curva de saída (accelerate)
-                   já usada no resto do app pra elementos saindo de cena. */
+                /* Duração base (0s de delay aqui) - cada ícone ganha seu
+                   próprio delay individual logo abaixo, na cascata de saída,
+                   então esse "0s" só vale pra quem não tiver um delay mais
+                   específico. Duração subiu de 0.15s pra 0.2s (respiro maior
+                   por ícone, não só um corte seco). */
                 transition:
-                    opacity 0.15s var(--cw-ease-accelerate) 0s,
-                    transform 0.15s var(--cw-ease-accelerate) 0s,
-                    filter 0.15s ease 0s,
-                    visibility 0s linear 0.15s;
+                    opacity 0.2s var(--cw-ease-accelerate) 0s,
+                    transform 0.2s var(--cw-ease-accelerate) 0s,
+                    filter 0.2s ease 0s,
+                    visibility 0s linear 0s;
             }
 
             /* --- CASCATAS DE ENTRADA ---
@@ -317,6 +325,27 @@ export function initCommandCenter(actions, splashDone) {
             .cw-pill:not(.collapsed) > *:nth-child(13) { transition-delay: 0.31s; } /* Configs */
             .cw-pill:not(.collapsed) > *:nth-child(14) { transition-delay: 0.33s; } /* Sep */
             .cw-pill:not(.collapsed) > *:nth-child(15) { transition-delay: 0.35s; } /* Broadcast */
+
+            /* --- CASCATA DE SAÍDA ---
+               Antes todo o conteúdo sumia de uma vez só (delay 0s pra todo
+               mundo) - os 9 botões se sobrepunham num único flash em vez de
+               cada um ter seu próprio momento. Agora sai em cascata reversa
+               (o último a aparecer na abertura é o primeiro a sumir no
+               fechamento - o mesmo "unwind" de um zíper fechando de baixo
+               pra cima), com folga suficiente entre cada um pra dar tempo de
+               respirar antes da cápsula (que só começa a encolher depois -
+               ver .cw-pill.collapsed acima) entrar em cena. */
+            .cw-pill.collapsed > *:nth-child(15) { transition-delay: 0s; }    /* Broadcast */
+            .cw-pill.collapsed > *:nth-child(14) { transition-delay: 0.02s; } /* Sep */
+            .cw-pill.collapsed > *:nth-child(13) { transition-delay: 0.04s; } /* Configs */
+            .cw-pill.collapsed > *:nth-child(12) { transition-delay: 0.06s; } /* Timezone */
+            .cw-pill.collapsed > *:nth-child(11) { transition-delay: 0.08s; } /* Library */
+            .cw-pill.collapsed > *:nth-child(10) { transition-delay: 0.10s; } /* Links */
+            .cw-pill.collapsed > *:nth-child(9)  { transition-delay: 0.12s; } /* Script */
+            .cw-pill.collapsed > *:nth-child(8)  { transition-delay: 0.14s; } /* Email */
+            .cw-pill.collapsed > *:nth-child(7)  { transition-delay: 0.16s; } /* BAU Form */
+            .cw-pill.collapsed > *:nth-child(6)  { transition-delay: 0.18s; } /* Notes */
+            .cw-pill.collapsed > *:nth-child(5)  { transition-delay: 0.20s; } /* Grip */
 
             /* --- ESTILOS DOS BOTÕES --- */
             .cw-btn {
@@ -743,9 +772,11 @@ export function initCommandCenter(actions, splashDone) {
     pill.style.height = '50px';
     if (playSound) SoundManager.playSwoosh();
 
+    // 0.38s de delay (cascata de saída dos ícones) + 0.3s de encolhimento
+    // da cápsula = ~0.68s até o fim de verdade da transição de altura.
     setTimeout(() => {
       pill.style.height = '';
-    }, 480);
+    }, 700);
   }
 
   // --- LÓGICA DE FECHAMENTO AUTOMÁTICO ---
