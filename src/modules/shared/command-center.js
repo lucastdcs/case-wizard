@@ -144,7 +144,20 @@ export function initCommandCenter(actions, splashDone) {
                 .cw-pill { transition: opacity 0.2s ease !important; transform: none !important; }
             }
 
-            .cw-pill.docked { opacity: 1; transform: translateX(0) scale(1); }
+            /* --- SURGIMENTO (primeiro boot) --- */
+            /* Antes era só um fade de opacity (praticamente imperceptível).
+               Agora a pílula chega com peso: sobe, dá um leve overshoot
+               (--cw-ease-spring) e assenta - acompanhado de SoundManager.playReady(). */
+            @keyframes cw-pill-arrive {
+                from { opacity: 0; transform: translateY(28px) scale(0.4); }
+                to   { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            .cw-pill.arriving {
+                animation: cw-pill-arrive 0.6s var(--cw-ease-spring) forwards;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill.arriving { animation: fadeIn 0.3s ease forwards; }
+            }
 
             /* --- ESTADO COLAPSADO (FECHANDO) --- */
             .cw-pill.collapsed {
@@ -237,10 +250,12 @@ export function initCommandCenter(actions, splashDone) {
             /* --- CONTEÚDO INTERNO --- */
             .cw-pill > *:not(.cw-main-logo) {
                 opacity: 1; transform: scale(1) translateY(0); visibility: visible;
-                /* Aparece depois que a pílula expandiu (delay 0.15s para ser produtivo) */
+                /* Aparece depois que a pílula expandiu (delay 0.15s), com um
+                   leve "pop" elástico (--cw-ease-spring) em vez de um scale
+                   linear seco - dá a coreografia que faltava na abertura. */
                 transition:
-                    opacity 0.2s ease 0.15s,
-                    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
+                    opacity 0.25s ease 0.15s,
+                    transform 0.3s var(--cw-ease-spring) 0.15s,
                     visibility 0s linear 0.15s,
                     filter 0.15s ease 0.15s;
             }
@@ -251,10 +266,11 @@ export function initCommandCenter(actions, splashDone) {
             .cw-pill.collapsed > *:not(.cw-main-logo) {
                 opacity: 0; pointer-events: none; visibility: hidden;
                 transform: scale(0.5); filter: blur(8px);
-                /* Desaparece imediatamente */
+                /* Desaparece imediatamente, com a curva de saída (accelerate)
+                   já usada no resto do app pra elementos saindo de cena. */
                 transition:
-                    opacity 0.15s ease 0s,
-                    transform 0.15s ease 0s,
+                    opacity 0.15s var(--cw-ease-accelerate) 0s,
+                    transform 0.15s var(--cw-ease-accelerate) 0s,
                     filter 0.15s ease 0s,
                     visibility 0s linear 0.15s;
             }
@@ -692,7 +708,8 @@ export function initCommandCenter(actions, splashDone) {
     } else {
       await esperar(2800);
     }
-    pill.classList.add("docked");
+    pill.classList.add("arriving");
+    SoundManager.playReady();
     await esperar(300);
     const items = pill.querySelectorAll(".cw-btn");
     pill.querySelectorAll(".cw-sep").forEach((s) => s.classList.add("visible"));
