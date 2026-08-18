@@ -62,21 +62,7 @@ export function createScenariosComponent(onSelectCallback) {
       // pertencem a qual substatus: specs/workflow/case-notes-status-rules.md
       const filtered = Object.entries(scenarioSnippets).filter(([id, data]) => {
           const matchesType = !data.type || data.type === 'all' || data.type === caseType;
-          if (data.subStatus) {
-              return matchesType && data.subStatus === subStatusKey;
-          }
-          let matchesSubStatus = false;
-          if (subStatusKey.startsWith('NI_')) {
-              matchesSubStatus = id.includes('-ni-') || id.includes('attempted');
-          } else if (subStatusKey.startsWith('SO_')) {
-              matchesSubStatus = id.includes('gtm') || id.includes('whatsapp') || id.includes('form') || id.includes('ecw4') || id.includes('ga4') || id.includes('-so-');
-          } else if (subStatusKey.startsWith('AS_')) {
-              matchesSubStatus = id.includes('-as-');
-          } else if (subStatusKey.startsWith('IN_')) {
-              matchesSubStatus = id.includes('-in-');
-          } else if (subStatusKey.startsWith('DC_')) {
-              matchesSubStatus = id.includes('-dc-');
-          }
+          const matchesSubStatus = Array.isArray(data.substatus) && data.substatus.includes(subStatusKey);
           return matchesType && matchesSubStatus;
       });
 
