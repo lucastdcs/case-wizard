@@ -17,6 +17,40 @@ import { runQuickEmail, runEmailAutomation } from "./email-automation-service.js
 import { triggerProcessingAnimation } from "../shared/command-center.js";
 import { SUBSTATUS_SHORTCODES } from '../notes/data/notes-data.js';
 import { SnippetService } from "../personal-library/snippet-service.js";
+import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+
+// O conteúdo dos templates de e-mail em si (EMAIL_TEMPLATES, em email-data.js)
+// continua só em PT por ora — são os corpos reais enviados a clientes
+// externos, mesmo escopo de "conteúdo" adiado do changelog e do Call
+// Script. Só o chrome do assistente (abaixo) segue o idioma global.
+const EMAIL_DICT = {
+    pt: {
+        headerTitle: "Email Assistant",
+        headerDesc: "Refatoração completa do módulo de e-mail para uma experiência moderna e eficiente.",
+        searchPlaceholder: "Buscar templates...",
+        previewTitle: "Preview do E-mail",
+        noSubject: "Sem Assunto",
+        emailCopiedToast: "E-mail copiado com sucesso!",
+        copyErrorToast: "Erro ao copiar e-mail",
+        fillErrorToast: "Erro ao preencher e-mail",
+        smartCrErrorToast: "Erro ao aplicar Smart CR",
+    },
+    es: {
+        headerTitle: "Email Assistant",
+        headerDesc: "Refactorización completa del módulo de email para una experiencia moderna y eficiente.",
+        searchPlaceholder: "Buscar plantillas...",
+        previewTitle: "Vista Previa del Email",
+        noSubject: "Sin Asunto",
+        emailCopiedToast: "¡Email copiado con éxito!",
+        copyErrorToast: "Error al copiar el email",
+        fillErrorToast: "Error al completar el email",
+        smartCrErrorToast: "Error al aplicar Smart CR",
+    },
+};
+function et(key) {
+    const lang = getLanguage();
+    return EMAIL_DICT[lang]?.[key] ?? EMAIL_DICT.pt[key];
+}
 
 // --- ESTILOS (Apple Inspired) ---
 const COLORS = {
@@ -212,7 +246,7 @@ function getMatchingSnippets(searchTerm) {
                     placeholders.push({ key: m, label: m.replace('[', '').replace(']', ''), type: m.toLowerCase().includes('data') ? 'date' : 'text', auto: m.toLowerCase().includes('nome') && m.toLowerCase().includes('seu') ? 'agentName' : null });
                 });
             }
-            return { id: s.id || `snippet-${Math.random()}`, name: s.title, category: "👤 Pessoal", subject: s.subject || "Sem Assunto", template: s.content, placeholders: placeholders };
+            return { id: s.id || `snippet-${Math.random()}`, name: s.title, category: "👤 Pessoal", subject: s.subject || et('noSubject'), template: s.content, placeholders: placeholders };
         });
 }
 
@@ -249,9 +283,9 @@ export function initEmailAssistant() {
 
     const header = createStandardHeader(
         popup,
-        "Email Assistant",
+        et('headerTitle'),
         CURRENT_VERSION,
-        "Refatoração completa do módulo de e-mail para uma experiência moderna e eficiente.",
+        et('headerDesc'),
         { popup },
         () => toggleVisibility()
     );
@@ -268,7 +302,7 @@ export function initEmailAssistant() {
 
     const searchInput = document.createElement("input");
     searchInput.className = "cw-email-search-input";
-    searchInput.placeholder = "Buscar templates...";
+    searchInput.placeholder = et('searchPlaceholder');
 
     const templateList = document.createElement("div");
     templateList.id = "email-template-list";
@@ -304,7 +338,7 @@ export function initEmailAssistant() {
     previewHeader.className = "cw-email-preview-header";
 
     const previewTitle = document.createElement("span");
-    previewTitle.textContent = "Preview do E-mail";
+    previewTitle.textContent = et('previewTitle');
     previewTitle.className = "cw-email-preview-title";
 
     const previewActions = document.createElement("div");
@@ -602,7 +636,7 @@ export function initEmailAssistant() {
         const blob = new Blob([html], { type: 'text/html' });
         const text = previewContent.innerText;
         const data = [new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([text], { type: 'text/plain' }) })];
-        navigator.clipboard.write(data).then(() => showToast("E-mail copiado com sucesso!"), () => { SoundManager.playError(); showToast("Erro ao copiar e-mail", { error: true }); });
+        navigator.clipboard.write(data).then(() => showToast(et('emailCopiedToast')), () => { SoundManager.playError(); showToast(et('copyErrorToast'), { error: true }); });
     };
 
     btnFill.onclick = async () => {
@@ -614,7 +648,7 @@ export function initEmailAssistant() {
             toggleVisibility();
         } catch (error) {
             SoundManager.playError();
-            showToast("Erro ao preencher e-mail", { error: true });
+            showToast(et('fillErrorToast'), { error: true });
         } finally {
             finishLoading();
         }
@@ -628,11 +662,20 @@ export function initEmailAssistant() {
             toggleVisibility();
         } catch (error) {
             SoundManager.playError();
-            showToast("Erro ao aplicar Smart CR", { error: true });
+            showToast(et('smartCrErrorToast'), { error: true });
         } finally {
             finishLoading();
         }
     };
+
+    onLanguageChange(() => {
+        const helpTitleEl = popup.querySelector('.cw-help-title');
+        if (helpTitleEl) helpTitleEl.textContent = et('headerTitle');
+        const helpDescEl = popup.querySelector('.cw-help-description');
+        if (helpDescEl) helpDescEl.textContent = et('headerDesc');
+        searchInput.placeholder = et('searchPlaceholder');
+        previewTitle.textContent = et('previewTitle');
+    });
 
     return toggleVisibility;
 }

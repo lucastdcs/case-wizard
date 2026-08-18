@@ -4,6 +4,34 @@ import { getPageData } from '../shared/page-data.js';
 import { getAgentName } from '../shared/page-data.js';
 import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
+import { getLanguage } from '../shared/i18n.js';
+
+const EAS_DICT = {
+    pt: {
+        emailButtonNotFound: "Erro: Botão de email não encontrado.",
+        clearingOldDraft: "Limpando rascunho antigo...",
+        editorNotLoaded: "Erro: Editor não carregou.",
+        cannedResponseApplied: "Canned Response aplicada!",
+        cannedResponseTimeout: (name) => `Timeout: Template '${name}' não carregou.`,
+        cannedResponseButtonNotFound: "Botão Canned Response não encontrado.",
+        emailFilledSuccess: "Email preenchido com sucesso!",
+        editorFocusError: "Erro ao focar no editor.",
+    },
+    es: {
+        emailButtonNotFound: "Error: Botón de email no encontrado.",
+        clearingOldDraft: "Limpiando borrador antiguo...",
+        editorNotLoaded: "Error: El editor no cargó.",
+        cannedResponseApplied: "¡Canned Response aplicada!",
+        cannedResponseTimeout: (name) => `Tiempo agotado: la plantilla '${name}' no cargó.`,
+        cannedResponseButtonNotFound: "Botón Canned Response no encontrado.",
+        emailFilledSuccess: "¡Email completado con éxito!",
+        editorFocusError: "Error al enfocar el editor.",
+    },
+};
+function eat(key) {
+    const lang = getLanguage();
+    return EAS_DICT[lang]?.[key] ?? EAS_DICT.pt[key];
+}
 
 // --- UTILITÁRIOS ---
 function log(msg, type = 'info') {
@@ -154,7 +182,7 @@ async function openAndClearEmail() {
 
     if (!emailAberto) {
         SoundManager.playError();
-        showToast("Erro: Botão de email não encontrado.", { error: true });
+        showToast(eat('emailButtonNotFound'), { error: true });
         return false;
     }
     
@@ -192,7 +220,7 @@ async function openAndClearEmail() {
 
         if (confirmBtn) {
             simularCliqueReal(confirmBtn);
-            showToast("Limpando rascunho antigo...", { duration: 2000 });
+            showToast(eat('clearingOldDraft'), { duration: 2000 });
             await esperar(2500); 
         }
     }
@@ -210,7 +238,7 @@ async function openAndClearEmail() {
 
     if (!editorVisivel) {
         SoundManager.playError();
-        showToast("Erro: Editor não carregou.", { error: true });
+        showToast(eat('editorNotLoaded'), { error: true });
         return false;
     }
 
@@ -383,16 +411,16 @@ export async function runEmailAutomation(cannedResponseText) {
                     editorVisivel.innerHTML = html;
                 }
                 
-                showToast("Canned Response aplicada!");
+                showToast(eat('cannedResponseApplied'));
             } else {
                 log(`❌ Timeout: Resultado '${cannedResponseText}' não apareceu após 15s.`, 'error');
                 SoundManager.playError();
-                showToast(`Timeout: Template '${cannedResponseText}' não carregou.`, { error: true });
+                showToast(eat('cannedResponseTimeout')(cannedResponseText), { error: true });
             }
         }
     } else {
         SoundManager.playError();
-        showToast("Botão Canned Response não encontrado.", { error: true });
+        showToast(eat('cannedResponseButtonNotFound'), { error: true });
     }
 }
 
@@ -476,11 +504,11 @@ export async function runQuickEmail(template) {
             editorPai.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
-        showToast("Email preenchido com sucesso!", { duration: 2000 });
+        showToast(eat('emailFilledSuccess'), { duration: 2000 });
         log("✅ Processo finalizado com sucesso.", 'success');
 
     } else {
         SoundManager.playError();
-        showToast("Erro ao focar no editor.", { error: true });
+        showToast(eat('editorFocusError'), { error: true });
     }
 }
