@@ -3,6 +3,7 @@
 import { captureNameWithMagic, getSmartGreeting } from "./page-data.js";
 import { SoundManager } from "./sound-manager.js";
 import { esperar, clamp } from "./dom-utils.js";
+import { getLanguage } from "./i18n.js";
 
 // Variável global para controlar a pilha de janelas
 let highestZIndex = 10000;
@@ -1160,7 +1161,8 @@ export function confirmDialog(message, opts = {}) {
         const dialog = createBaseDialog();
 
         const confirmColor = opts.danger ? '#FF3B30' : '#007AFF';
-        const confirmText = opts.confirmText || (opts.danger ? 'Excluir' : 'Confirmar');
+        const defaultDangerText = getLanguage() === 'es' ? 'Eliminar' : 'Excluir';
+        const confirmText = opts.confirmText || (opts.danger ? defaultDangerText : 'Confirmar');
 
         dialog.innerHTML = `
             <div style="font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #202124; line-height: 1.4;">${message}</div>
