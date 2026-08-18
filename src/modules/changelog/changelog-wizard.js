@@ -4,6 +4,30 @@ import { stylePopup, showToast } from "../shared/utils.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { RELEASE_NOTES } from "./changelog-data.js";
+import { getLanguage } from "../shared/i18n.js";
+
+// O conteúdo de cada release (RELEASE_NOTES) ainda é só PT — texto editorial
+// por versão, fora do escopo desta rodada (fica junto com a tradução do
+// conteúdo do Notes numa fase seguinte). Só o texto fixo do wizard em si
+// (botões, badge, toast) é traduzido aqui.
+const CHANGELOG_DICT = {
+    pt: {
+        updateBadge: (version) => `Atualização ${version}`,
+        nextBtn: "Próximo",
+        doneBtn: "Entendi, vamos lá! 👍",
+        updatedToast: (version) => `TechSol atualizado para ${version}!`,
+    },
+    es: {
+        updateBadge: (version) => `Actualización ${version}`,
+        nextBtn: "Siguiente",
+        doneBtn: "¡Entendido, vamos! 👍",
+        updatedToast: (version) => `TechSol actualizado a ${version}!`,
+    },
+};
+function ct(key) {
+    const lang = getLanguage();
+    return CHANGELOG_DICT[lang]?.[key] ?? CHANGELOG_DICT.pt[key];
+}
 
 export function checkAndShowChangelog(currentAppVersion) {
     const lastSeenVersion = localStorage.getItem("cw_last_version");
@@ -77,7 +101,7 @@ function initChangelogModal(version) {
     // Badge de Versão
     const badge = document.createElement("div");
     Object.assign(badge.style, styles.badge);
-    badge.textContent = `Atualização ${version}`;
+    badge.textContent = ct('updateBadge')(version);
 
     const iconEl = document.createElement("div");
     Object.assign(iconEl.style, styles.icon);
@@ -127,9 +151,9 @@ function initChangelogModal(version) {
 
         // Botão
         if (index === SLIDES.length - 1) {
-            btnNext.textContent = "Entendi, vamos lá! 👍";
+            btnNext.textContent = ct('doneBtn');
         } else {
-            btnNext.textContent = "Próximo";
+            btnNext.textContent = ct('nextBtn');
         }
     }
 
@@ -141,7 +165,7 @@ function initChangelogModal(version) {
         card.style.transform = "translateY(30px)";
         setTimeout(() => overlay.remove(), 400);
         SoundManager.playSuccess();
-        showToast(`TechSol atualizado para ${version}!`);
+        showToast(ct('updatedToast')(version));
         document.removeEventListener("keydown", handleKeydown);
         unlockBodyScroll();
     }

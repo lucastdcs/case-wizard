@@ -15,6 +15,77 @@ import { toggleGenieAnimation } from "../shared/animations.js";
 import { getPageData } from "../shared/page-data.js";
 
 import { csaChecklistData } from "./call-script-data.js";
+import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+
+const CSA_DICT = {
+    pt: {
+        headerTitle: "Call Script",
+        headerDesc: "Guia interativo para condução de chamadas.",
+        loading: "Carregando...",
+        unknownClient: "Cliente Desconhecido",
+        notFound: "Não encontrado",
+        activeMonitoring: "Monitoramento Ativo",
+        cidLabel: "CID (Conta)",
+        emailLabel: "Email de Contato",
+        copied: "Copiado!",
+        amMessageTitle: "Mensagem AM",
+        amMessageSub: "Gerar aviso de insucesso",
+        copyFinalMessage: "Copiar Mensagem Final",
+        resize: "Redimensionar",
+        resetScript: "Resetar Script",
+        resetConfirm: "Resetar todo o progresso do script? Essa ação não pode ser desfeita.",
+        resetConfirmBtn: "Resetar",
+        scriptNotConfigured: "Script não configurado.",
+        messageCopiedToast: "Mensagem copiada!",
+        amMessage: (data, today) =>
+            `Olá. Bom dia!\n\n` +
+            `Estou com um caso do seu cliente (${data.advertiserName || "Cliente"}) em andamento hoje (${today}). Fiz a primeira tentativa de contato agora há pouco, mas não tive sucesso.\n\n` +
+            `Farei uma nova tentativa em alguns minutos. Caso ele não atenda novamente, seguirei com o e-mail padrão de reagendamento/no-show e te mantenho no radar.\n\n` +
+            `Dados do caso para seu controle:\n\n` +
+            `Cliente: ${data.advertiserName || "---"}\n` +
+            `CID: ${data.cid || "---"}\n` +
+            `Case ID: ${data.caseId || "---"}\n` +
+            `E-mail: ${data.clientEmail || "---"}`,
+        dateLocale: "pt-BR",
+    },
+    es: {
+        headerTitle: "Call Script",
+        headerDesc: "Guía interactiva para conducir llamadas.",
+        loading: "Cargando...",
+        unknownClient: "Cliente Desconocido",
+        notFound: "No encontrado",
+        activeMonitoring: "Monitoreo Activo",
+        cidLabel: "CID (Cuenta)",
+        emailLabel: "Email de Contacto",
+        copied: "¡Copiado!",
+        amMessageTitle: "Mensaje AM",
+        amMessageSub: "Generar aviso de contacto fallido",
+        copyFinalMessage: "Copiar Mensaje Final",
+        resize: "Redimensionar",
+        resetScript: "Reiniciar Script",
+        resetConfirm: "¿Reiniciar todo el progreso del script? Esta acción no se puede deshacer.",
+        resetConfirmBtn: "Reiniciar",
+        scriptNotConfigured: "Script no configurado.",
+        messageCopiedToast: "¡Mensaje copiado!",
+        amMessage: (data, today) =>
+            `Hola. ¡Buenos días!\n\n` +
+            `Tengo un caso de su cliente (${data.advertiserName || "Cliente"}) en curso hoy (${today}). Hice el primer intento de contacto hace un momento, pero no tuve éxito.\n\n` +
+            `Haré un nuevo intento en unos minutos. Si no responde nuevamente, seguiré con el correo estándar de reprogramación/no-show y lo mantendré informado.\n\n` +
+            `Datos del caso para su control:\n\n` +
+            `Cliente: ${data.advertiserName || "---"}\n` +
+            `CID: ${data.cid || "---"}\n` +
+            `Case ID: ${data.caseId || "---"}\n` +
+            `E-mail: ${data.clientEmail || "---"}`,
+        dateLocale: "es-ES",
+    },
+};
+function csaLangKey() {
+    return getLanguage() === 'es' ? 'ES' : 'PT';
+}
+function ct(key) {
+    const lang = getLanguage();
+    return CSA_DICT[lang]?.[key] ?? CSA_DICT.pt[key];
+}
 
 const COLORS = {
     bgApp: "#F5F5F7",
@@ -226,7 +297,7 @@ export function initCallScriptAssistant() {
   injectStyles();
 
   const csaCompletedTasks = {};
-  let csaCurrentLang = "PT";
+  let csaCurrentLang = csaLangKey();
   let csaCurrentType = "BAU";
   let csaVisible = false;
 
@@ -252,7 +323,7 @@ export function initCallScriptAssistant() {
           const elCid = csaPopup.querySelector('#cw-ctx-cid');
           const elEmail = csaPopup.querySelector('#cw-ctx-email');
 
-          if(elName) elName.textContent = data.advertiserName || "Cliente Desconhecido";
+          if(elName) elName.textContent = data.advertiserName || ct('unknownClient');
 
           if(elCid) {
               const cidTxt = data.cid || "---";
@@ -260,7 +331,7 @@ export function initCallScriptAssistant() {
           }
 
           if(elEmail) {
-              const emailTxt = data.clientEmail || "Não encontrado";
+              const emailTxt = data.clientEmail || ct('notFound');
               if (elEmail.textContent !== emailTxt) {
                   elEmail.textContent = emailTxt;
                   elEmail.title = emailTxt;
@@ -271,18 +342,11 @@ export function initCallScriptAssistant() {
 
   function populateMessageArea() {
     getPageData().then(data => {
-      const today = new Date().toLocaleDateString('pt-BR');
+      const today = new Date().toLocaleDateString(ct('dateLocale'));
       const area = csaPopup.querySelector('#cw-am-message-area');
       const container = csaPopup.querySelector('#cw-am-review-container');
 
-      let message = `Olá. Bom dia!\n\n` +
-                    `Estou com um caso do seu cliente (${data.advertiserName || "Cliente"}) em andamento hoje (${today}). Fiz a primeira tentativa de contato agora há pouco, mas não tive sucesso.\n\n` +
-                    `Farei uma nova tentativa em alguns minutos. Caso ele não atenda novamente, seguirei com o e-mail padrão de reagendamento/no-show e te mantenho no radar.\n\n` +
-                    `Dados do caso para seu controle:\n\n` +
-                    `Cliente: ${data.advertiserName || "---"}\n` +
-                    `CID: ${data.cid || "---"}\n` +
-                    `Case ID: ${data.caseId || "---"}\n` +
-                    `E-mail: ${data.clientEmail || "---"}`;
+      let message = ct('amMessage')(data, today);
 
       if (area) area.value = message;
       if (container) {
@@ -307,10 +371,11 @@ export function initCallScriptAssistant() {
   }
 
   const csaHeader = createStandardHeader(
-    csaPopup, "Call Script", CURRENT_VERSION, "Guia interativo para condução de chamadas.",
+    csaPopup, ct('headerTitle'), CURRENT_VERSION, ct('headerDesc'),
     animRefs, () => { toggleVisibility(); }
   );
   csaPopup.appendChild(csaHeader);
+  const csaHeaderTitleEl = csaHeader.querySelector('span');
 
   // === BANNER DE CONTEXTO ===
   const contextBanner = document.createElement("div");
@@ -319,23 +384,23 @@ export function initCallScriptAssistant() {
   contextBanner.innerHTML = `
       <div class="csa-ctx-top">
           <div class="csa-ctx-name-wrap">
-              <div class="csa-live-dot" title="Monitoramento Ativo"></div>
-              <span id="cw-ctx-name" class="csa-ctx-name">Carregando...</span>
+              <div class="csa-live-dot js-csa-monitoring" title="${ct('activeMonitoring')}"></div>
+              <span id="cw-ctx-name" class="csa-ctx-name">${ct('loading')}</span>
           </div>
           <div class="csa-live-badge">Live</div>
       </div>
 
       <div class="csa-ctx-grid">
           <div class="csa-data-pill" id="cw-pill-cid">
-              <div class="csa-pill-label">CID (Conta)</div>
+              <div class="csa-pill-label js-csa-cid-label">${ct('cidLabel')}</div>
               <div id="cw-ctx-cid" class="csa-data-value mono">---</div>
-              <div class="csa-copy-hint">Copiado!</div>
+              <div class="csa-copy-hint">${ct('copied')}</div>
           </div>
 
           <div class="csa-data-pill" id="cw-pill-email">
-              <div class="csa-pill-label">Email de Contato</div>
+              <div class="csa-pill-label js-csa-email-label">${ct('emailLabel')}</div>
               <div id="cw-ctx-email" class="csa-data-value">---</div>
-              <div class="csa-copy-hint">Copiado!</div>
+              <div class="csa-copy-hint">${ct('copied')}</div>
           </div>
       </div>
 
@@ -351,14 +416,14 @@ export function initCallScriptAssistant() {
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${COLORS.primary}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                       </div>
                       <div class="csa-am-btn-text">
-                          <div class="csa-am-btn-title">Mensagem AM</div>
-                          <div class="csa-am-btn-sub">Gerar aviso de insucesso</div>
+                          <div class="csa-am-btn-title js-csa-am-title">${ct('amMessageTitle')}</div>
+                          <div class="csa-am-btn-sub js-csa-am-sub">${ct('amMessageSub')}</div>
                       </div>
                   </button>
 
                   <div id="cw-am-review-container" class="csa-am-review-container">
                       <textarea id="cw-am-message-area" class="csa-am-message-area"></textarea>
-                      <button id="cw-am-copy-final" class="csa-am-copy-final">Copiar Mensagem Final</button>
+                      <button id="cw-am-copy-final" class="csa-am-copy-final">${ct('copyFinalMessage')}</button>
                   </div>
               </div>
           </div>
@@ -388,14 +453,14 @@ export function initCallScriptAssistant() {
   finalCopyBtn.addEventListener('click', () => {
       if (messageArea.value) {
           navigator.clipboard.writeText(messageArea.value);
-          showToast("Mensagem copiada!");
+          showToast(ct('messageCopiedToast'));
           SoundManager.playSuccess();
 
           finalCopyBtn.classList.add('copied-flash');
-          finalCopyBtn.textContent = "Copiado!";
+          finalCopyBtn.textContent = ct('copied');
           setTimeout(() => {
               finalCopyBtn.classList.remove('copied-flash');
-              finalCopyBtn.textContent = "Copiar Mensagem Final";
+              finalCopyBtn.textContent = ct('copyFinalMessage');
           }, 2000);
       }
   });
@@ -407,7 +472,7 @@ export function initCallScriptAssistant() {
 
       pill.onclick = () => {
           const text = textEl.textContent;
-          if (!text || text.includes("---") || text.includes("Não encontrado")) return;
+          if (!text || text.includes("---") || text === ct('notFound')) return;
 
           navigator.clipboard.writeText(text);
           SoundManager.playSuccess();
@@ -442,9 +507,9 @@ export function initCallScriptAssistant() {
 
   const resetBtn = document.createElement("button");
   resetBtn.className = "csa-reset-btn";
-  resetBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg> Resetar Script`;
+  resetBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg> <span class="js-csa-reset-label">${ct('resetScript')}</span>`;
   resetBtn.onclick = async () => {
-    const confirmed = await confirmDialog("Resetar todo o progresso do script? Essa ação não pode ser desfeita.", { danger: true, confirmText: "Resetar" });
+    const confirmed = await confirmDialog(ct('resetConfirm'), { danger: true, confirmText: ct('resetConfirmBtn') });
     if (!confirmed) return;
     for (let key in csaCompletedTasks) delete csaCompletedTasks[key];
     csaBuildChecklist();
@@ -467,17 +532,7 @@ export function initCallScriptAssistant() {
       <button data-type="LT">LT</button>
   `;
 
-  // Language Selector (PT/ES)
-  const langControl = document.createElement("div");
-  langControl.className = "csa-segmented-control";
-  langControl.innerHTML = `
-      <div class="csa-segmented-indicator" id="lang-indicator" style="width: calc(50% - 2px); transform: translateX(0px);"></div>
-      <button class="active" data-lang="PT">PT</button>
-      <button data-lang="ES">ES</button>
-  `;
-
   csaControlsDiv.appendChild(typeControl);
-  csaControlsDiv.appendChild(langControl);
   csaContent.appendChild(csaControlsDiv);
 
   // Type Interaction
@@ -494,18 +549,30 @@ export function initCallScriptAssistant() {
       };
   });
 
-  // Lang Interaction
-  const langButtons = langControl.querySelectorAll('button');
-  const langIndicator = langControl.querySelector('#lang-indicator');
-  langButtons.forEach((btn, idx) => {
-      btn.onclick = () => {
-          langButtons.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          langIndicator.style.transform = `translateX(${idx * (langControl.offsetWidth / 2 - 2)}px)`;
-          csaCurrentLang = btn.dataset.lang;
-          SoundManager.playClick();
-          csaBuildChecklist();
-      };
+  // O idioma do script (PT/ES) segue o idioma global da interface, trocado
+  // em Configurações — não tem mais seletor próprio aqui.
+  onLanguageChange(() => {
+      csaCurrentLang = csaLangKey();
+      if (csaHeaderTitleEl) csaHeaderTitleEl.textContent = ct('headerTitle');
+      const helpTitleEl = csaPopup.querySelector('.cw-help-title');
+      if (helpTitleEl) helpTitleEl.textContent = ct('headerTitle');
+      const helpDescEl = csaPopup.querySelector('.cw-help-description');
+      if (helpDescEl) helpDescEl.textContent = ct('headerDesc');
+      const monitoringDot = contextBanner.querySelector('.js-csa-monitoring');
+      if (monitoringDot) monitoringDot.title = ct('activeMonitoring');
+      const cidLabel = contextBanner.querySelector('.js-csa-cid-label');
+      if (cidLabel) cidLabel.textContent = ct('cidLabel');
+      const emailLabel = contextBanner.querySelector('.js-csa-email-label');
+      if (emailLabel) emailLabel.textContent = ct('emailLabel');
+      contextBanner.querySelectorAll('.csa-copy-hint').forEach(el => el.textContent = ct('copied'));
+      const amTitle = contextBanner.querySelector('.js-csa-am-title');
+      if (amTitle) amTitle.textContent = ct('amMessageTitle');
+      const amSub = contextBanner.querySelector('.js-csa-am-sub');
+      if (amSub) amSub.textContent = ct('amMessageSub');
+      if (finalCopyBtn) finalCopyBtn.textContent = ct('copyFinalMessage');
+      const resetLabel = resetBtn.querySelector('.js-csa-reset-label');
+      if (resetLabel) resetLabel.textContent = ct('resetScript');
+      csaBuildChecklist();
   });
 
   const csaChecklistArea = document.createElement("div");
@@ -514,7 +581,7 @@ export function initCallScriptAssistant() {
 
   const resizeHandle = document.createElement('div');
   Object.assign(resizeHandle.style, styleResizeHandle);
-  resizeHandle.className = "no-drag"; resizeHandle.title = "Redimensionar";
+  resizeHandle.className = "no-drag"; resizeHandle.title = ct('resize');
   csaPopup.appendChild(resizeHandle);
   makeResizable(csaPopup, resizeHandle);
 
@@ -606,7 +673,7 @@ export function initCallScriptAssistant() {
     const data = csaChecklistData[combinedKey];
 
     if (!data) {
-      csaChecklistArea.innerHTML = `<div class="csa-empty-state"><div class="csa-empty-state-icon">☕</div><div>Script não configurado.</div></div>`;
+      csaChecklistArea.innerHTML = `<div class="csa-empty-state"><div class="csa-empty-state-icon">☕</div><div>${ct('scriptNotConfigured')}</div></div>`;
       progressFill.style.width = "0%";
       return;
     }

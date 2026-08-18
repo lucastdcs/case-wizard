@@ -16,9 +16,101 @@ import { BROADCAST_MESSAGES, setBroadcastMessages } from "./broadcast-data.js";
 import { DataService } from "../shared/data-service.js";
 import { getAgentEmail } from "../shared/page-data.js";
 import { ADMINS } from "../shared/config.js";
+import { getLanguage, onLanguageChange } from "../shared/i18n.js";
 
 // --- CONFIGURAÇÃO ---
 const POLL_TIME_MS = 60 * 1000;
+
+const BC_DICT = {
+    pt: {
+        headerTitle: "Central de Avisos",
+        headerDesc: "Comunicação oficial da operação.",
+        newNotice: "Novo Aviso",
+        clear: "Limpar",
+        searchPlaceholder: "Buscar avisos...",
+        editNotice: "Editar Aviso",
+        saveChanges: "Salvar Alterações",
+        publish: "Publicar",
+        saving: "Salvando...",
+        noticeTypeLabel: "TIPO DO COMUNICADO",
+        typeInfo: "ℹ️ Info",
+        typeCritical: "🚨 Alerta",
+        typeSuccess: "✅ Sucesso",
+        titleLabel: "TÍTULO",
+        titlePlaceholder: "Resumo do assunto",
+        messageLabel: "MENSAGEM",
+        messagePlaceholder: "Escreva os detalhes aqui... Suporta HTML e Emojis :)",
+        cancel: "Cancelar",
+        fillAllFields: "Preencha todos os campos!",
+        updatedToast: "Atualizado!",
+        publishedToast: "Publicado!",
+        saveErrorToast: "Erro ao salvar. Verifique a conexão.",
+        deleteConfirm: "Confirma a exclusão deste aviso?",
+        deletedToast: "Aviso removido.",
+        deleteErrorToast: "Erro ao excluir.",
+        details: "Detalhes",
+        hide: "Ocultar",
+        bauAvailability: "Disponibilidade BAU",
+        dates: "datas",
+        date: "data",
+        viewDetails: "Ver detalhes",
+        nothingFound: "Nada encontrado.",
+        allRead: "Tudo lido!",
+        history: (n) => `Histórico (${n})`,
+        edit: "Editar",
+        delete: "Excluir",
+        typeLabel: { info: "Info", critical: "Alerta", success: "Sucesso" },
+        syncing: "🔄 Sincronizando...",
+        updated: '<span style="color:#137333">✓ Atualizado</span>',
+        offline: "⚠️ Offline",
+    },
+    es: {
+        headerTitle: "Central de Avisos",
+        headerDesc: "Comunicación oficial de la operación.",
+        newNotice: "Nuevo Aviso",
+        clear: "Limpiar",
+        searchPlaceholder: "Buscar avisos...",
+        editNotice: "Editar Aviso",
+        saveChanges: "Guardar Cambios",
+        publish: "Publicar",
+        saving: "Guardando...",
+        noticeTypeLabel: "TIPO DE COMUNICADO",
+        typeInfo: "ℹ️ Info",
+        typeCritical: "🚨 Alerta",
+        typeSuccess: "✅ Éxito",
+        titleLabel: "TÍTULO",
+        titlePlaceholder: "Resumen del asunto",
+        messageLabel: "MENSAJE",
+        messagePlaceholder: "Escribe los detalles aquí... Admite HTML y Emojis :)",
+        cancel: "Cancelar",
+        fillAllFields: "¡Complete todos los campos!",
+        updatedToast: "¡Actualizado!",
+        publishedToast: "¡Publicado!",
+        saveErrorToast: "Error al guardar. Verifique la conexión.",
+        deleteConfirm: "¿Confirma la eliminación de este aviso?",
+        deletedToast: "Aviso eliminado.",
+        deleteErrorToast: "Error al eliminar.",
+        details: "Detalles",
+        hide: "Ocultar",
+        bauAvailability: "Disponibilidad BAU",
+        dates: "fechas",
+        date: "fecha",
+        viewDetails: "Ver detalles",
+        nothingFound: "No se encontró nada.",
+        allRead: "¡Todo leído!",
+        history: (n) => `Historial (${n})`,
+        edit: "Editar",
+        delete: "Eliminar",
+        typeLabel: { info: "Info", critical: "Alerta", success: "Éxito" },
+        syncing: "🔄 Sincronizando...",
+        updated: '<span style="color:#137333">✓ Actualizado</span>',
+        offline: "⚠️ Sin conexión",
+    },
+};
+function bt(key) {
+    const lang = getLanguage();
+    return BC_DICT[lang]?.[key] ?? BC_DICT.pt[key];
+}
 
 const TYPE_CONFIG = {
     critical: { icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>` },
@@ -313,9 +405,10 @@ export function initBroadcastAssistant() {
   }
 
   const header = createStandardHeader(
-    popup, "Central de Avisos", CURRENT_VERSION, "Comunicação oficial da operação.",
+    popup, bt('headerTitle'), CURRENT_VERSION, bt('headerDesc'),
     animRefs, () => toggleVisibility()
   );
+  const headerTitleEl = header.querySelector('span');
 
   const actionContainer = header.querySelector('.cw-header-actions') || header.lastElementChild;
   let editorOverlay = null;
@@ -339,7 +432,7 @@ export function initBroadcastAssistant() {
                   color: "#1a73e8", background: "rgba(26, 115, 232, 0.1)",
                   marginRight: "8px"
               });
-              addBtn.title = "Novo Aviso";
+              addBtn.title = bt('newNotice');
               addBtn.onclick = (e) => { e.stopPropagation(); openEditor(); };
               actionContainer.insertBefore(addBtn, actionContainer.firstChild);
 
@@ -357,7 +450,7 @@ export function initBroadcastAssistant() {
   // Botão Limpar
   if (actionContainer) {
       const markAll = document.createElement("button");
-      markAll.textContent = "Limpar";
+      markAll.textContent = bt('clear');
       markAll.className = "cw-btn-interactive";
       Object.assign(markAll.style, { fontSize: "12px", color: "#1a73e8", background: "transparent", border: "none", padding: "8px", fontWeight: "600" });
       markAll.onclick = (e) => {
@@ -382,7 +475,7 @@ export function initBroadcastAssistant() {
   const searchInput = document.createElement("input");
   searchInput.className = "cw-bc-search-input no-drag";
   searchInput.type = "text";
-  searchInput.placeholder = "Buscar avisos...";
+  searchInput.placeholder = bt('searchPlaceholder');
   const searchClear = document.createElement("div");
   searchClear.className = "cw-bc-search-clear cw-btn-interactive";
   searchClear.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
@@ -416,39 +509,39 @@ export function initBroadcastAssistant() {
       editorOverlay.innerHTML = `
         <div class="cw-bc-editor-body">
             <div class="cw-bc-editor-head">
-                <span id="cw-editor-title-label" class="cw-bc-editor-title">Novo Aviso</span>
+                <span id="cw-editor-title-label" class="cw-bc-editor-title">${bt('newNotice')}</span>
                 <button id="cw-bc-close-x" class="cw-btn-interactive cw-bc-editor-close"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
 
             <div class="cw-bc-editor-field">
-                <label class="cw-bc-field-label">TIPO DO COMUNICADO</label>
+                <label class="cw-bc-field-label js-bc-type-label">${bt('noticeTypeLabel')}</label>
                 <div class="cw-radio-group">
                     <div class="cw-radio-option info" onclick="this.querySelector('input').click()">
-                        <input type="radio" name="cw-bc-type" value="info" checked> ℹ️ Info
+                        <input type="radio" name="cw-bc-type" value="info" checked> <span class="js-bc-type-info">${bt('typeInfo')}</span>
                     </div>
                     <div class="cw-radio-option critical" onclick="this.querySelector('input').click()">
-                        <input type="radio" name="cw-bc-type" value="critical"> 🚨 Alerta
+                        <input type="radio" name="cw-bc-type" value="critical"> <span class="js-bc-type-critical">${bt('typeCritical')}</span>
                     </div>
                     <div class="cw-radio-option success" onclick="this.querySelector('input').click()">
-                        <input type="radio" name="cw-bc-type" value="success"> ✅ Sucesso
+                        <input type="radio" name="cw-bc-type" value="success"> <span class="js-bc-type-success">${bt('typeSuccess')}</span>
                     </div>
                 </div>
             </div>
 
             <div class="cw-bc-editor-field">
-                 <label class="cw-bc-field-label">TÍTULO</label>
-                 <input id="cw-bc-title" class="cw-hd-input" placeholder="Resumo do assunto">
+                 <label class="cw-bc-field-label js-bc-title-label">${bt('titleLabel')}</label>
+                 <input id="cw-bc-title" class="cw-hd-input" placeholder="${bt('titlePlaceholder')}">
             </div>
 
             <div class="cw-bc-editor-field">
-                 <label class="cw-bc-field-label">MENSAGEM</label>
-                 <textarea id="cw-bc-text" class="cw-hd-input" placeholder="Escreva os detalhes aqui... Suporta HTML e Emojis :)" style="height:160px; resize:none; line-height:1.6;"></textarea>
+                 <label class="cw-bc-field-label js-bc-message-label">${bt('messageLabel')}</label>
+                 <textarea id="cw-bc-text" class="cw-hd-input" placeholder="${bt('messagePlaceholder')}" style="height:160px; resize:none; line-height:1.6;"></textarea>
             </div>
         </div>
 
         <div class="cw-bc-editor-foot">
-            <button id="cw-bc-cancel" class="cw-btn-interactive cw-bc-btn-secondary">Cancelar</button>
-            <button id="cw-bc-send" class="cw-btn-interactive cw-bc-btn-primary">Publicar</button>
+            <button id="cw-bc-cancel" class="cw-btn-interactive cw-bc-btn-secondary">${bt('cancel')}</button>
+            <button id="cw-bc-send" class="cw-btn-interactive cw-bc-btn-primary">${bt('publish')}</button>
         </div>
       `;
 
@@ -484,20 +577,20 @@ export function initBroadcastAssistant() {
 
       if (editData) {
           currentEditingId = editData.id;
-          titleLabel.textContent = "Editar Aviso";
+          titleLabel.textContent = bt('editNotice');
           inputTitle.value = editData.title || "";
           inputText.value = editData.text || "";
-          btnSend.textContent = "Salvar Alterações";
+          btnSend.textContent = bt('saveChanges');
 
           const type = editData.type || 'info';
           const radio = editorOverlay.querySelector(`input[name="cw-bc-type"][value="${type}"]`);
           if (radio) radio.click();
       } else {
           currentEditingId = null;
-          titleLabel.textContent = "Novo Aviso";
+          titleLabel.textContent = bt('newNotice');
           inputTitle.value = "";
           inputText.value = "";
-          btnSend.textContent = "Publicar";
+          btnSend.textContent = bt('publish');
           const infoRadio = editorOverlay.querySelector(`input[name="cw-bc-type"][value="info"]`);
           if (infoRadio) infoRadio.click();
       }
@@ -520,11 +613,11 @@ export function initBroadcastAssistant() {
 
       if (!inputTitle.value.trim() || !inputText.value.trim()) {
           SoundManager.playError();
-          showToast("Preencha todos os campos!", { error: true });
+          showToast(bt('fillAllFields'), { error: true });
           return;
       }
 
-      btnSend.textContent = "Salvando...";
+      btnSend.textContent = bt('saving');
       btnSend.style.opacity = "0.7";
 
       let success = false;
@@ -545,24 +638,24 @@ export function initBroadcastAssistant() {
       }
 
       if (success) {
-          showToast(currentEditingId ? "Atualizado!" : "Publicado!");
+          showToast(currentEditingId ? bt('updatedToast') : bt('publishedToast'));
           SoundManager.playSuccess();
           closeEditor();
           setTimeout(() => checkForUpdates(), 1500);
       } else {
           SoundManager.playError();
-          showToast("Erro ao salvar. Verifique a conexão.", { error: true });
-          btnSend.textContent = currentEditingId ? "Salvar Alterações" : "Publicar";
+          showToast(bt('saveErrorToast'), { error: true });
+          btnSend.textContent = currentEditingId ? bt('saveChanges') : bt('publish');
           btnSend.style.opacity = "1";
       }
   }
 
   async function handleDelete(id) {
-      const confirmed = await confirmDialog("Confirma a exclusão deste aviso?", { danger: true });
+      const confirmed = await confirmDialog(bt('deleteConfirm'), { danger: true });
       if (confirmed) {
           const success = await DataService.deleteBroadcast(id);
           if (success) {
-              showToast("Aviso removido.");
+              showToast(bt('deletedToast'));
               SoundManager.playClick();
               const oldMsg = BROADCAST_MESSAGES.findIndex(m => m.id === id);
               if (oldMsg > -1) BROADCAST_MESSAGES.splice(oldMsg, 1);
@@ -570,7 +663,7 @@ export function initBroadcastAssistant() {
               setTimeout(() => checkForUpdates(), 1500);
           } else {
               SoundManager.playError();
-              showToast("Erro ao excluir.", { error: true });
+              showToast(bt('deleteErrorToast'), { error: true });
           }
       }
   }
@@ -582,7 +675,7 @@ export function initBroadcastAssistant() {
   async function checkForUpdates() {
       if (visible) {
           statusEl.style.display = 'block';
-          statusEl.innerHTML = '🔄 Sincronizando...';
+          statusEl.innerHTML = bt('syncing');
       }
 
       try {
@@ -603,12 +696,12 @@ export function initBroadcastAssistant() {
               updateBadge();
               if (visible) {
                   renderFeed();
-                  statusEl.innerHTML = `<span style="color:#137333">✓ Atualizado</span>`;
+                  statusEl.innerHTML = bt('updated');
                   setTimeout(() => { statusEl.style.display = 'none'; }, 1500);
               }
           }
       } catch (error) {
-          if (visible) statusEl.innerHTML = '⚠️ Offline';
+          if (visible) statusEl.innerHTML = bt('offline');
       }
   }
 
@@ -660,7 +753,7 @@ export function initBroadcastAssistant() {
       const extractedSlots = extractBauSlots(bauMessage.text);
 
       let contentHTML = "";
-      let buttonsHTML = `<button id="cw-bau-toggle-btn" class="cw-btn-interactive cw-bc-bau-toggle-btn">Detalhes</button>`;
+      let buttonsHTML = `<button id="cw-bau-toggle-btn" class="cw-btn-interactive cw-bc-bau-toggle-btn">${bt('details')}</button>`;
 
       if (isAdmin) {
           buttonsHTML = `
@@ -697,15 +790,15 @@ export function initBroadcastAssistant() {
 
       const uniqueFlags = [...new Set(extractedSlots.map(s => s.flag))].join('');
       const hintText = extractedSlots.length > 0
-          ? `${uniqueFlags} · ${extractedSlots.length} ${extractedSlots.length > 1 ? 'datas' : 'data'}`
-          : 'Ver detalhes';
+          ? `${uniqueFlags} · ${extractedSlots.length} ${extractedSlots.length > 1 ? bt('dates') : bt('date')}`
+          : bt('viewDetails');
 
       bauWidget.className = "cw-bc-bau" + (bauExpanded ? " expanded" : "");
       bauWidget.innerHTML = `
           <div class="cw-bc-bau-header cw-btn-interactive">
               <div class="cw-bc-live-indicator">
                   <div class="cw-bc-pulse-dot"></div>
-                  <span class="cw-bc-bau-label">Disponibilidade BAU</span>
+                  <span class="cw-bc-bau-label">${bt('bauAvailability')}</span>
               </div>
               <div class="cw-bc-bau-right">
                   <span class="cw-bc-bau-hint">${hintText}</span>
@@ -732,7 +825,7 @@ export function initBroadcastAssistant() {
               e.stopPropagation();
               const isHidden = fullText.style.display === "none" || !fullText.style.display;
               fullText.style.display = isHidden ? "block" : "none";
-              toggleBtn.textContent = isHidden ? "Ocultar" : "Detalhes";
+              toggleBtn.textContent = isHidden ? bt('hide') : bt('details');
           };
       }
       if (isAdmin) {
@@ -755,10 +848,10 @@ export function initBroadcastAssistant() {
            const empty = document.createElement("div");
            empty.className = "cw-bc-empty";
            empty.innerHTML = isSearching
-               ? `<div style="font-weight:500;">Nada encontrado.</div>`
+               ? `<div style="font-weight:500;">${bt('nothingFound')}</div>`
                : `
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>
-                <div style="font-weight:500;">Tudo lido!</div>
+                <div style="font-weight:500;">${bt('allRead')}</div>
                `;
            feed.appendChild(empty);
            return;
@@ -772,7 +865,7 @@ export function initBroadcastAssistant() {
       if (readMsgs.length > 0) {
           const divider = document.createElement("div");
           divider.className = "cw-bc-history-divider";
-          divider.innerHTML = `<span>Histórico (${readMsgs.length})</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+          divider.innerHTML = `<span>${bt('history')(readMsgs.length)}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 
           const historyContainer = document.createElement("div");
           historyContainer.className = "cw-bc-history-container";
@@ -827,9 +920,10 @@ export function initBroadcastAssistant() {
     const cardHead = document.createElement("div");
     cardHead.className = "cw-bc-card-head";
 
+    const typeKey = TYPE_CONFIG[msg.type] ? msg.type : 'info';
     const typeLabel = document.createElement("div");
-    typeLabel.className = "cw-bc-type-tag " + (TYPE_CONFIG[msg.type] ? msg.type : 'info');
-    typeLabel.innerHTML = `${theme.icon} <span>${msg.type}</span>`;
+    typeLabel.className = "cw-bc-type-tag " + typeKey;
+    typeLabel.innerHTML = `${theme.icon} <span>${bt('typeLabel')[typeKey]}</span>`;
 
     const dateLabel = document.createElement("span");
     dateLabel.className = "cw-bc-date-tag";
@@ -893,12 +987,12 @@ export function initBroadcastAssistant() {
 
         const btnEdit = document.createElement("button");
         btnEdit.className = "cw-action-btn edit";
-        btnEdit.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Editar`;
+        btnEdit.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> ${bt('edit')}`;
         btnEdit.onclick = () => openEditor(msg);
 
         const btnDel = document.createElement("button");
         btnDel.className = "cw-action-btn delete";
-        btnDel.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Excluir`;
+        btnDel.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> ${bt('delete')}`;
         btnDel.onclick = () => handleDelete(msg.id);
 
         cardActions.appendChild(btnEdit);
@@ -929,6 +1023,48 @@ export function initBroadcastAssistant() {
 
   const readMessages = JSON.parse(localStorage.getItem("cw_read_broadcasts") || "[]");
   const hasUnread = BROADCAST_MESSAGES.some((m) => !readMessages.includes(m.id));
+
+  // Retraduz os pedaços montados uma única vez (header, busca, botão "Limpar"
+  // e os rótulos fixos do editor) e refaz o feed, que já é gerado do zero a
+  // cada render e por isso pega o idioma atual sozinho.
+  onLanguageChange(() => {
+      if (headerTitleEl) headerTitleEl.textContent = bt('headerTitle');
+      const helpTitleEl = popup.querySelector('.cw-help-title');
+      if (helpTitleEl) helpTitleEl.textContent = bt('headerTitle');
+      const helpDescEl = popup.querySelector('.cw-help-description');
+      if (helpDescEl) helpDescEl.textContent = bt('headerDesc');
+      searchInput.placeholder = bt('searchPlaceholder');
+      const addBtn = document.getElementById('cw-admin-btn');
+      if (addBtn) addBtn.title = bt('newNotice');
+      if (actionContainer) {
+          const clearBtn = [...actionContainer.children].find(el => el.tagName === 'BUTTON');
+          if (clearBtn) clearBtn.textContent = bt('clear');
+      }
+      if (editorOverlay) {
+          const q = (sel) => editorOverlay.querySelector(sel);
+          const typeLabel = q('.js-bc-type-label');
+          if (typeLabel) typeLabel.textContent = bt('noticeTypeLabel');
+          const typeInfo = q('.js-bc-type-info');
+          if (typeInfo) typeInfo.textContent = bt('typeInfo');
+          const typeCritical = q('.js-bc-type-critical');
+          if (typeCritical) typeCritical.textContent = bt('typeCritical');
+          const typeSuccess = q('.js-bc-type-success');
+          if (typeSuccess) typeSuccess.textContent = bt('typeSuccess');
+          const titleLabel = q('.js-bc-title-label');
+          if (titleLabel) titleLabel.textContent = bt('titleLabel');
+          const inputTitle = q('#cw-bc-title');
+          if (inputTitle) inputTitle.placeholder = bt('titlePlaceholder');
+          const messageLabel = q('.js-bc-message-label');
+          if (messageLabel) messageLabel.textContent = bt('messageLabel');
+          const inputText = q('#cw-bc-text');
+          if (inputText) inputText.placeholder = bt('messagePlaceholder');
+          const cancelBtn = q('#cw-bc-cancel');
+          if (cancelBtn) cancelBtn.textContent = bt('cancel');
+          const sendBtn = q('#cw-bc-send');
+          if (sendBtn) sendBtn.textContent = currentEditingId ? bt('saveChanges') : bt('publish');
+      }
+      renderFeed();
+  });
 
   return { toggle: toggleVisibility, hasUnread };
 }
