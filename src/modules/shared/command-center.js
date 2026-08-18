@@ -116,19 +116,35 @@ export function initCommandCenter(actions, splashDone) {
 
                 overflow: visible;
 
-                /* ABRIR: A pílula expande PRIMEIRO */
-                transition: 
-                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    opacity 0.2s ease,
-                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                /* ABRIR: A pílula expande com a curva de entrada (decelerate) -
+                   mesma assinatura do "genie" já usada no resto do app pros
+                   módulos abrindo - em vez da standard simétrica, que fazia a
+                   pílula crescer sem nenhum assentamento no final. */
+                transition:
+                    width 0.36s var(--cw-ease-decelerate),
+                    max-height 0.36s var(--cw-ease-decelerate),
+                    padding 0.36s var(--cw-ease-decelerate),
+                    opacity 0.25s ease,
+                    transform 0.36s var(--cw-ease-decelerate);
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-pill { transition: opacity 0.2s ease !important; transform: none !important; }
             }
 
-            .cw-pill.docked { opacity: 1; transform: translateX(0) scale(1); }
+            /* --- SURGIMENTO (primeiro boot) --- */
+            /* Antes era só um fade de opacity (praticamente imperceptível).
+               Agora a pílula chega com peso: sobe, dá um leve overshoot
+               (--cw-ease-spring) e assenta - acompanhado de SoundManager.playReady(). */
+            @keyframes cw-pill-arrive {
+                from { opacity: 0; transform: translateY(28px) scale(0.4); }
+                to   { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            .cw-pill.arriving {
+                animation: cw-pill-arrive 0.6s var(--cw-ease-spring) forwards;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill.arriving { animation: fadeIn 0.3s ease forwards; }
+            }
 
             /* --- ESTADO COLAPSADO (FECHANDO) --- */
             .cw-pill.collapsed {
@@ -139,16 +155,20 @@ export function initCommandCenter(actions, splashDone) {
                 border-radius: 50% !important;
                 cursor: pointer;
                 
-                overflow: hidden !important; 
+                overflow: hidden !important;
 
-                /* FECHAR: A pílula colapsa DEPOIS dos ícones (delay 0.15s) */
-                transition: 
-                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
-                    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
-                    padding 0.3s ease 0.15s,
-                    border-radius 0.3s ease 0.15s,
+                /* FECHAR: os ícones somem primeiro (abaixo), depois a pílula
+                   colapsa - mas agora com --cw-ease-spring no formato (leve
+                   "mola": ela encolhe passando um pouco do alvo e assenta de
+                   volta) em vez da curva standard simétrica, que fazia a
+                   pílula cair seca no círculo final. */
+                transition:
+                    width 0.42s var(--cw-ease-spring) 0.15s,
+                    max-height 0.42s var(--cw-ease-spring) 0.15s,
+                    padding 0.36s var(--cw-ease-elastic) 0.15s,
+                    border-radius 0.36s var(--cw-ease-elastic) 0.15s,
                     opacity 0.2s ease 0s,
-                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s !important;
+                    transform 0.36s var(--cw-ease-elastic) 0.15s !important;
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-pill.collapsed { transition: opacity 0.2s ease !important; }
@@ -171,11 +191,12 @@ export function initCommandCenter(actions, splashDone) {
                 opacity: 0;
                 transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             }
-            .cw-pill.collapsed .cw-main-logo { 
-                opacity: 1; 
+            .cw-pill.collapsed .cw-main-logo {
+                opacity: 1;
                 transform: rotate(0) scale(1);
-                /* Aparece depois que a pílula colapsou */
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
+                /* Aparece só depois que a pílula terminou de assentar (0.15s
+                   de espera + 0.42s de mola do colapso) */
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.45s;
             }
             .cw-pill.collapsed:hover .cw-main-logo {
                 background-image: linear-gradient(135deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%);
@@ -189,10 +210,12 @@ export function initCommandCenter(actions, splashDone) {
             /* --- CONTEÚDO INTERNO --- */
             .cw-pill > *:not(.cw-main-logo) {
                 opacity: 1; transform: scale(1) translateY(0); visibility: visible;
-                /* Aparece depois que a pílula expandiu (delay 0.15s para ser produtivo) */
+                /* Aparece depois que a pílula expandiu (delay 0.15s), com um
+                   leve "pop" elástico (--cw-ease-spring) em vez de um scale
+                   linear seco - dá a coreografia que faltava na abertura. */
                 transition:
-                    opacity 0.2s ease 0.15s,
-                    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
+                    opacity 0.25s ease 0.15s,
+                    transform 0.3s var(--cw-ease-spring) 0.15s,
                     visibility 0s linear 0.15s,
                     filter 0.15s ease 0.15s;
             }
@@ -203,10 +226,11 @@ export function initCommandCenter(actions, splashDone) {
             .cw-pill.collapsed > *:not(.cw-main-logo):not(#cw-streak-badge) {
                 opacity: 0; pointer-events: none; visibility: hidden;
                 transform: scale(0.5); filter: blur(8px);
-                /* Desaparece imediatamente */
+                /* Desaparece imediatamente, com a curva de saída (accelerate)
+                   já usada no resto do app pra elementos saindo de cena. */
                 transition:
-                    opacity 0.15s ease 0s,
-                    transform 0.15s ease 0s,
+                    opacity 0.15s var(--cw-ease-accelerate) 0s,
+                    transform 0.15s var(--cw-ease-accelerate) 0s,
                     filter 0.15s ease 0s,
                     visibility 0s linear 0.15s;
             }
@@ -613,7 +637,8 @@ export function initCommandCenter(actions, splashDone) {
     } else {
       await esperar(2800);
     }
-    pill.classList.add("docked");
+    pill.classList.add("arriving");
+    SoundManager.playReady();
     await esperar(300);
     const items = pill.querySelectorAll(".cw-btn");
     pill.querySelectorAll(".cw-sep").forEach((s) => s.classList.add("visible"));
