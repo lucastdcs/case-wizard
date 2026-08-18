@@ -7,6 +7,30 @@ import { ADMINS } from './config.js';
 import { getAgentEmail } from './page-data.js';
 import { esperar, clamp } from './dom-utils.js';
 import { getCaseStreakToday, incrementCaseStreak } from './streak-tracker.js';
+import { getLanguage, onLanguageChange } from './i18n.js';
+
+const CC_DICT = {
+    pt: {
+        milestoneToast: (count) => `🔥 ${count} casos hoje!`,
+        quickSearch: "Busca rápida: Ctrl/Cmd+K",
+        casesToday: "Casos concluídos hoje",
+        drag: "Arrastar",
+        cancel: "Cancelar",
+        cancelledToast: "Cancelado!",
+    },
+    es: {
+        milestoneToast: (count) => `🔥 ¡${count} casos hoy!`,
+        quickSearch: "Búsqueda rápida: Ctrl/Cmd+K",
+        casesToday: "Casos completados hoy",
+        drag: "Arrastrar",
+        cancel: "Cancelar",
+        cancelledToast: "¡Cancelado!",
+    },
+};
+function cct(key) {
+    const lang = getLanguage();
+    return CC_DICT[lang]?.[key] ?? CC_DICT.pt[key];
+}
 
 // --- 1. CONFIGURAÇÃO VISUAL ---
 const COLORS = {
@@ -84,7 +108,7 @@ export function registerCaseCompleted() {
     const pill = document.querySelector('.cw-pill');
     SoundManager.playSuccess();
     if (pill) triggerGoogleAnimation(pill);
-    showToast(`🔥 ${count} casos hoje!`);
+    showToast(cct('milestoneToast')(count));
   }
 }
 
@@ -626,11 +650,11 @@ export function initCommandCenter(actions, splashDone) {
 
   pill.innerHTML = `
         <div id="cw-command-center" style="display:none;"></div>
-        <div class="cw-main-logo" title="Busca rápida: Ctrl/Cmd+K">${ICONS.main}${ICONS.mainSpark}</div>
+        <div class="cw-main-logo js-cc-quicksearch" title="${cct('quickSearch')}">${ICONS.main}${ICONS.mainSpark}</div>
         <div id="cw-admin-tag" class="cw-admin-badge">Admin</div>
-        <div id="cw-streak-badge" class="cw-streak-badge" title="Casos concluídos hoje">🔥 <span id="cw-streak-count">0</span></div>
+        <div id="cw-streak-badge" class="cw-streak-badge js-cc-casestoday" title="${cct('casesToday')}">🔥 <span id="cw-streak-count">0</span></div>
 
-        <div class="cw-grip" title="Arrastar">
+        <div class="cw-grip js-cc-drag" title="${cct('drag')}">
             <div class="cw-grip-bar"></div>
         </div>
         <button class="cw-btn notes" id="cw-btn-notes" data-label="Case Notes">${ICONS.notes}</button>
@@ -654,6 +678,15 @@ export function initCommandCenter(actions, splashDone) {
   document.body.appendChild(overlay);
   document.body.appendChild(pill);
   syncStreakBadge();
+
+  onLanguageChange(() => {
+    const quickSearchEl = pill.querySelector('.js-cc-quicksearch');
+    if (quickSearchEl) quickSearchEl.title = cct('quickSearch');
+    const casesTodayEl = pill.querySelector('.js-cc-casestoday');
+    if (casesTodayEl) casesTodayEl.title = cct('casesToday');
+    const dragEl = pill.querySelector('.js-cc-drag');
+    if (dragEl) dragEl.title = cct('drag');
+  });
 
   // 3. LISTENERS
   const toggleModule = (btnClass, actionFn) => {
@@ -947,11 +980,11 @@ export function triggerProcessingAnimation() {
   // Botão Cancelar (Agora relativo e estilizado)
   const abortBtn = document.createElement('div');
   abortBtn.className = 'cw-abort-btn';
-  abortBtn.textContent = 'Cancelar';
+  abortBtn.textContent = cct('cancel');
   abortBtn.onclick = (e) => {
     e.stopPropagation();
     window._CW_ABORT_PROCESS = true;
-    showToast("Cancelado!", { duration: 3000 });
+    showToast(cct('cancelledToast'), { duration: 3000 });
     stage.remove();
     pill.classList.remove('processing-center');
     pill.classList.remove('success');

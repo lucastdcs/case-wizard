@@ -8,6 +8,7 @@
 
 import { SoundManager } from './sound-manager.js';
 import { lockBodyScroll, unlockBodyScroll } from './dom-utils.js';
+import { getLanguage, onLanguageChange } from './i18n.js';
 
 const ICONS = {
     notes: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
@@ -82,6 +83,29 @@ function injectStyles() {
     document.head.appendChild(style);
 }
 
+const CP_DICT = {
+    pt: {
+        ariaLabel: 'Busca rápida',
+        placeholder: 'Buscar um módulo...',
+        empty: 'Nada encontrado.',
+        navigate: 'navegar',
+        select: 'selecionar',
+        close: 'esc fechar',
+    },
+    es: {
+        ariaLabel: 'Búsqueda rápida',
+        placeholder: 'Buscar un módulo...',
+        empty: 'No se encontró nada.',
+        navigate: 'navegar',
+        select: 'seleccionar',
+        close: 'esc cerrar',
+    },
+};
+function cpt(key) {
+    const lang = getLanguage();
+    return CP_DICT[lang]?.[key] ?? CP_DICT.pt[key];
+}
+
 export function initCommandPalette(actions) {
     injectStyles();
 
@@ -93,19 +117,23 @@ export function initCommandPalette(actions) {
         return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     }
 
+    // label fica em português mesmo pra ES: são os nomes dos módulos, e a
+    // maioria já é em inglês (Case Notes, Call Script...) ou é curta o
+    // bastante (Avisos, Configurações) pra não valer duplicar; só o hint
+    // (descrição) e as keywords de busca variam por idioma.
     const ALL_ACTIONS = [
-        { id: 'notes', label: 'Case Notes', hint: 'Montar a nota técnica do caso', keywords: 'notas nota caso anotacoes', icon: ICONS.notes, run: actions.toggleNotes },
-        { id: 'bauform', label: 'BAU Form', hint: 'Solicitação de criação/descarte BAU', keywords: 'bau formulario solicitacao criacao descarte', icon: ICONS.bauform, run: actions.toggleBAUForm },
-        { id: 'email', label: 'Email Assistant', hint: 'Templates inteligentes de e-mail', keywords: 'email e-mail correio template', icon: ICONS.email, run: actions.toggleEmail },
-        { id: 'script', label: 'Call Script', hint: 'Guia interativo de chamada', keywords: 'script roteiro chamada ligacao', icon: ICONS.script, run: actions.toggleScript },
-        { id: 'links', label: 'Central de Links', hint: 'Ferramentas, SOPs e atalhos', keywords: 'links atalhos ferramentas sop sops', icon: ICONS.links, run: actions.toggleLinks },
-        { id: 'library', label: 'Minha Biblioteca', hint: 'Snippets e respostas salvas', keywords: 'biblioteca snippets respostas salvas', icon: ICONS.library, run: actions.toggleLibrary },
-        { id: 'timezone', label: 'Fusos Horários', hint: 'Monitoramento e planejador de chamada', keywords: 'fuso horario timezone', icon: ICONS.timezone, run: actions.toggleTimezone },
-        { id: 'broadcast', label: 'Avisos', hint: 'Comunicados e disponibilidade BAU', keywords: 'avisos broadcast comunicados disponibilidade', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
-        { id: 'configs', label: 'Configurações', hint: 'Perfil, som e preferências', keywords: 'configuracoes config preferencias perfil som', icon: ICONS.configs, run: actions.toggleConfigs },
+        { id: 'notes', label: 'Case Notes', hint: { pt: 'Montar a nota técnica do caso', es: 'Armar la nota técnica del caso' }, keywords: 'notas nota caso anotacoes anotaciones', icon: ICONS.notes, run: actions.toggleNotes },
+        { id: 'bauform', label: 'BAU Form', hint: { pt: 'Solicitação de criação/descarte BAU', es: 'Solicitud de creación/descarte BAU' }, keywords: 'bau formulario solicitacao solicitud criacao creacion descarte', icon: ICONS.bauform, run: actions.toggleBAUForm },
+        { id: 'email', label: 'Email Assistant', hint: { pt: 'Templates inteligentes de e-mail', es: 'Plantillas inteligentes de correo' }, keywords: 'email e-mail correio correo template plantilla', icon: ICONS.email, run: actions.toggleEmail },
+        { id: 'script', label: 'Call Script', hint: { pt: 'Guia interativo de chamada', es: 'Guía interactiva de llamada' }, keywords: 'script roteiro guion chamada llamada ligacao', icon: ICONS.script, run: actions.toggleScript },
+        { id: 'links', label: 'Central de Links', hint: { pt: 'Ferramentas, SOPs e atalhos', es: 'Herramientas, SOPs y atajos' }, keywords: 'links atalhos atajos ferramentas herramientas sop sops', icon: ICONS.links, run: actions.toggleLinks },
+        { id: 'library', label: 'Minha Biblioteca', hint: { pt: 'Snippets e respostas salvas', es: 'Snippets y respuestas guardadas' }, keywords: 'biblioteca snippets respostas respuestas salvas guardadas', icon: ICONS.library, run: actions.toggleLibrary },
+        { id: 'timezone', label: 'Fusos Horários', hint: { pt: 'Monitoramento e planejador de chamada', es: 'Monitoreo y planificador de llamada' }, keywords: 'fuso horario timezone', icon: ICONS.timezone, run: actions.toggleTimezone },
+        { id: 'broadcast', label: 'Avisos', hint: { pt: 'Comunicados e disponibilidade BAU', es: 'Comunicados y disponibilidad BAU' }, keywords: 'avisos broadcast comunicados disponibilidade disponibilidad', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
+        { id: 'configs', label: 'Configurações', hint: { pt: 'Perfil, som e preferências', es: 'Perfil, sonido y preferencias' }, keywords: 'configuracoes configuracion config preferencias perfil som sonido', icon: ICONS.configs, run: actions.toggleConfigs },
     ]
         .filter(a => typeof a.run === 'function')
-        .map(a => ({ ...a, _haystack: normalize(`${a.label} ${a.hint} ${a.keywords}`) }));
+        .map(a => ({ ...a, _haystack: normalize(`${a.label} ${a.hint.pt} ${a.hint.es} ${a.keywords}`) }));
 
     let isOpen = false;
     let selectedIndex = 0;
@@ -115,20 +143,20 @@ export function initCommandPalette(actions) {
     overlay.className = 'cw-palette-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('aria-label', 'Busca rápida');
+    overlay.setAttribute('aria-label', cpt('ariaLabel'));
 
     const palette = document.createElement('div');
     palette.className = 'cw-palette';
     palette.innerHTML = `
         <div class="cw-palette-search">
             <span class="cw-palette-search-icon">${ICONS.search}</span>
-            <input type="text" class="cw-palette-input" placeholder="Buscar um módulo..." autocomplete="off" spellcheck="false">
+            <input type="text" class="cw-palette-input" placeholder="${cpt('placeholder')}" autocomplete="off" spellcheck="false">
         </div>
         <div class="cw-palette-list"></div>
         <div class="cw-palette-footer">
-            <span>${ICONS.arrowDown}${ICONS.arrowUp} navegar</span>
-            <span>${ICONS.enter} selecionar</span>
-            <span>esc fechar</span>
+            <span class="js-cp-navigate">${ICONS.arrowDown}${ICONS.arrowUp} ${cpt('navigate')}</span>
+            <span class="js-cp-select">${ICONS.enter} ${cpt('select')}</span>
+            <span class="js-cp-close">${cpt('close')}</span>
         </div>
     `;
     overlay.appendChild(palette);
@@ -140,7 +168,7 @@ export function initCommandPalette(actions) {
     function render() {
         list.innerHTML = '';
         if (filtered.length === 0) {
-            list.innerHTML = `<div class="cw-palette-empty">Nada encontrado.</div>`;
+            list.innerHTML = `<div class="cw-palette-empty">${cpt('empty')}</div>`;
             return;
         }
         filtered.forEach((action, idx) => {
@@ -150,7 +178,7 @@ export function initCommandPalette(actions) {
                 <span class="cw-palette-item-icon">${action.icon}</span>
                 <span class="cw-palette-item-text">
                     <span class="cw-palette-item-label">${action.label}</span>
-                    <span class="cw-palette-item-hint">${action.hint}</span>
+                    <span class="cw-palette-item-hint">${action.hint[getLanguage()] || action.hint.pt}</span>
                 </span>
             `;
             item.onmouseenter = () => { selectedIndex = idx; render(); };
@@ -231,6 +259,18 @@ export function initCommandPalette(actions) {
             e.preventDefault();
             toggle();
         }
+    });
+
+    onLanguageChange(() => {
+        overlay.setAttribute('aria-label', cpt('ariaLabel'));
+        input.placeholder = cpt('placeholder');
+        const navigateEl = palette.querySelector('.js-cp-navigate');
+        if (navigateEl) navigateEl.innerHTML = `${ICONS.arrowDown}${ICONS.arrowUp} ${cpt('navigate')}`;
+        const selectEl = palette.querySelector('.js-cp-select');
+        if (selectEl) selectEl.innerHTML = `${ICONS.enter} ${cpt('select')}`;
+        const closeEl = palette.querySelector('.js-cp-close');
+        if (closeEl) closeEl.textContent = cpt('close');
+        render();
     });
 
     return { open, close, toggle };
