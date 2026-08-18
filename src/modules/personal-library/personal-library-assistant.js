@@ -6,6 +6,96 @@ import { toggleGenieAnimation } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { SnippetService } from "./snippet-service.js";
+import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+
+const LIB_DICT = {
+    pt: {
+        headerTitle: "Minha Biblioteca",
+        headerDesc: "Gerencie seus snippets, textos e templates.",
+        tabs: { general: "Geral", note: "Notas", email: "Emails" },
+        searchPlaceholder: "Buscar por título ou conteúdo...",
+        newItem: "Novo item",
+        cancel: "Cancelar",
+        recentlyUsed: "🕒 Usados recentemente",
+        nothingFound: "Nada encontrado",
+        nothingHereYet: "Nada aqui ainda",
+        noItemMatches: (term) => `Nenhum item bate com "${term}" nesta aba.`,
+        clickPlusToStart: "Clique no + para começar sua coleção.",
+        copy: "Copiar",
+        moreActions: "Mais ações",
+        edit: "Editar",
+        delete: "Excluir",
+        deleteConfirm: (title) => `Excluir "${title}"?`,
+        itemDeletedToast: "Item excluído.",
+        copiedToast: "Copiado!",
+        titleLabel: "Título / Nome",
+        subjectLabel: "Assunto do Email",
+        contentLabel: "Conteúdo",
+        emailBodyLabel: "Corpo do Email (HTML)",
+        noteTextLabel: "Texto da Nota",
+        editItemTitle: "Editar Item",
+        newItemTitle: "Novo Item",
+        save: "Salvar",
+        saveChanges: "Salvar Alterações",
+        saving: "Salvando...",
+        bold: "Negrito",
+        italic: "Itálico",
+        codeFormat: "Formato código",
+        insertImage: "Inserir imagem",
+        imageUrlPrompt: "Cole a URL da imagem:",
+        fillTitleAndContent: "Preencha título e conteúdo.",
+        subjectRequired: "Assunto é obrigatório para emails.",
+        saveFailedNoUser: "Não foi possível salvar: usuário não identificado. Recarregue a página e tente de novo.",
+        savedLocalOnly: "Salvo localmente — sem conexão com a nuvem no momento.",
+        savedAndSynced: "Salvo e sincronizado!",
+        saveError: "Erro ao salvar item.",
+    },
+    es: {
+        headerTitle: "Mi Biblioteca",
+        headerDesc: "Gestiona tus snippets, textos y plantillas.",
+        tabs: { general: "General", note: "Notas", email: "Emails" },
+        searchPlaceholder: "Buscar por título o contenido...",
+        newItem: "Nuevo elemento",
+        cancel: "Cancelar",
+        recentlyUsed: "🕒 Usados recientemente",
+        nothingFound: "No se encontró nada",
+        nothingHereYet: "Todavía no hay nada aquí",
+        noItemMatches: (term) => `Ningún elemento coincide con "${term}" en esta pestaña.`,
+        clickPlusToStart: "Haz clic en + para empezar tu colección.",
+        copy: "Copiar",
+        moreActions: "Más acciones",
+        edit: "Editar",
+        delete: "Eliminar",
+        deleteConfirm: (title) => `¿Eliminar "${title}"?`,
+        itemDeletedToast: "Elemento eliminado.",
+        copiedToast: "¡Copiado!",
+        titleLabel: "Título / Nombre",
+        subjectLabel: "Asunto del Email",
+        contentLabel: "Contenido",
+        emailBodyLabel: "Cuerpo del Email (HTML)",
+        noteTextLabel: "Texto de la Nota",
+        editItemTitle: "Editar Elemento",
+        newItemTitle: "Nuevo Elemento",
+        save: "Guardar",
+        saveChanges: "Guardar Cambios",
+        saving: "Guardando...",
+        bold: "Negrita",
+        italic: "Cursiva",
+        codeFormat: "Formato código",
+        insertImage: "Insertar imagen",
+        imageUrlPrompt: "Pega la URL de la imagen:",
+        fillTitleAndContent: "Completa el título y el contenido.",
+        subjectRequired: "El asunto es obligatorio para emails.",
+        saveFailedNoUser: "No se pudo guardar: usuario no identificado. Recarga la página e inténtalo de nuevo.",
+        savedLocalOnly: "Guardado localmente — sin conexión con la nube en este momento.",
+        savedAndSynced: "¡Guardado y sincronizado!",
+        saveError: "Error al guardar el elemento.",
+    },
+};
+function libt(key) {
+    const lang = getLanguage();
+    return LIB_DICT[lang]?.[key] ?? LIB_DICT.pt[key];
+}
 
 // --- ÍCONES (Material Symbols, estilo outline) ---
 const ICONS = {
@@ -31,9 +121,9 @@ const ICONS = {
 };
 
 const TABS = [
-    { id: 'general', label: 'Geral', icon: ICONS.tabs.general },
-    { id: 'note', label: 'Notas', icon: ICONS.tabs.note },
-    { id: 'email', label: 'Emails', icon: ICONS.tabs.email }
+    { id: 'general', icon: ICONS.tabs.general },
+    { id: 'note', icon: ICONS.tabs.note },
+    { id: 'email', icon: ICONS.tabs.email }
 ];
 
 // --- USADOS RECENTEMENTE ---
@@ -352,11 +442,12 @@ export function initPersonalLibrary() {
 
     const animRefs = { popup };
     const header = createStandardHeader(
-        popup, "Minha Biblioteca", CURRENT_VERSION,
-        "Gerencie seus snippets, textos e templates.",
+        popup, libt('headerTitle'), CURRENT_VERSION,
+        libt('headerDesc'),
         animRefs, () => toggleVisibility()
     );
     popup.appendChild(header);
+    const headerTitleEl = header.querySelector('span');
 
     const container = document.createElement("div");
     container.className = "cw-lib-container";
@@ -373,7 +464,7 @@ export function initPersonalLibrary() {
     searchIcon.innerHTML = ICONS.search;
     const searchInput = document.createElement("input");
     searchInput.className = "cw-lib-search no-drag";
-    searchInput.placeholder = "Buscar por título ou conteúdo...";
+    searchInput.placeholder = libt('searchPlaceholder');
     searchInput.type = "text";
     const searchClear = document.createElement("div");
     searchClear.className = "cw-lib-search-clear cw-tactile";
@@ -386,7 +477,7 @@ export function initPersonalLibrary() {
         const btn = document.createElement("div");
         btn.className = "cw-lib-tab" + (t.id === currentTab ? " active" : "");
         btn.id = `lib-tab-${t.id}`;
-        btn.innerHTML = `${t.icon}<span>${t.label}</span>`;
+        btn.innerHTML = `${t.icon}<span class="js-lib-tab-label">${libt('tabs')[t.id]}</span>`;
         btn.onmouseenter = () => SoundManager.playHover();
         btn.onclick = () => switchTab(t.id);
         tabsRow.appendChild(btn);
@@ -403,7 +494,7 @@ export function initPersonalLibrary() {
     // --- FAB ---
     const fab = document.createElement("div");
     fab.className = "cw-lib-fab cw-tactile";
-    fab.title = "Novo item";
+    fab.title = libt('newItem');
     fab.innerHTML = ICONS.add;
     fab.onclick = () => openEditor();
     container.appendChild(fab);
@@ -420,11 +511,11 @@ export function initPersonalLibrary() {
     const sheetBack = document.createElement("div");
     sheetBack.className = "cw-lib-sheet-back no-drag";
     sheetBack.innerHTML = ICONS.back;
-    sheetBack.title = "Cancelar";
+    sheetBack.title = libt('cancel');
     sheetBack.onclick = closeEditor;
     const sheetTitle = document.createElement("span");
     sheetTitle.className = "cw-lib-sheet-title";
-    sheetTitle.textContent = "Novo Item";
+    sheetTitle.textContent = libt('newItemTitle');
     sheetHead.append(sheetBack, sheetTitle);
 
     const sheetBody = document.createElement("div");
@@ -434,13 +525,13 @@ export function initPersonalLibrary() {
     sheetFoot.className = "cw-lib-sheet-foot";
     const saveBtn = document.createElement("button");
     saveBtn.className = "cw-lib-save-btn no-drag";
-    saveBtn.textContent = "Salvar";
+    saveBtn.textContent = libt('save');
     saveBtn.onclick = handleSave;
     sheetFoot.appendChild(saveBtn);
 
     const loadingOverlay = document.createElement("div");
     loadingOverlay.className = "cw-lib-loading";
-    loadingOverlay.innerHTML = `<div class="cw-lib-spinner"></div><div class="cw-lib-loading-text">Salvando...</div>`;
+    loadingOverlay.innerHTML = `<div class="cw-lib-spinner"></div><div class="cw-lib-loading-text js-lib-saving">${libt('saving')}</div>`;
 
     sheet.append(sheetHandle, sheetHead, sheetBody, sheetFoot, loadingOverlay);
     container.appendChild(sheet);
@@ -488,7 +579,7 @@ export function initPersonalLibrary() {
     function createRecentSection(recentItems) {
         const section = document.createElement("div");
         section.className = "cw-lib-recent-section";
-        section.innerHTML = `<div class="cw-lib-recent-title">🕒 Usados recentemente</div>`;
+        section.innerHTML = `<div class="cw-lib-recent-title">${libt('recentlyUsed')}</div>`;
 
         const row = document.createElement("div");
         row.className = "cw-lib-recent-row";
@@ -528,8 +619,8 @@ export function initPersonalLibrary() {
             const isSearching = term.length > 0;
             empty.innerHTML = `
                 <div style="opacity:0.5;">${ICONS.empty}</div>
-                <div class="cw-lib-empty-title">${isSearching ? 'Nada encontrado' : 'Nada aqui ainda'}</div>
-                <div class="cw-lib-empty-sub">${isSearching ? `Nenhum item bate com "${searchTerm.trim()}" nesta aba.` : 'Clique no + para começar sua coleção.'}</div>
+                <div class="cw-lib-empty-title">${isSearching ? libt('nothingFound') : libt('nothingHereYet')}</div>
+                <div class="cw-lib-empty-sub">${isSearching ? libt('noItemMatches')(searchTerm.trim()) : libt('clickPlusToStart')}</div>
             `;
             grid.appendChild(empty);
             return;
@@ -565,11 +656,11 @@ export function initPersonalLibrary() {
             ${mediaTag}
             <div class="cw-lib-card-preview${item.isCode ? ' code' : ''}">${escapeHtml(previewContent)}</div>
             <div class="cw-lib-card-foot">
-                <div class="cw-lib-icon-btn cw-act-copy cw-tactile" title="Copiar">${ICONS.copy}</div>
-                <div class="cw-lib-icon-btn cw-act-more cw-tactile" title="Mais ações">${ICONS.more}</div>
+                <div class="cw-lib-icon-btn cw-act-copy cw-tactile" title="${libt('copy')}">${ICONS.copy}</div>
+                <div class="cw-lib-icon-btn cw-act-more cw-tactile" title="${libt('moreActions')}">${ICONS.more}</div>
                 <div class="cw-lib-menu">
-                    <div class="cw-lib-menu-item cw-act-edit">${ICONS.edit} Editar</div>
-                    <div class="cw-lib-menu-item danger cw-act-del">${ICONS.delete} Excluir</div>
+                    <div class="cw-lib-menu-item cw-act-edit">${ICONS.edit} ${libt('edit')}</div>
+                    <div class="cw-lib-menu-item danger cw-act-del">${ICONS.delete} ${libt('delete')}</div>
                 </div>
             </div>
         `;
@@ -605,11 +696,11 @@ export function initPersonalLibrary() {
             e.stopPropagation();
             SoundManager.playClick();
             closeCardMenu();
-            const confirmed = await confirmDialog(`Excluir "${item.title}"?`);
+            const confirmed = await confirmDialog(libt('deleteConfirm')(item.title));
             if (confirmed) {
                 SnippetService.delete(item.id);
                 renderList();
-                showToast("Item excluído.");
+                showToast(libt('itemDeletedToast'));
             }
         };
 
@@ -627,30 +718,30 @@ export function initPersonalLibrary() {
             navigator.clipboard.writeText(item.content);
         }
         trackRecentUse(item.id);
-        showToast("Copiado!");
+        showToast(libt('copiedToast'));
     }
 
     function openEditor(item = null) {
         currentEditingId = item ? item.id : null;
         sheetBody.innerHTML = "";
 
-        sheetBody.appendChild(createField("title", "Título / Nome", item ? item.title : ""));
+        sheetBody.appendChild(createField("title", libt('titleLabel'), item ? item.title : ""));
 
         if (currentTab === 'email') {
-            sheetBody.appendChild(createField("subject", "Assunto do Email", item ? item.subject : ""));
+            sheetBody.appendChild(createField("subject", libt('subjectLabel'), item ? item.subject : ""));
         }
 
-        let contentLabel = "Conteúdo";
-        if (currentTab === 'email') contentLabel = "Corpo do Email (HTML)";
-        if (currentTab === 'note') contentLabel = "Texto da Nota";
+        let contentLabel = libt('contentLabel');
+        if (currentTab === 'email') contentLabel = libt('emailBodyLabel');
+        if (currentTab === 'note') contentLabel = libt('noteTextLabel');
 
         sheetBody.appendChild(createField("content", contentLabel, item ? item.content : "", {
             isRich: true,
             isCode: item ? item.isCode : false
         }));
 
-        sheetTitle.textContent = item ? "Editar Item" : "Novo Item";
-        saveBtn.textContent = item ? "Salvar Alterações" : "Salvar";
+        sheetTitle.textContent = item ? libt('editItemTitle') : libt('newItemTitle');
+        saveBtn.textContent = item ? libt('saveChanges') : libt('save');
         sheet.classList.add('open');
 
         // 500ms = duração real da transição de .cw-lib-sheet (transform 0.5s
@@ -682,7 +773,7 @@ export function initPersonalLibrary() {
 
             if (!title || !content || content === '<br>') {
                 SoundManager.playError();
-                showToast("Preencha título e conteúdo.", { error: true });
+                showToast(libt('fillTitleAndContent'), { error: true });
                 return;
             }
 
@@ -697,7 +788,7 @@ export function initPersonalLibrary() {
                 const subject = sheetBody.querySelector("#cw-lib-inp-subject").value.trim();
                 if (!subject) {
                     SoundManager.playError();
-                    showToast("Assunto é obrigatório para emails.", { error: true });
+                    showToast(libt('subjectRequired'), { error: true });
                     return;
                 }
                 payload.subject = subject;
@@ -713,7 +804,7 @@ export function initPersonalLibrary() {
             // fazia parecer que "nenhuma função rodava".
             if (saved === false) {
                 SoundManager.playError();
-                showToast("Não foi possível salvar: usuário não identificado. Recarregue a página e tente de novo.", { error: true });
+                showToast(libt('saveFailedNoUser'), { error: true });
                 return;
             }
 
@@ -722,15 +813,15 @@ export function initPersonalLibrary() {
 
             if (saved.synced === false) {
                 SoundManager.playError();
-                showToast("Salvo localmente — sem conexão com a nuvem no momento.", { error: true });
+                showToast(libt('savedLocalOnly'), { error: true });
             } else {
-                showToast("Salvo e sincronizado!");
+                showToast(libt('savedAndSynced'));
                 SoundManager.playSuccess();
             }
         } catch (error) {
             console.error("Erro ao salvar item da biblioteca:", error);
             SoundManager.playError();
-            showToast("Erro ao salvar item.", { error: true });
+            showToast(libt('saveError'), { error: true });
         } finally {
             loadingOverlay.classList.remove('active');
             saveBtn.disabled = false;
@@ -751,10 +842,10 @@ export function initPersonalLibrary() {
             const mini = document.createElement("div");
             mini.className = "cw-lib-toolbar-mini";
             mini.innerHTML = `
-                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-bold" title="Negrito">${ICONS.bold}</button>
-                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-italic" title="Itálico">${ICONS.italic}</button>
-                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-code" title="Formato código">${ICONS.code}</button>
-                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-img" title="Inserir imagem">${ICONS.image}</button>
+                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-bold" title="${libt('bold')}">${ICONS.bold}</button>
+                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-italic" title="${libt('italic')}">${ICONS.italic}</button>
+                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-code" title="${libt('codeFormat')}">${ICONS.code}</button>
+                <button type="button" class="cw-lib-tb-btn cw-tactile cw-tb-img" title="${libt('insertImage')}">${ICONS.image}</button>
             `;
 
             input = document.createElement("div");
@@ -786,7 +877,7 @@ export function initPersonalLibrary() {
                 input.focus();
             };
             mini.querySelector('.cw-tb-img').onclick = async () => {
-                const url = await promptDialog("Cole a URL da imagem:");
+                const url = await promptDialog(libt('imageUrlPrompt'));
                 if (url) {
                     document.execCommand('insertImage', false, url);
                     input.querySelectorAll('img').forEach(img => {
@@ -853,6 +944,24 @@ export function initPersonalLibrary() {
             closeCardMenu();
         }
     }
+
+    onLanguageChange(() => {
+        if (headerTitleEl) headerTitleEl.textContent = libt('headerTitle');
+        const helpTitleEl = popup.querySelector('.cw-help-title');
+        if (helpTitleEl) helpTitleEl.textContent = libt('headerTitle');
+        const helpDescEl = popup.querySelector('.cw-help-description');
+        if (helpDescEl) helpDescEl.textContent = libt('headerDesc');
+        TABS.forEach(t => {
+            const label = document.querySelector(`#lib-tab-${t.id} .js-lib-tab-label`);
+            if (label) label.textContent = libt('tabs')[t.id];
+        });
+        searchInput.placeholder = libt('searchPlaceholder');
+        fab.title = libt('newItem');
+        sheetBack.title = libt('cancel');
+        const savingEl = loadingOverlay.querySelector('.js-lib-saving');
+        if (savingEl) savingEl.textContent = libt('saving');
+        renderList();
+    });
 
     return toggleVisibility;
 }
