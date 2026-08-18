@@ -1,6 +1,27 @@
 # TechSol Operations Assistant
 
-A productivity and automation suite for a corporate CRM, delivered as a JavaScript bookmarklet. It runs "on top" of the native CRM as a DOM-injected overlay, adding email automation, case-note generation, a BAU escalation workflow, sound feedback, and Material-Design-style UX improvements — with no browser extension or install step beyond a bookmark.
+[![Status](https://img.shields.io/badge/status-stable-4285F4)](#project-status)
+[![Backend](https://img.shields.io/badge/backend-Google%20Apps%20Script-34A853)](#tech-stack)
+[![Design](https://img.shields.io/badge/design-Material-FBBC05)](#tech-stack)
+[![Bundler](https://img.shields.io/badge/bundler-esbuild-EA4335)](#tech-stack)
+
+A productivity and automation suite for a corporate CRM, delivered as a JavaScript bookmarklet. It runs "on top" of the native CRM as a DOM-injected overlay, adding email automation, case-note generation, a BAU escalation workflow, sound feedback, and a UI built on **Google Material Design** principles — with no browser extension or install step beyond a bookmark.
+
+## Table of Contents
+
+- [Key Features](#key-features)
+- [Screenshots](#screenshots)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Architecture](#architecture)
+- [Configuration & Secrets](#configuration--secrets)
+- [Available Scripts](#available-scripts)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Troubleshooting](#troubleshooting)
+- [Visual Portfolio Generation](#visual-portfolio-generation-optional)
+- [Project Status](#project-status)
 
 ## Key Features
 
@@ -16,25 +37,19 @@ A productivity and automation suite for a corporate CRM, delivered as a JavaScri
 - **Onboarding & Changelog wizards** — first-run tutorial slides and a "what's new" popup shown automatically when the app version changes.
 - **Sound UX & Material Look** — audio feedback for success/error/notification events, a cinematic startup sound, and CSS-in-JS components styled to blend into Google's native UI.
 
-## Visual Portfolio
+## Screenshots
 
-| Command Center | Case Notes Assistant |
-| :---: | :---: |
-| <img src="docs/media/command-center.png" width="400"> | <img src="docs/media/case-notes-filled.png" width="400"> |
+> _Screenshots and a short demo video will be added here._
 
-| Email Assistant | Call Script Assistant |
-| :---: | :---: |
-| <img src="docs/media/email-assistant.png" width="400"> | <img src="docs/media/call-script.png" width="400"> |
+| Command Center | Case Notes Assistant | Email Assistant |
+| :---: | :---: | :---: |
+| _(add screenshot)_ | _(add screenshot)_ | _(add screenshot)_ |
 
-| Timezone Assistant | BAU Central |
-| :---: | :---: |
-| <img src="docs/media/timezone-assistant.png" width="400"> | <img src="docs/media/bau-dashboard.png" width="400"> |
+| Call Script Assistant | Timezone Assistant | BAU Central |
+| :---: | :---: | :---: |
+| _(add screenshot)_ | _(add screenshot)_ | _(add screenshot)_ |
 
-| Settings & Profile |
-| :---: |
-| <img src="docs/media/configs-profile.png" width="400"> |
-
-A video walkthrough is available at [`docs/media/techsol-demo.webm`](docs/media/techsol-demo.webm). Both the screenshots and the video are generated from a static mock of the CRM (see [Visual Portfolio Generation](#visual-portfolio-generation-optional)), not the real production environment.
+Drop image files into [`docs/media/`](docs/media/) and swap the placeholder cells above for `<img src="docs/media/<file>.png" width="400">`. A demo video can be linked the same way once available. Both can be regenerated automatically — see [Visual Portfolio Generation](#visual-portfolio-generation-optional).
 
 ---
 
@@ -43,6 +58,7 @@ A video walkthrough is available at [`docs/media/techsol-demo.webm`](docs/media/
 - **Language**: JavaScript (ES modules), Vanilla JS — no UI framework (no React/Vue)
 - **Bundler**: [esbuild](https://esbuild.github.io/)
 - **Styling**: CSS-in-JS (no external stylesheets)
+- **Design language**: [Google Material Design](https://m3.material.io/) — Roboto/Google Sans typography, Material color accents, and glassmorphism component styling built by hand (no Material UI library)
 - **Backend**: Google Apps Script (V8 runtime), synced via [`clasp`](https://github.com/google/clasp)
 - **Data store**: Google Sheets (accessed from Apps Script — see `specs/data-models/db-schema.md`)
 - **Backend transport**: JSONP (not `fetch`) to avoid CORS restrictions against the Apps Script Web App
