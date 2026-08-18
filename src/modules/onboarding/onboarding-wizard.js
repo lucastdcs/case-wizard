@@ -3,15 +3,14 @@
 import { stylePopup, showToast, confirmDialog } from "../shared/utils.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
+import { getLanguage } from "../shared/i18n.js";
 
-export function initOnboarding() {
-    // 1. Verificação de Segurança (Já viu?)
-    if (localStorage.getItem("cw_onboarding_seen_v1")) {
-        return; // Sai se já viu
-    }
-
-    // --- CONFIGURAÇÃO DOS SLIDES ---
-    const SLIDES = [
+// O idioma aqui já vem resolvido do perfil (ver app.js: initOnboarding()
+// só roda depois que a promise do idioma se resolve), então não precisa
+// reagir a mudança em runtime como os popups persistentes - é uma tela
+// única, mostrada uma vez só, no boot.
+const SLIDES_BY_LANG = {
+    pt: [
         {
             icon: "🚀",
             title: "Bem-vindo ao TechSol Suite",
@@ -38,7 +37,51 @@ export function initOnboarding() {
             text: "Explore o Menu Flutuante para começar. Bom trabalho!",
             isLast: true
         }
-    ];
+    ],
+    es: [
+        {
+            icon: "🚀",
+            title: "Bienvenido a TechSol Suite",
+            text: "Tu nueva central de operaciones para maximizar la productividad y la estandarización en el CRM."
+        },
+        {
+            icon: "📝",
+            title: "Notas Automáticas",
+            text: "Genera notas de caso (BAU/LM) perfectas en segundos. Selecciona el Estado, las Tareas y deja que el asistente escriba el texto técnico por ti."
+        },
+        {
+            icon: "⚡",
+            title: "Quick Email y Scripts",
+            text: "Responde correos con plantillas inteligentes que detectan el contexto y usa scripts de llamada interactivos que guían tu atención."
+        },
+        {
+            icon: "📢",
+            title: "Mantente Informado",
+            text: "El módulo Broadcast trae avisos importantes y disponibilidad BAU directo a tu pantalla, sin necesidad de abrir hojas de cálculo externas."
+        },
+        {
+            icon: "✅",
+            title: "¡Todo Listo!",
+            text: "Explora el Menú Flotante para empezar. ¡Buen trabajo!",
+            isLast: true
+        }
+    ],
+};
+
+const OB_DICT = {
+    pt: { skip: "Pular", next: "Próximo", start: "Começar 🚀", skipConfirm: "Pular o tutorial?", readyToast: "Tudo pronto! Use o menu flutuante." },
+    es: { skip: "Omitir", next: "Siguiente", start: "Empezar 🚀", skipConfirm: "¿Omitir el tutorial?", readyToast: "¡Todo listo! Usa el menú flotante." },
+};
+
+export function initOnboarding() {
+    // 1. Verificação de Segurança (Já viu?)
+    if (localStorage.getItem("cw_onboarding_seen_v1")) {
+        return; // Sai se já viu
+    }
+
+    const lang = getLanguage();
+    const SLIDES = SLIDES_BY_LANG[lang] || SLIDES_BY_LANG.pt;
+    const ob = OB_DICT[lang] || OB_DICT.pt;
 
     let currentSlide = 0;
 
@@ -102,13 +145,13 @@ export function initOnboarding() {
 
     // Botões
     const btnSkip = document.createElement("button");
-    btnSkip.textContent = "Pular";
+    btnSkip.textContent = ob.skip;
     Object.assign(btnSkip.style, styles.btn, styles.btnSkip);
     btnSkip.onmouseover = () => btnSkip.style.color = "#202124";
     btnSkip.onmouseout = () => btnSkip.style.color = "#5f6368";
 
     const btnNext = document.createElement("button");
-    btnNext.textContent = "Próximo";
+    btnNext.textContent = ob.next;
     Object.assign(btnNext.style, styles.btn, styles.btnNext);
     btnNext.onmouseover = () => btnNext.style.transform = "scale(1.05)";
     btnNext.onmouseout = () => btnNext.style.transform = "scale(1)";
@@ -147,11 +190,11 @@ export function initOnboarding() {
         // Botões
         if (slide.isLast) {
             btnSkip.style.display = "none";
-            btnNext.textContent = "Começar 🚀";
+            btnNext.textContent = ob.start;
             btnNext.style.width = "100%";
         } else {
             btnSkip.style.display = "block";
-            btnNext.textContent = "Próximo";
+            btnNext.textContent = ob.next;
             btnNext.style.width = "auto";
         }
     }
@@ -162,7 +205,7 @@ export function initOnboarding() {
         card.style.transform = "translateY(20px)";
         setTimeout(() => overlay.remove(), 400);
         SoundManager.playSuccess();
-        showToast("Tudo pronto! Use o menu flutuante.");
+        showToast(ob.readyToast);
         document.removeEventListener("keydown", handleKeydown);
         unlockBodyScroll();
     }
@@ -179,7 +222,7 @@ export function initOnboarding() {
     };
 
     btnSkip.onclick = async () => {
-        const confirmed = await confirmDialog("Pular o tutorial?");
+        const confirmed = await confirmDialog(ob.skipConfirm);
         if(confirmed) closeWizard();
     };
 

@@ -5,6 +5,52 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from '../shared/animations.js';
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll, createEmptyState } from "../shared/dom-utils.js";
+import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+
+// As descrições de cada link (~90 entradas) continuam só em PT por ora —
+// são rótulos curtos de ferramentas internas (SOPs, siglas, nomes de
+// produto), no mesmo escopo de "conteúdo" adiado que o changelog e o
+// checklist de Call Script. O chrome do módulo (abaixo) e os nomes de
+// categoria já seguem o idioma global.
+const LINKS_DICT = {
+    pt: {
+        headerTitle: "Central de Links",
+        headerDesc: "Navegue pelas categorias ou use a busca.",
+        searchPlaceholder: "Buscar ferramenta ou SOP...",
+        recent: "Recentes",
+        nothingHereYet: "Nada por aqui ainda",
+        nothingHereSub: "Os links que você abrir aparecem aqui pra acesso rápido depois.",
+        searchResults: "Resultados da busca",
+        nothingFound: "Nada encontrado",
+        noLinkMatches: (term) => `Nenhum link bate com "${term}".`,
+        copyUrl: "Copiar URL",
+        linkCopiedToast: "Link copiado!",
+        copyFailedToast: "Não foi possível copiar o link.",
+        categoryLabels: { tasks: "Tarefas", ads: "Ads", analytics: "GA4", shopping: "Shop", tech: "Tech", hr: "RH", lm: "Forms", qa: "QA", suporte: "Ajuda" },
+    },
+    es: {
+        headerTitle: "Central de Enlaces",
+        headerDesc: "Navega por las categorías o usa la búsqueda.",
+        searchPlaceholder: "Buscar herramienta o SOP...",
+        recent: "Recientes",
+        nothingHereYet: "Todavía no hay nada aquí",
+        nothingHereSub: "Los enlaces que abras aparecen aquí para acceso rápido después.",
+        searchResults: "Resultados de la búsqueda",
+        nothingFound: "No se encontró nada",
+        noLinkMatches: (term) => `Ningún enlace coincide con "${term}".`,
+        copyUrl: "Copiar URL",
+        linkCopiedToast: "¡Enlace copiado!",
+        copyFailedToast: "No se pudo copiar el enlace.",
+        categoryLabels: { tasks: "Tareas", ads: "Ads", analytics: "GA4", shopping: "Shop", tech: "Tech", hr: "RRHH", lm: "Forms", qa: "QA", suporte: "Ayuda" },
+    },
+};
+function lt(key) {
+    const lang = getLanguage();
+    return LINKS_DICT[lang]?.[key] ?? LINKS_DICT.pt[key];
+}
+function catLabel(key) {
+    return lt('categoryLabels')[key] ?? LINKS_DB[key]?.label ?? key;
+}
 
 // --- DADOS (Links) ---
 const LINKS_DB = {
@@ -329,11 +375,12 @@ export function initLinksAssistant() {
 
   // 1. HEADER
   const header = createStandardHeader(
-    popup, "Central de Links", CURRENT_VERSION,
-    "Navegue pelas categorias ou use a busca.",
+    popup, lt('headerTitle'), CURRENT_VERSION,
+    lt('headerDesc'),
     animRefs, () => toggleVisibility()
   );
   popup.appendChild(header);
+  const headerTitleEl = header.querySelector('span');
 
   // --- LAYOUT PRINCIPAL ---
   const mainLayout = document.createElement("div");
@@ -364,7 +411,7 @@ export function initLinksAssistant() {
   const searchInput = document.createElement("input");
   searchInput.className = "cw-links-search-input";
   searchInput.type = "text";
-  searchInput.placeholder = "Buscar ferramenta ou SOP...";
+  searchInput.placeholder = lt('searchPlaceholder');
 
   searchInputWrapper.appendChild(searchIcon);
   searchInputWrapper.appendChild(searchInput);
@@ -387,7 +434,7 @@ export function initLinksAssistant() {
 
       const hHead = document.createElement("div");
       hHead.className = "cw-links-history-head";
-      hHead.innerHTML = `<span class="cw-links-history-title">🕒 Recentes</span>`;
+      hHead.innerHTML = `<span class="cw-links-history-title js-links-recent">🕒 ${lt('recent')}</span>`;
 
       const closeBtn = document.createElement("button");
       closeBtn.className = "cw-links-history-close";
@@ -424,8 +471,8 @@ export function initLinksAssistant() {
       if (history.length === 0) {
           list.appendChild(createEmptyState({
               icon: CATEGORY_ICONS.history,
-              title: "Nada por aqui ainda",
-              subtitle: "Os links que você abrir aparecem aqui pra acesso rápido depois.",
+              title: lt('nothingHereYet'),
+              subtitle: lt('nothingHereSub'),
           }));
       } else {
           history.forEach(link => {
@@ -458,7 +505,7 @@ export function initLinksAssistant() {
       sidebar.innerHTML = "";
 
       // Botão "Recentes" (Com Toggle)
-      const histBtn = createNavBtn('history', 'Recentes', CATEGORY_ICONS.history);
+      const histBtn = createNavBtn('history', lt('recent'), CATEGORY_ICONS.history);
       histBtn.id = "cw-sidebar-btn-history";
 
       histBtn.onclick = () => {
@@ -482,8 +529,7 @@ export function initLinksAssistant() {
 
       // Botões de Categoria
       Object.keys(LINKS_DB).forEach(key => {
-          const cat = LINKS_DB[key];
-          const btn = createNavBtn(key, cat.label, CATEGORY_ICONS[key]);
+          const btn = createNavBtn(key, catLabel(key), CATEGORY_ICONS[key]);
           btn.id = `cw-sidebar-btn-${key}`;
 
           btn.onclick = () => {
@@ -561,15 +607,15 @@ export function initLinksAssistant() {
           if(results.length === 0) {
               scrollContent.appendChild(createEmptyState({
                   icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
-                  title: "Nada encontrado",
-                  subtitle: `Nenhum link bate com "${searchTerm.trim()}".`,
+                  title: lt('nothingFound'),
+                  subtitle: lt('noLinkMatches')(searchTerm.trim()),
               }));
               return;
           }
 
           const searchHeader = document.createElement("div");
           searchHeader.className = "cw-links-search-results-label";
-          searchHeader.textContent = "Resultados da busca";
+          searchHeader.textContent = lt('searchResults');
           scrollContent.appendChild(searchHeader);
 
           results.forEach(link => {
@@ -588,7 +634,7 @@ export function initLinksAssistant() {
           catHeader.id = `cat-anchor-${key}`;
           catHeader.className = "cw-links-cat-header";
           catHeader.style.setProperty('--cat-color', theme.color);
-          catHeader.innerHTML = `<div class="cw-links-cat-dot"></div>${cat.label}`;
+          catHeader.innerHTML = `<div class="cw-links-cat-dot"></div>${catLabel(key)}`;
 
           catSection.appendChild(catHeader);
 
@@ -645,7 +691,7 @@ export function initLinksAssistant() {
       const copyBtn = document.createElement("div");
       copyBtn.className = "cw-links-copy-btn";
       copyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-      copyBtn.title = "Copiar URL";
+      copyBtn.title = lt('copyUrl');
 
       card.onclick = () => {
           if(!isHistory && catKey) addToHistory(link, catKey);
@@ -660,10 +706,10 @@ export function initLinksAssistant() {
           navigator.clipboard.writeText(link.url).then(() => {
               SoundManager.playClick();
               if(!isHistory && catKey) addToHistory(link, catKey);
-              showToast("Link copiado!");
+              showToast(lt('linkCopiedToast'));
           }).catch(() => {
               SoundManager.playError();
-              showToast("Não foi possível copiar o link.", { error: true });
+              showToast(lt('copyFailedToast'), { error: true });
           });
       };
 
@@ -690,6 +736,21 @@ export function initLinksAssistant() {
   document.body.appendChild(popup);
   renderSidebar();
   renderContent();
+
+  // Retraduz header/busca e refaz sidebar+conteúdo, que já são montados do
+  // zero a cada render (inclusive o overlay de histórico, se estiver aberto).
+  onLanguageChange(() => {
+      if (headerTitleEl) headerTitleEl.textContent = lt('headerTitle');
+      const helpTitleEl = popup.querySelector('.cw-help-title');
+      if (helpTitleEl) helpTitleEl.textContent = lt('headerTitle');
+      const helpDescEl = popup.querySelector('.cw-help-description');
+      if (helpDescEl) helpDescEl.textContent = lt('headerDesc');
+      searchInput.placeholder = lt('searchPlaceholder');
+      renderSidebar();
+      renderContent();
+      updateSidebarVisuals();
+      if (isHistoryOpen) showHistoryOverlay();
+  });
 
   return toggleVisibility;
 }

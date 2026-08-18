@@ -104,22 +104,26 @@ function initApp() {
             DataService.logEvent("App", "Start", "Session Start");
 
             // 1.1. Aplica o idioma vindo da planilha People (se a pessoa
-            // nunca trocou manualmente em Configurações neste navegador).
+            // nunca trocou manualmente em Configurações neste navegador) ANTES
+            // de mostrar Onboarding/Changelog - senão quem usa o Case Wizard
+            // pela primeira vez veria o tutorial em PT por um instante mesmo
+            // sendo hispanofalante, já que o perfil ainda não teria chegado.
             const agentEmail = getAgentEmail();
-            if (agentEmail) {
-                const ldap = agentEmail.split('@')[0];
-                fetchUserProfile(ldap)
+            const languagePromise = agentEmail
+                ? fetchUserProfile(agentEmail.split('@')[0])
                     .then(profile => { if (profile) applyProfileLanguage(profile); })
-                    .catch(e => console.warn("Não foi possível resolver o idioma do perfil:", e));
-            }
+                    .catch(e => console.warn("Não foi possível resolver o idioma do perfil:", e))
+                : Promise.resolve();
 
-            // 2. Verifica Tutoriais / Changelog
-            initOnboarding(); 
-            
-            setTimeout(() => {
-                checkAndShowChangelog(APP_VERSION);
-            }, 500);
-            
+            languagePromise.finally(() => {
+                // 2. Verifica Tutoriais / Changelog
+                initOnboarding();
+
+                setTimeout(() => {
+                    checkAndShowChangelog(APP_VERSION);
+                }, 500);
+            });
+
         }, 2500);
 
     } catch (error) {
