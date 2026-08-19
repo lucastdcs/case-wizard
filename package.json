@@ -8,7 +8,9 @@
     "dev": "esbuild src/app.js --bundle --outfile=dist/bundle-dev.js",
     "portfolio": "python3 generate-portfolio.py",
     "test:content": "node scripts/test-content-api.js",
-    "seed:links": "node scripts/generate-links-seed.mjs"
+    "test:call-script": "node scripts/test-call-script-roundtrip.mjs",
+    "seed:links": "node scripts/generate-links-seed.mjs",
+    "seed:call-script": "node scripts/generate-call-script-seed.mjs"
   },
   "dependencies": {
     "esbuild": "^0.27.4",
