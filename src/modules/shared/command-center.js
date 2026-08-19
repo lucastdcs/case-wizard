@@ -52,12 +52,14 @@ const COLORS = {
   gray: "#9AA0A6", // [NOVO] Cor para Configurações
 };
 
-// Fonte única pra esses dois valores: usados tanto no CSS (.cw-pill.collapsed,
-// .cw-pill.processing-center) quanto na morfação FLIP em px de
-// triggerProcessingAnimation() - se divergissem, a animação de
-// entrada/saída ia medir um alvo diferente do que o CSS realmente aplica.
-const CIRCLE_SIZE = 50;      // .cw-pill.collapsed width/height
-const PROCESSING_RADIUS = 26; // .cw-pill.processing-center border-radius
+const CIRCLE_SIZE = 50; // .cw-pill.collapsed width/height
+
+// Preenchido por initCommandCenter(). triggerProcessingAnimation() é exportada
+// no escopo do módulo, mas o fechamento polido da pílula (que prima a altura em
+// px antes de animar) vive numa closure lá dentro - guardar a referência aqui
+// deixa a tela de carregamento reusar essa animação em vez de reimplementar um
+// colapso pior por fora.
+let collapsePillRef = null;
 
 // --- FUNÇÕES EXPORTADAS ---
 
@@ -479,56 +481,66 @@ export function initCommandCenter(actions, splashDone) {
             }
 
             /* ============================================================
-               PROCESSING CENTER
-               ============================================================ */
-            .cw-pill.processing-center {
-                /* Posição/tamanho-alvo pra quando prefers-reduced-motion pula a
-                   morfação FLIP em JS (ver triggerProcessingAnimation) - com
-                   motion normal, esses valores só entram em cena DEPOIS que a
-                   pílula já mediu seu ponto de partida real e a inline style
-                   (também !important, então vence esses aqui) assume a animação. */
-                top: 50% !important; left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                /* Card bem mais discreto do que antes (era 340px/160px min-height,
-                   um "quadrado gigante" real) - só o suficiente pras 3 bolinhas
-                   e uma linha ou duas de dica caberem confortavelmente. */
-                width: 220px !important;
-                height: auto !important;
-                min-height: 128px !important;
-                border-radius: ${PROCESSING_RADIUS}px !important;
-                /* Liquid Glass, igual ao resto da pill (COLORS.glassBg + blur) -
-                   antes era um preenchimento opaco (#202124) sem backdrop-filter,
-                   uma "laje preta" destoando do resto do sistema visual. */
-                background: rgba(32, 33, 36, 0.82) !important;
-                backdrop-filter: blur(24px) saturate(160%) !important;
-                -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
-                border: 1px solid ${COLORS.glassBorder} !important;
-                padding: 24px 20px !important;
-                /* Sombra na mesma família da pill normal (0 12px 32px), só um
-                   pouco mais funda por ainda flutuar sobre o backdrop - não
-                   mais a sombra "modal dramático" de antes. */
-                box-shadow: 0 16px 40px rgba(0,0,0,0.35) !important;
-                display: flex !important; flex-direction: column !important;
-                justify-content: center !important; align-items: center !important;
-                gap: 0 !important;
-                z-index: 2147483647 !important;
-            }
-            .cw-pill.processing-center.collapsed { background: rgba(32, 33, 36, 0.82) !important; overflow: visible !important; }
-            .cw-pill.processing-center .cw-main-logo { display: none !important; }
-            .cw-pill.processing-center > *:not(.cw-center-stage) { display: none !important; }
-
-            .cw-center-stage {
+               PROCESSING CARD (tela de carregamento)
+               ============================================================
+               Elemento PRÓPRIO, irmão da pílula - não é mais a pílula
+               "virando" um card. As três tentativas anteriores morfavam a
+               .cw-pill em modal centralizado, e cada uma quebrou de um jeito
+               novo: a pílula é fixed ancorada em bottom/right, arrastável,
+               com transição própria e !important em tudo, e 15 filhos com
+               delays em cascata. Morfar isso significa brigar com o CSS dela
+               nos dois sentidos - o último sintoma foi o card travar na
+               largura da pílula (56px), porque medir o alvo com
+               getBoundingClientRect() logo após trocar a classe devolve o
+               valor ANIMADO daquele instante, não o alvo do CSS.
+               Com um elemento separado, entrada e saída são só opacity +
+               scale: nada pra medir, nada pra sincronizar. */
+            .cw-processing-card {
+                position: fixed;
+                top: 50%; left: 50%;
+                /* 300px dá linha de leitura de verdade pra dica (na versão
+                   morfada o texto quebrava uma palavra por linha). */
+                width: 300px;
+                max-width: calc(100vw - 48px);
+                box-sizing: border-box;
+                padding: 26px 24px;
+                border-radius: 20px;
+                /* Mesmo Liquid Glass do resto do app (ver design-system.md). */
+                background: rgba(32, 33, 36, 0.82);
+                backdrop-filter: blur(24px) saturate(160%);
+                -webkit-backdrop-filter: blur(24px) saturate(160%);
+                border: 1px solid ${COLORS.glassBorder};
+                box-shadow: 0 16px 40px rgba(0,0,0,0.35);
                 display: flex; flex-direction: column; align-items: center;
-                gap: 20px;
-                width: 100%; opacity: 0;
-                animation: fadeIn 0.3s ease forwards 0.1s;
-                position: relative;
+                gap: 18px;
+                z-index: 2147483647;
+                /* O reset de box-sizing lá em cima só cobre .cw-pill e
+                   .cw-module-window - este card não é filho de nenhum dos
+                   dois, então precisa declarar o seu (e o dos filhos). */
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.92);
+                transition: opacity 0.26s var(--cw-ease-standard),
+                            transform 0.3s var(--cw-ease-decelerate);
+            }
+            .cw-processing-card * { box-sizing: border-box; }
+            /* A pílula continua visível no cantinho durante o carregamento
+               (z-index acima do backdrop), o que dá continuidade - mas ela não
+               pode ser clicável enquanto o card manda na tela. */
+            .cw-pill.cw-busy { pointer-events: none !important; }
+            .cw-processing-card.visible {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
             }
             @media (prefers-reduced-motion: reduce) {
-                .cw-center-stage { animation: fadeIn 0.3s ease forwards; }
+                .cw-processing-card { transition: opacity 0.2s ease !important; transform: translate(-50%, -50%) !important; }
             }
 
-            .cw-center-dots { display: flex; gap: 10px; margin-bottom: 4px; }
+            .cw-center-dots {
+                grid-area: 1 / 1;
+                display: flex; gap: 10px;
+                opacity: 1;
+                transition: opacity 0.18s var(--cw-ease-standard);
+            }
             /* Coreografia própria (era um "googleBounce" genérico, ease-in-out puro):
                usa a curva spring já canônica do audit de motion (--cw-ease-spring)
                pra um overshoot vivo, e soma um scale pulse ao bounce vertical. */
@@ -546,22 +558,18 @@ export function initCommandCenter(actions, splashDone) {
                 .cw-center-dots span { animation: cw-dot-fade 1.6s ease-in-out infinite; }
             }
             
-            .cw-center-text { 
+            /* Sem animação de entrada própria: o card inteiro já entra com
+               fade+scale, e uma segunda animação por dentro só competia com
+               ela (era o que o .cw-center-stage fazia na versão morfada). */
+            .cw-center-text {
                 font-family: 'Google Sans', Roboto, sans-serif;
-                font-size: 15px;
+                font-size: 14px;
                 color: #E8EAED;
-                text-align: center; 
-                max-width: 100%; 
-                font-weight: 500; 
-                line-height: 1.5; 
+                text-align: center;
+                width: 100%;
+                font-weight: 500;
+                line-height: 1.55;
                 letter-spacing: 0.2px;
-                opacity: 0; 
-                transform: translateY(10px); 
-                animation: textSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-                animation-delay: 0.1s;
-            }
-            @media (prefers-reduced-motion: reduce) {
-                .cw-center-text { animation: fadeIn 0.3s ease forwards; transform: none !important; }
             }
 
             .cw-dot-dirty {
@@ -630,46 +638,66 @@ export function initCommandCenter(actions, splashDone) {
             .cw-pill.streak-tier-3 #cw-streak-count { color: #F9AB00; }
             .cw-pill.streak-tier-4 #cw-streak-count { color: #EA4335; }
 
-            /* Antes era display:none/block + animação de entrada de mão única
-               (popIn) - só sabia aparecer, nunca sumir suavemente. Agora é
-               opacity/transform transicionáveis nos dois sentidos: JS liga
-               display:flex uma vez (ver triggerProcessingAnimation) e depois só
-               alterna a classe .show pra entrar OU sair - o check precisa
-               conseguir desvanecer ANTES da pílula começar a encolher de volta,
-               senão ele fica visível "voando" junto com o encolhimento. */
+            /* Ocupa a MESMA célula do grid que as bolinhas (ver
+               .cw-center-slot): as duas coisas se revezam no mesmo lugar, então
+               a troca "bolinhas -> check" não muda a altura do card. Na versão
+               anterior era display:none/block, e alternar isso reflowava o card
+               inteiro no meio da animação. */
             .cw-center-success {
-                display: none;
-                color: ${COLORS.green}; margin-bottom: 8px;
+                grid-area: 1 / 1;
+                color: ${COLORS.green};
                 opacity: 0; transform: scale(0.5);
                 transition: opacity 0.22s var(--cw-ease-standard), transform 0.22s var(--cw-ease-spring);
+                pointer-events: none;
             }
-            .cw-center-success svg { width: 40px; height: 40px; display: block; }
+            .cw-center-success svg { width: 36px; height: 36px; display: block; }
             .cw-center-success.show { opacity: 1; transform: scale(1); }
             @media (prefers-reduced-motion: reduce) {
                 .cw-center-success { transition: opacity 0.15s ease !important; transform: none !important; }
             }
-            
-            .cw-abort-btn { 
-                position: relative; 
-                bottom: auto; margin-top: 8px; 
-                font-size: 12px; color: #9AA0A6; 
-                cursor: pointer; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; 
-                padding: 8px 16px; border-radius: 20px; 
+
+            /* Bolinhas e check dividem uma célula só. O slot tem altura fixa
+               (a do check, o maior dos dois) pra que a troca no fim do
+               carregamento não faça o card "pular" de tamanho. */
+            .cw-center-slot {
+                display: grid;
+                place-items: center;
+                height: 36px;
+            }
+            .cw-center-dots.hidden { opacity: 0; }
+
+            .cw-abort-btn {
+                font-size: 12px; color: #9AA0A6;
+                cursor: pointer; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;
+                padding: 8px 16px; border-radius: 20px;
                 background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-                transition: all 0.2s ease; user-select: none; 
+                /* Propriedades explícitas em vez de "all" - o audit de motion
+                   (fase 5) tirou "transition: all" do resto do app justamente
+                   pra não animar propriedade que ninguém pediu. */
+                transition: color 0.2s var(--cw-ease-standard),
+                            background-color 0.2s var(--cw-ease-standard),
+                            border-color 0.2s var(--cw-ease-standard),
+                            transform 0.2s var(--cw-ease-standard),
+                            opacity 0.2s var(--cw-ease-standard);
+                user-select: none;
                 display: flex; align-items: center; gap: 6px;
             }
-            .cw-abort-btn:hover { 
+            .cw-abort-btn:hover {
                 color: #F28B82; background: rgba(242, 139, 130, 0.1); border-color: rgba(242, 139, 130, 0.3);
                 transform: translateY(-1px);
             }
             .cw-abort-btn:active { transform: scale(0.95); }
+            /* Some junto com as bolinhas quando o check entra - não faz mais
+               sentido oferecer "cancelar" depois que já deu certo. */
+            .cw-abort-btn.hidden { opacity: 0; pointer-events: none; }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-abort-btn { transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease !important; transform: none !important; }
+            }
 
             @keyframes fadeIn { to { opacity: 1; } }
             @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
             @keyframes cw-dot-dance { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-10px) scale(1.2); } }
             @keyframes cw-dot-fade { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
-            @keyframes textSlideUp { to { opacity: 1; transform: translateY(0); } }
         `;
     document.head.appendChild(style);
   }
@@ -851,7 +879,7 @@ export function initCommandCenter(actions, splashDone) {
     void pill.offsetWidth;
     pill.style.removeProperty('transition');
     pill.classList.add('collapsed');
-    pill.style.height = '50px';
+    pill.style.height = `${CIRCLE_SIZE}px`;
     if (playSound) SoundManager.playSwoosh();
 
     // 0.38s de delay (cascata de saída dos ícones) + 0.3s de encolhimento
@@ -861,11 +889,16 @@ export function initCommandCenter(actions, splashDone) {
     }, 700);
   }
 
+  // Ver comentário do collapsePillRef no topo do arquivo.
+  collapsePillRef = collapsePill;
+
   // --- LÓGICA DE FECHAMENTO AUTOMÁTICO ---
   let closeTimer = null;
 
   pill.onmouseleave = () => {
-    if (pill.classList.contains('processing-center')) return;
+    // Durante o carregamento a pílula já está colapsada por conta própria
+    // (ver triggerProcessingAnimation) - o timer de 3s não tem nada a fazer.
+    if (document.querySelector('.cw-processing-card')) return;
 
     // 'isAnyActive' precisa ser reavaliado aqui dentro, no momento em que o
     // timer dispara - não só uma vez ao agendar. Um módulo pode abrir nesses
@@ -1007,173 +1040,109 @@ export function initCommandCenter(actions, splashDone) {
   }
 }
 
-// --- FUNÇÃO DE PROCESSAMENTO COM CANCELAMENTO ---
-// A transformação pill <-> card usa FLIP (mede a posição/tamanho reais em
-// px antes de trocar a classe, prima esses valores como ponto de partida via
-// inline style, e só então anima pro alvo) - a mesma técnica que
-// openPill()/collapsePill()/o snap do drag já usam no arquivo pra "height" e
-// "left/top". Sem isso, bottom/right -> top/left simplesmente não interpolam
-// (são propriedades diferentes) e o card "teleporta" pronto pro centro em vez
-// de crescer até lá - era a origem do salto abrupto que motivou essa revisão.
+// --- TELA DE CARREGAMENTO (com cancelamento) ---
+// O card é um elemento próprio, irmão da pílula - NÃO é a pílula virando um
+// card. Ver o comentário do bloco PROCESSING CARD no CSS pra por quê: as
+// versões que morfavam a .cw-pill em modal centralizado brigavam com o CSS
+// dela (fixed ancorada em bottom/right, arrastável, !important em tudo,
+// filhos com cascata) e quebravam de um jeito novo a cada rodada.
+//
+// Fluxo: a pílula recolhe pro cantinho pela animação que ela já tem
+// (collapsePill), o backdrop escurece e o card entra no centro com fade +
+// scale. Na saída, o inverso. Nada de medir posição, nada de sincronizar
+// duas formas - só duas animações independentes que se cruzam.
 export function triggerProcessingAnimation() {
   const pill = document.querySelector('.cw-pill');
   const overlay = document.querySelector('.cw-focus-backdrop');
-  if (!pill) return () => {};
 
   window._CW_ABORT_PROCESS = false;
 
-  const stage = document.createElement('div');
-  stage.className = 'cw-center-stage';
+  const prefersReducedMotion =
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // HTML do Stage (Dots + Texto + Sucesso)
-  stage.innerHTML = `
-      <div class="cw-center-dots"><span></span><span></span><span></span></div>
+  // Sai de cena pra dar o palco ao card. Reusa a animação já polida de
+  // fechamento (cascata de saída dos ícones + encolhimento), sem som: o
+  // startThinking logo abaixo já é o feedback sonoro deste momento.
+  if (pill && collapsePillRef) collapsePillRef(false);
+  else if (pill) pill.classList.add('collapsed');
+  if (pill) pill.classList.add('cw-busy');
+
+  const card = document.createElement('div');
+  card.className = 'cw-processing-card';
+  card.innerHTML = `
+      <div class="cw-center-slot">
+        <div class="cw-center-dots"><span></span><span></span><span></span></div>
+        <div class="cw-center-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+      </div>
       <div class="cw-center-text">${DataService.getRandomTip()}</div>
-      <div class="cw-center-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
   `;
 
-  // Botão Cancelar (Agora relativo e estilizado)
   const abortBtn = document.createElement('div');
   abortBtn.className = 'cw-abort-btn';
-  abortBtn.textContent = cct('cancel');
+  abortBtn.textContent = 'Cancelar';
   abortBtn.onclick = (e) => {
     e.stopPropagation();
     window._CW_ABORT_PROCESS = true;
     SoundManager.stopThinking();
-    showToast(cct('cancelledToast'), { duration: 3000 });
-    morphBack();
+    showToast('Cancelado!', { duration: 3000 });
+    dismissCard();
   };
+  card.appendChild(abortBtn);
 
-  stage.appendChild(abortBtn);
-  pill.appendChild(stage);
-
-  const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const MORPH_PROPS = ['transition', 'top', 'left', 'width', 'height', 'border-radius', 'transform'];
-  const clearMorphOverrides = () => MORPH_PROPS.forEach((p) => pill.style.removeProperty(p));
-
-  // --- MORFAÇÃO DE ENTRADA ---
-  const startRect = pill.getBoundingClientRect();
-  const startRadius = parseFloat(getComputedStyle(pill).borderRadius) || CIRCLE_SIZE / 2;
-
-  pill.classList.remove('collapsed');
-  pill.classList.add('processing-center');
-
-  if (!prefersReducedMotion) {
-    // Com a classe já aplicada, mede o tamanho/posição REAIS que o card vai
-    // ocupar (calculado pelo layout, não um número chutado) antes de travar
-    // o frame de partida - assim a animação sempre mira no valor certo,
-    // mesmo se o conteúdo (dica aleatória) mudar a altura do card.
-    const targetRect = pill.getBoundingClientRect();
-    const targetTop = (window.innerHeight - targetRect.height) / 2;
-    const targetLeft = (window.innerWidth - targetRect.width) / 2;
-
-    pill.style.setProperty('transition', 'none', 'important');
-    pill.style.setProperty('top', `${startRect.top}px`, 'important');
-    pill.style.setProperty('left', `${startRect.left}px`, 'important');
-    pill.style.setProperty('width', `${startRect.width}px`, 'important');
-    pill.style.setProperty('height', `${startRect.height}px`, 'important');
-    pill.style.setProperty('border-radius', `${startRadius}px`, 'important');
-    pill.style.setProperty('transform', 'none', 'important');
-
-    void pill.offsetWidth; // reflow - fecha o frame de partida antes de religar a transição
-
-    pill.style.setProperty('transition',
-      `top 0.42s var(--cw-ease-decelerate), left 0.42s var(--cw-ease-decelerate), ` +
-      `width 0.42s var(--cw-ease-decelerate), height 0.42s var(--cw-ease-decelerate), ` +
-      `border-radius 0.42s var(--cw-ease-decelerate)`,
-      'important');
-    pill.style.setProperty('top', `${targetTop}px`, 'important');
-    pill.style.setProperty('left', `${targetLeft}px`, 'important');
-    pill.style.setProperty('width', `${targetRect.width}px`, 'important');
-    pill.style.setProperty('height', `${targetRect.height}px`, 'important');
-    pill.style.setProperty('border-radius', `${PROCESSING_RADIUS}px`, 'important');
-  }
-
+  document.body.appendChild(card);
   if (overlay) overlay.classList.add('active');
-  SoundManager.startThinking();
 
+  // Um frame com o card já no DOM (mas ainda em opacity:0/scale(.92)) antes
+  // de ligar .visible - sem isso o navegador funde os dois estados num só e
+  // a transição de entrada não chega a rodar.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => card.classList.add('visible'));
+  });
+
+  SoundManager.startThinking();
   const startTime = Date.now();
 
-  // --- MORFAÇÃO DE SAÍDA (card -> bolinha) ---
-  function morphBack() {
-    if (!pill.contains(stage)) return;
-    stage.remove();
+  let dismissed = false;
+  function dismissCard() {
+    if (dismissed) return;
+    dismissed = true;
 
-    if (prefersReducedMotion) {
-      pill.classList.remove('processing-center');
-      pill.classList.add('collapsed');
-      clearMorphOverrides();
-      if (overlay) overlay.classList.remove('active');
-      return;
-    }
+    SoundManager.stopThinking();
+    if (overlay) overlay.classList.remove('active');
+    if (pill) pill.classList.remove('cw-busy');
+    card.classList.remove('visible');
 
-    // Alvo real de .cw-pill (bottom:10%; right:24px) + .cw-pill.collapsed
-    // (círculo de CIRCLE_SIZE), calculado em px - mesma lógica de
-    // targetTop/targetLeft na entrada, só que mirando de volta no canto em
-    // vez do centro da tela.
-    const finalTop = window.innerHeight - (window.innerHeight * 0.10) - CIRCLE_SIZE;
-    const finalLeft = window.innerWidth - 24 - CIRCLE_SIZE;
-
-    pill.style.setProperty('transition',
-      `top 0.36s var(--cw-ease-accelerate), left 0.36s var(--cw-ease-accelerate), ` +
-      `width 0.36s var(--cw-ease-accelerate), height 0.36s var(--cw-ease-accelerate), ` +
-      `border-radius 0.36s var(--cw-ease-accelerate)`,
-      'important');
-    pill.style.setProperty('top', `${finalTop}px`, 'important');
-    pill.style.setProperty('left', `${finalLeft}px`, 'important');
-    pill.style.setProperty('width', `${CIRCLE_SIZE}px`, 'important');
-    pill.style.setProperty('height', `${CIRCLE_SIZE}px`, 'important');
-    pill.style.setProperty('border-radius', `${CIRCLE_SIZE / 2}px`, 'important');
-
-    // processing-center continua ativo durante o encolhimento (esconde os
-    // ícones) - só sai no fim, junto da limpeza. Sem esse cuidado, o
-    // intervalo entre "remove processing-center" e "add collapsed" deixava a
-    // pílula reaparecer inteira (todos os ícones, forma expandida, canto
-    // inferior-direito) por um instante antes de finalmente encolher -
-    // exatamente o "flash" abrupto que devia sumir.
-    pill.classList.add('collapsed');
-
-    setTimeout(() => {
-      pill.classList.remove('processing-center');
-      clearMorphOverrides();
-      if (overlay) overlay.classList.remove('active');
-    }, 380);
+    // Espera o fade de saída terminar antes de tirar do DOM (0.3s é a maior
+    // das durações declaradas em .cw-processing-card).
+    setTimeout(() => card.remove(), prefersReducedMotion ? 200 : 320);
   }
 
   return function finish() {
-    if (window._CW_ABORT_PROCESS || !pill.contains(stage)) return;
-    const elapsed = Date.now() - startTime;
-    const remaining = Math.max(0, 2000 - elapsed);
+    if (window._CW_ABORT_PROCESS || dismissed) return;
+
+    // Piso de ~2s de tela: abaixo disso o carregamento vira um flash que o
+    // agente nem registra como "aconteceu alguma coisa".
+    const remaining = Math.max(0, 2000 - (Date.now() - startTime));
 
     setTimeout(() => {
-      if (window._CW_ABORT_PROCESS || !pill.contains(stage)) return;
+      if (window._CW_ABORT_PROCESS || dismissed) return;
       SoundManager.stopThinking();
 
-      const dots = stage.querySelector('.cw-center-dots');
-      const text = stage.querySelector('.cw-center-text');
-      const success = stage.querySelector('.cw-center-success');
-      const abort = stage.querySelector('.cw-abort-btn');
+      const dots = card.querySelector('.cw-center-dots');
+      const success = card.querySelector('.cw-center-success');
 
-      if (dots) dots.style.display = 'none';
-      if (text) text.style.display = 'none';
-      if (abort) abort.style.display = 'none';
+      // Bolinhas e check dividem a mesma célula do grid (.cw-center-slot),
+      // então isso é um cross-fade no lugar - o card não muda de tamanho.
+      if (dots) dots.classList.add('hidden');
+      abortBtn.classList.add('hidden');
+      if (success) success.classList.add('show');
 
-      if (success) {
-        success.style.display = 'block';
-        void success.offsetWidth; // reflow - sem isso o navegador funde o display:none -> opacity:1 num passo só e a transição não roda
-        success.classList.add('show');
-      }
-
-      // Segura o check visível por um instante e SÓ DEPOIS manda ele
-      // desvanecer (remove .show, que agora anima opacity/transform de
-      // verdade) - a pílula só começa a encolher de volta depois que esse
-      // fade termina. Antes o check ainda estava com display:block quando a
-      // pílula começava a encolher, e ficava "grudado" vazando pra fora da
-      // forma já pequena.
+      // O check some ANTES do card começar a sair, em vez dos dois ao mesmo
+      // tempo - senão ele fica visível "voando" junto com o card.
       setTimeout(() => {
         if (success) success.classList.remove('show');
-        setTimeout(morphBack, 260);
-      }, 900);
+        setTimeout(dismissCard, 200);
+      }, 850);
     }, remaining);
   };
 }
