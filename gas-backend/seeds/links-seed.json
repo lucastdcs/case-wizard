@@ -1,0 +1,425 @@
+{
+  "module": "links",
+  "items": [
+    {
+      "key": "tasks",
+      "lang": "ALL",
+      "label": "Web Clock Punch",
+      "value": "{\"name\":\"Web Clock Punch\",\"url\":\"https://compass.talent.cognizant.com/psp/HCMPRD/EMPLOYEE/HRMS/h/?tab=DEFAULT\",\"desc\":\"Ponto Eletrônico\",\"desc_es\":\"Control de Asistencia\"}",
+      "sortOrder": 0
+    },
+    {
+      "key": "tasks",
+      "lang": "ALL",
+      "label": "Webão Help Deluxe",
+      "value": "{\"name\":\"Webão Help Deluxe\",\"url\":\"http://go/webao-help-deluxe\",\"desc\":\"Ferramenta de ajuda\",\"desc_es\":\"Herramienta de ayuda\"}",
+      "sortOrder": 1
+    },
+    {
+      "key": "tasks",
+      "lang": "ALL",
+      "label": "Moma Home",
+      "value": "{\"name\":\"Moma Home\",\"url\":\"https://moma.corp.google.com/\",\"desc\":\"Intranet Google\",\"desc_es\":\"Intranet Google\"}",
+      "sortOrder": 2
+    },
+    {
+      "key": "tasks",
+      "lang": "ALL",
+      "label": "Plx DataSites",
+      "value": "{\"name\":\"Plx DataSites\",\"url\":\"https://data.corp.google.com/sites/7kpryuwxw9jw/agents_follow_ups_report/\",\"desc\":\"Relatório Follow-ups\",\"desc_es\":\"Informe de Follow-ups\"}",
+      "sortOrder": 3
+    },
+    {
+      "key": "tasks",
+      "lang": "ALL",
+      "label": "Escala & Aderência",
+      "value": "{\"name\":\"Escala & Aderência\",\"url\":\"https://lookerstudio.google.com/c/u/0/reporting/f8966844-b70e-4070-9b7f-a29028401bf4/page/p_0tayxfleid\",\"desc\":\"Dashboard WFM\",\"desc_es\":\"Dashboard WFM\"}",
+      "sortOrder": 4
+    },
+    {
+      "key": "tasks",
+      "lang": "ALL",
+      "label": "Performance Indiv.",
+      "value": "{\"name\":\"Performance Indiv.\",\"url\":\"https://dashboards.corp.google.com/_a981e311_424f_410b_925f_9b019ee186ce\",\"desc\":\"Tech Solutions SAO\",\"desc_es\":\"Tech Solutions SAO\"}",
+      "sortOrder": 5
+    },
+    {
+      "key": "tasks",
+      "lang": "ALL",
+      "label": "Solicitar Gravação",
+      "value": "{\"name\":\"Solicitar Gravação\",\"url\":\"https://support.google.com/policies/contact/sar\",\"desc\":\"Form Gravação\",\"desc_es\":\"Form Grabación\"}",
+      "sortOrder": 6
+    },
+    {
+      "key": "tasks",
+      "lang": "ALL",
+      "label": "Escalação Sellers",
+      "value": "{\"name\":\"Escalação Sellers\",\"url\":\"https://forms.gle/HWMhML56eE4CPZCs5\",\"desc\":\"Form Escalação\",\"desc_es\":\"Form Escalación\"}",
+      "sortOrder": 7
+    },
+    {
+      "key": "tasks",
+      "lang": "ALL",
+      "label": "[SOP] Split",
+      "value": "{\"name\":\"[SOP] Split\",\"url\":\"https://sites.google.com/corp/google.com/technicalsolutions/case-handling_1/out-of-scope?authuser=0#h.obb5iieru15o\",\"desc\":\"Instruções Split\",\"desc_es\":\"Instrucciones Split\"}",
+      "sortOrder": 8
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "SPA (Tag Support)",
+      "value": "{\"name\":\"SPA (Tag Support)\",\"url\":\"https://tagsupport.corp.google.com/create-session\",\"desc\":\"Single Page App\",\"desc_es\":\"Single Page App\"}",
+      "sortOrder": 9
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "[SOP] Conv. Tracking",
+      "value": "{\"name\":\"[SOP] Conv. Tracking\",\"url\":\"https://docs.google.com/document/d/1By5Jv40kGeGWFUzMXT9xuNAeUl_s1clYybZO1nhNnAI/edit\",\"desc\":\"Procedimento Padrão\",\"desc_es\":\"Procedimiento Estándar\"}",
+      "sortOrder": 10
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "Win Criteria: Code",
+      "value": "{\"name\":\"Win Criteria: Code\",\"url\":\"https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit\",\"desc\":\"Validação Código\",\"desc_es\":\"Validación Código\"}",
+      "sortOrder": 11
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "[SOP] Call Conv.",
+      "value": "{\"name\":\"[SOP] Call Conv.\",\"url\":\"https://docs.google.com/document/d/1es_tvx8nhMkWn-Hh9n3Jd3vzo91RpY6PuwMBlsTd-kA/edit\",\"desc\":\"Conversão Chamada\",\"desc_es\":\"Conversión Llamada\"}",
+      "sortOrder": 12
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "Win Criteria: WCC",
+      "value": "{\"name\":\"Win Criteria: WCC\",\"url\":\"https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit?resourcekey=0-GiUc9KwVTDkVaUxwlyNCtA#gid=971616043&range=A10:A15\",\"desc\":\"Validação WCC\",\"desc_es\":\"Validación WCC\"}",
+      "sortOrder": 13
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "[SOP] Enhanced Conv.",
+      "value": "{\"name\":\"[SOP] Enhanced Conv.\",\"url\":\"https://docs.google.com/document/d/1R59-cUeBaX-5dOxAXxvzsRXgkVdFPzTzOCSBQWt42H0/edit\",\"desc\":\"ECW4\",\"desc_es\":\"ECW4\"}",
+      "sortOrder": 14
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "Ads EC Dashboard",
+      "value": "{\"name\":\"Ads EC Dashboard\",\"url\":\"https://dashboards.corp.google.com/edit/_0ded1099_6ef3_4bc9_bba0_2445840d1b69\",\"desc\":\"Monitoramento EC\",\"desc_es\":\"Monitoreo EC\"}",
+      "sortOrder": 15
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "[SOP] Troubleshooting",
+      "value": "{\"name\":\"[SOP] Troubleshooting\",\"url\":\"https://docs.google.com/document/d/10M0FAkMFmlhgHQJtAQPNtLRGh-BpPzR_6z1s6xYOQEk/edit\",\"desc\":\"Resolução problemas\",\"desc_es\":\"Resolución de problemas\"}",
+      "sortOrder": 16
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "[SOP] Remarketing",
+      "value": "{\"name\":\"[SOP] Remarketing\",\"url\":\"https://docs.google.com/document/d/1awOuj4rFBrukfByYuvcCFOAGbZX7H1j_EelPeCaUcoU/edit\",\"desc\":\"Implementação RMKT\",\"desc_es\":\"Implementación RMKT\"}",
+      "sortOrder": 17
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "[SOP] Lead Scoring",
+      "value": "{\"name\":\"[SOP] Lead Scoring\",\"url\":\"https://docs.google.com/document/d/1jyFVLvKnk1K2ojyj-K37PXcmQdU9A8wiHWj-w49yOBg/edit\",\"desc\":\"Pontuação Leads\",\"desc_es\":\"Puntuación de Leads\"}",
+      "sortOrder": 18
+    },
+    {
+      "key": "ads",
+      "lang": "ALL",
+      "label": "[SOP] GTM Install",
+      "value": "{\"name\":\"[SOP] GTM Install\",\"url\":\"https://docs.google.com/document/d/1Uj-fkPNxygeL-YQIVgLfIPo579SKF1oe78i5nHx5eLs/edit\",\"desc\":\"Instalação Container\",\"desc_es\":\"Instalación Container\"}",
+      "sortOrder": 19
+    },
+    {
+      "key": "analytics",
+      "lang": "ALL",
+      "label": "[SOP] GA4 Setup",
+      "value": "{\"name\":\"[SOP] GA4 Setup\",\"url\":\"https://docs.google.com/document/d/1cLDh6RIo-lxfv-pffvBwhFpI-fSTOaAsMXwwsID1yNk/edit\",\"desc\":\"Instalação Config.\",\"desc_es\":\"Instalación Config.\"}",
+      "sortOrder": 20
+    },
+    {
+      "key": "analytics",
+      "lang": "ALL",
+      "label": "Win Criteria: GA4",
+      "value": "{\"name\":\"Win Criteria: GA4\",\"url\":\"https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/edit?resourcekey=0-GiUc9KwVTDkVaUxwlyNCtA#gid=971616043&range=A45:A51\",\"desc\":\"Validação GA4\",\"desc_es\":\"Validación GA4\"}",
+      "sortOrder": 21
+    },
+    {
+      "key": "analytics",
+      "lang": "ALL",
+      "label": "GA4 E-commerce",
+      "value": "{\"name\":\"GA4 E-commerce\",\"url\":\"https://developers.google.com/analytics/devguides/collection/ga4/ecommerce?hl=pt-br\",\"desc\":\"Guia Dev\",\"desc_es\":\"Guía Dev\"}",
+      "sortOrder": 22
+    },
+    {
+      "key": "analytics",
+      "lang": "ALL",
+      "label": "[SOP] Troubleshoot GA4",
+      "value": "{\"name\":\"[SOP] Troubleshoot GA4\",\"url\":\"https://docs.google.com/document/d/14fxyQMlcT57ILtsaBdYBFZs2DDZeSbXsvniXfo_eJaU/edit\",\"desc\":\"Resolução Problemas\",\"desc_es\":\"Resolución de Problemas\"}",
+      "sortOrder": 23
+    },
+    {
+      "key": "analytics",
+      "lang": "ALL",
+      "label": "[SOP] Cross Domain",
+      "value": "{\"name\":\"[SOP] Cross Domain\",\"url\":\"https://support.google.com/ads-help/answer/12282402\",\"desc\":\"Domínio Cruzado\",\"desc_es\":\"Dominio Cruzado\"}",
+      "sortOrder": 24
+    },
+    {
+      "key": "analytics",
+      "lang": "ALL",
+      "label": "Eventos Recomendados",
+      "value": "{\"name\":\"Eventos Recomendados\",\"url\":\"https://developers.google.com/analytics/devguides/collection/ga4/reference/events\",\"desc\":\"Lista Oficial\",\"desc_es\":\"Lista Oficial\"}",
+      "sortOrder": 25
+    },
+    {
+      "key": "analytics",
+      "lang": "ALL",
+      "label": "UTM Builder",
+      "value": "{\"name\":\"UTM Builder\",\"url\":\"https://ga-dev-tools.google/ga4/campaign-url-builder/\",\"desc\":\"Criador URLs\",\"desc_es\":\"Creador de URLs\"}",
+      "sortOrder": 26
+    },
+    {
+      "key": "shopping",
+      "lang": "ALL",
+      "label": "[SOP] Onboarding MC",
+      "value": "{\"name\":\"[SOP] Onboarding MC\",\"url\":\"https://docs.google.com/document/d/1yJGEssn9Uvxa3eWjp2Y5MQSkL26AElh6sSAKgD6qmjg/edit\",\"desc\":\"Setup Inicial\",\"desc_es\":\"Setup Inicial\"}",
+      "sortOrder": 27
+    },
+    {
+      "key": "shopping",
+      "lang": "ALL",
+      "label": "[SOP] Feed Opt",
+      "value": "{\"name\":\"[SOP] Feed Opt\",\"url\":\"https://docs.google.com/document/d/1VBYH6b3r0uyjXHN749pDK7IajF5Ii0-rm6M-BZuaJGY/edit\",\"desc\":\"Otimização Feed\",\"desc_es\":\"Optimización Feed\"}",
+      "sortOrder": 28
+    },
+    {
+      "key": "shopping",
+      "lang": "ALL",
+      "label": "ShopTroubleshooting",
+      "value": "{\"name\":\"ShopTroubleshooting\",\"url\":\"http://go/shoptroubleshooting\",\"desc\":\"Ferramenta Interna\",\"desc_es\":\"Herramienta Interna\"}",
+      "sortOrder": 29
+    },
+    {
+      "key": "shopping",
+      "lang": "ALL",
+      "label": "[SOP] Product Reviews",
+      "value": "{\"name\":\"[SOP] Product Reviews\",\"url\":\"https://docs.google.com/document/d/1v2xH6QLgWc5_-C85Pmj40GSe5lxstRXnjd8vEW92TBk/edit\",\"desc\":\"Avaliações\",\"desc_es\":\"Reseñas\"}",
+      "sortOrder": 30
+    },
+    {
+      "key": "shopping",
+      "lang": "ALL",
+      "label": "[SOP] Offline Feed",
+      "value": "{\"name\":\"[SOP] Offline Feed\",\"url\":\"https://docs.google.com/document/d/1Q3cJxf4ucfA_bu6vDId63Tj1P8ZofgE7CqnK9KUgLuU/edit\",\"desc\":\"Feeds Offline\",\"desc_es\":\"Feeds Offline\"}",
+      "sortOrder": 31
+    },
+    {
+      "key": "shopping",
+      "lang": "ALL",
+      "label": "Especificação Dados",
+      "value": "{\"name\":\"Especificação Dados\",\"url\":\"https://support.google.com/merchants/answer/7052112\",\"desc\":\"Help Center\",\"desc_es\":\"Help Center\"}",
+      "sortOrder": 32
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "Soluções por CMS",
+      "value": "{\"name\":\"Soluções por CMS\",\"url\":\"https://sites.google.com/corp/google.com/webao-sme-cms/solu%C3%A7%C3%B5es-via-cms?authuser=0\",\"desc\":\"Guias CMS\",\"desc_es\":\"Guías CMS\"}",
+      "sortOrder": 33
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "Iframes & Cross-Origin",
+      "value": "{\"name\":\"Iframes & Cross-Origin\",\"url\":\"https://sites.google.com/corp/google.com/webao-sme-cms/solu%C3%A7%C3%B5es-t%C3%A9cnicas/iframes-contentdocument-e-message?authuser=0\",\"desc\":\"Soluções Iframes\",\"desc_es\":\"Soluciones Iframes\"}",
+      "sortOrder": 34
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "Ads ICS Ghost",
+      "value": "{\"name\":\"Ads ICS Ghost\",\"url\":\"http://go/pqp\",\"desc\":\"Ghost Ads\",\"desc_es\":\"Ghost Ads\"}",
+      "sortOrder": 35
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "Analytics ICS Ghost",
+      "value": "{\"name\":\"Analytics ICS Ghost\",\"url\":\"http://go/analytics-ics\",\"desc\":\"Ghost Analytics\",\"desc_es\":\"Ghost Analytics\"}",
+      "sortOrder": 36
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "GTM ICS Ghost",
+      "value": "{\"name\":\"GTM ICS Ghost\",\"url\":\"http://go/tagmanager-ics\",\"desc\":\"Ghost GTM\",\"desc_es\":\"Ghost GTM\"}",
+      "sortOrder": 37
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "Gearloose",
+      "value": "{\"name\":\"Gearloose\",\"url\":\"http://go/gearloose\",\"desc\":\"Ferramenta\",\"desc_es\":\"Herramienta\"}",
+      "sortOrder": 38
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "MC ICS Ghost",
+      "value": "{\"name\":\"MC ICS Ghost\",\"url\":\"https://mcn-ics.corp.google.com/mc/overview\",\"desc\":\"Ghost MC\",\"desc_es\":\"Ghost MC\"}",
+      "sortOrder": 39
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "JSFiddle",
+      "value": "{\"name\":\"JSFiddle\",\"url\":\"https://jsfiddle.net/\",\"desc\":\"Playground JS\",\"desc_es\":\"Playground JS\"}",
+      "sortOrder": 40
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "RegExr",
+      "value": "{\"name\":\"RegExr\",\"url\":\"https://regexr.com/\",\"desc\":\"Testador Regex\",\"desc_es\":\"Probador Regex\"}",
+      "sortOrder": 41
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "Doc. CSP",
+      "value": "{\"name\":\"Doc. CSP\",\"url\":\"https://developers.google.com/tag-platform/tag-manager/web/csp?hl=pt-br.\",\"desc\":\"Doc. CSP\",\"desc_es\":\"Doc. CSP\"}",
+      "sortOrder": 42
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "Consent Mode Install",
+      "value": "{\"name\":\"Consent Mode Install\",\"url\":\"https://developers.google.com/tag-platform/security/guides/consent?consentmode=advanced\",\"desc\":\"Guia CoMo\",\"desc_es\":\"Guía CoMo\"}",
+      "sortOrder": 43
+    },
+    {
+      "key": "tech",
+      "lang": "ALL",
+      "label": "Consent Mode Debug",
+      "value": "{\"name\":\"Consent Mode Debug\",\"url\":\"https://developers.google.com/tag-platform/security/guides/consent-debugging\",\"desc\":\"Debug CoMo\",\"desc_es\":\"Debug CoMo\"}",
+      "sortOrder": 44
+    },
+    {
+      "key": "hr",
+      "lang": "ALL",
+      "label": "Be.Cognizant",
+      "value": "{\"name\":\"Be.Cognizant\",\"url\":\"https://cognizantonline.sharepoint.com/sites/GlobalHR/SitePages/Brazil.aspx\",\"desc\":\"Portal Colaborador\",\"desc_es\":\"Portal del Colaborador\"}",
+      "sortOrder": 45
+    },
+    {
+      "key": "hr",
+      "lang": "ALL",
+      "label": "OneCognizant",
+      "value": "{\"name\":\"OneCognizant\",\"url\":\"https://onecognizant.cognizant.com/Home\",\"desc\":\"Apps e Sistemas\",\"desc_es\":\"Apps y Sistemas\"}",
+      "sortOrder": 46
+    },
+    {
+      "key": "hr",
+      "lang": "ALL",
+      "label": "ADP eXpert",
+      "value": "{\"name\":\"ADP eXpert\",\"url\":\"https://expert.cloud.brasil.adp.com/expert2/v4/\",\"desc\":\"Folha Pagamento\",\"desc_es\":\"Nómina\"}",
+      "sortOrder": 47
+    },
+    {
+      "key": "lm",
+      "lang": "ALL",
+      "label": "Ocorrências e Pausas",
+      "value": "{\"name\":\"Ocorrências e Pausas\",\"url\":\"https://docs.google.com/forms/d/e/1FAIpQLSc6CamPehrREeVr7yCWMyqFETrFYYezNcLb_13W4yZDQkfY6Q/viewform\",\"desc\":\"Reportar problemas\",\"desc_es\":\"Reportar problemas\"}",
+      "sortOrder": 48
+    },
+    {
+      "key": "lm",
+      "lang": "ALL",
+      "label": "Chamadas >50min",
+      "value": "{\"name\":\"Chamadas >50min\",\"url\":\"https://docs.google.com/forms/d/e/1FAIpQLSfE8EMHNJMTKYeA6XM2RZjZ9AQ4LhGk1Dwm_WLu3kcMdKMikA/viewform\",\"desc\":\"Registro chamadas\",\"desc_es\":\"Registro de llamadas\"}",
+      "sortOrder": 49
+    },
+    {
+      "key": "lm",
+      "lang": "ALL",
+      "label": "Relatório de Bugs",
+      "value": "{\"name\":\"Relatório de Bugs\",\"url\":\"https://docs.google.com/forms/d/e/1FAIpQLSfkqRqT2Kbf08IStz31fQPE84MDOtGxk7cetJmc3xzShXIXRA/viewform\",\"desc\":\"Erros de sistema\",\"desc_es\":\"Errores de sistema\"}",
+      "sortOrder": 50
+    },
+    {
+      "key": "lm",
+      "lang": "ALL",
+      "label": "Suporte LM",
+      "value": "{\"name\":\"Suporte LM\",\"url\":\"https://script.google.com/a/macros/google.com/s/AKfycbxYMlFCMZvqgHMIImeS_u-lNZPiertXmem-5m9Fox3jvZaq0ZOQDoc5ma96ltSvWHY/exec\",\"desc\":\"BAU/Descarte/Monitoria\",\"desc_es\":\"BAU/Descarte/Monitoreo\"}",
+      "sortOrder": 51
+    },
+    {
+      "key": "qa",
+      "lang": "ALL",
+      "label": "Elogios",
+      "value": "{\"name\":\"Elogios\",\"url\":\"https://docs.google.com/forms/d/e/1FAIpQLSezY5K-trQDv0LkL5IoTlV0Tl0oOqGTEszylmgcbMRXcC9Weg/viewform\",\"desc\":\"Feedback positivo\",\"desc_es\":\"Feedback positivo\"}",
+      "sortOrder": 52
+    },
+    {
+      "key": "qa",
+      "lang": "ALL",
+      "label": "Casos Complexos",
+      "value": "{\"name\":\"Casos Complexos\",\"url\":\"https://docs.google.com/forms/d/e/1FAIpQLSe26q1LEloFNRfOAVZtA7DCOQTqdu1BAEeWuxtK6oPwZhLp-A/viewform?resourcekey=0-c1N4h8gntza2gQowqYAqMw\",\"desc\":\"Casos difíceis\",\"desc_es\":\"Casos difíciles\"}",
+      "sortOrder": 53
+    },
+    {
+      "key": "suporte",
+      "lang": "ALL",
+      "label": "Fale Conosco Ads",
+      "value": "{\"name\":\"Fale Conosco Ads\",\"url\":\"https://support.google.com/google-ads/gethelp\",\"desc\":\"Chat/Email Ads\",\"desc_es\":\"Chat/Email Ads\"}",
+      "sortOrder": 54
+    },
+    {
+      "key": "suporte",
+      "lang": "ALL",
+      "label": "Fale Conosco Merchant",
+      "value": "{\"name\":\"Fale Conosco Merchant\",\"url\":\"https://support.google.com/merchants/gethelp\",\"desc\":\"Chat/Email Shopping\",\"desc_es\":\"Chat/Email Shopping\"}",
+      "sortOrder": 55
+    },
+    {
+      "key": "suporte",
+      "lang": "ALL",
+      "label": "Fale Conosco GMB",
+      "value": "{\"name\":\"Fale Conosco GMB\",\"url\":\"https://support.google.com/business/gethelp\",\"desc\":\"Perfil da Empresa\",\"desc_es\":\"Perfil de la Empresa\"}",
+      "sortOrder": 56
+    },
+    {
+      "key": "suporte",
+      "lang": "ALL",
+      "label": "Suporte API",
+      "value": "{\"name\":\"Suporte API\",\"url\":\"https://support.google.com/googleapi\",\"desc\":\"Console API\",\"desc_es\":\"Console API\"}",
+      "sortOrder": 57
+    },
+    {
+      "key": "suporte",
+      "lang": "ALL",
+      "label": "Telefones Suporte",
+      "value": "{\"name\":\"Telefones Suporte\",\"url\":\"https://www.adwordsrobot.com/en/list-of-google-adwords-support-phone-numbers\",\"desc\":\"Lista de números\",\"desc_es\":\"Lista de números\"}",
+      "sortOrder": 58
+    },
+    {
+      "key": "suporte",
+      "lang": "ALL",
+      "label": "Skill Shop",
+      "value": "{\"name\":\"Skill Shop\",\"url\":\"https://skillshop.withgoogle.com/intl/pt-BR_ALL/\",\"desc\":\"Cursos\",\"desc_es\":\"Cursos\"}",
+      "sortOrder": 59
+    }
+  ]
+}
