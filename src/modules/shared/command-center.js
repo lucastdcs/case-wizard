@@ -453,38 +453,56 @@ export function initCommandCenter(actions, splashDone) {
             .cw-pill.processing-center {
                 top: 50% !important; left: 50% !important;
                 transform: translate(-50%, -50%) !important;
-                width: 340px !important; 
-                height: auto !important; 
-                min-height: 160px !important; 
-                border-radius: 24px !important; 
-                background: #202124 !important; 
-                padding: 32px 24px !important; 
-                box-shadow: 0 24px 64px rgba(0,0,0,0.6) !important; 
-                display: flex !important; flex-direction: column !important; 
+                width: 340px !important;
+                height: auto !important;
+                min-height: 160px !important;
+                border-radius: 24px !important;
+                /* Liquid Glass, igual ao resto da pill (COLORS.glassBg + blur) -
+                   antes era um preenchimento opaco (#202124) sem backdrop-filter,
+                   uma "laje preta" destoando do resto do sistema visual. */
+                background: rgba(32, 33, 36, 0.82) !important;
+                backdrop-filter: blur(24px) saturate(160%) !important;
+                -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+                border: 1px solid ${COLORS.glassBorder} !important;
+                padding: 32px 24px !important;
+                box-shadow: 0 24px 64px rgba(0,0,0,0.45) !important;
+                display: flex !important; flex-direction: column !important;
                 justify-content: center !important; align-items: center !important;
                 gap: 0 !important;
                 z-index: 2147483647 !important;
             }
-            .cw-pill.processing-center.collapsed { background: #202124 !important; overflow: visible !important; }
+            .cw-pill.processing-center.collapsed { background: rgba(32, 33, 36, 0.82) !important; overflow: visible !important; }
             .cw-pill.processing-center .cw-main-logo { display: none !important; }
             .cw-pill.processing-center > *:not(.cw-center-stage) { display: none !important; }
-            
-            .cw-center-stage { 
-                display: flex; flex-direction: column; align-items: center; 
+
+            .cw-center-stage {
+                display: flex; flex-direction: column; align-items: center;
                 gap: 20px;
-                width: 100%; opacity: 0; 
+                width: 100%; opacity: 0;
                 animation: fadeIn 0.3s ease forwards 0.1s;
-                position: relative; 
+                position: relative;
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-center-stage { animation: fadeIn 0.3s ease forwards; }
             }
-            
-            .cw-center-dots { display: flex; gap: 8px; margin-bottom: 4px; }
-            .cw-center-dots span { width: 8px; height: 8px; border-radius: 50%; animation: googleBounce 1.4s infinite ease-in-out both; }
-            .cw-center-dots span:nth-child(1) { background-color: ${COLORS.blue}; animation-delay: -0.32s; }
-            .cw-center-dots span:nth-child(2) { background-color: ${COLORS.red}; animation-delay: -0.16s; }
+
+            .cw-center-dots { display: flex; gap: 10px; margin-bottom: 4px; }
+            /* Coreografia própria (era um "googleBounce" genérico, ease-in-out puro):
+               usa a curva spring já canônica do audit de motion (--cw-ease-spring)
+               pra um overshoot vivo, e soma um scale pulse ao bounce vertical. */
+            .cw-center-dots span {
+                width: 8px; height: 8px; border-radius: 50%;
+                animation: cw-dot-dance 1.1s var(--cw-ease-spring) infinite both;
+                will-change: transform;
+            }
+            .cw-center-dots span:nth-child(1) { background-color: ${COLORS.blue}; animation-delay: -0.22s; }
+            .cw-center-dots span:nth-child(2) { background-color: ${COLORS.red}; animation-delay: -0.11s; }
             .cw-center-dots span:nth-child(3) { background-color: ${COLORS.green}; }
+            @media (prefers-reduced-motion: reduce) {
+                /* Antes não tinha fallback nenhum - as bolinhas ficavam
+                   quicando pra sempre mesmo com reduced-motion ativado. */
+                .cw-center-dots span { animation: cw-dot-fade 1.6s ease-in-out infinite; }
+            }
             
             .cw-center-text { 
                 font-family: 'Google Sans', Roboto, sans-serif;
@@ -595,7 +613,8 @@ export function initCommandCenter(actions, splashDone) {
 
             @keyframes fadeIn { to { opacity: 1; } }
             @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-            @keyframes googleBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+            @keyframes cw-dot-dance { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-10px) scale(1.2); } }
+            @keyframes cw-dot-fade { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
             @keyframes textSlideUp { to { opacity: 1; transform: translateY(0); } }
         `;
     document.head.appendChild(style);
@@ -951,6 +970,7 @@ export function triggerProcessingAnimation() {
   abortBtn.onclick = (e) => {
     e.stopPropagation();
     window._CW_ABORT_PROCESS = true;
+    SoundManager.stopThinking();
     showToast("Cancelado!", { duration: 3000 });
     stage.remove();
     pill.classList.remove('processing-center');
@@ -958,13 +978,14 @@ export function triggerProcessingAnimation() {
     pill.classList.add('collapsed');
     if (overlay) overlay.classList.remove('active');
   };
-  
+
   stage.appendChild(abortBtn);
   pill.appendChild(stage);
 
   const startTime = Date.now();
   pill.classList.add('processing-center');
   if (overlay) overlay.classList.add('active');
+  SoundManager.startThinking();
 
   return function finish() {
     if (window._CW_ABORT_PROCESS || !pill.contains(stage)) return;
@@ -973,7 +994,8 @@ export function triggerProcessingAnimation() {
 
     setTimeout(() => {
       if (window._CW_ABORT_PROCESS || !pill.contains(stage)) return;
-      
+      SoundManager.stopThinking();
+
       const dots = stage.querySelector('.cw-center-dots');
       const text = stage.querySelector('.cw-center-text');
       const success = stage.querySelector('.cw-center-success');
