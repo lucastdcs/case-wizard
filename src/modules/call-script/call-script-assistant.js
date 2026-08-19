@@ -14,7 +14,7 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 import { getPageData } from "../shared/page-data.js";
 
-import { csaChecklistData } from "./call-script-data.js";
+import { csaChecklistData, hydrateCallScriptFromContentCentral } from "./call-script-data.js";
 import { getLanguage, onLanguageChange } from "../shared/i18n.js";
 
 const CSA_DICT = {
@@ -714,5 +714,11 @@ export function initCallScriptAssistant() {
   }
 
   csaBuildChecklist();
+
+  // Busca o roteiro publicado na Central de Conteúdo e repinta quando chegar.
+  // Não bloqueia: a tela já subiu com o roteiro embutido, então API fora do ar
+  // deixa tudo exatamente como era antes.
+  hydrateCallScriptFromContentCentral(() => csaBuildChecklist());
+
   return toggleVisibility;
 }

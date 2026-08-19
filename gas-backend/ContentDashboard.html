@@ -657,6 +657,9 @@
                 <button class="tab-btn active" role="tab" data-tab="links" onclick="switchTab('links')">
                     <span class="material-symbols-rounded" style="font-size:19px">link</span> Links
                 </button>
+                <button class="tab-btn" role="tab" data-tab="callscript" onclick="switchTab('callscript')">
+                    <span class="material-symbols-rounded" style="font-size:19px">support_agent</span> Call Script
+                </button>
                 <button class="tab-btn" role="tab" data-tab="approvals" onclick="switchTab('approvals')">
                     <span class="material-symbols-rounded" style="font-size:19px">rule</span> Aprovações
                     <span class="count-chip zero" id="pending-count">0</span>
@@ -686,6 +689,39 @@
                 </div>
                 <div class="card" id="links-list">
                     <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Call Script -->
+            <section id="pane-callscript" class="hidden">
+                <div class="note" id="cs-note">
+                    Cada passo é um item. Editar aqui não altera o app — vai para
+                    <strong>Aprovações</strong> primeiro.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+                        <div>
+                            <label class="fld" style="margin-top:0" for="cs-lang">Idioma</label>
+                            <select id="cs-lang" onchange="renderCallScript()">
+                                <option value="PT">PT</option>
+                                <option value="ES">ES</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="fld" style="margin-top:0" for="cs-flow">Fluxo</label>
+                            <select id="cs-flow" onchange="renderCallScript()">
+                                <option value="BAU">BAU</option>
+                                <option value="LT">LT</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="cs-new-btn" onclick="openStepEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Novo passo
+                    </button>
+                </div>
+                <div class="card" id="cs-list">
                     <div class="skeleton"></div>
                     <div class="skeleton"></div>
                 </div>
@@ -807,6 +843,16 @@
             }
         }
 
+        // Recarrega as listas de conteúdo. Genérico de propósito: aprovar ou
+        // remover algo pode afetar qualquer módulo, e a aba visível nem sempre é
+        // a do item mexido.
+        function refreshContentLists() {
+            loadLinks();
+            if (!document.getElementById('pane-callscript').classList.contains('hidden')) {
+                loadCallScript();
+            }
+        }
+
         // A UI é conveniência, não a fronteira: o servidor recusa a ação de
         // qualquer jeito. Esconder o botão evita oferecer algo que vai falhar.
         function canPropose(module) {
@@ -815,13 +861,14 @@
         }
 
         function switchTab(tab) {
-            ['links', 'approvals', 'access', 'soon'].forEach(function (t) {
+            ['links', 'callscript', 'approvals', 'access', 'soon'].forEach(function (t) {
                 var pane = document.getElementById('pane-' + t);
                 if (pane) pane.classList.toggle('hidden', t !== tab);
             });
             document.querySelectorAll('.tab-btn').forEach(function (b) {
                 b.classList.toggle('active', b.dataset.tab === tab);
             });
+            if (tab === 'callscript') loadCallScript();
             if (tab === 'approvals') loadApprovals();
             if (tab === 'access') loadAccess();
         }
@@ -850,6 +897,11 @@
                         document.getElementById('links-new-btn').classList.add('hidden');
                         document.getElementById('links-note').textContent =
                             'Seu papel (' + s.role + ') vê os links, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('call_script')) {
+                        document.getElementById('cs-new-btn').classList.add('hidden');
+                        document.getElementById('cs-note').textContent =
+                            'Seu papel (' + s.role + ') vê o roteiro, mas não propõe alterações neste módulo.';
                     }
 
                     loadLinks();
@@ -1071,12 +1123,206 @@
                     .withSuccessHandler(function () {
                         closeModal();
                         toast('Pedido de remoção enviado.');
-                        loadLinks();
+                        refreshContentLists();
                         loadPendingCount();
                     })
                     .withFailureHandler(function (err) { toast(err.message, true); })
                     .requestContentRemoval(itemId, reason);
             };
+        }
+
+        // --- Call Script ---
+        var CS_ITEMS = [];
+        var CS_DRAFTS = [];
+
+        var CS_GROUPS = [
+            { key: 'inicio', label: 'Início' },
+            { key: 'meio', label: 'Implementação (Tag Support)' },
+            { key: 'fim', label: 'Encerramento' }
+        ];
+
+        function loadCallScript() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    CS_ITEMS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (d) { CS_DRAFTS = d || []; renderCallScript(); })
+                        .withFailureHandler(function () { CS_DRAFTS = []; renderCallScript(); })
+                        .listContentDrafts('call_script');
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('cs-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar o roteiro</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('call_script');
+        }
+
+        function csDraftForItem(itemId) {
+            for (var i = 0; i < CS_DRAFTS.length; i++) {
+                if (CS_DRAFTS[i].itemId === itemId) return CS_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function renderCallScript() {
+            var host = document.getElementById('cs-list');
+            var lang = document.getElementById('cs-lang').value;
+            var flow = document.getElementById('cs-flow').value;
+
+            var mine = CS_ITEMS.filter(function (i) { return i.lang === lang && i.key === flow; });
+
+            if (!mine.length) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">support_agent</span>' +
+                    '<h2>Nenhum passo publicado para ' + esc(lang + ' ' + flow) + '</h2>' +
+                    '<p>Enquanto isso o app segue com o roteiro embutido no código. ' +
+                    'Rode a semeadura (seedCallScriptNow) ou crie o primeiro passo aqui.</p></div>';
+                return;
+            }
+
+            var html = '';
+            CS_GROUPS.forEach(function (g) {
+                var steps = mine.filter(function (i) { return i.field === g.key; })
+                    .sort(function (a, b) { return a.sortOrder - b.sortOrder; });
+
+                html += '<div class="cat-head">' + esc(g.label) +
+                    ' <span class="pill draft">' + steps.length + '</span></div>';
+
+                // A seção de Implementação ainda não existe em ES: é conteúdo que
+                // nunca chegou, não bug. Dizer isso explicitamente evita que pareça
+                // uma falha de carregamento.
+                if (!steps.length) {
+                    html += '<div class="item-row"><div class="item-main">' +
+                        '<div class="item-meta">Sem passos cadastrados nesta seção. ' +
+                        'Use “Novo passo” para preencher.</div></div></div>';
+                    return;
+                }
+
+                steps.forEach(function (it, idx) {
+                    var d = csDraftForItem(it.id);
+                    var badge = d
+                        ? (d.status === 'pending'
+                            ? '<span class="pill pending">em revisão</span>'
+                            : '<span class="pill draft">rascunho</span>')
+                        : '';
+
+                    var actions = canPropose('call_script')
+                        ? '<div style="display:flex;gap:8px">' +
+                        '<button class="btn btn-ghost btn-sm" onclick="openStepEditor(\'' + it.id + '\')">Editar</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
+                        '</div>'
+                        : '';
+
+                    html += '<div class="item-row">' +
+                        '<div class="item-main">' +
+                        '<div class="item-name">' + (idx + 1) + '. ' + badge + '</div>' +
+                        '<div class="item-meta">' + esc(it.value) + '</div>' +
+                        '</div>' + actions + '</div>';
+                });
+            });
+
+            host.innerHTML = html;
+        }
+
+        function openStepEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < CS_ITEMS.length; i++) {
+                if (CS_ITEMS[i].id === itemId) item = CS_ITEMS[i];
+            }
+
+            var existingDraft = itemId ? csDraftForItem(itemId) : null;
+            var src = existingDraft || item;
+            var lang = document.getElementById('cs-lang').value;
+            var flow = document.getElementById('cs-flow').value;
+            var group = src ? src.field : 'inicio';
+            var text = src ? src.value : '';
+
+            var groupOptions = CS_GROUPS.map(function (g) {
+                return '<option value="' + g.key + '"' + (g.key === group ? ' selected' : '') + '>' +
+                    esc(g.label) + '</option>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar passo' : 'Novo passo') + '</h2>' +
+                '<p class="card-sub">' + esc(lang + ' ' + flow) +
+                ' — vira proposta; o roteiro no ar só muda depois da aprovação.</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Este passo já está em revisão.</div>'
+                    : '') +
+                '<label class="fld" for="cs-group">Seção</label>' +
+                '<select id="cs-group">' + groupOptions + '</select>' +
+                '<label class="fld" for="cs-text">Texto do passo</label>' +
+                '<textarea id="cs-text" placeholder="o que o agente deve dizer ou fazer">' + esc(text) + '</textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="cs-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('cs-save').onclick = function () {
+                submitStep(itemId, existingDraft ? existingDraft.draftId : null, src, this);
+            };
+            document.getElementById('cs-text').focus();
+        }
+
+        function submitStep(itemId, draftId, src, btn) {
+            var text = document.getElementById('cs-text').value.trim();
+            if (!text) return toast('Escreva o texto do passo.', true);
+
+            var group = document.getElementById('cs-group').value;
+            var lang = document.getElementById('cs-lang').value;
+            var flow = document.getElementById('cs-flow').value;
+
+            // Passo novo vai para o fim da seção; passo existente mantém a posição.
+            var sortOrder;
+            if (src) {
+                sortOrder = src.sortOrder;
+            } else {
+                var inGroup = CS_ITEMS.filter(function (i) {
+                    return i.lang === lang && i.key === flow && i.field === group;
+                });
+                sortOrder = inGroup.reduce(function (max, i) {
+                    return Math.max(max, i.sortOrder);
+                }, 0) + 1;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando…';
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    google.script.run
+                        .withSuccessHandler(function () {
+                            closeModal();
+                            toast('Proposta enviada para revisão.');
+                            loadCallScript();
+                            loadPendingCount();
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .submitContentDraft(res.draftId);
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .saveContentDraft({
+                    draftId: draftId || '',
+                    itemId: itemId || '',
+                    module: 'call_script',
+                    key: flow,
+                    field: group,
+                    lang: lang,
+                    label: text,
+                    value: text,
+                    sortOrder: sortOrder
+                });
         }
 
         // --- Aprovações ---
@@ -1175,7 +1421,7 @@
                             : 'Publicado (versão ' + res.version + ').');
                         loadApprovals();
                         loadPendingCount();
-                        loadLinks();
+                        refreshContentLists();
                     })
                     .withFailureHandler(function (err) { toast(err.message, true); })
                     .approveContentDraft(draftId, '');

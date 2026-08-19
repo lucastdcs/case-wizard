@@ -360,5 +360,75 @@ check('validação de módulo desconhecido', () => {
   throws(() => api.listContentItems('inexistente'), /Módulo desconhecido/);
 });
 
+check('seedCallScriptNow() popula o roteiro numa planilha zerada', () => {
+  const freshSS = new FakeSpreadsheet();
+  const freshCtx = vm.createContext({
+    SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    MailApp: { sendEmail: () => { } },
+    Logger: { log: () => { } },
+    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    handleLog: () => { },
+    console,
+  });
+
+  vm.runInContext(fs.readFileSync(SRC, 'utf8'), freshCtx);
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'ContentSeed_CallScript.js'), 'utf8'),
+    freshCtx
+  );
+
+  const res = freshCtx.seedCallScriptNow();
+  eq(res.status, 'success');
+
+  const live = freshCtx.listContentItems('call_script');
+  eq(live.length, res.seeded);
+
+  // A normalização é o ponto da migração: idioma e fluxo deixam de viver
+  // grudados numa chave só ("PT BAU") e passam a ser colunas separadas.
+  const langs = new Set(live.map(i => i.lang));
+  const flows = new Set(live.map(i => i.key));
+  eq([...langs].sort(), ['ES', 'PT']);
+  eq([...flows].sort(), ['BAU', 'LT']);
+
+  const groups = new Set(live.map(i => i.field));
+  [...groups].forEach(g => {
+    if (!['inicio', 'meio', 'fim'].includes(g)) throw new Error('seção inesperada: ' + g);
+  });
+
+  const lineages = new Set(live.map(i => i.lineage));
+  eq(lineages.size, live.length, 'linhagens únicas por passo:');
+});
+
+check('a ordem dos passos sobrevive à semeadura', () => {
+  // Num roteiro, ordem é conteúdo: um passo fora de lugar é um roteiro errado.
+  const seed = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'seeds', 'call-script-seed.json'), 'utf8')
+  );
+
+  const ptBauInicio = seed.items
+    .filter(i => i.lang === 'PT' && i.key === 'BAU' && i.field === 'inicio')
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  if (ptBauInicio.length < 5) throw new Error('poucos passos em PT BAU/inicio');
+  if (!/Apresenta/i.test(ptBauInicio[0].value)) {
+    throw new Error('primeiro passo não é a apresentação: ' + ptBauInicio[0].value);
+  }
+});
+
+check('ES ainda não tem a seção de Tag Support (lacuna conhecida)', () => {
+  // Não é bug: é conteúdo que nunca chegou, e agora dá pra preencher pela
+  // Central sem tocar em código. O teste existe pra avisar quando mudar.
+  const seed = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'seeds', 'call-script-seed.json'), 'utf8')
+  );
+
+  const esMeio = seed.items.filter(i => i.lang === 'ES' && i.field === 'meio');
+  const ptMeio = seed.items.filter(i => i.lang === 'PT' && i.field === 'meio');
+
+  eq(esMeio.length, 0, 'ES segue sem passos de Tag Support:');
+  if (!ptMeio.length) throw new Error('PT deveria ter a seção de Tag Support');
+});
+
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);
 process.exit(fail ? 1 : 0);
