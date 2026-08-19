@@ -1,4 +1,15 @@
-{
+// ARQUIVO GERADO - não edite à mão.
+// Origem: npm run seed:links (lê o LINKS_DB de src/modules/links/links-assistant.js)
+//
+// Semeia o módulo "links" da Central de Conteúdo com a lista que hoje está
+// embutida no bundle do agente. É migração de conteúdo que já está em produção,
+// não mudança nova - por isso publica direto, sem passar pela fila de revisão.
+//
+// COMO RODAR: no editor do Apps Script, escolha "seedLinksNow" no seletor de
+// função e clique em Executar. Roda uma vez só; chamadas seguintes são
+// ignoradas se o módulo já tiver itens no ar, então não há risco de duplicar.
+
+const CONTENT_SEED_LINKS = {
   "module": "links",
   "items": [
     {
@@ -422,4 +433,10 @@
       "sortOrder": 59
     }
   ]
+};
+
+function seedLinksNow() {
+  const result = seedContentModule(CONTENT_SEED_LINKS);
+  Logger.log(result);
+  return result;
 }
