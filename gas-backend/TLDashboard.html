@@ -547,7 +547,7 @@
     <div id="caseModal" class="modal-overlay" onclick="closeModal('caseModal')">
         <div class="modal-content" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
             <div class="modal-header">
-                <div style="font-size: 18px; font-weight: 500;">Detalhes da Solicitação</div>
+                <div style="font-size: 18px; font-weight: 500;" data-i18n="detailsTitle">Detalhes da Solicitação</div>
                 <button class="btn-icon-close" onclick="closeModal('caseModal')">
                     <span class="material-symbols-rounded">close</span>
                 </button>
@@ -561,17 +561,17 @@
         <div class="modal-content modal-confirm-content" role="dialog" aria-modal="true">
             <div class="modal-body">
                 <span class="material-symbols-rounded confirm-icon" id="confirm-icon">help</span>
-                <div id="confirm-title" style="font-size: 20px; font-weight: 500; margin-bottom: 8px;">Confirmar Ação</div>
-                <div id="confirm-message" style="color: var(--text-secondary); font-size: 15px; line-height: 1.5;">Você tem certeza que deseja prosseguir com esta ação?</div>
+                <div id="confirm-title" style="font-size: 20px; font-weight: 500; margin-bottom: 8px;" data-i18n="confirmTitle">Confirmar Ação</div>
+                <div id="confirm-message" style="color: var(--text-secondary); font-size: 15px; line-height: 1.5;" data-i18n="confirmMessage">Você tem certeza que deseja prosseguir com esta ação?</div>
 
                 <div id="confirm-context" style="margin-top: 16px; background: var(--surface-level-2); border: 1px solid var(--border-subtle); padding: 16px; border-radius: var(--radius-md); text-align: left;">
-                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">Resumo do Caso</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;" data-i18n="caseSummary">Resumo do Caso</div>
                     <div id="confirm-case-info" style="font-size: 14px; color: var(--text-primary); font-weight: 500;"></div>
                 </div>
             </div>
             <div class="confirm-footer">
-                <button class="btn btn-danger-outline" id="confirm-cancel-btn" onclick="closeModal('confirmModal')" style="flex: 1;">Cancelar</button>
-                <button class="btn btn-primary" id="confirm-submit-btn" style="flex: 1;">Confirmar</button>
+                <button class="btn btn-danger-outline" id="confirm-cancel-btn" onclick="closeModal('confirmModal')" style="flex: 1;" data-i18n="cancel">Cancelar</button>
+                <button class="btn btn-primary" id="confirm-submit-btn" style="flex: 1;" data-i18n="confirm">Confirmar</button>
             </div>
         </div>
     </div>
@@ -597,7 +597,7 @@
             <span id="last-synced-label" style="font-size: 12px; color: var(--nav-text-secondary);"></span>
             <button class="btn" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);" onclick="SoundKit.click(); loadCases()">
                 <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
-                Sincronizar
+                <span data-i18n="sync">Sincronizar</span>
             </button>
         </div>
     </nav>
@@ -605,33 +605,179 @@
     <div class="tab-section">
         <button class="tab-btn active" onclick="switchTab('CREATION')" id="tab-creation">
             <span class="material-symbols-rounded">add_circle</span>
-            Aprovação de Criação
+            <span data-i18n="tabCreation">Aprovação de Criação</span>
             <span class="badge-count" id="count-creation">0</span>
         </button>
         <button class="tab-btn" onclick="switchTab('DISCARD')" id="tab-discard">
             <span class="material-symbols-rounded">delete_sweep</span>
-            Aprovação de Descarte
+            <span data-i18n="tabDiscard">Aprovação de Descarte</span>
             <span class="badge-count" id="count-discard">0</span>
         </button>
     </div>
 
     <main class="workspace">
         <div class="table-header">
-            <div>ANUNCIANTE & ID</div>
-            <div>SOLICITAÇÃO & REFERÊNCIA</div>
-            <div>AGENDAMENTO</div>
-            <div style="text-align: right;">AÇÃO</div>
+            <div data-i18n="colAdvertiser">ANUNCIANTE &amp; ID</div>
+            <div data-i18n="colRequest">SOLICITAÇÃO &amp; REFERÊNCIA</div>
+            <div data-i18n="colSchedule">AGENDAMENTO</div>
+            <div style="text-align: right;" data-i18n="colAction">AÇÃO</div>
         </div>
 
         <div id="loader" class="loader">
             <span class="material-symbols-rounded spinner">progress_activity</span>
-            <span style="color: var(--text-secondary); font-size: 15px;">Acessando base de dados...</span>
+            <span style="color: var(--text-secondary); font-size: 15px;" data-i18n="loading">Acessando base de dados...</span>
         </div>
 
         <div id="cases-container"></div>
     </main>
 
     <script>
+        // =====================================================
+        //                     IDIOMA (PT/ES)
+        // =====================================================
+        // Esta página roda fora do bundle do bookmarklet, então não dá pra
+        // usar shared/i18n.js — o dicionário é replicado aqui, mesma ideia
+        // do getTLGreeting() logo abaixo, que também replica o
+        // getSmartGreeting() do bundle.
+        //
+        // O idioma vem do MESMO profile que a faixa de boas-vindas já
+        // busca (getCurrentTLProfile → getUserProfileByLdap → planilha
+        // People), então não há requisição extra. Como esse profile chega
+        // async, a página nasce em PT e troca pra ES quando ele responde —
+        // applyStaticTexts() cuida do texto fixo e o re-render dos casos
+        // cuida do resto.
+        const TL_I18N = {
+            pt: {
+                detailsTitle: "Detalhes da Solicitação",
+                confirmTitle: "Confirmar Ação",
+                confirmMessage: "Você tem certeza que deseja prosseguir com esta ação?",
+                caseSummary: "Resumo do Caso",
+                cancel: "Cancelar",
+                confirm: "Confirmar",
+                sync: "Sincronizar",
+                tabCreation: "Aprovação de Criação",
+                tabDiscard: "Aprovação de Descarte",
+                colAdvertiser: "ANUNCIANTE & ID",
+                colRequest: "SOLICITAÇÃO & REFERÊNCIA",
+                colSchedule: "AGENDAMENTO",
+                colAction: "AÇÃO",
+                loading: "Acessando base de dados...",
+                syncedNow: "Sincronizado agora",
+                syncedSec: function (s) { return "Sincronizado há " + s + "s"; },
+                syncedMin: function (m) { return "Sincronizado há " + m + "min"; },
+                loadError: "Não foi possível carregar os casos",
+                emptyState: "Não há solicitações pendentes nesta categoria.",
+                notInformed: "Não informado",
+                flowDiscard: "Solicitação de Descarte",
+                flowCreation: "Criação de BAU",
+                keepActive: "Manter Caso Ativo",
+                rejectRequest: "Rejeitar Solicitação",
+                confirmDiscard: "Confirmar Descarte",
+                approveNotify: "Aprovar e Notificar",
+                approve: "Aprovar",
+                rowAdvertiser: "Anunciante",
+                rowTask: "Task",
+                rowAdvEmail: "Email do Anunciante",
+                rowLanguage: "Idioma",
+                rowAm: "AM Responsável",
+                rowSalesProgram: "Programa de Vendas",
+                rowSite: "Site",
+                rowSchedule: "Agendamento",
+                rowAgent: "Agente",
+                rowWhatToDo: "O que deve ser feito",
+                rowJustification: "Justificativa / Detalhes",
+                confirmKeepTitle: "Manter Caso Ativo",
+                confirmDiscardTitle: "Confirmar Descarte",
+                confirmKeepMsg: "O caso permanecerá ativo e o agente será avisado que o pedido de descarte não foi aceito.",
+                confirmDiscardMsg: "Ao confirmar, o agente será notificado e o caso será marcado como descartado. Esta ação é irreversível.",
+                confirmApproveTitle: "Confirmar Aprovação",
+                confirmRejectTitle: "Confirmar Rejeição",
+                confirmApproveMsg: "Ao aprovar, o agente receberá uma notificação e o caso seguirá para a próxima etapa.",
+                confirmRejectMsg: "Você está prestes a rejeitar esta solicitação. Esta ação é irreversível.",
+                toastApproved: "Solicitação aprovada com sucesso",
+                toastRejected: "Solicitação rejeitada",
+                toastEmailFailed: "Ação registrada, mas o email de confirmação ao agente falhou.",
+                toastActionFailed: "Falha ao processar ação. Tente novamente.",
+                toastCopied: "Copiado para área de transferência",
+                greetHello: "Olá", greetMorning: "Bom dia", greetAfternoon: "Boa tarde", greetEvening: "Boa noite",
+                phrasesWeekend: ["Obrigado por dar uma olhada mesmo no fim de semana.", "Sua dedicação não passa despercebida."],
+                phrasesDawn: ["Revisão de madrugada - respeito.", "Vamos manter a fila em dia."],
+                phrasesMonday: ["Vamos começar a semana organizando a fila.", "Nova semana, fila zerada."],
+                phrasesDefault: ["Vamos manter a fila em dia.", "Tudo sob controle por aqui.", "Bora revisar as solicitações."]
+            },
+            es: {
+                detailsTitle: "Detalles de la Solicitud",
+                confirmTitle: "Confirmar Acción",
+                confirmMessage: "¿Estás seguro de que deseas continuar con esta acción?",
+                caseSummary: "Resumen del Caso",
+                cancel: "Cancelar",
+                confirm: "Confirmar",
+                sync: "Sincronizar",
+                tabCreation: "Aprobación de Creación",
+                tabDiscard: "Aprobación de Descarte",
+                colAdvertiser: "ANUNCIANTE E ID",
+                colRequest: "SOLICITUD Y REFERENCIA",
+                colSchedule: "PROGRAMACIÓN",
+                colAction: "ACCIÓN",
+                loading: "Accediendo a la base de datos...",
+                syncedNow: "Sincronizado ahora",
+                syncedSec: function (s) { return "Sincronizado hace " + s + "s"; },
+                syncedMin: function (m) { return "Sincronizado hace " + m + "min"; },
+                loadError: "No fue posible cargar los casos",
+                emptyState: "No hay solicitudes pendientes en esta categoría.",
+                notInformed: "No informado",
+                flowDiscard: "Solicitud de Descarte",
+                flowCreation: "Creación de BAU",
+                keepActive: "Mantener Caso Activo",
+                rejectRequest: "Rechazar Solicitud",
+                confirmDiscard: "Confirmar Descarte",
+                approveNotify: "Aprobar y Notificar",
+                approve: "Aprobar",
+                rowAdvertiser: "Anunciante",
+                rowTask: "Task",
+                rowAdvEmail: "Email del Anunciante",
+                rowLanguage: "Idioma",
+                rowAm: "AM Responsable",
+                rowSalesProgram: "Programa de Ventas",
+                rowSite: "Sitio",
+                rowSchedule: "Programación",
+                rowAgent: "Agente",
+                rowWhatToDo: "Qué debe hacerse",
+                rowJustification: "Justificación / Detalles",
+                confirmKeepTitle: "Mantener Caso Activo",
+                confirmDiscardTitle: "Confirmar Descarte",
+                confirmKeepMsg: "El caso permanecerá activo y se avisará al agente que el pedido de descarte no fue aceptado.",
+                confirmDiscardMsg: "Al confirmar, se notificará al agente y el caso será marcado como descartado. Esta acción es irreversible.",
+                confirmApproveTitle: "Confirmar Aprobación",
+                confirmRejectTitle: "Confirmar Rechazo",
+                confirmApproveMsg: "Al aprobar, el agente recibirá una notificación y el caso seguirá a la próxima etapa.",
+                confirmRejectMsg: "Estás a punto de rechazar esta solicitud. Esta acción es irreversible.",
+                toastApproved: "Solicitud aprobada con éxito",
+                toastRejected: "Solicitud rechazada",
+                toastEmailFailed: "Acción registrada, pero el email de confirmación al agente falló.",
+                toastActionFailed: "Error al procesar la acción. Inténtalo de nuevo.",
+                toastCopied: "Copiado al portapapeles",
+                greetHello: "Hola", greetMorning: "Buenos días", greetAfternoon: "Buenas tardes", greetEvening: "Buenas noches",
+                phrasesWeekend: ["Gracias por revisar incluso el fin de semana.", "Tu dedicación no pasa desapercibida."],
+                phrasesDawn: ["Revisión de madrugada - respeto.", "Vamos a mantener la fila al día."],
+                phrasesMonday: ["Vamos a empezar la semana organizando la fila.", "Nueva semana, fila en cero."],
+                phrasesDefault: ["Vamos a mantener la fila al día.", "Todo bajo control por aquí.", "A revisar las solicitudes."]
+            }
+        };
+        let TL_LANG = 'pt';
+        function tt(key) {
+            const dict = TL_I18N[TL_LANG] || TL_I18N.pt;
+            return dict[key] !== undefined ? dict[key] : TL_I18N.pt[key];
+        }
+
+        // Preenche todo elemento marcado com data-i18n. Chamado no boot e de
+        // novo quando o profile responde com o idioma real.
+        function applyStaticTexts() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const v = tt(el.getAttribute('data-i18n'));
+                if (typeof v === 'string') el.textContent = v;
+            });
+        }
         // DOMContentLoaded, não window.onload: confirmado ao vivo (DevTools) que o
         // loader ficava preso mesmo depois de 18s+, sem o watchdog de loadCases()
         // (abaixo) sequer chegar a rodar uma vez - ou seja, o próprio window.onload
@@ -647,6 +793,11 @@
         // loadCases() direto, sem depender de load nenhum - só reproduzindo esse
         // mesmo comportamento aqui.
         document.addEventListener('DOMContentLoaded', () => {
+            // No boot é no-op (o HTML já nasce em PT); o que importa é que o
+            // mecanismo seja o mesmo caminho usado quando o profile chega em
+            // ES — assim um texto novo marcado com data-i18n nunca fica de
+            // fora por esquecimento.
+            applyStaticTexts();
             // Pequeno atraso antes da primeiríssima chamada: em alguns carregamentos
             // "frios", o bridge do google.script.run ainda não estava pronto bem no
             // instante do DOMContentLoaded dentro do iframe sandboxado do Apps Script,
@@ -676,6 +827,21 @@
             google.script.run
                 .withSuccessHandler(profile => {
                     if (!profile || !profile.ldap) return;
+
+                    // Mesmo profile que já vinha pra faixa de boas-vindas
+                    // carrega o idioma — sem requisição extra. A saudação é
+                    // montada DEPOIS de trocar o idioma pra já nascer certa.
+                    if (String(profile.defaultLanguage) === 'ES') {
+                        TL_LANG = 'es';
+                        applyStaticTexts();
+                        // Os casos já podem estar na tela (loadCases roda em
+                        // paralelo): re-renderiza pra pegar o novo idioma.
+                        // `allCases` é um let de topo — já inicializado aqui,
+                        // porque este handler é async e roda bem depois da
+                        // avaliação do script.
+                        if (allCases.length > 0) renderCases();
+                    }
+
                     const avatar = document.getElementById('tl-avatar');
                     avatar.src = 'https://moma-teams-photos.corp.google.com/photos/' + encodeURIComponent(profile.ldap) + '?sz=600&type=PLUS';
 
@@ -694,22 +860,22 @@
             const h = now.getHours();
             const d = now.getDay();
 
-            let prefix = "Olá";
-            if (h >= 5 && h < 12) prefix = "Bom dia";
-            else if (h >= 12 && h < 18) prefix = "Boa tarde";
-            else prefix = "Boa noite";
+            let prefix = tt('greetHello');
+            if (h >= 5 && h < 12) prefix = tt('greetMorning');
+            else if (h >= 12 && h < 18) prefix = tt('greetAfternoon');
+            else prefix = tt('greetEvening');
 
             let phrases;
             if (d === 0 || d === 6) {
-                phrases = ["Obrigado por dar uma olhada mesmo no fim de semana.", "Sua dedicação não passa despercebida."];
+                phrases = tt('phrasesWeekend');
             } else if (h >= 0 && h < 5) {
-                phrases = ["Revisão de madrugada - respeito.", "Vamos manter a fila em dia."];
+                phrases = tt('phrasesDawn');
             } else if (d === 1) {
-                phrases = ["Vamos começar a semana organizando a fila.", "Nova semana, fila zerada."];
+                phrases = tt('phrasesMonday');
             } else if (d === 5) {
                 phrases = ["Reta final da semana - vamos fechar a fila.", "Sexta produtiva por aqui."];
             } else {
-                phrases = ["Vamos manter a fila em dia.", "Tudo sob controle por aqui.", "Bora revisar as solicitações."];
+                phrases = tt('phrasesDefault');
             }
 
             const subtitle = phrases[Math.floor(Math.random() * phrases.length)];
@@ -812,9 +978,9 @@
             if (!label) return;
             if (!lastSyncedAt) { label.textContent = ''; return; }
             const diffSec = Math.floor((Date.now() - lastSyncedAt.getTime()) / 1000);
-            if (diffSec < 10) label.textContent = 'Sincronizado agora';
-            else if (diffSec < 60) label.textContent = `Sincronizado há ${diffSec}s`;
-            else label.textContent = `Sincronizado há ${Math.floor(diffSec / 60)}min`;
+            if (diffSec < 10) label.textContent = tt('syncedNow');
+            else if (diffSec < 60) label.textContent = tt('syncedSec')(diffSec);
+            else label.textContent = tt('syncedMin')(Math.floor(diffSec / 60));
         }
 
         // Formata uma disponibilidade (ISO 8601, opcionalmente múltiplas datas
@@ -823,12 +989,12 @@
         // pros emails) - sem isso, o texto cru mostrava milissegundos e "Z" no
         // final (ex: "14:00:00.000Z") direto do ISO string, sem formatação.
         function formatAvailability(raw) {
-            if (!raw) return "Não informado";
+            if (!raw) return tt('notInformed');
             if (String(raw).includes(' | ')) {
                 return String(raw).split(' | ').map(formatAvailability).join(' | ');
             }
             const d = new Date(raw);
-            if (isNaN(d.getTime())) return "Não informado";
+            if (isNaN(d.getTime())) return tt('notInformed');
             const datePart = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
             const timePart = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
             return `${datePart} às ${timePart}`;
@@ -951,7 +1117,7 @@
                 container.innerHTML = `
                 <div class="empty-state">
                     <span class="material-symbols-rounded" style="font-size: 48px; color: var(--danger);">error</span>
-                    <div style="font-size: 18px; font-weight: 500; color: var(--text-primary);">Não foi possível carregar os casos</div>
+                    <div style="font-size: 18px; font-weight: 500; color: var(--text-primary);">${tt('loadError')}</div>
                     <div style="font-size: 14px;">Falha ao conectar com o servidor. Tente sincronizar novamente.</div>
                     <button class="btn" style="background: var(--surface-level-2); border: 1px solid var(--border-subtle); color: var(--text-secondary); margin-top: 8px;" onclick="SoundKit.click(); loadCases()">
                         <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
@@ -966,7 +1132,7 @@
                 <div class="empty-state">
                     <span class="material-symbols-rounded" style="font-size: 48px; color: var(--success);">task_alt</span>
                     <div style="font-size: 18px; font-weight: 500; color: var(--text-primary);">Fila limpa</div>
-                    <div style="font-size: 14px;">Não há solicitações pendentes nesta categoria.</div>
+                    <div style="font-size: 14px;">${tt('emptyState')}</div>
                 </div>`;
                 return;
             }
@@ -989,7 +1155,7 @@
                     <div>
                         <div class="status-badge ${isDiscardFlow ? 'badge-discard' : 'badge-create'}">
                             <span class="material-symbols-rounded" style="font-size: 14px;">${isDiscardFlow ? 'delete' : 'add_circle'}</span>
-                            ${isDiscardFlow ? 'Solicitação de Descarte' : 'Criação de BAU'}
+                            ${isDiscardFlow ? tt('flowDiscard') : tt('flowCreation')}
                         </div>
                         <div class="text-primary">${escapeHtml(c.advName)}</div>
                         <div class="text-secondary">CID: <span class="text-mono">${escapeHtml(c.cid)}</span></div>
@@ -1020,12 +1186,12 @@
                     </div>
 
                     <div class="action-group">
-                        <button class="btn btn-danger-outline" onclick="event.stopPropagation(); confirmAction('${c.id}', '${isDiscardFlow ? 'CREATED' : 'DISCARDED'}')" title="${isDiscardFlow ? 'Manter Caso Ativo' : 'Rejeitar Solicitação'}">
+                        <button class="btn btn-danger-outline" onclick="event.stopPropagation(); confirmAction('${c.id}', '${isDiscardFlow ? 'CREATED' : 'DISCARDED'}')" title="${isDiscardFlow ? tt('keepActive') : tt('rejectRequest')}">
                             <span class="material-symbols-rounded">close</span>
                         </button>
-                        <button class="btn btn-primary" onclick="event.stopPropagation(); confirmAction('${c.id}', '${isDiscardFlow ? 'DISCARDED' : 'CREATED'}')" title="${isDiscardFlow ? 'Confirmar Descarte' : 'Aprovar e Notificar'}">
+                        <button class="btn btn-primary" onclick="event.stopPropagation(); confirmAction('${c.id}', '${isDiscardFlow ? 'DISCARDED' : 'CREATED'}')" title="${isDiscardFlow ? tt('confirmDiscard') : tt('approveNotify')}">
                             <span class="material-symbols-rounded">check</span>
-                            ${isDiscardFlow ? 'Confirmar' : 'Aprovar'}
+                            ${isDiscardFlow ? tt('confirm') : tt('approve')}
                         </button>
                     </div>
                 </div>
@@ -1078,30 +1244,30 @@
 
             document.getElementById('modal-body-content').innerHTML = `
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow('Anunciante', c.advName)}
+                ${createRow(tt('rowAdvertiser'), c.advName)}
                 ${createRow('CID', c.cid)}
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow('Task', c.task)}
+                ${createRow(tt('rowTask'), c.task)}
                 ${createRow('Case ID', c.caseId)}
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 ${createRow('Speakeasy ID', c.speakeasyId)}
-                ${createRow('Email do Anunciante', c.advEmail)}
+                ${createRow(tt('rowAdvEmail'), c.advEmail)}
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 ${createRow('Timezone', c.timezone)}
-                ${createRow('Idioma', c.language)}
+                ${createRow(tt('rowLanguage'), c.language)}
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow('AM Responsável', c.amName)}
-                ${createRow('Programa de Vendas', c.salesProgram)}
+                ${createRow(tt('rowAm'), c.amName)}
+                ${createRow(tt('rowSalesProgram'), c.salesProgram)}
             </div>
-            ${createRow('Site', c.site)}
-            ${createRow('Agendamento', formatAvailability(c.availability))}
-            ${createRow('Agente', c.agentEmail)}
-            ${createBlockRow('O que deve ser feito', c.reason)}
-            ${createBlockRow('Justificativa / Detalhes', c.description)}
+            ${createRow(tt('rowSite'), c.site)}
+            ${createRow(tt('rowSchedule'), formatAvailability(c.availability))}
+            ${createRow(tt('rowAgent'), c.agentEmail)}
+            ${createBlockRow(tt('rowWhatToDo'), c.reason)}
+            ${createBlockRow(tt('rowJustification'), c.description)}
             `;
             document.getElementById('caseModal').classList.add('active');
         }
@@ -1120,19 +1286,19 @@
 
             // Reset state
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Confirmar';
+            submitBtn.textContent = tt('confirm');
             document.getElementById('confirm-cancel-btn').disabled = false;
 
             if (isDiscardFlow) {
-                title.textContent = isPositive ? 'Manter Caso Ativo' : 'Confirmar Descarte';
+                title.textContent = isPositive ? tt('confirmKeepTitle') : tt('confirmDiscardTitle');
                 message.textContent = isPositive
-                    ? 'O caso permanecerá ativo e o agente será avisado que o pedido de descarte não foi aceito.'
-                    : 'Ao confirmar, o agente será notificado e o caso será marcado como descartado. Esta ação é irreversível.';
+                    ? tt('confirmKeepMsg')
+                    : tt('confirmDiscardMsg');
             } else {
-                title.textContent = isPositive ? 'Confirmar Aprovação' : 'Confirmar Rejeição';
+                title.textContent = isPositive ? tt('confirmApproveTitle') : tt('confirmRejectTitle');
                 message.textContent = isPositive
-                    ? 'Ao aprovar, o agente receberá uma notificação e o caso seguirá para a próxima etapa.'
-                    : 'Você está prestes a rejeitar esta solicitação. Esta ação é irreversível.';
+                    ? tt('confirmApproveMsg')
+                    : tt('confirmRejectMsg');
             }
 
             icon.textContent = isPositive ? 'check_circle' : 'warning';
@@ -1166,13 +1332,13 @@
                     if (wasDiscardFlow) {
                         msg = newStatus === 'DISCARDED' ? 'Descarte confirmado' : 'Caso mantido ativo';
                     } else {
-                        msg = newStatus === 'CREATED' ? 'Solicitação aprovada com sucesso' : 'Solicitação rejeitada';
+                        msg = newStatus === 'CREATED' ? tt('toastApproved') : tt('toastRejected');
                     }
                     showToast(msg);
 
                     if (result && result.emailSent === false) {
                         setTimeout(() => {
-                            showToast("Ação registrada, mas o email de confirmação ao agente falhou.", "warning");
+                            showToast(tt('toastEmailFailed'), "warning");
                         }, 3200);
                     }
 
@@ -1181,12 +1347,12 @@
                 .withFailureHandler(err => {
                     console.error("Erro na ação:", err);
                     SoundKit.error();
-                    showToast("Falha ao processar ação. Tente novamente.", "error");
+                    showToast(tt('toastActionFailed'), "error");
 
                     // Reabilita os botões se falhar
                     const submitBtn = document.getElementById('confirm-submit-btn');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Confirmar';
+                    submitBtn.textContent = tt('confirm');
                     document.getElementById('confirm-cancel-btn').disabled = false;
                 })
                 .updateBAUCaseStatus(id, newStatus);
@@ -1245,7 +1411,7 @@
             const icon = btn.querySelector('span');
             icon.textContent = 'check';
             setTimeout(() => icon.textContent = 'content_copy', 1500);
-            showToast('Copiado para área de transferência');
+            showToast(tt('toastCopied'));
         }
     </script>
 </body>
