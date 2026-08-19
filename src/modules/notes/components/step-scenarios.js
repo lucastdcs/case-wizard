@@ -1,6 +1,6 @@
 // src/modules/notes/components/step-scenarios.js
 
-import { scenarioSnippets } from "../data/notes-data.js";
+import { scenarioSnippets, getScenarioFields } from "../data/notes-data.js";
 import { SoundManager } from "../../shared/sound-manager.js";
 import { getLanguage } from "../../shared/i18n.js";
 
@@ -93,7 +93,8 @@ export function createScenariosComponent(onSelectCallback) {
             transition: "all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)",
           });
 
-          const textPreviewContent = data['field-REASON_COMMENTS'] || data['field-CONTEXTO_CALL'] || id;
+          const localized = getScenarioFields(data, getLanguage(), id);
+          const textPreviewContent = localized['field-REASON_COMMENTS'] || localized['field-CONTEXTO_CALL'] || id;
 
           chip.onmouseenter = () => {
               if (hoverTimeout) clearTimeout(hoverTimeout);

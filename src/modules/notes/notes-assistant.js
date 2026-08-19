@@ -24,7 +24,8 @@ import {
     textareaListFields,
     TASKS_DB,
     getEffectiveRequiredFields,
-    getEffectiveOptionalFields
+    getEffectiveOptionalFields,
+    getScenarioFields
 } from "./data/notes-data.js";
 import {
     copyHtmlToClipboard,
@@ -521,7 +522,7 @@ export function initCaseNotesAssistant() {
     }
 
     function applyScenario(scenarioId, isSelected) {
-        const data = scenarioSnippets[scenarioId];
+        const data = getScenarioFields(scenarioSnippets[scenarioId], notesState.currentLang, scenarioId);
         if (!data) return;
 
         for (const key in data) {

@@ -1,4 +1,4 @@
-import { TASKS_DB } from "../data/notes-data.js";
+import { TASKS_DB, getTaskScreenshots } from "../data/notes-data.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
 import { createEmptyState, enableArrowKeyNav } from "../../shared/dom-utils.js";
 
@@ -880,7 +880,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
       const useTsLogic = shouldSuppressScreenshots(key, notesState);
 
       const mode = notesState.screenshotMode || "implementation";
-      const screenshotLabels = task.screenshots?.[mode] || [];
+      const screenshotLabels = getTaskScreenshots(task, mode, notesState.currentLang);
 
       if (screenshotLabels.length > 0 || useTsLogic) {
         hasAny = true;
@@ -914,7 +914,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
 
           const editHint = document.createElement("span");
           editHint.className = "cw-edit-hint";
-          editHint.innerHTML = "✎ Renomear";
+          editHint.innerHTML = t('renomear_hint');
 
           titleWrap.appendChild(nameInput);
           titleWrap.appendChild(editHint);
