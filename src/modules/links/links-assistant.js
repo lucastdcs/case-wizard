@@ -7,11 +7,81 @@ import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll, createEmptyState } from "../shared/dom-utils.js";
 import { getLanguage, onLanguageChange } from "../shared/i18n.js";
 
-// As descrições de cada link (~90 entradas) continuam só em PT por ora —
-// são rótulos curtos de ferramentas internas (SOPs, siglas, nomes de
-// produto), no mesmo escopo de "conteúdo" adiado que o changelog e o
-// checklist de Call Script. O chrome do módulo (abaixo) e os nomes de
-// categoria já seguem o idioma global.
+// Descrição de cada link em espanhol, chaveada pelo texto em português.
+// Estão aqui as 60 descrições — inclusive as que ficam iguais nos dois
+// idiomas (ex: "Setup Inicial") e as que são nome próprio/inglês e não se
+// traduzem (ex: "Ghost Ads", "Help Center"). Mapear todas, e não só as que
+// mudam, faz "ausente deste mapa" significar inequivocamente "ainda não
+// traduzida" — o que torna a checagem de cobertura trivial.
+// O `name` de cada link não entra aqui: são nomes de ferramenta/SOP
+// (Moma Home, RegExr, [SOP] Split), que não se traduzem.
+const LINK_DESC_ES = {
+    'Ponto Eletrônico': 'Control de Asistencia',
+    'Ferramenta de ajuda': 'Herramienta de ayuda',
+    'Intranet Google': 'Intranet Google',
+    'Relatório Follow-ups': 'Informe de Follow-ups',
+    'Dashboard WFM': 'Dashboard WFM',
+    'Tech Solutions SAO': 'Tech Solutions SAO',
+    'Form Gravação': 'Form Grabación',
+    'Form Escalação': 'Form Escalación',
+    'Instruções Split': 'Instrucciones Split',
+    'Single Page App': 'Single Page App',
+    'Procedimento Padrão': 'Procedimiento Estándar',
+    'Validação Código': 'Validación Código',
+    'Conversão Chamada': 'Conversión Llamada',
+    'Validação WCC': 'Validación WCC',
+    'ECW4': 'ECW4',
+    'Monitoramento EC': 'Monitoreo EC',
+    'Resolução problemas': 'Resolución de problemas',
+    'Implementação RMKT': 'Implementación RMKT',
+    'Pontuação Leads': 'Puntuación de Leads',
+    'Instalação Container': 'Instalación Container',
+    'Instalação Config.': 'Instalación Config.',
+    'Validação GA4': 'Validación GA4',
+    'Guia Dev': 'Guía Dev',
+    'Resolução Problemas': 'Resolución de Problemas',
+    'Domínio Cruzado': 'Dominio Cruzado',
+    'Lista Oficial': 'Lista Oficial',
+    'Criador URLs': 'Creador de URLs',
+    'Setup Inicial': 'Setup Inicial',
+    'Otimização Feed': 'Optimización Feed',
+    'Ferramenta Interna': 'Herramienta Interna',
+    'Avaliações': 'Reseñas',
+    'Feeds Offline': 'Feeds Offline',
+    'Help Center': 'Help Center',
+    'Guias CMS': 'Guías CMS',
+    'Soluções Iframes': 'Soluciones Iframes',
+    'Ghost Ads': 'Ghost Ads',
+    'Ghost Analytics': 'Ghost Analytics',
+    'Ghost GTM': 'Ghost GTM',
+    'Ferramenta': 'Herramienta',
+    'Ghost MC': 'Ghost MC',
+    'Playground JS': 'Playground JS',
+    'Testador Regex': 'Probador Regex',
+    'Doc. CSP': 'Doc. CSP',
+    'Guia CoMo': 'Guía CoMo',
+    'Debug CoMo': 'Debug CoMo',
+    'Portal Colaborador': 'Portal del Colaborador',
+    'Apps e Sistemas': 'Apps y Sistemas',
+    'Folha Pagamento': 'Nómina',
+    'Reportar problemas': 'Reportar problemas',
+    'Registro chamadas': 'Registro de llamadas',
+    'Erros de sistema': 'Errores de sistema',
+    'BAU/Descarte/Monitoria': 'BAU/Descarte/Monitoreo',
+    'Feedback positivo': 'Feedback positivo',
+    'Casos difíceis': 'Casos difíciles',
+    'Chat/Email Ads': 'Chat/Email Ads',
+    'Chat/Email Shopping': 'Chat/Email Shopping',
+    'Perfil da Empresa': 'Perfil de la Empresa',
+    'Console API': 'Console API',
+    'Lista de números': 'Lista de números',
+    'Cursos': 'Cursos',
+};
+function linkDesc(desc) {
+    if (getLanguage() !== 'es') return desc;
+    return LINK_DESC_ES[desc] || desc;
+}
+
 const LINKS_DICT = {
     pt: {
         headerTitle: "Central de Links",
@@ -597,9 +667,11 @@ export function initLinksAssistant() {
       if (searchTerm.trim() !== "") {
           let results = [];
           Object.entries(LINKS_DB).forEach(([key, cat]) => {
+              // Busca sobre a descrição JÁ traduzida, pra digitar
+              // "resolución" achar o link no idioma que está na tela.
               const filtered = cat.links.filter(l =>
                   l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  l.desc.toLowerCase().includes(searchTerm.toLowerCase())
+                  linkDesc(l.desc).toLowerCase().includes(searchTerm.toLowerCase())
               );
               results.push(...filtered.map(l => ({...l, _cat: key})));
           });
@@ -682,7 +754,7 @@ export function initLinksAssistant() {
 
       const desc = document.createElement("div");
       desc.className = "cw-links-card-desc";
-      desc.textContent = link.desc;
+      desc.textContent = linkDesc(link.desc);
 
       meta.appendChild(title);
       meta.appendChild(desc);
