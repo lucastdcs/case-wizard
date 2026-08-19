@@ -74,6 +74,11 @@ vm.runInContext(fs.readFileSync(SRC, 'utf8'), ctx);
 const SEED_SRC = path.join(__dirname, '..', 'gas-backend', 'ContentSeed_Links.js');
 vm.runInContext(fs.readFileSync(SEED_SRC, 'utf8'), ctx);
 
+// Catálogo de campos da nota: no Apps Script ele é só mais um global, e é assim
+// que assertValidNoteField_() o enxerga sem nenhum import.
+const FIELDS_SRC = path.join(__dirname, '..', 'gas-backend', 'ContentFields_Notes.js');
+vm.runInContext(fs.readFileSync(FIELDS_SRC, 'utf8'), ctx);
+
 const api = sandbox;
 
 // ---- Runner ----
@@ -414,6 +419,81 @@ check('a ordem dos passos sobrevive à semeadura', () => {
   if (!/Apresenta/i.test(ptBauInicio[0].value)) {
     throw new Error('primeiro passo não é a apresentação: ' + ptBauInicio[0].value);
   }
+});
+
+console.log('\n--- Case Notes (trechos por campo) ---');
+
+check('QA propõe trecho de nota (está no escopo do papel)', () => {
+  as('quality1', () => {
+    const r = api.saveContentDraft({
+      module: 'case_note_snippet',
+      key: 'ALL',
+      field: 'RESULTADO',
+      lang: 'PT',
+      label: 'Tag validada',
+      value: 'Tag validada no Tag Assistant, disparando corretamente.'
+    });
+    if (!r.draftId) throw new Error('rascunho não criado');
+  });
+});
+
+check('WFM NÃO propõe trecho de nota', () => {
+  api.saveContentAccess('wfm1', 'WFM', true);
+  as('wfm1', () => {
+    throws(() => api.saveContentDraft({
+      module: 'case_note_snippet', key: 'ALL', field: 'RESULTADO',
+      lang: 'PT', label: 'X', value: 'Y'
+    }), /não edita o módulo/);
+  });
+});
+
+check('campo fora do catálogo é recusado pelo servidor', () => {
+  // A tela usa select, mas a regra tem que valer mesmo se alguém chamar a API
+  // direto - senão o trecho aponta pra um campo que a nota não tem e nunca
+  // aparece pra ninguém, sem erro nenhum.
+  throws(() => api.saveContentDraft({
+    module: 'case_note_snippet', key: 'ALL', field: 'CAMPO_INVENTADO',
+    lang: 'PT', label: 'X', value: 'Y'
+  }), /Campo de nota desconhecido/);
+});
+
+check('todo campo do catálogo é aceito', () => {
+  const cat = api.getNoteFieldCatalog();
+  if (!cat.fields.length) throw new Error('catálogo vazio');
+
+  cat.fields.forEach(f => {
+    const r = api.saveContentDraft({
+      module: 'case_note_snippet', key: 'ALL', field: f.key,
+      lang: 'ALL', label: 'trecho ' + f.key, value: 'texto'
+    });
+    if (!r.draftId) throw new Error('rejeitou campo válido: ' + f.key);
+  });
+});
+
+check('trecho aprovado chega ao agente com campo e escopo', () => {
+  const d = api.saveContentDraft({
+    module: 'case_note_snippet', key: 'SO_Implementation_Only',
+    field: 'PASSOS_EXECUTADOS', lang: 'PT',
+    label: 'Instalação GTM', value: 'Instalado o container do GTM no site.'
+  });
+  api.submitContentDraft(d.draftId);
+  api.approveContentDraft(d.draftId, '');
+
+  const pub = api.handleContentPublicRead({ module: 'case_note_snippet' });
+  const mine = pub.items.filter(i => i.label === 'Instalação GTM');
+  eq(mine.length, 1);
+  eq(mine[0].field, 'PASSOS_EXECUTADOS');
+  eq(mine[0].key, 'SO_Implementation_Only');
+  eq(mine[0].lang, 'PT');
+});
+
+check('o catálogo de campos vem do notes-data, não digitado à mão', () => {
+  const cat = api.getNoteFieldCatalog();
+  const fromSource = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'seeds', 'note-fields.json'), 'utf8')
+  );
+  eq(cat.fields.map(f => f.key).sort(), fromSource.fields.map(f => f.key).sort());
+  if (!cat.substatus.length) throw new Error('catálogo sem substatus');
 });
 
 check('ES ainda não tem a seção de Tag Support (lacuna conhecida)', () => {

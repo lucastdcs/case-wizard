@@ -250,6 +250,22 @@ function assertValidModule_(module) {
   }
 }
 
+// Um trecho de case note precisa apontar para um campo que a nota realmente
+// tem. A tela já usa um select alimentado pelo catálogo, mas validar aqui é o
+// que torna a regra real: a UI é conveniência, o servidor é a fronteira.
+//
+// O catálogo (CONTENT_NOTE_FIELDS) é gerado a partir do notes-data.js e vive em
+// ContentFields_Notes.gs. Se por algum motivo não estiver publicado, a checagem
+// é pulada em vez de travar todo o módulo - degradar é melhor que bloquear.
+function assertValidNoteField_(field) {
+  if (typeof CONTENT_NOTE_FIELDS === 'undefined' || !CONTENT_NOTE_FIELDS.fields) return;
+
+  const known = CONTENT_NOTE_FIELDS.fields.some(function (f) { return f.key === field; });
+  if (!known) {
+    throw new Error("Campo de nota desconhecido: '" + field + "'. Escolha um campo da lista.");
+  }
+}
+
 // Auditoria reaproveita a aba Logs que já existe (mesma de logEvent()), em vez
 // de criar um log paralelo só deste módulo.
 function logContentEvent_(ldap, action, label, value) {
@@ -410,6 +426,9 @@ function saveContentDraft(payload) {
   }
   if (!String(p.label || "").trim()) {
     throw new Error("Dê um título ao item antes de salvar.");
+  }
+  if (p.module === 'case_note_snippet') {
+    assertValidNoteField_(String(p.field || ""));
   }
 
   const sheet = getContentSheet_(SHEET_CONTENT_DRAFTS);

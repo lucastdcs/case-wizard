@@ -10,7 +10,9 @@
     "test:content": "node scripts/test-content-api.js",
     "test:call-script": "node scripts/test-call-script-roundtrip.mjs",
     "seed:links": "node scripts/generate-links-seed.mjs",
-    "seed:call-script": "node scripts/generate-call-script-seed.mjs"
+    "seed:call-script": "node scripts/generate-call-script-seed.mjs",
+    "test:note-snippets": "node scripts/test-note-snippets.mjs",
+    "seed:note-fields": "node scripts/generate-note-fields.mjs"
   },
   "dependencies": {
     "esbuild": "^0.27.4",

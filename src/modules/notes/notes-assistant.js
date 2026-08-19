@@ -5,6 +5,7 @@ import { notesState } from "./core/notes-state.js";
 import { createNotesPopup, HEADER_DESC } from "./ui/notes-popup.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "./notes-styles.js";
 import { buildDynamicForm } from "./core/form-builder.js";
+import { loadNoteSnippets } from "./data/note-snippets-service.js";
 import { generateOutputHtml } from "./core/output-generator.js";
 import { createScenariosComponent } from "./components/step-scenarios.js";
 import { createStepTasksComponent } from "./components/step-tasks.js";
@@ -1120,6 +1121,15 @@ export function initCaseNotesAssistant() {
     }, 3000);
 
     document.body.appendChild(popup);
+
+    // Carrega os trechos publicados na Central. Se chegar conteúdo e o
+    // formulário já estiver montado, remonta pra os botões de trecho
+    // aparecerem sem exigir que o agente troque de substatus e volte.
+    loadNoteSnippets().then((temTrechos) => {
+        if (temTrechos && notesState.currentSubStatus) {
+            buildDynamicForm(notesState.currentSubStatus, dynamicFormContainer, notesState);
+        }
+    });
 
     // Pendurado na própria função (em vez de trocar o retorno por um objeto)
     // pra não quebrar os callers existentes que chamam initCaseNotesAssistant()

@@ -660,6 +660,9 @@
                 <button class="tab-btn" role="tab" data-tab="callscript" onclick="switchTab('callscript')">
                     <span class="material-symbols-rounded" style="font-size:19px">support_agent</span> Call Script
                 </button>
+                <button class="tab-btn" role="tab" data-tab="notes" onclick="switchTab('notes')">
+                    <span class="material-symbols-rounded" style="font-size:19px">edit_note</span> Case Notes
+                </button>
                 <button class="tab-btn" role="tab" data-tab="approvals" onclick="switchTab('approvals')">
                     <span class="material-symbols-rounded" style="font-size:19px">rule</span> Aprovações
                     <span class="count-chip zero" id="pending-count">0</span>
@@ -727,6 +730,29 @@
                 </div>
             </section>
 
+            <!-- TAB: Case Notes -->
+            <section id="pane-notes" class="hidden">
+                <div class="note" id="nt-note">
+                    Trechos prontos por campo da nota. O agente escolhe o campo e insere o
+                    trecho — aqui você define o que fica disponível.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div>
+                        <label class="fld" style="margin-top:0" for="nt-field">Campo da nota</label>
+                        <select id="nt-field" onchange="renderNoteSnippets()" style="min-width:260px">
+                            <option value="">Todos os campos</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="nt-new-btn" onclick="openSnippetEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Novo trecho
+                    </button>
+                </div>
+                <div class="card" id="nt-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
             <!-- TAB: Aprovações -->
             <section id="pane-approvals" class="hidden">
                 <div id="approvals-list">
@@ -771,27 +797,10 @@
             <!-- TAB: Próximos módulos -->
             <section id="pane-soon" class="hidden">
                 <div class="card">
-                    <div class="card-title">Ainda não migrados</div>
+                    <div class="card-title">Ainda não migrado</div>
                     <p class="card-sub" style="margin-bottom:16px">
-                        A fundação (papéis, rascunho, aprovação, versionamento) já serve os quatro módulos —
-                        falta migrar o conteúdo de cada um para a planilha.
+                        Links, Call Script e Case Notes já são editáveis nas abas acima. Falta o último módulo.
                     </p>
-                    <div class="item-row">
-                        <div class="item-main">
-                            <div class="item-name">Call Script</div>
-                            <div class="item-meta">Roteiro por segmento e fluxo. Primeira edição prevista: preencher a
-                                seção de Implementação que falta em ES.</div>
-                        </div>
-                        <span class="pill draft">Fase 2</span>
-                    </div>
-                    <div class="item-row">
-                        <div class="item-main">
-                            <div class="item-name">Case Notes</div>
-                            <div class="item-meta">Trechos prontos por campo da nota, escolhidos a partir dos campos que
-                                já existem hoje.</div>
-                        </div>
-                        <span class="pill draft">Fase 3</span>
-                    </div>
                     <div class="item-row">
                         <div class="item-main">
                             <div class="item-name">E-mails do assistente</div>
@@ -851,6 +860,9 @@
             if (!document.getElementById('pane-callscript').classList.contains('hidden')) {
                 loadCallScript();
             }
+            if (!document.getElementById('pane-notes').classList.contains('hidden')) {
+                loadNoteSnippets();
+            }
         }
 
         // A UI é conveniência, não a fronteira: o servidor recusa a ação de
@@ -861,7 +873,7 @@
         }
 
         function switchTab(tab) {
-            ['links', 'callscript', 'approvals', 'access', 'soon'].forEach(function (t) {
+            ['links', 'callscript', 'notes', 'approvals', 'access', 'soon'].forEach(function (t) {
                 var pane = document.getElementById('pane-' + t);
                 if (pane) pane.classList.toggle('hidden', t !== tab);
             });
@@ -869,6 +881,7 @@
                 b.classList.toggle('active', b.dataset.tab === tab);
             });
             if (tab === 'callscript') loadCallScript();
+            if (tab === 'notes') loadNoteSnippets();
             if (tab === 'approvals') loadApprovals();
             if (tab === 'access') loadAccess();
         }
@@ -902,6 +915,11 @@
                         document.getElementById('cs-new-btn').classList.add('hidden');
                         document.getElementById('cs-note').textContent =
                             'Seu papel (' + s.role + ') vê o roteiro, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('case_note_snippet')) {
+                        document.getElementById('nt-new-btn').classList.add('hidden');
+                        document.getElementById('nt-note').textContent =
+                            'Seu papel (' + s.role + ') vê os trechos, mas não propõe alterações neste módulo.';
                     }
 
                     loadLinks();
@@ -1322,6 +1340,228 @@
                     label: text,
                     value: text,
                     sortOrder: sortOrder
+                });
+        }
+
+        // --- Case Notes (trechos por campo) ---
+        var NT_ITEMS = [];
+        var NT_DRAFTS = [];
+        var NOTE_FIELDS = [];
+        var NOTE_SUBSTATUS = [];
+
+        function noteFieldLabel(key) {
+            for (var i = 0; i < NOTE_FIELDS.length; i++) {
+                if (NOTE_FIELDS[i].key === key) return NOTE_FIELDS[i].labelPt;
+            }
+            return key;
+        }
+
+        function loadNoteCatalog(done) {
+            if (NOTE_FIELDS.length) return done();
+
+            google.script.run
+                .withSuccessHandler(function (cat) {
+                    NOTE_FIELDS = (cat && cat.fields) || [];
+                    NOTE_SUBSTATUS = (cat && cat.substatus) || [];
+
+                    var sel = document.getElementById('nt-field');
+                    sel.innerHTML = '<option value="">Todos os campos</option>' +
+                        NOTE_FIELDS.map(function (f) {
+                            return '<option value="' + esc(f.key) + '">' + esc(f.labelPt) + '</option>';
+                        }).join('');
+                    done();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); done(); })
+                .getNoteFieldCatalog();
+        }
+
+        function loadNoteSnippets() {
+            loadNoteCatalog(function () {
+                google.script.run
+                    .withSuccessHandler(function (items) {
+                        NT_ITEMS = items || [];
+                        google.script.run
+                            .withSuccessHandler(function (d) { NT_DRAFTS = d || []; renderNoteSnippets(); })
+                            .withFailureHandler(function () { NT_DRAFTS = []; renderNoteSnippets(); })
+                            .listContentDrafts('case_note_snippet');
+                    })
+                    .withFailureHandler(function (err) {
+                        document.getElementById('nt-list').innerHTML =
+                            '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                            '<h2>Não foi possível carregar os trechos</h2><p>' + esc(err.message) + '</p></div>';
+                    })
+                    .listContentItems('case_note_snippet');
+            });
+        }
+
+        function ntDraftForItem(itemId) {
+            for (var i = 0; i < NT_DRAFTS.length; i++) {
+                if (NT_DRAFTS[i].itemId === itemId) return NT_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function renderNoteSnippets() {
+            var host = document.getElementById('nt-list');
+            var filter = document.getElementById('nt-field').value;
+            var mine = filter ? NT_ITEMS.filter(function (i) { return i.field === filter; }) : NT_ITEMS;
+
+            if (!mine.length) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">edit_note</span>' +
+                    '<h2>' + (filter ? 'Nenhum trecho para ' + esc(noteFieldLabel(filter)) : 'Nenhum trecho cadastrado') + '</h2>' +
+                    '<p>A biblioteca começa vazia — nada foi migrado aqui, porque não existia. ' +
+                    'Crie o primeiro trecho e ele passa a aparecer para o agente no campo escolhido.</p></div>';
+                return;
+            }
+
+            // Agrupa por campo da nota: é assim que o agente encontra o trecho,
+            // então é assim que a lista fica legível para quem escreve.
+            var byField = {};
+            mine.forEach(function (it) { (byField[it.field] = byField[it.field] || []).push(it); });
+
+            var html = '';
+            Object.keys(byField).sort().forEach(function (f) {
+                html += '<div class="cat-head">' + esc(noteFieldLabel(f)) +
+                    ' <span class="pill draft">' + byField[f].length + '</span></div>';
+
+                byField[f].forEach(function (it) {
+                    var d = ntDraftForItem(it.id);
+                    var badge = d
+                        ? (d.status === 'pending'
+                            ? '<span class="pill pending">em revisão</span>'
+                            : '<span class="pill draft">rascunho</span>')
+                        : '';
+
+                    var scope = (it.key && it.key !== 'ALL')
+                        ? '<span class="pill draft">' + esc(it.key) + '</span>'
+                        : '';
+                    var lang = (it.lang && it.lang !== 'ALL')
+                        ? '<span class="pill draft">' + esc(it.lang) + '</span>'
+                        : '';
+
+                    var actions = canPropose('case_note_snippet')
+                        ? '<div style="display:flex;gap:8px">' +
+                        '<button class="btn btn-ghost btn-sm" onclick="openSnippetEditor(\'' + it.id + '\')">Editar</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
+                        '</div>'
+                        : '';
+
+                    html += '<div class="item-row">' +
+                        '<div class="item-main">' +
+                        '<div class="item-name">' + esc(it.label) + ' ' + badge + ' ' + scope + ' ' + lang + '</div>' +
+                        '<div class="item-meta">' + esc(it.value) + '</div>' +
+                        '</div>' + actions + '</div>';
+                });
+            });
+
+            host.innerHTML = html;
+        }
+
+        function openSnippetEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < NT_ITEMS.length; i++) {
+                if (NT_ITEMS[i].id === itemId) item = NT_ITEMS[i];
+            }
+
+            var existingDraft = itemId ? ntDraftForItem(itemId) : null;
+            var src = existingDraft || item;
+
+            var curField = src ? src.field : (document.getElementById('nt-field').value || (NOTE_FIELDS[0] || {}).key);
+            var curScope = src ? (src.key || 'ALL') : 'ALL';
+            var curLang = src ? (src.lang || 'ALL') : 'ALL';
+
+            // Campo-alvo é sempre select, nunca texto livre: a lista vem do
+            // próprio notes-data.js, então não dá pra apontar um trecho para um
+            // campo que a nota não tem.
+            var fieldOptions = NOTE_FIELDS.map(function (f) {
+                return '<option value="' + esc(f.key) + '"' + (f.key === curField ? ' selected' : '') + '>' +
+                    esc(f.labelPt) + '</option>';
+            }).join('');
+
+            var scopeOptions = ['ALL'].concat(NOTE_SUBSTATUS).map(function (s) {
+                return '<option value="' + esc(s) + '"' + (s === curScope ? ' selected' : '') + '>' +
+                    (s === 'ALL' ? 'Qualquer substatus' : esc(s)) + '</option>';
+            }).join('');
+
+            var langOptions = ['ALL', 'PT', 'ES'].map(function (l) {
+                return '<option value="' + l + '"' + (l === curLang ? ' selected' : '') + '>' +
+                    (l === 'ALL' ? 'Todos os idiomas' : l) + '</option>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar trecho' : 'Novo trecho') + '</h2>' +
+                '<p class="card-sub">Vira proposta; o agente só passa a ver depois da aprovação.</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Este trecho já está em revisão.</div>'
+                    : '') +
+                '<label class="fld" for="nt-f-field">Campo da nota</label>' +
+                '<select id="nt-f-field">' + fieldOptions + '</select>' +
+                '<div class="grid-2">' +
+                '<div><label class="fld" for="nt-f-scope">Aparece em</label>' +
+                '<select id="nt-f-scope">' + scopeOptions + '</select></div>' +
+                '<div><label class="fld" for="nt-f-lang">Idioma</label>' +
+                '<select id="nt-f-lang">' + langOptions + '</select></div>' +
+                '</div>' +
+                '<label class="fld" for="nt-f-title">Título</label>' +
+                '<input type="text" id="nt-f-title" placeholder="como o agente vê na lista" value="' +
+                esc(src ? src.label : '') + '">' +
+                '<label class="fld" for="nt-f-text">Conteúdo</label>' +
+                '<textarea id="nt-f-text" placeholder="o texto que será inserido no campo">' +
+                esc(src ? src.value : '') + '</textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="nt-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('nt-save').onclick = function () {
+                submitSnippet(itemId, existingDraft ? existingDraft.draftId : null, this);
+            };
+            document.getElementById('nt-f-title').focus();
+        }
+
+        function submitSnippet(itemId, draftId, btn) {
+            var title = document.getElementById('nt-f-title').value.trim();
+            var text = document.getElementById('nt-f-text').value.trim();
+
+            if (!title) return toast('Dê um título ao trecho.', true);
+            if (!text) return toast('Escreva o conteúdo do trecho.', true);
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando…';
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    google.script.run
+                        .withSuccessHandler(function () {
+                            closeModal();
+                            toast('Proposta enviada para revisão.');
+                            loadNoteSnippets();
+                            loadPendingCount();
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .submitContentDraft(res.draftId);
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .saveContentDraft({
+                    draftId: draftId || '',
+                    itemId: itemId || '',
+                    module: 'case_note_snippet',
+                    key: document.getElementById('nt-f-scope').value,
+                    field: document.getElementById('nt-f-field').value,
+                    lang: document.getElementById('nt-f-lang').value,
+                    label: title,
+                    value: text
                 });
         }
 
