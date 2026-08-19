@@ -12,6 +12,50 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Ao traduzir, separe "texto que a pessoa lê" de "texto que atravessa fronteira de sistema"
+
+**Why**: na tradução PT→ES (2026-08-19), três textos pareciam iguais aos outros mas
+não eram, e traduzir qualquer um deles teria quebrado o produto **sem erro
+visível**:
+
+- os tokens dos templates de e-mail (`[Nome do Cliente]`, `[INSERIR URL]`) são a
+  chave que casa o corpo do e-mail com o campo preenchido pelo agente
+  (`placeholders[].key` → `input.dataset.key`) e com os `replace()` de
+  `email-automation-service.js`. Traduzidos, o e-mail sairia com o placeholder
+  cru no lugar do dado;
+- o `value` dos menus "Motivo da Não Implementação"/"Motivo do Descarte" do BAU
+  Form é gravado na coluna `Motivo_Abertura` da planilha, usada para agrupar
+  casos. Traduzido, os relatórios passariam a contar PT e ES como categorias
+  diferentes;
+- o placeholder `{DIA}` dentro dos cenários de nota é substituído em runtime.
+
+A regra que saiu disso: o texto exibido e o valor transmitido são coisas
+distintas mesmo quando hoje são a mesma string. Ao traduzir, desacople os dois —
+mostre no idioma da pessoa, transmita sempre no valor canônico (PT).
+
+**When to apply**: antes de traduzir qualquer string, pergunte "alguém além do
+olho humano lê isso?" — backend, planilha, `replace()`, `dataset`, chave de
+objeto, comparação `===`. Se sim, o valor não pode mudar por idioma. Vale também
+para o caminho inverso: ao ler de volta (ex: desmarcar um cenário comparando o
+texto atual do campo), compare contra a origem canônica, não contra o que está
+renderizado.
+
+## Cobertura de tradução se verifica com script, não com leitura
+
+**Why**: os mapas de tradução (`SCENARIO_ES`, `EMAIL_TEMPLATES_ES`,
+`SCREENSHOT_LABEL_ES`, `LINK_DESC_ES`) caem no português quando a chave não
+existe — o que é o comportamento certo (nunca quebra), mas torna um erro de
+digitação numa chave **invisível**: o item simplesmente aparece em PT, igual a um
+item ainda não traduzido. Rodar um script sobre os dados reais (importando o
+próprio módulo) achou o que a leitura não acharia e provou de uma vez: todos os
+itens cobertos, nenhum campo de texto esquecido, placeholders preservados e PT
+idêntico ao original.
+
+**When to apply**: sempre que a tradução usar fallback silencioso. O script deve
+checar as duas direções — item sem tradução **e** chave de tradução que não
+corresponde a nenhum item. Vale o mesmo para dicionário de UI: comparar as chaves
+`pt` e `es` e conferir que toda chave usada em `t()`/`data-i18n` existe.
+
 <!-- Example:
 
 ## Palette changes: one mock screen first, then propagate

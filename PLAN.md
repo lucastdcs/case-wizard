@@ -21,11 +21,23 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
-- [ ] ...
+- [ ] **Call Script — seção `meio` (Implementação/Tag Support) em ES.** Os blocos
+      `ES BAU`/`ES LT` de `call-script-data.js` seguem sem essa seção. Não é
+      esquecimento da tradução: o próprio arquivo registra que o conteúdo real
+      ainda precisa ser fornecido pelo time ("não inventar texto aqui"). Enquanto
+      isso o card de Implementação não aparece para ES — mesmo comportamento de
+      antes.
+- [ ] **Revisão do espanhol por falante nativo** antes de considerar a tradução
+      final, com prioridade para o que chega ao anunciante (os 8 templates de
+      e-mail) e para o que vira nota do caso (os 27 cenários).
 
 ## Recently done
 
 - [x] Project adopted into groundrules (2026-08-18)
+- [x] Suporte PT/ES completo — interface, conteúdo (notas, e-mails, links) e
+      Apps Script (e-mails automáticos + TL Dashboard). Idioma herdado da
+      planilha People, troca manual em Configurações. ADR em
+      `docs/decisions/0001-i18n-pt-es.md` (2026-08-19)
 
 ---
 
