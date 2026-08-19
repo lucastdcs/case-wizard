@@ -16,7 +16,7 @@ const SHEET_CONTENT_ACCESS = "Content_Access";
 // Módulos gerenciáveis. Adicionar um módulo novo é acrescentar uma string
 // aqui - não uma aba nova, que é justamente a dívida que Tips/Broadcast/
 // Database_Snippets acumularam ao ganhar cada um seu próprio schema.
-const CONTENT_MODULES = ['links', 'call_script', 'email_template', 'case_note_snippet', 'tips'];
+const CONTENT_MODULES = ['links', 'call_script', 'email_template', 'note_template', 'tips'];
 
 // Idiomas aceitos na coluna `lang`. 'ALL' = vale para todos (caso dos links,
 // cujo par PT/ES mora no próprio valor do item).
@@ -51,7 +51,7 @@ const CONTENT_ROLES = {
     selfApprove: false
   },
   QA: {
-    propose: ['call_script', 'case_note_snippet'],
+    propose: ['call_script', 'note_template'],
     approve: false,
     manageAccess: false,
     selfApprove: false
@@ -250,19 +250,81 @@ function assertValidModule_(module) {
   }
 }
 
-// Um trecho de case note precisa apontar para um campo que a nota realmente
-// tem. A tela já usa um select alimentado pelo catálogo, mas validar aqui é o
-// que torna a regra real: a UI é conveniência, o servidor é a fronteira.
-//
-// O catálogo (CONTENT_NOTE_FIELDS) é gerado a partir do notes-data.js e vive em
-// ContentFields_Notes.gs. Se por algum motivo não estiver publicado, a checagem
-// é pulada em vez de travar todo o módulo - degradar é melhor que bloquear.
-function assertValidNoteField_(field) {
-  if (typeof CONTENT_NOTE_FIELDS === 'undefined' || !CONTENT_NOTE_FIELDS.fields) return;
+// Devolve a definição de um substatus a partir do catálogo gerado do
+// notes-data.js (ContentFields_Notes.gs), ou null se o catálogo não estiver
+// publicado - degradar é melhor que travar o módulo inteiro.
+function getSubstatusDef_(substatus) {
+  if (typeof CONTENT_NOTE_FIELDS === 'undefined' || !CONTENT_NOTE_FIELDS.substatus) return null;
 
-  const known = CONTENT_NOTE_FIELDS.fields.some(function (f) { return f.key === field; });
-  if (!known) {
-    throw new Error("Campo de nota desconhecido: '" + field + "'. Escolha um campo da lista.");
+  const found = CONTENT_NOTE_FIELDS.substatus.filter(function (s) { return s.key === substatus; });
+  return found.length ? found[0] : null;
+}
+
+/**
+ * Valida um modelo de nota inteiro.
+ *
+ * O modelo guarda a nota como o agente vai recebê-la: um substatus e o conjunto
+ * de campos já preenchidos. As três checagens abaixo existem porque cada uma
+ * falha em silêncio hoje:
+ *   - substatus inexistente: o modelo nunca aparece pra ninguém;
+ *   - campo que aquele substatus não tem: applyScenario() faz
+ *     getElementById() e ignora o texto sem avisar (foi o que a migração
+ *     encontrou em 13 dos 27 cenários existentes);
+ *   - campo obrigatório vazio: o agente só descobre na hora de gerar a nota.
+ */
+function assertValidNoteTemplate_(rawValue, substatus) {
+  let parsed;
+  try {
+    parsed = JSON.parse(rawValue || '{}');
+  } catch (e) {
+    throw new Error("Conteúdo do modelo inválido (JSON malformado).");
+  }
+
+  const fields = parsed.fields || {};
+  const chaves = Object.keys(fields);
+
+  if (!chaves.length) {
+    throw new Error("O modelo precisa preencher pelo menos um campo.");
+  }
+
+  const def = getSubstatusDef_(substatus);
+  if (!def) {
+    // Catálogo ausente: valida o que dá (formato) e segue.
+    if (typeof CONTENT_NOTE_FIELDS !== 'undefined' && CONTENT_NOTE_FIELDS.substatus) {
+      throw new Error("Substatus desconhecido: '" + substatus + "'. Escolha um da lista.");
+    }
+    return;
+  }
+
+  const forasteiros = chaves
+    .map(function (k) { return k.replace('field-', ''); })
+    .filter(function (f) { return def.fields.indexOf(f) === -1; });
+
+  if (forasteiros.length) {
+    throw new Error(
+      "Estes campos não existem em " + def.name + ": " + forasteiros.join(", ") +
+      ". O texto seria descartado sem aviso na hora de montar a nota."
+    );
+  }
+
+  const obrigatoriosVazios = (def.requiredFields || []).filter(function (f) {
+    return !String(fields['field-' + f] || "").trim();
+  });
+
+  if (obrigatoriosVazios.length) {
+    throw new Error(
+      "Preencha os campos obrigatórios de " + def.name + ": " + obrigatoriosVazios.join(", ") + "."
+    );
+  }
+}
+
+// A tela chama antes de gravar, pra o erro aparecer com o texto ainda em tela.
+function checkNoteTemplate(rawValue, substatus) {
+  try {
+    assertValidNoteTemplate_(rawValue, substatus);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
   }
 }
 
@@ -500,8 +562,8 @@ function saveContentDraft(payload) {
   if (!String(p.label || "").trim()) {
     throw new Error("Dê um título ao item antes de salvar.");
   }
-  if (p.module === 'case_note_snippet') {
-    assertValidNoteField_(String(p.field || ""));
+  if (p.module === 'note_template') {
+    assertValidNoteTemplate_(String(p.value || ""), String(p.key || ""));
   }
   if (p.module === 'email_template') {
     assertValidEmailTemplate_(String(p.value || ""), String(p.lang || 'PT'));

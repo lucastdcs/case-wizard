@@ -1,9 +1,10 @@
 // ARQUIVO GERADO - não edite à mão.
 // Origem: npm run seed:note-fields (lê src/modules/notes/data/notes-data.js)
 //
-// Catálogo de campos da nota técnica, usado pela Central de Conteúdo para
-// popular o seletor "Campo da nota" na aba Case Notes. Não é conteúdo: é a
-// lista de destinos válidos para um trecho.
+// Catálogo da nota técnica usado pela Central de Conteúdo: a lista de campos de
+// texto e, para cada substatus, quais campos aquela nota tem e quais são
+// obrigatórios. Não é conteúdo - é a estrutura que permite montar a nota
+// inteira na tela e validar o que foi montado.
 //
 // Vem do notes-data.js de propósito. Manter uma cópia digitada à mão aqui
 // criaria uma segunda fonte de verdade, que divergiria em silêncio na primeira
@@ -13,121 +14,511 @@
 const CONTENT_NOTE_FIELDS = {
   "fields": [
     {
-      "key": "TASKS_SOLICITADAS",
-      "labelPt": "🎯 Task(s) solicitada(s)",
-      "labelEs": "🎯 Tarea(s) solicitada(s)",
-      "kind": "lista"
+      "key": "SPEAKEASY_ID",
+      "labelPt": "🆔 Speakeasy ID",
+      "labelEs": "🆔 Speakeasy ID",
+      "kind": "texto",
+      "required": false
     },
     {
-      "key": "PASSOS_EXECUTADOS",
-      "labelPt": "👣 O que foi feito",
-      "labelEs": "👣 Qué se hizo",
-      "kind": "lista"
-    },
-    {
-      "key": "RESULTADO",
-      "labelPt": "🏆 Resultado",
-      "labelEs": "🏆 Resultado",
-      "kind": "lista"
-    },
-    {
-      "key": "DUVIDAS",
-      "labelPt": "❓ Dúvidas do anunciante",
-      "labelEs": "❓ Dudas del anunciante",
-      "kind": "lista"
-    },
-    {
-      "key": "PROBLEMAS",
-      "labelPt": "⚠️ Problema inicial",
-      "labelEs": "⚠️ Problema inicial",
-      "kind": "lista"
-    },
-    {
-      "key": "RESOLUCOES",
-      "labelPt": "✅ Resoluções/Explicações",
-      "labelEs": "✅ Resoluciones/Explicaciones",
-      "kind": "lista"
-    },
-    {
-      "key": "TASKS_IMPLEMENTADAS_CALL",
-      "labelPt": "🛠️ Tasks implementadas na call",
-      "labelEs": "🛠️ Tareas implementadas en la call",
-      "kind": "lista"
-    },
-    {
-      "key": "PROXIMOS_PASSOS",
-      "labelPt": "🚀 Próximos passos (Acompanhamento)",
-      "labelEs": "🚀 Próximos pasos",
-      "kind": "lista"
-    },
-    {
-      "key": "CONTEXTO_CALL",
-      "labelPt": "💬 Contexto/O que foi feito",
-      "labelEs": "💬 Contexto/Qué se hizo",
-      "kind": "lista"
-    },
-    {
-      "key": "IMPEDIMENTO_CLIENTE",
-      "labelPt": "🚧 Impedimento / Próximo passo (Anunciante)",
-      "labelEs": "🚧 Impedimento / Próximo paso (Anunciante)",
-      "kind": "lista"
-    },
-    {
-      "key": "MINHA_ACAO",
-      "labelPt": "👨‍💻 Minha Ação",
-      "labelEs": "👨‍💻 Mi Acción",
-      "kind": "lista"
-    },
-    {
-      "key": "SCREENSHOTS",
-      "labelPt": "📸 Screenshots",
-      "labelEs": "📸 Screenshots",
-      "kind": "lista"
-    },
-    {
-      "key": "MOTIVO_REAGENDAMENTO",
-      "labelPt": "💬 OnCall Comments",
-      "labelEs": "💬 OnCall Comments",
-      "kind": "lista"
-    },
-    {
-      "key": "CONSIDERACOES",
-      "labelPt": "💡 Considerações adicionais",
-      "labelEs": "💡 Consideraciones adicionales",
-      "kind": "paragrafo"
-    },
-    {
-      "key": "COMENTARIOS",
-      "labelPt": "💬 OnCall Comments",
-      "labelEs": "💬 OnCall Comments",
-      "kind": "paragrafo"
+      "key": "ON_CALL",
+      "labelPt": "📞 On Call signaled on time?",
+      "labelEs": "📞 On Call signaled on time?",
+      "kind": "texto",
+      "required": false
     },
     {
       "key": "REASON_COMMENTS",
       "labelPt": "📌 Reason/Comments",
       "labelEs": "📌 Reason/Comments",
-      "kind": "texto"
+      "kind": "texto",
+      "required": true
+    },
+    {
+      "key": "MOTIVO_REAGENDAMENTO",
+      "labelPt": "💬 OnCall Comments",
+      "labelEs": "💬 OnCall Comments",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "DATA_REAGENDAMENTO",
+      "labelPt": "📅 Data do reagendamento",
+      "labelEs": "📅 Fecha de reprogramación",
+      "kind": "texto",
+      "required": false
+    },
+    {
+      "key": "GTM_GA4_VERIFICADO",
+      "labelPt": "🛡️ GTM/GA4 Verificado",
+      "labelEs": "🛡️ GTM/GA4 Verificado",
+      "kind": "texto",
+      "required": false
+    },
+    {
+      "key": "MULTIPLE_CIDS",
+      "labelPt": "📂 Multiple CIDs",
+      "labelEs": "📂 Multiple CIDs",
+      "kind": "texto",
+      "required": false
+    },
+    {
+      "key": "CONTEXTO_CALL",
+      "labelPt": "💬 Contexto/O que foi feito",
+      "labelEs": "💬 Contexto/Qué se hizo",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "TASKS_SOLICITADAS",
+      "labelPt": "🎯 Task(s) solicitada(s)",
+      "labelEs": "🎯 Tarea(s) solicitada(s)",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "IMPEDIMENTO_CLIENTE",
+      "labelPt": "🚧 Impedimento / Próximo passo (Anunciante)",
+      "labelEs": "🚧 Impedimento / Próximo paso (Anunciante)",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "MINHA_ACAO",
+      "labelPt": "👨‍💻 Minha Ação",
+      "labelEs": "👨‍💻 Mi Acción",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "CONSIDERACOES",
+      "labelPt": "💡 Considerações adicionais",
+      "labelEs": "💡 Consideraciones adicionales",
+      "kind": "paragrafo",
+      "required": false
+    },
+    {
+      "key": "DIA",
+      "labelPt": "📅 Dia do Follow-up (se aplicável)",
+      "labelEs": "📅 Día de Follow-up (si aplica)",
+      "kind": "texto",
+      "required": false
+    },
+    {
+      "key": "TASKS_IMPLEMENTADAS_CALL",
+      "labelPt": "🛠️ Tasks implementadas na call",
+      "labelEs": "🛠️ Tareas implementadas en la call",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "PASSOS_EXECUTADOS",
+      "labelPt": "👣 O que foi feito",
+      "labelEs": "👣 Qué se hizo",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "PROXIMOS_PASSOS",
+      "labelPt": "🚀 Próximos passos (Acompanhamento)",
+      "labelEs": "🚀 Próximos pasos",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "COMENTARIOS",
+      "labelPt": "💬 OnCall Comments",
+      "labelEs": "💬 OnCall Comments",
+      "kind": "paragrafo",
+      "required": false
+    },
+    {
+      "key": "TENTATIVA_LIGACAO",
+      "labelPt": "📞 Tentativa de ligação",
+      "labelEs": "📞 Intento de llamada",
+      "kind": "texto",
+      "required": false
+    },
+    {
+      "key": "RESULTADO",
+      "labelPt": "🏆 Resultado",
+      "labelEs": "🏆 Resultado",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "DUVIDAS",
+      "labelPt": "❓ Dúvidas do anunciante",
+      "labelEs": "❓ Dudas del anunciante",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "RESOLUCOES",
+      "labelPt": "✅ Resoluções/Explicações",
+      "labelEs": "✅ Resoluciones/Explicaciones",
+      "kind": "lista",
+      "required": false
+    },
+    {
+      "key": "PROBLEMAS",
+      "labelPt": "⚠️ Problema inicial",
+      "labelEs": "⚠️ Problema inicial",
+      "kind": "lista",
+      "required": false
     }
   ],
   "substatus": [
-    "AS_Acceptable_Reschedule",
-    "AS_Reschedule_1",
-    "DC_Other",
-    "IN_Infeasible",
-    "IN_Not_Interested",
-    "IN_Not_Reachable",
-    "IN_Not_Ready",
-    "IN_Out_of_Scope_Email_to_Seller",
-    "IN_Out_of_Scope_Rerouted",
-    "IN_Out_of_Scope_Unable_to_Transfer",
-    "IN_Troubleshooting_Transferred",
-    "NI_Attempted_Contact",
-    "NI_Awaiting_Inputs",
-    "NI_Awaiting_Validation",
-    "NI_In_Consult",
-    "SO_Education_Only",
-    "SO_Implementation_Only",
-    "SO_Troubleshooting_Only"
+    {
+      "key": "AS_Acceptable_Reschedule",
+      "status": "AS",
+      "name": "AS - Acceptable Reschedule",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "MOTIVO_REAGENDAMENTO",
+        "DATA_REAGENDAMENTO",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [
+        "REASON_COMMENTS"
+      ],
+      "requiredFields": []
+    },
+    {
+      "key": "AS_Reschedule_1",
+      "status": "AS",
+      "name": "AS - Reschedule 1",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "MOTIVO_REAGENDAMENTO",
+        "DATA_REAGENDAMENTO",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [
+        "REASON_COMMENTS"
+      ],
+      "requiredFields": []
+    },
+    {
+      "key": "DC_Other",
+      "status": "DC",
+      "name": "DC - Other",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "REASON_COMMENTS",
+        "COMENTARIOS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "IN_Infeasible",
+      "status": "IN",
+      "name": "IN - Infeasible",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "COMENTARIOS",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "IN_Not_Interested",
+      "status": "IN",
+      "name": "IN - Not Interested",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "COMENTARIOS",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "IN_Not_Reachable",
+      "status": "IN",
+      "name": "IN - Not Reachable",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "COMENTARIOS",
+        "TENTATIVA_LIGACAO",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "IN_Not_Ready",
+      "status": "IN",
+      "name": "IN - Not Ready",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "COMENTARIOS",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "IN_Out_of_Scope_Email_to_Seller",
+      "status": "IN",
+      "name": "IN - Out of Scope - Email to Seller",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "COMENTARIOS",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "IN_Out_of_Scope_Rerouted",
+      "status": "IN",
+      "name": "IN - Out of Scope - Rerouted to Internal Team",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "COMENTARIOS",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "IN_Out_of_Scope_Unable_to_Transfer",
+      "status": "IN",
+      "name": "IN - Out of Scope - Unable to Transfer",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "COMENTARIOS",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "IN_Troubleshooting_Transferred",
+      "status": "IN",
+      "name": "IN - Troubleshooting [Transferred]",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "COMENTARIOS",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "NI_Attempted_Contact",
+      "status": "NI",
+      "name": "NI - Attempted Contact",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "CONTEXTO_CALL",
+        "TASKS_SOLICITADAS",
+        "IMPEDIMENTO_CLIENTE",
+        "MINHA_ACAO",
+        "CONSIDERACOES",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "NI_Awaiting_Inputs",
+      "status": "NI",
+      "name": "NI - Awaiting Inputs",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "CONTEXTO_CALL",
+        "TASKS_SOLICITADAS",
+        "IMPEDIMENTO_CLIENTE",
+        "MINHA_ACAO",
+        "CONSIDERACOES",
+        "DIA",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "NI_Awaiting_Validation",
+      "status": "NI",
+      "name": "NI - Awaiting Validation",
+      "requiresTasks": true,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "TASKS_SOLICITADAS",
+        "TASKS_IMPLEMENTADAS_CALL",
+        "PASSOS_EXECUTADOS",
+        "PROXIMOS_PASSOS",
+        "CONSIDERACOES",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [
+        "REASON_COMMENTS"
+      ],
+      "requiredFields": []
+    },
+    {
+      "key": "NI_In_Consult",
+      "status": "NI",
+      "name": "NI - In Consult",
+      "requiresTasks": false,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "CONTEXTO_CALL",
+        "TASKS_SOLICITADAS",
+        "IMPEDIMENTO_CLIENTE",
+        "MINHA_ACAO",
+        "CONSIDERACOES",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [],
+      "requiredFields": [
+        "REASON_COMMENTS"
+      ]
+    },
+    {
+      "key": "SO_Education_Only",
+      "status": "SO",
+      "name": "SO - Education Only",
+      "requiresTasks": true,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "DUVIDAS",
+        "RESOLUCOES",
+        "PROXIMOS_PASSOS",
+        "CONSIDERACOES",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [
+        "REASON_COMMENTS"
+      ],
+      "requiredFields": []
+    },
+    {
+      "key": "SO_Implementation_Only",
+      "status": "SO",
+      "name": "SO - Implementation Only",
+      "requiresTasks": true,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "PASSOS_EXECUTADOS",
+        "RESULTADO",
+        "PROXIMOS_PASSOS",
+        "CONSIDERACOES",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [
+        "REASON_COMMENTS"
+      ],
+      "requiredFields": []
+    },
+    {
+      "key": "SO_Troubleshooting_Only",
+      "status": "SO",
+      "name": "SO - Troubleshooting Only",
+      "requiresTasks": true,
+      "fields": [
+        "SPEAKEASY_ID",
+        "ON_CALL",
+        "REASON_COMMENTS",
+        "PROBLEMAS",
+        "RESOLUCOES",
+        "PROXIMOS_PASSOS",
+        "CONSIDERACOES",
+        "GTM_GA4_VERIFICADO",
+        "MULTIPLE_CIDS"
+      ],
+      "prefixedFields": [
+        "REASON_COMMENTS"
+      ],
+      "requiredFields": []
+    }
   ]
 };
 

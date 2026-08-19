@@ -11,10 +11,11 @@
     "test:call-script": "node scripts/test-call-script-roundtrip.mjs",
     "seed:links": "node scripts/generate-links-seed.mjs",
     "seed:call-script": "node scripts/generate-call-script-seed.mjs",
-    "test:note-snippets": "node scripts/test-note-snippets.mjs",
     "seed:note-fields": "node scripts/generate-note-fields.mjs",
     "test:emails": "node scripts/test-email-roundtrip.mjs",
-    "seed:emails": "node scripts/generate-email-seed.mjs"
+    "seed:emails": "node scripts/generate-email-seed.mjs",
+    "test:note-templates": "node scripts/test-note-templates.mjs",
+    "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },
   "dependencies": {
     "esbuild": "^0.27.4",
