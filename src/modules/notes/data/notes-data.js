@@ -407,10 +407,11 @@ export const SUBSTATUS_TEMPLATES = {
         }
     },
     'NI_Attempted_Contact': {
-        status: 'NI', 
-        name: 'NI - Attempted Contact', 
+        status: 'NI',
+        name: 'NI - Attempted Contact',
         requiresTasks: false,
-        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'CONTEXTO_CALL', 'TASKS_SOLICITADAS', 'IMPEDIMENTO_CLIENTE', 'MINHA_ACAO', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS']
+        templateFields: ['SPEAKEASY_ID', 'ON_CALL', 'label_substatus', 'REASON_COMMENTS', 'CONTEXTO_CALL', 'TASKS_SOLICITADAS', 'IMPEDIMENTO_CLIENTE', 'MINHA_ACAO', 'CONSIDERACOES', 'GTM_GA4_VERIFICADO', 'TAGS_IMPLEMENTED', 'SCREENSHOTS_LIST', 'MULTIPLE_CIDS'],
+        extraOptionalFields: ['TASKS_SOLICITADAS', 'IMPEDIMENTO_CLIENTE', 'MINHA_ACAO', 'CONSIDERACOES']
     },
 
     // --- IN (Inactive) ---
