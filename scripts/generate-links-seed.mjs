@@ -8,13 +8,17 @@
 // utilitários que tocam `document` no topo, e não roda fora do navegador. Extrair
 // só os dois literais de dados evita subir um DOM falso só pra isso.
 //
-// Uso:
-//   node scripts/generate-links-seed.mjs > links-seed.json
+// A saída já está versionada em gas-backend/seeds/links-seed.json, então o
+// caminho normal é abrir aquele arquivo (inclusive pelo GitHub, de qualquer
+// máquina) e copiar o conteúdo. Rode este script apenas para regerar o arquivo
+// depois de mexer no LINKS_DB:
 //
-// Depois: abra a Central de Conteúdo no Apps Script e rode
+//   npm run seed:links > gas-backend/seeds/links-seed.json
+//
+// Depois: no editor do Apps Script, rode uma única vez
 //   seedContentModule(<conteúdo do arquivo>)
-// uma única vez. A função ignora chamadas repetidas se o módulo já tiver
-// itens no ar, então não há risco de duplicar.
+// A função ignora chamadas repetidas se o módulo já tiver itens no ar, então
+// não há risco de duplicar.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
