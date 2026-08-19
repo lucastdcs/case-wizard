@@ -782,8 +782,8 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
 
     if (totalCount > 0) {
       statusBar.classList.add("visible");
-      const txtTask = totalCount > 1 ? "Ações" : "Ação";
-      const txtDef = totalCount > 1 ? "definidas" : "definida";
+      const txtTask = totalCount > 1 ? t('acoes_plural') : t('acao_singular');
+      const txtDef = totalCount > 1 ? t('definidas_plural') : t('definida_singular');
       statusText.textContent = `${totalCount} ${txtTask} ${txtDef}`;
 
       footerIcons.innerHTML = "";
@@ -910,7 +910,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
           nameInput.className = "cw-card-title-input";
           nameInput.id = `name-${key}-${i}`;
           nameInput.value = `${task.name}${taskCount > 1 ? " #" + i : ""}`;
-          nameInput.title = "Clique para renomear esta task";
+          nameInput.title = t('renomear_tooltip');
 
           const editHint = document.createElement("span");
           editHint.className = "cw-edit-hint";
@@ -946,7 +946,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
                 const pInput = document.createElement("input");
                 pInput.className = "cw-input-field";
                 pInput.id = `screen-${key}-${i}-${idx}`;
-                pInput.placeholder = "Cole o link aqui...";
+                pInput.placeholder = t('cole_link_placeholder');
                 pInput.setAttribute("autocomplete", "off");
 
                 if (savedFieldValues[pInput.id]) {
@@ -1017,6 +1017,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
         const sInput = container.querySelector('.cw-search-input');
         if (sInput) sInput.placeholder = t('buscar_catalogo');
         renderScreenshots();
+        updateUI();
     },
     
     reset: () => {

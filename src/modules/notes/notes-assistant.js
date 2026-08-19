@@ -2,7 +2,7 @@
 
 import { showToast, confirmDialog } from "../shared/utils.js";
 import { notesState } from "./core/notes-state.js";
-import { createNotesPopup } from "./ui/notes-popup.js";
+import { createNotesPopup, HEADER_DESC } from "./ui/notes-popup.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "./notes-styles.js";
 import { buildDynamicForm } from "./core/form-builder.js";
 import { generateOutputHtml } from "./core/output-generator.js";
@@ -1016,6 +1016,9 @@ export function initCaseNotesAssistant() {
         const drawerTitle = popup.querySelector('.js-drawer-title');
         if (drawerTitle) drawerTitle.textContent = t('rascunhos_salvos');
 
+        const historyBtn = popup.querySelector('.js-history-btn');
+        if (historyBtn) historyBtn.title = t('meus_rascunhos');
+
         const lEmail = content.querySelector('.js-label-email-toggle');
         if (lEmail) lEmail.textContent = t('preencher_email_automaticamente');
 
@@ -1036,6 +1039,8 @@ export function initCaseNotesAssistant() {
     // já traduzida, igual ao antigo seletor PT/ES fazia ao clicar.
     onLanguageChange((lang) => {
         notesState.setLanguage(lang);
+        const helpDescEl = popup.querySelector('.cw-help-description');
+        if (helpDescEl) helpDescEl.textContent = HEADER_DESC[lang] || HEADER_DESC.pt;
         if (notesState.currentSubStatus) {
             onSubStatusChange(notesState.currentSubStatus);
         }

@@ -2,6 +2,15 @@
 
 import { scenarioSnippets } from "../data/notes-data.js";
 import { SoundManager } from "../../shared/sound-manager.js";
+import { getLanguage } from "../../shared/i18n.js";
+
+const PREVIEW_PLACEHOLDER = {
+  pt: "Passe o mouse sobre um cenário para visualizar o texto...",
+  es: "Pasa el mouse sobre un escenario para ver el texto...",
+};
+function defaultPreviewText() {
+  return PREVIEW_PLACEHOLDER[getLanguage()] || PREVIEW_PLACEHOLDER.pt;
+}
 
 export function createScenariosComponent(onSelectCallback) {
   // Hover/preview aqui é todo via estilo inline em JS, sem classe CSS pra
@@ -10,8 +19,6 @@ export function createScenariosComponent(onSelectCallback) {
 
   const container = document.createElement("div");
   container.className = "cw-step-scenarios";
-
-  const DEFAULT_PREVIEW_TEXT = "Passe o mouse sobre um cenário para visualizar o texto...";
 
   // 1. Área de Chips (Grid)
   const grid = document.createElement("div");
@@ -44,7 +51,7 @@ export function createScenariosComponent(onSelectCallback) {
   // 0.05s bate com o setTimeout de 50ms do hover (abaixo) - o texto troca
   // exatamente quando o fade-out termina, não no meio dele.
   previewText.style.transition = "opacity 0.05s ease, transform 0.05s ease";
-  previewText.textContent = DEFAULT_PREVIEW_TEXT;
+  previewText.textContent = defaultPreviewText();
   previewBox.appendChild(previewText);
 
   // Estado interno
@@ -116,7 +123,7 @@ export function createScenariosComponent(onSelectCallback) {
                   if (selectedIds.size === 0) {
                       previewText.style.opacity = "0";
                       setTimeout(() => {
-                          previewText.textContent = DEFAULT_PREVIEW_TEXT;
+                          previewText.textContent = defaultPreviewText();
                           previewText.style.opacity = "1";
                       }, 50);
                   }

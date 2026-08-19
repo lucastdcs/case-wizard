@@ -35,7 +35,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
 
         if (fieldName === "SPEAKEASY_ID") {
             const btnSearch = document.createElement('button');
-            btnSearch.innerHTML = `✨ Auto Busca`;
+            btnSearch.innerHTML = t('auto_busca');
             btnSearch.style.cssText = `font-size: 11px; font-weight: 700; color: ${COLORS.primary}; background-color: ${COLORS.primaryBg}; border: none; border-radius: ${RADIUS.pill}; padding: 6px 14px; margin-left: 10px; cursor: pointer; transition: all 0.2s ${EASE};`;
             btnSearch.onmouseenter = () => btnSearch.style.backgroundColor = "#d2e3fc";
             btnSearch.onmouseleave = () => btnSearch.style.backgroundColor = COLORS.primaryBg;
@@ -59,7 +59,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
                 const currentValue = (state.formData[fieldId] || "").trim();
                 if (currentValue) {
                     const fieldLabel = labelText.textContent.replace(/:\s*$/, "").trim();
-                    const confirmed = await confirmDialog(`Remover o campo "${fieldLabel}"? O texto digitado será perdido.`, { danger: true, confirmText: "Remover" });
+                    const confirmed = await confirmDialog(t('remover_campo_confirm').replace('{campo}', fieldLabel), { danger: true, confirmText: t('remover') });
                     if (!confirmed) return;
                 }
                 state.removeField(fieldName);
@@ -70,11 +70,11 @@ export function buildDynamicForm(subStatusKey, container, state) {
         let field;
         if (textareaListFields.includes(fieldName)) {
             field = document.createElement("textarea"); field.classList.add("bullet-textarea", "cw-textarea");
-            field.placeholder = "Utilize marcadores para detalhar...";
+            field.placeholder = t('utilize_marcadores');
             enableAutoBullet(field);
         } else if (textareaParagraphFields.includes(fieldName)) {
             field = document.createElement("textarea"); field.classList.add("cw-textarea");
-            field.placeholder = "Descreva as considerações...";
+            field.placeholder = t('descreva_consideracoes');
         } else {
             field = document.createElement("input"); field.type = "text"; field.classList.add("cw-input");
         }
