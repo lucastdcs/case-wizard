@@ -1594,12 +1594,14 @@
                 return;
             }
             el.innerHTML = list.map(a => {
-                const who = a.processedBy ? a.processedBy.split('@')[0] : 'alguém';
+                const tlLdap = a.processedBy ? a.processedBy.split('@')[0] : 'alguém';
+                const agentLdap = a.agentEmail ? a.agentEmail.split('@')[0] : 'agente desconhecido';
                 const verb = ACTIVITY_VERB_BY_ACTION[a.action] || 'processou';
+                const caseLabel = a.caseId ? ('#' + a.caseId) : 'caso sem ID';
                 return `
                 <div class="activity-row">
-                    <div class="text-primary" style="font-size: 13px; font-weight: 500; margin-bottom: 0;">${escapeHtml(who)} ${verb} <span style="font-weight: 400;">${escapeHtml(a.advName || a.caseId)}</span></div>
-                    <div class="text-secondary" style="font-size: 11px;">${timeAgo(a.processedAt)}</div>
+                    <div class="text-primary" style="font-size: 13px; font-weight: 500; margin-bottom: 0;">${escapeHtml(tlLdap)} ${verb} <span style="font-weight: 400;">${escapeHtml(caseLabel)}</span></div>
+                    <div class="text-secondary" style="font-size: 11px;">solicitado por ${escapeHtml(agentLdap)} · ${timeAgo(a.processedAt)}</div>
                 </div>`;
             }).join('');
         }

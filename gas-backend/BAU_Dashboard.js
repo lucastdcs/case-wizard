@@ -148,7 +148,7 @@ function getRecentActivity(limit) {
     activity.push({
       id: String(row[0] || ""),
       caseId: String(row[4] || ""),
-      advName: String(row[7] || ""),
+      agentEmail: String(row[2] || ""),
       status: String(row[3] || ""),
       action: String(row[20] || ""),
       processedBy: String(row[18] || ""),
