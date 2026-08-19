@@ -16,7 +16,7 @@ const SHEET_CONTENT_ACCESS = "Content_Access";
 // Módulos gerenciáveis. Adicionar um módulo novo é acrescentar uma string
 // aqui - não uma aba nova, que é justamente a dívida que Tips/Broadcast/
 // Database_Snippets acumularam ao ganhar cada um seu próprio schema.
-const CONTENT_MODULES = ['links', 'call_script', 'email_template', 'case_note_snippet'];
+const CONTENT_MODULES = ['links', 'call_script', 'email_template', 'case_note_snippet', 'tips'];
 
 // Idiomas aceitos na coluna `lang`. 'ALL' = vale para todos (caso dos links,
 // cujo par PT/ES mora no próprio valor do item).

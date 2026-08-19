@@ -65,10 +65,12 @@ export const DataService = {
     // ==========================================
     // 1. SISTEMA CORE (Dicas e Inicialização)
     // ==========================================
+    // As dicas passaram a ser gerenciadas pela Central de Conteúdo (módulo
+    // 'tips'). O contrato público daqui não mudou: quem chama segue usando
+    // fetchTips() e getRandomTip() sem saber de onde vem.
     fetchTips: async () => {
         try {
-            const data = await jsonpFetch('tips');
-            if (data?.tips) localStorage.setItem(CACHE_KEY_TIPS, JSON.stringify(data.tips));
+            await DataService.fetchContentModule('tips');
         } catch (err) { console.warn("Tips offline", err); }
     },
 
@@ -118,9 +120,25 @@ export const DataService = {
     },
     
     getRandomTip: () => {
-        let tips = FALLBACK_TIPS;
-        const cached = localStorage.getItem(CACHE_KEY_TIPS);
-        if (cached) try { tips = JSON.parse(cached); } catch(e){}
+        let tips = null;
+
+        // 1. Central de Conteúdo (fonte atual).
+        const items = DataService.getCachedContent('tips');
+        if (Array.isArray(items) && items.length) {
+            tips = items.map(i => i.value).filter(Boolean);
+        }
+
+        // 2. Cache da rota antiga. Só importa no primeiro load depois do
+        // deploy, e só se o usuário estiver offline: sem isso ele veria as três
+        // frases genéricas do fallback em vez das dicas que já tinha em cache.
+        if (!tips || !tips.length) {
+            const legado = localStorage.getItem(CACHE_KEY_TIPS);
+            if (legado) try { tips = JSON.parse(legado); } catch (e) { }
+        }
+
+        // 3. Fallback embutido.
+        if (!Array.isArray(tips) || !tips.length) tips = FALLBACK_TIPS;
+
         return tips[Math.floor(Math.random() * tips.length)];
     },
 
