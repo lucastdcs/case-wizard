@@ -217,9 +217,20 @@
 
         /* Workspace & Grid */
         .workspace {
-            max-width: 1200px;
+            max-width: 1560px;
             margin: 0 auto;
             padding: 20px 32px 40px 32px;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .queue-main { min-width: 0; }
+
+        @media (max-width: 1100px) {
+            .workspace { grid-template-columns: 1fr; }
+            .tl-sidebar { position: static; }
         }
 
         .table-header {
@@ -351,6 +362,144 @@
         .reason-box .material-symbols-rounded { color: var(--gemini-purple); font-size: 20px; }
 
         .link { color: var(--gemini-blue); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: opacity 0.2s; position: relative; z-index: 2; }
+
+        /* Busca - única, compartilhada entre as 3 abas (fila e histórico) */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-pill);
+            padding: 0 16px;
+            height: 44px;
+            margin-bottom: 20px;
+            transition: border-color 0.2s var(--spring-functional), box-shadow 0.2s var(--spring-functional);
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--gemini-blue);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12);
+        }
+
+        .search-icon { color: var(--text-secondary); font-size: 20px; flex-shrink: 0; }
+
+        .search-input {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-family: 'Google Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .search-input::placeholder { color: var(--text-secondary); }
+
+        .search-clear {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            padding: 4px;
+            border-radius: 50%;
+            transition: background 0.2s, color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .search-clear:hover { background: var(--surface-level-2); color: var(--text-primary); }
+
+        /* Painel Lateral (Ativos agora / Atividade recente) */
+        .tl-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: sticky;
+            top: 20px;
+        }
+
+        .sidebar-block {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .sidebar-block-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+
+        .active-tl-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+        }
+
+        .presence-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            flex-shrink: 0;
+            animation: presencePulse 2s infinite;
+        }
+
+        @keyframes presencePulse {
+            0% { box-shadow: 0 0 0 0 rgba(30, 142, 62, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(30, 142, 62, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(30, 142, 62, 0); }
+        }
+
+        .activity-row, .top-agent-row {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .activity-row:last-child, .top-agent-row:last-child { border-bottom: none; }
+
+        .top-agent-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        /* Aba de Histórico */
+        .history-panel { display: flex; flex-direction: column; gap: 20px; }
+
+        .history-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); }
+        .stat-card .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+        .history-row {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+        }
 
         /* Modals & Overlay */
         .modal-overlay {
@@ -529,6 +678,7 @@
                 transition: opacity 0.2s ease !important;
                 transform: translateX(-50%) !important;
             }
+            .presence-dot { animation: none !important; }
         }
 
     </style>
@@ -613,22 +763,75 @@
             Aprovação de Descarte
             <span class="badge-count" id="count-discard">0</span>
         </button>
+        <button class="tab-btn" onclick="switchTab('HISTORY')" id="tab-history">
+            <span class="material-symbols-rounded">history</span>
+            Histórico
+        </button>
     </div>
 
     <main class="workspace">
-        <div class="table-header">
-            <div>ANUNCIANTE & ID</div>
-            <div>SOLICITAÇÃO & REFERÊNCIA</div>
-            <div>AGENDAMENTO</div>
-            <div style="text-align: right;">AÇÃO</div>
+        <div class="queue-main">
+            <div class="search-bar">
+                <span class="material-symbols-rounded search-icon">search</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Buscar por anunciante, CID, caso ou agente..." oninput="onSearchInput(this.value)" autocomplete="off">
+                <button type="button" id="search-clear" class="search-clear" onclick="clearSearch()" style="display: none;" aria-label="Limpar busca">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+
+            <div class="table-header" id="queue-table-header">
+                <div>ANUNCIANTE & ID</div>
+                <div>SOLICITAÇÃO & REFERÊNCIA</div>
+                <div>AGENDAMENTO</div>
+                <div style="text-align: right;">AÇÃO</div>
+            </div>
+
+            <div id="loader" class="loader">
+                <span class="material-symbols-rounded spinner">progress_activity</span>
+                <span style="color: var(--text-secondary); font-size: 15px;">Acessando base de dados...</span>
+            </div>
+
+            <div id="cases-container"></div>
+
+            <div id="history-panel" class="history-panel" style="display: none;">
+                <div class="history-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-approved">0</div>
+                        <div class="stat-label">Aprovados (7d)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-discarded">0</div>
+                        <div class="stat-label">Descartados (7d)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-avg-time">—</div>
+                        <div class="stat-label">Tempo médio de aprovação</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-block">
+                    <div class="sidebar-block-title">Quem mais abriu casos (7d)</div>
+                    <div id="history-top-agents"></div>
+                </div>
+
+                <div id="history-list"></div>
+            </div>
         </div>
 
-        <div id="loader" class="loader">
-            <span class="material-symbols-rounded spinner">progress_activity</span>
-            <span style="color: var(--text-secondary); font-size: 15px;">Acessando base de dados...</span>
-        </div>
-
-        <div id="cases-container"></div>
+        <aside class="tl-sidebar">
+            <section class="sidebar-block">
+                <div class="sidebar-block-title">Ativos agora</div>
+                <div id="active-tls-list">
+                    <div class="text-secondary" style="font-size: 13px;">Carregando...</div>
+                </div>
+            </section>
+            <section class="sidebar-block">
+                <div class="sidebar-block-title">Atividade recente</div>
+                <div id="recent-activity-list">
+                    <div class="text-secondary" style="font-size: 13px;">Carregando...</div>
+                </div>
+            </section>
+        </aside>
     </main>
 
     <script>
@@ -790,6 +993,7 @@
         })();
         let allCases = [];
         let currentTab = 'CREATION';
+        let searchQuery = '';
         let loadError = false;
         let lastSyncedAt = null;
         let syncInFlight = false;
@@ -844,6 +1048,64 @@
                 .replace(/'/g, '&#39;');
         }
 
+        // ---------------------------------------------------------
+        // Busca única, compartilhada pelas 3 abas (Criação, Descarte e
+        // Histórico) - o mesmo termo digitado continua valendo ao trocar de
+        // aba, cada view só re-filtra o que já tem em memória (sem re-fetch).
+        // Ignora acento (mesma ideia já usada na busca da paleta de comandos
+        // do bookmarklet principal) - "anuncio" precisa achar "Anúncio".
+        // ---------------------------------------------------------
+        // Faixa Unicode dos sinais diacríticos combináveis (0x0300-0x036F),
+        // construída via fromCharCode em vez de um literal \uXXXX no fonte -
+        // mais seguro contra mangling de encoding nesse arquivo servido pelo
+        // Apps Script.
+        const DIACRITIC_MARKS_REGEX = new RegExp('[' + String.fromCharCode(768) + '-' + String.fromCharCode(879) + ']', 'g');
+
+        function normalizeSearch(str) {
+            return String(str || '')
+                .normalize('NFD')
+                .replace(DIACRITIC_MARKS_REGEX, '')
+                .toLowerCase();
+        }
+
+        function matchesSearch(fields) {
+            if (!searchQuery) return true;
+            const q = normalizeSearch(searchQuery);
+            return fields.some(f => normalizeSearch(f).includes(q));
+        }
+
+        function onSearchInput(value) {
+            searchQuery = value.trim();
+            document.getElementById('search-clear').style.display = searchQuery ? 'flex' : 'none';
+            if (currentTab === 'HISTORY') {
+                renderHistoryList();
+            } else {
+                renderCases();
+            }
+        }
+
+        function clearSearch() {
+            searchQuery = '';
+            const input = document.getElementById('search-input');
+            input.value = '';
+            document.getElementById('search-clear').style.display = 'none';
+            input.focus();
+            if (currentTab === 'HISTORY') {
+                renderHistoryList();
+            } else {
+                renderCases();
+            }
+        }
+
+        function renderNoSearchResultsHtml() {
+            return `
+            <div class="empty-state">
+                <span class="material-symbols-rounded" style="font-size: 48px;">search_off</span>
+                <div style="font-size: 18px; font-weight: 500; color: var(--text-primary);">Nada encontrado para "${escapeHtml(searchQuery)}"</div>
+                <div style="font-size: 14px;">Tente outro termo ou <span class="link" style="cursor: pointer;" onclick="clearSearch()">limpe a busca</span>.</div>
+            </div>`;
+        }
+
         function loadCases(opts = {}) {
             const silent = !!opts.silent;
 
@@ -856,8 +1118,9 @@
 
             syncInFlight = true;
 
-            if (!silent) {
-                loadError = false;
+            if (!silent) loadError = false;
+
+            if (!silent && currentTab !== 'HISTORY') {
                 loader.style.display = 'flex';
                 container.innerHTML = `
                     <div class="skeleton-row">
@@ -900,6 +1163,7 @@
                     updateBadges();
                     renderCases();
                     loadCurrentTLProfileOnce();
+                    refreshSidebar();
                 })
                 .withFailureHandler(err => {
                     clearTimeout(loadCasesWatchdog);
@@ -933,7 +1197,18 @@
             currentTab = tab;
             document.getElementById('tab-creation').classList.toggle('active', tab === 'CREATION');
             document.getElementById('tab-discard').classList.toggle('active', tab === 'DISCARD');
-            renderCases();
+            document.getElementById('tab-history').classList.toggle('active', tab === 'HISTORY');
+
+            const isHistory = tab === 'HISTORY';
+            document.getElementById('queue-table-header').style.display = isHistory ? 'none' : 'grid';
+            document.getElementById('cases-container').style.display = isHistory ? 'none' : 'block';
+            document.getElementById('history-panel').style.display = isHistory ? 'flex' : 'none';
+            if (isHistory) {
+                document.getElementById('loader').style.display = 'none';
+                loadHistory();
+            } else {
+                renderCases();
+            }
         }
 
         function renderCases() {
@@ -942,9 +1217,9 @@
             container.innerHTML = '';
 
             const filtered = allCases.filter(c => {
-                if (currentTab === 'CREATION') return c.status === 'PENDING_TL_CREATION';
-                if (currentTab === 'DISCARD') return c.status === 'PENDING_TL_DISCARD';
-                return false;
+                const tabMatch = currentTab === 'CREATION' ? c.status === 'PENDING_TL_CREATION' : c.status === 'PENDING_TL_DISCARD';
+                if (!tabMatch) return false;
+                return matchesSearch([c.advName, c.cid, c.caseId, c.agentEmail, c.task]);
             });
 
             if (loadError) {
@@ -962,7 +1237,7 @@
             }
 
             if (filtered.length === 0) {
-                container.innerHTML = `
+                container.innerHTML = searchQuery ? renderNoSearchResultsHtml() : `
                 <div class="empty-state">
                     <span class="material-symbols-rounded" style="font-size: 48px; color: var(--success);">task_alt</span>
                     <div style="font-size: 18px; font-weight: 500; color: var(--text-primary);">Fila limpa</div>
@@ -1246,6 +1521,162 @@
             icon.textContent = 'check';
             setTimeout(() => icon.textContent = 'content_copy', 1500);
             showToast('Copiado para área de transferência');
+        }
+
+        // ---------------------------------------------------------
+        // Painel Lateral: presença ("Ativos agora") + Atividade recente
+        // ---------------------------------------------------------
+        // Roda encaixado no mesmo ciclo de loadCases() (chamada manual +
+        // polling de 60s) em vez de ter seu próprio setInterval - evitar um
+        // segundo timer concorrente com o polling principal, mesmo cuidado
+        // já documentado ali em cima pra não reproduzir o travamento de
+        // google.script.run em paralelo logo no primeiro load.
+        function refreshSidebar() {
+            google.script.run
+                .withSuccessHandler(() => {
+                    google.script.run.withSuccessHandler(renderActiveTLs).withFailureHandler(() => {}).getActiveTLs();
+                    google.script.run.withSuccessHandler(renderRecentActivity).withFailureHandler(() => {}).getRecentActivity(12);
+                })
+                .withFailureHandler(err => {
+                    console.warn("Falha ao registrar presença do TL:", err);
+                    google.script.run.withSuccessHandler(renderActiveTLs).withFailureHandler(() => {}).getActiveTLs();
+                    google.script.run.withSuccessHandler(renderRecentActivity).withFailureHandler(() => {}).getRecentActivity(12);
+                })
+                .recordTLPresence();
+        }
+
+        function renderActiveTLs(list) {
+            const el = document.getElementById('active-tls-list');
+            if (!list || list.length === 0) {
+                el.innerHTML = '<div class="text-secondary" style="font-size: 13px;">Só você, por enquanto.</div>';
+                return;
+            }
+            el.innerHTML = list.map(u => `
+                <div class="active-tl-row">
+                    <span class="presence-dot"></span>
+                    <img src="https://moma-teams-photos.corp.google.com/photos/${encodeURIComponent(u.ldap)}?sz=600" class="agent-photo" style="width: 24px; height: 24px;" onerror="this.src='https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg'">
+                    <span class="text-secondary" style="color: var(--text-primary); font-size: 13px;">${escapeHtml(u.ldap)}</span>
+                </div>`).join('');
+        }
+
+        const ACTIVITY_VERB_BY_ACTION = {
+            APPROVED_CREATION: 'aprovou',
+            REJECTED_CREATION: 'rejeitou',
+            CONFIRMED_DISCARD: 'confirmou descarte de',
+            KEPT_ACTIVE: 'manteve ativo'
+        };
+
+        function timeAgo(iso) {
+            const diffSec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+            if (diffSec < 60) return 'agora mesmo';
+            if (diffSec < 3600) return Math.floor(diffSec / 60) + 'min atrás';
+            if (diffSec < 86400) return Math.floor(diffSec / 3600) + 'h atrás';
+            return Math.floor(diffSec / 86400) + 'd atrás';
+        }
+
+        function renderRecentActivity(list) {
+            const el = document.getElementById('recent-activity-list');
+            if (!list || list.length === 0) {
+                el.innerHTML = '<div class="text-secondary" style="font-size: 13px;">Nenhuma ação registrada ainda.</div>';
+                return;
+            }
+            el.innerHTML = list.map(a => {
+                const who = a.processedBy ? a.processedBy.split('@')[0] : 'alguém';
+                const verb = ACTIVITY_VERB_BY_ACTION[a.action] || 'processou';
+                return `
+                <div class="activity-row">
+                    <div class="text-primary" style="font-size: 13px; font-weight: 500; margin-bottom: 0;">${escapeHtml(who)} ${verb} <span style="font-weight: 400;">${escapeHtml(a.advName || a.caseId)}</span></div>
+                    <div class="text-secondary" style="font-size: 11px;">${timeAgo(a.processedAt)}</div>
+                </div>`;
+            }).join('');
+        }
+
+        // ---------------------------------------------------------
+        // Aba de Histórico: últimos 7 dias de casos resolvidos + métricas
+        // ---------------------------------------------------------
+        let historyLoaded = false;
+        let lastHistoryData = null;
+
+        function loadHistory(force) {
+            if (historyLoaded && !force) return;
+            const list = document.getElementById('history-list');
+            list.innerHTML = '<div class="loader" style="padding: 40px;"><span class="material-symbols-rounded spinner">progress_activity</span></div>';
+
+            google.script.run
+                .withSuccessHandler(renderHistory)
+                .withFailureHandler(err => {
+                    console.warn("Erro ao carregar histórico:", err);
+                    list.innerHTML = '<div class="empty-state" style="padding: 40px 20px;">Não foi possível carregar o histórico.</div>';
+                })
+                .getWeeklyHistory(7);
+        }
+
+        function formatHours(h) {
+            if (h < 1) return Math.round(h * 60) + 'min';
+            if (h < 48) return h.toFixed(1).replace('.', ',') + 'h';
+            return (h / 24).toFixed(1).replace('.', ',') + 'd';
+        }
+
+        const HISTORY_ACTION_LABEL = {
+            APPROVED_CREATION: 'Aprovado',
+            REJECTED_CREATION: 'Rejeitado',
+            CONFIRMED_DISCARD: 'Descartado'
+        };
+
+        function renderHistory(data) {
+            historyLoaded = true;
+            lastHistoryData = data;
+            const stats = data.stats || {};
+
+            document.getElementById('stat-approved').textContent = stats.approved || 0;
+            document.getElementById('stat-discarded').textContent = stats.discarded || 0;
+            document.getElementById('stat-avg-time').textContent = stats.avgResolutionHours != null ? formatHours(stats.avgResolutionHours) : '—';
+
+            const agentsEl = document.getElementById('history-top-agents');
+            agentsEl.innerHTML = (stats.topAgents || []).map(a => `
+                <div class="top-agent-row">
+                    <span>${escapeHtml(a.email.split('@')[0])}</span>
+                    <span class="text-secondary">${a.count} caso${a.count === 1 ? '' : 's'}</span>
+                </div>`).join('') || '<div class="text-secondary" style="font-size: 13px;">Sem envios no período.</div>';
+
+            renderHistoryList();
+        }
+
+        // Separada de renderHistory() pra rodar de novo a cada tecla digitada
+        // na busca sem precisar de um novo round-trip ao servidor - os dados
+        // já vieram inteiros na última chamada de getWeeklyHistory().
+        function renderHistoryList() {
+            const list = document.getElementById('history-list');
+            const allHistoryCases = (lastHistoryData && lastHistoryData.cases) || [];
+            const windowDays = (lastHistoryData && lastHistoryData.windowDays) || 7;
+            const filtered = allHistoryCases.filter(c => matchesSearch([c.advName, c.task, c.caseId, c.processedBy]));
+
+            if (allHistoryCases.length === 0) {
+                list.innerHTML = `
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <span class="material-symbols-rounded" style="font-size: 36px;">inbox</span>
+                    <div>Nenhum caso resolvido nos últimos ${windowDays} dias.</div>
+                </div>`;
+                return;
+            }
+
+            if (filtered.length === 0) {
+                list.innerHTML = renderNoSearchResultsHtml();
+                return;
+            }
+
+            list.innerHTML = filtered.map(c => {
+                const isApproved = c.action === 'APPROVED_CREATION';
+                const label = HISTORY_ACTION_LABEL[c.action] || c.action;
+                const when = new Date(c.processedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const by = c.processedBy ? c.processedBy.split('@')[0] : '—';
+                return `
+                <div class="history-row">
+                    <span class="status-badge ${isApproved ? 'badge-create' : 'badge-discard'}" style="margin-bottom: 0;">${label}</span>
+                    <div class="text-primary" style="font-size: 14px; margin: 6px 0 2px;">${escapeHtml(c.advName)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
+                    <div class="text-secondary" style="font-size: 12px;">${escapeHtml(by)} · ${when}</div>
+                </div>`;
+            }).join('');
         }
     </script>
 </body>
