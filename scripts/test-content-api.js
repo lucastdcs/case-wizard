@@ -421,6 +421,131 @@ check('a ordem dos passos sobrevive à semeadura', () => {
   }
 });
 
+console.log('\n--- E-mails (validação de placeholder) ---');
+
+const emailValue = (subject, body, placeholders) => JSON.stringify({
+  subject: subject, template: body, placeholders: placeholders || []
+});
+
+check('modelo consistente é aceito', () => {
+  const r = api.saveContentDraft({
+    module: 'email_template', key: 'attempt_10min', field: 'Tentativas', lang: 'PT',
+    label: 'Tentativa',
+    value: emailValue('Olá [Nome do Cliente]', '<p>Oi [Nome do Cliente], sou [Seu Nome].</p>',
+      [{ key: '[Nome do Cliente]', label: 'Cliente', type: 'text' },
+      { key: '[Seu Nome]', label: 'Assinatura', type: 'text', auto: 'agentName' }])
+  });
+  if (!r.draftId) throw new Error('rascunho não criado');
+});
+
+check('campo declarado que não aparece no corpo é recusado', () => {
+  // O agente preencheria um campo que não vai a lugar nenhum.
+  throws(() => api.saveContentDraft({
+    module: 'email_template', key: 'x', field: 'c', lang: 'PT', label: 'X',
+    value: emailValue('Assunto', '<p>Sem token nenhum.</p>',
+      [{ key: '[Nome do Cliente]', label: 'Cliente', type: 'text' }])
+  }), /declarados mas não aparecem/);
+});
+
+check('token no corpo sem declaração é recusado', () => {
+  // Esse é o caro: sai literal "Olá, [Nome do Cliente]," para o anunciante.
+  throws(() => api.saveContentDraft({
+    module: 'email_template', key: 'x', field: 'c', lang: 'PT', label: 'X',
+    value: emailValue('Assunto', '<p>Olá, [Nome do Cliente], tudo bem?</p>', [])
+  }), /não estão declarados/);
+});
+
+check('assunto e corpo são obrigatórios', () => {
+  throws(() => api.saveContentDraft({
+    module: 'email_template', key: 'x', field: 'c', lang: 'PT', label: 'X',
+    value: emailValue('', '<p>corpo</p>', [])
+  }), /precisa de um assunto/);
+
+  throws(() => api.saveContentDraft({
+    module: 'email_template', key: 'x', field: 'c', lang: 'PT', label: 'X',
+    value: emailValue('Assunto', '', [])
+  }), /precisa de um corpo/);
+});
+
+check('o token pode estar só no assunto', () => {
+  const r = api.saveContentDraft({
+    module: 'email_template', key: 'y', field: 'c', lang: 'PT', label: 'Y',
+    value: emailValue('Caso de [Nome do Cliente]', '<p>Texto sem token.</p>',
+      [{ key: '[Nome do Cliente]', label: 'Cliente', type: 'text' }])
+  });
+  if (!r.draftId) throw new Error('recusou token válido no assunto');
+});
+
+check('ES não exige declaração própria (as chaves são as de PT)', () => {
+  const r = api.saveContentDraft({
+    module: 'email_template', key: 'attempt_10min', field: 'Intentos', lang: 'ES',
+    label: 'Intento',
+    value: JSON.stringify({
+      subject: 'Hola [Nome do Cliente]',
+      template: '<p>Hola [Nome do Cliente], soy [Seu Nome].</p>',
+      labels: { '[Nome do Cliente]': 'Nombre del Cliente', '[Seu Nome]': 'Firma' }
+    })
+  });
+  if (!r.draftId) throw new Error('recusou overlay ES válido');
+});
+
+check('checkEmailTemplate devolve o erro em vez de lançar', () => {
+  // A tela chama isso antes de gravar, pra avisar com o texto ainda na tela.
+  const bad = api.checkEmailTemplate(emailValue('A', '<p>[Fantasma]</p>', []), 'PT');
+  eq(bad.ok, false);
+  if (!/não estão declarados/.test(bad.error)) throw new Error('erro inesperado: ' + bad.error);
+
+  const good = api.checkEmailTemplate(emailValue('A', '<p>ok</p>', []), 'PT');
+  eq(good.ok, true);
+});
+
+check('JSON malformado não passa', () => {
+  throws(() => api.saveContentDraft({
+    module: 'email_template', key: 'x', field: 'c', lang: 'PT', label: 'X',
+    value: '{isso não é json'
+  }), /JSON malformado/);
+});
+
+check('seedEmailsNow() popula os modelos numa planilha zerada', () => {
+  const freshSS = new FakeSpreadsheet();
+  const freshCtx = vm.createContext({
+    SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    MailApp: { sendEmail: () => { } },
+    Logger: { log: () => { } },
+    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    handleLog: () => { },
+    console,
+  });
+
+  vm.runInContext(fs.readFileSync(SRC, 'utf8'), freshCtx);
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'ContentSeed_Emails.js'), 'utf8'),
+    freshCtx
+  );
+
+  const res = freshCtx.seedEmailsNow();
+  eq(res.status, 'success');
+
+  const live = freshCtx.listContentItems('email_template');
+  eq(live.length, res.seeded);
+
+  const pt = live.filter(i => i.lang === 'PT');
+  const es = live.filter(i => i.lang === 'ES');
+  if (!pt.length || !es.length) throw new Error('faltou algum idioma');
+
+  // Cada template tem exatamente uma linha por idioma - duplicata aqui viraria
+  // modelo repetido na lista do agente.
+  const ptKeys = pt.map(i => i.key);
+  eq(new Set(ptKeys).size, ptKeys.length, 'uma linha PT por template:');
+
+  // E todo modelo semeado tem que passar na própria validação.
+  pt.forEach(i => {
+    const r = freshCtx.checkEmailTemplate(i.value, 'PT');
+    if (!r.ok) throw new Error('modelo semeado inválido [' + i.key + ']: ' + r.error);
+  });
+});
+
 console.log('\n--- Case Notes (trechos por campo) ---');
 
 check('QA propõe trecho de nota (está no escopo do papel)', () => {

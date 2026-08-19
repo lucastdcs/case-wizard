@@ -283,6 +283,79 @@ function logContentEvent_(ldap, action, label, value) {
   }
 }
 
+// Tokens no formato [Alguma Coisa] - o mesmo que os modelos de e-mail já usam.
+const EMAIL_TOKEN_RE = /\[[^\][]{2,60}\]/g;
+
+/**
+ * Valida um modelo de e-mail antes de virar rascunho.
+ *
+ * As duas falhas que isso impede são silenciosas e caras, porque o e-mail vai
+ * para o anunciante:
+ *   - placeholder declarado que não existe no corpo: o agente preenche um campo
+ *     que não vai a lugar nenhum;
+ *   - token no corpo que ninguém declarou: o agente nem vê o campo, e o texto
+ *     sai LITERAL ("Olá, [Nome do Cliente],").
+ *
+ * Em ES só os rótulos são traduzidos - as chaves seguem as de PT, porque são
+ * elas que aparecem no corpo. Por isso a checagem de declaração vale para PT, e
+ * em ES o que se exige é que o corpo traduzido não tenha perdido nenhum token.
+ */
+function assertValidEmailTemplate_(rawValue, lang) {
+  let parsed;
+  try {
+    parsed = JSON.parse(rawValue || '{}');
+  } catch (e) {
+    throw new Error("Conteúdo do e-mail inválido (JSON malformado).");
+  }
+
+  const subject = String(parsed.subject || "").trim();
+  const body = String(parsed.template || "").trim();
+
+  if (!subject) throw new Error("O e-mail precisa de um assunto.");
+  if (!body) throw new Error("O e-mail precisa de um corpo.");
+
+  const full = subject + " " + body;
+  const noCorpo = (full.match(EMAIL_TOKEN_RE) || []).filter(function (v, i, a) {
+    return a.indexOf(v) === i;
+  });
+
+  if (String(lang).toUpperCase() === 'ES') {
+    // Sem `placeholders` próprio: a referência é a linha PT do mesmo template.
+    return { tokens: noCorpo };
+  }
+
+  const declarados = (parsed.placeholders || []).map(function (p) { return String(p.key || ""); });
+
+  const semUso = declarados.filter(function (k) { return k && full.indexOf(k) === -1; });
+  if (semUso.length) {
+    throw new Error(
+      "Estes campos estão declarados mas não aparecem no e-mail: " + semUso.join(", ") +
+      ". Use-os no texto ou remova a declaração."
+    );
+  }
+
+  const semDeclarar = noCorpo.filter(function (k) { return declarados.indexOf(k) === -1; });
+  if (semDeclarar.length) {
+    throw new Error(
+      "Estes trechos aparecem no e-mail mas não estão declarados como campo: " + semDeclarar.join(", ") +
+      ". Sem declarar, o texto sai literal para o anunciante."
+    );
+  }
+
+  return { tokens: noCorpo };
+}
+
+// Exposta para a tela conseguir avisar ANTES de salvar, em vez de o agente
+// descobrir o erro só ao tentar enviar.
+function checkEmailTemplate(rawValue, lang) {
+  try {
+    assertValidEmailTemplate_(rawValue, lang);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // =========================================================
 //  LEITURA
 // =========================================================
@@ -429,6 +502,9 @@ function saveContentDraft(payload) {
   }
   if (p.module === 'case_note_snippet') {
     assertValidNoteField_(String(p.field || ""));
+  }
+  if (p.module === 'email_template') {
+    assertValidEmailTemplate_(String(p.value || ""), String(p.lang || 'PT'));
   }
 
   const sheet = getContentSheet_(SHEET_CONTENT_DRAFTS);

@@ -1,3 +1,5 @@
+import { DataService } from "../shared/data-service.js";
+
 // ==================================================================
 //                    TEMPLATES DE E-MAIL (PT)
 // ==================================================================
@@ -195,4 +197,77 @@ export function getEmailTemplate(tpl, lang) {
             label: es.labels?.[ph.key] ?? ph.label
         }))
     };
+}
+
+// --- HIDRATAÇÃO PELA CENTRAL DE CONTEÚDO ---
+// Os modelos acima viram fallback: é o que vale no primeiro load offline, sem
+// resposta da API nem cache. Publicado na Central, o publicado vence.
+//
+// Na planilha cada idioma é uma linha do mesmo template (key = id, lang =
+// PT|ES), e aqui as duas estruturas originais são remontadas - a lista PT e o
+// overlay ES. É por isso que getEmailTemplate() acima não precisou mudar.
+export function applyEmailContent(items) {
+    if (!Array.isArray(items) || !items.length) return false;
+
+    const sorted = items.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    const pt = [];
+    const es = {};
+
+    for (const item of sorted) {
+        const id = item.key;
+        if (!id) continue;
+
+        let v;
+        try {
+            v = JSON.parse(item.value || '{}');
+        } catch (e) {
+            continue; // Um modelo corrompido não pode derrubar os outros.
+        }
+        if (!v.subject || !v.template) continue;
+
+        if (String(item.lang).toUpperCase() === 'ES') {
+            es[id] = {
+                name: item.label || '',
+                category: item.field || '',
+                subject: v.subject,
+                template: v.template,
+                labels: v.labels || {},
+            };
+        } else {
+            pt.push({
+                id,
+                name: item.label || id,
+                category: item.field || '',
+                subject: v.subject,
+                template: v.template,
+                placeholders: v.placeholders || [],
+            });
+        }
+    }
+
+    // Sem nenhum modelo PT não há o que exibir: melhor manter o embutido do que
+    // deixar o assistente sem template nenhum.
+    if (!pt.length) return false;
+
+    EMAIL_TEMPLATES.length = 0;
+    EMAIL_TEMPLATES.push(...pt);
+
+    for (const key of Object.keys(EMAIL_TEMPLATES_ES)) delete EMAIL_TEMPLATES_ES[key];
+    Object.assign(EMAIL_TEMPLATES_ES, es);
+
+    return true;
+}
+
+export async function hydrateEmailsFromContentCentral() {
+    const cached = DataService.getCachedContent('email_template');
+    let applied = applyEmailContent(cached);
+
+    try {
+        const items = await DataService.fetchContentModule('email_template');
+        applied = applyEmailContent(items) || applied;
+    } catch (e) {
+        console.warn('Central de Conteúdo indisponível; usando modelos embutidos.', e);
+    }
+
+    return applied;
 }

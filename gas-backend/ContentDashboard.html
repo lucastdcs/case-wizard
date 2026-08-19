@@ -663,6 +663,9 @@
                 <button class="tab-btn" role="tab" data-tab="notes" onclick="switchTab('notes')">
                     <span class="material-symbols-rounded" style="font-size:19px">edit_note</span> Case Notes
                 </button>
+                <button class="tab-btn" role="tab" data-tab="emails" onclick="switchTab('emails')">
+                    <span class="material-symbols-rounded" style="font-size:19px">mail</span> E-mails
+                </button>
                 <button class="tab-btn" role="tab" data-tab="approvals" onclick="switchTab('approvals')">
                     <span class="material-symbols-rounded" style="font-size:19px">rule</span> Aprovações
                     <span class="count-chip zero" id="pending-count">0</span>
@@ -670,9 +673,7 @@
                 <button class="tab-btn hidden" role="tab" data-tab="access" onclick="switchTab('access')" id="tab-access">
                     <span class="material-symbols-rounded" style="font-size:19px">manage_accounts</span> Acessos
                 </button>
-                <button class="tab-btn" role="tab" data-tab="soon" onclick="switchTab('soon')">
-                    <span class="material-symbols-rounded" style="font-size:19px">schedule</span> Próximos módulos
-                </button>
+
             </div>
 
             <!-- TAB: Links -->
@@ -753,6 +754,31 @@
                 </div>
             </section>
 
+            <!-- TAB: E-mails -->
+            <section id="pane-emails" class="hidden">
+                <div class="note" id="em-note">
+                    Modelos do assistente do agente. Não inclui os e-mails de CR nem os
+                    disparados pelo Dashboard de TL.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div>
+                        <label class="fld" style="margin-top:0" for="em-lang">Idioma</label>
+                        <select id="em-lang" onchange="renderEmails()">
+                            <option value="PT">PT</option>
+                            <option value="ES">ES</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary hidden" id="em-new-btn" disabled
+                        title="Criar modelo novo ainda não é suportado — por ora, edite os existentes.">
+                        Novo modelo
+                    </button>
+                </div>
+                <div class="card" id="em-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
             <!-- TAB: Aprovações -->
             <section id="pane-approvals" class="hidden">
                 <div id="approvals-list">
@@ -795,22 +821,6 @@
             </section>
 
             <!-- TAB: Próximos módulos -->
-            <section id="pane-soon" class="hidden">
-                <div class="card">
-                    <div class="card-title">Ainda não migrado</div>
-                    <p class="card-sub" style="margin-bottom:16px">
-                        Links, Call Script e Case Notes já são editáveis nas abas acima. Falta o último módulo.
-                    </p>
-                    <div class="item-row">
-                        <div class="item-main">
-                            <div class="item-name">E-mails do assistente</div>
-                            <div class="item-meta">Editor ciente de placeholder e preview do HTML antes de publicar. Não
-                                inclui os e-mails de CR nem os enviados pelo Dashboard de TL.</div>
-                        </div>
-                        <span class="pill draft">Fase 4</span>
-                    </div>
-                </div>
-            </section>
         </main>
     </div>
 
@@ -863,6 +873,9 @@
             if (!document.getElementById('pane-notes').classList.contains('hidden')) {
                 loadNoteSnippets();
             }
+            if (!document.getElementById('pane-emails').classList.contains('hidden')) {
+                loadEmails();
+            }
         }
 
         // A UI é conveniência, não a fronteira: o servidor recusa a ação de
@@ -873,7 +886,7 @@
         }
 
         function switchTab(tab) {
-            ['links', 'callscript', 'notes', 'approvals', 'access', 'soon'].forEach(function (t) {
+            ['links', 'callscript', 'notes', 'emails', 'approvals', 'access'].forEach(function (t) {
                 var pane = document.getElementById('pane-' + t);
                 if (pane) pane.classList.toggle('hidden', t !== tab);
             });
@@ -882,6 +895,7 @@
             });
             if (tab === 'callscript') loadCallScript();
             if (tab === 'notes') loadNoteSnippets();
+            if (tab === 'emails') loadEmails();
             if (tab === 'approvals') loadApprovals();
             if (tab === 'access') loadAccess();
         }
@@ -915,6 +929,10 @@
                         document.getElementById('cs-new-btn').classList.add('hidden');
                         document.getElementById('cs-note').textContent =
                             'Seu papel (' + s.role + ') vê o roteiro, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('email_template')) {
+                        document.getElementById('em-note').textContent =
+                            'Seu papel (' + s.role + ') vê os modelos, mas não propõe alterações neste módulo.';
                     }
                     if (!canPropose('case_note_snippet')) {
                         document.getElementById('nt-new-btn').classList.add('hidden');
@@ -1563,6 +1581,227 @@
                     label: title,
                     value: text
                 });
+        }
+
+        // --- E-mails ---
+        var EM_ITEMS = [];
+        var EM_DRAFTS = [];
+
+        function loadEmails() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    EM_ITEMS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (d) { EM_DRAFTS = d || []; renderEmails(); })
+                        .withFailureHandler(function () { EM_DRAFTS = []; renderEmails(); })
+                        .listContentDrafts('email_template');
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('em-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar os modelos</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('email_template');
+        }
+
+        function emDraftForItem(itemId) {
+            for (var i = 0; i < EM_DRAFTS.length; i++) {
+                if (EM_DRAFTS[i].itemId === itemId) return EM_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function parseEmail(raw) {
+            try { return JSON.parse(raw || '{}'); } catch (e) { return {}; }
+        }
+
+        function renderEmails() {
+            var host = document.getElementById('em-list');
+            var lang = document.getElementById('em-lang').value;
+            var mine = EM_ITEMS.filter(function (i) { return i.lang === lang; });
+
+            if (!mine.length) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">mail</span>' +
+                    '<h2>Nenhum modelo publicado em ' + esc(lang) + '</h2>' +
+                    '<p>Enquanto isso o assistente segue com os modelos embutidos no código. ' +
+                    'Rode a semeadura (seedEmailsNow) para trazer os atuais.</p></div>';
+                return;
+            }
+
+            var byCat = {};
+            mine.forEach(function (it) { (byCat[it.field || 'Sem categoria'] = byCat[it.field || 'Sem categoria'] || []).push(it); });
+
+            var html = '';
+            Object.keys(byCat).sort().forEach(function (cat) {
+                html += '<div class="cat-head">' + esc(cat) +
+                    ' <span class="pill draft">' + byCat[cat].length + '</span></div>';
+
+                byCat[cat].forEach(function (it) {
+                    var v = parseEmail(it.value);
+                    var d = emDraftForItem(it.id);
+                    var badge = d
+                        ? (d.status === 'pending'
+                            ? '<span class="pill pending">em revisão</span>'
+                            : '<span class="pill draft">rascunho</span>')
+                        : '';
+
+                    var nPh = (v.placeholders || []).length;
+                    var phInfo = lang === 'PT'
+                        ? nPh + ' campo' + (nPh === 1 ? '' : 's')
+                        : Object.keys(v.labels || {}).length + ' rótulos';
+
+                    var actions = canPropose('email_template')
+                        ? '<div style="display:flex;gap:8px">' +
+                        '<button class="btn btn-ghost btn-sm" onclick="openEmailEditor(\'' + it.id + '\')">Editar</button>' +
+                        '</div>'
+                        : '';
+
+                    html += '<div class="item-row">' +
+                        '<div class="item-main">' +
+                        '<div class="item-name">' + esc(it.label) + ' ' + badge + '</div>' +
+                        '<div class="item-meta">' + esc(v.subject || '') + ' · ' + esc(phInfo) + '</div>' +
+                        '</div>' + actions + '</div>';
+                });
+            });
+
+            host.innerHTML = html;
+        }
+
+        function openEmailEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < EM_ITEMS.length; i++) {
+                if (EM_ITEMS[i].id === itemId) item = EM_ITEMS[i];
+            }
+            if (!item) return;
+
+            var existingDraft = emDraftForItem(itemId);
+            var src = existingDraft || item;
+            var v = parseEmail(src.value);
+            var lang = item.lang;
+
+            var phList = lang === 'PT'
+                ? (v.placeholders || []).map(function (p) {
+                    return '<code style="font-size:12px">' + esc(p.key) + '</code>';
+                }).join(' ')
+                : Object.keys(v.labels || {}).map(function (k) {
+                    return '<code style="font-size:12px">' + esc(k) + '</code>';
+                }).join(' ');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:820px" role="dialog" aria-modal="true">' +
+                '<h2>Editar modelo — ' + esc(lang) + '</h2>' +
+                '<p class="card-sub">' + esc(item.label) + '</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Este modelo já está em revisão.</div>'
+                    : '') +
+                '<div class="note" style="margin-top:14px">Campos deste modelo: ' +
+                (phList || '<em>nenhum</em>') +
+                '<br>Use-os no texto exatamente assim. Um campo não usado — ou um texto entre ' +
+                'colchetes que não seja campo — é recusado ao salvar.</div>' +
+                '<label class="fld" for="em-subject">Assunto</label>' +
+                '<input type="text" id="em-subject" value="' + esc(v.subject || '') + '">' +
+                '<label class="fld" for="em-body">Corpo (HTML)</label>' +
+                '<textarea id="em-body" style="min-height:200px;font-family:ui-monospace,monospace;font-size:12.5px">' +
+                esc(v.template || '') + '</textarea>' +
+                '<div class="row-between" style="margin-top:18px">' +
+                '<div class="card-title" style="margin:0">Prévia</div>' +
+                '<button class="btn btn-ghost btn-sm" onclick="refreshEmailPreview()">Atualizar prévia</button>' +
+                '</div>' +
+                '<div id="em-preview" style="border:1px solid var(--border-subtle);border-radius:var(--radius-sm);' +
+                'padding:16px;margin-top:8px;background:#fff;color:#202124;max-height:280px;overflow:auto"></div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="em-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            refreshEmailPreview();
+            document.getElementById('em-body').addEventListener('input', refreshEmailPreview);
+
+            document.getElementById('em-save').onclick = function () {
+                submitEmail(item, existingDraft ? existingDraft.draftId : null, v, this);
+            };
+        }
+
+        // A prévia renderiza o HTML como o anunciante vai receber. É o ponto da
+        // fase: sem ver, dá pra publicar um <p> não fechado e só descobrir no
+        // e-mail já enviado.
+        function refreshEmailPreview() {
+            var body = document.getElementById('em-body');
+            var host = document.getElementById('em-preview');
+            if (!body || !host) return;
+            host.innerHTML = body.value;
+        }
+
+        function submitEmail(item, draftId, original, btn) {
+            var subject = document.getElementById('em-subject').value.trim();
+            var template = document.getElementById('em-body').value.trim();
+
+            if (!subject) return toast('O e-mail precisa de um assunto.', true);
+            if (!template) return toast('O e-mail precisa de um corpo.', true);
+
+            // Só assunto e corpo são editáveis: a lista de campos (e, em ES, os
+            // rótulos) segue como está. Mexer nela pela tela exigiria casar as
+            // duas linguagens de uma vez, e é justamente onde um erro vaza
+            // placeholder literal para o anunciante.
+            var value = (item.lang === 'ES')
+                ? JSON.stringify({ subject: subject, template: template, labels: original.labels || {} })
+                : JSON.stringify({ subject: subject, template: template, placeholders: original.placeholders || [] });
+
+            btn.disabled = true;
+            btn.textContent = 'Validando…';
+
+            // Valida no servidor ANTES de gravar, pra mensagem de erro chegar
+            // enquanto o texto ainda está na tela.
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    if (!res.ok) {
+                        btn.disabled = false;
+                        btn.textContent = 'Salvar e enviar para revisão';
+                        return toast(res.error, true);
+                    }
+
+                    btn.textContent = 'Enviando…';
+                    google.script.run
+                        .withSuccessHandler(function (saved) {
+                            google.script.run
+                                .withSuccessHandler(function () {
+                                    closeModal();
+                                    toast('Proposta enviada para revisão.');
+                                    loadEmails();
+                                    loadPendingCount();
+                                })
+                                .withFailureHandler(function (err) {
+                                    btn.disabled = false;
+                                    btn.textContent = 'Salvar e enviar para revisão';
+                                    toast(err.message, true);
+                                })
+                                .submitContentDraft(saved.draftId);
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .saveContentDraft({
+                            draftId: draftId || '',
+                            itemId: item.id,
+                            module: 'email_template',
+                            key: item.key,
+                            field: item.field,
+                            lang: item.lang,
+                            label: item.label,
+                            value: value,
+                            sortOrder: item.sortOrder
+                        });
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .checkEmailTemplate(value, item.lang);
         }
 
         // --- Aprovações ---
