@@ -9,6 +9,7 @@
 import { SoundManager } from './sound-manager.js';
 import { lockBodyScroll, unlockBodyScroll } from './dom-utils.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
+import { scenarioSnippets } from '../notes/data/notes-data.js';
 
 const ICONS = {
     notes: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
@@ -24,6 +25,7 @@ const ICONS = {
     enter: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>`,
     arrowDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
     arrowUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
+    bolt: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`,
 };
 
 function injectStyles() {
@@ -71,6 +73,8 @@ function injectStyles() {
         .cw-palette-item-icon { width: 32px; height: 32px; border-radius: 9px; background: #F1F3F4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #5F6368; transition: background-color 0.1s ease, color 0.1s ease; }
         .cw-palette-item-icon svg { width: 18px; height: 18px; }
         .cw-palette-item.selected .cw-palette-item-icon { background: #FFFFFF; color: #1A73E8; }
+        .cw-palette-item-icon--preset { background: #FEF7E0; color: #F9A825; }
+        .cw-palette-item.selected .cw-palette-item-icon--preset { background: #FFFFFF; color: #F9A825; }
         .cw-palette-item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .cw-palette-item-label { font-size: 14px; font-weight: 600; color: #202124; }
         .cw-palette-item-hint { font-size: 12px; color: #5F6368; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -117,6 +121,28 @@ export function initCommandPalette(actions) {
         return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     }
 
+    // Atalhos de nota (Quick Launch): qualquer scenarioSnippet com um
+    // `quickLaunch` cadastrado em notes-data.js vira automaticamente uma
+    // entrada aqui - escalar pra mais notas é só adicionar o campo lá, sem
+    // tocar neste arquivo. Entram na mesma busca textual dos módulos, só com
+    // ícone de raio pra se destacar visualmente do resto.
+    //
+    // O `label` vem de notes-data.js e é PT-only (é o nome do cenário); só o
+    // hint, que é texto nosso, tem as duas versões.
+    const notePresets = (typeof actions.toggleNotes === 'function' && typeof actions.toggleNotes.openWithPreset === 'function')
+        ? Object.entries(scenarioSnippets)
+            .filter(([, data]) => data.quickLaunch)
+            .map(([scenarioId, data]) => ({
+                id: `note-preset-${scenarioId}`,
+                label: data.quickLaunch.label,
+                hint: { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada' },
+                keywords: `nota atalho atajo preset ${data.quickLaunch.keywords || ''}`,
+                icon: ICONS.bolt,
+                isPreset: true,
+                run: () => actions.toggleNotes.openWithPreset(scenarioId)
+            }))
+        : [];
+
     // label fica em português mesmo pra ES: são os nomes dos módulos, e a
     // maioria já é em inglês (Case Notes, Call Script...) ou é curta o
     // bastante (Avisos, Configurações) pra não valer duplicar; só o hint
@@ -131,6 +157,7 @@ export function initCommandPalette(actions) {
         { id: 'timezone', label: 'Fusos Horários', hint: { pt: 'Monitoramento e planejador de chamada', es: 'Monitoreo y planificador de llamada' }, keywords: 'fuso horario timezone', icon: ICONS.timezone, run: actions.toggleTimezone },
         { id: 'broadcast', label: 'Avisos', hint: { pt: 'Comunicados e disponibilidade BAU', es: 'Comunicados y disponibilidad BAU' }, keywords: 'avisos broadcast comunicados disponibilidade disponibilidad', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
         { id: 'configs', label: 'Configurações', hint: { pt: 'Perfil, som e preferências', es: 'Perfil, sonido y preferencias' }, keywords: 'configuracoes configuracion config preferencias perfil som sonido', icon: ICONS.configs, run: actions.toggleConfigs },
+        ...notePresets,
     ]
         .filter(a => typeof a.run === 'function')
         .map(a => ({ ...a, _haystack: normalize(`${a.label} ${a.hint.pt} ${a.hint.es} ${a.keywords}`) }));
@@ -175,7 +202,7 @@ export function initCommandPalette(actions) {
             const item = document.createElement('div');
             item.className = 'cw-palette-item' + (idx === selectedIndex ? ' selected' : '');
             item.innerHTML = `
-                <span class="cw-palette-item-icon">${action.icon}</span>
+                <span class="cw-palette-item-icon${action.isPreset ? ' cw-palette-item-icon--preset' : ''}">${action.icon}</span>
                 <span class="cw-palette-item-text">
                     <span class="cw-palette-item-label">${action.label}</span>
                     <span class="cw-palette-item-hint">${action.hint[getLanguage()] || action.hint.pt}</span>

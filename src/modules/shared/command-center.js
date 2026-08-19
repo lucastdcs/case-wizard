@@ -52,6 +52,13 @@ const COLORS = {
   gray: "#9AA0A6", // [NOVO] Cor para Configurações
 };
 
+// Fonte única pra esses dois valores: usados tanto no CSS (.cw-pill.collapsed,
+// .cw-pill.processing-center) quanto na morfação FLIP em px de
+// triggerProcessingAnimation() - se divergissem, a animação de
+// entrada/saída ia medir um alvo diferente do que o CSS realmente aplica.
+const CIRCLE_SIZE = 50;      // .cw-pill.collapsed width/height
+const PROCESSING_RADIUS = 26; // .cw-pill.processing-center border-radius
+
 // --- FUNÇÕES EXPORTADAS ---
 
 export function updateNotesBadge(hasDrafts) {
@@ -191,8 +198,8 @@ export function initCommandCenter(actions, splashDone) {
 
             /* --- ESTADO COLAPSADO (FECHANDO) --- */
             .cw-pill.collapsed {
-                width: 50px !important;
-                height: 50px !important;
+                width: ${CIRCLE_SIZE}px !important;
+                height: ${CIRCLE_SIZE}px !important;
                 padding: 0 !important;
                 gap: 0 !important;
                 border-radius: 50% !important;
@@ -475,40 +482,69 @@ export function initCommandCenter(actions, splashDone) {
                PROCESSING CENTER
                ============================================================ */
             .cw-pill.processing-center {
+                /* Posição/tamanho-alvo pra quando prefers-reduced-motion pula a
+                   morfação FLIP em JS (ver triggerProcessingAnimation) - com
+                   motion normal, esses valores só entram em cena DEPOIS que a
+                   pílula já mediu seu ponto de partida real e a inline style
+                   (também !important, então vence esses aqui) assume a animação. */
                 top: 50% !important; left: 50% !important;
                 transform: translate(-50%, -50%) !important;
-                width: 340px !important; 
-                height: auto !important; 
-                min-height: 160px !important; 
-                border-radius: 24px !important; 
-                background: #202124 !important; 
-                padding: 32px 24px !important; 
-                box-shadow: 0 24px 64px rgba(0,0,0,0.6) !important; 
-                display: flex !important; flex-direction: column !important; 
+                /* Card bem mais discreto do que antes (era 340px/160px min-height,
+                   um "quadrado gigante" real) - só o suficiente pras 3 bolinhas
+                   e uma linha ou duas de dica caberem confortavelmente. */
+                width: 220px !important;
+                height: auto !important;
+                min-height: 128px !important;
+                border-radius: ${PROCESSING_RADIUS}px !important;
+                /* Liquid Glass, igual ao resto da pill (COLORS.glassBg + blur) -
+                   antes era um preenchimento opaco (#202124) sem backdrop-filter,
+                   uma "laje preta" destoando do resto do sistema visual. */
+                background: rgba(32, 33, 36, 0.82) !important;
+                backdrop-filter: blur(24px) saturate(160%) !important;
+                -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+                border: 1px solid ${COLORS.glassBorder} !important;
+                padding: 24px 20px !important;
+                /* Sombra na mesma família da pill normal (0 12px 32px), só um
+                   pouco mais funda por ainda flutuar sobre o backdrop - não
+                   mais a sombra "modal dramático" de antes. */
+                box-shadow: 0 16px 40px rgba(0,0,0,0.35) !important;
+                display: flex !important; flex-direction: column !important;
                 justify-content: center !important; align-items: center !important;
                 gap: 0 !important;
                 z-index: 2147483647 !important;
             }
-            .cw-pill.processing-center.collapsed { background: #202124 !important; overflow: visible !important; }
+            .cw-pill.processing-center.collapsed { background: rgba(32, 33, 36, 0.82) !important; overflow: visible !important; }
             .cw-pill.processing-center .cw-main-logo { display: none !important; }
             .cw-pill.processing-center > *:not(.cw-center-stage) { display: none !important; }
-            
-            .cw-center-stage { 
-                display: flex; flex-direction: column; align-items: center; 
+
+            .cw-center-stage {
+                display: flex; flex-direction: column; align-items: center;
                 gap: 20px;
-                width: 100%; opacity: 0; 
+                width: 100%; opacity: 0;
                 animation: fadeIn 0.3s ease forwards 0.1s;
-                position: relative; 
+                position: relative;
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-center-stage { animation: fadeIn 0.3s ease forwards; }
             }
-            
-            .cw-center-dots { display: flex; gap: 8px; margin-bottom: 4px; }
-            .cw-center-dots span { width: 8px; height: 8px; border-radius: 50%; animation: googleBounce 1.4s infinite ease-in-out both; }
-            .cw-center-dots span:nth-child(1) { background-color: ${COLORS.blue}; animation-delay: -0.32s; }
-            .cw-center-dots span:nth-child(2) { background-color: ${COLORS.red}; animation-delay: -0.16s; }
+
+            .cw-center-dots { display: flex; gap: 10px; margin-bottom: 4px; }
+            /* Coreografia própria (era um "googleBounce" genérico, ease-in-out puro):
+               usa a curva spring já canônica do audit de motion (--cw-ease-spring)
+               pra um overshoot vivo, e soma um scale pulse ao bounce vertical. */
+            .cw-center-dots span {
+                width: 8px; height: 8px; border-radius: 50%;
+                animation: cw-dot-dance 1.1s var(--cw-ease-spring) infinite both;
+                will-change: transform;
+            }
+            .cw-center-dots span:nth-child(1) { background-color: ${COLORS.blue}; animation-delay: -0.22s; }
+            .cw-center-dots span:nth-child(2) { background-color: ${COLORS.red}; animation-delay: -0.11s; }
             .cw-center-dots span:nth-child(3) { background-color: ${COLORS.green}; }
+            @media (prefers-reduced-motion: reduce) {
+                /* Antes não tinha fallback nenhum - as bolinhas ficavam
+                   quicando pra sempre mesmo com reduced-motion ativado. */
+                .cw-center-dots span { animation: cw-dot-fade 1.6s ease-in-out infinite; }
+            }
             
             .cw-center-text { 
                 font-family: 'Google Sans', Roboto, sans-serif;
@@ -594,11 +630,23 @@ export function initCommandCenter(actions, splashDone) {
             .cw-pill.streak-tier-3 #cw-streak-count { color: #F9AB00; }
             .cw-pill.streak-tier-4 #cw-streak-count { color: #EA4335; }
 
-            .cw-center-success { display: none; color: ${COLORS.green}; margin-bottom: 10px; }
-            .cw-center-success svg { width: 48px; height: 48px; }
-            .cw-center-success.show { display: block; animation: popIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+            /* Antes era display:none/block + animação de entrada de mão única
+               (popIn) - só sabia aparecer, nunca sumir suavemente. Agora é
+               opacity/transform transicionáveis nos dois sentidos: JS liga
+               display:flex uma vez (ver triggerProcessingAnimation) e depois só
+               alterna a classe .show pra entrar OU sair - o check precisa
+               conseguir desvanecer ANTES da pílula começar a encolher de volta,
+               senão ele fica visível "voando" junto com o encolhimento. */
+            .cw-center-success {
+                display: none;
+                color: ${COLORS.green}; margin-bottom: 8px;
+                opacity: 0; transform: scale(0.5);
+                transition: opacity 0.22s var(--cw-ease-standard), transform 0.22s var(--cw-ease-spring);
+            }
+            .cw-center-success svg { width: 40px; height: 40px; display: block; }
+            .cw-center-success.show { opacity: 1; transform: scale(1); }
             @media (prefers-reduced-motion: reduce) {
-                .cw-center-success.show { animation: fadeIn 0.3s ease forwards; }
+                .cw-center-success { transition: opacity 0.15s ease !important; transform: none !important; }
             }
             
             .cw-abort-btn { 
@@ -619,7 +667,8 @@ export function initCommandCenter(actions, splashDone) {
 
             @keyframes fadeIn { to { opacity: 1; } }
             @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-            @keyframes googleBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+            @keyframes cw-dot-dance { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-10px) scale(1.2); } }
+            @keyframes cw-dot-fade { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
             @keyframes textSlideUp { to { opacity: 1; transform: translateY(0); } }
         `;
     document.head.appendChild(style);
@@ -959,17 +1008,23 @@ export function initCommandCenter(actions, splashDone) {
 }
 
 // --- FUNÇÃO DE PROCESSAMENTO COM CANCELAMENTO ---
+// A transformação pill <-> card usa FLIP (mede a posição/tamanho reais em
+// px antes de trocar a classe, prima esses valores como ponto de partida via
+// inline style, e só então anima pro alvo) - a mesma técnica que
+// openPill()/collapsePill()/o snap do drag já usam no arquivo pra "height" e
+// "left/top". Sem isso, bottom/right -> top/left simplesmente não interpolam
+// (são propriedades diferentes) e o card "teleporta" pronto pro centro em vez
+// de crescer até lá - era a origem do salto abrupto que motivou essa revisão.
 export function triggerProcessingAnimation() {
   const pill = document.querySelector('.cw-pill');
   const overlay = document.querySelector('.cw-focus-backdrop');
   if (!pill) return () => {};
 
-  pill.classList.remove('collapsed');
   window._CW_ABORT_PROCESS = false;
 
   const stage = document.createElement('div');
   stage.className = 'cw-center-stage';
-  
+
   // HTML do Stage (Dots + Texto + Sucesso)
   stage.innerHTML = `
       <div class="cw-center-dots"><span></span><span></span><span></span></div>
@@ -984,20 +1039,106 @@ export function triggerProcessingAnimation() {
   abortBtn.onclick = (e) => {
     e.stopPropagation();
     window._CW_ABORT_PROCESS = true;
+    SoundManager.stopThinking();
     showToast(cct('cancelledToast'), { duration: 3000 });
-    stage.remove();
-    pill.classList.remove('processing-center');
-    pill.classList.remove('success');
-    pill.classList.add('collapsed');
-    if (overlay) overlay.classList.remove('active');
+    morphBack();
   };
-  
+
   stage.appendChild(abortBtn);
   pill.appendChild(stage);
 
-  const startTime = Date.now();
+  const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const MORPH_PROPS = ['transition', 'top', 'left', 'width', 'height', 'border-radius', 'transform'];
+  const clearMorphOverrides = () => MORPH_PROPS.forEach((p) => pill.style.removeProperty(p));
+
+  // --- MORFAÇÃO DE ENTRADA ---
+  const startRect = pill.getBoundingClientRect();
+  const startRadius = parseFloat(getComputedStyle(pill).borderRadius) || CIRCLE_SIZE / 2;
+
+  pill.classList.remove('collapsed');
   pill.classList.add('processing-center');
+
+  if (!prefersReducedMotion) {
+    // Com a classe já aplicada, mede o tamanho/posição REAIS que o card vai
+    // ocupar (calculado pelo layout, não um número chutado) antes de travar
+    // o frame de partida - assim a animação sempre mira no valor certo,
+    // mesmo se o conteúdo (dica aleatória) mudar a altura do card.
+    const targetRect = pill.getBoundingClientRect();
+    const targetTop = (window.innerHeight - targetRect.height) / 2;
+    const targetLeft = (window.innerWidth - targetRect.width) / 2;
+
+    pill.style.setProperty('transition', 'none', 'important');
+    pill.style.setProperty('top', `${startRect.top}px`, 'important');
+    pill.style.setProperty('left', `${startRect.left}px`, 'important');
+    pill.style.setProperty('width', `${startRect.width}px`, 'important');
+    pill.style.setProperty('height', `${startRect.height}px`, 'important');
+    pill.style.setProperty('border-radius', `${startRadius}px`, 'important');
+    pill.style.setProperty('transform', 'none', 'important');
+
+    void pill.offsetWidth; // reflow - fecha o frame de partida antes de religar a transição
+
+    pill.style.setProperty('transition',
+      `top 0.42s var(--cw-ease-decelerate), left 0.42s var(--cw-ease-decelerate), ` +
+      `width 0.42s var(--cw-ease-decelerate), height 0.42s var(--cw-ease-decelerate), ` +
+      `border-radius 0.42s var(--cw-ease-decelerate)`,
+      'important');
+    pill.style.setProperty('top', `${targetTop}px`, 'important');
+    pill.style.setProperty('left', `${targetLeft}px`, 'important');
+    pill.style.setProperty('width', `${targetRect.width}px`, 'important');
+    pill.style.setProperty('height', `${targetRect.height}px`, 'important');
+    pill.style.setProperty('border-radius', `${PROCESSING_RADIUS}px`, 'important');
+  }
+
   if (overlay) overlay.classList.add('active');
+  SoundManager.startThinking();
+
+  const startTime = Date.now();
+
+  // --- MORFAÇÃO DE SAÍDA (card -> bolinha) ---
+  function morphBack() {
+    if (!pill.contains(stage)) return;
+    stage.remove();
+
+    if (prefersReducedMotion) {
+      pill.classList.remove('processing-center');
+      pill.classList.add('collapsed');
+      clearMorphOverrides();
+      if (overlay) overlay.classList.remove('active');
+      return;
+    }
+
+    // Alvo real de .cw-pill (bottom:10%; right:24px) + .cw-pill.collapsed
+    // (círculo de CIRCLE_SIZE), calculado em px - mesma lógica de
+    // targetTop/targetLeft na entrada, só que mirando de volta no canto em
+    // vez do centro da tela.
+    const finalTop = window.innerHeight - (window.innerHeight * 0.10) - CIRCLE_SIZE;
+    const finalLeft = window.innerWidth - 24 - CIRCLE_SIZE;
+
+    pill.style.setProperty('transition',
+      `top 0.36s var(--cw-ease-accelerate), left 0.36s var(--cw-ease-accelerate), ` +
+      `width 0.36s var(--cw-ease-accelerate), height 0.36s var(--cw-ease-accelerate), ` +
+      `border-radius 0.36s var(--cw-ease-accelerate)`,
+      'important');
+    pill.style.setProperty('top', `${finalTop}px`, 'important');
+    pill.style.setProperty('left', `${finalLeft}px`, 'important');
+    pill.style.setProperty('width', `${CIRCLE_SIZE}px`, 'important');
+    pill.style.setProperty('height', `${CIRCLE_SIZE}px`, 'important');
+    pill.style.setProperty('border-radius', `${CIRCLE_SIZE / 2}px`, 'important');
+
+    // processing-center continua ativo durante o encolhimento (esconde os
+    // ícones) - só sai no fim, junto da limpeza. Sem esse cuidado, o
+    // intervalo entre "remove processing-center" e "add collapsed" deixava a
+    // pílula reaparecer inteira (todos os ícones, forma expandida, canto
+    // inferior-direito) por um instante antes de finalmente encolher -
+    // exatamente o "flash" abrupto que devia sumir.
+    pill.classList.add('collapsed');
+
+    setTimeout(() => {
+      pill.classList.remove('processing-center');
+      clearMorphOverrides();
+      if (overlay) overlay.classList.remove('active');
+    }, 380);
+  }
 
   return function finish() {
     if (window._CW_ABORT_PROCESS || !pill.contains(stage)) return;
@@ -1006,7 +1147,8 @@ export function triggerProcessingAnimation() {
 
     setTimeout(() => {
       if (window._CW_ABORT_PROCESS || !pill.contains(stage)) return;
-      
+      SoundManager.stopThinking();
+
       const dots = stage.querySelector('.cw-center-dots');
       const text = stage.querySelector('.cw-center-text');
       const success = stage.querySelector('.cw-center-success');
@@ -1015,18 +1157,23 @@ export function triggerProcessingAnimation() {
       if (dots) dots.style.display = 'none';
       if (text) text.style.display = 'none';
       if (abort) abort.style.display = 'none';
-      if (success) success.classList.add('show');
 
-      pill.classList.add('success');
+      if (success) {
+        success.style.display = 'block';
+        void success.offsetWidth; // reflow - sem isso o navegador funde o display:none -> opacity:1 num passo só e a transição não roda
+        success.classList.add('show');
+      }
+
+      // Segura o check visível por um instante e SÓ DEPOIS manda ele
+      // desvanecer (remove .show, que agora anima opacity/transform de
+      // verdade) - a pílula só começa a encolher de volta depois que esse
+      // fade termina. Antes o check ainda estava com display:block quando a
+      // pílula começava a encolher, e ficava "grudado" vazando pra fora da
+      // forma já pequena.
       setTimeout(() => {
-        pill.classList.remove('processing-center');
-        setTimeout(() => {
-          stage.remove();
-          pill.classList.remove('success');
-          pill.classList.add('collapsed');
-          if (overlay) overlay.classList.remove('active');
-        }, 400);
-      }, 1000);
+        if (success) success.classList.remove('show');
+        setTimeout(morphBack, 260);
+      }, 900);
     }, remaining);
   };
 }

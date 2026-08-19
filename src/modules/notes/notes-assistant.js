@@ -13,7 +13,7 @@ import { createDraftsManager } from "./drafts/draft-ui.js";
 import { createSplitTransferComponent } from "./components/split-transfer.js";
 import { DraftService } from "./drafts/draft-service.js";
 import { SoundManager } from "../shared/sound-manager.js";
-import { enableFilledCheck, lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
+import { enableFilledCheck, lockBodyScroll, unlockBodyScroll, markPendingField } from "../shared/dom-utils.js";
 import { getPageData } from "../shared/page-data.js";
 import { getLanguage, onLanguageChange } from "../shared/i18n.js";
 import {
@@ -924,6 +924,61 @@ export function initCaseNotesAssistant() {
         notesState.isDirty = false;
     }
 
+    // Quick Launch (Ctrl+K -> preset de nota): abre o Case Notes já no
+    // status/substatus certo e com o cenário mais usado aplicado, pra quem
+    // hoje copia e cola essas notas em vez de passar pelo fluxo normal. Não
+    // reimplementa nada - só encadeia as mesmas peças que o clique manual já
+    // usa (troca de select, onSubStatusChange, clique no chip do cenário),
+    // então herda de graça qualquer ajuste futuro nelas.
+    async function openWithPreset(scenarioId) {
+        const scenario = scenarioSnippets[scenarioId];
+        const preset = scenario && scenario.quickLaunch;
+        if (!preset) return;
+
+        if (notesState.isDirty) {
+            const confirmed = await confirmDialog("Isso vai substituir o rascunho atual da nota. Deseja continuar?");
+            if (!confirmed) return;
+        }
+
+        const wasVisible = notesState.visible;
+        if (!wasVisible) toggleVisibility();
+        resetModule();
+
+        // Se o popup ainda não estava aberto, dá tempo do voo do genie
+        // (~550ms, ver animations.js) terminar antes de mexer nos campos -
+        // trocar os selects no meio da animação de abertura ficava estranho.
+        if (!wasVisible) await wait(550);
+
+        const mainSelect = content.querySelector('#main-status-select');
+        const subSelect = content.querySelector('#sub-status-select');
+        mainSelect.value = preset.status;
+        notesState.setStatus(preset.status);
+        updateSubStatusOptions(preset.status, subSelect);
+
+        await wait(60);
+
+        subSelect.value = preset.subStatus;
+        notesState.setSubStatus(preset.subStatus);
+        onSubStatusChange(preset.subStatus);
+
+        await wait(160);
+
+        // Clique real no chip (não chama applyScenario direto): assim o
+        // cenário aparece visualmente selecionado, com o mesmo som de clique
+        // de sempre - igual a um agente teria feito na mão.
+        const chip = scenariosContainer.querySelector(`[data-id="${scenarioId}"]`);
+        if (chip) chip.click();
+
+        await wait(120);
+        SoundManager.playSuccess();
+
+        const pendingId = (preset.focusIds || []).find((id) => {
+            const el = document.getElementById(id);
+            return el && !el.value.trim();
+        });
+        if (pendingId) markPendingField(document.getElementById(pendingId));
+    }
+
     function t(key) {
         return translations[notesState.currentLang]?.[key] || translations['pt']?.[key] || key;
     }
@@ -1066,5 +1121,9 @@ export function initCaseNotesAssistant() {
 
     document.body.appendChild(popup);
 
+    // Pendurado na própria função (em vez de trocar o retorno por um objeto)
+    // pra não quebrar os callers existentes que chamam initCaseNotesAssistant()
+    // esperando só a função de toggle (app.js, command-center.js, command-palette.js).
+    toggleVisibility.openWithPreset = openWithPreset;
     return toggleVisibility;
 }

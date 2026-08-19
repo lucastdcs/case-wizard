@@ -206,6 +206,15 @@ function doGet(e) {
 //  FUNÇÕES AUXILIARES (HELPERS)
 // =========================================================
 
+// Regra de permissão (Overhead) compartilhada entre getUserProfileByLdap() e
+// getActiveTLs() - qualquer roleCategory que não seja Agent/Apprentice é
+// considerada liderança. Extraída pra um só lugar pra não divergir entre os
+// dois pontos que hoje decidem "quem é TL".
+function isOverheadRoleCategory(roleCategory) {
+  const catLower = String(roleCategory || "").toLowerCase();
+  return !(catLower.includes('agent') || catLower.includes('apprentice'));
+}
+
 // Busca o perfil (papel/segmento/permissão) de um LDAP na planilha "People".
 // Extraído do handler de 'get_user_profile' para poder ser reaproveitado
 // pela checagem de permissão (assertCallerIsOverhead).
@@ -236,8 +245,7 @@ function getUserProfileByLdap(ldap) {
         const segment = String(data[i][3] || "").trim();
 
         // Regra 1: Permissões (Overhead). Bloqueia APENAS Agent e Apprentice.
-        const catLower = roleCategory.toLowerCase();
-        const isOverhead = !(catLower.includes('agent') || catLower.includes('apprentice'));
+        const isOverhead = isOverheadRoleCategory(roleCategory);
 
         // Regra 2: Idiomas. Staff = PT. PT = PT. ES = ES.
         let lang = "PT-BR"; // Padrão
@@ -321,6 +329,27 @@ function getOrCreateSheet(ss, name) {
     }
   }
   return sheet;
+}
+
+// Garante que a planilha BAU_form_data tenha as 3 colunas de trilha de
+// auditoria (quem processou, quando, e qual decisão) além das 18 colunas
+// originais do formulário. Idempotente - chamada em todo write/read que
+// depende delas, pra planilhas antigas (já em produção) ganharem as colunas
+// sozinhas na primeira chamada, sem precisar de migração manual.
+const BAU_HISTORY_HEADERS = ["Processed_By", "Processed_At", "Processed_Action"];
+const BAU_HISTORY_FIRST_COL = 19;
+
+function ensureBAUHistoryColumns(sheet) {
+  const neededCols = BAU_HISTORY_FIRST_COL - 1 + BAU_HISTORY_HEADERS.length;
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < neededCols) {
+    sheet.insertColumnsAfter(currentMaxCols, neededCols - currentMaxCols);
+  }
+
+  const headerRange = sheet.getRange(1, BAU_HISTORY_FIRST_COL, 1, BAU_HISTORY_HEADERS.length);
+  const existing = headerRange.getValues()[0];
+  const missing = existing.some(v => !v);
+  if (missing) headerRange.setValues([BAU_HISTORY_HEADERS]);
 }
 
 function findRowIndexById(sheet, id) {
