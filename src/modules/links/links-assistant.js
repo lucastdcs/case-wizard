@@ -6,6 +6,7 @@ import { toggleGenieAnimation } from '../shared/animations.js';
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll, createEmptyState } from "../shared/dom-utils.js";
 import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import { DataService } from "../shared/data-service.js";
 
 // Descrição de cada link em espanhol, chaveada pelo texto em português.
 // Estão aqui as 60 descrições — inclusive as que ficam iguais nos dois
@@ -77,9 +78,14 @@ const LINK_DESC_ES = {
     'Lista de números': 'Lista de números',
     'Cursos': 'Cursos',
 };
-function linkDesc(desc) {
+// Aceita o objeto do link (não só a string) porque os itens vindos da Central
+// de Conteúdo carregam a tradução em `descEs`, editável na tela. O mapa
+// LINK_DESC_ES acima segue valendo para os links do fallback embutido.
+function linkDesc(link) {
+    const obj = (link && typeof link === 'object') ? link : { desc: link };
+    const desc = obj.desc || '';
     if (getLanguage() !== 'es') return desc;
-    return LINK_DESC_ES[desc] || desc;
+    return obj.descEs || LINK_DESC_ES[desc] || desc;
 }
 
 const LINKS_DICT = {
@@ -231,6 +237,65 @@ const LINKS_DB = {
     ]
   }
 };
+
+// --- HIDRATAÇÃO PELA CENTRAL DE CONTEÚDO ---
+// O LINKS_DB acima deixa de ser a fonte da verdade e passa a ser o fallback:
+// é o que aparece no primeiro load offline, quando ainda não há nem resposta da
+// API nem cache local. Assim que a Central responde, a lista publicada vence.
+//
+// Cada item publicado traz `key` = categoria e `value` = JSON com
+// { name, url, desc, desc_es } — o par PT/ES viaja junto do link que descreve,
+// em vez de num mapa paralelo (LINK_DESC_ES) que precisa ser editado à parte.
+function applyContentItems(items) {
+    if (!Array.isArray(items) || !items.length) return false;
+
+    const rebuilt = {};
+
+    for (const item of items) {
+        const cat = item.key;
+        if (!cat) continue;
+
+        let parsed;
+        try {
+            parsed = JSON.parse(item.value || '{}');
+        } catch (e) {
+            continue; // Item malformado não derruba os outros.
+        }
+        if (!parsed.name || !parsed.url) continue;
+
+        if (!rebuilt[cat]) {
+            rebuilt[cat] = { label: LINKS_DB[cat]?.label || cat, links: [] };
+        }
+        rebuilt[cat].links.push({
+            name: parsed.name,
+            url: parsed.url,
+            desc: parsed.desc || '',
+            descEs: parsed.desc_es || ''
+        });
+    }
+
+    if (!Object.keys(rebuilt).length) return false;
+
+    // Substitui o conteúdo preservando a identidade do objeto: o módulo inteiro
+    // já capturou a referência de LINKS_DB, então reatribuir a const quebraria.
+    for (const key of Object.keys(LINKS_DB)) delete LINKS_DB[key];
+    Object.assign(LINKS_DB, rebuilt);
+    return true;
+}
+
+async function hydrateLinksFromContentCentral(onReady) {
+    // Cache primeiro: a lista renderiza na hora com o que já veio da última vez,
+    // sem esperar a rede — e a resposta fresca corrige depois, se mudou.
+    const cached = DataService.getCachedContent('links');
+    if (applyContentItems(cached)) onReady?.();
+
+    try {
+        const items = await DataService.fetchContentModule('links');
+        if (applyContentItems(items)) onReady?.();
+    } catch (e) {
+        console.warn('Central de Conteúdo indisponível; usando links embutidos.', e);
+    }
+}
 
 const CATEGORY_ICONS = {
     tasks: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
@@ -671,7 +736,7 @@ export function initLinksAssistant() {
               // "resolución" achar o link no idioma que está na tela.
               const filtered = cat.links.filter(l =>
                   l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  linkDesc(l.desc).toLowerCase().includes(searchTerm.toLowerCase())
+                  linkDesc(l).toLowerCase().includes(searchTerm.toLowerCase())
               );
               results.push(...filtered.map(l => ({...l, _cat: key})));
           });
@@ -754,7 +819,7 @@ export function initLinksAssistant() {
 
       const desc = document.createElement("div");
       desc.className = "cw-links-card-desc";
-      desc.textContent = linkDesc(link.desc);
+      desc.textContent = linkDesc(link);
 
       meta.appendChild(title);
       meta.appendChild(desc);
@@ -808,6 +873,15 @@ export function initLinksAssistant() {
   document.body.appendChild(popup);
   renderSidebar();
   renderContent();
+
+  // Busca a lista publicada na Central de Conteúdo e repinta quando chegar.
+  // Não bloqueia a abertura: a tela já subiu com o fallback embutido, então o
+  // pior caso (API fora do ar) é continuar exatamente como era antes.
+  hydrateLinksFromContentCentral(() => {
+      renderSidebar();
+      renderContent();
+      updateSidebarVisuals();
+  });
 
   // Retraduz header/busca e refaz sidebar+conteúdo, que já são montados do
   // zero a cada render (inclusive o overlay de histórico, se estiver aberto).

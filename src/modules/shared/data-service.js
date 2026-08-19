@@ -15,6 +15,7 @@ const API_URL = isDevelopment
 
 const CACHE_KEY_BROADCAST = "cw_data_broadcast";
 const CACHE_KEY_TIPS = "cw_data_tips";
+const CACHE_KEY_CONTENT_PREFIX = "cw_content_";
 
 const FALLBACK_TIPS = ["Processando...", "Mantenha o foco!", "Aguarde..."];
 
@@ -83,6 +84,38 @@ export const DataService = {
     },
 
     getCachedBroadcasts: () => JSON.parse(localStorage.getItem(CACHE_KEY_BROADCAST) || "[]"),
+
+    // ==========================================
+    // 1.5 CENTRAL DE CONTEÚDO (conteúdo gerenciável)
+    // ==========================================
+    // Busca o conteúdo publicado de um módulo (links, call_script, ...).
+    // O backend só devolve itens 'live' - não existe parâmetro de status aqui,
+    // então nem por engano o app do agente enxerga algo pendente de aprovação.
+    //
+    // Mesmo contrato dos tips: cacheia no localStorage e devolve o cache quando
+    // a API cai. Quem chama continua responsável por ter um fallback embutido
+    // no código para o primeiro load offline, quando não há cache nenhum.
+    fetchContentModule: async (module) => {
+        const cacheKey = `${CACHE_KEY_CONTENT_PREFIX}${module}`;
+        try {
+            const data = await jsonpFetch('content_public', { module });
+            if (data?.status === 'success' && Array.isArray(data.items)) {
+                localStorage.setItem(cacheKey, JSON.stringify(data.items));
+                return data.items;
+            }
+        } catch (err) {
+            console.warn(`Conteúdo '${module}' offline`, err);
+        }
+        return DataService.getCachedContent(module);
+    },
+
+    getCachedContent: (module) => {
+        try {
+            return JSON.parse(localStorage.getItem(`${CACHE_KEY_CONTENT_PREFIX}${module}`) || "null");
+        } catch (e) {
+            return null;
+        }
+    },
     
     getRandomTip: () => {
         let tips = FALLBACK_TIPS;

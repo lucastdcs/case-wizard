@@ -6,7 +6,9 @@
   "scripts": {
     "build": "esbuild src/app.js --bundle --minify --outfile=dist/bundle.js",
     "dev": "esbuild src/app.js --bundle --outfile=dist/bundle-dev.js",
-    "portfolio": "python3 generate-portfolio.py"
+    "portfolio": "python3 generate-portfolio.py",
+    "test:content": "node scripts/test-content-api.js",
+    "seed:links": "node scripts/generate-links-seed.mjs"
   },
   "dependencies": {
     "esbuild": "^0.27.4",

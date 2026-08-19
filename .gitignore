@@ -3,6 +3,10 @@ dist/
 .idx/
 test-results/
 
+# Payload de semeadura da Central de Conteúdo: derivado do próprio código
+# por `npm run seed:links`, não é fonte.
+links-seed.json
+
 # OS
 .DS_Store
 Thumbs.db
