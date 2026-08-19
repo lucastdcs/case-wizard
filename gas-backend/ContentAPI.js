@@ -156,8 +156,13 @@ function contentNow_() {
   return new Date().toISOString();
 }
 
+// Utilities.getUuid() em vez de timestamp + aleatório: a semeadura cria dezenas
+// de linhas dentro do mesmo milissegundo, e sortear 60 números em 1000 valores
+// colide com folga (~5 repetidos, medido no teste). ID repetido é grave aqui
+// porque findContentRow_() devolve a primeira linha que casa - editar um item
+// acabaria editando outro.
 function newContentId_(prefix) {
-  return prefix + "_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000);
+  return prefix + "_" + Utilities.getUuid();
 }
 
 // =========================================================

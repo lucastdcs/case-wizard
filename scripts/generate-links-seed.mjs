@@ -8,19 +8,20 @@
 // utilitários que tocam `document` no topo, e não roda fora do navegador. Extrair
 // só os dois literais de dados evita subir um DOM falso só pra isso.
 //
-// A saída já está versionada em gas-backend/seeds/links-seed.json, então o
-// caminho normal é abrir aquele arquivo (inclusive pelo GitHub, de qualquer
-// máquina) e copiar o conteúdo. Rode este script apenas para regerar o arquivo
-// depois de mexer no LINKS_DB:
+// Escreve dois arquivos, ambos versionados:
+//   - gas-backend/seeds/links-seed.json  (para inspecionar o conteúdo)
+//   - gas-backend/ContentSeed_Links.js   (o que realmente roda)
 //
-//   npm run seed:links > gas-backend/seeds/links-seed.json
+// Não é preciso copiar nada à mão: o .gs sobe junto com o resto do backend no
+// deploy, e a semeadura é feita escolhendo a função `seedLinksNow` no editor do
+// Apps Script e clicando em Executar. O botão Run só aceita funções sem
+// argumentos, e é por isso que existe esse wrapper em vez de chamar
+// seedContentModule(payload) direto.
 //
-// Depois: no editor do Apps Script, rode uma única vez
-//   seedContentModule(<conteúdo do arquivo>)
-// A função ignora chamadas repetidas se o módulo já tiver itens no ar, então
-// não há risco de duplicar.
+// Rode este script apenas para regerar os arquivos depois de mexer no LINKS_DB:
+//   npm run seed:links
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -87,10 +88,41 @@ for (const [category, group] of Object.entries(LINKS_DB)) {
 }
 
 const missingEs = items.filter(i => !JSON.parse(i.value).desc_es).length;
+const payload = { module: 'links', items };
 
-process.stderr.write(
-    `${items.length} links em ${Object.keys(LINKS_DB).length} categorias` +
-    (missingEs ? ` · ${missingEs} sem tradução ES\n` : '\n')
+// 1) JSON, para inspecionar o conteúdo pelo GitHub sem precisar de checkout.
+writeFileSync(
+    resolve(here, '../gas-backend/seeds/links-seed.json'),
+    JSON.stringify(payload, null, 2) + '\n'
 );
 
-process.stdout.write(JSON.stringify({ module: 'links', items }, null, 2));
+// 2) Arquivo .gs com uma função SEM ARGUMENTOS. É o que torna a semeadura
+// executável de verdade: o botão Run do editor do Apps Script só lista e roda
+// funções sem parâmetros, então não há como passar o JSON na mão por lá.
+const gasFile = `// ARQUIVO GERADO - não edite à mão.
+// Origem: npm run seed:links (lê o LINKS_DB de src/modules/links/links-assistant.js)
+//
+// Semeia o módulo "links" da Central de Conteúdo com a lista que hoje está
+// embutida no bundle do agente. É migração de conteúdo que já está em produção,
+// não mudança nova - por isso publica direto, sem passar pela fila de revisão.
+//
+// COMO RODAR: no editor do Apps Script, escolha "seedLinksNow" no seletor de
+// função e clique em Executar. Roda uma vez só; chamadas seguintes são
+// ignoradas se o módulo já tiver itens no ar, então não há risco de duplicar.
+
+const CONTENT_SEED_LINKS = ${JSON.stringify(payload, null, 2)};
+
+function seedLinksNow() {
+  const result = seedContentModule(CONTENT_SEED_LINKS);
+  Logger.log(result);
+  return result;
+}
+`;
+
+writeFileSync(resolve(here, '../gas-backend/ContentSeed_Links.js'), gasFile);
+
+process.stdout.write(
+    `${items.length} links em ${Object.keys(LINKS_DB).length} categorias` +
+    (missingEs ? ` · ${missingEs} sem tradução ES` : '') + '\n' +
+    'Gerados: gas-backend/seeds/links-seed.json e gas-backend/ContentSeed_Links.js\n'
+);

@@ -53,18 +53,26 @@ const SS = new FakeSpreadsheet();
 const SENT_MAIL = [];
 const LOGGED = [];
 
+const LOGGER = [];
+
 const sandbox = {
   SpreadsheetApp: { getActiveSpreadsheet: () => SS },
   Session: { getActiveUser: () => ({ getEmail: () => CURRENT_USER }) },
   MailApp: { sendEmail: (o) => SENT_MAIL.push(o) },
+  Logger: { log: (m) => LOGGER.push(m) },
+  Utilities: { getUuid: () => require('node:crypto').randomUUID() },
   handleLog: (p) => LOGGED.push(p),
   console,
 };
 
-const code = fs.readFileSync(SRC, 'utf8');
 const vm = require('node:vm');
 const ctx = vm.createContext(sandbox);
-vm.runInContext(code, ctx);
+vm.runInContext(fs.readFileSync(SRC, 'utf8'), ctx);
+
+// O arquivo de semeadura entra no mesmo escopo global, como no Apps Script -
+// é assim que seedLinksNow() enxerga seedContentModule() sem nenhum import.
+const SEED_SRC = path.join(__dirname, '..', 'gas-backend', 'ContentSeed_Links.js');
+vm.runInContext(fs.readFileSync(SEED_SRC, 'utf8'), ctx);
 
 const api = sandbox;
 
@@ -307,6 +315,45 @@ console.log('\n--- Semeadura ---');
 check('seed não roda duas vezes no mesmo módulo', () => {
   const r = api.seedContentModule(JSON.stringify({ module: 'links', items: [] }));
   eq(r.status, 'skipped', 'módulo já tem itens no ar:');
+});
+
+// A semeadura de verdade precisa de uma planilha limpa, então roda num
+// ambiente próprio. Vale o trabalho: é o caminho que só é exercitado uma vez
+// na vida, em produção, e onde um erro custa caro pra desfazer.
+check('seedLinksNow() popula o módulo numa planilha zerada', () => {
+  const freshSS = new FakeSpreadsheet();
+  const freshCtx = vm.createContext({
+    SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    MailApp: { sendEmail: () => { } },
+    Logger: { log: () => { } },
+    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    handleLog: () => { },
+    console,
+  });
+
+  vm.runInContext(fs.readFileSync(SRC, 'utf8'), freshCtx);
+  vm.runInContext(fs.readFileSync(SEED_SRC, 'utf8'), freshCtx);
+
+  // Exatamente o que o botão Executar do editor faz: chama sem argumentos.
+  const res = freshCtx.seedLinksNow();
+  eq(res.status, 'success');
+  if (res.seeded < 50) throw new Error('semeou só ' + res.seeded + ' itens');
+
+  const live = freshCtx.listContentItems('links');
+  eq(live.length, res.seeded, 'tudo que foi semeado está no ar:');
+
+  // O que o agente realmente recebe depois da semeadura.
+  const pub = freshCtx.handleContentPublicRead({ module: 'links' });
+  eq(pub.items.length, res.seeded);
+
+  const first = JSON.parse(pub.items[0].value);
+  if (!first.name || !first.url) throw new Error('item semeado sem name/url');
+
+  // Cada item precisa de linhagem própria, senão um rollback futuro
+  // arrastaria a categoria inteira junto.
+  const lineages = new Set(live.map(i => i.lineage));
+  eq(lineages.size, live.length, 'linhagens únicas por item:');
 });
 
 check('validação de módulo desconhecido', () => {
