@@ -129,7 +129,7 @@ check('ADMIN concede acesso a um QA', () => {
     const s = api.getContentSession();
     eq(s.role, 'QA');
     eq(s.canApprove, false);
-    eq(s.proposableModules, ['call_script', 'case_note_snippet']);
+    eq(s.proposableModules, ['call_script', 'note_template']);
   });
 });
 
@@ -651,79 +651,141 @@ check('seedEmailsNow() popula os modelos numa planilha zerada', () => {
   });
 });
 
-console.log('\n--- Case Notes (trechos por campo) ---');
+console.log('\n--- Modelos de nota (nota inteira) ---');
 
-check('QA propõe trecho de nota (está no escopo do papel)', () => {
+const tplValue = (fields, extra) => JSON.stringify(Object.assign({ fields: fields }, extra || {}));
+
+check('QA propõe modelo de nota (está no escopo do papel)', () => {
   as('quality1', () => {
     const r = api.saveContentDraft({
-      module: 'case_note_snippet',
-      key: 'ALL',
-      field: 'RESULTADO',
-      lang: 'PT',
-      label: 'Tag validada',
-      value: 'Tag validada no Tag Assistant, disparando corretamente.'
+      module: 'note_template', key: 'NI_Awaiting_Inputs', field: 'all', lang: 'PT',
+      label: 'Sem acesso ao CMS',
+      value: tplValue({ 'field-REASON_COMMENTS': 'Aguardando acesso.' })
     });
     if (!r.draftId) throw new Error('rascunho não criado');
   });
 });
 
-check('WFM NÃO propõe trecho de nota', () => {
+check('WFM NÃO propõe modelo de nota', () => {
   api.saveContentAccess('wfm1', 'WFM', true);
   as('wfm1', () => {
     throws(() => api.saveContentDraft({
-      module: 'case_note_snippet', key: 'ALL', field: 'RESULTADO',
-      lang: 'PT', label: 'X', value: 'Y'
+      module: 'note_template', key: 'NI_Awaiting_Inputs', field: 'all', lang: 'PT',
+      label: 'X', value: tplValue({ 'field-REASON_COMMENTS': 'y' })
     }), /não edita o módulo/);
   });
 });
 
-check('campo fora do catálogo é recusado pelo servidor', () => {
-  // A tela usa select, mas a regra tem que valer mesmo se alguém chamar a API
-  // direto - senão o trecho aponta pra um campo que a nota não tem e nunca
-  // aparece pra ninguém, sem erro nenhum.
+check('substatus fora do catálogo é recusado', () => {
   throws(() => api.saveContentDraft({
-    module: 'case_note_snippet', key: 'ALL', field: 'CAMPO_INVENTADO',
-    lang: 'PT', label: 'X', value: 'Y'
-  }), /Campo de nota desconhecido/);
+    module: 'note_template', key: 'SUBSTATUS_INVENTADO', field: 'all', lang: 'PT',
+    label: 'X', value: tplValue({ 'field-REASON_COMMENTS': 'y' })
+  }), /Substatus desconhecido/);
 });
 
-check('todo campo do catálogo é aceito', () => {
-  const cat = api.getNoteFieldCatalog();
-  if (!cat.fields.length) throw new Error('catálogo vazio');
-
-  cat.fields.forEach(f => {
-    const r = api.saveContentDraft({
-      module: 'case_note_snippet', key: 'ALL', field: f.key,
-      lang: 'ALL', label: 'trecho ' + f.key, value: 'texto'
-    });
-    if (!r.draftId) throw new Error('rejeitou campo válido: ' + f.key);
-  });
+check('campo que o substatus não tem é recusado', () => {
+  // Esta é a falha silenciosa que a migração expôs: hoje applyScenario()
+  // simplesmente ignora o texto, e ninguém percebe que ele nunca apareceu.
+  throws(() => api.saveContentDraft({
+    module: 'note_template', key: 'IN_Not_Reachable', field: 'all', lang: 'PT',
+    label: 'X',
+    value: tplValue({ 'field-REASON_COMMENTS': 'ok', 'field-SCREENSHOTS': 'nunca apareceria' })
+  }), /não existem em/);
 });
 
-check('trecho aprovado chega ao agente com campo e escopo', () => {
+check('campo obrigatório vazio é recusado', () => {
+  throws(() => api.saveContentDraft({
+    module: 'note_template', key: 'NI_Awaiting_Inputs', field: 'all', lang: 'PT',
+    label: 'X', value: tplValue({ 'field-CONTEXTO_CALL': 'só isso' })
+  }), /campos obrigatórios/);
+});
+
+check('modelo sem campo nenhum é recusado', () => {
+  throws(() => api.saveContentDraft({
+    module: 'note_template', key: 'NI_Awaiting_Inputs', field: 'all', lang: 'PT',
+    label: 'X', value: tplValue({})
+  }), /pelo menos um campo/);
+});
+
+check('checkNoteTemplate devolve o erro em vez de lançar', () => {
+  const bad = api.checkNoteTemplate(
+    tplValue({ 'field-REASON_COMMENTS': 'ok', 'field-SCREENSHOTS': 'x' }), 'IN_Not_Reachable');
+  eq(bad.ok, false);
+
+  const good = api.checkNoteTemplate(
+    tplValue({ 'field-REASON_COMMENTS': 'ok' }), 'IN_Not_Reachable');
+  eq(good.ok, true);
+});
+
+check('modelo aprovado chega ao agente com substatus, escopo e campos', () => {
   const d = api.saveContentDraft({
-    module: 'case_note_snippet', key: 'SO_Implementation_Only',
-    field: 'PASSOS_EXECUTADOS', lang: 'PT',
-    label: 'Instalação GTM', value: 'Instalado o container do GTM no site.'
+    module: 'note_template', key: 'IN_Not_Reachable', field: 'bau', lang: 'PT',
+    label: 'NRP BAU',
+    value: tplValue({ 'field-REASON_COMMENTS': 'Sem contato.', 'field-COMENTARIOS': 'Duas tentativas.' })
   });
   api.submitContentDraft(d.draftId);
   api.approveContentDraft(d.draftId, '');
 
-  const pub = api.handleContentPublicRead({ module: 'case_note_snippet' });
-  const mine = pub.items.filter(i => i.label === 'Instalação GTM');
-  eq(mine.length, 1);
-  eq(mine[0].field, 'PASSOS_EXECUTADOS');
-  eq(mine[0].key, 'SO_Implementation_Only');
-  eq(mine[0].lang, 'PT');
+  const pub = api.handleContentPublicRead({ module: 'note_template' });
+  const meu = pub.items.filter(i => i.label === 'NRP BAU');
+  eq(meu.length, 1);
+  eq(meu[0].key, 'IN_Not_Reachable');
+  eq(meu[0].field, 'bau');
+
+  const v = JSON.parse(meu[0].value);
+  eq(Object.keys(v.fields).sort(), ['field-COMENTARIOS', 'field-REASON_COMMENTS']);
 });
 
-check('o catálogo de campos vem do notes-data, não digitado à mão', () => {
+check('o catálogo traz os campos e obrigatórios de cada substatus', () => {
   const cat = api.getNoteFieldCatalog();
-  const fromSource = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'seeds', 'note-fields.json'), 'utf8')
-  );
-  eq(cat.fields.map(f => f.key).sort(), fromSource.fields.map(f => f.key).sort());
   if (!cat.substatus.length) throw new Error('catálogo sem substatus');
+
+  cat.substatus.forEach(s => {
+    if (!s.key || !s.name) throw new Error('substatus sem chave/nome');
+    if (!Array.isArray(s.fields)) throw new Error(s.key + ': sem lista de campos');
+    (s.requiredFields || []).forEach(r => {
+      if (!s.fields.includes(r)) throw new Error(s.key + ': obrigatório fora da lista de campos: ' + r);
+    });
+  });
+});
+
+check('seedNoteTemplatesNow() migra os cenários existentes', () => {
+  const freshSS = new FakeSpreadsheet();
+  const freshCtx = vm.createContext({
+    SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    MailApp: { sendEmail: () => { } },
+    Logger: { log: () => { } },
+    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    handleLog: () => { },
+    console,
+  });
+
+  vm.runInContext(fs.readFileSync(SRC, 'utf8'), freshCtx);
+  vm.runInContext(fs.readFileSync(FIELDS_SRC, 'utf8'), freshCtx);
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'ContentSeed_NoteTemplates.js'), 'utf8'),
+    freshCtx
+  );
+
+  const res = freshCtx.seedNoteTemplatesNow();
+  eq(res.status, 'success');
+  if (res.seeded < 40) throw new Error('semeou só ' + res.seeded);
+
+  const live = freshCtx.listContentItems('note_template');
+  eq(live.length, res.seeded);
+
+  // Todo modelo semeado tem que passar na própria validação - senão a
+  // migração estaria publicando algo que a tela recusaria depois.
+  live.forEach(i => {
+    const r = freshCtx.checkNoteTemplate(i.value, i.key);
+    if (!r.ok) throw new Error('modelo semeado inválido [' + i.label + '/' + i.key + ']: ' + r.error);
+  });
+
+  const escopos = new Set(live.map(i => i.field));
+  [...escopos].forEach(e => {
+    if (!['all', 'bau', 'lm'].includes(e)) throw new Error('escopo inesperado: ' + e);
+  });
 });
 
 check('ES ainda não tem a seção de Tag Support (lacuna conhecida)', () => {

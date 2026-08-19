@@ -1061,7 +1061,7 @@ export const scenarioSnippets = {
 // quebra o ES — só fica sem tradução até alguém preencher aqui.
 // Placeholders como {DIA} e os marcadores entre colchetes ([descrever...])
 // são preservados: o resto do código depende deles.
-const SCENARIO_ES = {
+export const SCENARIO_ES = {
     // --- SO_Implementation_Only ---
     'quickfill-gtm-install': {
         'field-REASON_COMMENTS': "Instalación de GTM finalizada.",

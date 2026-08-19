@@ -737,18 +737,27 @@
             <!-- TAB: Case Notes -->
             <section id="pane-notes" class="hidden">
                 <div class="note" id="nt-note">
-                    Trechos prontos por campo da nota. O agente escolhe o campo e insere o
-                    trecho — aqui você define o que fica disponível.
+                    Cada modelo é uma nota pronta: o agente clica e a nota nasce com o substatus
+                    certo e os campos já preenchidos.
                 </div>
                 <div class="row-between" style="margin-bottom:14px">
-                    <div>
-                        <label class="fld" style="margin-top:0" for="nt-field">Campo da nota</label>
-                        <select id="nt-field" onchange="renderNoteSnippets()" style="min-width:260px">
-                            <option value="">Todos os campos</option>
-                        </select>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+                        <div>
+                            <label class="fld" style="margin-top:0" for="nt-sub">Substatus</label>
+                            <select id="nt-sub" onchange="renderNoteTemplates()" style="min-width:260px">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="fld" style="margin-top:0" for="nt-lang">Idioma</label>
+                            <select id="nt-lang" onchange="renderNoteTemplates()">
+                                <option value="PT">PT</option>
+                                <option value="ES">ES</option>
+                            </select>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" id="nt-new-btn" onclick="openSnippetEditor(null)">
-                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Novo trecho
+                    <button class="btn btn-primary" id="nt-new-btn" onclick="openTemplateEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Nova nota
                     </button>
                 </div>
                 <div class="card" id="nt-list">
@@ -894,7 +903,7 @@
                 loadCallScript();
             }
             if (!document.getElementById('pane-notes').classList.contains('hidden')) {
-                loadNoteSnippets();
+                loadNoteTemplates();
             }
             if (!document.getElementById('pane-emails').classList.contains('hidden')) {
                 loadEmails();
@@ -920,7 +929,7 @@
                 b.classList.toggle('active', b.dataset.tab === tab);
             });
             if (tab === 'callscript') loadCallScript();
-            if (tab === 'notes') loadNoteSnippets();
+            if (tab === 'notes') loadNoteTemplates();
             if (tab === 'emails') loadEmails();
             if (tab === 'tips') loadTips();
             if (tab === 'approvals') loadApprovals();
@@ -966,7 +975,7 @@
                         document.getElementById('em-note').textContent =
                             'Seu papel (' + s.role + ') vê os modelos, mas não propõe alterações neste módulo.';
                     }
-                    if (!canPropose('case_note_snippet')) {
+                    if (!canPropose('note_template')) {
                         document.getElementById('nt-new-btn').classList.add('hidden');
                         document.getElementById('nt-note').textContent =
                             'Seu papel (' + s.role + ') vê os trechos, mas não propõe alterações neste módulo.';
@@ -1393,13 +1402,20 @@
                 });
         }
 
-        // --- Case Notes (trechos por campo) ---
+        // --- Case Notes (modelos de nota inteira) ---
         var NT_ITEMS = [];
         var NT_DRAFTS = [];
         var NOTE_FIELDS = [];
         var NOTE_SUBSTATUS = [];
 
-        function noteFieldLabel(key) {
+        function subDef(key) {
+            for (var i = 0; i < NOTE_SUBSTATUS.length; i++) {
+                if (NOTE_SUBSTATUS[i].key === key) return NOTE_SUBSTATUS[i];
+            }
+            return null;
+        }
+
+        function fieldLabel(key) {
             for (var i = 0; i < NOTE_FIELDS.length; i++) {
                 if (NOTE_FIELDS[i].key === key) return NOTE_FIELDS[i].labelPt;
             }
@@ -1407,17 +1423,17 @@
         }
 
         function loadNoteCatalog(done) {
-            if (NOTE_FIELDS.length) return done();
+            if (NOTE_SUBSTATUS.length) return done();
 
             google.script.run
                 .withSuccessHandler(function (cat) {
                     NOTE_FIELDS = (cat && cat.fields) || [];
                     NOTE_SUBSTATUS = (cat && cat.substatus) || [];
 
-                    var sel = document.getElementById('nt-field');
-                    sel.innerHTML = '<option value="">Todos os campos</option>' +
-                        NOTE_FIELDS.map(function (f) {
-                            return '<option value="' + esc(f.key) + '">' + esc(f.labelPt) + '</option>';
+                    var sel = document.getElementById('nt-sub');
+                    sel.innerHTML = '<option value="">Todos</option>' +
+                        NOTE_SUBSTATUS.map(function (s) {
+                            return '<option value="' + esc(s.key) + '">' + esc(s.name) + '</option>';
                         }).join('');
                     done();
                 })
@@ -1425,22 +1441,22 @@
                 .getNoteFieldCatalog();
         }
 
-        function loadNoteSnippets() {
+        function loadNoteTemplates() {
             loadNoteCatalog(function () {
                 google.script.run
                     .withSuccessHandler(function (items) {
                         NT_ITEMS = items || [];
                         google.script.run
-                            .withSuccessHandler(function (d) { NT_DRAFTS = d || []; renderNoteSnippets(); })
-                            .withFailureHandler(function () { NT_DRAFTS = []; renderNoteSnippets(); })
-                            .listContentDrafts('case_note_snippet');
+                            .withSuccessHandler(function (d) { NT_DRAFTS = d || []; renderNoteTemplates(); })
+                            .withFailureHandler(function () { NT_DRAFTS = []; renderNoteTemplates(); })
+                            .listContentDrafts('note_template');
                     })
                     .withFailureHandler(function (err) {
                         document.getElementById('nt-list').innerHTML =
                             '<div class="state"><span class="material-symbols-rounded">error</span>' +
-                            '<h2>Não foi possível carregar os trechos</h2><p>' + esc(err.message) + '</p></div>';
+                            '<h2>Não foi possível carregar os modelos</h2><p>' + esc(err.message) + '</p></div>';
                     })
-                    .listContentItems('case_note_snippet');
+                    .listContentItems('note_template');
             });
         }
 
@@ -1451,56 +1467,64 @@
             return null;
         }
 
-        function renderNoteSnippets() {
+        function parseTpl(raw) {
+            try { return JSON.parse(raw || '{}'); } catch (e) { return { fields: {} }; }
+        }
+
+        function renderNoteTemplates() {
             var host = document.getElementById('nt-list');
-            var filter = document.getElementById('nt-field').value;
-            var mine = filter ? NT_ITEMS.filter(function (i) { return i.field === filter; }) : NT_ITEMS;
+            var fSub = document.getElementById('nt-sub').value;
+            var lang = document.getElementById('nt-lang').value;
+
+            var mine = NT_ITEMS.filter(function (i) {
+                if (i.lang !== lang) return false;
+                if (fSub && i.key !== fSub) return false;
+                return true;
+            });
 
             if (!mine.length) {
                 host.innerHTML =
                     '<div class="state"><span class="material-symbols-rounded">edit_note</span>' +
-                    '<h2>' + (filter ? 'Nenhum trecho para ' + esc(noteFieldLabel(filter)) : 'Nenhum trecho cadastrado') + '</h2>' +
-                    '<p>A biblioteca começa vazia — nada foi migrado aqui, porque não existia. ' +
-                    'Crie o primeiro trecho e ele passa a aparecer para o agente no campo escolhido.</p></div>';
+                    '<h2>Nenhum modelo em ' + esc(lang) + (fSub ? ' para este substatus' : '') + '</h2>' +
+                    '<p>Enquanto isso o app segue com os cenários embutidos no código. ' +
+                    'Rode a semeadura (seedNoteTemplatesNow) para trazer os atuais.</p></div>';
                 return;
             }
 
-            // Agrupa por campo da nota: é assim que o agente encontra o trecho,
-            // então é assim que a lista fica legível para quem escreve.
-            var byField = {};
-            mine.forEach(function (it) { (byField[it.field] = byField[it.field] || []).push(it); });
+            var porSub = {};
+            mine.forEach(function (it) { (porSub[it.key] = porSub[it.key] || []).push(it); });
 
             var html = '';
-            Object.keys(byField).sort().forEach(function (f) {
-                html += '<div class="cat-head">' + esc(noteFieldLabel(f)) +
-                    ' <span class="pill draft">' + byField[f].length + '</span></div>';
+            Object.keys(porSub).sort().forEach(function (sub) {
+                var def = subDef(sub);
+                html += '<div class="cat-head">' + esc(def ? def.name : sub) +
+                    ' <span class="pill draft">' + porSub[sub].length + '</span></div>';
 
-                byField[f].forEach(function (it) {
+                porSub[sub].forEach(function (it) {
+                    var v = parseTpl(it.value);
+                    var nCampos = Object.keys(v.fields || {}).length;
                     var d = ntDraftForItem(it.id);
                     var badge = d
                         ? (d.status === 'pending'
                             ? '<span class="pill pending">em revisão</span>'
                             : '<span class="pill draft">rascunho</span>')
                         : '';
-
-                    var scope = (it.key && it.key !== 'ALL')
-                        ? '<span class="pill draft">' + esc(it.key) + '</span>'
-                        : '';
-                    var lang = (it.lang && it.lang !== 'ALL')
-                        ? '<span class="pill draft">' + esc(it.lang) + '</span>'
+                    var escopo = (it.field && it.field !== 'all')
+                        ? '<span class="pill draft">' + esc(String(it.field).toUpperCase()) + '</span>'
                         : '';
 
-                    var actions = canPropose('case_note_snippet')
+                    var actions = canPropose('note_template')
                         ? '<div style="display:flex;gap:8px">' +
-                        '<button class="btn btn-ghost btn-sm" onclick="openSnippetEditor(\'' + it.id + '\')">Editar</button>' +
+                        '<button class="btn btn-ghost btn-sm" onclick="openTemplateEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
                         '</div>'
                         : '';
 
                     html += '<div class="item-row">' +
                         '<div class="item-main">' +
-                        '<div class="item-name">' + esc(it.label) + ' ' + badge + ' ' + scope + ' ' + lang + '</div>' +
-                        '<div class="item-meta">' + esc(it.value) + '</div>' +
+                        '<div class="item-name">' + esc(it.label) + ' ' + badge + ' ' + escopo + '</div>' +
+                        '<div class="item-meta">' + nCampos + ' campo' + (nCampos === 1 ? '' : 's') +
+                        ' preenchido' + (nCampos === 1 ? '' : 's') + '</div>' +
                         '</div>' + actions + '</div>';
                 });
             });
@@ -1508,7 +1532,10 @@
             host.innerHTML = html;
         }
 
-        function openSnippetEditor(itemId) {
+        // Construtor da nota: escolhido o substatus, a tela oferece exatamente os
+        // campos daquela nota. É o que substitui o antigo "um trecho por campo" —
+        // aqui a unidade é a nota inteira, que é como o agente pensa.
+        function openTemplateEditor(itemId) {
             var item = null;
             for (var i = 0; i < NT_ITEMS.length; i++) {
                 if (NT_ITEMS[i].id === itemId) item = NT_ITEMS[i];
@@ -1516,103 +1543,175 @@
 
             var existingDraft = itemId ? ntDraftForItem(itemId) : null;
             var src = existingDraft || item;
+            var v = src ? parseTpl(src.value) : { fields: {} };
 
-            var curField = src ? src.field : (document.getElementById('nt-field').value || (NOTE_FIELDS[0] || {}).key);
-            var curScope = src ? (src.key || 'ALL') : 'ALL';
-            var curLang = src ? (src.lang || 'ALL') : 'ALL';
+            var curSub = src ? src.key : (document.getElementById('nt-sub').value || (NOTE_SUBSTATUS[0] || {}).key);
+            var curLang = src ? src.lang : document.getElementById('nt-lang').value;
+            var curEsc = src ? (src.field || 'all') : 'all';
 
-            // Campo-alvo é sempre select, nunca texto livre: a lista vem do
-            // próprio notes-data.js, então não dá pra apontar um trecho para um
-            // campo que a nota não tem.
-            var fieldOptions = NOTE_FIELDS.map(function (f) {
-                return '<option value="' + esc(f.key) + '"' + (f.key === curField ? ' selected' : '') + '>' +
-                    esc(f.labelPt) + '</option>';
+            var subOptions = NOTE_SUBSTATUS.map(function (s) {
+                return '<option value="' + esc(s.key) + '"' + (s.key === curSub ? ' selected' : '') + '>' +
+                    esc(s.name) + '</option>';
             }).join('');
 
-            var scopeOptions = ['ALL'].concat(NOTE_SUBSTATUS).map(function (s) {
-                return '<option value="' + esc(s) + '"' + (s === curScope ? ' selected' : '') + '>' +
-                    (s === 'ALL' ? 'Qualquer substatus' : esc(s)) + '</option>';
+            var escOptions = [['all', 'BAU e LM'], ['bau', 'Só BAU'], ['lm', 'Só LM']].map(function (o) {
+                return '<option value="' + o[0] + '"' + (o[0] === curEsc ? ' selected' : '') + '>' +
+                    esc(o[1]) + '</option>';
             }).join('');
 
-            var langOptions = ['ALL', 'PT', 'ES'].map(function (l) {
-                return '<option value="' + l + '"' + (l === curLang ? ' selected' : '') + '>' +
-                    (l === 'ALL' ? 'Todos os idiomas' : l) + '</option>';
+            var langOptions = ['PT', 'ES'].map(function (l) {
+                return '<option value="' + l + '"' + (l === curLang ? ' selected' : '') + '>' + l + '</option>';
             }).join('');
 
             document.getElementById('modal-root').innerHTML =
                 '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
-                '<div class="modal" role="dialog" aria-modal="true">' +
-                '<h2>' + (item ? 'Editar trecho' : 'Novo trecho') + '</h2>' +
-                '<p class="card-sub">Vira proposta; o agente só passa a ver depois da aprovação.</p>' +
+                '<div class="modal" style="max-width:760px" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar modelo de nota' : 'Nova nota') + '</h2>' +
+                '<p class="card-sub">O status vem do substatus escolhido. Preencha só o que deve vir pronto — ' +
+                'o resto o agente completa no atendimento.</p>' +
                 (existingDraft && existingDraft.status === 'pending'
-                    ? '<div class="note warn" style="margin-top:14px">Este trecho já está em revisão.</div>'
+                    ? '<div class="note warn" style="margin-top:14px">Este modelo já está em revisão.</div>'
                     : '') +
-                '<label class="fld" for="nt-f-field">Campo da nota</label>' +
-                '<select id="nt-f-field">' + fieldOptions + '</select>' +
-                '<div class="grid-2">' +
-                '<div><label class="fld" for="nt-f-scope">Aparece em</label>' +
-                '<select id="nt-f-scope">' + scopeOptions + '</select></div>' +
-                '<div><label class="fld" for="nt-f-lang">Idioma</label>' +
-                '<select id="nt-f-lang">' + langOptions + '</select></div>' +
-                '</div>' +
-                '<label class="fld" for="nt-f-title">Título</label>' +
-                '<input type="text" id="nt-f-title" placeholder="como o agente vê na lista" value="' +
+                '<label class="fld" for="nt-f-name">Nome do modelo</label>' +
+                '<input type="text" id="nt-f-name" placeholder="como o agente vê na lista" value="' +
                 esc(src ? src.label : '') + '">' +
-                '<label class="fld" for="nt-f-text">Conteúdo</label>' +
-                '<textarea id="nt-f-text" placeholder="o texto que será inserido no campo">' +
-                esc(src ? src.value : '') + '</textarea>' +
+                '<div class="grid-2">' +
+                '<div><label class="fld" for="nt-f-sub">Substatus</label>' +
+                '<select id="nt-f-sub" onchange="renderTemplateFields()">' + subOptions + '</select></div>' +
+                '<div><label class="fld" for="nt-f-esc">Aparece em</label>' +
+                '<select id="nt-f-esc">' + escOptions + '</select></div>' +
+                '</div>' +
+                '<label class="fld" for="nt-f-lang">Idioma</label>' +
+                '<select id="nt-f-lang">' + langOptions + '</select>' +
+                '<div id="nt-fields" style="margin-top:8px"></div>' +
                 '<div class="modal-actions">' +
                 '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
                 '<button class="btn btn-primary" id="nt-save">Salvar e enviar para revisão</button>' +
                 '</div></div></div>';
 
+            renderTemplateFields(v.fields || {});
+
             document.getElementById('nt-save').onclick = function () {
-                submitSnippet(itemId, existingDraft ? existingDraft.draftId : null, this);
+                submitTemplate(itemId, existingDraft ? existingDraft.draftId : null, v, this);
             };
-            document.getElementById('nt-f-title').focus();
+            document.getElementById('nt-f-name').focus();
         }
 
-        function submitSnippet(itemId, draftId, btn) {
-            var title = document.getElementById('nt-f-title').value.trim();
-            var text = document.getElementById('nt-f-text').value.trim();
+        // Os campos oferecidos vêm do substatus escolhido, então é impossível
+        // montar uma nota com um campo que ela não tem — que é exatamente a
+        // falha silenciosa encontrada nos cenários antigos.
+        function renderTemplateFields(valores) {
+            var host = document.getElementById('nt-fields');
+            if (!host) return;
 
-            if (!title) return toast('Dê um título ao trecho.', true);
-            if (!text) return toast('Escreva o conteúdo do trecho.', true);
+            var sub = document.getElementById('nt-f-sub').value;
+            var def = subDef(sub);
+
+            // Ao TROCAR de substatus, preserva o que já foi digitado: trocar por
+            // engano não pode apagar o trabalho.
+            var atuais = valores;
+            if (!atuais) {
+                atuais = {};
+                Array.prototype.forEach.call(host.querySelectorAll('textarea'), function (el) {
+                    if (el.value.trim()) atuais['field-' + el.id.replace('ntf-', '')] = el.value;
+                });
+            }
+
+            if (!def || !def.fields.length) {
+                host.innerHTML = '<div class="note warn">Este substatus não tem campos de texto.</div>';
+                return;
+            }
+
+            var req = def.requiredFields || [];
+            var pref = def.prefixedFields || [];
+
+            host.innerHTML =
+                '<div class="cat-head" style="margin-top:22px">Campos de ' + esc(def.name) + '</div>' +
+                def.fields.map(function (f) {
+                    var obrig = req.indexOf(f) !== -1;
+                    var temPrefixo = pref.indexOf(f) !== -1;
+                    return '<label class="fld" for="ntf-' + esc(f) + '">' + esc(fieldLabel(f)) +
+                        (obrig ? ' <span style="color:var(--danger)">*</span>' : '') +
+                        (temPrefixo ? ' <span class="pill draft">a nota já prefixa</span>' : '') +
+                        '</label>' +
+                        '<textarea id="ntf-' + esc(f) + '" style="min-height:60px" ' +
+                        'placeholder="deixe vazio para o agente preencher">' +
+                        esc(atuais['field-' + f] || '') + '</textarea>';
+                }).join('');
+        }
+
+        function submitTemplate(itemId, draftId, original, btn) {
+            var nome = document.getElementById('nt-f-name').value.trim();
+            if (!nome) return toast('Dê um nome ao modelo.', true);
+
+            var sub = document.getElementById('nt-f-sub').value;
+            var def = subDef(sub);
+            var fields = {};
+
+            (def ? def.fields : []).forEach(function (f) {
+                var el = document.getElementById('ntf-' + f);
+                if (el && el.value.trim()) fields['field-' + f] = el.value.trim();
+            });
+
+            // Tarefas vinculadas não são editáveis por aqui, mas precisam
+            // sobreviver à edição: sem isso, editar o texto de um cenário
+            // silenciosamente desligaria a seleção de tarefa que ele fazia.
+            var value = JSON.stringify(Object.assign(
+                { fields: fields },
+                original && original.linkedTask ? { linkedTask: original.linkedTask } : {},
+                original && original.activeTasks ? { activeTasks: original.activeTasks } : {}
+            ));
 
             btn.disabled = true;
-            btn.textContent = 'Enviando…';
+            btn.textContent = 'Validando…';
 
             google.script.run
                 .withSuccessHandler(function (res) {
+                    if (!res.ok) {
+                        btn.disabled = false;
+                        btn.textContent = 'Salvar e enviar para revisão';
+                        return toast(res.error, true);
+                    }
+
+                    btn.textContent = 'Enviando…';
                     google.script.run
-                        .withSuccessHandler(function () {
-                            closeModal();
-                            toast('Proposta enviada para revisão.');
-                            loadNoteSnippets();
-                            loadPendingCount();
+                        .withSuccessHandler(function (saved) {
+                            google.script.run
+                                .withSuccessHandler(function () {
+                                    closeModal();
+                                    toast('Proposta enviada para revisão.');
+                                    loadNoteTemplates();
+                                    loadPendingCount();
+                                })
+                                .withFailureHandler(function (err) {
+                                    btn.disabled = false;
+                                    btn.textContent = 'Salvar e enviar para revisão';
+                                    toast(err.message, true);
+                                })
+                                .submitContentDraft(saved.draftId);
                         })
                         .withFailureHandler(function (err) {
                             btn.disabled = false;
                             btn.textContent = 'Salvar e enviar para revisão';
                             toast(err.message, true);
                         })
-                        .submitContentDraft(res.draftId);
+                        .saveContentDraft({
+                            draftId: draftId || '',
+                            itemId: itemId || '',
+                            module: 'note_template',
+                            key: sub,
+                            field: document.getElementById('nt-f-esc').value,
+                            lang: document.getElementById('nt-f-lang').value,
+                            label: nome,
+                            value: value
+                        });
                 })
                 .withFailureHandler(function (err) {
                     btn.disabled = false;
                     btn.textContent = 'Salvar e enviar para revisão';
                     toast(err.message, true);
                 })
-                .saveContentDraft({
-                    draftId: draftId || '',
-                    itemId: itemId || '',
-                    module: 'case_note_snippet',
-                    key: document.getElementById('nt-f-scope').value,
-                    field: document.getElementById('nt-f-field').value,
-                    lang: document.getElementById('nt-f-lang').value,
-                    label: title,
-                    value: text
-                });
+                .checkNoteTemplate(value, sub);
         }
 
         // --- E-mails ---

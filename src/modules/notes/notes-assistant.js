@@ -5,7 +5,7 @@ import { notesState } from "./core/notes-state.js";
 import { createNotesPopup, HEADER_DESC } from "./ui/notes-popup.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "./notes-styles.js";
 import { buildDynamicForm } from "./core/form-builder.js";
-import { loadNoteSnippets } from "./data/note-snippets-service.js";
+import { loadNoteTemplates } from "./data/note-templates-service.js";
 import { generateOutputHtml } from "./core/output-generator.js";
 import { createScenariosComponent } from "./components/step-scenarios.js";
 import { createStepTasksComponent } from "./components/step-tasks.js";
@@ -1122,11 +1122,16 @@ export function initCaseNotesAssistant() {
 
     document.body.appendChild(popup);
 
-    // Carrega os trechos publicados na Central. Se chegar conteúdo e o
-    // formulário já estiver montado, remonta pra os botões de trecho
-    // aparecerem sem exigir que o agente troque de substatus e volte.
-    loadNoteSnippets().then((temTrechos) => {
-        if (temTrechos && notesState.currentSubStatus) {
+    // Carrega os modelos de nota publicados na Central. Eles substituem os
+    // cenários embutidos in loco, então basta repintar a lista de chips - e o
+    // formulário, se já houver substatus escolhido - pra o conteúdo novo
+    // aparecer sem o agente ter que reabrir nada.
+    loadNoteTemplates().then((temModelos) => {
+        if (!temModelos) return;
+        if (notesState.currentSubStatus) {
+            if (scenarioSelector.render) {
+                scenarioSelector.render(notesState.currentSubStatus, notesState.currentCaseType);
+            }
             buildDynamicForm(notesState.currentSubStatus, dynamicFormContainer, notesState);
         }
     });
