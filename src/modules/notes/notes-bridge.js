@@ -2,6 +2,7 @@
 import { showToast } from '../shared/utils.js';
 import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
+import { getLanguage } from '../shared/i18n.js';
 
 export function copyHtmlToClipboard(html) {
     const container = document.createElement('div');
@@ -18,7 +19,7 @@ export function copyHtmlToClipboard(html) {
         document.execCommand('copy');
     } catch (err) {
         SoundManager.playError();
-        showToast("Falha ao copiar", { error: true });
+        showToast(getLanguage() === 'es' ? "Error al copiar" : "Falha ao copiar", { error: true });
     }
     selection.removeAllRanges();
     document.body.removeChild(container);
