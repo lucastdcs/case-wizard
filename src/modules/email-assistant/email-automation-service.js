@@ -16,6 +16,10 @@ const EAS_DICT = {
         cannedResponseButtonNotFound: "Botão Canned Response não encontrado.",
         emailFilledSuccess: "Email preenchido com sucesso!",
         editorFocusError: "Erro ao focar no editor.",
+        // Fallbacks que entram no CORPO do e-mail quando o scraping não
+        // encontra o dado — por isso seguem o idioma, não são só UI.
+        fallbackClient: "Cliente",
+        fallbackSite: "seu site",
     },
     es: {
         emailButtonNotFound: "Error: Botón de email no encontrado.",
@@ -26,6 +30,8 @@ const EAS_DICT = {
         cannedResponseButtonNotFound: "Botón Canned Response no encontrado.",
         emailFilledSuccess: "¡Email completado con éxito!",
         editorFocusError: "Error al enfocar el editor.",
+        fallbackClient: "Cliente",
+        fallbackSite: "su sitio",
     },
 };
 function eat(key) {
@@ -404,7 +410,7 @@ export async function runEmailAutomation(cannedResponseText) {
 
                     // Substituição do ID estranho do site
                     if (html.includes('{%^79285%}')) {
-                        html = html.replace(/{%\^79285%}/g, pageData.websiteUrl || "seu site");
+                        html = html.replace(/{%\^79285%}/g, pageData.websiteUrl || eat('fallbackSite'));
                     }
 
                     // Aplica de volta ao editor
@@ -491,9 +497,9 @@ export async function runQuickEmail(template) {
         const dataFormatada = date.toLocaleDateString('pt-BR');
         
         let finalBody = template.body;
-        finalBody = finalBody.replace(/\[Nome do Cliente\]/g, pageData.advertiserName || "Cliente");
-        finalBody = finalBody.replace(/\[INSERIR URL\]/g, pageData.websiteUrl || "seu site");
-        finalBody = finalBody.replace(/\[URL\]/g, pageData.websiteUrl || "seu site");
+        finalBody = finalBody.replace(/\[Nome do Cliente\]/g, pageData.advertiserName || eat('fallbackClient'));
+        finalBody = finalBody.replace(/\[INSERIR URL\]/g, pageData.websiteUrl || eat('fallbackSite'));
+        finalBody = finalBody.replace(/\[URL\]/g, pageData.websiteUrl || eat('fallbackSite'));
         finalBody = finalBody.replace(/\[Seu Nome\]/g, agentName); 
         finalBody = finalBody.replace(/\[MM\/DD\/YYYY\]/g, dataFormatada);
 

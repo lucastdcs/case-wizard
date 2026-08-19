@@ -13,6 +13,7 @@ import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll, enableArrowKeyNav } from "../shared/dom-utils.js";
 import { getAgentName, getPageData } from "../shared/page-data.js";
 import { EmailDataService } from "./email-data-service.js";
+import { getEmailTemplate } from "./email-data.js";
 import { runQuickEmail, runEmailAutomation } from "./email-automation-service.js";
 import { triggerProcessingAnimation } from "../shared/command-center.js";
 import { SUBSTATUS_SHORTCODES } from '../notes/data/notes-data.js';
@@ -223,10 +224,14 @@ function injectStyles() {
 // própria função de busca/normalização, e getAllListItems() só concatena.
 
 function getFilteredTemplates(templates, searchTerm) {
-    return templates.filter(t =>
-        t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Localiza ANTES de filtrar pra busca funcionar sobre o texto que o
+    // agente está vendo (buscar "programación" tem que achar o template).
+    return templates
+        .map(t => getEmailTemplate(t, getLanguage()))
+        .filter(t =>
+            t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            t.category.toLowerCase().includes(searchTerm.toLowerCase())
+        );
 }
 
 function getMatchingSmartCRs(searchTerm) {
