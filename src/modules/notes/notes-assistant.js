@@ -936,7 +936,7 @@ export function initCaseNotesAssistant() {
         if (!preset) return;
 
         if (notesState.isDirty) {
-            const confirmed = await confirmDialog("Isso vai substituir o rascunho atual da nota. Deseja continuar?");
+            const confirmed = await confirmDialog(t('substituir_rascunho_confirm'));
             if (!confirmed) return;
         }
 
@@ -1109,7 +1109,7 @@ export function initCaseNotesAssistant() {
     setTimeout(async () => {
         const emergencyData = DraftService.getEmergency();
         if (emergencyData) {
-            const confirmed = await confirmDialog("Detectamos um rascunho não salvo da sua última sessão. Deseja restaurar?");
+            const confirmed = await confirmDialog(t('restaurar_rascunho_confirm'));
             if (confirmed) {
                 restoreFullState(emergencyData);
                 showToast("Sessão restaurada!");
