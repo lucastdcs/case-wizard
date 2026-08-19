@@ -7,8 +7,14 @@ const SHEET_BROADCAST = "Broadcast";
 const SHEET_LOGS = "Logs";
 const SHEET_TIPS = "Tips";
 const SHEET_SNIPPETS = "Database_Snippets";
-const SHEET_BAU_FORM = "BAU_form_data"; 
+const SHEET_BAU_FORM = "BAU_form_data";
 const SHEET_PEOPLE = "People";
+const SHEET_USER_PREFS = "User_Prefs";
+
+// Teto de segurança para o blob de preferências. O transporte é JSONP (GET), e
+// uma linha de planilha aceita bem mais do que uma URL — o limite real está no
+// caminho, não na célula. Com 8 atalhos o blob fica na casa de 1 KB.
+const USER_PREFS_MAX_BYTES = 8000;
 
 function doGet(e) {
   // Fallback para testes manuais
@@ -197,6 +203,17 @@ function doGet(e) {
       result = handleContentPublicRead(p);
     }
 
+    // 8. MÓDULO: Preferências do agente (blob JSON, uma linha por pessoa)
+    // Hoje guarda os atalhos do Ctrl+K; nasceu genérico de propósito para que
+    // som, idioma e ordem da pílula possam migrar pra cá sem novo backend.
+    // Ver docs/decisions/0002-atalhos-ctrl-k-por-agente.md.
+    else if (op === 'get_user_prefs') {
+      result = handleGetUserPrefs(ss, p);
+    }
+    else if (op === 'save_user_prefs') {
+      result = handleSaveUserPrefs(ss, p);
+    }
+
     // 6. MÓDULO: Perfil de Usuário e Permissões (LDAP)
     else if (op === 'get_user_profile') {
       const userEmail = p.user || "";
@@ -224,6 +241,78 @@ function doGet(e) {
 // =========================================================
 //  FUNÇÕES AUXILIARES (HELPERS)
 // =========================================================
+
+// ---------------------------------------------------------
+//  PREFERÊNCIAS DO AGENTE (aba User_Prefs)
+// ---------------------------------------------------------
+// Uma linha por pessoa, um blob JSON. Diferente de Database_Snippets, que é
+// uma lista de itens, aqui o registro inteiro é substituído a cada escrita -
+// o cliente sempre manda o estado completo das preferências dele.
+
+function handleGetUserPrefs(ss, p) {
+  const userEmail = String(p.user || "").toLowerCase().trim();
+  if (!userEmail) throw new Error("User email required");
+
+  const sheet = getOrCreateSheet(ss, SHEET_USER_PREFS);
+  const rowIndex = findUserPrefsRow(sheet, userEmail);
+  if (rowIndex < 0) return { status: 'success', prefs: {} };
+
+  const raw = sheet.getRange(rowIndex, 2).getValue();
+  let prefs = {};
+  try {
+    prefs = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    // Blob corrompido não pode travar o agente fora das próprias preferências:
+    // devolve vazio (o cliente segue com o cache local) e registra o caso.
+    Logger.log("User_Prefs ilegível para " + userEmail + ": " + e);
+    prefs = {};
+  }
+  return { status: 'success', prefs: prefs };
+}
+
+function handleSaveUserPrefs(ss, p) {
+  const userEmail = String(p.user || "").toLowerCase().trim();
+  if (!userEmail) throw new Error("User email required");
+
+  const raw = String(p.prefs || "");
+  if (raw.length > USER_PREFS_MAX_BYTES) throw new Error("Preferences payload too large");
+
+  // Valida antes de gravar: um blob inválido só apareceria como erro na
+  // PRÓXIMA sessão do agente, longe da causa.
+  let parsed;
+  try {
+    parsed = JSON.parse(raw || "{}");
+  } catch (e) {
+    throw new Error("Preferences payload is not valid JSON");
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error("Preferences payload must be an object");
+  }
+
+  const sheet = getOrCreateSheet(ss, SHEET_USER_PREFS);
+  const timestamp = new Date().toISOString();
+  const rowIndex = findUserPrefsRow(sheet, userEmail);
+
+  if (rowIndex > 0) {
+    sheet.getRange(rowIndex, 2).setValue(raw);
+    sheet.getRange(rowIndex, 3).setValue(timestamp);
+    return { status: 'success', action: 'update' };
+  }
+
+  sheet.appendRow([userEmail, raw, timestamp]);
+  return { status: 'success', action: 'create' };
+}
+
+// A chave aqui é o e-mail (coluna 1), não um ID gerado - por isso não dá pra
+// reusar findRowIndexById().
+function findUserPrefsRow(sheet, userEmail) {
+  if (!sheet) return -1;
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).toLowerCase().trim() === userEmail) return i + 1;
+  }
+  return -1;
+}
 
 // Regra de permissão (Overhead) compartilhada entre getUserProfileByLdap() e
 // getActiveTLs() - qualquer roleCategory que não seja Agent/Apprentice é
@@ -345,6 +434,8 @@ function getOrCreateSheet(ss, name) {
         "Adv_Name", "Adv_Email", "Website", "Timezone", "Language", "AM_Name",
         "Sales_Program", "Reason", "Task_Type", "Description", "Availability"
       ]);
+    } else if (name === SHEET_USER_PREFS) {
+      sheet.appendRow(["User_Email", "Prefs_JSON", "LastUpdated"]);
     }
   }
   return sheet;

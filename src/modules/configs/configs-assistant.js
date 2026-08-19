@@ -8,6 +8,7 @@ import { toggleGenieAnimation } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { getLanguage, setLanguage, onLanguageChange, createTranslator } from "../shared/i18n.js";
+import { createShortcutsSection } from "./shortcuts-section.js";
 
 const CONFIGS_DICT = {
     pt: {
@@ -24,6 +25,35 @@ const CONFIGS_DICT = {
         langDesc: "Escolha o idioma dos menus, botões e mensagens do Case Wizard.",
         supportSectionTitle: "Suporte & Feedback",
         reportBug: "Reportar Bug/Sugestões",
+        scSectionTitle: "Meus Atalhos (Ctrl+K)",
+        scSortLabel: "Ordenar por frequência de uso",
+        scSortDesc: "Desligue para definir você mesmo a ordem, arrastando os atalhos.",
+        scEmpty: "Você ainda não tem atalhos. Crie um aqui ou monte uma nota no Case Notes e clique em “Salvar como atalho”.",
+        scAdd: "+ Criar atalho",
+        scLimit: "Limite de {max} atalhos atingido",
+        scEdit: "Editar atalho",
+        scDelete: "Excluir atalho",
+        scReorder: "Reordenar (arraste ou use as setas)",
+        scDeleteConfirm: "Excluir o atalho “{name}”?",
+        scBroken: "⚠ cenário indisponível",
+        scOneScenario: "1 cenário",
+        scNScenarios: "{n} cenários",
+        scName: "Nome",
+        scNamePlaceholder: "Ex: Fim do 2 Day Rule",
+        scAlias: "Apelido de busca",
+        scAliasPlaceholder: "Ex: 2day",
+        scAliasDesc: "Palavra que encontra este atalho no Ctrl+K, além do nome.",
+        scFlow: "Fluxo",
+        scStatus: "Status",
+        scSubStatus: "Substatus",
+        scScenarios: "Cenários",
+        scScenariosDesc: "Opcional: sem nenhum, o atalho só abre a nota já no substatus certo.",
+        scPickSubStatus: "Escolha um substatus primeiro.",
+        scNoScenarios: "Nenhum cenário disponível para esta combinação.",
+        scCancel: "Cancelar",
+        scSave: "Salvar",
+        scSaved: "Atalho salvo!",
+        scSavedLocal: "Atalho salvo neste navegador (sem conexão com a nuvem).",
     },
     es: {
         title: "Configuración",
@@ -39,6 +69,35 @@ const CONFIGS_DICT = {
         langDesc: "Elige el idioma de los menús, botones y mensajes del Case Wizard.",
         supportSectionTitle: "Soporte y Comentarios",
         reportBug: "Reportar error o sugerencia",
+        scSectionTitle: "Mis Atajos (Ctrl+K)",
+        scSortLabel: "Ordenar por frecuencia de uso",
+        scSortDesc: "Desactívalo para definir tú mismo el orden, arrastrando los atajos.",
+        scEmpty: "Todavía no tienes atajos. Crea uno aquí o arma una nota en Case Notes y haz clic en “Guardar como atajo”.",
+        scAdd: "+ Crear atajo",
+        scLimit: "Límite de {max} atajos alcanzado",
+        scEdit: "Editar atajo",
+        scDelete: "Eliminar atajo",
+        scReorder: "Reordenar (arrastra o usa las flechas)",
+        scDeleteConfirm: "¿Eliminar el atajo “{name}”?",
+        scBroken: "⚠ escenario no disponible",
+        scOneScenario: "1 escenario",
+        scNScenarios: "{n} escenarios",
+        scName: "Nombre",
+        scNamePlaceholder: "Ej: Fin del 2 Day Rule",
+        scAlias: "Apodo de búsqueda",
+        scAliasPlaceholder: "Ej: 2day",
+        scAliasDesc: "Palabra que encuentra este atajo en el Ctrl+K, además del nombre.",
+        scFlow: "Flujo",
+        scStatus: "Estado",
+        scSubStatus: "Subestado",
+        scScenarios: "Escenarios",
+        scScenariosDesc: "Opcional: sin ninguno, el atajo solo abre la nota ya en el subestado correcto.",
+        scPickSubStatus: "Elige un subestado primero.",
+        scNoScenarios: "Ningún escenario disponible para esta combinación.",
+        scCancel: "Cancelar",
+        scSave: "Guardar",
+        scSaved: "¡Atajo guardado!",
+        scSavedLocal: "Atajo guardado en este navegador (sin conexión con la nube).",
     },
 };
 
@@ -319,6 +378,12 @@ export function initConfigsAssistant() {
     });
     container.appendChild(langSection);
 
+    // --- SEÇÃO: MEUS ATALHOS (Ctrl+K) ---
+    // Fica logo abaixo do perfil, antes de som/idioma: é a única seção com
+    // conteúdo do agente, e a razão mais provável de ele abrir Configurações.
+    const shortcutsSection = createShortcutsSection(t, COLORS);
+    container.appendChild(shortcutsSection);
+
     // --- SEÇÃO: SOM ---
     const soundSection = document.createElement("div");
     soundSection.className = "cw-configs-section";
@@ -365,6 +430,8 @@ export function initConfigsAssistant() {
         langSection.querySelector(".js-lang-label").textContent = t('langLabel');
         langSection.querySelector(".js-lang-desc").textContent = t('langDesc');
         syncLangToggleButtons();
+
+        shortcutsSection.applyTexts();
 
         soundSection.querySelector(".js-sound-section-title").textContent = t('soundSectionTitle');
         soundSection.querySelector(".js-sound-label").textContent = t('soundLabel');

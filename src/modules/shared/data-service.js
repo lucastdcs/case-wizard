@@ -365,6 +365,34 @@ sendBAUEscalation: async (payload, userEmail) => {
             console.error("Erro ao deletar snippet:", e);
             return false;
         }
+    },
+
+    // --- Preferências do agente (blob único por pessoa) ---
+    // Devolve null - e não {} - quando a busca falha: quem chama precisa saber
+    // distinguir "esta pessoa não tem preferência nenhuma" de "não deu pra
+    // perguntar", senão o cache local seria zerado por uma falha de rede.
+    getUserPrefs: async (userEmail) => {
+        try {
+            const response = await jsonpFetch('get_user_prefs', { user: userEmail });
+            if (response && response.status === 'success') return response.prefs || {};
+            return null;
+        } catch (e) {
+            console.warn("Erro ao carregar preferências:", e);
+            return null;
+        }
+    },
+
+    saveUserPrefs: async (prefs, userEmail) => {
+        try {
+            const response = await jsonpFetch('save_user_prefs', {
+                user: userEmail,
+                prefs: JSON.stringify(prefs || {})
+            });
+            return !!(response && response.status === 'success');
+        } catch (e) {
+            console.warn("Erro ao salvar preferências:", e);
+            return false;
+        }
     }
 };
 
@@ -376,3 +404,5 @@ export const fetchUserProfile = DataService.fetchUserProfile;
 export const getUserSnippets = DataService.getUserSnippets;
 export const saveSnippet = DataService.saveSnippet;
 export const deleteSnippet = DataService.deleteSnippet;
+export const getUserPrefs = DataService.getUserPrefs;
+export const saveUserPrefs = DataService.saveUserPrefs;

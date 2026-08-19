@@ -9,7 +9,7 @@
 import { SoundManager } from './sound-manager.js';
 import { lockBodyScroll, unlockBodyScroll } from './dom-utils.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
-import { scenarioSnippets } from '../notes/data/notes-data.js';
+import { ShortcutService } from './shortcut-service.js';
 
 const ICONS = {
     notes: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
@@ -79,6 +79,11 @@ function injectStyles() {
         .cw-palette-item-label { font-size: 14px; font-weight: 600; color: #202124; }
         .cw-palette-item-hint { font-size: 12px; color: #5F6368; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .cw-palette-empty { padding: 32px; text-align: center; color: #9AA0A6; font-size: 13px; }
+        .cw-palette-group {
+            padding: 10px 12px 4px; font-size: 10.5px; font-weight: 700;
+            color: #9AA0A6; text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .cw-palette-group:first-child { padding-top: 4px; }
 
         .cw-palette-footer { display: flex; gap: 16px; padding: 10px 20px; border-top: 1px solid #F1F3F4; background: #FAFAFA; font-size: 11px; color: #9AA0A6; font-weight: 600; }
         .cw-palette-footer span { display: flex; align-items: center; gap: 4px; }
@@ -95,6 +100,8 @@ const CP_DICT = {
         navigate: 'navegar',
         select: 'selecionar',
         close: 'esc fechar',
+        groupShortcuts: 'Meus atalhos',
+        groupModules: 'Módulos',
     },
     es: {
         ariaLabel: 'Búsqueda rápida',
@@ -103,6 +110,8 @@ const CP_DICT = {
         navigate: 'navegar',
         select: 'seleccionar',
         close: 'esc cerrar',
+        groupShortcuts: 'Mis atajos',
+        groupModules: 'Módulos',
     },
 };
 function cpt(key) {
@@ -121,33 +130,37 @@ export function initCommandPalette(actions) {
         return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     }
 
-    // Atalhos de nota (Quick Launch): qualquer scenarioSnippet com um
-    // `quickLaunch` cadastrado em notes-data.js vira automaticamente uma
-    // entrada aqui - escalar pra mais notas é só adicionar o campo lá, sem
-    // tocar neste arquivo. Entram na mesma busca textual dos módulos, só com
-    // ícone de raio pra se destacar visualmente do resto.
+    // Atalhos do agente: vêm do ShortcutService (preferência da pessoa,
+    // sincronizada na nuvem), não mais de um campo dentro do cenário. São
+    // relidos a cada abertura porque o agente pode ter acabado de criar um em
+    // Configurações ou no próprio Case Notes.
     //
-    // O `label` vem de notes-data.js e é PT-only (é o nome do cenário); só o
-    // hint, que é texto nosso, tem as duas versões.
-    const notePresets = (typeof actions.toggleNotes === 'function' && typeof actions.toggleNotes.openWithPreset === 'function')
-        ? Object.entries(scenarioSnippets)
-            .filter(([, data]) => data.quickLaunch)
-            .map(([scenarioId, data]) => ({
-                id: `note-preset-${scenarioId}`,
-                label: data.quickLaunch.label,
-                hint: { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada' },
-                keywords: `nota atalho atajo preset ${data.quickLaunch.keywords || ''}`,
-                icon: ICONS.bolt,
-                isPreset: true,
-                run: () => actions.toggleNotes.openWithPreset(scenarioId)
-            }))
-        : [];
+    // O `label` e o `alias` são escritos pelo próprio agente, então não têm
+    // versão por idioma; só o hint, que é texto nosso, tem as duas.
+    function noteShortcuts() {
+        if (typeof actions.toggleNotes !== 'function' ||
+            typeof actions.toggleNotes.openWithPreset !== 'function') return [];
+
+        return ShortcutService.list().map((shortcut) => ({
+            id: `shortcut-${shortcut.id}`,
+            label: shortcut.label,
+            hint: { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada' },
+            keywords: `nota atalho atajo preset ${shortcut.alias || ''}`,
+            icon: ICONS.bolt,
+            group: 'shortcuts',
+            isPreset: true,
+            run: () => {
+                ShortcutService.registerUse(shortcut.id);
+                actions.toggleNotes.openWithPreset(shortcut);
+            }
+        }));
+    }
 
     // label fica em português mesmo pra ES: são os nomes dos módulos, e a
     // maioria já é em inglês (Case Notes, Call Script...) ou é curta o
     // bastante (Avisos, Configurações) pra não valer duplicar; só o hint
     // (descrição) e as keywords de busca variam por idioma.
-    const ALL_ACTIONS = [
+    const MODULE_ACTIONS = [
         { id: 'notes', label: 'Case Notes', hint: { pt: 'Montar a nota técnica do caso', es: 'Armar la nota técnica del caso' }, keywords: 'notas nota caso anotacoes anotaciones', icon: ICONS.notes, run: actions.toggleNotes },
         { id: 'bauform', label: 'BAU Form', hint: { pt: 'Solicitação de criação/descarte BAU', es: 'Solicitud de creación/descarte BAU' }, keywords: 'bau formulario solicitacao solicitud criacao creacion descarte', icon: ICONS.bauform, run: actions.toggleBAUForm },
         { id: 'email', label: 'Email Assistant', hint: { pt: 'Templates inteligentes de e-mail', es: 'Plantillas inteligentes de correo' }, keywords: 'email e-mail correio correo template plantilla', icon: ICONS.email, run: actions.toggleEmail },
@@ -157,14 +170,21 @@ export function initCommandPalette(actions) {
         { id: 'timezone', label: 'Fusos Horários', hint: { pt: 'Monitoramento e planejador de chamada', es: 'Monitoreo y planificador de llamada' }, keywords: 'fuso horario timezone', icon: ICONS.timezone, run: actions.toggleTimezone },
         { id: 'broadcast', label: 'Avisos', hint: { pt: 'Comunicados e disponibilidade BAU', es: 'Comunicados y disponibilidad BAU' }, keywords: 'avisos broadcast comunicados disponibilidade disponibilidad', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
         { id: 'configs', label: 'Configurações', hint: { pt: 'Perfil, som e preferências', es: 'Perfil, sonido y preferencias' }, keywords: 'configuracoes configuracion config preferencias perfil som sonido', icon: ICONS.configs, run: actions.toggleConfigs },
-        ...notePresets,
-    ]
-        .filter(a => typeof a.run === 'function')
-        .map(a => ({ ...a, _haystack: normalize(`${a.label} ${a.hint.pt} ${a.hint.es} ${a.keywords}`) }));
+    ].map(a => ({ ...a, group: 'modules' }));
+
+    // Os atalhos do agente vêm primeiro: são dele, e são o que ele repete
+    // dezenas de vezes por dia. Os módulos seguem logo abaixo, na ordem de
+    // sempre.
+    function buildActions() {
+        return [...noteShortcuts(), ...MODULE_ACTIONS]
+            .filter(a => typeof a.run === 'function')
+            .map(a => ({ ...a, _haystack: normalize(`${a.label} ${a.hint.pt} ${a.hint.es} ${a.keywords}`) }));
+    }
 
     let isOpen = false;
     let selectedIndex = 0;
-    let filtered = ALL_ACTIONS;
+    let allActions = buildActions();
+    let filtered = allActions;
 
     const overlay = document.createElement('div');
     overlay.className = 'cw-palette-overlay';
@@ -198,7 +218,23 @@ export function initCommandPalette(actions) {
             list.innerHTML = `<div class="cw-palette-empty">${cpt('empty')}</div>`;
             return;
         }
+        // Cabeçalhos de grupo são elementos NÃO selecionáveis: entram no DOM
+        // mas ficam fora de `filtered`, que continua sendo só a lista de ações.
+        // É o que mantém a navegação por setas (selectedIndex) linear - inserir
+        // cabeçalho como item quebraria o índice a cada busca.
+        const itemEls = [];
+        let grupoAnterior = null;
+
         filtered.forEach((action, idx) => {
+            if (action.group !== grupoAnterior) {
+                grupoAnterior = action.group;
+                const header = document.createElement('div');
+                header.className = 'cw-palette-group';
+                header.textContent = cpt(action.group === 'shortcuts' ? 'groupShortcuts' : 'groupModules');
+                header.setAttribute('aria-hidden', 'true');
+                list.appendChild(header);
+            }
+
             const item = document.createElement('div');
             item.className = 'cw-palette-item' + (idx === selectedIndex ? ' selected' : '');
             item.innerHTML = `
@@ -211,8 +247,9 @@ export function initCommandPalette(actions) {
             item.onmouseenter = () => { selectedIndex = idx; render(); };
             item.onclick = () => activate(idx);
             list.appendChild(item);
+            itemEls.push(item);
         });
-        const selectedEl = list.children[selectedIndex];
+        const selectedEl = itemEls[selectedIndex];
         if (selectedEl) selectedEl.scrollIntoView({ block: 'nearest' });
     }
 
@@ -227,7 +264,10 @@ export function initCommandPalette(actions) {
     function open() {
         if (isOpen) return;
         isOpen = true;
-        filtered = ALL_ACTIONS;
+        // Relê os atalhos a cada abertura: o agente pode ter criado ou apagado
+        // um segundos atrás, em Configurações ou no Case Notes.
+        allActions = buildActions();
+        filtered = allActions;
         selectedIndex = 0;
         input.value = '';
         render();
@@ -255,8 +295,8 @@ export function initCommandPalette(actions) {
     input.addEventListener('input', () => {
         const term = normalize(input.value.trim());
         filtered = term
-            ? ALL_ACTIONS.filter(a => a._haystack.includes(term))
-            : ALL_ACTIONS;
+            ? allActions.filter(a => a._haystack.includes(term))
+            : allActions;
         selectedIndex = 0;
         render();
     });
