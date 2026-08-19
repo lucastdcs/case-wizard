@@ -501,6 +501,24 @@
             margin-bottom: 10px;
         }
 
+        .history-row-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .history-flow {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .history-flow .flow-arrow { font-size: 16px; color: var(--text-secondary); }
+
         /* Modals & Overlay */
         .modal-overlay {
             position: fixed;
@@ -1048,6 +1066,29 @@
                 .replace(/'/g, '&#39;');
         }
 
+        // Link pro caso no CRM - mesmo padrão usado no card da fila
+        // (arrow_outward + número do caso), reaproveitado em todo lugar que
+        // mostra um número de caso (fila, histórico, atividade recente).
+        function caseLinkHtml(caseId) {
+            if (!caseId) return '<span class="text-secondary">Sem ID</span>';
+            return `<a href="https://cases.connect.corp.google.com/#/case/${encodeURIComponent(caseId)}" target="_blank" class="link" onclick="event.stopPropagation()">
+                <span class="material-symbols-rounded" style="font-size: 16px;">arrow_outward</span>
+                ${escapeHtml(caseId)}
+            </a>`;
+        }
+
+        const AVATAR_FALLBACK_ICON = 'https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg';
+
+        // Foto de perfil com fallback - nunca monta src="" (alguns navegadores
+        // reinterpretam como pedido pra própria página) e sempre inclui
+        // referrerpolicy="no-referrer", mitigação pro endpoint de foto corp
+        // quando embutido no iframe sandboxado do Apps Script.
+        function avatarImgHtml(ldap, size) {
+            const px = size || 22;
+            const url = ldap ? ('https://moma-teams-photos.corp.google.com/photos/' + encodeURIComponent(ldap) + '?sz=600') : AVATAR_FALLBACK_ICON;
+            return `<img src="${url}" class="agent-photo" style="width: ${px}px; height: ${px}px;" referrerpolicy="no-referrer" onerror="this.src='${AVATAR_FALLBACK_ICON}'">`;
+        }
+
         // ---------------------------------------------------------
         // Busca única, compartilhada pelas 3 abas (Criação, Descarte e
         // Histórico) - o mesmo termo digitado continua valendo ao trocar de
@@ -1277,10 +1318,7 @@
                     <div>
                         <div class="text-primary">${escapeHtml(c.task)}</div>
                         <div class="text-secondary" style="margin-top: 6px;">
-                            <a href="https://cases.connect.corp.google.com/#/case/${encodeURIComponent(c.caseId || '')}" target="_blank" class="link" onclick="event.stopPropagation()">
-                                <span class="material-symbols-rounded" style="font-size: 16px;">arrow_outward</span>
-                                ${escapeHtml(c.caseId)}
-                            </a>
+                            ${caseLinkHtml(c.caseId)}
                         </div>
                     </div>
 
@@ -1555,18 +1593,12 @@
                 el.innerHTML = '<div class="text-secondary" style="font-size: 13px;">Só você, por enquanto.</div>';
                 return;
             }
-            const fallbackIcon = 'https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg';
             el.innerHTML = list.map(u => {
                 const ldap = u.ldap || '';
-                // Nunca src="" - alguns navegadores reinterpretam um src vazio
-                // como um pedido pra própria página atual, o que aparecia como
-                // "imagem quebrada". Sem ldap, vai direto pro ícone genérico
-                // em vez de tentar montar uma URL de foto inválida.
-                const photoUrl = ldap ? ('https://moma-teams-photos.corp.google.com/photos/' + encodeURIComponent(ldap) + '?sz=600') : fallbackIcon;
                 return `
                 <div class="active-tl-row">
                     <span class="presence-dot"></span>
-                    <img src="${photoUrl}" class="agent-photo" style="width: 24px; height: 24px;" referrerpolicy="no-referrer" onerror="this.src='${fallbackIcon}'">
+                    ${avatarImgHtml(ldap, 24)}
                     <span class="text-secondary" style="color: var(--text-primary); font-size: 13px;">${escapeHtml(ldap || 'desconhecido')}</span>
                 </div>`;
             }).join('');
@@ -1597,10 +1629,9 @@
                 const tlLdap = a.processedBy ? a.processedBy.split('@')[0] : 'alguém';
                 const agentLdap = a.agentEmail ? a.agentEmail.split('@')[0] : 'agente desconhecido';
                 const verb = ACTIVITY_VERB_BY_ACTION[a.action] || 'processou';
-                const caseLabel = a.caseId ? ('#' + a.caseId) : 'caso sem ID';
                 return `
                 <div class="activity-row">
-                    <div class="text-primary" style="font-size: 13px; font-weight: 500; margin-bottom: 0;">${escapeHtml(tlLdap)} ${verb} <span style="font-weight: 400;">${escapeHtml(caseLabel)}</span></div>
+                    <div class="text-primary" style="font-size: 13px; font-weight: 500; margin-bottom: 0;">${escapeHtml(tlLdap)} ${verb} <span style="font-weight: 400;">${caseLinkHtml(a.caseId)}</span></div>
                     <div class="text-secondary" style="font-size: 11px;">solicitado por ${escapeHtml(agentLdap)} · ${timeAgo(a.processedAt)}</div>
                 </div>`;
             }).join('');
@@ -1664,7 +1695,7 @@
             const list = document.getElementById('history-list');
             const allHistoryCases = (lastHistoryData && lastHistoryData.cases) || [];
             const windowDays = (lastHistoryData && lastHistoryData.windowDays) || 7;
-            const filtered = allHistoryCases.filter(c => matchesSearch([c.advName, c.task, c.caseId, c.processedBy]));
+            const filtered = allHistoryCases.filter(c => matchesSearch([c.caseId, c.task, c.processedBy, c.agentEmail]));
 
             if (allHistoryCases.length === 0) {
                 list.innerHTML = `
@@ -1684,12 +1715,24 @@
                 const isApproved = c.action === 'APPROVED_CREATION';
                 const label = HISTORY_ACTION_LABEL[c.action] || c.action;
                 const when = new Date(c.processedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-                const by = c.processedBy ? c.processedBy.split('@')[0] : '—';
+                const tlLdapRaw = c.processedBy ? c.processedBy.split('@')[0] : '';
+                const agentLdapRaw = c.agentEmail ? c.agentEmail.split('@')[0] : '';
+                const tlLdap = tlLdapRaw || '—';
+                const agentLdap = agentLdapRaw || '—';
                 return `
                 <div class="history-row">
-                    <span class="status-badge ${isApproved ? 'badge-create' : 'badge-discard'}" style="margin-bottom: 0;">${label}</span>
-                    <div class="text-primary" style="font-size: 14px; margin: 6px 0 2px;">${escapeHtml(c.advName)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
-                    <div class="text-secondary" style="font-size: 12px;">${escapeHtml(by)} · ${when}</div>
+                    <div class="history-row-top">
+                        <span class="status-badge ${isApproved ? 'badge-create' : 'badge-discard'}" style="margin-bottom: 0;">${label}</span>
+                        <div class="history-flow" title="${escapeHtml(agentLdap)} → ${escapeHtml(tlLdap)}">
+                            ${avatarImgHtml(agentLdapRaw, 20)}
+                            <span class="text-secondary">${escapeHtml(agentLdap)}</span>
+                            <span class="material-symbols-rounded flow-arrow">arrow_forward</span>
+                            ${avatarImgHtml(tlLdapRaw, 20)}
+                            <span class="text-secondary">${escapeHtml(tlLdap)}</span>
+                        </div>
+                    </div>
+                    <div class="text-primary" style="font-size: 14px; margin: 6px 0 2px;">${caseLinkHtml(c.caseId)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
+                    <div class="text-secondary" style="font-size: 12px;">${when}</div>
                 </div>`;
             }).join('');
         }

@@ -209,7 +209,7 @@ function getWeeklyHistory(days) {
     cases.push({
       id: String(row[0] || ""),
       caseId: String(row[4] || ""),
-      advName: String(row[7] || ""),
+      agentEmail: agentEmail,
       task: String(row[15] || ""),
       action: action,
       processedBy: String(row[18] || ""),
