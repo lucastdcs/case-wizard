@@ -217,9 +217,20 @@
 
         /* Workspace & Grid */
         .workspace {
-            max-width: 1200px;
+            max-width: 1560px;
             margin: 0 auto;
             padding: 20px 32px 40px 32px;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .queue-main { min-width: 0; }
+
+        @media (max-width: 1100px) {
+            .workspace { grid-template-columns: 1fr; }
+            .tl-sidebar { position: static; }
         }
 
         .table-header {
@@ -351,6 +362,95 @@
         .reason-box .material-symbols-rounded { color: var(--gemini-purple); font-size: 20px; }
 
         .link { color: var(--gemini-blue); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: opacity 0.2s; position: relative; z-index: 2; }
+
+        /* Painel Lateral (Ativos agora / Atividade recente) */
+        .tl-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: sticky;
+            top: 20px;
+        }
+
+        .sidebar-block {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .sidebar-block-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+
+        .active-tl-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+        }
+
+        .presence-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            flex-shrink: 0;
+            animation: presencePulse 2s infinite;
+        }
+
+        @keyframes presencePulse {
+            0% { box-shadow: 0 0 0 0 rgba(30, 142, 62, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(30, 142, 62, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(30, 142, 62, 0); }
+        }
+
+        .activity-row, .top-agent-row {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .activity-row:last-child, .top-agent-row:last-child { border-bottom: none; }
+
+        .top-agent-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        /* Aba de Histórico */
+        .history-panel { display: flex; flex-direction: column; gap: 20px; }
+
+        .history-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); }
+        .stat-card .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+        .history-row {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+        }
 
         /* Modals & Overlay */
         .modal-overlay {
@@ -529,6 +629,7 @@
                 transition: opacity 0.2s ease !important;
                 transform: translateX(-50%) !important;
             }
+            .presence-dot { animation: none !important; }
         }
 
     </style>
@@ -613,22 +714,67 @@
             Aprovação de Descarte
             <span class="badge-count" id="count-discard">0</span>
         </button>
+        <button class="tab-btn" onclick="switchTab('HISTORY')" id="tab-history">
+            <span class="material-symbols-rounded">history</span>
+            Histórico
+        </button>
     </div>
 
     <main class="workspace">
-        <div class="table-header">
-            <div>ANUNCIANTE & ID</div>
-            <div>SOLICITAÇÃO & REFERÊNCIA</div>
-            <div>AGENDAMENTO</div>
-            <div style="text-align: right;">AÇÃO</div>
+        <div class="queue-main">
+            <div class="table-header" id="queue-table-header">
+                <div>ANUNCIANTE & ID</div>
+                <div>SOLICITAÇÃO & REFERÊNCIA</div>
+                <div>AGENDAMENTO</div>
+                <div style="text-align: right;">AÇÃO</div>
+            </div>
+
+            <div id="loader" class="loader">
+                <span class="material-symbols-rounded spinner">progress_activity</span>
+                <span style="color: var(--text-secondary); font-size: 15px;">Acessando base de dados...</span>
+            </div>
+
+            <div id="cases-container"></div>
+
+            <div id="history-panel" class="history-panel" style="display: none;">
+                <div class="history-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-approved">0</div>
+                        <div class="stat-label">Aprovados (7d)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-discarded">0</div>
+                        <div class="stat-label">Descartados (7d)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-avg-time">—</div>
+                        <div class="stat-label">Tempo médio de aprovação</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-block">
+                    <div class="sidebar-block-title">Quem mais abriu casos (7d)</div>
+                    <div id="history-top-agents"></div>
+                </div>
+
+                <div id="history-list"></div>
+            </div>
         </div>
 
-        <div id="loader" class="loader">
-            <span class="material-symbols-rounded spinner">progress_activity</span>
-            <span style="color: var(--text-secondary); font-size: 15px;">Acessando base de dados...</span>
-        </div>
-
-        <div id="cases-container"></div>
+        <aside class="tl-sidebar">
+            <section class="sidebar-block">
+                <div class="sidebar-block-title">Ativos agora</div>
+                <div id="active-tls-list">
+                    <div class="text-secondary" style="font-size: 13px;">Carregando...</div>
+                </div>
+            </section>
+            <section class="sidebar-block">
+                <div class="sidebar-block-title">Atividade recente</div>
+                <div id="recent-activity-list">
+                    <div class="text-secondary" style="font-size: 13px;">Carregando...</div>
+                </div>
+            </section>
+        </aside>
     </main>
 
     <script>
@@ -856,8 +1002,9 @@
 
             syncInFlight = true;
 
-            if (!silent) {
-                loadError = false;
+            if (!silent) loadError = false;
+
+            if (!silent && currentTab !== 'HISTORY') {
                 loader.style.display = 'flex';
                 container.innerHTML = `
                     <div class="skeleton-row">
@@ -900,6 +1047,7 @@
                     updateBadges();
                     renderCases();
                     loadCurrentTLProfileOnce();
+                    refreshSidebar();
                 })
                 .withFailureHandler(err => {
                     clearTimeout(loadCasesWatchdog);
@@ -933,7 +1081,18 @@
             currentTab = tab;
             document.getElementById('tab-creation').classList.toggle('active', tab === 'CREATION');
             document.getElementById('tab-discard').classList.toggle('active', tab === 'DISCARD');
-            renderCases();
+            document.getElementById('tab-history').classList.toggle('active', tab === 'HISTORY');
+
+            const isHistory = tab === 'HISTORY';
+            document.getElementById('queue-table-header').style.display = isHistory ? 'none' : 'grid';
+            document.getElementById('cases-container').style.display = isHistory ? 'none' : 'block';
+            document.getElementById('history-panel').style.display = isHistory ? 'flex' : 'none';
+            if (isHistory) {
+                document.getElementById('loader').style.display = 'none';
+                loadHistory();
+            } else {
+                renderCases();
+            }
         }
 
         function renderCases() {
@@ -1246,6 +1405,144 @@
             icon.textContent = 'check';
             setTimeout(() => icon.textContent = 'content_copy', 1500);
             showToast('Copiado para área de transferência');
+        }
+
+        // ---------------------------------------------------------
+        // Painel Lateral: presença ("Ativos agora") + Atividade recente
+        // ---------------------------------------------------------
+        // Roda encaixado no mesmo ciclo de loadCases() (chamada manual +
+        // polling de 60s) em vez de ter seu próprio setInterval - evitar um
+        // segundo timer concorrente com o polling principal, mesmo cuidado
+        // já documentado ali em cima pra não reproduzir o travamento de
+        // google.script.run em paralelo logo no primeiro load.
+        function refreshSidebar() {
+            google.script.run
+                .withSuccessHandler(() => {
+                    google.script.run.withSuccessHandler(renderActiveTLs).withFailureHandler(() => {}).getActiveTLs();
+                    google.script.run.withSuccessHandler(renderRecentActivity).withFailureHandler(() => {}).getRecentActivity(12);
+                })
+                .withFailureHandler(err => {
+                    console.warn("Falha ao registrar presença do TL:", err);
+                    google.script.run.withSuccessHandler(renderActiveTLs).withFailureHandler(() => {}).getActiveTLs();
+                    google.script.run.withSuccessHandler(renderRecentActivity).withFailureHandler(() => {}).getRecentActivity(12);
+                })
+                .recordTLPresence();
+        }
+
+        function renderActiveTLs(list) {
+            const el = document.getElementById('active-tls-list');
+            if (!list || list.length === 0) {
+                el.innerHTML = '<div class="text-secondary" style="font-size: 13px;">Só você, por enquanto.</div>';
+                return;
+            }
+            el.innerHTML = list.map(u => `
+                <div class="active-tl-row">
+                    <span class="presence-dot"></span>
+                    <img src="https://moma-teams-photos.corp.google.com/photos/${encodeURIComponent(u.ldap)}?sz=600" class="agent-photo" style="width: 24px; height: 24px;" onerror="this.src='https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg'">
+                    <span class="text-secondary" style="color: var(--text-primary); font-size: 13px;">${escapeHtml(u.ldap)}</span>
+                </div>`).join('');
+        }
+
+        const ACTIVITY_VERB_BY_ACTION = {
+            APPROVED_CREATION: 'aprovou',
+            REJECTED_CREATION: 'rejeitou',
+            CONFIRMED_DISCARD: 'confirmou descarte de',
+            KEPT_ACTIVE: 'manteve ativo'
+        };
+
+        function timeAgo(iso) {
+            const diffSec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+            if (diffSec < 60) return 'agora mesmo';
+            if (diffSec < 3600) return Math.floor(diffSec / 60) + 'min atrás';
+            if (diffSec < 86400) return Math.floor(diffSec / 3600) + 'h atrás';
+            return Math.floor(diffSec / 86400) + 'd atrás';
+        }
+
+        function renderRecentActivity(list) {
+            const el = document.getElementById('recent-activity-list');
+            if (!list || list.length === 0) {
+                el.innerHTML = '<div class="text-secondary" style="font-size: 13px;">Nenhuma ação registrada ainda.</div>';
+                return;
+            }
+            el.innerHTML = list.map(a => {
+                const who = a.processedBy ? a.processedBy.split('@')[0] : 'alguém';
+                const verb = ACTIVITY_VERB_BY_ACTION[a.action] || 'processou';
+                return `
+                <div class="activity-row">
+                    <div class="text-primary" style="font-size: 13px; font-weight: 500; margin-bottom: 0;">${escapeHtml(who)} ${verb} <span style="font-weight: 400;">${escapeHtml(a.advName || a.caseId)}</span></div>
+                    <div class="text-secondary" style="font-size: 11px;">${timeAgo(a.processedAt)}</div>
+                </div>`;
+            }).join('');
+        }
+
+        // ---------------------------------------------------------
+        // Aba de Histórico: últimos 7 dias de casos resolvidos + métricas
+        // ---------------------------------------------------------
+        let historyLoaded = false;
+
+        function loadHistory(force) {
+            if (historyLoaded && !force) return;
+            const list = document.getElementById('history-list');
+            list.innerHTML = '<div class="loader" style="padding: 40px;"><span class="material-symbols-rounded spinner">progress_activity</span></div>';
+
+            google.script.run
+                .withSuccessHandler(renderHistory)
+                .withFailureHandler(err => {
+                    console.warn("Erro ao carregar histórico:", err);
+                    list.innerHTML = '<div class="empty-state" style="padding: 40px 20px;">Não foi possível carregar o histórico.</div>';
+                })
+                .getWeeklyHistory(7);
+        }
+
+        function formatHours(h) {
+            if (h < 1) return Math.round(h * 60) + 'min';
+            if (h < 48) return h.toFixed(1).replace('.', ',') + 'h';
+            return (h / 24).toFixed(1).replace('.', ',') + 'd';
+        }
+
+        const HISTORY_ACTION_LABEL = {
+            APPROVED_CREATION: 'Aprovado',
+            REJECTED_CREATION: 'Rejeitado',
+            CONFIRMED_DISCARD: 'Descartado'
+        };
+
+        function renderHistory(data) {
+            historyLoaded = true;
+            const stats = data.stats || {};
+
+            document.getElementById('stat-approved').textContent = stats.approved || 0;
+            document.getElementById('stat-discarded').textContent = stats.discarded || 0;
+            document.getElementById('stat-avg-time').textContent = stats.avgResolutionHours != null ? formatHours(stats.avgResolutionHours) : '—';
+
+            const agentsEl = document.getElementById('history-top-agents');
+            agentsEl.innerHTML = (stats.topAgents || []).map(a => `
+                <div class="top-agent-row">
+                    <span>${escapeHtml(a.email.split('@')[0])}</span>
+                    <span class="text-secondary">${a.count} caso${a.count === 1 ? '' : 's'}</span>
+                </div>`).join('') || '<div class="text-secondary" style="font-size: 13px;">Sem envios no período.</div>';
+
+            const list = document.getElementById('history-list');
+            if (!data.cases || data.cases.length === 0) {
+                list.innerHTML = `
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <span class="material-symbols-rounded" style="font-size: 36px;">inbox</span>
+                    <div>Nenhum caso resolvido nos últimos ${data.windowDays || 7} dias.</div>
+                </div>`;
+                return;
+            }
+
+            list.innerHTML = data.cases.map(c => {
+                const isApproved = c.action === 'APPROVED_CREATION';
+                const label = HISTORY_ACTION_LABEL[c.action] || c.action;
+                const when = new Date(c.processedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const by = c.processedBy ? c.processedBy.split('@')[0] : '—';
+                return `
+                <div class="history-row">
+                    <span class="status-badge ${isApproved ? 'badge-create' : 'badge-discard'}" style="margin-bottom: 0;">${label}</span>
+                    <div class="text-primary" style="font-size: 14px; margin: 6px 0 2px;">${escapeHtml(c.advName)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
+                    <div class="text-secondary" style="font-size: 12px;">${escapeHtml(by)} · ${when}</div>
+                </div>`;
+            }).join('');
         }
     </script>
 </body>
