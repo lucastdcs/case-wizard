@@ -1205,7 +1205,11 @@
             document.getElementById('history-panel').style.display = isHistory ? 'flex' : 'none';
             if (isHistory) {
                 document.getElementById('loader').style.display = 'none';
-                loadHistory();
+                // force=true: sem isso, loadHistory() só busca dados na
+                // primeira visita à aba (historyLoaded trava depois disso) -
+                // um caso aprovado/descartado depois da primeira visita nunca
+                // aparecia até a página inteira ser recarregada.
+                loadHistory(true);
             } else {
                 renderCases();
             }
@@ -1551,12 +1555,21 @@
                 el.innerHTML = '<div class="text-secondary" style="font-size: 13px;">Só você, por enquanto.</div>';
                 return;
             }
-            el.innerHTML = list.map(u => `
+            const fallbackIcon = 'https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg';
+            el.innerHTML = list.map(u => {
+                const ldap = u.ldap || '';
+                // Nunca src="" - alguns navegadores reinterpretam um src vazio
+                // como um pedido pra própria página atual, o que aparecia como
+                // "imagem quebrada". Sem ldap, vai direto pro ícone genérico
+                // em vez de tentar montar uma URL de foto inválida.
+                const photoUrl = ldap ? ('https://moma-teams-photos.corp.google.com/photos/' + encodeURIComponent(ldap) + '?sz=600') : fallbackIcon;
+                return `
                 <div class="active-tl-row">
                     <span class="presence-dot"></span>
-                    <img src="https://moma-teams-photos.corp.google.com/photos/${encodeURIComponent(u.ldap)}?sz=600" class="agent-photo" style="width: 24px; height: 24px;" onerror="this.src='https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg'">
-                    <span class="text-secondary" style="color: var(--text-primary); font-size: 13px;">${escapeHtml(u.ldap)}</span>
-                </div>`).join('');
+                    <img src="${photoUrl}" class="agent-photo" style="width: 24px; height: 24px;" referrerpolicy="no-referrer" onerror="this.src='${fallbackIcon}'">
+                    <span class="text-secondary" style="color: var(--text-primary); font-size: 13px;">${escapeHtml(ldap || 'desconhecido')}</span>
+                </div>`;
+            }).join('');
         }
 
         const ACTIVITY_VERB_BY_ACTION = {
