@@ -1,5 +1,5 @@
 // src/modules/notes/core/form-builder.js
-import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, translations, getEffectiveRequiredFields, getEffectiveOptionalFields } from "../data/notes-data.js";
+import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, translations, getEffectiveRequiredFields } from "../data/notes-data.js";
 import { fetchAndInsertSpeakeasyId } from "../automation/case-log-scraper.js";
 import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
@@ -96,12 +96,13 @@ export function buildDynamicForm(subStatusKey, container, state) {
         container.appendChild(consentSelect);
     }
 
-    // Campos opcionais do template (ver optionalFields em data/notes-data.js)
-    // que ainda não estão ativos: ficam escondidos por padrão pra reduzir a
-    // carga cognitiva, mas continuam a 1 clique de distância.
-    const optionalNow = getEffectiveOptionalFields(templateData);
+    // Campos não-obrigatórios do template que não estão ativos no momento —
+    // seja porque começam escondidos por padrão (ver optionalFields em
+    // data/notes-data.js) ou porque o agente os removeu pelo botão "✕" —
+    // ficam disponíveis aqui a 1 clique de distância, permitindo desfazer
+    // a remoção.
     const hiddenOptional = (templateData.templateFields || []).filter(
-        (fieldName) => optionalNow.includes(fieldName) && !state.activeFields.includes(fieldName)
+        (fieldName) => !requiredNow.includes(fieldName) && !state.activeFields.includes(fieldName)
     );
     if (hiddenOptional.length > 0) {
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
