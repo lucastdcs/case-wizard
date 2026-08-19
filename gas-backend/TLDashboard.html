@@ -361,7 +361,11 @@
 
         .reason-box .material-symbols-rounded { color: var(--gemini-purple); font-size: 20px; }
 
-        .link { color: var(--gemini-blue); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: opacity 0.2s; position: relative; z-index: 2; }
+        /* vertical-align: middle - sem isso, o inline-flex alinha pelo baseline
+           do próprio conteúdo (o ícone, não texto), o que deixa o link (e a
+           setinha de "abrir") mais baixo que o texto ao redor quando embutido
+           no meio de uma frase (atividade recente, card do histórico). */
+        .link { color: var(--gemini-blue); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; transition: opacity 0.2s; position: relative; z-index: 2; }
 
         /* Busca - única, compartilhada entre as 3 abas (fila e histórico) */
         .search-bar {
@@ -465,6 +469,13 @@
             border-bottom: 1px solid var(--border-subtle);
         }
         .activity-row:last-child, .top-agent-row:last-child { border-bottom: none; }
+
+        .activity-row-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
 
         .top-agent-row {
             display: flex;
@@ -1626,12 +1637,16 @@
                 return;
             }
             el.innerHTML = list.map(a => {
-                const tlLdap = a.processedBy ? a.processedBy.split('@')[0] : 'alguém';
+                const tlLdapRaw = a.processedBy ? a.processedBy.split('@')[0] : '';
+                const tlLdap = tlLdapRaw || 'alguém';
                 const agentLdap = a.agentEmail ? a.agentEmail.split('@')[0] : 'agente desconhecido';
                 const verb = ACTIVITY_VERB_BY_ACTION[a.action] || 'processou';
                 return `
                 <div class="activity-row">
-                    <div class="text-primary" style="font-size: 13px; font-weight: 500; margin-bottom: 0;">${escapeHtml(tlLdap)} ${verb} <span style="font-weight: 400;">${caseLinkHtml(a.caseId)}</span></div>
+                    <div class="activity-row-main">
+                        ${avatarImgHtml(tlLdapRaw, 20)}
+                        <div class="text-primary" style="font-size: 13px; font-weight: 500;">${escapeHtml(tlLdap)} ${verb} <span style="font-weight: 400;">${caseLinkHtml(a.caseId)}</span></div>
+                    </div>
                     <div class="text-secondary" style="font-size: 11px;">solicitado por ${escapeHtml(agentLdap)} · ${timeAgo(a.processedAt)}</div>
                 </div>`;
             }).join('');
