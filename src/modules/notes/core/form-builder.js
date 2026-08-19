@@ -5,6 +5,89 @@ import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
 import { SoundManager } from "../../shared/sound-manager.js";
 import { confirmDialog } from "../../shared/utils.js";
+import { getSnippetsForField } from "../data/note-snippets-service.js";
+
+// Menu de trechos prontos de um campo (Central de Conteúdo). Só é montado
+// quando existe trecho publicado para aquele campo - sem conteúdo, nenhum
+// botão aparece e o formulário é exatamente o de antes.
+function buildSnippetPicker(fieldName, snippets, targetField, t) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position: relative; display: inline-flex;';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = `${t('trechos')} (${snippets.length})`;
+    btn.setAttribute('aria-haspopup', 'true');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.style.cssText = `font-size: 11px; font-weight: 700; color: ${COLORS.primary}; background-color: ${COLORS.primaryBg}; border: none; border-radius: ${RADIUS.pill}; padding: 6px 14px; margin-left: 10px; cursor: pointer; transition: all 0.2s ${EASE};`;
+    btn.onmouseenter = () => btn.style.backgroundColor = "#d2e3fc";
+    btn.onmouseleave = () => btn.style.backgroundColor = COLORS.primaryBg;
+
+    const menu = document.createElement('div');
+    menu.style.cssText = `position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 280px; max-width: 380px; max-height: 260px; overflow-y: auto; background: ${COLORS.surface}; border: 1px solid ${COLORS.border}; border-radius: ${RADIUS.medium}; box-shadow: ${SHADOW.elevated}; padding: 6px; display: none; text-transform: none; letter-spacing: normal;`;
+
+    function closeMenu() {
+        menu.style.display = 'none';
+        btn.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('click', onOutside, true);
+    }
+    function onOutside(e) {
+        if (!wrap.contains(e.target)) closeMenu();
+    }
+
+    btn.onclick = (e) => {
+        e.preventDefault();
+        SoundManager.playClick();
+        const opening = menu.style.display === 'none';
+        menu.style.display = opening ? 'block' : 'none';
+        btn.setAttribute('aria-expanded', String(opening));
+        if (opening) document.addEventListener('click', onOutside, true);
+    };
+
+    snippets.forEach((snip) => {
+        const opt = document.createElement('button');
+        opt.type = 'button';
+        opt.style.cssText = `display: block; width: 100%; text-align: left; background: none; border: none; border-radius: ${RADIUS.small}; padding: 8px 10px; cursor: pointer; font-family: inherit; transition: background 0.15s ${EASE};`;
+        opt.onmouseenter = () => opt.style.background = COLORS.bgInput;
+        opt.onmouseleave = () => opt.style.background = 'none';
+
+        const title = document.createElement('div');
+        title.textContent = snip.title;
+        title.style.cssText = `font-size: 13px; font-weight: 600; color: ${COLORS.text}; margin-bottom: 2px;`;
+
+        const preview = document.createElement('div');
+        preview.textContent = snip.text.length > 90 ? snip.text.slice(0, 90) + '…' : snip.text;
+        preview.style.cssText = `font-size: 11px; color: ${COLORS.textSub}; line-height: 1.4;`;
+
+        opt.appendChild(title);
+        opt.appendChild(preview);
+
+        opt.onclick = (e) => {
+            e.preventDefault();
+            SoundManager.playClick();
+
+            // Acrescenta em vez de substituir: o agente costuma montar a nota
+            // combinando trechos, e sobrescrever o que ele já digitou seria
+            // destrutivo e sem desfazer.
+            const current = targetField.value;
+            targetField.value = current.trim()
+                ? `${current.replace(/\s*$/, '')}\n${snip.text}`
+                : snip.text;
+
+            // 'input' é o evento que o state escuta - sem ele o texto aparece na
+            // tela mas não entra no rascunho nem na nota gerada.
+            targetField.dispatchEvent(new Event('input', { bubbles: true }));
+            targetField.focus();
+            closeMenu();
+        };
+
+        menu.appendChild(opt);
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+    return wrap;
+}
 
 export function buildDynamicForm(subStatusKey, container, state) {
     container.innerHTML = "";
@@ -73,6 +156,15 @@ export function buildDynamicForm(subStatusKey, container, state) {
         }
         field.id = fieldId; field.value = state.formData[fieldId] || "";
         field.addEventListener('input', (e) => state.updateField(fieldId, e.target.value));
+
+        // Trechos prontos publicados na Central para este campo. Montado depois
+        // do input porque o menu precisa escrever nele. Sem trecho publicado o
+        // botão nem existe - nada muda para quem não usa.
+        const snippets = getSnippetsForField(fieldName, state.currentLang, subStatusKey);
+        if (snippets.length) {
+            label.appendChild(buildSnippetPicker(fieldName, snippets, field, t));
+        }
+
         container.appendChild(label); container.appendChild(field);
     });
 
