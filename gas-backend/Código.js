@@ -157,11 +157,11 @@ function doGet(e) {
       result = { broadcast: data };
     }
     else if (op === 'tips') {
-      const sheet = ss.getSheetByName(SHEET_TIPS);
-      const raw = sheet.getDataRange().getValues();
-      const tips = [];
-      for(let i=1; i<raw.length; i++) if(raw[i][0]) tips.push(raw[i][0]);
-      result = { tips: tips };
+      // Rota legada, mantida viva porque bundles antigos em cache ainda a
+      // chamam. Depois da migração ela serve o conteúdo da Central, e não mais
+      // a aba Tips - assim as duas versões do app leem a MESMA fonte, e editar
+      // pela Central vale para todo mundo durante a transição.
+      result = { tips: getTipsForLegacyEndpoint(ss) };
     }
 
     // 5. MÓDULO: Escrita (Broadcast Admin)

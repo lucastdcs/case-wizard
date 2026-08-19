@@ -421,6 +421,111 @@ check('a ordem dos passos sobrevive à semeadura', () => {
   }
 });
 
+console.log('\n--- Dicas (migração da aba Tips) ---');
+
+// Ambiente próprio com a aba Tips já povoada, como está hoje em produção.
+function makeTipsEnv(linhas) {
+  const ss = new FakeSpreadsheet();
+  const tips = ss.insertSheet('Tips');
+  tips.appendRow(['Dica']);
+  linhas.forEach(t => tips.appendRow([t]));
+
+  const ctx2 = vm.createContext({
+    SpreadsheetApp: { getActiveSpreadsheet: () => ss },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    MailApp: { sendEmail: () => { } },
+    Logger: { log: () => { } },
+    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    handleLog: () => { },
+    SHEET_TIPS: 'Tips',
+    console,
+  });
+
+  vm.runInContext(fs.readFileSync(SRC, 'utf8'), ctx2);
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'ContentSeed_Tips.js'), 'utf8'),
+    ctx2
+  );
+  return ctx2;
+}
+
+const TIPS_ATUAIS = ['Mantenha o foco!', 'Respire fundo.', 'Quase lá…'];
+
+check('a rota legada serve a aba Tips enquanto não há migração', () => {
+  // Compatibilidade é o ponto: bundles antigos em cache seguem chamando op=tips.
+  const env = makeTipsEnv(TIPS_ATUAIS);
+  eq(env.getTipsForLegacyEndpoint(), TIPS_ATUAIS);
+});
+
+check('seedTipsNow() traz as dicas da aba para a Central', () => {
+  const env = makeTipsEnv(TIPS_ATUAIS);
+  const res = env.seedTipsNow();
+
+  eq(res.status, 'success');
+  eq(res.seeded, TIPS_ATUAIS.length);
+
+  const live = env.listContentItems('tips');
+  eq(live.map(i => i.value), TIPS_ATUAIS, 'mesmas dicas, mesma ordem:');
+});
+
+check('depois da migração a rota legada serve a Central, não mais a aba', () => {
+  // Sem isso a aba viraria uma fonte fantasma: editar pela Central não afetaria
+  // quem ainda roda o bundle antigo, e ninguém entenderia por quê.
+  const env = makeTipsEnv(TIPS_ATUAIS);
+  env.seedTipsNow();
+
+  const item = env.listContentItems('tips').find(i => i.value === 'Respire fundo.');
+  const d = env.saveContentDraft({
+    module: 'tips', itemId: item.id, key: 'geral', lang: 'ALL',
+    label: 'Respire fundo, deu tudo certo.', value: 'Respire fundo, deu tudo certo.',
+    sortOrder: item.sortOrder
+  });
+  env.submitContentDraft(d.draftId);
+  env.approveContentDraft(d.draftId, '');
+
+  const servidas = env.getTipsForLegacyEndpoint();
+  if (!servidas.includes('Respire fundo, deu tudo certo.')) {
+    throw new Error('rota legada não pegou a edição: ' + servidas.join(' | '));
+  }
+  if (servidas.includes('Respire fundo.')) {
+    throw new Error('rota legada ainda serve o texto antigo da aba');
+  }
+});
+
+check('a aba Tips não é apagada pela migração', () => {
+  // O caminho de volta é reverter código, não restaurar dado.
+  const env = makeTipsEnv(TIPS_ATUAIS);
+  env.seedTipsNow();
+
+  const aba = env.SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Tips');
+  const linhas = aba.getDataRange().getValues().slice(1).map(r => r[0]);
+  eq(linhas, TIPS_ATUAIS, 'aba original intacta:');
+});
+
+check('aba Tips vazia não quebra a semeadura', () => {
+  const env = makeTipsEnv([]);
+  const res = env.seedTipsNow();
+  eq(res.seeded, 0);
+  eq(env.getTipsForLegacyEndpoint(), []);
+});
+
+check('dica só entra no ar depois de aprovada', () => {
+  const env = makeTipsEnv(TIPS_ATUAIS);
+  env.seedTipsNow();
+  const antes = env.getTipsForLegacyEndpoint().length;
+
+  const d = env.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'ALL',
+    label: 'Dica nova', value: 'Dica nova'
+  });
+  env.submitContentDraft(d.draftId);
+
+  eq(env.getTipsForLegacyEndpoint().length, antes, 'pendente não vaza pra rota pública:');
+
+  env.approveContentDraft(d.draftId, '');
+  eq(env.getTipsForLegacyEndpoint().length, antes + 1);
+});
+
 console.log('\n--- E-mails (validação de placeholder) ---');
 
 const emailValue = (subject, body, placeholders) => JSON.stringify({

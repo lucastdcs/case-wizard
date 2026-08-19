@@ -666,6 +666,9 @@
                 <button class="tab-btn" role="tab" data-tab="emails" onclick="switchTab('emails')">
                     <span class="material-symbols-rounded" style="font-size:19px">mail</span> E-mails
                 </button>
+                <button class="tab-btn" role="tab" data-tab="tips" onclick="switchTab('tips')">
+                    <span class="material-symbols-rounded" style="font-size:19px">lightbulb</span> Dicas
+                </button>
                 <button class="tab-btn" role="tab" data-tab="approvals" onclick="switchTab('approvals')">
                     <span class="material-symbols-rounded" style="font-size:19px">rule</span> Aprovações
                     <span class="count-chip zero" id="pending-count">0</span>
@@ -779,6 +782,26 @@
                 </div>
             </section>
 
+            <!-- TAB: Dicas -->
+            <section id="pane-tips" class="hidden">
+                <div class="note" id="tp-note">
+                    Frases curtas exibidas durante os carregamentos do app.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div>
+                        <div class="card-title">Dicas no ar</div>
+                        <p class="card-sub" id="tp-summary">Carregando…</p>
+                    </div>
+                    <button class="btn btn-primary" id="tp-new-btn" onclick="openTipEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Nova dica
+                    </button>
+                </div>
+                <div class="card" id="tp-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
             <!-- TAB: Aprovações -->
             <section id="pane-approvals" class="hidden">
                 <div id="approvals-list">
@@ -876,6 +899,9 @@
             if (!document.getElementById('pane-emails').classList.contains('hidden')) {
                 loadEmails();
             }
+            if (!document.getElementById('pane-tips').classList.contains('hidden')) {
+                loadTips();
+            }
         }
 
         // A UI é conveniência, não a fronteira: o servidor recusa a ação de
@@ -886,7 +912,7 @@
         }
 
         function switchTab(tab) {
-            ['links', 'callscript', 'notes', 'emails', 'approvals', 'access'].forEach(function (t) {
+            ['links', 'callscript', 'notes', 'emails', 'tips', 'approvals', 'access'].forEach(function (t) {
                 var pane = document.getElementById('pane-' + t);
                 if (pane) pane.classList.toggle('hidden', t !== tab);
             });
@@ -896,6 +922,7 @@
             if (tab === 'callscript') loadCallScript();
             if (tab === 'notes') loadNoteSnippets();
             if (tab === 'emails') loadEmails();
+            if (tab === 'tips') loadTips();
             if (tab === 'approvals') loadApprovals();
             if (tab === 'access') loadAccess();
         }
@@ -929,6 +956,11 @@
                         document.getElementById('cs-new-btn').classList.add('hidden');
                         document.getElementById('cs-note').textContent =
                             'Seu papel (' + s.role + ') vê o roteiro, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('tips')) {
+                        document.getElementById('tp-new-btn').classList.add('hidden');
+                        document.getElementById('tp-note').textContent =
+                            'Seu papel (' + s.role + ') vê as dicas, mas não propõe alterações neste módulo.';
                     }
                     if (!canPropose('email_template')) {
                         document.getElementById('em-note').textContent =
@@ -1802,6 +1834,149 @@
                     toast(err.message, true);
                 })
                 .checkEmailTemplate(value, item.lang);
+        }
+
+        // --- Dicas ---
+        var TP_ITEMS = [];
+        var TP_DRAFTS = [];
+
+        function loadTips() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    TP_ITEMS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (d) { TP_DRAFTS = d || []; renderTips(); })
+                        .withFailureHandler(function () { TP_DRAFTS = []; renderTips(); })
+                        .listContentDrafts('tips');
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('tp-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar as dicas</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('tips');
+        }
+
+        function tpDraftForItem(itemId) {
+            for (var i = 0; i < TP_DRAFTS.length; i++) {
+                if (TP_DRAFTS[i].itemId === itemId) return TP_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function renderTips() {
+            var host = document.getElementById('tp-list');
+            var summary = document.getElementById('tp-summary');
+
+            if (!TP_ITEMS.length) {
+                summary.textContent = 'Nenhuma dica publicada ainda.';
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">lightbulb</span>' +
+                    '<h2>Nenhuma dica na Central ainda</h2>' +
+                    '<p>Enquanto isso o app segue lendo a aba Tips, como sempre leu. ' +
+                    'Rode a semeadura (seedTipsNow) para trazer as atuais.</p></div>';
+                return;
+            }
+
+            summary.textContent = TP_ITEMS.length + ' dicas publicadas' +
+                (TP_DRAFTS.length ? ' · ' + TP_DRAFTS.length + ' com alteração em andamento' : '');
+
+            host.innerHTML = TP_ITEMS.map(function (it) {
+                var d = tpDraftForItem(it.id);
+                var badge = d
+                    ? (d.status === 'pending'
+                        ? '<span class="pill pending">em revisão</span>'
+                        : '<span class="pill draft">rascunho</span>')
+                    : '';
+
+                var actions = canPropose('tips')
+                    ? '<div style="display:flex;gap:8px">' +
+                    '<button class="btn btn-ghost btn-sm" onclick="openTipEditor(\'' + it.id + '\')">Editar</button>' +
+                    '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
+                    '</div>'
+                    : '';
+
+                return '<div class="item-row">' +
+                    '<div class="item-main">' +
+                    '<div class="item-meta" style="font-size:14px;color:var(--text-primary)">' +
+                    esc(it.value) + ' ' + badge + '</div>' +
+                    '</div>' + actions + '</div>';
+            }).join('');
+        }
+
+        function openTipEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < TP_ITEMS.length; i++) {
+                if (TP_ITEMS[i].id === itemId) item = TP_ITEMS[i];
+            }
+
+            var existingDraft = itemId ? tpDraftForItem(itemId) : null;
+            var src = existingDraft || item;
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar dica' : 'Nova dica') + '</h2>' +
+                '<p class="card-sub">Aparece durante os carregamentos. Frases curtas funcionam melhor.</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Esta dica já está em revisão.</div>'
+                    : '') +
+                '<label class="fld" for="tp-text">Texto</label>' +
+                '<textarea id="tp-text" style="min-height:70px">' + esc(src ? src.value : '') + '</textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="tp-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('tp-save').onclick = function () {
+                submitTip(itemId, existingDraft ? existingDraft.draftId : null, src, this);
+            };
+            document.getElementById('tp-text').focus();
+        }
+
+        function submitTip(itemId, draftId, src, btn) {
+            var text = document.getElementById('tp-text').value.trim();
+            if (!text) return toast('Escreva o texto da dica.', true);
+
+            var sortOrder = src ? src.sortOrder : TP_ITEMS.reduce(function (max, i) {
+                return Math.max(max, i.sortOrder);
+            }, 0) + 1;
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando…';
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    google.script.run
+                        .withSuccessHandler(function () {
+                            closeModal();
+                            toast('Proposta enviada para revisão.');
+                            loadTips();
+                            loadPendingCount();
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .submitContentDraft(res.draftId);
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .saveContentDraft({
+                    draftId: draftId || '',
+                    itemId: itemId || '',
+                    module: 'tips',
+                    key: 'geral',
+                    lang: 'ALL',
+                    // A dica é o próprio conteúdo: não há título separado.
+                    label: text,
+                    value: text,
+                    sortOrder: sortOrder
+                });
         }
 
         // --- Aprovações ---
