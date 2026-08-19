@@ -713,6 +713,14 @@ export const scenarioSnippets = {
     'quickfill-ni-attempted-2day': {
         type: 'bau',
         substatus: ['NI_Attempted_Contact'],
+        // Atalho de Ctrl+K (Quick Launch): ver notes-assistant.js#openWithPreset.
+        quickLaunch: {
+            status: 'NI',
+            subStatus: 'NI_Attempted_Contact',
+            label: 'NI Attempted — Início 2 Day Rule',
+            keywords: '2 day ligacao attempted contact inicio',
+            focusIds: ['field-SPEAKEASY_ID', 'evidence-l1', 'evidence-l2', 'evidence-msg']
+        },
         'field-REASON_COMMENTS': "Attempted Contact (Início 2 Day Rule)",
         'field-CONTEXTO_CALL': "• Fiz a primeira tentativa de ligação, sem sucesso.\n• Enviei uma message no chat para o AM.\n• Aguardei 5 minutos e fiz a segunda tentativa de ligação, novamente sem sucesso.\n• Aguardei mais 5 minutos e agora farei o acompanhamento 2 Day Rule.",
         'field-SCREENSHOTS': "• MSG AM -\n• Tentativa 1 -\n• Tentativa 2 -"
@@ -739,6 +747,17 @@ export const scenarioSnippets = {
     'quickfill-in-no-show-bau': {
         type: 'bau',
         substatus: ['IN_Not_Reachable'],
+        // Atalho de Ctrl+K (Quick Launch): abre o Case Notes já no status/substatus
+        // certo e com este cenário aplicado - ver notes-assistant.js#openWithPreset.
+        // focusIds: campo pra focar/realçar como "ainda falta preencher" depois de
+        // aplicar o preset, em ordem de prioridade.
+        quickLaunch: {
+            status: 'IN',
+            subStatus: 'IN_Not_Reachable',
+            label: 'IN Not Reachable — Finalização 2 Day Rule',
+            keywords: '2 day finalizacao nao atendeu ligacoes reachable',
+            focusIds: ['field-SPEAKEASY_ID']
+        },
         'field-REASON_COMMENTS': "Sem resposta ao 2 Day Rule.",
         'field-ON_CALL': "N/A",
         'field-COMENTARIOS': "• O caso foi gerado e entrei na chamada no horário agendado.\n• O anunciante não compareceu à reunião.\n• Segui o protocolo de espera (BAU): realizei duas tentativas de ligação, sem sucesso.\n• Nenhuma das ligações foi atendida (ex: Caixa Postal).\n• Caso inativado após 2 Day Rule.",
