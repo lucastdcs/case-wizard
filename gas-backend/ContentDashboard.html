@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Central de Conteúdo - Powered by Cases Wizard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+    <style>
+        /* Tokens copiados do TLDashboard.html de propósito, não importados dele:
+           lá o CSS é inline num arquivo de ~2000 linhas, e extrair um parcial
+           compartilhado sem regressão custaria mais agora do que a duplicação.
+           A origem é a mesma, então a identidade visual não diverge. */
+        :root {
+            --bg-base: #F1F3F4;
+            --surface-level-1: #FFFFFF;
+            --surface-level-2: #F8F9FA;
+            --surface-level-3: #E8EAED;
+            --border-subtle: #DADCE0;
+
+            --text-primary: #202124;
+            --text-secondary: #5F6368;
+            --text-tertiary: #5F6368;
+
+            --gemini-blue: #1A73E8;
+            --gemini-blue-light: #E8F0FE;
+            --gemini-purple: #9B72CB;
+            --gemini-gradient: linear-gradient(90deg, #4285f4, #9b72cb, #d96570);
+
+            --success: #1E8E3E;
+            --success-light: #E6F4EA;
+            --danger: #D93025;
+            --danger-light: #FCE8E6;
+            --warning: #F9AB00;
+            --warning-light: #FEF7E0;
+            --warning-text: #B06000;
+
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-pill: 100px;
+
+            --nav-bg: #3D3D3D;
+            --nav-surface: #333333;
+            --nav-border: rgba(255, 255, 255, 0.15);
+            --nav-text-primary: #E3E3E3;
+            --nav-text-secondary: #9AA0A6;
+
+            --spring-expressive: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            --spring-functional: cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Google Sans', system-ui, sans-serif;
+            background-color: var(--bg-base);
+            margin: 0;
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .ambient-glow {
+            position: fixed;
+            top: -20vh;
+            left: 10vw;
+            width: 80vw;
+            height: 50vh;
+            background: radial-gradient(ellipse at center, rgba(66, 133, 244, 0.06) 0%, rgba(241, 243, 244, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* --- Top nav --- */
+        .topnav {
+            background: rgba(61, 61, 61, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 0 32px;
+            height: 72px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--nav-border);
+            background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
+        }
+
+        .topnav::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--gemini-gradient);
+            opacity: 0.7;
+        }
+
+        .brand-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+            color: var(--nav-text-primary);
+        }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--nav-text-secondary);
+            font-size: 13px;
+        }
+
+        .role-badge {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid var(--nav-border);
+            color: var(--nav-text-primary);
+            padding: 4px 12px;
+            border-radius: var(--radius-pill);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+        }
+
+        /* --- Layout --- */
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        .page-head {
+            margin-bottom: 24px;
+        }
+
+        .page-head h1 {
+            font-size: 28px;
+            font-weight: 500;
+            margin: 0 0 6px;
+            letter-spacing: -0.5px;
+        }
+
+        .page-head p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* --- Tabs --- */
+        .tab-section {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 12px 18px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color .2s var(--spring-functional), border-color .2s var(--spring-functional);
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            color: var(--gemini-blue);
+            border-bottom-color: var(--gemini-blue);
+        }
+
+        .tab-btn:focus-visible {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: 2px;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        }
+
+        .count-chip {
+            background: var(--danger);
+            color: #fff;
+            border-radius: var(--radius-pill);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 1px 7px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .count-chip.zero {
+            display: none;
+        }
+
+        /* --- Cards --- */
+        .card {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 500;
+            margin: 0 0 4px;
+        }
+
+        .card-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .row-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: var(--radius-pill);
+            padding: 9px 20px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background .2s var(--spring-functional), box-shadow .2s var(--spring-functional);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background: var(--gemini-blue);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 1px 6px rgba(26, 115, 232, .45);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--gemini-blue);
+            border-color: var(--border-subtle);
+        }
+
+        .btn-ghost:hover {
+            background: var(--gemini-blue-light);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--danger);
+            border-color: var(--danger-light);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-light);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-sm {
+            font-size: 13px;
+            padding: 6px 14px;
+        }
+
+        /* --- Forms --- */
+        label.fld {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin: 14px 0 5px;
+        }
+
+        input[type=text],
+        input[type=url],
+        select,
+        textarea {
+            width: 100%;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--surface-level-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: -1px;
+            background: var(--surface-level-1);
+        }
+
+        textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 16px;
+        }
+
+        @media (max-width: 700px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* --- Status pills --- */
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .4px;
+            padding: 3px 10px;
+            border-radius: var(--radius-pill);
+            text-transform: uppercase;
+        }
+
+        .pill.live {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .pill.draft {
+            background: var(--surface-level-3);
+            color: var(--text-secondary);
+        }
+
+        .pill.pending {
+            background: var(--warning-light);
+            color: var(--warning-text);
+        }
+
+        .pill.archived {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        /* --- Diff --- */
+        .diff {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 14px 0;
+        }
+
+        @media (max-width: 700px) {
+            .diff {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .diff-side {
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            background: var(--surface-level-2);
+            overflow-x: auto;
+        }
+
+        .diff-side.new {
+            border-color: var(--success);
+            background: var(--success-light);
+        }
+
+        .diff-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .diff-side.new .diff-label {
+            color: var(--success);
+        }
+
+        .diff-body {
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Roboto Mono', ui-monospace, monospace;
+        }
+
+        /* --- Item list --- */
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-wrap: wrap;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .item-main {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .item-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .item-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .cat-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 26px 0 4px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .cat-head:first-of-type {
+            margin-top: 6px;
+        }
+
+        /* --- States --- */
+        .state {
+            text-align: center;
+            padding: 64px 24px;
+            color: var(--text-secondary);
+        }
+
+        .state .material-symbols-rounded {
+            font-size: 44px;
+            color: var(--border-subtle);
+            display: block;
+            margin: 0 auto 12px;
+        }
+
+        .state h2 {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 0 0 6px;
+        }
+
+        .state p {
+            margin: 0 auto;
+            max-width: 44ch;
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- Toast --- */
+        #toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translate(-50%, 20px);
+            background: #202124;
+            color: #fff;
+            padding: 12px 22px;
+            border-radius: var(--radius-pill);
+            font-size: 14px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s var(--spring-functional), transform .25s var(--spring-functional);
+            z-index: 999;
+            max-width: 90vw;
+            text-align: center;
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        #toast.err {
+            background: var(--danger);
+        }
+
+        /* --- Modal --- */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(32, 33, 36, .5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 24px;
+        }
+
+        .modal {
+            background: var(--surface-level-1);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 {
+            font-size: 20px;
+            font-weight: 500;
+            margin: 0 0 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .skeleton {
+            height: 58px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(90deg, var(--surface-level-2) 25%, var(--surface-level-3) 50%, var(--surface-level-2) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes shimmer {
+            to {
+                background-position: -200% 0;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+
+        .note {
+            background: var(--gemini-blue-light);
+            border-left: 3px solid var(--gemini-blue);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 18px;
+        }
+
+        .note.warn {
+            background: var(--warning-light);
+            border-left-color: var(--warning);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient-glow"></div>
+
+    <nav class="topnav">
+        <div class="brand-main">
+            <span class="material-symbols-rounded">tune</span>
+            Central de Conteúdo
+        </div>
+        <div class="user-chip">
+            <span id="user-ldap"></span>
+            <span class="role-badge hidden" id="user-role"></span>
+        </div>
+    </nav>
+
+    <div class="wrap">
+        <!-- Estado de carregamento inicial -->
+        <div id="boot-state" class="state">
+            <span class="material-symbols-rounded">hourglass_top</span>
+            <h2>Verificando seu acesso…</h2>
+            <p>Só um instante.</p>
+        </div>
+
+        <!-- Sem permissão -->
+        <div id="denied-state" class="state hidden">
+            <span class="material-symbols-rounded">lock</span>
+            <h2>Você não tem acesso à Central de Conteúdo</h2>
+            <p>Peça a um ADMIN para liberar seu LDAP. Enquanto isso, nada aqui fica visível.</p>
+        </div>
+
+        <!-- App -->
+        <main id="app" class="hidden">
+            <div class="page-head">
+                <h1>Gerenciar conteúdo</h1>
+                <p>Toda alteração vira um rascunho e só chega ao app depois de aprovada.</p>
+            </div>
+
+            <div class="tab-section" role="tablist">
+                <button class="tab-btn active" role="tab" data-tab="links" onclick="switchTab('links')">
+                    <span class="material-symbols-rounded" style="font-size:19px">link</span> Links
+                </button>
+                <button class="tab-btn" role="tab" data-tab="approvals" onclick="switchTab('approvals')">
+                    <span class="material-symbols-rounded" style="font-size:19px">rule</span> Aprovações
+                    <span class="count-chip zero" id="pending-count">0</span>
+                </button>
+                <button class="tab-btn hidden" role="tab" data-tab="access" onclick="switchTab('access')" id="tab-access">
+                    <span class="material-symbols-rounded" style="font-size:19px">manage_accounts</span> Acessos
+                </button>
+                <button class="tab-btn" role="tab" data-tab="soon" onclick="switchTab('soon')">
+                    <span class="material-symbols-rounded" style="font-size:19px">schedule</span> Próximos módulos
+                </button>
+            </div>
+
+            <!-- TAB: Links -->
+            <section id="pane-links">
+                <div class="note" id="links-note">
+                    Editar aqui não altera o app. A mudança entra como proposta e vai para a aba
+                    <strong>Aprovações</strong>.
+                </div>
+                <div class="row-between" style="margin-bottom:8px">
+                    <div>
+                        <div class="card-title">Links no ar</div>
+                        <p class="card-sub" id="links-summary">Carregando…</p>
+                    </div>
+                    <button class="btn btn-primary" id="links-new-btn" onclick="openLinkEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Novo link
+                    </button>
+                </div>
+                <div class="card" id="links-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Aprovações -->
+            <section id="pane-approvals" class="hidden">
+                <div id="approvals-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Acessos -->
+            <section id="pane-access" class="hidden">
+                <div class="note warn">
+                    Quem entra aqui passa a ver e propor conteúdo. Papéis <strong>ADMIN</strong> e
+                    <strong>TL</strong> também aprovam.
+                </div>
+                <div class="card">
+                    <div class="card-title">Conceder ou alterar acesso</div>
+                    <div class="grid-2">
+                        <div>
+                            <label class="fld" for="acc-ldap">LDAP</label>
+                            <input type="text" id="acc-ldap" placeholder="ex.: lucaste" autocomplete="off">
+                        </div>
+                        <div>
+                            <label class="fld" for="acc-role">Papel</label>
+                            <select id="acc-role">
+                                <option value="ADMIN">ADMIN — edita tudo, aprova, gerencia acessos</option>
+                                <option value="TL">TL — edita tudo e aprova</option>
+                                <option value="QA">QA — propõe call script e case notes</option>
+                                <option value="WFM">WFM — propõe links</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top:18px">
+                        <button class="btn btn-primary" onclick="saveAccess()">Salvar acesso</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom:8px">Pessoas com acesso</div>
+                    <div id="access-list"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Próximos módulos -->
+            <section id="pane-soon" class="hidden">
+                <div class="card">
+                    <div class="card-title">Ainda não migrados</div>
+                    <p class="card-sub" style="margin-bottom:16px">
+                        A fundação (papéis, rascunho, aprovação, versionamento) já serve os quatro módulos —
+                        falta migrar o conteúdo de cada um para a planilha.
+                    </p>
+                    <div class="item-row">
+                        <div class="item-main">
+                            <div class="item-name">Call Script</div>
+                            <div class="item-meta">Roteiro por segmento e fluxo. Primeira edição prevista: preencher a
+                                seção de Implementação que falta em ES.</div>
+                        </div>
+                        <span class="pill draft">Fase 2</span>
+                    </div>
+                    <div class="item-row">
+                        <div class="item-main">
+                            <div class="item-name">Case Notes</div>
+                            <div class="item-meta">Trechos prontos por campo da nota, escolhidos a partir dos campos que
+                                já existem hoje.</div>
+                        </div>
+                        <span class="pill draft">Fase 3</span>
+                    </div>
+                    <div class="item-row">
+                        <div class="item-main">
+                            <div class="item-name">E-mails do assistente</div>
+                            <div class="item-meta">Editor ciente de placeholder e preview do HTML antes de publicar. Não
+                                inclui os e-mails de CR nem os enviados pelo Dashboard de TL.</div>
+                        </div>
+                        <span class="pill draft">Fase 4</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="modal-root"></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+        var SESSION = null;
+        var LIVE_LINKS = [];
+        var MY_DRAFTS = [];
+
+        var CATEGORY_LABELS = {
+            tasks: 'Tarefas', ads: 'Ads', analytics: 'GA4', shopping: 'Shop',
+            tech: 'Tech', hr: 'RH', lm: 'Forms', qa: 'QA', suporte: 'Ajuda'
+        };
+
+        function toast(msg, isErr) {
+            var t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = isErr ? 'show err' : 'show';
+            setTimeout(function () { t.className = ''; }, isErr ? 5200 : 3200);
+        }
+
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // O valor de um link é JSON no campo `value`: assim name/url/desc/desc_es
+        // viajam como um item só e o par PT/ES fica junto do link que descreve,
+        // em vez de num mapa paralelo como o LINK_DESC_ES de hoje.
+        function parseLinkValue(raw) {
+            try {
+                var v = JSON.parse(raw || '{}');
+                return { name: v.name || '', url: v.url || '', desc: v.desc || '', desc_es: v.desc_es || '' };
+            } catch (e) {
+                return { name: '', url: '', desc: '', desc_es: '' };
+            }
+        }
+
+        // A UI é conveniência, não a fronteira: o servidor recusa a ação de
+        // qualquer jeito. Esconder o botão evita oferecer algo que vai falhar.
+        function canPropose(module) {
+            return !!(SESSION && SESSION.proposableModules &&
+                SESSION.proposableModules.indexOf(module) !== -1);
+        }
+
+        function switchTab(tab) {
+            ['links', 'approvals', 'access', 'soon'].forEach(function (t) {
+                var pane = document.getElementById('pane-' + t);
+                if (pane) pane.classList.toggle('hidden', t !== tab);
+            });
+            document.querySelectorAll('.tab-btn').forEach(function (b) {
+                b.classList.toggle('active', b.dataset.tab === tab);
+            });
+            if (tab === 'approvals') loadApprovals();
+            if (tab === 'access') loadAccess();
+        }
+
+        // --- Boot ---
+        function boot() {
+            google.script.run
+                .withSuccessHandler(function (s) {
+                    SESSION = s;
+                    document.getElementById('boot-state').classList.add('hidden');
+                    document.getElementById('user-ldap').textContent = s.ldap || '';
+
+                    if (!s.hasAccess) {
+                        document.getElementById('denied-state').classList.remove('hidden');
+                        return;
+                    }
+
+                    var badge = document.getElementById('user-role');
+                    badge.textContent = s.role;
+                    badge.classList.remove('hidden');
+
+                    document.getElementById('app').classList.remove('hidden');
+                    if (s.canManageAccess) document.getElementById('tab-access').classList.remove('hidden');
+
+                    if (!canPropose('links')) {
+                        document.getElementById('links-new-btn').classList.add('hidden');
+                        document.getElementById('links-note').textContent =
+                            'Seu papel (' + s.role + ') vê os links, mas não propõe alterações neste módulo.';
+                    }
+
+                    loadLinks();
+                    if (s.canApprove) loadPendingCount();
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('boot-state').classList.add('hidden');
+                    document.getElementById('denied-state').classList.remove('hidden');
+                    toast(err.message || 'Falha ao verificar acesso.', true);
+                })
+                .getContentSession();
+        }
+
+        // --- Links ---
+        function loadLinks() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    LIVE_LINKS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (drafts) {
+                            MY_DRAFTS = drafts || [];
+                            renderLinks();
+                        })
+                        .withFailureHandler(function () { MY_DRAFTS = []; renderLinks(); })
+                        .listContentDrafts('links');
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('links-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar os links</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('links');
+        }
+
+        function draftForItem(itemId) {
+            for (var i = 0; i < MY_DRAFTS.length; i++) {
+                if (MY_DRAFTS[i].itemId === itemId) return MY_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function renderLinks() {
+            var host = document.getElementById('links-list');
+            var summary = document.getElementById('links-summary');
+
+            if (!LIVE_LINKS.length) {
+                summary.textContent = 'Nenhum link publicado ainda.';
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">link_off</span>' +
+                    '<h2>Nenhum link na planilha ainda</h2>' +
+                    '<p>Enquanto isso o app segue usando a lista embutida no código. ' +
+                    'Rode a semeadura (seedContentModule) ou crie o primeiro link aqui.</p></div>';
+                return;
+            }
+
+            var byCat = {};
+            LIVE_LINKS.forEach(function (it) {
+                (byCat[it.key] = byCat[it.key] || []).push(it);
+            });
+
+            var pend = MY_DRAFTS.length;
+            summary.textContent = LIVE_LINKS.length + ' links publicados' +
+                (pend ? ' · ' + pend + ' com alteração em andamento' : '');
+
+            var html = '';
+            Object.keys(byCat).sort().forEach(function (cat) {
+                html += '<div class="cat-head">' + esc(CATEGORY_LABELS[cat] || cat) +
+                    ' <span class="pill draft">' + byCat[cat].length + '</span></div>';
+
+                byCat[cat].forEach(function (it) {
+                    var v = parseLinkValue(it.value);
+                    var d = draftForItem(it.id);
+                    var badge = '';
+                    if (d) {
+                        badge = d.status === 'pending'
+                            ? '<span class="pill pending">em revisão</span>'
+                            : '<span class="pill draft">rascunho</span>';
+                    }
+
+                    var actions = canPropose('links')
+                        ? '<div style="display:flex;gap:8px">' +
+                        '<button class="btn btn-ghost btn-sm" onclick="openLinkEditor(\'' + it.id + '\')">Editar</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Tirar do ar</button>' +
+                        '</div>'
+                        : '';
+
+                    html += '<div class="item-row">' +
+                        '<div class="item-main">' +
+                        '<div class="item-name">' + esc(v.name) + ' ' + badge + '</div>' +
+                        '<div class="item-meta">' + esc(v.desc) + ' — ' + esc(v.url) + '</div>' +
+                        '</div>' + actions + '</div>';
+                });
+            });
+
+            host.innerHTML = html;
+        }
+
+        function closeModal() {
+            document.getElementById('modal-root').innerHTML = '';
+        }
+
+        function openLinkEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < LIVE_LINKS.length; i++) {
+                if (LIVE_LINKS[i].id === itemId) item = LIVE_LINKS[i];
+            }
+
+            var existingDraft = itemId ? draftForItem(itemId) : null;
+            var src = existingDraft || item;
+            var v = parseLinkValue(src ? src.value : '{}');
+            var cat = src ? src.key : 'tasks';
+
+            var catOptions = Object.keys(CATEGORY_LABELS).map(function (k) {
+                return '<option value="' + k + '"' + (k === cat ? ' selected' : '') + '>' +
+                    esc(CATEGORY_LABELS[k]) + '</option>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar link' : 'Novo link') + '</h2>' +
+                '<p class="card-sub">Isso cria uma proposta. O link no ar só muda depois da aprovação.</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Este item já está em revisão. Cancele o envio para editar de novo.</div>'
+                    : '') +
+                '<label class="fld" for="lnk-name">Nome</label>' +
+                '<input type="text" id="lnk-name" value="' + esc(v.name) + '">' +
+                '<label class="fld" for="lnk-url">URL</label>' +
+                '<input type="url" id="lnk-url" value="' + esc(v.url) + '">' +
+                '<div class="grid-2">' +
+                '<div><label class="fld" for="lnk-desc">Descrição (PT)</label>' +
+                '<input type="text" id="lnk-desc" value="' + esc(v.desc) + '"></div>' +
+                '<div><label class="fld" for="lnk-desc-es">Descrição (ES)</label>' +
+                '<input type="text" id="lnk-desc-es" value="' + esc(v.desc_es) + '"></div>' +
+                '</div>' +
+                '<label class="fld" for="lnk-cat">Categoria</label>' +
+                '<select id="lnk-cat">' + catOptions + '</select>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="lnk-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('lnk-save').onclick = function () {
+                submitLink(itemId, existingDraft ? existingDraft.draftId : null, this);
+            };
+            document.getElementById('lnk-name').focus();
+        }
+
+        function submitLink(itemId, draftId, btn) {
+            var name = document.getElementById('lnk-name').value.trim();
+            var url = document.getElementById('lnk-url').value.trim();
+
+            if (!name) return toast('Dê um nome ao link.', true);
+            if (!/^https?:\/\/|^http:\/\/go\//i.test(url)) {
+                return toast('A URL precisa começar com http:// ou https://', true);
+            }
+
+            var payload = {
+                draftId: draftId || '',
+                itemId: itemId || '',
+                module: 'links',
+                key: document.getElementById('lnk-cat').value,
+                lang: 'ALL',
+                label: name,
+                value: JSON.stringify({
+                    name: name,
+                    url: url,
+                    desc: document.getElementById('lnk-desc').value.trim(),
+                    desc_es: document.getElementById('lnk-desc-es').value.trim()
+                })
+            };
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando…';
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    google.script.run
+                        .withSuccessHandler(function () {
+                            closeModal();
+                            toast('Proposta enviada para revisão.');
+                            loadLinks();
+                            loadPendingCount();
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .submitContentDraft(res.draftId);
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .saveContentDraft(payload);
+        }
+
+        function askRemoval(itemId) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>Tirar este link do ar?</h2>' +
+                '<p class="card-sub">Também passa por aprovação. Nada é apagado — a versão fica arquivada e pode voltar.</p>' +
+                '<label class="fld" for="rm-reason">Motivo</label>' +
+                '<textarea id="rm-reason" placeholder="ex.: ferramenta descontinuada"></textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-danger" id="rm-go">Enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('rm-go').onclick = function () {
+                var reason = document.getElementById('rm-reason').value.trim();
+                if (!reason) return toast('Explique o motivo.', true);
+                this.disabled = true;
+
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Pedido de remoção enviado.');
+                        loadLinks();
+                        loadPendingCount();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .requestContentRemoval(itemId, reason);
+            };
+        }
+
+        // --- Aprovações ---
+        function loadPendingCount() {
+            if (!SESSION || !SESSION.canApprove) return;
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    var chip = document.getElementById('pending-count');
+                    chip.textContent = (list || []).length;
+                    chip.classList.toggle('zero', !(list || []).length);
+                })
+                .withFailureHandler(function () { })
+                .listPendingApprovals();
+        }
+
+        function loadApprovals() {
+            var host = document.getElementById('approvals-list');
+
+            if (!SESSION.canApprove) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">visibility_off</span>' +
+                    '<h2>Seu papel não revisa propostas</h2>' +
+                    '<p>Suas próprias propostas aparecem na aba do módulo, com o selo “em revisão”.</p></div>';
+                return;
+            }
+
+            host.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    if (!list || !list.length) {
+                        host.innerHTML =
+                            '<div class="state"><span class="material-symbols-rounded">task_alt</span>' +
+                            '<h2>Nada esperando revisão</h2><p>Toda proposta enviada aparece aqui.</p></div>';
+                        return;
+                    }
+
+                    host.innerHTML = list.map(function (d) {
+                        var cur = d.currentValue ? prettyValue(d.currentValue) : '(item novo)';
+                        var neu = d.value ? prettyValue(d.value) : '(remoção — item sai do ar)';
+                        var selfNote = d.isSelfProposed
+                            ? (d.canReview
+                                ? '<div class="note warn">Proposta sua. Como ADMIN, você pode aprovar mesmo assim — fica registrado como autoaprovação.</div>'
+                                : '<div class="note warn">Proposta sua. Outra pessoa precisa revisar.</div>')
+                            : '';
+
+                        return '<div class="card">' +
+                            '<div class="row-between">' +
+                            '<div><div class="card-title">' + esc(d.label) + '</div>' +
+                            '<p class="card-sub">' + esc(d.module) + ' · ' + esc(d.key) +
+                            ' · proposto por <strong>' + esc(d.proposedBy) + '</strong></p></div>' +
+                            '<span class="pill pending">pendente</span>' +
+                            '</div>' + selfNote +
+                            '<div class="diff">' +
+                            '<div class="diff-side"><div class="diff-label">Hoje no ar</div>' +
+                            '<div class="diff-body">' + esc(cur) + '</div></div>' +
+                            '<div class="diff-side new"><div class="diff-label">Proposto</div>' +
+                            '<div class="diff-body">' + esc(neu) + '</div></div>' +
+                            '</div>' +
+                            '<div class="modal-actions" style="margin-top:8px">' +
+                            '<button class="btn btn-danger btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',false)">Rejeitar</button>' +
+                            '<button class="btn btn-success btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',true)"' +
+                            (d.canReview ? '' : ' disabled') + '>Aprovar e publicar</button>' +
+                            '</div></div>';
+                    }).join('');
+                })
+                .withFailureHandler(function (err) {
+                    host.innerHTML = '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Falha ao carregar a fila</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listPendingApprovals();
+        }
+
+        // Links chegam como JSON; mostrar o objeto cru na revisão atrapalha mais
+        // do que ajuda, então viram linhas legíveis.
+        function prettyValue(raw) {
+            try {
+                var v = JSON.parse(raw);
+                if (v && v.url) {
+                    return 'Nome: ' + v.name + '\nURL: ' + v.url +
+                        '\nDescrição (PT): ' + (v.desc || '—') +
+                        '\nDescrição (ES): ' + (v.desc_es || '—');
+                }
+                return raw;
+            } catch (e) {
+                return raw;
+            }
+        }
+
+        function reviewDraft(draftId, approve) {
+            if (approve) {
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        toast(res.action === 'remove'
+                            ? 'Item retirado do ar. A versão fica arquivada e pode voltar.'
+                            : 'Publicado (versão ' + res.version + ').');
+                        loadApprovals();
+                        loadPendingCount();
+                        loadLinks();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .approveContentDraft(draftId, '');
+                return;
+            }
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>Rejeitar proposta</h2>' +
+                '<p class="card-sub">Volta como rascunho para quem propôs, com o seu comentário.</p>' +
+                '<label class="fld" for="rej-note">Motivo</label>' +
+                '<textarea id="rej-note" placeholder="o que precisa mudar"></textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-danger" id="rej-go">Rejeitar</button>' +
+                '</div></div></div>';
+
+            document.getElementById('rej-go').onclick = function () {
+                var note = document.getElementById('rej-note').value.trim();
+                if (!note) return toast('Explique o motivo para quem propôs.', true);
+                this.disabled = true;
+
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Proposta devolvida ao autor.');
+                        loadApprovals();
+                        loadPendingCount();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .rejectContentDraft(draftId, note);
+            };
+        }
+
+        // --- Acessos ---
+        function loadAccess() {
+            if (!SESSION.canManageAccess) return;
+
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    var host = document.getElementById('access-list');
+                    host.innerHTML = (list || []).map(function (a) {
+                        return '<div class="item-row">' +
+                            '<div class="item-main">' +
+                            '<div class="item-name">' + esc(a.ldap) + '</div>' +
+                            '<div class="item-meta">concedido por ' + esc(a.grantedBy) + '</div>' +
+                            '</div>' +
+                            '<div style="display:flex;gap:8px;align-items:center">' +
+                            '<span class="pill ' + (a.active ? 'live' : 'archived') + '">' +
+                            esc(a.role) + (a.active ? '' : ' · inativo') + '</span>' +
+                            (a.ldap === SESSION.ldap ? '' :
+                                '<button class="btn btn-ghost btn-sm" onclick="toggleAccess(\'' +
+                                esc(a.ldap) + '\',\'' + esc(a.role) + '\',' + (!a.active) + ')">' +
+                                (a.active ? 'Desativar' : 'Reativar') + '</button>') +
+                            '</div></div>';
+                    }).join('');
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .listContentAccess();
+        }
+
+        function saveAccess() {
+            var ldap = document.getElementById('acc-ldap').value.trim();
+            if (!ldap) return toast('Informe o LDAP.', true);
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    document.getElementById('acc-ldap').value = '';
+                    toast('Acesso salvo.');
+                    loadAccess();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .saveContentAccess(ldap, document.getElementById('acc-role').value, true);
+        }
+
+        function toggleAccess(ldap, role, active) {
+            google.script.run
+                .withSuccessHandler(function () {
+                    toast('Acesso atualizado.');
+                    loadAccess();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .saveContentAccess(ldap, role, active);
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // O bridge do google.script.run nem sempre está pronto no window.onload -
+        // mesma lição que o TLDashboard aprendeu ao vivo com a primeira chamada.
+        document.addEventListener('DOMContentLoaded', boot);
+    </script>
+</body>
+
+</html>

@@ -26,6 +26,18 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
 
+  // Central de Conteúdo - página própria, deliberadamente fora do TLDashboard:
+  // aquele arquivo já é monolítico, e o dashboard de TL é um braço do processo
+  // de casos, não o lugar de gerenciar o conteúdo do produto inteiro.
+  // Quem não tem papel em Content_Access vê a tela responder "sem acesso" -
+  // o gate real é por ação, no ContentAPI.gs.
+  if (e.parameter.page === 'content') {
+    return HtmlService.createHtmlOutputFromFile('ContentDashboard')
+      .setTitle('Cases Wizard | Central de Conteúdo')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+
   
   
   let result = {};
@@ -178,6 +190,13 @@ function doGet(e) {
          result = { status: 'success', action: 'delete' };
        } else { result = { status: 'error', msg: 'ID not found' }; }
     }
+    // 7. MÓDULO: Central de Conteúdo (leitura pública)
+    // Só devolve itens com status 'live'. Não existe parâmetro de status aqui
+    // de propósito: conteúdo em revisão não tem rota de leitura nenhuma.
+    else if (op === 'content_public') {
+      result = handleContentPublicRead(p);
+    }
+
     // 6. MÓDULO: Perfil de Usuário e Permissões (LDAP)
     else if (op === 'get_user_profile') {
       const userEmail = p.user || "";
