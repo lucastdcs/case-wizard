@@ -12,6 +12,30 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Não pendure dado novo dentro de uma estrutura que a Central de Conteúdo reescreve
+
+**Why**: os atalhos do Ctrl+K nasceram como um campo `quickLaunch` dentro de dois
+cenários de `notes-data.js`. Parecia o lugar óbvio — o atalho *é sobre* aquele
+cenário. Mas `applyNoteTemplateContent()` (note-templates-service.js) **apaga
+`scenarioSnippets` inteiro** e o repovoa com o que veio da Central, cujos ids são
+derivados (`cw-<substatus>-<slug>`) e cujo payload carrega apenas `type`,
+`substatus` e os campos de texto. No dia em que o módulo `note_template` fosse
+publicado, o `filter(([, d]) => d.quickLaunch)` do palette passaria a devolver
+zero e os dois atalhos sumiriam da tela do agente **sem erro nenhum, sem log,
+sem nada**. Ninguém teria ligado o desaparecimento à publicação do conteúdo.
+
+A mesma armadilha vale para qualquer campo extra pendurado ali: `linkedTask` e
+`activeTasks` só sobrevivem porque o serviço os copia explicitamente.
+
+**When to apply**: antes de adicionar um campo a `scenarioSnippets`,
+`EMAIL_TEMPLATES`, `LINKS_DB`, `callScriptData` ou qualquer outra estrutura que
+um serviço da Central reescreva — pergunte "quem reconstrói isto, e vai copiar
+meu campo?". Se o dado é do **agente** (preferência, configuração), ele não
+pertence ao catálogo de conteúdo de jeito nenhum: guarde numa entidade própria e
+referencie o item do catálogo por id, com resolução tolerante para o caso de o
+id mudar de forma. Se é conteúdo mesmo, o serviço e o gerador de seed precisam
+carregá-lo explicitamente — e um teste tem que provar o round-trip.
+
 ## Ao traduzir, separe "texto que a pessoa lê" de "texto que atravessa fronteira de sistema"
 
 **Why**: na tradução PT→ES (2026-08-19), três textos pareciam iguais aos outros mas
