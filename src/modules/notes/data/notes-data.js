@@ -56,6 +56,12 @@ export const translations = {
         'renomear_tooltip': 'Clique para renomear esta task',
         'renomear_hint': '✎ Renomear',
         'substituir_rascunho_confirm': 'Isso vai substituir o rascunho atual da nota. Deseja continuar?',
+        'salvar_como_atalho': 'Salvar como atalho do Ctrl+K',
+        'atalho_nome_pergunta': 'Como este atalho vai se chamar no Ctrl+K?',
+        'atalho_salvo': 'Atalho salvo! Já aparece no Ctrl+K.',
+        'atalho_salvo_local': 'Atalho salvo neste navegador (sem conexão com a nuvem).',
+        'atalho_limite': 'Você já tem {max} atalhos. Apague um em Configurações antes de criar outro.',
+        'atalho_cenario_sumiu': 'Este atalho apontava para um cenário que não existe mais. Revise-o em Configurações.',
         'restaurar_rascunho_confirm': 'Detectamos um rascunho não salvo da sua última sessão. Deseja restaurar?',
         'cole_link_placeholder': 'Cole o link aqui...',
         'copiado_sucesso': 'Texto copiado com sucesso',
@@ -158,6 +164,12 @@ export const translations = {
         'renomear_tooltip': 'Haz clic para renombrar esta tarea',
         'renomear_hint': '✎ Renombrar',
         'substituir_rascunho_confirm': 'Esto reemplazará el borrador actual de la nota. ¿Deseas continuar?',
+        'salvar_como_atalho': 'Guardar como atajo de Ctrl+K',
+        'atalho_nome_pergunta': '¿Cómo se va a llamar este atajo en el Ctrl+K?',
+        'atalho_salvo': '¡Atajo guardado! Ya aparece en el Ctrl+K.',
+        'atalho_salvo_local': 'Atajo guardado en este navegador (sin conexión con la nube).',
+        'atalho_limite': 'Ya tienes {max} atajos. Elimina uno en Configuración antes de crear otro.',
+        'atalho_cenario_sumiu': 'Este atajo apuntaba a un escenario que ya no existe. Revísalo en Configuración.',
         'restaurar_rascunho_confirm': 'Detectamos un borrador sin guardar de tu última sesión. ¿Deseas restaurarlo?',
         'cole_link_placeholder': 'Pega el enlace aquí...',
         'copiado_sucesso': 'Texto copiado con éxito',
@@ -473,6 +485,44 @@ export function getScenarioFields(snippet, lang, scenarioId) {
     const overrides = SCENARIO_ES[scenarioId];
     if (!overrides) return snippet;
     return { ...snippet, ...overrides };
+}
+
+// Quais cenários valem para um substatus e um tipo de caso. Regra ÚNICA, usada
+// pelos chips do Case Notes (components/step-scenarios.js) e pelo construtor de
+// atalhos em Configurações. Se as duas telas divergissem, o agente poderia
+// montar um atalho apontando pra um chip que aquela tela nunca mostra - e o
+// atalho abriria a nota sem o texto, sem erro nenhum.
+export function getScenariosFor(subStatusKey, caseType) {
+    return Object.entries(scenarioSnippets).filter(([, data]) => {
+        const matchesType = !data.type || data.type === 'all' || data.type === caseType;
+        const matchesSubStatus = Array.isArray(data.substatus) && data.substatus.includes(subStatusKey);
+        return matchesType && matchesSubStatus;
+    });
+}
+
+// O trecho identificador de um cenário, sem o prefixo da origem. Embutido aqui
+// ele é `quickfill-ni-cms-access`; publicado pela Central vira
+// `cw-<substatus>-<slug>` (note-templates-service.js#idDoModelo). O final é o
+// mesmo nos dois - é por ele que um atalho salvo num mundo se acha no outro.
+export function scenarioSlug(id, substatus) {
+    const raw = String(id || '');
+    if (raw.startsWith('quickfill-')) return raw.slice('quickfill-'.length);
+
+    if (substatus) {
+        const prefix = `cw-${String(substatus).toLowerCase()}-`;
+        if (raw.startsWith(prefix)) return raw.slice(prefix.length);
+    }
+    // A chave do substatus nunca tem hífen (é UPPER_SNAKE_CASE), então o
+    // primeiro hífen depois dela delimita o slug com segurança.
+    const m = raw.match(/^cw-[a-z0-9_]+-(.+)$/);
+    return m ? m[1] : raw;
+}
+
+// Nome legível de um cenário para exibir num chip ou numa lista. Passa pelo
+// slug de propósito: sem isso, um cenário publicado pela Central apareceria
+// como "cw in_not_reachable in no show bau" na tela do agente.
+export function scenarioLabel(id, substatus) {
+    return scenarioSlug(id, substatus).replace(/-/g, ' ');
 }
 
 // Campos presentes em quase todo template (17 dos 18) mas de baixo valor por
@@ -877,14 +927,6 @@ export const scenarioSnippets = {
     'quickfill-ni-attempted-2day': {
         type: 'bau',
         substatus: ['NI_Attempted_Contact'],
-        // Atalho de Ctrl+K (Quick Launch): ver notes-assistant.js#openWithPreset.
-        quickLaunch: {
-            status: 'NI',
-            subStatus: 'NI_Attempted_Contact',
-            label: 'NI Attempted — Início 2 Day Rule',
-            keywords: '2 day ligacao attempted contact inicio',
-            focusIds: ['field-SPEAKEASY_ID', 'evidence-l1', 'evidence-l2', 'evidence-msg']
-        },
         'field-REASON_COMMENTS': "Attempted Contact (Início 2 Day Rule)",
         'field-CONTEXTO_CALL': "• Fiz a primeira tentativa de ligação, sem sucesso.\n• Enviei uma message no chat para o AM.\n• Aguardei 5 minutos e fiz a segunda tentativa de ligação, novamente sem sucesso.\n• Aguardei mais 5 minutos e agora farei o acompanhamento 2 Day Rule.",
         'field-SCREENSHOTS': "• MSG AM -\n• Tentativa 1 -\n• Tentativa 2 -"
@@ -911,17 +953,6 @@ export const scenarioSnippets = {
     'quickfill-in-no-show-bau': {
         type: 'bau',
         substatus: ['IN_Not_Reachable'],
-        // Atalho de Ctrl+K (Quick Launch): abre o Case Notes já no status/substatus
-        // certo e com este cenário aplicado - ver notes-assistant.js#openWithPreset.
-        // focusIds: campo pra focar/realçar como "ainda falta preencher" depois de
-        // aplicar o preset, em ordem de prioridade.
-        quickLaunch: {
-            status: 'IN',
-            subStatus: 'IN_Not_Reachable',
-            label: 'IN Not Reachable — Finalização 2 Day Rule',
-            keywords: '2 day finalizacao nao atendeu ligacoes reachable',
-            focusIds: ['field-SPEAKEASY_ID']
-        },
         'field-REASON_COMMENTS': "Sem resposta ao 2 Day Rule.",
         'field-ON_CALL': "N/A",
         'field-COMENTARIOS': "• O caso foi gerado e entrei na chamada no horário agendado.\n• O anunciante não compareceu à reunião.\n• Segui o protocolo de espera (BAU): realizei duas tentativas de ligação, sem sucesso.\n• Nenhuma das ligações foi atendida (ex: Caixa Postal).\n• Caso inativado após 2 Day Rule.",

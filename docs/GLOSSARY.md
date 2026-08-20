@@ -19,7 +19,9 @@ Keep definitions short and precise. The goal: a new developer (or Claude) quickl
 
 **Command Center** — The floating pill UI (`src/modules/shared/command-center.js`) that is the app's main entry point, surfacing every module and drag-repositionable on screen.
 
-**Command Palette** — The `Ctrl/Cmd+K` quick-search overlay (`command-palette.js`) that calls the same toggle functions as clicking a Command Center icon, without duplicating open/close logic.
+**Command Palette** — The `Ctrl/Cmd+K` quick-search overlay (`command-palette.js`) that calls the same toggle functions as clicking a Command Center icon, without duplicating open/close logic. It lists two groups: the agent's own **Shortcuts** first, then the modules.
+
+**Shortcut (Ctrl+K)** — An agent-owned command in the palette (`shared/shortcut-service.js`): a case type + status + substatus + zero or more scenarios, with a name and a search alias. It stores *references* to scenarios, never their text, so published content corrections reach it for free. Created from Case Notes ("Salvar como atalho") or from Configurações → Meus Atalhos; capped at 8. Not to be confused with a **Scenario**, which is content, or a **Draft**, which is one unfinished note.
 
 ## D
 

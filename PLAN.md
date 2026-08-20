@@ -33,6 +33,15 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Recently done
 
+- [~] **Atalhos do Ctrl+K por agente** — captura no Case Notes + construtor em
+      Configurações, persistência em `User_Prefs` (nuvem, cache-first), grupos e
+      ranking por uso no palette. ADR em
+      `docs/decisions/0002-atalhos-ctrl-k-por-agente.md`. Testes: `test:shortcuts`,
+      `test:prefs`, `smoke:shortcuts`. O merge em `refactor-structure` já leva o
+      backend novo ao deployment de **dev** pela CI (a aba `User_Prefs` nasce
+      sozinha no primeiro uso). Para **produção**, falta o `clasp deploy` manual
+      de sempre (`RELEASE.md`) — até lá, em produção os atalhos funcionam mas
+      ficam só no navegador de cada pessoa, que é o fallback previsto. (2026-08-20)
 - [x] Project adopted into groundrules (2026-08-18)
 - [x] Suporte PT/ES completo — interface, conteúdo (notas, e-mails, links) e
       Apps Script (e-mails automáticos + TL Dashboard). Idioma herdado da

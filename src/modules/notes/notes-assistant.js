@@ -1,6 +1,6 @@
 // src/modules/notes/notes-assistant.js
 
-import { showToast, confirmDialog } from "../shared/utils.js";
+import { showToast, confirmDialog, promptDialog } from "../shared/utils.js";
 import { notesState } from "./core/notes-state.js";
 import { createNotesPopup, HEADER_DESC } from "./ui/notes-popup.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "./notes-styles.js";
@@ -17,6 +17,7 @@ import { SoundManager } from "../shared/sound-manager.js";
 import { enableFilledCheck, lockBodyScroll, unlockBodyScroll, markPendingField } from "../shared/dom-utils.js";
 import { getPageData } from "../shared/page-data.js";
 import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import { ShortcutService, resolveScenarioId, MAX_SHORTCUTS } from "../shared/shortcut-service.js";
 import {
     SUBSTATUS_TEMPLATES,
     SUBSTATUS_SHORTCODES,
@@ -37,6 +38,10 @@ import { runEmailAutomation } from "../email-assistant/email-automation-service.
 import { triggerProcessingAnimation, updateNotesBadge, registerCaseCompleted } from "../shared/command-center.js";
 import { toggleGenieAnimation } from "../shared/animations.js";
 
+// Mesmo raio do Ctrl+K (command-palette.js): é a pista visual de que os dois
+// botões falam da mesma coisa.
+const BOLT_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;flex-shrink:0;"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
+
 export function initCaseNotesAssistant() {
     const CURRENT_VERSION = "v4.0.0";
 
@@ -56,6 +61,33 @@ export function initCaseNotesAssistant() {
         applyScenario(scenarioId, isSelected);
     });
     scenariosContainer.appendChild(scenarioSelector);
+
+    // "Salvar como atalho": captura a combinação que já está montada na tela
+    // (tipo de caso + status + substatus + cenários marcados) e a transforma
+    // num comando do Ctrl+K. Fica aqui, e não na barra de ações, porque é sobre
+    // a combinação escolhida acima - não sobre a nota pronta.
+    const saveShortcutBtn = document.createElement("button");
+    saveShortcutBtn.type = "button";
+    saveShortcutBtn.className = "cw-save-shortcut-btn";
+    saveShortcutBtn.style.cssText = `
+        margin-top: 10px; padding: 7px 12px; border-radius: 8px;
+        border: 1px dashed ${COLORS.border}; background: transparent;
+        color: ${COLORS.textSub}; font-family: inherit; font-size: 11.5px;
+        font-weight: 600; cursor: pointer; display: inline-flex; align-items: center;
+        gap: 6px; transition: all 0.2s ${EASE};
+    `;
+    saveShortcutBtn.onmouseenter = () => {
+        saveShortcutBtn.style.borderColor = COLORS.primary;
+        saveShortcutBtn.style.color = COLORS.primary;
+        SoundManager.playHover();
+    };
+    saveShortcutBtn.onmouseleave = () => {
+        saveShortcutBtn.style.borderColor = COLORS.border;
+        saveShortcutBtn.style.color = COLORS.textSub;
+    };
+    saveShortcutBtn.onclick = () => handleSaveAsShortcut();
+    saveShortcutBtn.innerHTML = `${BOLT_ICON}<span>${t('salvar_como_atalho')}</span>`;
+    scenariosContainer.appendChild(saveShortcutBtn);
 
     // --- Evidence Container (Attempted Contact) ---
     const evidenceContainer = document.createElement("div");
@@ -925,20 +957,29 @@ export function initCaseNotesAssistant() {
         notesState.isDirty = false;
     }
 
-    // Quick Launch (Ctrl+K -> preset de nota): abre o Case Notes já no
-    // status/substatus certo e com o cenário mais usado aplicado, pra quem
-    // hoje copia e cola essas notas em vez de passar pelo fluxo normal. Não
-    // reimplementa nada - só encadeia as mesmas peças que o clique manual já
-    // usa (troca de select, onSubStatusChange, clique no chip do cenário),
-    // então herda de graça qualquer ajuste futuro nelas.
-    async function openWithPreset(scenarioId) {
-        const scenario = scenarioSnippets[scenarioId];
-        const preset = scenario && scenario.quickLaunch;
-        if (!preset) return;
+    // Atalho do Ctrl+K: abre o Case Notes já no status/substatus certo e com os
+    // cenários do atalho aplicados, pra quem hoje copia e cola essas notas em
+    // vez de passar pelo fluxo normal. Não reimplementa nada - só encadeia as
+    // mesmas peças que o clique manual já usa (troca de select,
+    // onSubStatusChange, clique no chip), então herda de graça qualquer ajuste
+    // futuro nelas.
+    //
+    // Recebe o atalho inteiro (ver shortcut-service.js), não um id de cenário:
+    // um atalho pode combinar vários cenários, ou nenhum - abrir só no
+    // substatus certo já é um atalho útil.
+    async function openWithPreset(shortcut) {
+        const payload = shortcut && shortcut.payload;
+        if (!payload || !payload.subStatus) return { ok: false, reason: 'invalid' };
+
+        // Resolve ANTES de mexer na tela: se o cenário sumiu do catálogo, o
+        // agente precisa saber disso em vez de ver a nota abrir pela metade.
+        const refs = payload.scenarios || [];
+        const resolvidos = refs.map((ref) => resolveScenarioId(ref));
+        const perdidos = refs.filter((_, i) => !resolvidos[i]);
 
         if (notesState.isDirty) {
             const confirmed = await confirmDialog(t('substituir_rascunho_confirm'));
-            if (!confirmed) return;
+            if (!confirmed) return { ok: false, reason: 'cancelled' };
         }
 
         const wasVisible = notesState.visible;
@@ -950,34 +991,111 @@ export function initCaseNotesAssistant() {
         // trocar os selects no meio da animação de abertura ficava estranho.
         if (!wasVisible) await wait(550);
 
+        if (payload.caseType && payload.caseType !== notesState.currentCaseType) {
+            const typeBtn = content.querySelector(`#type-selector button[data-type="${payload.caseType}"]`);
+            if (typeBtn) typeBtn.click();
+            await wait(60);
+        }
+
         const mainSelect = content.querySelector('#main-status-select');
         const subSelect = content.querySelector('#sub-status-select');
-        mainSelect.value = preset.status;
-        notesState.setStatus(preset.status);
-        updateSubStatusOptions(preset.status, subSelect);
+        const status = payload.status || String(payload.subStatus).split('_')[0];
+        mainSelect.value = status;
+        notesState.setStatus(status);
+        updateSubStatusOptions(status, subSelect);
 
         await wait(60);
 
-        subSelect.value = preset.subStatus;
-        notesState.setSubStatus(preset.subStatus);
-        onSubStatusChange(preset.subStatus);
+        subSelect.value = payload.subStatus;
+        notesState.setSubStatus(payload.subStatus);
+        onSubStatusChange(payload.subStatus);
 
         await wait(160);
 
         // Clique real no chip (não chama applyScenario direto): assim o
         // cenário aparece visualmente selecionado, com o mesmo som de clique
         // de sempre - igual a um agente teria feito na mão.
-        const chip = scenariosContainer.querySelector(`[data-id="${scenarioId}"]`);
-        if (chip) chip.click();
+        for (const id of resolvidos.filter(Boolean)) {
+            const chip = scenariosContainer.querySelector(`[data-id="${id}"]`);
+            if (chip) chip.click();
+        }
 
         await wait(120);
-        SoundManager.playSuccess();
 
-        const pendingId = (preset.focusIds || []).find((id) => {
-            const el = document.getElementById(id);
-            return el && !el.value.trim();
-        });
-        if (pendingId) markPendingField(document.getElementById(pendingId));
+        if (perdidos.length) {
+            // Falhar em silêncio aqui é o pior desfecho possível: o agente
+            // acharia que a nota está completa e mandaria faltando texto.
+            SoundManager.playError();
+            showToast(t('atalho_cenario_sumiu'), { error: true });
+        } else {
+            SoundManager.playSuccess();
+        }
+
+        const pendente = firstEmptyFieldElement();
+        if (pendente) markPendingField(pendente);
+
+        return { ok: true, missing: perdidos.map((r) => r.id) };
+    }
+
+    // O primeiro campo que o atalho deixou vazio de propósito (tipicamente o
+    // SE ID, que só o agente sabe). Antes isso era uma lista `focusIds` escrita
+    // à mão por atalho; derivar da tela dispensa configuração e nunca aponta
+    // pra um campo que aquele substatus não tem.
+    function firstEmptyFieldElement() {
+        const candidatos = content.querySelectorAll(
+            'input[id^="field-"], textarea[id^="field-"], input[id^="evidence-"]'
+        );
+        for (const el of candidatos) {
+            if (el.offsetParent === null) continue; // campo escondido não conta
+            if (!String(el.value || '').trim()) return el;
+        }
+        return null;
+    }
+
+    async function handleSaveAsShortcut() {
+        const capturado = captureCurrentAsShortcut();
+        if (!capturado) {
+            SoundManager.playError();
+            showToast(t('select_substatus'), { error: true });
+            return;
+        }
+
+        if (ShortcutService.listRaw().length >= MAX_SHORTCUTS) {
+            SoundManager.playError();
+            showToast(t('atalho_limite').replace('{max}', MAX_SHORTCUTS), { error: true });
+            return;
+        }
+
+        const sugestao = SUBSTATUS_TEMPLATES[capturado.payload.subStatus]?.name || capturado.payload.subStatus;
+        const nome = await promptDialog(t('atalho_nome_pergunta'), sugestao);
+        if (nome === null) return;
+
+        const resultado = await ShortcutService.save({ ...capturado, label: String(nome).trim() || sugestao });
+        if (!resultado.ok) {
+            SoundManager.playError();
+            showToast(t('atalho_limite').replace('{max}', MAX_SHORTCUTS), { error: true });
+            return;
+        }
+
+        SoundManager.playSuccess();
+        showToast(resultado.synced ? t('atalho_salvo') : t('atalho_salvo_local'));
+    }
+
+    // O estado atual da tela, no formato que o atalho guarda. É o que o botão
+    // "Salvar como atalho" captura - por isso o agente nunca configura uma
+    // combinação que a tela não produziria.
+    function captureCurrentAsShortcut() {
+        if (!notesState.currentSubStatus) return null;
+        const selecionados = scenarioSelector.getSelectedIds ? scenarioSelector.getSelectedIds() : [];
+        return {
+            kind: 'note',
+            payload: {
+                caseType: notesState.currentCaseType,
+                status: notesState.currentStatus,
+                subStatus: notesState.currentSubStatus,
+                scenarios: selecionados.map((id) => ({ id, substatus: notesState.currentSubStatus })),
+            },
+        };
     }
 
     function t(key) {
@@ -1078,6 +1196,8 @@ export function initCaseNotesAssistant() {
 
         const lEmail = content.querySelector('.js-label-email-toggle');
         if (lEmail) lEmail.textContent = t('preencher_email_automaticamente');
+
+        saveShortcutBtn.innerHTML = `${BOLT_ICON}<span>${t('salvar_como_atalho')}</span>`;
 
         if (tagSupport && tagSupport.setLanguage) tagSupport.setLanguage(t);
         if (stepTasks && stepTasks.setLanguage) stepTasks.setLanguage(t);

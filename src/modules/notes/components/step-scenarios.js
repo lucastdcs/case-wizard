@@ -1,6 +1,6 @@
 // src/modules/notes/components/step-scenarios.js
 
-import { scenarioSnippets, getScenarioFields } from "../data/notes-data.js";
+import { getScenarioFields, getScenariosFor, scenarioLabel } from "../data/notes-data.js";
 import { SoundManager } from "../../shared/sound-manager.js";
 import { getLanguage } from "../../shared/i18n.js";
 
@@ -67,17 +67,12 @@ export function createScenariosComponent(onSelectCallback) {
       // DC), nunca o substatus - todo cenário de NI aparecia em qualquer um
       // dos 4 substatus de NI, sem diferenciação. Regras de quais cenários
       // pertencem a qual substatus: specs/workflow/case-notes-status-rules.md
-      const filtered = Object.entries(scenarioSnippets).filter(([id, data]) => {
-          const matchesType = !data.type || data.type === 'all' || data.type === caseType;
-          const matchesSubStatus = Array.isArray(data.substatus) && data.substatus.includes(subStatusKey);
-          return matchesType && matchesSubStatus;
-      });
+      const filtered = getScenariosFor(subStatusKey, caseType);
 
       grid.innerHTML = "";
       filtered.forEach(([id, data]) => {
           const chip = document.createElement("div");
-          const label = id.replace('quickfill-', '').replace(/-/g, ' ');
-          chip.textContent = label;
+          chip.textContent = scenarioLabel(id, subStatusKey);
           chip.dataset.id = id;
           chip.dataset.sound = "hover";
 
@@ -158,6 +153,11 @@ export function createScenariosComponent(onSelectCallback) {
           container.style.display = "block";
       }
   };
+
+  // Quais cenários estão marcados agora - é o que o botão "Salvar como atalho"
+  // captura. O Set é interno de propósito (o clique é a única forma de mexer
+  // nele); expor a leitura não abre mão disso.
+  container.getSelectedIds = () => [...selectedIds];
 
   container.appendChild(grid);
   container.appendChild(previewBox);

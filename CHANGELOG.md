@@ -9,6 +9,21 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Atalhos do Ctrl+K configuráveis por agente.** Cada pessoa escolhe os
+  comandos que quer no Ctrl+K: status + substatus + os cenários que quiser (ou
+  nenhum), com nome e apelido de busca próprios. Dois caminhos para criar — o
+  botão "Salvar como atalho" no Case Notes, que captura a combinação já montada
+  na tela, e o construtor em Configurações → **Meus Atalhos**, onde também se
+  renomeia, reordena (arrastando ou pelas setas) e exclui. O palette passa a
+  agrupar "Meus atalhos" acima de "Módulos" e, por padrão, ordena os atalhos por
+  frequência de uso (desligável). Limite de 8 atalhos. Quem nunca configurou
+  nada continua recebendo os dois de sempre, agora editáveis.
+  Ver `docs/decisions/0002-atalhos-ctrl-k-por-agente.md`.
+- **Aba `User_Prefs`** e ops `get_user_prefs`/`save_user_prefs`: preferência de
+  agente na nuvem (cache-first, mesmo padrão da Biblioteca Pessoal), para que a
+  configuração siga a pessoa ao trocar de máquina ou de perfil do Chrome.
+- Suítes `npm run test:shortcuts` (16 casos), `npm run test:prefs` (12) e
+  `npm run smoke:shortcuts` (10, Playwright sobre o `mock-crm.html`).
 - Project adopted into groundrules on 2026-08-18
 - **Suporte a espanhol (PT/ES) em todo o produto.** O idioma da interface é
   herdado do perfil da pessoa na planilha People (`profile.defaultLanguage`) e
@@ -25,6 +40,17 @@ versions follow [Semantic Versioning](https://semver.org/).
   módulos agora seguem o idioma único da sessão, trocado em Configurações.
 
 ### Fixed
+- **Os atalhos de nota do Ctrl+K sumiriam sem aviso quando a Central de Conteúdo
+  publicasse os modelos de nota.** `applyNoteTemplateContent()` reescreve
+  `scenarioSnippets` inteiro com ids derivados e sem o campo `quickLaunch`, do
+  qual os atalhos dependiam — o filtro do palette passaria a devolver zero, sem
+  erro nenhum. Os atalhos agora vivem fora do catálogo de cenários e referenciam
+  o cenário com resolução tolerante (id exato → slug no mesmo substatus).
+- Um atalho apontando para um cenário que não existe mais abria a nota pela
+  metade em silêncio; agora avisa o agente e aparece marcado em Configurações.
+- Cenários publicados pela Central apareciam nos chips com o id cru
+  (`cw in_not_reachable in no show bau`); passam pelo mesmo `scenarioLabel()`
+  que o construtor de atalhos usa.
 - Botões "Não/Sim" do seletor "Caso de Portugal?" (Notes) não retraduziam ao
   trocar de idioma.
 - Botão padrão de confirmação destrutiva (`confirmDialog`) ficava em português

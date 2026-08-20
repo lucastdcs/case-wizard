@@ -34,6 +34,7 @@ A productivity and automation suite for a corporate CRM, delivered as a JavaScri
 - **Broadcast System** — global announcements sourced from the backend, with `localStorage`-based read tracking and a custom emoji-shortcode parser.
 - **Links Hub** — curated shortcuts to internal tools and pages, grouped by task.
 - **Command Center & Command Palette** — a floating pill that surfaces every module, plus a `Ctrl/Cmd+K` quick-search that calls the same toggle functions as clicking an icon.
+- **Per-agent Ctrl+K shortcuts** — each agent configures their own quick commands (status + substatus + scenarios), created either by capturing a Case Notes screen they already built or from a builder in Settings. Stored per person in the backend so they follow the agent across machines.
 - **Onboarding & Changelog wizards** — first-run tutorial slides and a "what's new" popup shown automatically when the app version changes.
 - **Sound UX & Material Look** — audio feedback for success/error/notification events, a cinematic startup sound, and CSS-in-JS components styled to blend into Google's native UI.
 
