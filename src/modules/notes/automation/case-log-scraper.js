@@ -3,6 +3,31 @@ import { showToast } from '../../shared/utils.js';
 import { SoundManager } from '../../shared/sound-manager.js';
 import { ensureOriginalLanguage } from '../../shared/page-data.js';
 import { esperar, simularClique } from '../../shared/dom-utils.js';
+import { getLanguage } from '../../shared/i18n.js';
+import { Z } from '../../shared/z-layers.js';
+
+const CLS_DICT = {
+    pt: {
+        searching: "Buscando ID...",
+        readingMessage: "Lendo mensagem...",
+        idFound: (id) => `ID Localizado: ${id}`,
+        noIdFound: "Nenhum ID encontrado.",
+        notFound: "Não encontrado",
+        processingError: "Erro ao processar.",
+    },
+    es: {
+        searching: "Buscando ID...",
+        readingMessage: "Leyendo mensaje...",
+        idFound: (id) => `ID Encontrado: ${id}`,
+        noIdFound: "Ningún ID encontrado.",
+        notFound: "No encontrado",
+        processingError: "Error al procesar.",
+    },
+};
+function cls(key) {
+    const lang = getLanguage();
+    return CLS_DICT[lang]?.[key] ?? CLS_DICT.pt[key];
+}
 
 const styleId = 'cw-automation-styles';
 if (!document.getElementById(styleId)) {
@@ -30,7 +55,7 @@ if (!document.getElementById(styleId)) {
             
             /* Traz para frente do Overlay */
             position: relative;
-            z-index: 1000000 !important; 
+            z-index: ${Z.PAGE_SPOTLIGHT_TARGET} !important; 
             pointer-events: none;
         }
 
@@ -44,7 +69,7 @@ if (!document.getElementById(styleId)) {
             background: rgba(255, 255, 255, 0.4); /* Branco Translúcido */
             backdrop-filter: blur(5px);           /* O Desfoque Apple Glass */
             -webkit-backdrop-filter: blur(5px);
-            z-index: 999999;                      /* Fica atrás do Input (1000000) */
+            z-index: ${Z.PAGE_SPOTLIGHT_OVERLAY};   /* Fica atrás do Input */
             opacity: 0;
             transition: opacity 0.3s ease;
             pointer-events: all;                  /* Bloqueia cliques na página */
@@ -92,7 +117,7 @@ export async function fetchAndInsertSpeakeasyId(targetInputId) {
     
     if (inputWidget) {
         originalPlaceholder = inputWidget.placeholder;
-        inputWidget.placeholder = "Buscando ID...";
+        inputWidget.placeholder = cls('searching');
         inputWidget.value = ""; 
         inputWidget.classList.add('cw-scanning-active'); // Liga a borda colorida e traz para frente
     }
@@ -156,7 +181,7 @@ export async function fetchAndInsertSpeakeasyId(targetInputId) {
                 const isExpanded = header.getAttribute('aria-expanded') === 'true';
                 
                 if (!isExpanded) {
-                    if(inputWidget) inputWidget.placeholder = "Lendo mensagem...";
+                    if(inputWidget) inputWidget.placeholder = cls('readingMessage');
                     
                     simularClique(header);
                     
@@ -204,7 +229,7 @@ export async function fetchAndInsertSpeakeasyId(targetInputId) {
                 inputWidget.dispatchEvent(new Event('change', { bubbles: true }));
                 
                 SoundManager.playSuccess();
-                showToast(`ID Localizado: ${idEncontrado}`);
+                showToast(cls('idFound')(idEncontrado));
 
                 // Flash Verde de Sucesso
                 inputWidget.style.transition = "background-color 0.3s";
@@ -213,8 +238,8 @@ export async function fetchAndInsertSpeakeasyId(targetInputId) {
 
             } else {
                 SoundManager.playError();
-                showToast("Nenhum ID encontrado.", { error: true });
-                inputWidget.placeholder = "Não encontrado";
+                showToast(cls('noIdFound'), { error: true });
+                inputWidget.placeholder = cls('notFound');
                 
                 // Flash Vermelho de Erro
                 inputWidget.style.transition = "background-color 0.3s";
@@ -226,7 +251,7 @@ export async function fetchAndInsertSpeakeasyId(targetInputId) {
     } catch (error) {
         console.error("Erro na automação:", error);
         SoundManager.playError();
-        showToast("Erro ao processar.", { error: true });
+        showToast(cls('processingError'), { error: true });
     } finally {
         if (inputWidget) {
             inputWidget.classList.remove('cw-scanning-active');

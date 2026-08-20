@@ -1,9 +1,10 @@
 // src/modules/notes/core/form-builder.js
-import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, translations, getEffectiveRequiredFields, getEffectiveOptionalFields } from "../data/notes-data.js";
+import { SUBSTATUS_TEMPLATES, textareaListFields, textareaParagraphFields, translations, getEffectiveRequiredFields } from "../data/notes-data.js";
 import { fetchAndInsertSpeakeasyId } from "../automation/case-log-scraper.js";
 import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
 import { SoundManager } from "../../shared/sound-manager.js";
+import { confirmDialog } from "../../shared/utils.js";
 
 export function buildDynamicForm(subStatusKey, container, state) {
     container.innerHTML = "";
@@ -34,7 +35,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
 
         if (fieldName === "SPEAKEASY_ID") {
             const btnSearch = document.createElement('button');
-            btnSearch.innerHTML = `✨ Auto Busca`;
+            btnSearch.innerHTML = t('auto_busca');
             btnSearch.style.cssText = `font-size: 11px; font-weight: 700; color: ${COLORS.primary}; background-color: ${COLORS.primaryBg}; border: none; border-radius: ${RADIUS.pill}; padding: 6px 14px; margin-left: 10px; cursor: pointer; transition: all 0.2s ${EASE};`;
             btnSearch.onmouseenter = () => btnSearch.style.backgroundColor = "#d2e3fc";
             btnSearch.onmouseleave = () => btnSearch.style.backgroundColor = COLORS.primaryBg;
@@ -48,13 +49,12 @@ export function buildDynamicForm(subStatusKey, container, state) {
             btnDelete.style.cssText = `font-size: 14px; background: ${COLORS.bgInput}; border: none; color: ${COLORS.textSub}; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: auto; transition: all 0.2s ${EASE};`;
             btnDelete.onmouseenter = () => { btnDelete.style.background = COLORS.error; btnDelete.style.color = COLORS.surface; };
             btnDelete.onmouseleave = () => { btnDelete.style.background = COLORS.bgInput; btnDelete.style.color = COLORS.textSub; };
-            // Sem confirmDialog aqui: remover um campo opcional é reversível
-            // num clique só (o chip "+ campo" reaparece logo abaixo), então
-            // bloquear com um modal só atrapalhava a velocidade sem
-            // proteger nada de fato irreversível.
-            btnDelete.onclick = (e) => {
+            btnDelete.onclick = async (e) => {
                 e.preventDefault();
                 SoundManager.playClick();
+                const fieldLabel = labelText.textContent.replace(/:\s*$/, "").trim();
+                const confirmed = await confirmDialog(t('remover_campo_confirm').replace('{campo}', fieldLabel), { danger: true, confirmText: t('remover') });
+                if (!confirmed) return;
                 state.removeField(fieldName);
                 buildDynamicForm(subStatusKey, container, state);
             };
@@ -63,16 +63,17 @@ export function buildDynamicForm(subStatusKey, container, state) {
         let field;
         if (textareaListFields.includes(fieldName)) {
             field = document.createElement("textarea"); field.classList.add("bullet-textarea", "cw-textarea");
-            field.placeholder = "Utilize marcadores para detalhar...";
+            field.placeholder = t('utilize_marcadores');
             enableAutoBullet(field);
         } else if (textareaParagraphFields.includes(fieldName)) {
             field = document.createElement("textarea"); field.classList.add("cw-textarea");
-            field.placeholder = "Descreva as considerações...";
+            field.placeholder = t('descreva_consideracoes');
         } else {
             field = document.createElement("input"); field.type = "text"; field.classList.add("cw-input");
         }
         field.id = fieldId; field.value = state.formData[fieldId] || "";
         field.addEventListener('input', (e) => state.updateField(fieldId, e.target.value));
+
         container.appendChild(label); container.appendChild(field);
     });
 
@@ -96,12 +97,13 @@ export function buildDynamicForm(subStatusKey, container, state) {
         container.appendChild(consentSelect);
     }
 
-    // Campos opcionais do template (ver optionalFields em data/notes-data.js)
-    // que ainda não estão ativos: ficam escondidos por padrão pra reduzir a
-    // carga cognitiva, mas continuam a 1 clique de distância.
-    const optionalNow = getEffectiveOptionalFields(templateData);
+    // Campos não-obrigatórios do template que não estão ativos no momento —
+    // seja porque começam escondidos por padrão (ver optionalFields em
+    // data/notes-data.js) ou porque o agente os removeu pelo botão "✕" —
+    // ficam disponíveis aqui a 1 clique de distância, permitindo desfazer
+    // a remoção.
     const hiddenOptional = (templateData.templateFields || []).filter(
-        (fieldName) => optionalNow.includes(fieldName) && !state.activeFields.includes(fieldName)
+        (fieldName) => !requiredNow.includes(fieldName) && !state.activeFields.includes(fieldName)
     );
     if (hiddenOptional.length > 0) {
         const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;

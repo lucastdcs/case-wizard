@@ -1,0 +1,2274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Central de Conteúdo - Powered by Cases Wizard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+    <style>
+        /* Tokens copiados do TLDashboard.html de propósito, não importados dele:
+           lá o CSS é inline num arquivo de ~2000 linhas, e extrair um parcial
+           compartilhado sem regressão custaria mais agora do que a duplicação.
+           A origem é a mesma, então a identidade visual não diverge. */
+        :root {
+            --bg-base: #F1F3F4;
+            --surface-level-1: #FFFFFF;
+            --surface-level-2: #F8F9FA;
+            --surface-level-3: #E8EAED;
+            --border-subtle: #DADCE0;
+
+            --text-primary: #202124;
+            --text-secondary: #5F6368;
+            --text-tertiary: #5F6368;
+
+            --gemini-blue: #1A73E8;
+            --gemini-blue-light: #E8F0FE;
+            --gemini-purple: #9B72CB;
+            --gemini-gradient: linear-gradient(90deg, #4285f4, #9b72cb, #d96570);
+
+            --success: #1E8E3E;
+            --success-light: #E6F4EA;
+            --danger: #D93025;
+            --danger-light: #FCE8E6;
+            --warning: #F9AB00;
+            --warning-light: #FEF7E0;
+            --warning-text: #B06000;
+
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-pill: 100px;
+
+            --nav-bg: #3D3D3D;
+            --nav-surface: #333333;
+            --nav-border: rgba(255, 255, 255, 0.15);
+            --nav-text-primary: #E3E3E3;
+            --nav-text-secondary: #9AA0A6;
+
+            --spring-expressive: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            --spring-functional: cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Google Sans', system-ui, sans-serif;
+            background-color: var(--bg-base);
+            margin: 0;
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .ambient-glow {
+            position: fixed;
+            top: -20vh;
+            left: 10vw;
+            width: 80vw;
+            height: 50vh;
+            background: radial-gradient(ellipse at center, rgba(66, 133, 244, 0.06) 0%, rgba(241, 243, 244, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* --- Top nav --- */
+        .topnav {
+            background: rgba(61, 61, 61, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 0 32px;
+            height: 72px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--nav-border);
+            background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
+        }
+
+        .topnav::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--gemini-gradient);
+            opacity: 0.7;
+        }
+
+        .brand-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+            color: var(--nav-text-primary);
+        }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--nav-text-secondary);
+            font-size: 13px;
+        }
+
+        .role-badge {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid var(--nav-border);
+            color: var(--nav-text-primary);
+            padding: 4px 12px;
+            border-radius: var(--radius-pill);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+        }
+
+        /* --- Layout --- */
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        .page-head {
+            margin-bottom: 24px;
+        }
+
+        .page-head h1 {
+            font-size: 28px;
+            font-weight: 500;
+            margin: 0 0 6px;
+            letter-spacing: -0.5px;
+        }
+
+        .page-head p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* --- Tabs --- */
+        .tab-section {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 12px 18px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color .2s var(--spring-functional), border-color .2s var(--spring-functional);
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            color: var(--gemini-blue);
+            border-bottom-color: var(--gemini-blue);
+        }
+
+        .tab-btn:focus-visible {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: 2px;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        }
+
+        .count-chip {
+            background: var(--danger);
+            color: #fff;
+            border-radius: var(--radius-pill);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 1px 7px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .count-chip.zero {
+            display: none;
+        }
+
+        /* --- Cards --- */
+        .card {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 500;
+            margin: 0 0 4px;
+        }
+
+        .card-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .row-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: var(--radius-pill);
+            padding: 9px 20px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background .2s var(--spring-functional), box-shadow .2s var(--spring-functional);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background: var(--gemini-blue);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 1px 6px rgba(26, 115, 232, .45);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--gemini-blue);
+            border-color: var(--border-subtle);
+        }
+
+        .btn-ghost:hover {
+            background: var(--gemini-blue-light);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--danger);
+            border-color: var(--danger-light);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-light);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-sm {
+            font-size: 13px;
+            padding: 6px 14px;
+        }
+
+        /* --- Forms --- */
+        label.fld {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin: 14px 0 5px;
+        }
+
+        input[type=text],
+        input[type=url],
+        select,
+        textarea {
+            width: 100%;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--surface-level-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: -1px;
+            background: var(--surface-level-1);
+        }
+
+        textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 16px;
+        }
+
+        @media (max-width: 700px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* --- Status pills --- */
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .4px;
+            padding: 3px 10px;
+            border-radius: var(--radius-pill);
+            text-transform: uppercase;
+        }
+
+        .pill.live {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .pill.draft {
+            background: var(--surface-level-3);
+            color: var(--text-secondary);
+        }
+
+        .pill.pending {
+            background: var(--warning-light);
+            color: var(--warning-text);
+        }
+
+        .pill.archived {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        /* --- Diff --- */
+        .diff {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 14px 0;
+        }
+
+        @media (max-width: 700px) {
+            .diff {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .diff-side {
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            background: var(--surface-level-2);
+            overflow-x: auto;
+        }
+
+        .diff-side.new {
+            border-color: var(--success);
+            background: var(--success-light);
+        }
+
+        .diff-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .diff-side.new .diff-label {
+            color: var(--success);
+        }
+
+        .diff-body {
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Roboto Mono', ui-monospace, monospace;
+        }
+
+        /* --- Item list --- */
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-wrap: wrap;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .item-main {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .item-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .item-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .cat-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 26px 0 4px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .cat-head:first-of-type {
+            margin-top: 6px;
+        }
+
+        /* --- States --- */
+        .state {
+            text-align: center;
+            padding: 64px 24px;
+            color: var(--text-secondary);
+        }
+
+        .state .material-symbols-rounded {
+            font-size: 44px;
+            color: var(--border-subtle);
+            display: block;
+            margin: 0 auto 12px;
+        }
+
+        .state h2 {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 0 0 6px;
+        }
+
+        .state p {
+            margin: 0 auto;
+            max-width: 44ch;
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- Toast --- */
+        #toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translate(-50%, 20px);
+            background: #202124;
+            color: #fff;
+            padding: 12px 22px;
+            border-radius: var(--radius-pill);
+            font-size: 14px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s var(--spring-functional), transform .25s var(--spring-functional);
+            z-index: 999;
+            max-width: 90vw;
+            text-align: center;
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        #toast.err {
+            background: var(--danger);
+        }
+
+        /* --- Modal --- */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(32, 33, 36, .5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 24px;
+        }
+
+        .modal {
+            background: var(--surface-level-1);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 {
+            font-size: 20px;
+            font-weight: 500;
+            margin: 0 0 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .skeleton {
+            height: 58px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(90deg, var(--surface-level-2) 25%, var(--surface-level-3) 50%, var(--surface-level-2) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes shimmer {
+            to {
+                background-position: -200% 0;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+
+        .note {
+            background: var(--gemini-blue-light);
+            border-left: 3px solid var(--gemini-blue);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 18px;
+        }
+
+        .note.warn {
+            background: var(--warning-light);
+            border-left-color: var(--warning);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient-glow"></div>
+
+    <nav class="topnav">
+        <div class="brand-main">
+            <span class="material-symbols-rounded">tune</span>
+            Central de Conteúdo
+        </div>
+        <div class="user-chip">
+            <span id="user-ldap"></span>
+            <span class="role-badge hidden" id="user-role"></span>
+        </div>
+    </nav>
+
+    <div class="wrap">
+        <!-- Estado de carregamento inicial -->
+        <div id="boot-state" class="state">
+            <span class="material-symbols-rounded">hourglass_top</span>
+            <h2>Verificando seu acesso…</h2>
+            <p>Só um instante.</p>
+        </div>
+
+        <!-- Sem permissão -->
+        <div id="denied-state" class="state hidden">
+            <span class="material-symbols-rounded">lock</span>
+            <h2>Você não tem acesso à Central de Conteúdo</h2>
+            <p>Peça a um ADMIN para liberar seu LDAP. Enquanto isso, nada aqui fica visível.</p>
+        </div>
+
+        <!-- App -->
+        <main id="app" class="hidden">
+            <div class="page-head">
+                <h1>Gerenciar conteúdo</h1>
+                <p>Toda alteração vira um rascunho e só chega ao app depois de aprovada.</p>
+            </div>
+
+            <div class="tab-section" role="tablist">
+                <button class="tab-btn active" role="tab" data-tab="links" onclick="switchTab('links')">
+                    <span class="material-symbols-rounded" style="font-size:19px">link</span> Links
+                </button>
+                <button class="tab-btn" role="tab" data-tab="callscript" onclick="switchTab('callscript')">
+                    <span class="material-symbols-rounded" style="font-size:19px">support_agent</span> Call Script
+                </button>
+                <button class="tab-btn" role="tab" data-tab="notes" onclick="switchTab('notes')">
+                    <span class="material-symbols-rounded" style="font-size:19px">edit_note</span> Case Notes
+                </button>
+                <button class="tab-btn" role="tab" data-tab="emails" onclick="switchTab('emails')">
+                    <span class="material-symbols-rounded" style="font-size:19px">mail</span> E-mails
+                </button>
+                <button class="tab-btn" role="tab" data-tab="tips" onclick="switchTab('tips')">
+                    <span class="material-symbols-rounded" style="font-size:19px">lightbulb</span> Dicas
+                </button>
+                <button class="tab-btn" role="tab" data-tab="approvals" onclick="switchTab('approvals')">
+                    <span class="material-symbols-rounded" style="font-size:19px">rule</span> Aprovações
+                    <span class="count-chip zero" id="pending-count">0</span>
+                </button>
+                <button class="tab-btn hidden" role="tab" data-tab="access" onclick="switchTab('access')" id="tab-access">
+                    <span class="material-symbols-rounded" style="font-size:19px">manage_accounts</span> Acessos
+                </button>
+
+            </div>
+
+            <!-- TAB: Links -->
+            <section id="pane-links">
+                <div class="note" id="links-note">
+                    Editar aqui não altera o app. A mudança entra como proposta e vai para a aba
+                    <strong>Aprovações</strong>.
+                </div>
+                <div class="row-between" style="margin-bottom:8px">
+                    <div>
+                        <div class="card-title">Links no ar</div>
+                        <p class="card-sub" id="links-summary">Carregando…</p>
+                    </div>
+                    <button class="btn btn-primary" id="links-new-btn" onclick="openLinkEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Novo link
+                    </button>
+                </div>
+                <div class="card" id="links-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Call Script -->
+            <section id="pane-callscript" class="hidden">
+                <div class="note" id="cs-note">
+                    Cada passo é um item. Editar aqui não altera o app — vai para
+                    <strong>Aprovações</strong> primeiro.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+                        <div>
+                            <label class="fld" style="margin-top:0" for="cs-lang">Idioma</label>
+                            <select id="cs-lang" onchange="renderCallScript()">
+                                <option value="PT">PT</option>
+                                <option value="ES">ES</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="fld" style="margin-top:0" for="cs-flow">Fluxo</label>
+                            <select id="cs-flow" onchange="renderCallScript()">
+                                <option value="BAU">BAU</option>
+                                <option value="LT">LT</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="cs-new-btn" onclick="openStepEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Novo passo
+                    </button>
+                </div>
+                <div class="card" id="cs-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Case Notes -->
+            <section id="pane-notes" class="hidden">
+                <div class="note" id="nt-note">
+                    Cada modelo é uma nota pronta: o agente clica e a nota nasce com o substatus
+                    certo e os campos já preenchidos.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+                        <div>
+                            <label class="fld" style="margin-top:0" for="nt-sub">Substatus</label>
+                            <select id="nt-sub" onchange="renderNoteTemplates()" style="min-width:260px">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="fld" style="margin-top:0" for="nt-lang">Idioma</label>
+                            <select id="nt-lang" onchange="renderNoteTemplates()">
+                                <option value="PT">PT</option>
+                                <option value="ES">ES</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="nt-new-btn" onclick="openTemplateEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Nova nota
+                    </button>
+                </div>
+                <div class="card" id="nt-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: E-mails -->
+            <section id="pane-emails" class="hidden">
+                <div class="note" id="em-note">
+                    Modelos do assistente do agente. Não inclui os e-mails de CR nem os
+                    disparados pelo Dashboard de TL.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div>
+                        <label class="fld" style="margin-top:0" for="em-lang">Idioma</label>
+                        <select id="em-lang" onchange="renderEmails()">
+                            <option value="PT">PT</option>
+                            <option value="ES">ES</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary hidden" id="em-new-btn" disabled
+                        title="Criar modelo novo ainda não é suportado — por ora, edite os existentes.">
+                        Novo modelo
+                    </button>
+                </div>
+                <div class="card" id="em-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Dicas -->
+            <section id="pane-tips" class="hidden">
+                <div class="note" id="tp-note">
+                    Frases curtas exibidas durante os carregamentos do app.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div>
+                        <div class="card-title">Dicas no ar</div>
+                        <p class="card-sub" id="tp-summary">Carregando…</p>
+                    </div>
+                    <button class="btn btn-primary" id="tp-new-btn" onclick="openTipEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Nova dica
+                    </button>
+                </div>
+                <div class="card" id="tp-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Aprovações -->
+            <section id="pane-approvals" class="hidden">
+                <div id="approvals-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Acessos -->
+            <section id="pane-access" class="hidden">
+                <div class="note warn">
+                    Quem entra aqui passa a ver e propor conteúdo. Papéis <strong>ADMIN</strong> e
+                    <strong>TL</strong> também aprovam.
+                </div>
+                <div class="card">
+                    <div class="card-title">Conceder ou alterar acesso</div>
+                    <div class="grid-2">
+                        <div>
+                            <label class="fld" for="acc-ldap">LDAP</label>
+                            <input type="text" id="acc-ldap" placeholder="ex.: lucaste" autocomplete="off">
+                        </div>
+                        <div>
+                            <label class="fld" for="acc-role">Papel</label>
+                            <select id="acc-role">
+                                <option value="ADMIN">ADMIN — edita tudo, aprova, gerencia acessos</option>
+                                <option value="TL">TL — edita tudo e aprova</option>
+                                <option value="QA">QA — propõe call script e case notes</option>
+                                <option value="WFM">WFM — propõe links</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top:18px">
+                        <button class="btn btn-primary" onclick="saveAccess()">Salvar acesso</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom:8px">Pessoas com acesso</div>
+                    <div id="access-list"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Próximos módulos -->
+        </main>
+    </div>
+
+    <div id="modal-root"></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+        var SESSION = null;
+        var LIVE_LINKS = [];
+        var MY_DRAFTS = [];
+
+        var CATEGORY_LABELS = {
+            tasks: 'Tarefas', ads: 'Ads', analytics: 'GA4', shopping: 'Shop',
+            tech: 'Tech', hr: 'RH', lm: 'Forms', qa: 'QA', suporte: 'Ajuda'
+        };
+
+        function toast(msg, isErr) {
+            var t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = isErr ? 'show err' : 'show';
+            setTimeout(function () { t.className = ''; }, isErr ? 5200 : 3200);
+        }
+
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // O valor de um link é JSON no campo `value`: assim name/url/desc/desc_es
+        // viajam como um item só e o par PT/ES fica junto do link que descreve,
+        // em vez de num mapa paralelo como o LINK_DESC_ES de hoje.
+        function parseLinkValue(raw) {
+            try {
+                var v = JSON.parse(raw || '{}');
+                return { name: v.name || '', url: v.url || '', desc: v.desc || '', desc_es: v.desc_es || '' };
+            } catch (e) {
+                return { name: '', url: '', desc: '', desc_es: '' };
+            }
+        }
+
+        // Recarrega as listas de conteúdo. Genérico de propósito: aprovar ou
+        // remover algo pode afetar qualquer módulo, e a aba visível nem sempre é
+        // a do item mexido.
+        function refreshContentLists() {
+            loadLinks();
+            if (!document.getElementById('pane-callscript').classList.contains('hidden')) {
+                loadCallScript();
+            }
+            if (!document.getElementById('pane-notes').classList.contains('hidden')) {
+                loadNoteTemplates();
+            }
+            if (!document.getElementById('pane-emails').classList.contains('hidden')) {
+                loadEmails();
+            }
+            if (!document.getElementById('pane-tips').classList.contains('hidden')) {
+                loadTips();
+            }
+        }
+
+        // A UI é conveniência, não a fronteira: o servidor recusa a ação de
+        // qualquer jeito. Esconder o botão evita oferecer algo que vai falhar.
+        function canPropose(module) {
+            return !!(SESSION && SESSION.proposableModules &&
+                SESSION.proposableModules.indexOf(module) !== -1);
+        }
+
+        function switchTab(tab) {
+            ['links', 'callscript', 'notes', 'emails', 'tips', 'approvals', 'access'].forEach(function (t) {
+                var pane = document.getElementById('pane-' + t);
+                if (pane) pane.classList.toggle('hidden', t !== tab);
+            });
+            document.querySelectorAll('.tab-btn').forEach(function (b) {
+                b.classList.toggle('active', b.dataset.tab === tab);
+            });
+            if (tab === 'callscript') loadCallScript();
+            if (tab === 'notes') loadNoteTemplates();
+            if (tab === 'emails') loadEmails();
+            if (tab === 'tips') loadTips();
+            if (tab === 'approvals') loadApprovals();
+            if (tab === 'access') loadAccess();
+        }
+
+        // --- Boot ---
+        function boot() {
+            google.script.run
+                .withSuccessHandler(function (s) {
+                    SESSION = s;
+                    document.getElementById('boot-state').classList.add('hidden');
+                    document.getElementById('user-ldap').textContent = s.ldap || '';
+
+                    if (!s.hasAccess) {
+                        document.getElementById('denied-state').classList.remove('hidden');
+                        return;
+                    }
+
+                    var badge = document.getElementById('user-role');
+                    badge.textContent = s.role;
+                    badge.classList.remove('hidden');
+
+                    document.getElementById('app').classList.remove('hidden');
+                    if (s.canManageAccess) document.getElementById('tab-access').classList.remove('hidden');
+
+                    if (!canPropose('links')) {
+                        document.getElementById('links-new-btn').classList.add('hidden');
+                        document.getElementById('links-note').textContent =
+                            'Seu papel (' + s.role + ') vê os links, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('call_script')) {
+                        document.getElementById('cs-new-btn').classList.add('hidden');
+                        document.getElementById('cs-note').textContent =
+                            'Seu papel (' + s.role + ') vê o roteiro, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('tips')) {
+                        document.getElementById('tp-new-btn').classList.add('hidden');
+                        document.getElementById('tp-note').textContent =
+                            'Seu papel (' + s.role + ') vê as dicas, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('email_template')) {
+                        document.getElementById('em-note').textContent =
+                            'Seu papel (' + s.role + ') vê os modelos, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('note_template')) {
+                        document.getElementById('nt-new-btn').classList.add('hidden');
+                        document.getElementById('nt-note').textContent =
+                            'Seu papel (' + s.role + ') vê os trechos, mas não propõe alterações neste módulo.';
+                    }
+
+                    loadLinks();
+                    if (s.canApprove) loadPendingCount();
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('boot-state').classList.add('hidden');
+                    document.getElementById('denied-state').classList.remove('hidden');
+                    toast(err.message || 'Falha ao verificar acesso.', true);
+                })
+                .getContentSession();
+        }
+
+        // --- Links ---
+        function loadLinks() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    LIVE_LINKS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (drafts) {
+                            MY_DRAFTS = drafts || [];
+                            renderLinks();
+                        })
+                        .withFailureHandler(function () { MY_DRAFTS = []; renderLinks(); })
+                        .listContentDrafts('links');
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('links-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar os links</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('links');
+        }
+
+        function draftForItem(itemId) {
+            for (var i = 0; i < MY_DRAFTS.length; i++) {
+                if (MY_DRAFTS[i].itemId === itemId) return MY_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function renderLinks() {
+            var host = document.getElementById('links-list');
+            var summary = document.getElementById('links-summary');
+
+            if (!LIVE_LINKS.length) {
+                summary.textContent = 'Nenhum link publicado ainda.';
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">link_off</span>' +
+                    '<h2>Nenhum link na planilha ainda</h2>' +
+                    '<p>Enquanto isso o app segue usando a lista embutida no código. ' +
+                    'Rode a semeadura (seedContentModule) ou crie o primeiro link aqui.</p></div>';
+                return;
+            }
+
+            var byCat = {};
+            LIVE_LINKS.forEach(function (it) {
+                (byCat[it.key] = byCat[it.key] || []).push(it);
+            });
+
+            var pend = MY_DRAFTS.length;
+            summary.textContent = LIVE_LINKS.length + ' links publicados' +
+                (pend ? ' · ' + pend + ' com alteração em andamento' : '');
+
+            var html = '';
+            Object.keys(byCat).sort().forEach(function (cat) {
+                html += '<div class="cat-head">' + esc(CATEGORY_LABELS[cat] || cat) +
+                    ' <span class="pill draft">' + byCat[cat].length + '</span></div>';
+
+                byCat[cat].forEach(function (it) {
+                    var v = parseLinkValue(it.value);
+                    var d = draftForItem(it.id);
+                    var badge = '';
+                    if (d) {
+                        badge = d.status === 'pending'
+                            ? '<span class="pill pending">em revisão</span>'
+                            : '<span class="pill draft">rascunho</span>';
+                    }
+
+                    var actions = canPropose('links')
+                        ? '<div style="display:flex;gap:8px">' +
+                        '<button class="btn btn-ghost btn-sm" onclick="openLinkEditor(\'' + it.id + '\')">Editar</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Tirar do ar</button>' +
+                        '</div>'
+                        : '';
+
+                    html += '<div class="item-row">' +
+                        '<div class="item-main">' +
+                        '<div class="item-name">' + esc(v.name) + ' ' + badge + '</div>' +
+                        '<div class="item-meta">' + esc(v.desc) + ' — ' + esc(v.url) + '</div>' +
+                        '</div>' + actions + '</div>';
+                });
+            });
+
+            host.innerHTML = html;
+        }
+
+        function closeModal() {
+            document.getElementById('modal-root').innerHTML = '';
+        }
+
+        function openLinkEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < LIVE_LINKS.length; i++) {
+                if (LIVE_LINKS[i].id === itemId) item = LIVE_LINKS[i];
+            }
+
+            var existingDraft = itemId ? draftForItem(itemId) : null;
+            var src = existingDraft || item;
+            var v = parseLinkValue(src ? src.value : '{}');
+            var cat = src ? src.key : 'tasks';
+
+            var catOptions = Object.keys(CATEGORY_LABELS).map(function (k) {
+                return '<option value="' + k + '"' + (k === cat ? ' selected' : '') + '>' +
+                    esc(CATEGORY_LABELS[k]) + '</option>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar link' : 'Novo link') + '</h2>' +
+                '<p class="card-sub">Isso cria uma proposta. O link no ar só muda depois da aprovação.</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Este item já está em revisão. Cancele o envio para editar de novo.</div>'
+                    : '') +
+                '<label class="fld" for="lnk-name">Nome</label>' +
+                '<input type="text" id="lnk-name" value="' + esc(v.name) + '">' +
+                '<label class="fld" for="lnk-url">URL</label>' +
+                '<input type="url" id="lnk-url" value="' + esc(v.url) + '">' +
+                '<div class="grid-2">' +
+                '<div><label class="fld" for="lnk-desc">Descrição (PT)</label>' +
+                '<input type="text" id="lnk-desc" value="' + esc(v.desc) + '"></div>' +
+                '<div><label class="fld" for="lnk-desc-es">Descrição (ES)</label>' +
+                '<input type="text" id="lnk-desc-es" value="' + esc(v.desc_es) + '"></div>' +
+                '</div>' +
+                '<label class="fld" for="lnk-cat">Categoria</label>' +
+                '<select id="lnk-cat">' + catOptions + '</select>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="lnk-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('lnk-save').onclick = function () {
+                submitLink(itemId, existingDraft ? existingDraft.draftId : null, this);
+            };
+            document.getElementById('lnk-name').focus();
+        }
+
+        function submitLink(itemId, draftId, btn) {
+            var name = document.getElementById('lnk-name').value.trim();
+            var url = document.getElementById('lnk-url').value.trim();
+
+            if (!name) return toast('Dê um nome ao link.', true);
+            if (!/^https?:\/\/|^http:\/\/go\//i.test(url)) {
+                return toast('A URL precisa começar com http:// ou https://', true);
+            }
+
+            var payload = {
+                draftId: draftId || '',
+                itemId: itemId || '',
+                module: 'links',
+                key: document.getElementById('lnk-cat').value,
+                lang: 'ALL',
+                label: name,
+                value: JSON.stringify({
+                    name: name,
+                    url: url,
+                    desc: document.getElementById('lnk-desc').value.trim(),
+                    desc_es: document.getElementById('lnk-desc-es').value.trim()
+                })
+            };
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando…';
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    google.script.run
+                        .withSuccessHandler(function () {
+                            closeModal();
+                            toast('Proposta enviada para revisão.');
+                            loadLinks();
+                            loadPendingCount();
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .submitContentDraft(res.draftId);
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .saveContentDraft(payload);
+        }
+
+        function askRemoval(itemId) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>Tirar este link do ar?</h2>' +
+                '<p class="card-sub">Também passa por aprovação. Nada é apagado — a versão fica arquivada e pode voltar.</p>' +
+                '<label class="fld" for="rm-reason">Motivo</label>' +
+                '<textarea id="rm-reason" placeholder="ex.: ferramenta descontinuada"></textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-danger" id="rm-go">Enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('rm-go').onclick = function () {
+                var reason = document.getElementById('rm-reason').value.trim();
+                if (!reason) return toast('Explique o motivo.', true);
+                this.disabled = true;
+
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Pedido de remoção enviado.');
+                        refreshContentLists();
+                        loadPendingCount();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .requestContentRemoval(itemId, reason);
+            };
+        }
+
+        // --- Call Script ---
+        var CS_ITEMS = [];
+        var CS_DRAFTS = [];
+
+        var CS_GROUPS = [
+            { key: 'inicio', label: 'Início' },
+            { key: 'meio', label: 'Implementação (Tag Support)' },
+            { key: 'fim', label: 'Encerramento' }
+        ];
+
+        function loadCallScript() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    CS_ITEMS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (d) { CS_DRAFTS = d || []; renderCallScript(); })
+                        .withFailureHandler(function () { CS_DRAFTS = []; renderCallScript(); })
+                        .listContentDrafts('call_script');
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('cs-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar o roteiro</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('call_script');
+        }
+
+        function csDraftForItem(itemId) {
+            for (var i = 0; i < CS_DRAFTS.length; i++) {
+                if (CS_DRAFTS[i].itemId === itemId) return CS_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function renderCallScript() {
+            var host = document.getElementById('cs-list');
+            var lang = document.getElementById('cs-lang').value;
+            var flow = document.getElementById('cs-flow').value;
+
+            var mine = CS_ITEMS.filter(function (i) { return i.lang === lang && i.key === flow; });
+
+            if (!mine.length) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">support_agent</span>' +
+                    '<h2>Nenhum passo publicado para ' + esc(lang + ' ' + flow) + '</h2>' +
+                    '<p>Enquanto isso o app segue com o roteiro embutido no código. ' +
+                    'Rode a semeadura (seedCallScriptNow) ou crie o primeiro passo aqui.</p></div>';
+                return;
+            }
+
+            var html = '';
+            CS_GROUPS.forEach(function (g) {
+                var steps = mine.filter(function (i) { return i.field === g.key; })
+                    .sort(function (a, b) { return a.sortOrder - b.sortOrder; });
+
+                html += '<div class="cat-head">' + esc(g.label) +
+                    ' <span class="pill draft">' + steps.length + '</span></div>';
+
+                // A seção de Implementação ainda não existe em ES: é conteúdo que
+                // nunca chegou, não bug. Dizer isso explicitamente evita que pareça
+                // uma falha de carregamento.
+                if (!steps.length) {
+                    html += '<div class="item-row"><div class="item-main">' +
+                        '<div class="item-meta">Sem passos cadastrados nesta seção. ' +
+                        'Use “Novo passo” para preencher.</div></div></div>';
+                    return;
+                }
+
+                steps.forEach(function (it, idx) {
+                    var d = csDraftForItem(it.id);
+                    var badge = d
+                        ? (d.status === 'pending'
+                            ? '<span class="pill pending">em revisão</span>'
+                            : '<span class="pill draft">rascunho</span>')
+                        : '';
+
+                    var actions = canPropose('call_script')
+                        ? '<div style="display:flex;gap:8px">' +
+                        '<button class="btn btn-ghost btn-sm" onclick="openStepEditor(\'' + it.id + '\')">Editar</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
+                        '</div>'
+                        : '';
+
+                    html += '<div class="item-row">' +
+                        '<div class="item-main">' +
+                        '<div class="item-name">' + (idx + 1) + '. ' + badge + '</div>' +
+                        '<div class="item-meta">' + esc(it.value) + '</div>' +
+                        '</div>' + actions + '</div>';
+                });
+            });
+
+            host.innerHTML = html;
+        }
+
+        function openStepEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < CS_ITEMS.length; i++) {
+                if (CS_ITEMS[i].id === itemId) item = CS_ITEMS[i];
+            }
+
+            var existingDraft = itemId ? csDraftForItem(itemId) : null;
+            var src = existingDraft || item;
+            var lang = document.getElementById('cs-lang').value;
+            var flow = document.getElementById('cs-flow').value;
+            var group = src ? src.field : 'inicio';
+            var text = src ? src.value : '';
+
+            var groupOptions = CS_GROUPS.map(function (g) {
+                return '<option value="' + g.key + '"' + (g.key === group ? ' selected' : '') + '>' +
+                    esc(g.label) + '</option>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar passo' : 'Novo passo') + '</h2>' +
+                '<p class="card-sub">' + esc(lang + ' ' + flow) +
+                ' — vira proposta; o roteiro no ar só muda depois da aprovação.</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Este passo já está em revisão.</div>'
+                    : '') +
+                '<label class="fld" for="cs-group">Seção</label>' +
+                '<select id="cs-group">' + groupOptions + '</select>' +
+                '<label class="fld" for="cs-text">Texto do passo</label>' +
+                '<textarea id="cs-text" placeholder="o que o agente deve dizer ou fazer">' + esc(text) + '</textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="cs-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('cs-save').onclick = function () {
+                submitStep(itemId, existingDraft ? existingDraft.draftId : null, src, this);
+            };
+            document.getElementById('cs-text').focus();
+        }
+
+        function submitStep(itemId, draftId, src, btn) {
+            var text = document.getElementById('cs-text').value.trim();
+            if (!text) return toast('Escreva o texto do passo.', true);
+
+            var group = document.getElementById('cs-group').value;
+            var lang = document.getElementById('cs-lang').value;
+            var flow = document.getElementById('cs-flow').value;
+
+            // Passo novo vai para o fim da seção; passo existente mantém a posição.
+            var sortOrder;
+            if (src) {
+                sortOrder = src.sortOrder;
+            } else {
+                var inGroup = CS_ITEMS.filter(function (i) {
+                    return i.lang === lang && i.key === flow && i.field === group;
+                });
+                sortOrder = inGroup.reduce(function (max, i) {
+                    return Math.max(max, i.sortOrder);
+                }, 0) + 1;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando…';
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    google.script.run
+                        .withSuccessHandler(function () {
+                            closeModal();
+                            toast('Proposta enviada para revisão.');
+                            loadCallScript();
+                            loadPendingCount();
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .submitContentDraft(res.draftId);
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .saveContentDraft({
+                    draftId: draftId || '',
+                    itemId: itemId || '',
+                    module: 'call_script',
+                    key: flow,
+                    field: group,
+                    lang: lang,
+                    label: text,
+                    value: text,
+                    sortOrder: sortOrder
+                });
+        }
+
+        // --- Case Notes (modelos de nota inteira) ---
+        var NT_ITEMS = [];
+        var NT_DRAFTS = [];
+        var NOTE_FIELDS = [];
+        var NOTE_SUBSTATUS = [];
+
+        function subDef(key) {
+            for (var i = 0; i < NOTE_SUBSTATUS.length; i++) {
+                if (NOTE_SUBSTATUS[i].key === key) return NOTE_SUBSTATUS[i];
+            }
+            return null;
+        }
+
+        function fieldLabel(key) {
+            for (var i = 0; i < NOTE_FIELDS.length; i++) {
+                if (NOTE_FIELDS[i].key === key) return NOTE_FIELDS[i].labelPt;
+            }
+            return key;
+        }
+
+        function loadNoteCatalog(done) {
+            if (NOTE_SUBSTATUS.length) return done();
+
+            google.script.run
+                .withSuccessHandler(function (cat) {
+                    NOTE_FIELDS = (cat && cat.fields) || [];
+                    NOTE_SUBSTATUS = (cat && cat.substatus) || [];
+
+                    var sel = document.getElementById('nt-sub');
+                    sel.innerHTML = '<option value="">Todos</option>' +
+                        NOTE_SUBSTATUS.map(function (s) {
+                            return '<option value="' + esc(s.key) + '">' + esc(s.name) + '</option>';
+                        }).join('');
+                    done();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); done(); })
+                .getNoteFieldCatalog();
+        }
+
+        function loadNoteTemplates() {
+            loadNoteCatalog(function () {
+                google.script.run
+                    .withSuccessHandler(function (items) {
+                        NT_ITEMS = items || [];
+                        google.script.run
+                            .withSuccessHandler(function (d) { NT_DRAFTS = d || []; renderNoteTemplates(); })
+                            .withFailureHandler(function () { NT_DRAFTS = []; renderNoteTemplates(); })
+                            .listContentDrafts('note_template');
+                    })
+                    .withFailureHandler(function (err) {
+                        document.getElementById('nt-list').innerHTML =
+                            '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                            '<h2>Não foi possível carregar os modelos</h2><p>' + esc(err.message) + '</p></div>';
+                    })
+                    .listContentItems('note_template');
+            });
+        }
+
+        function ntDraftForItem(itemId) {
+            for (var i = 0; i < NT_DRAFTS.length; i++) {
+                if (NT_DRAFTS[i].itemId === itemId) return NT_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function parseTpl(raw) {
+            try { return JSON.parse(raw || '{}'); } catch (e) { return { fields: {} }; }
+        }
+
+        function renderNoteTemplates() {
+            var host = document.getElementById('nt-list');
+            var fSub = document.getElementById('nt-sub').value;
+            var lang = document.getElementById('nt-lang').value;
+
+            var mine = NT_ITEMS.filter(function (i) {
+                if (i.lang !== lang) return false;
+                if (fSub && i.key !== fSub) return false;
+                return true;
+            });
+
+            if (!mine.length) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">edit_note</span>' +
+                    '<h2>Nenhum modelo em ' + esc(lang) + (fSub ? ' para este substatus' : '') + '</h2>' +
+                    '<p>Enquanto isso o app segue com os cenários embutidos no código. ' +
+                    'Rode a semeadura (seedNoteTemplatesNow) para trazer os atuais.</p></div>';
+                return;
+            }
+
+            var porSub = {};
+            mine.forEach(function (it) { (porSub[it.key] = porSub[it.key] || []).push(it); });
+
+            var html = '';
+            Object.keys(porSub).sort().forEach(function (sub) {
+                var def = subDef(sub);
+                html += '<div class="cat-head">' + esc(def ? def.name : sub) +
+                    ' <span class="pill draft">' + porSub[sub].length + '</span></div>';
+
+                porSub[sub].forEach(function (it) {
+                    var v = parseTpl(it.value);
+                    var nCampos = Object.keys(v.fields || {}).length;
+                    var d = ntDraftForItem(it.id);
+                    var badge = d
+                        ? (d.status === 'pending'
+                            ? '<span class="pill pending">em revisão</span>'
+                            : '<span class="pill draft">rascunho</span>')
+                        : '';
+                    var escopo = (it.field && it.field !== 'all')
+                        ? '<span class="pill draft">' + esc(String(it.field).toUpperCase()) + '</span>'
+                        : '';
+
+                    var actions = canPropose('note_template')
+                        ? '<div style="display:flex;gap:8px">' +
+                        '<button class="btn btn-ghost btn-sm" onclick="openTemplateEditor(\'' + it.id + '\')">Editar</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
+                        '</div>'
+                        : '';
+
+                    html += '<div class="item-row">' +
+                        '<div class="item-main">' +
+                        '<div class="item-name">' + esc(it.label) + ' ' + badge + ' ' + escopo + '</div>' +
+                        '<div class="item-meta">' + nCampos + ' campo' + (nCampos === 1 ? '' : 's') +
+                        ' preenchido' + (nCampos === 1 ? '' : 's') + '</div>' +
+                        '</div>' + actions + '</div>';
+                });
+            });
+
+            host.innerHTML = html;
+        }
+
+        // Construtor da nota: escolhido o substatus, a tela oferece exatamente os
+        // campos daquela nota. É o que substitui o antigo "um trecho por campo" —
+        // aqui a unidade é a nota inteira, que é como o agente pensa.
+        function openTemplateEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < NT_ITEMS.length; i++) {
+                if (NT_ITEMS[i].id === itemId) item = NT_ITEMS[i];
+            }
+
+            var existingDraft = itemId ? ntDraftForItem(itemId) : null;
+            var src = existingDraft || item;
+            var v = src ? parseTpl(src.value) : { fields: {} };
+
+            var curSub = src ? src.key : (document.getElementById('nt-sub').value || (NOTE_SUBSTATUS[0] || {}).key);
+            var curLang = src ? src.lang : document.getElementById('nt-lang').value;
+            var curEsc = src ? (src.field || 'all') : 'all';
+
+            var subOptions = NOTE_SUBSTATUS.map(function (s) {
+                return '<option value="' + esc(s.key) + '"' + (s.key === curSub ? ' selected' : '') + '>' +
+                    esc(s.name) + '</option>';
+            }).join('');
+
+            var escOptions = [['all', 'BAU e LM'], ['bau', 'Só BAU'], ['lm', 'Só LM']].map(function (o) {
+                return '<option value="' + o[0] + '"' + (o[0] === curEsc ? ' selected' : '') + '>' +
+                    esc(o[1]) + '</option>';
+            }).join('');
+
+            var langOptions = ['PT', 'ES'].map(function (l) {
+                return '<option value="' + l + '"' + (l === curLang ? ' selected' : '') + '>' + l + '</option>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:760px" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar modelo de nota' : 'Nova nota') + '</h2>' +
+                '<p class="card-sub">O status vem do substatus escolhido. Preencha só o que deve vir pronto — ' +
+                'o resto o agente completa no atendimento.</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Este modelo já está em revisão.</div>'
+                    : '') +
+                '<label class="fld" for="nt-f-name">Nome do modelo</label>' +
+                '<input type="text" id="nt-f-name" placeholder="como o agente vê na lista" value="' +
+                esc(src ? src.label : '') + '">' +
+                '<div class="grid-2">' +
+                '<div><label class="fld" for="nt-f-sub">Substatus</label>' +
+                '<select id="nt-f-sub" onchange="renderTemplateFields()">' + subOptions + '</select></div>' +
+                '<div><label class="fld" for="nt-f-esc">Aparece em</label>' +
+                '<select id="nt-f-esc">' + escOptions + '</select></div>' +
+                '</div>' +
+                '<label class="fld" for="nt-f-lang">Idioma</label>' +
+                '<select id="nt-f-lang">' + langOptions + '</select>' +
+                '<div id="nt-fields" style="margin-top:8px"></div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="nt-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            renderTemplateFields(v.fields || {});
+
+            document.getElementById('nt-save').onclick = function () {
+                submitTemplate(itemId, existingDraft ? existingDraft.draftId : null, v, this);
+            };
+            document.getElementById('nt-f-name').focus();
+        }
+
+        // Os campos oferecidos vêm do substatus escolhido, então é impossível
+        // montar uma nota com um campo que ela não tem — que é exatamente a
+        // falha silenciosa encontrada nos cenários antigos.
+        function renderTemplateFields(valores) {
+            var host = document.getElementById('nt-fields');
+            if (!host) return;
+
+            var sub = document.getElementById('nt-f-sub').value;
+            var def = subDef(sub);
+
+            // Ao TROCAR de substatus, preserva o que já foi digitado: trocar por
+            // engano não pode apagar o trabalho.
+            var atuais = valores;
+            if (!atuais) {
+                atuais = {};
+                Array.prototype.forEach.call(host.querySelectorAll('textarea'), function (el) {
+                    if (el.value.trim()) atuais['field-' + el.id.replace('ntf-', '')] = el.value;
+                });
+            }
+
+            if (!def || !def.fields.length) {
+                host.innerHTML = '<div class="note warn">Este substatus não tem campos de texto.</div>';
+                return;
+            }
+
+            var req = def.requiredFields || [];
+            var pref = def.prefixedFields || [];
+
+            host.innerHTML =
+                '<div class="cat-head" style="margin-top:22px">Campos de ' + esc(def.name) + '</div>' +
+                def.fields.map(function (f) {
+                    var obrig = req.indexOf(f) !== -1;
+                    var temPrefixo = pref.indexOf(f) !== -1;
+                    return '<label class="fld" for="ntf-' + esc(f) + '">' + esc(fieldLabel(f)) +
+                        (obrig ? ' <span style="color:var(--danger)">*</span>' : '') +
+                        (temPrefixo ? ' <span class="pill draft">a nota já prefixa</span>' : '') +
+                        '</label>' +
+                        '<textarea id="ntf-' + esc(f) + '" style="min-height:60px" ' +
+                        'placeholder="deixe vazio para o agente preencher">' +
+                        esc(atuais['field-' + f] || '') + '</textarea>';
+                }).join('');
+        }
+
+        function submitTemplate(itemId, draftId, original, btn) {
+            var nome = document.getElementById('nt-f-name').value.trim();
+            if (!nome) return toast('Dê um nome ao modelo.', true);
+
+            var sub = document.getElementById('nt-f-sub').value;
+            var def = subDef(sub);
+            var fields = {};
+
+            (def ? def.fields : []).forEach(function (f) {
+                var el = document.getElementById('ntf-' + f);
+                if (el && el.value.trim()) fields['field-' + f] = el.value.trim();
+            });
+
+            // Tarefas vinculadas não são editáveis por aqui, mas precisam
+            // sobreviver à edição: sem isso, editar o texto de um cenário
+            // silenciosamente desligaria a seleção de tarefa que ele fazia.
+            var value = JSON.stringify(Object.assign(
+                { fields: fields },
+                original && original.linkedTask ? { linkedTask: original.linkedTask } : {},
+                original && original.activeTasks ? { activeTasks: original.activeTasks } : {}
+            ));
+
+            btn.disabled = true;
+            btn.textContent = 'Validando…';
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    if (!res.ok) {
+                        btn.disabled = false;
+                        btn.textContent = 'Salvar e enviar para revisão';
+                        return toast(res.error, true);
+                    }
+
+                    btn.textContent = 'Enviando…';
+                    google.script.run
+                        .withSuccessHandler(function (saved) {
+                            google.script.run
+                                .withSuccessHandler(function () {
+                                    closeModal();
+                                    toast('Proposta enviada para revisão.');
+                                    loadNoteTemplates();
+                                    loadPendingCount();
+                                })
+                                .withFailureHandler(function (err) {
+                                    btn.disabled = false;
+                                    btn.textContent = 'Salvar e enviar para revisão';
+                                    toast(err.message, true);
+                                })
+                                .submitContentDraft(saved.draftId);
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .saveContentDraft({
+                            draftId: draftId || '',
+                            itemId: itemId || '',
+                            module: 'note_template',
+                            key: sub,
+                            field: document.getElementById('nt-f-esc').value,
+                            lang: document.getElementById('nt-f-lang').value,
+                            label: nome,
+                            value: value
+                        });
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .checkNoteTemplate(value, sub);
+        }
+
+        // --- E-mails ---
+        var EM_ITEMS = [];
+        var EM_DRAFTS = [];
+
+        function loadEmails() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    EM_ITEMS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (d) { EM_DRAFTS = d || []; renderEmails(); })
+                        .withFailureHandler(function () { EM_DRAFTS = []; renderEmails(); })
+                        .listContentDrafts('email_template');
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('em-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar os modelos</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('email_template');
+        }
+
+        function emDraftForItem(itemId) {
+            for (var i = 0; i < EM_DRAFTS.length; i++) {
+                if (EM_DRAFTS[i].itemId === itemId) return EM_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function parseEmail(raw) {
+            try { return JSON.parse(raw || '{}'); } catch (e) { return {}; }
+        }
+
+        function renderEmails() {
+            var host = document.getElementById('em-list');
+            var lang = document.getElementById('em-lang').value;
+            var mine = EM_ITEMS.filter(function (i) { return i.lang === lang; });
+
+            if (!mine.length) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">mail</span>' +
+                    '<h2>Nenhum modelo publicado em ' + esc(lang) + '</h2>' +
+                    '<p>Enquanto isso o assistente segue com os modelos embutidos no código. ' +
+                    'Rode a semeadura (seedEmailsNow) para trazer os atuais.</p></div>';
+                return;
+            }
+
+            var byCat = {};
+            mine.forEach(function (it) { (byCat[it.field || 'Sem categoria'] = byCat[it.field || 'Sem categoria'] || []).push(it); });
+
+            var html = '';
+            Object.keys(byCat).sort().forEach(function (cat) {
+                html += '<div class="cat-head">' + esc(cat) +
+                    ' <span class="pill draft">' + byCat[cat].length + '</span></div>';
+
+                byCat[cat].forEach(function (it) {
+                    var v = parseEmail(it.value);
+                    var d = emDraftForItem(it.id);
+                    var badge = d
+                        ? (d.status === 'pending'
+                            ? '<span class="pill pending">em revisão</span>'
+                            : '<span class="pill draft">rascunho</span>')
+                        : '';
+
+                    var nPh = (v.placeholders || []).length;
+                    var phInfo = lang === 'PT'
+                        ? nPh + ' campo' + (nPh === 1 ? '' : 's')
+                        : Object.keys(v.labels || {}).length + ' rótulos';
+
+                    var actions = canPropose('email_template')
+                        ? '<div style="display:flex;gap:8px">' +
+                        '<button class="btn btn-ghost btn-sm" onclick="openEmailEditor(\'' + it.id + '\')">Editar</button>' +
+                        '</div>'
+                        : '';
+
+                    html += '<div class="item-row">' +
+                        '<div class="item-main">' +
+                        '<div class="item-name">' + esc(it.label) + ' ' + badge + '</div>' +
+                        '<div class="item-meta">' + esc(v.subject || '') + ' · ' + esc(phInfo) + '</div>' +
+                        '</div>' + actions + '</div>';
+                });
+            });
+
+            host.innerHTML = html;
+        }
+
+        function openEmailEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < EM_ITEMS.length; i++) {
+                if (EM_ITEMS[i].id === itemId) item = EM_ITEMS[i];
+            }
+            if (!item) return;
+
+            var existingDraft = emDraftForItem(itemId);
+            var src = existingDraft || item;
+            var v = parseEmail(src.value);
+            var lang = item.lang;
+
+            var phList = lang === 'PT'
+                ? (v.placeholders || []).map(function (p) {
+                    return '<code style="font-size:12px">' + esc(p.key) + '</code>';
+                }).join(' ')
+                : Object.keys(v.labels || {}).map(function (k) {
+                    return '<code style="font-size:12px">' + esc(k) + '</code>';
+                }).join(' ');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:820px" role="dialog" aria-modal="true">' +
+                '<h2>Editar modelo — ' + esc(lang) + '</h2>' +
+                '<p class="card-sub">' + esc(item.label) + '</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Este modelo já está em revisão.</div>'
+                    : '') +
+                '<div class="note" style="margin-top:14px">Campos deste modelo: ' +
+                (phList || '<em>nenhum</em>') +
+                '<br>Use-os no texto exatamente assim. Um campo não usado — ou um texto entre ' +
+                'colchetes que não seja campo — é recusado ao salvar.</div>' +
+                '<label class="fld" for="em-subject">Assunto</label>' +
+                '<input type="text" id="em-subject" value="' + esc(v.subject || '') + '">' +
+                '<label class="fld" for="em-body">Corpo (HTML)</label>' +
+                '<textarea id="em-body" style="min-height:200px;font-family:ui-monospace,monospace;font-size:12.5px">' +
+                esc(v.template || '') + '</textarea>' +
+                '<div class="row-between" style="margin-top:18px">' +
+                '<div class="card-title" style="margin:0">Prévia</div>' +
+                '<button class="btn btn-ghost btn-sm" onclick="refreshEmailPreview()">Atualizar prévia</button>' +
+                '</div>' +
+                '<div id="em-preview" style="border:1px solid var(--border-subtle);border-radius:var(--radius-sm);' +
+                'padding:16px;margin-top:8px;background:#fff;color:#202124;max-height:280px;overflow:auto"></div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="em-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            refreshEmailPreview();
+            document.getElementById('em-body').addEventListener('input', refreshEmailPreview);
+
+            document.getElementById('em-save').onclick = function () {
+                submitEmail(item, existingDraft ? existingDraft.draftId : null, v, this);
+            };
+        }
+
+        // A prévia renderiza o HTML como o anunciante vai receber. É o ponto da
+        // fase: sem ver, dá pra publicar um <p> não fechado e só descobrir no
+        // e-mail já enviado.
+        function refreshEmailPreview() {
+            var body = document.getElementById('em-body');
+            var host = document.getElementById('em-preview');
+            if (!body || !host) return;
+            host.innerHTML = body.value;
+        }
+
+        function submitEmail(item, draftId, original, btn) {
+            var subject = document.getElementById('em-subject').value.trim();
+            var template = document.getElementById('em-body').value.trim();
+
+            if (!subject) return toast('O e-mail precisa de um assunto.', true);
+            if (!template) return toast('O e-mail precisa de um corpo.', true);
+
+            // Só assunto e corpo são editáveis: a lista de campos (e, em ES, os
+            // rótulos) segue como está. Mexer nela pela tela exigiria casar as
+            // duas linguagens de uma vez, e é justamente onde um erro vaza
+            // placeholder literal para o anunciante.
+            var value = (item.lang === 'ES')
+                ? JSON.stringify({ subject: subject, template: template, labels: original.labels || {} })
+                : JSON.stringify({ subject: subject, template: template, placeholders: original.placeholders || [] });
+
+            btn.disabled = true;
+            btn.textContent = 'Validando…';
+
+            // Valida no servidor ANTES de gravar, pra mensagem de erro chegar
+            // enquanto o texto ainda está na tela.
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    if (!res.ok) {
+                        btn.disabled = false;
+                        btn.textContent = 'Salvar e enviar para revisão';
+                        return toast(res.error, true);
+                    }
+
+                    btn.textContent = 'Enviando…';
+                    google.script.run
+                        .withSuccessHandler(function (saved) {
+                            google.script.run
+                                .withSuccessHandler(function () {
+                                    closeModal();
+                                    toast('Proposta enviada para revisão.');
+                                    loadEmails();
+                                    loadPendingCount();
+                                })
+                                .withFailureHandler(function (err) {
+                                    btn.disabled = false;
+                                    btn.textContent = 'Salvar e enviar para revisão';
+                                    toast(err.message, true);
+                                })
+                                .submitContentDraft(saved.draftId);
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .saveContentDraft({
+                            draftId: draftId || '',
+                            itemId: item.id,
+                            module: 'email_template',
+                            key: item.key,
+                            field: item.field,
+                            lang: item.lang,
+                            label: item.label,
+                            value: value,
+                            sortOrder: item.sortOrder
+                        });
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .checkEmailTemplate(value, item.lang);
+        }
+
+        // --- Dicas ---
+        var TP_ITEMS = [];
+        var TP_DRAFTS = [];
+
+        function loadTips() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    TP_ITEMS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (d) { TP_DRAFTS = d || []; renderTips(); })
+                        .withFailureHandler(function () { TP_DRAFTS = []; renderTips(); })
+                        .listContentDrafts('tips');
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('tp-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar as dicas</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('tips');
+        }
+
+        function tpDraftForItem(itemId) {
+            for (var i = 0; i < TP_DRAFTS.length; i++) {
+                if (TP_DRAFTS[i].itemId === itemId) return TP_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function renderTips() {
+            var host = document.getElementById('tp-list');
+            var summary = document.getElementById('tp-summary');
+
+            if (!TP_ITEMS.length) {
+                summary.textContent = 'Nenhuma dica publicada ainda.';
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">lightbulb</span>' +
+                    '<h2>Nenhuma dica na Central ainda</h2>' +
+                    '<p>Enquanto isso o app segue lendo a aba Tips, como sempre leu. ' +
+                    'Rode a semeadura (seedTipsNow) para trazer as atuais.</p></div>';
+                return;
+            }
+
+            summary.textContent = TP_ITEMS.length + ' dicas publicadas' +
+                (TP_DRAFTS.length ? ' · ' + TP_DRAFTS.length + ' com alteração em andamento' : '');
+
+            host.innerHTML = TP_ITEMS.map(function (it) {
+                var d = tpDraftForItem(it.id);
+                var badge = d
+                    ? (d.status === 'pending'
+                        ? '<span class="pill pending">em revisão</span>'
+                        : '<span class="pill draft">rascunho</span>')
+                    : '';
+
+                var actions = canPropose('tips')
+                    ? '<div style="display:flex;gap:8px">' +
+                    '<button class="btn btn-ghost btn-sm" onclick="openTipEditor(\'' + it.id + '\')">Editar</button>' +
+                    '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
+                    '</div>'
+                    : '';
+
+                return '<div class="item-row">' +
+                    '<div class="item-main">' +
+                    '<div class="item-meta" style="font-size:14px;color:var(--text-primary)">' +
+                    esc(it.value) + ' ' + badge + '</div>' +
+                    '</div>' + actions + '</div>';
+            }).join('');
+        }
+
+        function openTipEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < TP_ITEMS.length; i++) {
+                if (TP_ITEMS[i].id === itemId) item = TP_ITEMS[i];
+            }
+
+            var existingDraft = itemId ? tpDraftForItem(itemId) : null;
+            var src = existingDraft || item;
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar dica' : 'Nova dica') + '</h2>' +
+                '<p class="card-sub">Aparece durante os carregamentos. Frases curtas funcionam melhor.</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Esta dica já está em revisão.</div>'
+                    : '') +
+                '<label class="fld" for="tp-text">Texto</label>' +
+                '<textarea id="tp-text" style="min-height:70px">' + esc(src ? src.value : '') + '</textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="tp-save">Salvar e enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('tp-save').onclick = function () {
+                submitTip(itemId, existingDraft ? existingDraft.draftId : null, src, this);
+            };
+            document.getElementById('tp-text').focus();
+        }
+
+        function submitTip(itemId, draftId, src, btn) {
+            var text = document.getElementById('tp-text').value.trim();
+            if (!text) return toast('Escreva o texto da dica.', true);
+
+            var sortOrder = src ? src.sortOrder : TP_ITEMS.reduce(function (max, i) {
+                return Math.max(max, i.sortOrder);
+            }, 0) + 1;
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando…';
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    google.script.run
+                        .withSuccessHandler(function () {
+                            closeModal();
+                            toast('Proposta enviada para revisão.');
+                            loadTips();
+                            loadPendingCount();
+                        })
+                        .withFailureHandler(function (err) {
+                            btn.disabled = false;
+                            btn.textContent = 'Salvar e enviar para revisão';
+                            toast(err.message, true);
+                        })
+                        .submitContentDraft(res.draftId);
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Salvar e enviar para revisão';
+                    toast(err.message, true);
+                })
+                .saveContentDraft({
+                    draftId: draftId || '',
+                    itemId: itemId || '',
+                    module: 'tips',
+                    key: 'geral',
+                    lang: 'ALL',
+                    // A dica é o próprio conteúdo: não há título separado.
+                    label: text,
+                    value: text,
+                    sortOrder: sortOrder
+                });
+        }
+
+        // --- Aprovações ---
+        function loadPendingCount() {
+            if (!SESSION || !SESSION.canApprove) return;
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    var chip = document.getElementById('pending-count');
+                    chip.textContent = (list || []).length;
+                    chip.classList.toggle('zero', !(list || []).length);
+                })
+                .withFailureHandler(function () { })
+                .listPendingApprovals();
+        }
+
+        function loadApprovals() {
+            var host = document.getElementById('approvals-list');
+
+            if (!SESSION.canApprove) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">visibility_off</span>' +
+                    '<h2>Seu papel não revisa propostas</h2>' +
+                    '<p>Suas próprias propostas aparecem na aba do módulo, com o selo “em revisão”.</p></div>';
+                return;
+            }
+
+            host.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    if (!list || !list.length) {
+                        host.innerHTML =
+                            '<div class="state"><span class="material-symbols-rounded">task_alt</span>' +
+                            '<h2>Nada esperando revisão</h2><p>Toda proposta enviada aparece aqui.</p></div>';
+                        return;
+                    }
+
+                    host.innerHTML = list.map(function (d) {
+                        var cur = d.currentValue ? prettyValue(d.currentValue) : '(item novo)';
+                        var neu = d.value ? prettyValue(d.value) : '(remoção — item sai do ar)';
+                        var selfNote = d.isSelfProposed
+                            ? (d.canReview
+                                ? '<div class="note warn">Proposta sua. Como ADMIN, você pode aprovar mesmo assim — fica registrado como autoaprovação.</div>'
+                                : '<div class="note warn">Proposta sua. Outra pessoa precisa revisar.</div>')
+                            : '';
+
+                        return '<div class="card">' +
+                            '<div class="row-between">' +
+                            '<div><div class="card-title">' + esc(d.label) + '</div>' +
+                            '<p class="card-sub">' + esc(d.module) + ' · ' + esc(d.key) +
+                            ' · proposto por <strong>' + esc(d.proposedBy) + '</strong></p></div>' +
+                            '<span class="pill pending">pendente</span>' +
+                            '</div>' + selfNote +
+                            '<div class="diff">' +
+                            '<div class="diff-side"><div class="diff-label">Hoje no ar</div>' +
+                            '<div class="diff-body">' + esc(cur) + '</div></div>' +
+                            '<div class="diff-side new"><div class="diff-label">Proposto</div>' +
+                            '<div class="diff-body">' + esc(neu) + '</div></div>' +
+                            '</div>' +
+                            '<div class="modal-actions" style="margin-top:8px">' +
+                            '<button class="btn btn-danger btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',false)">Rejeitar</button>' +
+                            '<button class="btn btn-success btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',true)"' +
+                            (d.canReview ? '' : ' disabled') + '>Aprovar e publicar</button>' +
+                            '</div></div>';
+                    }).join('');
+                })
+                .withFailureHandler(function (err) {
+                    host.innerHTML = '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Falha ao carregar a fila</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listPendingApprovals();
+        }
+
+        // Links chegam como JSON; mostrar o objeto cru na revisão atrapalha mais
+        // do que ajuda, então viram linhas legíveis.
+        function prettyValue(raw) {
+            try {
+                var v = JSON.parse(raw);
+                if (v && v.url) {
+                    return 'Nome: ' + v.name + '\nURL: ' + v.url +
+                        '\nDescrição (PT): ' + (v.desc || '—') +
+                        '\nDescrição (ES): ' + (v.desc_es || '—');
+                }
+                return raw;
+            } catch (e) {
+                return raw;
+            }
+        }
+
+        function reviewDraft(draftId, approve) {
+            if (approve) {
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        toast(res.action === 'remove'
+                            ? 'Item retirado do ar. A versão fica arquivada e pode voltar.'
+                            : 'Publicado (versão ' + res.version + ').');
+                        loadApprovals();
+                        loadPendingCount();
+                        refreshContentLists();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .approveContentDraft(draftId, '');
+                return;
+            }
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>Rejeitar proposta</h2>' +
+                '<p class="card-sub">Volta como rascunho para quem propôs, com o seu comentário.</p>' +
+                '<label class="fld" for="rej-note">Motivo</label>' +
+                '<textarea id="rej-note" placeholder="o que precisa mudar"></textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-danger" id="rej-go">Rejeitar</button>' +
+                '</div></div></div>';
+
+            document.getElementById('rej-go').onclick = function () {
+                var note = document.getElementById('rej-note').value.trim();
+                if (!note) return toast('Explique o motivo para quem propôs.', true);
+                this.disabled = true;
+
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Proposta devolvida ao autor.');
+                        loadApprovals();
+                        loadPendingCount();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .rejectContentDraft(draftId, note);
+            };
+        }
+
+        // --- Acessos ---
+        function loadAccess() {
+            if (!SESSION.canManageAccess) return;
+
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    var host = document.getElementById('access-list');
+                    host.innerHTML = (list || []).map(function (a) {
+                        return '<div class="item-row">' +
+                            '<div class="item-main">' +
+                            '<div class="item-name">' + esc(a.ldap) + '</div>' +
+                            '<div class="item-meta">concedido por ' + esc(a.grantedBy) + '</div>' +
+                            '</div>' +
+                            '<div style="display:flex;gap:8px;align-items:center">' +
+                            '<span class="pill ' + (a.active ? 'live' : 'archived') + '">' +
+                            esc(a.role) + (a.active ? '' : ' · inativo') + '</span>' +
+                            (a.ldap === SESSION.ldap ? '' :
+                                '<button class="btn btn-ghost btn-sm" onclick="toggleAccess(\'' +
+                                esc(a.ldap) + '\',\'' + esc(a.role) + '\',' + (!a.active) + ')">' +
+                                (a.active ? 'Desativar' : 'Reativar') + '</button>') +
+                            '</div></div>';
+                    }).join('');
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .listContentAccess();
+        }
+
+        function saveAccess() {
+            var ldap = document.getElementById('acc-ldap').value.trim();
+            if (!ldap) return toast('Informe o LDAP.', true);
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    document.getElementById('acc-ldap').value = '';
+                    toast('Acesso salvo.');
+                    loadAccess();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .saveContentAccess(ldap, document.getElementById('acc-role').value, true);
+        }
+
+        function toggleAccess(ldap, role, active) {
+            google.script.run
+                .withSuccessHandler(function () {
+                    toast('Acesso atualizado.');
+                    loadAccess();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .saveContentAccess(ldap, role, active);
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // O bridge do google.script.run nem sempre está pronto no window.onload -
+        // mesma lição que o TLDashboard aprendeu ao vivo com a primeira chamada.
+        document.addEventListener('DOMContentLoaded', boot);
+    </script>
+</body>
+
+</html>

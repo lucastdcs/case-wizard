@@ -7,6 +7,30 @@ import { ADMINS } from './config.js';
 import { getAgentEmail } from './page-data.js';
 import { esperar, clamp } from './dom-utils.js';
 import { getCaseStreakToday, incrementCaseStreak } from './streak-tracker.js';
+import { getLanguage, onLanguageChange } from './i18n.js';
+
+const CC_DICT = {
+    pt: {
+        milestoneToast: (count) => `🔥 ${count} casos hoje!`,
+        quickSearch: "Busca rápida: Ctrl/Cmd+K",
+        casesToday: "Casos concluídos hoje",
+        drag: "Arrastar",
+        cancel: "Cancelar",
+        cancelledToast: "Cancelado!",
+    },
+    es: {
+        milestoneToast: (count) => `🔥 ¡${count} casos hoy!`,
+        quickSearch: "Búsqueda rápida: Ctrl/Cmd+K",
+        casesToday: "Casos completados hoy",
+        drag: "Arrastrar",
+        cancel: "Cancelar",
+        cancelledToast: "¡Cancelado!",
+    },
+};
+function cct(key) {
+    const lang = getLanguage();
+    return CC_DICT[lang]?.[key] ?? CC_DICT.pt[key];
+}
 
 // --- 1. CONFIGURAÇÃO VISUAL ---
 const COLORS = {
@@ -27,6 +51,15 @@ const COLORS = {
   pink: "#F48FB1", // [NOVO] Cor para a Biblioteca
   gray: "#9AA0A6", // [NOVO] Cor para Configurações
 };
+
+const CIRCLE_SIZE = 50; // .cw-pill.collapsed width/height
+
+// Preenchido por initCommandCenter(). triggerProcessingAnimation() é exportada
+// no escopo do módulo, mas o fechamento polido da pílula (que prima a altura em
+// px antes de animar) vive numa closure lá dentro - guardar a referência aqui
+// deixa a tela de carregamento reusar essa animação em vez de reimplementar um
+// colapso pior por fora.
+let collapsePillRef = null;
 
 // --- FUNÇÕES EXPORTADAS ---
 
@@ -57,6 +90,18 @@ export function syncStreakBadge() {
   const count = getCaseStreakToday();
   countEl.textContent = count;
   badge.classList.toggle('visible', count > 0);
+
+  // "Temperatura" da chama + halo da bolinha fechada (ver CSS) sobem juntos
+  // com o count, nos mesmos patamares do MILESTONES que já disparam o toast
+  // (5/15/30) - vivem na pílula (não no badge) porque o halo do ícone
+  // colapsado também lê essas classes.
+  const pill = document.querySelector('.cw-pill');
+  if (pill) {
+    pill.classList.toggle('has-streak', count > 0);
+    pill.classList.toggle('streak-tier-2', count >= 5 && count < 15);
+    pill.classList.toggle('streak-tier-3', count >= 15 && count < 30);
+    pill.classList.toggle('streak-tier-4', count >= 30);
+  }
 }
 
 // Chamado quando um caso é efetivamente concluído (nota gerada e inserida).
@@ -72,7 +117,7 @@ export function registerCaseCompleted() {
     const pill = document.querySelector('.cw-pill');
     SoundManager.playSuccess();
     if (pill) triggerGoogleAnimation(pill);
-    showToast(`🔥 ${count} casos hoje!`);
+    showToast(cct('milestoneToast')(count));
   }
 }
 
@@ -108,47 +153,95 @@ export function initCommandCenter(actions, splashDone) {
                 
                 opacity: 0;
                 width: 56px;
+                height: auto;
                 /* Único elemento persistente do app que anima quase o tempo
                    todo (hover em 9 botões, abrir/fechar, drag) - único caso
                    onde will-change estático (em vez de ligar/desligar por
                    interação) compensa, já que é sempre 1 elemento só. */
-                will-change: transform, opacity, width;
+                will-change: transform, opacity, width, height;
 
                 overflow: visible;
 
-                /* ABRIR: A pílula expande PRIMEIRO */
-                transition: 
-                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                /* ABRIR: A pílula expande PRIMEIRO. Curva de entrada
+                   (--cw-ease-decelerate) - mesma usada pelo genie dos módulos,
+                   pra parar de ser a única transição do app na curva
+                   "standard" sem direção. (max-height saiu da lista: o estado
+                   aberto nunca define um valor numérico pra ela, então ia de
+                   /para "none" - não interpolável, a transição não fazia nada.
+                   "height" entra no lugar dela, mas só funciona porque é
+                   primado via JS com um valor em px medido de verdade
+                   (openPill(), abaixo) - "auto" também não é interpolável, e
+                   height é a dimensão que mais muda ao abrir.) */
+                transition:
+                    width 0.3s var(--cw-ease-decelerate),
+                    height 0.3s var(--cw-ease-decelerate),
+                    padding 0.3s var(--cw-ease-decelerate),
                     opacity 0.2s ease,
-                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    transform 0.3s var(--cw-ease-decelerate);
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-pill { transition: opacity 0.2s ease !important; transform: none !important; }
             }
 
-            .cw-pill.docked { opacity: 1; transform: translateX(0) scale(1); }
+            /* --- SURGIMENTO (primeiro boot) --- */
+            /* Antes era só um fade de opacity (praticamente imperceptível).
+               Agora a pílula chega com peso: sobe, dá um leve overshoot
+               (--cw-ease-spring) e assenta - acompanhado de SoundManager.playReady(). */
+            @keyframes cw-pill-arrive {
+                from { opacity: 0; transform: translateY(28px) scale(0.4); }
+                to   { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            .cw-pill.arriving {
+                animation: cw-pill-arrive 0.6s var(--cw-ease-spring) forwards;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill.arriving { animation: fadeIn 0.3s ease forwards; }
+            }
 
             /* --- ESTADO COLAPSADO (FECHANDO) --- */
             .cw-pill.collapsed {
-                width: 50px !important; 
-                max-height: 50px !important;
+                width: ${CIRCLE_SIZE}px !important;
+                height: ${CIRCLE_SIZE}px !important;
                 padding: 0 !important;
                 gap: 0 !important;
                 border-radius: 50% !important;
                 cursor: pointer;
-                
-                overflow: hidden !important; 
 
-                /* FECHAR: A pílula colapsa DEPOIS dos ícones (delay 0.15s) */
-                transition: 
-                    width 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
-                    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
-                    padding 0.3s ease 0.15s,
-                    border-radius 0.3s ease 0.15s,
+                overflow: hidden !important;
+
+                /* FECHAR: A pílula só começa a colapsar depois que a cascata
+                   de saída dos ícones termina (delay 0.38s - o último ícone,
+                   o Grip, já começou a sumir em 0.20s e leva mais 0.2s pra
+                   terminar; ver CASCATA DE SAÍDA abaixo). Antes era um delay
+                   fixo de 0.15s, pensado pra quando todo o conteúdo sumia de
+                   uma vez só - com a cascata isso deixava a cápsula
+                   encolhendo por baixo de ícones que ainda estavam saindo.
+                   O logo (ver .cw-pill.collapsed .cw-main-logo abaixo) usa o
+                   mesmo delay, pra aparecer no instante exato em que a
+                   cápsula começa a encolher.
+                   width/padding/border-radius/transform usam
+                   --cw-ease-accelerate, espelhando --cw-ease-decelerate da
+                   abertura acima - cursos pequenos (poucos px), então a
+                   "chegada rápida" do accelerate não incomoda.
+                   "height" é a exceção: em vez de max-height (não
+                   interpolável de/para "none", só pulava pro valor final -
+                   por isso tinha saído da lista de transição), agora é
+                   primada via JS com um valor em px real (collapsePill()).
+                   E usa --cw-ease-elastic, não --cw-ease-accelerate: o curso
+                   é grande (pode passar de 500px), e uma curva que "acelera
+                   até o fim" nesse tamanho de percurso lê como a pílula
+                   caindo com força no círculo final - exatamente a
+                   brutalidade que devia sumir. --cw-ease-elastic desacelera
+                   suavemente até o alvo, sem overshoot (que, na mesma
+                   distância, faria a pílula encolher quase até sumir antes
+                   de voltar). */
+                transition:
+                    width 0.3s var(--cw-ease-accelerate) 0.38s,
+                    height 0.3s var(--cw-ease-elastic) 0.38s,
+                    padding 0.3s var(--cw-ease-accelerate) 0.38s,
+                    border-radius 0.3s var(--cw-ease-accelerate) 0.38s,
                     opacity 0.2s ease 0s,
-                    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.15s !important;
+                    transform 0.3s var(--cw-ease-accelerate) 0.38s !important;
             }
             @media (prefers-reduced-motion: reduce) {
                 .cw-pill.collapsed { transition: opacity 0.2s ease !important; }
@@ -164,35 +257,64 @@ export function initCommandCenter(actions, splashDone) {
                 color: #fff;
                 transition: opacity 0.2s ease 0s, transform 0.2s ease 0s;
             }
-            .cw-main-logo svg { fill: #fff; width: 24px; height: 24px; transition: fill 0.3s; }
-            
+            /* Duas camadas de SVG empilhadas (base branca + spark com
+               gradiente já embutido no próprio <linearGradient>) que fazem
+               cross-fade de opacidade no hover - troca real e animável, em
+               vez do mask/background-image de antes: essas duas propriedades
+               não são interpoláveis em CSS, então a cor "estalava" no meio
+               de um scale que era o único pedaço realmente animando. */
+            .cw-main-logo svg { position: absolute; inset: 0; margin: auto; width: 24px; height: 24px; pointer-events: none; }
+            .cw-main-logo .cw-logo-base { fill: #fff; opacity: 1; transition: opacity 0.25s var(--cw-ease-standard); }
+            .cw-main-logo .cw-logo-spark { opacity: 0; transition: opacity 0.25s var(--cw-ease-standard); }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-main-logo .cw-logo-base, .cw-main-logo .cw-logo-spark { transition: opacity 0.15s ease !important; }
+            }
+
             .cw-pill:not(.collapsed) .cw-main-logo {
                 transform: rotate(360deg) scale(0);
                 opacity: 0;
-                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: opacity 0.2s var(--cw-ease-accelerate), transform 0.2s var(--cw-ease-accelerate);
             }
-            .cw-pill.collapsed .cw-main-logo { 
-                opacity: 1; 
+            .cw-pill.collapsed .cw-main-logo {
+                opacity: 1;
                 transform: rotate(0) scale(1);
-                /* Aparece depois que a pílula colapsou */
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
+                /* Aparece no mesmo instante em que a cápsula começa a
+                   encolher (delay 0.38s, ver .cw-pill.collapsed acima - só
+                   depois que a cascata de saída dos ícones termina). */
+                transition: opacity 0.3s var(--cw-ease-decelerate) 0.38s, transform 0.3s var(--cw-ease-decelerate) 0.38s;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill:not(.collapsed) .cw-main-logo,
+                .cw-pill.collapsed .cw-main-logo { transition: opacity 0.15s ease !important; transform: none !important; }
             }
             .cw-pill.collapsed:hover .cw-main-logo {
-                background-image: linear-gradient(135deg, #4285F4 0%, #EA4335 33%, #FBBC05 66%, #34A853 100%);
-                -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/%3E%3C/svg%3E") center/24px no-repeat;
-                mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/%3E%3C/svg%3E") center/24px no-repeat;
                 transform: scale(1.15) rotate(0deg);
                 transition-delay: 0s;
             }
-            .cw-pill.collapsed:hover .cw-main-logo svg { fill: transparent; }
+            .cw-pill.collapsed:hover .cw-main-logo .cw-logo-base { opacity: 0; }
+            .cw-pill.collapsed:hover .cw-main-logo .cw-logo-spark { opacity: 1; }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-pill.collapsed:hover .cw-main-logo { transform: none !important; }
+            }
+
+            /* Halo quente atrás do raio quando há streak do dia, só na
+               bolinha fechada (já que o badge com o número não aparece mais
+               aí - ver .cw-streak-badge). Intensifica junto dos mesmos
+               patamares do toast de marco (5/15/30, ver MILESTONES). */
+            .cw-pill.collapsed.has-streak .cw-main-logo { filter: drop-shadow(0 0 6px rgba(253, 214, 99, 0.5)); transition: filter 0.3s ease; }
+            .cw-pill.collapsed.streak-tier-2 .cw-main-logo { filter: drop-shadow(0 0 6px rgba(251, 188, 5, 0.55)); }
+            .cw-pill.collapsed.streak-tier-3 .cw-main-logo { filter: drop-shadow(0 0 7px rgba(249, 171, 0, 0.6)); }
+            .cw-pill.collapsed.streak-tier-4 .cw-main-logo { filter: drop-shadow(0 0 8px rgba(234, 67, 53, 0.65)); }
 
             /* --- CONTEÚDO INTERNO --- */
             .cw-pill > *:not(.cw-main-logo) {
                 opacity: 1; transform: scale(1) translateY(0); visibility: visible;
-                /* Aparece depois que a pílula expandiu (delay 0.15s para ser produtivo) */
+                /* Aparece depois que a pílula expandiu (delay 0.15s), com um
+                   leve "pop" elástico (--cw-ease-spring) em vez de um scale
+                   linear seco - dá a coreografia que faltava na abertura. */
                 transition:
-                    opacity 0.2s ease 0.15s,
-                    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) 0.15s,
+                    opacity 0.25s ease 0.15s,
+                    transform 0.3s var(--cw-ease-spring) 0.15s,
                     visibility 0s linear 0.15s,
                     filter 0.15s ease 0.15s;
             }
@@ -200,28 +322,63 @@ export function initCommandCenter(actions, splashDone) {
                 .cw-pill > *:not(.cw-main-logo) { transition: opacity 0.2s ease 0.1s !important; transform: none !important; }
             }
 
-            .cw-pill.collapsed > *:not(.cw-main-logo):not(#cw-streak-badge) {
+            .cw-pill.collapsed > *:not(.cw-main-logo) {
                 opacity: 0; pointer-events: none; visibility: hidden;
                 transform: scale(0.5); filter: blur(8px);
-                /* Desaparece imediatamente */
+                /* Duração base (0s de delay aqui) - cada ícone ganha seu
+                   próprio delay individual logo abaixo, na cascata de saída,
+                   então esse "0s" só vale pra quem não tiver um delay mais
+                   específico. Duração subiu de 0.15s pra 0.2s (respiro maior
+                   por ícone, não só um corte seco). */
                 transition:
-                    opacity 0.15s ease 0s,
-                    transform 0.15s ease 0s,
-                    filter 0.15s ease 0s,
-                    visibility 0s linear 0.15s;
+                    opacity 0.2s var(--cw-ease-accelerate) 0s,
+                    transform 0.2s var(--cw-ease-accelerate) 0s,
+                    filter 0.2s ease 0s,
+                    visibility 0s linear 0s;
             }
 
-            /* --- CASCATAS DE ENTRADA --- */
-            .cw-pill:not(.collapsed) > *:nth-child(2) { transition-delay: 0.15s; } /* Grip */
-            .cw-pill:not(.collapsed) > *:nth-child(3) { transition-delay: 0.18s; } /* Notes */
-            .cw-pill:not(.collapsed) > *:nth-child(4) { transition-delay: 0.21s; } /* Email */
-            .cw-pill:not(.collapsed) > *:nth-child(5) { transition-delay: 0.24s; } /* Script */
-            .cw-pill:not(.collapsed) > *:nth-child(6) { transition-delay: 0.27s; } /* Links */
-            .cw-pill:not(.collapsed) > *:nth-child(7) { transition-delay: 0.30s; } /* Library */
-            .cw-pill:not(.collapsed) > *:nth-child(8) { transition-delay: 0.33s; } /* Timezone */
-            .cw-pill:not(.collapsed) > *:nth-child(9) { transition-delay: 0.36s; } /* Configs */
-            .cw-pill:not(.collapsed) > *:nth-child(10) { transition-delay: 0.39s; } /* Sep */
-            .cw-pill:not(.collapsed) > *:nth-child(11) { transition-delay: 0.42s; } /* Broadcast */
+            /* --- CASCATAS DE ENTRADA ---
+               Índices recalculados pro DOM atual (admin-tag e streak-badge
+               entraram no meio do markup depois que isso foi escrito
+               originalmente, empurrando todo mundo 2 posições - a lista
+               antiga estava aplicando o delay do "Grip" no .cw-main-logo, o
+               do "Notes" no admin-tag, etc. Efeito colateral: o logo ganhava
+               um delay de abertura de 0.15s que não devia existir (ver
+               .cw-pill:not(.collapsed) .cw-main-logo acima, que quer delay
+               0). admin-tag/streak-badge saem da lista de propósito: cada
+               um já tem sua própria transição dedicada. */
+            .cw-pill:not(.collapsed) > *:nth-child(5) { transition-delay: 0.15s; } /* Grip */
+            .cw-pill:not(.collapsed) > *:nth-child(6) { transition-delay: 0.17s; } /* Notes */
+            .cw-pill:not(.collapsed) > *:nth-child(7) { transition-delay: 0.19s; } /* BAU Form */
+            .cw-pill:not(.collapsed) > *:nth-child(8) { transition-delay: 0.21s; } /* Email */
+            .cw-pill:not(.collapsed) > *:nth-child(9) { transition-delay: 0.23s; } /* Script */
+            .cw-pill:not(.collapsed) > *:nth-child(10) { transition-delay: 0.25s; } /* Links */
+            .cw-pill:not(.collapsed) > *:nth-child(11) { transition-delay: 0.27s; } /* Library */
+            .cw-pill:not(.collapsed) > *:nth-child(12) { transition-delay: 0.29s; } /* Timezone */
+            .cw-pill:not(.collapsed) > *:nth-child(13) { transition-delay: 0.31s; } /* Configs */
+            .cw-pill:not(.collapsed) > *:nth-child(14) { transition-delay: 0.33s; } /* Sep */
+            .cw-pill:not(.collapsed) > *:nth-child(15) { transition-delay: 0.35s; } /* Broadcast */
+
+            /* --- CASCATA DE SAÍDA ---
+               Antes todo o conteúdo sumia de uma vez só (delay 0s pra todo
+               mundo) - os 9 botões se sobrepunham num único flash em vez de
+               cada um ter seu próprio momento. Agora sai em cascata reversa
+               (o último a aparecer na abertura é o primeiro a sumir no
+               fechamento - o mesmo "unwind" de um zíper fechando de baixo
+               pra cima), com folga suficiente entre cada um pra dar tempo de
+               respirar antes da cápsula (que só começa a encolher depois -
+               ver .cw-pill.collapsed acima) entrar em cena. */
+            .cw-pill.collapsed > *:nth-child(15) { transition-delay: 0s; }    /* Broadcast */
+            .cw-pill.collapsed > *:nth-child(14) { transition-delay: 0.02s; } /* Sep */
+            .cw-pill.collapsed > *:nth-child(13) { transition-delay: 0.04s; } /* Configs */
+            .cw-pill.collapsed > *:nth-child(12) { transition-delay: 0.06s; } /* Timezone */
+            .cw-pill.collapsed > *:nth-child(11) { transition-delay: 0.08s; } /* Library */
+            .cw-pill.collapsed > *:nth-child(10) { transition-delay: 0.10s; } /* Links */
+            .cw-pill.collapsed > *:nth-child(9)  { transition-delay: 0.12s; } /* Script */
+            .cw-pill.collapsed > *:nth-child(8)  { transition-delay: 0.14s; } /* Email */
+            .cw-pill.collapsed > *:nth-child(7)  { transition-delay: 0.16s; } /* BAU Form */
+            .cw-pill.collapsed > *:nth-child(6)  { transition-delay: 0.18s; } /* Notes */
+            .cw-pill.collapsed > *:nth-child(5)  { transition-delay: 0.20s; } /* Grip */
 
             /* --- ESTILOS DOS BOTÕES --- */
             .cw-btn {
@@ -324,60 +481,95 @@ export function initCommandCenter(actions, splashDone) {
             }
 
             /* ============================================================
-               PROCESSING CENTER
-               ============================================================ */
-            .cw-pill.processing-center {
-                top: 50% !important; left: 50% !important;
-                transform: translate(-50%, -50%) !important;
-                width: 340px !important; 
-                height: auto !important; 
-                min-height: 160px !important; 
-                border-radius: 24px !important; 
-                background: #202124 !important; 
-                padding: 32px 24px !important; 
-                box-shadow: 0 24px 64px rgba(0,0,0,0.6) !important; 
-                display: flex !important; flex-direction: column !important; 
-                justify-content: center !important; align-items: center !important;
-                gap: 0 !important;
-                z-index: 2147483647 !important;
+               PROCESSING CARD (tela de carregamento)
+               ============================================================
+               Elemento PRÓPRIO, irmão da pílula - não é mais a pílula
+               "virando" um card. As três tentativas anteriores morfavam a
+               .cw-pill em modal centralizado, e cada uma quebrou de um jeito
+               novo: a pílula é fixed ancorada em bottom/right, arrastável,
+               com transição própria e !important em tudo, e 15 filhos com
+               delays em cascata. Morfar isso significa brigar com o CSS dela
+               nos dois sentidos - o último sintoma foi o card travar na
+               largura da pílula (56px), porque medir o alvo com
+               getBoundingClientRect() logo após trocar a classe devolve o
+               valor ANIMADO daquele instante, não o alvo do CSS.
+               Com um elemento separado, entrada e saída são só opacity +
+               scale: nada pra medir, nada pra sincronizar. */
+            .cw-processing-card {
+                position: fixed;
+                top: 50%; left: 50%;
+                /* 300px dá linha de leitura de verdade pra dica (na versão
+                   morfada o texto quebrava uma palavra por linha). */
+                width: 300px;
+                max-width: calc(100vw - 48px);
+                box-sizing: border-box;
+                padding: 26px 24px;
+                border-radius: 20px;
+                /* Mesmo Liquid Glass do resto do app (ver design-system.md). */
+                background: rgba(32, 33, 36, 0.82);
+                backdrop-filter: blur(24px) saturate(160%);
+                -webkit-backdrop-filter: blur(24px) saturate(160%);
+                border: 1px solid ${COLORS.glassBorder};
+                box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+                display: flex; flex-direction: column; align-items: center;
+                gap: 18px;
+                z-index: 2147483647;
+                /* O reset de box-sizing lá em cima só cobre .cw-pill e
+                   .cw-module-window - este card não é filho de nenhum dos
+                   dois, então precisa declarar o seu (e o dos filhos). */
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.92);
+                transition: opacity 0.26s var(--cw-ease-standard),
+                            transform 0.3s var(--cw-ease-decelerate);
             }
-            .cw-pill.processing-center.collapsed { background: #202124 !important; overflow: visible !important; }
-            .cw-pill.processing-center .cw-main-logo { display: none !important; }
-            .cw-pill.processing-center > *:not(.cw-center-stage) { display: none !important; }
-            
-            .cw-center-stage { 
-                display: flex; flex-direction: column; align-items: center; 
-                gap: 20px;
-                width: 100%; opacity: 0; 
-                animation: fadeIn 0.3s ease forwards 0.1s;
-                position: relative; 
+            .cw-processing-card * { box-sizing: border-box; }
+            /* A pílula continua visível no cantinho durante o carregamento
+               (z-index acima do backdrop), o que dá continuidade - mas ela não
+               pode ser clicável enquanto o card manda na tela. */
+            .cw-pill.cw-busy { pointer-events: none !important; }
+            .cw-processing-card.visible {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
             }
             @media (prefers-reduced-motion: reduce) {
-                .cw-center-stage { animation: fadeIn 0.3s ease forwards; }
+                .cw-processing-card { transition: opacity 0.2s ease !important; transform: translate(-50%, -50%) !important; }
             }
-            
-            .cw-center-dots { display: flex; gap: 8px; margin-bottom: 4px; }
-            .cw-center-dots span { width: 8px; height: 8px; border-radius: 50%; animation: googleBounce 1.4s infinite ease-in-out both; }
-            .cw-center-dots span:nth-child(1) { background-color: ${COLORS.blue}; animation-delay: -0.32s; }
-            .cw-center-dots span:nth-child(2) { background-color: ${COLORS.red}; animation-delay: -0.16s; }
+
+            .cw-center-dots {
+                grid-area: 1 / 1;
+                display: flex; gap: 10px;
+                opacity: 1;
+                transition: opacity 0.18s var(--cw-ease-standard);
+            }
+            /* Coreografia própria (era um "googleBounce" genérico, ease-in-out puro):
+               usa a curva spring já canônica do audit de motion (--cw-ease-spring)
+               pra um overshoot vivo, e soma um scale pulse ao bounce vertical. */
+            .cw-center-dots span {
+                width: 8px; height: 8px; border-radius: 50%;
+                animation: cw-dot-dance 1.1s var(--cw-ease-spring) infinite both;
+                will-change: transform;
+            }
+            .cw-center-dots span:nth-child(1) { background-color: ${COLORS.blue}; animation-delay: -0.22s; }
+            .cw-center-dots span:nth-child(2) { background-color: ${COLORS.red}; animation-delay: -0.11s; }
             .cw-center-dots span:nth-child(3) { background-color: ${COLORS.green}; }
-            
-            .cw-center-text { 
-                font-family: 'Google Sans', Roboto, sans-serif;
-                font-size: 15px;
-                color: #E8EAED;
-                text-align: center; 
-                max-width: 100%; 
-                font-weight: 500; 
-                line-height: 1.5; 
-                letter-spacing: 0.2px;
-                opacity: 0; 
-                transform: translateY(10px); 
-                animation: textSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-                animation-delay: 0.1s;
-            }
             @media (prefers-reduced-motion: reduce) {
-                .cw-center-text { animation: fadeIn 0.3s ease forwards; transform: none !important; }
+                /* Antes não tinha fallback nenhum - as bolinhas ficavam
+                   quicando pra sempre mesmo com reduced-motion ativado. */
+                .cw-center-dots span { animation: cw-dot-fade 1.6s ease-in-out infinite; }
+            }
+            
+            /* Sem animação de entrada própria: o card inteiro já entra com
+               fade+scale, e uma segunda animação por dentro só competia com
+               ela (era o que o .cw-center-stage fazia na versão morfada). */
+            .cw-center-text {
+                font-family: 'Google Sans', Roboto, sans-serif;
+                font-size: 14px;
+                color: #E8EAED;
+                text-align: center;
+                width: 100%;
+                font-weight: 500;
+                line-height: 1.55;
+                letter-spacing: 0.2px;
             }
 
             .cw-dot-dirty {
@@ -416,10 +608,14 @@ export function initCommandCenter(actions, splashDone) {
             }
 
             /* --- RITMO DO TURNO (contador de casos hoje) --- */
-            /* Só aparece com a pílula fechada/idle - é um indicador ambiente,
-               não uma notificação; some assim que o menu abre pra não competir
-               com nada. Fica de fora da regra geral de "esconder no collapsed"
-               (seletor lá em cima) de propósito. */
+            /* Só aparece com a pílula ABERTA - é um indicador de contexto (tem
+               espaço pro número, não corta em overflow:hidden), não uma
+               notificação que precise brigar pela atenção na bolinha fechada.
+               Segue a regra geral de "esconder no collapsed" (seletor lá em
+               cima) como qualquer outro conteúdo interno; o que sobra aqui é
+               só o gate extra de "só se tiver streak" pro estado aberto -
+               mesmo formato de .cw-admin-badge.visible logo acima, que já
+               resolve esse specificity certo. */
             .cw-streak-badge {
                 position: absolute; top: -6px; right: -6px;
                 background: #202124; color: #FDD663;
@@ -429,53 +625,79 @@ export function initCommandCenter(actions, splashDone) {
                 border: 1px solid rgba(255,255,255,0.15);
                 box-shadow: 0 2px 6px rgba(0,0,0,0.3);
                 pointer-events: none; z-index: 25;
-                opacity: 0; transform: scale(0.5);
-                transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+                transition: opacity 0.2s ease, transform 0.2s var(--cw-ease-spring), color 0.3s ease;
             }
-            .cw-pill.collapsed .cw-streak-badge.visible { opacity: 1; transform: scale(1); }
+            .cw-pill:not(.collapsed) .cw-streak-badge:not(.visible) { opacity: 0; transform: scale(0.5); }
+            .cw-pill:not(.collapsed) .cw-streak-badge.visible { opacity: 1; transform: scale(1); }
             @media (prefers-reduced-motion: reduce) {
                 .cw-streak-badge { transition: opacity 0.15s ease !important; transform: none !important; }
             }
+            /* Temperatura da chama sobe com o count - mesmos patamares do
+               MILESTONES (5/15/30) que já disparam o toast de marco. */
+            .cw-pill.streak-tier-2 #cw-streak-count { color: #FBBC05; }
+            .cw-pill.streak-tier-3 #cw-streak-count { color: #F9AB00; }
+            .cw-pill.streak-tier-4 #cw-streak-count { color: #EA4335; }
 
-            .cw-center-success { display: none; color: ${COLORS.green}; margin-bottom: 10px; }
-            .cw-center-success svg { width: 48px; height: 48px; }
-            .cw-center-success.show { display: block; animation: popIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-            @media (prefers-reduced-motion: reduce) {
-                .cw-center-success.show { animation: fadeIn 0.3s ease forwards; }
+            /* Ocupa a MESMA célula do grid que as bolinhas (ver
+               .cw-center-slot): as duas coisas se revezam no mesmo lugar, então
+               a troca "bolinhas -> check" não muda a altura do card. Na versão
+               anterior era display:none/block, e alternar isso reflowava o card
+               inteiro no meio da animação. */
+            .cw-center-success {
+                grid-area: 1 / 1;
+                color: ${COLORS.green};
+                opacity: 0; transform: scale(0.5);
+                transition: opacity 0.22s var(--cw-ease-standard), transform 0.22s var(--cw-ease-spring);
+                pointer-events: none;
             }
-            
-            .cw-abort-btn { 
-                position: relative; 
-                bottom: auto; margin-top: 8px; 
-                font-size: 12px; color: #9AA0A6; 
-                cursor: pointer; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; 
-                padding: 8px 16px; border-radius: 20px; 
+            .cw-center-success svg { width: 36px; height: 36px; display: block; }
+            .cw-center-success.show { opacity: 1; transform: scale(1); }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-center-success { transition: opacity 0.15s ease !important; transform: none !important; }
+            }
+
+            /* Bolinhas e check dividem uma célula só. O slot tem altura fixa
+               (a do check, o maior dos dois) pra que a troca no fim do
+               carregamento não faça o card "pular" de tamanho. */
+            .cw-center-slot {
+                display: grid;
+                place-items: center;
+                height: 36px;
+            }
+            .cw-center-dots.hidden { opacity: 0; }
+
+            .cw-abort-btn {
+                font-size: 12px; color: #9AA0A6;
+                cursor: pointer; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;
+                padding: 8px 16px; border-radius: 20px;
                 background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-                transition: all 0.2s ease; user-select: none; 
+                /* Propriedades explícitas em vez de "all" - o audit de motion
+                   (fase 5) tirou "transition: all" do resto do app justamente
+                   pra não animar propriedade que ninguém pediu. */
+                transition: color 0.2s var(--cw-ease-standard),
+                            background-color 0.2s var(--cw-ease-standard),
+                            border-color 0.2s var(--cw-ease-standard),
+                            transform 0.2s var(--cw-ease-standard),
+                            opacity 0.2s var(--cw-ease-standard);
+                user-select: none;
                 display: flex; align-items: center; gap: 6px;
             }
-            .cw-abort-btn:hover { 
+            .cw-abort-btn:hover {
                 color: #F28B82; background: rgba(242, 139, 130, 0.1); border-color: rgba(242, 139, 130, 0.3);
                 transform: translateY(-1px);
             }
             .cw-abort-btn:active { transform: scale(0.95); }
+            /* Some junto com as bolinhas quando o check entra - não faz mais
+               sentido oferecer "cancelar" depois que já deu certo. */
+            .cw-abort-btn.hidden { opacity: 0; pointer-events: none; }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-abort-btn { transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease !important; transform: none !important; }
+            }
 
             @keyframes fadeIn { to { opacity: 1; } }
             @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-            @keyframes googleBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-            @keyframes textSlideUp { to { opacity: 1; transform: translateY(0); } }
-
-            @keyframes cw-system-ready {
-                0% { transform: scale(1); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
-                50% { transform: scale(1.02); box-shadow: 0 0 20px ${COLORS.blue}; }
-                100% { transform: scale(1); box-shadow: 0 12px 32px rgba(0,0,0,0.25); }
-            }
-            .cw-pill.system-ready {
-                animation: cw-system-ready 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            @media (prefers-reduced-motion: reduce) {
-                .cw-pill.system-ready { animation: fadeIn 0.3s ease; }
-            }
+            @keyframes cw-dot-dance { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-10px) scale(1.2); } }
+            @keyframes cw-dot-fade { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
         `;
     document.head.appendChild(style);
   }
@@ -488,7 +710,11 @@ export function initCommandCenter(actions, splashDone) {
     script: `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
     links: `<svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>`,
     broadcast: `<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
-    main: `<svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>`,
+    main: `<svg class="cw-logo-base" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>`,
+    // Camada de cima do cross-fade do hover (bug/2 do fogo): mesmo path do
+    // "main", com o gradiente das 4 cores de marca já embutido no próprio
+    // SVG (em vez de mask+background-image, que não animam).
+    mainSpark: `<svg class="cw-logo-spark" viewBox="0 0 24 24"><defs><linearGradient id="cw-spark-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4285F4"/><stop offset="33%" stop-color="#EA4335"/><stop offset="66%" stop-color="#FBBC05"/><stop offset="100%" stop-color="#34A853"/></linearGradient></defs><path fill="url(#cw-spark-grad)" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
     timezone: `<svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`,
     library: `<svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>`, // [NOVO]
     configs: `<svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>`,
@@ -501,11 +727,11 @@ export function initCommandCenter(actions, splashDone) {
 
   pill.innerHTML = `
         <div id="cw-command-center" style="display:none;"></div>
-        <div class="cw-main-logo" title="Busca rápida: Ctrl/Cmd+K">${ICONS.main}</div>
+        <div class="cw-main-logo js-cc-quicksearch" title="${cct('quickSearch')}">${ICONS.main}${ICONS.mainSpark}</div>
         <div id="cw-admin-tag" class="cw-admin-badge">Admin</div>
-        <div id="cw-streak-badge" class="cw-streak-badge" title="Casos concluídos hoje">🔥 <span id="cw-streak-count">0</span></div>
+        <div id="cw-streak-badge" class="cw-streak-badge js-cc-casestoday" title="${cct('casesToday')}">🔥 <span id="cw-streak-count">0</span></div>
 
-        <div class="cw-grip" title="Arrastar">
+        <div class="cw-grip js-cc-drag" title="${cct('drag')}">
             <div class="cw-grip-bar"></div>
         </div>
         <button class="cw-btn notes" id="cw-btn-notes" data-label="Case Notes">${ICONS.notes}</button>
@@ -529,6 +755,15 @@ export function initCommandCenter(actions, splashDone) {
   document.body.appendChild(overlay);
   document.body.appendChild(pill);
   syncStreakBadge();
+
+  onLanguageChange(() => {
+    const quickSearchEl = pill.querySelector('.js-cc-quicksearch');
+    if (quickSearchEl) quickSearchEl.title = cct('quickSearch');
+    const casesTodayEl = pill.querySelector('.js-cc-casestoday');
+    if (casesTodayEl) casesTodayEl.title = cct('casesToday');
+    const dragEl = pill.querySelector('.js-cc-drag');
+    if (dragEl) dragEl.title = cct('drag');
+  });
 
   // 3. LISTENERS
   const toggleModule = (actionFn) => {
@@ -571,15 +806,114 @@ export function initCommandCenter(actions, splashDone) {
     pill.querySelector('.broadcast').appendChild(badge);
   }
 
+  // --- ABRIR/FECHAR (animação de altura real) ---
+  // CSS não sabe interpolar de/para "auto" ou "none" (era o problema do
+  // max-height antigo, ver comentários acima em .cw-pill/.cw-pill.collapsed)
+  // - qualquer transição de altura que dependa disso pula pro tamanho final
+  // em vez de animar, não importa a curva usada. Por isso medimos a altura
+  // real do conteúdo (scrollHeight) e primamos um valor em px pros dois
+  // lados da transição, do mesmo jeito que o código já faz pra reposicionar
+  // top/bottom durante o drag (transition:none -> escreve o valor de
+  // partida -> força reflow -> religa a transição -> escreve o valor final).
+  const prefersReducedMotion = () =>
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function openPill() {
+    if (prefersReducedMotion()) {
+      pill.classList.remove('collapsed');
+      SoundManager.playGenieOpen();
+      return;
+    }
+
+    const rect = pill.getBoundingClientRect();
+    const screenH = window.innerHeight;
+    const isBottomHalf = rect.top > (screenH / 2);
+    const startHeight = rect.height;
+
+    pill.style.setProperty('transition', 'none', 'important');
+
+    // Mede a altura aberta de verdade (com transições desligadas, senão o
+    // padding/gap ainda não teriam "assentado" no valor final e a medida
+    // sairia menor do que o real) e depois volta pro estado colapsado -
+    // esse é o frame de partida real da animação.
+    pill.classList.remove('collapsed');
+    const targetHeight = pill.scrollHeight;
+    pill.classList.add('collapsed');
+    pill.style.height = `${startHeight}px`;
+
+    if (isBottomHalf) {
+      const currentBottom = screenH - rect.bottom;
+      pill.style.top = 'auto';
+      pill.style.bottom = `${currentBottom}px`;
+    } else {
+      pill.style.bottom = 'auto';
+      pill.style.top = `${rect.top}px`;
+    }
+
+    // Contém o conteúdo enquanto a pílula cresce - a pílula fica com
+    // overflow:visible fora da transição (pros tooltips dos botões
+    // aparecerem pra fora), mas durante o crescimento isso deixava os
+    // ícones "vazando" por baixo da forma ainda curta.
+    pill.style.overflow = 'hidden';
+
+    void pill.offsetWidth;
+    pill.style.removeProperty('transition');
+    pill.classList.remove('collapsed');
+    pill.style.height = `${targetHeight}px`;
+    SoundManager.playGenieOpen();
+
+    setTimeout(() => {
+      pill.style.height = '';
+      pill.style.overflow = '';
+    }, 350);
+  }
+
+  function collapsePill(playSound = true) {
+    if (pill.classList.contains('collapsed')) return;
+
+    if (prefersReducedMotion()) {
+      pill.classList.add('collapsed');
+      if (playSound) SoundManager.playSwoosh();
+      return;
+    }
+
+    const startHeight = pill.getBoundingClientRect().height;
+    pill.style.setProperty('transition', 'none', 'important');
+    pill.style.height = `${startHeight}px`;
+    void pill.offsetWidth;
+    pill.style.removeProperty('transition');
+    pill.classList.add('collapsed');
+    pill.style.height = `${CIRCLE_SIZE}px`;
+    if (playSound) SoundManager.playSwoosh();
+
+    // 0.38s de delay (cascata de saída dos ícones) + 0.3s de encolhimento
+    // da cápsula = ~0.68s até o fim de verdade da transição de altura.
+    setTimeout(() => {
+      pill.style.height = '';
+    }, 700);
+  }
+
+  // Ver comentário do collapsePillRef no topo do arquivo.
+  collapsePillRef = collapsePill;
+
   // --- LÓGICA DE FECHAMENTO AUTOMÁTICO ---
   let closeTimer = null;
 
   pill.onmouseleave = () => {
-    const isAnyActive = pill.querySelector('.cw-btn.active');
-    if (isAnyActive || pill.classList.contains('processing-center')) return;
+    // Durante o carregamento a pílula já está colapsada por conta própria
+    // (ver triggerProcessingAnimation) - o timer de 3s não tem nada a fazer.
+    if (document.querySelector('.cw-processing-card')) return;
 
+    // 'isAnyActive' precisa ser reavaliado aqui dentro, no momento em que o
+    // timer dispara - não só uma vez ao agendar. Um módulo pode abrir nesses
+    // 3s por um caminho que não passa pela pílula (ex: Command Palette,
+    // Ctrl/Cmd+K, que chama actions.toggleX direto) sem o mouse nunca
+    // reentrar pra disparar o mouseenter que cancelaria o timer; sem essa
+    // checagem no disparo, a pílula colapsava por baixo de um módulo aberto.
     closeTimer = setTimeout(() => {
-      pill.classList.add('collapsed');
+      const isAnyActive = pill.querySelector('.cw-btn.active');
+      if (isAnyActive) return;
+      collapsePill();
     }, 3000);
   };
 
@@ -617,18 +951,13 @@ export function initCommandCenter(actions, splashDone) {
     } else {
       await esperar(2800);
     }
-    pill.classList.add("docked");
-    await esperar(300);
-    const items = pill.querySelectorAll(".cw-btn");
+    // Um único "beat" de chegada (pop elástico + som) - antes disso a
+    // pílula também dava um segundo pulso ("system-ready") ~700ms depois,
+    // o que lia como a bolinha pulando duas vezes em vez de uma chegada
+    // coesa. Ficou só o gesto de entrada.
+    pill.classList.add("arriving");
+    SoundManager.playReady();
     pill.querySelectorAll(".cw-sep").forEach((s) => s.classList.add("visible"));
-    for (let i = 0; i < items.length; i++) { items[i].classList.add("popped"); await esperar(40); }
-    await esperar(100);
-    pill.classList.add("system-check");
-
-    // Microinteração 'Ready'
-    await esperar(100);
-    pill.classList.add("system-ready");
-    setTimeout(() => pill.classList.remove("system-ready"), 400);
   })();
 
   // 5. DRAG & DROP
@@ -702,31 +1031,9 @@ export function initCommandCenter(actions, splashDone) {
       const isBtnClick = e.target.closest('button');
 
       if (pill.classList.contains('collapsed')) {
-        const rect = pill.getBoundingClientRect();
-        const screenH = window.innerHeight;
-        const isBottomHalf = rect.top > (screenH / 2);
-
-        pill.style.setProperty('transition', 'none', 'important');
-
-        if (isBottomHalf) {
-          const currentBottom = screenH - rect.bottom;
-          pill.style.top = 'auto';
-          pill.style.bottom = `${currentBottom}px`;
-        } else {
-          pill.style.bottom = 'auto';
-          pill.style.top = `${rect.top}px`;
-        }
-
-        void pill.offsetWidth;
-        pill.style.removeProperty('transition');
-        pill.classList.remove('collapsed');
-        SoundManager.playGenieOpen();
-
-      } else {
-        if (!isAnyActive && !isBtnClick) {
-          pill.classList.add('collapsed');
-          SoundManager.playGenieOpen();
-        }
+        openPill();
+      } else if (!isAnyActive && !isBtnClick) {
+        collapsePill();
       }
 
       if (isBtnClick) {
@@ -737,75 +1044,109 @@ export function initCommandCenter(actions, splashDone) {
   }
 }
 
-// --- FUNÇÃO DE PROCESSAMENTO COM CANCELAMENTO ---
+// --- TELA DE CARREGAMENTO (com cancelamento) ---
+// O card é um elemento próprio, irmão da pílula - NÃO é a pílula virando um
+// card. Ver o comentário do bloco PROCESSING CARD no CSS pra por quê: as
+// versões que morfavam a .cw-pill em modal centralizado brigavam com o CSS
+// dela (fixed ancorada em bottom/right, arrastável, !important em tudo,
+// filhos com cascata) e quebravam de um jeito novo a cada rodada.
+//
+// Fluxo: a pílula recolhe pro cantinho pela animação que ela já tem
+// (collapsePill), o backdrop escurece e o card entra no centro com fade +
+// scale. Na saída, o inverso. Nada de medir posição, nada de sincronizar
+// duas formas - só duas animações independentes que se cruzam.
 export function triggerProcessingAnimation() {
   const pill = document.querySelector('.cw-pill');
   const overlay = document.querySelector('.cw-focus-backdrop');
-  if (!pill) return () => {};
 
-  pill.classList.remove('collapsed');
   window._CW_ABORT_PROCESS = false;
 
-  const stage = document.createElement('div');
-  stage.className = 'cw-center-stage';
-  
-  // HTML do Stage (Dots + Texto + Sucesso)
-  stage.innerHTML = `
-      <div class="cw-center-dots"><span></span><span></span><span></span></div>
+  const prefersReducedMotion =
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Sai de cena pra dar o palco ao card. Reusa a animação já polida de
+  // fechamento (cascata de saída dos ícones + encolhimento), sem som: o
+  // startThinking logo abaixo já é o feedback sonoro deste momento.
+  if (pill && collapsePillRef) collapsePillRef(false);
+  else if (pill) pill.classList.add('collapsed');
+  if (pill) pill.classList.add('cw-busy');
+
+  const card = document.createElement('div');
+  card.className = 'cw-processing-card';
+  card.innerHTML = `
+      <div class="cw-center-slot">
+        <div class="cw-center-dots"><span></span><span></span><span></span></div>
+        <div class="cw-center-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+      </div>
       <div class="cw-center-text">${DataService.getRandomTip()}</div>
-      <div class="cw-center-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
   `;
 
-  // Botão Cancelar (Agora relativo e estilizado)
   const abortBtn = document.createElement('div');
   abortBtn.className = 'cw-abort-btn';
   abortBtn.textContent = 'Cancelar';
   abortBtn.onclick = (e) => {
     e.stopPropagation();
     window._CW_ABORT_PROCESS = true;
-    showToast("Cancelado!", { duration: 3000 });
-    stage.remove();
-    pill.classList.remove('processing-center');
-    pill.classList.remove('success');
-    pill.classList.add('collapsed');
-    if (overlay) overlay.classList.remove('active');
+    SoundManager.stopThinking();
+    showToast('Cancelado!', { duration: 3000 });
+    dismissCard();
   };
-  
-  stage.appendChild(abortBtn);
-  pill.appendChild(stage);
+  card.appendChild(abortBtn);
 
-  const startTime = Date.now();
-  pill.classList.add('processing-center');
+  document.body.appendChild(card);
   if (overlay) overlay.classList.add('active');
 
+  // Um frame com o card já no DOM (mas ainda em opacity:0/scale(.92)) antes
+  // de ligar .visible - sem isso o navegador funde os dois estados num só e
+  // a transição de entrada não chega a rodar.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => card.classList.add('visible'));
+  });
+
+  SoundManager.startThinking();
+  const startTime = Date.now();
+
+  let dismissed = false;
+  function dismissCard() {
+    if (dismissed) return;
+    dismissed = true;
+
+    SoundManager.stopThinking();
+    if (overlay) overlay.classList.remove('active');
+    if (pill) pill.classList.remove('cw-busy');
+    card.classList.remove('visible');
+
+    // Espera o fade de saída terminar antes de tirar do DOM (0.3s é a maior
+    // das durações declaradas em .cw-processing-card).
+    setTimeout(() => card.remove(), prefersReducedMotion ? 200 : 320);
+  }
+
   return function finish() {
-    if (window._CW_ABORT_PROCESS || !pill.contains(stage)) return;
-    const elapsed = Date.now() - startTime;
-    const remaining = Math.max(0, 2000 - elapsed);
+    if (window._CW_ABORT_PROCESS || dismissed) return;
+
+    // Piso de ~2s de tela: abaixo disso o carregamento vira um flash que o
+    // agente nem registra como "aconteceu alguma coisa".
+    const remaining = Math.max(0, 2000 - (Date.now() - startTime));
 
     setTimeout(() => {
-      if (window._CW_ABORT_PROCESS || !pill.contains(stage)) return;
-      
-      const dots = stage.querySelector('.cw-center-dots');
-      const text = stage.querySelector('.cw-center-text');
-      const success = stage.querySelector('.cw-center-success');
-      const abort = stage.querySelector('.cw-abort-btn');
+      if (window._CW_ABORT_PROCESS || dismissed) return;
+      SoundManager.stopThinking();
 
-      if (dots) dots.style.display = 'none';
-      if (text) text.style.display = 'none';
-      if (abort) abort.style.display = 'none';
+      const dots = card.querySelector('.cw-center-dots');
+      const success = card.querySelector('.cw-center-success');
+
+      // Bolinhas e check dividem a mesma célula do grid (.cw-center-slot),
+      // então isso é um cross-fade no lugar - o card não muda de tamanho.
+      if (dots) dots.classList.add('hidden');
+      abortBtn.classList.add('hidden');
       if (success) success.classList.add('show');
 
-      pill.classList.add('success');
+      // O check some ANTES do card começar a sair, em vez dos dois ao mesmo
+      // tempo - senão ele fica visível "voando" junto com o card.
       setTimeout(() => {
-        pill.classList.remove('processing-center');
-        setTimeout(() => {
-          stage.remove();
-          pill.classList.remove('success');
-          pill.classList.add('collapsed');
-          if (overlay) overlay.classList.remove('active');
-        }, 400);
-      }, 1000);
+        if (success) success.classList.remove('show');
+        setTimeout(dismissCard, 200);
+      }, 850);
     }, remaining);
   };
 }

@@ -5,6 +5,43 @@ import { showToast } from "../../shared/utils.js";
 import { copyHtmlToClipboard, ensureNoteCardIsOpen, triggerInputEvents } from "../notes-bridge.js";
 import { SoundManager } from "../../shared/sound-manager.js";
 import { enableFilledCheck } from "../../shared/dom-utils.js";
+import { getLanguage } from "../../shared/i18n.js";
+
+// Labels dos campos ficam em inglês de propósito (já eram assim antes desta
+// tradução) - só o chrome próprio do componente (botões/placeholders/toasts)
+// segue o idioma global. O template "Split & Transfer : Phone Note Format
+// [Mandatory]" também não é traduzido: é um formato fixo esperado por quem
+// processa essa nota depois.
+const ST_DICT = {
+    pt: {
+        back: "Voltar",
+        generateNote: "Gerar Nota",
+        describeIssuePlaceholder: "Descreva o erro, passos para reproduzir...",
+        whatTestedPlaceholder: "O que você já testou?",
+        fieldsFilledToast: (n) => `${n} campos preenchidos!`,
+        noNewDataToast: "Nenhum dado novo encontrado.",
+        readPageErrorToast: "Erro ao ler página.",
+        fillRequiredToast: "Preencha os campos obrigatórios.",
+        noteGeneratedToast: "Nota gerada e inserida!",
+        copiedOpenNoteToast: "Copiado! Abra uma nota para colar.",
+    },
+    es: {
+        back: "Volver",
+        generateNote: "Generar Nota",
+        describeIssuePlaceholder: "Describe el error, pasos para reproducirlo...",
+        whatTestedPlaceholder: "¿Qué ya probaste?",
+        fieldsFilledToast: (n) => `¡${n} campos completados!`,
+        noNewDataToast: "No se encontraron datos nuevos.",
+        readPageErrorToast: "Error al leer la página.",
+        fillRequiredToast: "Completa los campos obligatorios.",
+        noteGeneratedToast: "¡Nota generada e insertada!",
+        copiedOpenNoteToast: "¡Copiado! Abre una nota para pegar.",
+    },
+};
+function st(key) {
+    const lang = getLanguage();
+    return ST_DICT[lang]?.[key] ?? ST_DICT.pt[key];
+}
 
 export function createSplitTransferComponent(onBack) {
     // --- 1. LAYOUT & STRUCTURE ---
@@ -222,8 +259,8 @@ export function createSplitTransferComponent(onBack) {
     createField({ id: "email", label: "Contact Email", type: "email", autocomplete: "email", parent: contactSection });
     createField({ id: "callback", label: "Preferred Callback Time (Timezone)", parent: contactSection });
     
-    createField({ id: "desc", label: "Detailed Issue Description", type: "textarea", placeholder: "Descreva o erro, passos para reproduzir...", required: true, parent: contactSection });
-    createField({ id: "checks", label: "Troubleshooting Performed", type: "textarea", placeholder: "O que você já testou?", parent: contactSection });
+    createField({ id: "desc", label: "Detailed Issue Description", type: "textarea", placeholder: st('describeIssuePlaceholder'), required: true, parent: contactSection });
+    createField({ id: "checks", label: "Troubleshooting Performed", type: "textarea", placeholder: st('whatTestedPlaceholder'), parent: contactSection });
     createField({ id: "screens", label: "Screenshots (Links)", type: "textarea", parent: contactSection });
 
     // E. CC Contacts
@@ -241,12 +278,12 @@ export function createSplitTransferComponent(onBack) {
     footer.style.cssText = "padding: 16px 24px; background: rgba(255,255,255,0.95); border-top: 1px solid #E0E0E0; display: flex; justify-content: space-between; align-items: center; position: absolute; bottom: 0; left: 0; width: 100%; box-sizing: border-box; z-index: 20;";
 
     const btnBack = document.createElement("button");
-    btnBack.innerHTML = "Voltar";
+    btnBack.innerHTML = st('back');
     btnBack.style.cssText = "border:none; background:transparent; color:#5F6368; font-weight:600; cursor:pointer; padding: 8px;";
     btnBack.onclick = onBack;
 
     const btnGenerate = document.createElement("button");
-    btnGenerate.textContent = "Gerar Nota";
+    btnGenerate.textContent = st('generateNote');
     btnGenerate.style.cssText = "padding: 10px 24px; background: #1a73e8; color: #fff; border: none; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: all 0.2s;";
     
     footer.appendChild(btnBack);
@@ -293,14 +330,14 @@ export function createSplitTransferComponent(onBack) {
             if (cidMatch) safeFill("cid", cidMatch[0]);
 
             if (filledCount > 0) {
-                showToast(`${filledCount} campos preenchidos!`);
+                showToast(st('fieldsFilledToast')(filledCount));
             } else {
-                showToast("Nenhum dado novo encontrado.");
+                showToast(st('noNewDataToast'));
             }
 
         } catch (e) {
             console.error(e);
-            showToast("Erro ao ler página.");
+            showToast(st('readPageErrorToast'));
         } finally {
             btnMagic.innerHTML = oldText;
         }
@@ -340,7 +377,7 @@ export function createSplitTransferComponent(onBack) {
     btnGenerate.onclick = async () => {
         if (!validate()) {
             SoundManager.playError();
-            showToast("Preencha os campos obrigatórios.", { error: true });
+            showToast(st('fillRequiredToast'), { error: true });
             return;
         }
 
@@ -388,9 +425,9 @@ ${getVal('checks')}
             document.execCommand("insertHTML", false, htmlToInsert);
             triggerInputEvents(editor);
             SoundManager.playSuccess();
-            showToast("Nota gerada e inserida!");
+            showToast(st('noteGeneratedToast'));
         } else {
-            showToast("Copiado! Abra uma nota para colar.");
+            showToast(st('copiedOpenNoteToast'));
         }
     };
     return container;

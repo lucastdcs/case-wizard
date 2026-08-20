@@ -5,8 +5,84 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
+import { getLanguage, onLanguageChange } from "../shared/i18n.js";
 
 const PINNED_STORAGE_KEY = "cw_timezone_pinned";
+
+// Nomes/labels em espanhol só onde realmente diferem do português (a
+// maioria dos nomes de país/cidade da América Latina é igual nos dois
+// idiomas, então só listamos as exceções aqui).
+const HUB_ES_OVERRIDES = {
+    es: { name: 'España' },
+    bo: { name: 'Bolivia' },
+    co: { name: 'Colombia' },
+    ec: { name: 'Ecuador' },
+    py: { name: 'Paraguay', label: 'Asunción' },
+    uy: { name: 'Uruguay', label: 'Montevideo' },
+    ni: { name: 'Nicaragua', label: 'Managua' },
+    pr: { name: 'Puerto Rico' },
+    gt: { label: 'C. de Guatemala' },
+    pa: { label: 'C. de Panamá' },
+};
+function hubName(hub) {
+    if (getLanguage() === 'es') return HUB_ES_OVERRIDES[hub.id]?.name ?? hub.name;
+    return hub.name;
+}
+function hubLabel(hub) {
+    if (getLanguage() === 'es') return HUB_ES_OVERRIDES[hub.id]?.label ?? hub.label;
+    return hub.label;
+}
+
+const TZ_DICT = {
+    pt: {
+        headerDesc: "Monitoramento global e planejamento de chamadas.",
+        tabLive: "Monitoramento",
+        tabPlan: "Planejador",
+        searchPlaceholder: "Buscar cidade ou país...",
+        noLocationFound: "Nenhum local encontrado",
+        unpin: "Desafixar",
+        pin: "Fixar",
+        statusOpen: "Aberto",
+        statusOpening: "Abrindo",
+        statusClosing: "Fechando",
+        statusClosed: "Fechado",
+        whereIsClient: "Onde está o cliente?",
+        you: "Você",
+        yourTimezone: "Brasília (GMT-3)",
+        client: "Cliente",
+        dragToSimulate: "Arraste para simular o horário:",
+        idealBusinessHours: "Horário Comercial Ideal",
+        limitHours: "Horário Limite (Atenção)",
+        outOfHours: "Fora de Horário",
+        filters: { all: 'Todos', sa: 'América do Sul', na: 'Norte & Central', eu: 'Europa' },
+    },
+    es: {
+        headerDesc: "Monitoreo global y planificación de llamadas.",
+        tabLive: "Monitoreo",
+        tabPlan: "Planificador",
+        searchPlaceholder: "Buscar ciudad o país...",
+        noLocationFound: "No se encontró ningún lugar",
+        unpin: "Desanclar",
+        pin: "Anclar",
+        statusOpen: "Abierto",
+        statusOpening: "Abriendo",
+        statusClosing: "Cerrando",
+        statusClosed: "Cerrado",
+        whereIsClient: "¿Dónde está el cliente?",
+        you: "Tú",
+        yourTimezone: "Brasilia (GMT-3)",
+        client: "Cliente",
+        dragToSimulate: "Arrastra para simular el horario:",
+        idealBusinessHours: "Horario Comercial Ideal",
+        limitHours: "Horario Límite (Atención)",
+        outOfHours: "Fuera de Horario",
+        filters: { all: 'Todos', sa: 'América del Sur', na: 'Norte y Central', eu: 'Europa' },
+    },
+};
+function tt(key) {
+    const lang = getLanguage();
+    return TZ_DICT[lang]?.[key] ?? TZ_DICT.pt[key];
+}
 
 // Adicionei a propriedade 'region' para os filtros
 const HUBS = [
@@ -38,10 +114,10 @@ const HUBS = [
 ];
 
 const FILTERS = [
-    { id: 'all', label: 'Todos' },
-    { id: 'sa', label: 'América do Sul' },
-    { id: 'na', label: 'Norte & Central' },
-    { id: 'eu', label: 'Europa' }
+    { id: 'all' },
+    { id: 'sa' },
+    { id: 'na' },
+    { id: 'eu' }
 ];
 
 // --- FOLHA DE ESTILOS DEDICADA (estados interativos) ---
@@ -228,7 +304,7 @@ export function initTimezoneAssistant() {
     const animRefs = { popup };
     const header = createStandardHeader(
         popup, "Time Zone Traveler", CURRENT_VERSION,
-        "Monitoramento global e planejamento de chamadas.",
+        tt('headerDesc'),
         animRefs, () => toggleVisibility()
     );
     popup.appendChild(header);
@@ -242,14 +318,14 @@ export function initTimezoneAssistant() {
     Object.assign(tabContainer.style, styles.tabHeader);
     
     const btnLive = document.createElement("div");
-    btnLive.textContent = "Monitoramento";
+    btnLive.textContent = tt('tabLive');
     btnLive.className = "tz-tab-btn";
     btnLive.tabIndex = 0;
     btnLive.setAttribute("role", "tab");
     Object.assign(btnLive.style, styles.tabBtn, styles.tabActive);
 
     const btnPlan = document.createElement("div");
-    btnPlan.textContent = "Planejador";
+    btnPlan.textContent = tt('tabPlan');
     btnPlan.className = "tz-tab-btn";
     btnPlan.tabIndex = 0;
     btnPlan.setAttribute("role", "tab");
@@ -278,7 +354,7 @@ export function initTimezoneAssistant() {
     Object.assign(icon.style, styles.searchIcon);
     
     const input = document.createElement("input");
-    input.placeholder = "Buscar cidade ou país...";
+    input.placeholder = tt('searchPlaceholder');
     Object.assign(input.style, styles.searchInput);
     
     input.onfocus = () => { input.style.boxShadow = "0 2px 8px rgba(26,115,232,0.15)"; input.style.borderColor = "rgba(26,115,232,0.3)"; };
@@ -299,7 +375,7 @@ export function initTimezoneAssistant() {
     
     FILTERS.forEach(f => {
         const chip = document.createElement("div");
-        chip.textContent = f.label;
+        chip.textContent = tt('filters')[f.id];
         chip.id = `tz-filter-${f.id}`;
         chip.className = "tz-chip";
         chip.tabIndex = 0;
@@ -382,10 +458,10 @@ export function initTimezoneAssistant() {
     // ============================================================
     
     function getBusinessStatus(hours) {
-        if (hours >= 9 && hours < 17) return { color: COLORS.success, bg: COLORS.successBg, label: 'Aberto', icon: '🟢' };
-        if (hours >= 8 && hours < 9) return { color: COLORS.warning, bg: COLORS.warningBg, label: 'Abrindo', icon: '🟡' };
-        if (hours >= 17 && hours < 19) return { color: COLORS.warning, bg: COLORS.warningBg, label: 'Fechando', icon: '🟡' };
-        return { color: COLORS.textSub, bg: '#F1F3F4', label: 'Fechado', icon: '🔴' };
+        if (hours >= 9 && hours < 17) return { color: COLORS.success, bg: COLORS.successBg, label: tt('statusOpen'), icon: '🟢' };
+        if (hours >= 8 && hours < 9) return { color: COLORS.warning, bg: COLORS.warningBg, label: tt('statusOpening'), icon: '🟡' };
+        if (hours >= 17 && hours < 19) return { color: COLORS.warning, bg: COLORS.warningBg, label: tt('statusClosing'), icon: '🟡' };
+        return { color: COLORS.textSub, bg: '#F1F3F4', label: tt('statusClosed'), icon: '🔴' };
     }
 
     function togglePin(hubId) {
@@ -405,7 +481,7 @@ export function initTimezoneAssistant() {
 
         // 1. Filtra
         let filteredHubs = HUBS.filter(h => {
-            const matchesSearch = h.name.toLowerCase().includes(searchTerm) || h.label.toLowerCase().includes(searchTerm);
+            const matchesSearch = hubName(h).toLowerCase().includes(searchTerm) || hubLabel(h).toLowerCase().includes(searchTerm);
             const matchesRegion = activeFilter === 'all' || h.region === activeFilter;
             return matchesSearch && matchesRegion;
         });
@@ -416,14 +492,14 @@ export function initTimezoneAssistant() {
             const bPinned = pinnedHubs.includes(b.id);
             if (aPinned && !bPinned) return -1;
             if (!aPinned && bPinned) return 1;
-            return a.name.localeCompare(b.name);
+            return hubName(a).localeCompare(hubName(b));
         });
 
         if (filteredHubs.length === 0) {
             viewLive.innerHTML = `
                 <div style="text-align:center; padding:40px; color:#BDC1C6; display:flex; flex-direction:column; align-items:center; gap:8px;">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <div style="font-size:14px; font-weight:500;">Nenhum local encontrado</div>
+                    <div style="font-size:14px; font-weight:500;">${tt('noLocationFound')}</div>
                 </div>
             `;
             return;
@@ -431,7 +507,7 @@ export function initTimezoneAssistant() {
 
         filteredHubs.forEach(hub => {
             const isPinned = pinnedHubs.includes(hub.id);
-            const timeString = now.toLocaleTimeString('pt-BR', { timeZone: hub.zone, hour: '2-digit', minute: '2-digit' });
+            const timeString = now.toLocaleTimeString(getLanguage() === 'es' ? 'es-ES' : 'pt-BR', { timeZone: hub.zone, hour: '2-digit', minute: '2-digit' });
             const hour = parseInt(timeString.split(':')[0]);
             const status = getBusinessStatus(hour);
             const isNight = hour < 6 || hour > 18;
@@ -440,7 +516,7 @@ export function initTimezoneAssistant() {
             card.className = "tz-hub-card";
             card.tabIndex = 0;
             card.setAttribute("role", "button");
-            card.setAttribute("aria-label", `${hub.name}, ${timeString}`);
+            card.setAttribute("aria-label", `${hubName(hub)}, ${timeString}`);
             Object.assign(card.style, styles.hubCard);
             if (isPinned) Object.assign(card.style, styles.hubCardPinned);
 
@@ -449,12 +525,12 @@ export function initTimezoneAssistant() {
 
             card.innerHTML = `
                 <div style="display:flex; alignItems:center; gap:16px;">
-                    <div class="cw-pin-btn tz-pin-btn" tabindex="0" role="button" aria-label="${isPinned ? 'Desafixar' : 'Fixar'} ${hub.name}" style="cursor:pointer; font-size:22px; color:${pinColor}; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%;">${pinIcon}</div>
+                    <div class="cw-pin-btn tz-pin-btn" tabindex="0" role="button" aria-label="${isPinned ? tt('unpin') : tt('pin')} ${hubName(hub)}" style="cursor:pointer; font-size:22px; color:${pinColor}; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%;">${pinIcon}</div>
                     <div style="font-size:32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">${hub.flag}</div>
                     <div>
-                        <div style="font-size:15px; font-weight:600; color:${COLORS.text}; letter-spacing:-0.2px;">${hub.name}</div>
+                        <div style="font-size:15px; font-weight:600; color:${COLORS.text}; letter-spacing:-0.2px;">${hubName(hub)}</div>
                         <div style="font-size:12px; color:${COLORS.textSub}; display:flex; align-items:center; gap:4px; margin-top:2px;">
-                            ${isNight ? '🌙' : '☀️'} ${hub.label}
+                            ${isNight ? '🌙' : '☀️'} ${hubLabel(hub)}
                         </div>
                     </div>
                 </div>
@@ -509,20 +585,20 @@ export function initTimezoneAssistant() {
 
         const selectContainer = document.createElement("div");
         const selectLabel = document.createElement("label");
-        selectLabel.textContent = "Onde está o cliente?";
+        selectLabel.textContent = tt('whereIsClient');
         selectLabel.style.cssText = "display:block; font-size:12px; font-weight:700; color:#5F6368; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;";
-        
+
         const select = document.createElement("select");
         Object.assign(select.style, styleSelect);
-        select.style.padding = "14px"; 
-        
+        select.style.padding = "14px";
+
         // Ordena select alfabeticamente
-        const sortedForSelect = [...HUBS].sort((a,b) => a.name.localeCompare(b.name));
+        const sortedForSelect = [...HUBS].sort((a,b) => hubName(a).localeCompare(hubName(b)));
 
         sortedForSelect.forEach(hub => {
             const opt = document.createElement("option");
             opt.value = hub.id;
-            opt.textContent = `${hub.flag} ${hub.name} (${hub.zone})`;
+            opt.textContent = `${hub.flag} ${hubName(hub)} (${hub.zone})`;
             if (hub.id === selectedHubId) opt.selected = true;
             select.appendChild(opt);
         });
@@ -547,18 +623,18 @@ export function initTimezoneAssistant() {
         myCard.style.borderColor = "#E8F0FE";
         
         myCard.innerHTML = `
-            <div style="font-size:11px; font-weight:700; color:#1A73E8; text-transform:uppercase; letter-spacing:0.5px;">🇧🇷 Você</div>
+            <div style="font-size:11px; font-weight:700; color:#1A73E8; text-transform:uppercase; letter-spacing:0.5px;">🇧🇷 ${tt('you')}</div>
             <input type="time" id="cw-time-input-br" style="font-size:28px; font-weight:700; color:#1A73E8; border:none; background:transparent; width:100%; text-align:center; outline:none; font-family:'Google Sans'; cursor:pointer;">
-            <div style="font-size:12px; color:#5F6368;">Brasília (GMT-3)</div>
+            <div style="font-size:12px; color:#5F6368;">${tt('yourTimezone')}</div>
         `;
-        
+
         const clientCard = document.createElement("div");
         Object.assign(clientCard.style, styles.timeCard);
-        clientCard.style.backgroundColor = "#FFF8E1"; 
+        clientCard.style.backgroundColor = "#FFF8E1";
         clientCard.style.borderColor = "#FEF7E0";
 
         clientCard.innerHTML = `
-            <div style="font-size:11px; font-weight:700; color:#E37400; text-transform:uppercase; letter-spacing:0.5px;">Cliente</div>
+            <div style="font-size:11px; font-weight:700; color:#E37400; text-transform:uppercase; letter-spacing:0.5px;">${tt('client')}</div>
             <div id="cw-time-display-client" style="font-size:28px; font-weight:700; color:#E37400; border:none; background:transparent; width:100%; text-align:center; font-family:'Google Sans';">--:--</div>
             <div id="cw-client-label" style="font-size:12px; color:#5F6368;">...</div>
         `;
@@ -578,7 +654,7 @@ export function initTimezoneAssistant() {
         Object.assign(timelineWrapper.style, { padding: '0 4px', marginTop: '12px' });
         
         const rangeLabel = document.createElement("div");
-        rangeLabel.textContent = "Arraste para simular o horário:";
+        rangeLabel.textContent = tt('dragToSimulate');
         rangeLabel.style.cssText = "font-size:12px; color:#5F6368; text-align:center; margin-bottom:12px;";
         
         const sliderContainer = document.createElement("div");
@@ -616,34 +692,34 @@ export function initTimezoneAssistant() {
 
         function updatePlannerUI() {
             const hub = HUBS.find(h => h.id === selectedHubId);
-            clientLabel.textContent = `${hub.flag} ${hub.label} (${hub.zone})`;
+            clientLabel.textContent = `${hub.flag} ${hubLabel(hub)} (${hub.zone})`;
 
             const hours = plannerDate.getHours();
             const minutes = plannerDate.getMinutes();
             const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-            
+
             timeInputBR.value = timeStr;
             slider.value = (hours * 60) + minutes;
 
-            const clientTimeString = plannerDate.toLocaleTimeString('pt-BR', { 
-                timeZone: hub.zone, hour: '2-digit', minute: '2-digit' 
+            const clientTimeString = plannerDate.toLocaleTimeString(getLanguage() === 'es' ? 'es-ES' : 'pt-BR', {
+                timeZone: hub.zone, hour: '2-digit', minute: '2-digit'
             });
             clientDisplay.textContent = clientTimeString;
 
             const clientHour = parseInt(clientTimeString.split(':')[0]);
-            
+
             if (clientHour >= 9 && clientHour < 17) {
                 statusBadge.style.background = COLORS.successBg;
                 statusBadge.style.color = COLORS.success;
-                statusBadge.innerHTML = `<span style="font-size:16px">✅</span> Horário Comercial Ideal`;
+                statusBadge.innerHTML = `<span style="font-size:16px">✅</span> ${tt('idealBusinessHours')}`;
             } else if ((clientHour >= 8 && clientHour < 9) || (clientHour >= 17 && clientHour < 19)) {
                 statusBadge.style.background = COLORS.warningBg;
                 statusBadge.style.color = COLORS.warning;
-                statusBadge.innerHTML = `<span style="font-size:16px">⚠️</span> Horário Limite (Atenção)`;
+                statusBadge.innerHTML = `<span style="font-size:16px">⚠️</span> ${tt('limitHours')}`;
             } else {
                 statusBadge.style.background = COLORS.errorBg;
                 statusBadge.style.color = COLORS.error;
-                statusBadge.innerHTML = `<span style="font-size:16px">⛔</span> Fora de Horário`;
+                statusBadge.innerHTML = `<span style="font-size:16px">⛔</span> ${tt('outOfHours')}`;
             }
         }
 
@@ -693,5 +769,22 @@ export function initTimezoneAssistant() {
     }
 
     document.body.appendChild(popup);
+
+    // Retraduz os pedaços fixos (header, abas, busca, filtros) e refaz a
+    // view atual, que já é montada do zero a cada render.
+    onLanguageChange(() => {
+        const helpDescEl = popup.querySelector('.cw-help-description');
+        if (helpDescEl) helpDescEl.textContent = tt('headerDesc');
+        btnLive.textContent = tt('tabLive');
+        btnPlan.textContent = tt('tabPlan');
+        input.placeholder = tt('searchPlaceholder');
+        Array.from(chipsRow.children).forEach(chip => {
+            const f = FILTERS.find(f => `tz-filter-${f.id}` === chip.id);
+            if (f) chip.textContent = tt('filters')[f.id];
+        });
+        if (viewLive.style.display !== 'none') renderLive();
+        if (viewPlan.style.display !== 'none') renderPlanner();
+    });
+
     return toggleVisibility;
 }

@@ -1,5 +1,5 @@
 // src/modules/notes/core/output-generator.js
-import { SUBSTATUS_TEMPLATES, TASKS_DB, textareaListFields, textareaParagraphFields, translations } from "../data/notes-data.js";
+import { SUBSTATUS_TEMPLATES, TASKS_DB, textareaListFields, textareaParagraphFields, translations, getFieldPrefix } from "../data/notes-data.js";
 
 export function generateOutputHtml(state, stepTasks, tagSupport, evidenceData = null) {
     const selectedSubStatusKey = state.currentSubStatus;
@@ -80,10 +80,8 @@ export function generateOutputHtml(state, stepTasks, tagSupport, evidenceData = 
             const userInput = state.formData[fieldId];
 
             // Apply prefixes if defined in template
-            let prefix = "";
-            if (templateDef.fieldPrefixes && templateDef.fieldPrefixes[fieldKey]) {
-                prefix = templateDef.fieldPrefixes[fieldKey] + " ";
-            }
+            const rawPrefix = getFieldPrefix(templateDef, fieldKey, state.currentLang);
+            const prefix = rawPrefix ? rawPrefix + " " : "";
 
             if (userInput && userInput.trim() !== "" && userInput.trim() !== "•") {
                 let value = userInput.trim();

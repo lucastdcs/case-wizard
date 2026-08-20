@@ -1,7 +1,16 @@
 // src/modules/notes/components/step-scenarios.js
 
-import { scenarioSnippets } from "../data/notes-data.js";
+import { getScenarioFields, getScenariosFor, scenarioLabel } from "../data/notes-data.js";
 import { SoundManager } from "../../shared/sound-manager.js";
+import { getLanguage } from "../../shared/i18n.js";
+
+const PREVIEW_PLACEHOLDER = {
+  pt: "Passe o mouse sobre um cenário para visualizar o texto...",
+  es: "Pasa el mouse sobre un escenario para ver el texto...",
+};
+function defaultPreviewText() {
+  return PREVIEW_PLACEHOLDER[getLanguage()] || PREVIEW_PLACEHOLDER.pt;
+}
 
 export function createScenariosComponent(onSelectCallback) {
   // Hover/preview aqui é todo via estilo inline em JS, sem classe CSS pra
@@ -10,8 +19,6 @@ export function createScenariosComponent(onSelectCallback) {
 
   const container = document.createElement("div");
   container.className = "cw-step-scenarios";
-
-  const DEFAULT_PREVIEW_TEXT = "Passe o mouse sobre um cenário para visualizar o texto...";
 
   // 1. Área de Chips (Grid)
   const grid = document.createElement("div");
@@ -44,7 +51,7 @@ export function createScenariosComponent(onSelectCallback) {
   // 0.05s bate com o setTimeout de 50ms do hover (abaixo) - o texto troca
   // exatamente quando o fade-out termina, não no meio dele.
   previewText.style.transition = "opacity 0.05s ease, transform 0.05s ease";
-  previewText.textContent = DEFAULT_PREVIEW_TEXT;
+  previewText.textContent = defaultPreviewText();
   previewBox.appendChild(previewText);
 
   // Estado interno
@@ -54,28 +61,18 @@ export function createScenariosComponent(onSelectCallback) {
   // Refined render version
   container.render = (subStatusKey, caseType) => {
       selectedIds.clear();
-      const filtered = Object.entries(scenarioSnippets).filter(([id, data]) => {
-          const matchesType = !data.type || data.type === 'all' || data.type === caseType;
-          let matchesSubStatus = false;
-          if (subStatusKey.startsWith('NI_')) {
-              matchesSubStatus = id.includes('-ni-') || id.includes('attempted');
-          } else if (subStatusKey.startsWith('SO_')) {
-              matchesSubStatus = id.includes('gtm') || id.includes('whatsapp') || id.includes('form') || id.includes('ecw4') || id.includes('ga4') || id.includes('-so-');
-          } else if (subStatusKey.startsWith('AS_')) {
-              matchesSubStatus = id.includes('-as-');
-          } else if (subStatusKey.startsWith('IN_')) {
-              matchesSubStatus = id.includes('-in-');
-          } else if (subStatusKey.startsWith('DC_')) {
-              matchesSubStatus = id.includes('-dc-');
-          }
-          return matchesType && matchesSubStatus;
-      });
+      // Filtro por substatus real (campo `substatus` de cada snippet em
+      // notes-data.js), não mais por heurística de substring no ID (ex:
+      // "-ni-", "attempted") que só sabia distinguir o STATUS (NI/SO/AS/IN/
+      // DC), nunca o substatus - todo cenário de NI aparecia em qualquer um
+      // dos 4 substatus de NI, sem diferenciação. Regras de quais cenários
+      // pertencem a qual substatus: specs/workflow/case-notes-status-rules.md
+      const filtered = getScenariosFor(subStatusKey, caseType);
 
       grid.innerHTML = "";
       filtered.forEach(([id, data]) => {
           const chip = document.createElement("div");
-          const label = id.replace('quickfill-', '').replace(/-/g, ' ');
-          chip.textContent = label;
+          chip.textContent = scenarioLabel(id, subStatusKey);
           chip.dataset.id = id;
           chip.dataset.sound = "hover";
 
@@ -91,7 +88,8 @@ export function createScenariosComponent(onSelectCallback) {
             transition: "all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)",
           });
 
-          const textPreviewContent = data['field-REASON_COMMENTS'] || data['field-CONTEXTO_CALL'] || id;
+          const localized = getScenarioFields(data, getLanguage(), id);
+          const textPreviewContent = localized['field-REASON_COMMENTS'] || localized['field-CONTEXTO_CALL'] || id;
 
           chip.onmouseenter = () => {
               if (hoverTimeout) clearTimeout(hoverTimeout);
@@ -121,7 +119,7 @@ export function createScenariosComponent(onSelectCallback) {
                   if (selectedIds.size === 0) {
                       previewText.style.opacity = "0";
                       setTimeout(() => {
-                          previewText.textContent = DEFAULT_PREVIEW_TEXT;
+                          previewText.textContent = defaultPreviewText();
                           previewText.style.opacity = "1";
                       }, 50);
                   }
@@ -155,6 +153,11 @@ export function createScenariosComponent(onSelectCallback) {
           container.style.display = "block";
       }
   };
+
+  // Quais cenários estão marcados agora - é o que o botão "Salvar como atalho"
+  // captura. O Set é interno de propósito (o clique é a única forma de mexer
+  // nele); expor a leitura não abre mão disso.
+  container.getSelectedIds = () => [...selectedIds];
 
   container.appendChild(grid);
   container.appendChild(previewBox);

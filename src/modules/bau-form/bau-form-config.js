@@ -120,6 +120,7 @@ export const FORM_CONFIG = {
                 },
                 {
                     id: 'description',
+                    i18nKey: 'description_justificativa',
                     name: 'description',
                     label: 'Justificativa / Descrição',
                     type: 'textarea',
@@ -169,6 +170,7 @@ export const FORM_CONFIG = {
                 },
                 {
                     id: 'seId',
+                    i18nKey: 'seId_descarte',
                     name: 'seId',
                     label: 'Speakeasy ID (SE ID)',
                     type: 'text',
@@ -178,6 +180,7 @@ export const FORM_CONFIG = {
                 },
                 {
                     id: 'description',
+                    i18nKey: 'description_descarte',
                     name: 'description',
                     label: 'Descrição',
                     type: 'textarea',

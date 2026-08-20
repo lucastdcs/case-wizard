@@ -1,10 +1,11 @@
 // src/modules/notes/notes-assistant.js
 
-import { showToast, confirmDialog } from "../shared/utils.js";
+import { showToast, confirmDialog, promptDialog } from "../shared/utils.js";
 import { notesState } from "./core/notes-state.js";
-import { createNotesPopup } from "./ui/notes-popup.js";
+import { createNotesPopup, HEADER_DESC } from "./ui/notes-popup.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "./notes-styles.js";
 import { buildDynamicForm } from "./core/form-builder.js";
+import { loadNoteTemplates } from "./data/note-templates-service.js";
 import { generateOutputHtml } from "./core/output-generator.js";
 import { createScenariosComponent } from "./components/step-scenarios.js";
 import { createStepTasksComponent } from "./components/step-tasks.js";
@@ -13,8 +14,10 @@ import { createDraftsManager } from "./drafts/draft-ui.js";
 import { createSplitTransferComponent } from "./components/split-transfer.js";
 import { DraftService } from "./drafts/draft-service.js";
 import { SoundManager } from "../shared/sound-manager.js";
-import { enableFilledCheck, lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
+import { enableFilledCheck, lockBodyScroll, unlockBodyScroll, markPendingField } from "../shared/dom-utils.js";
 import { getPageData } from "../shared/page-data.js";
+import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import { ShortcutService, resolveScenarioId, MAX_SHORTCUTS, newShortcutId } from "../shared/shortcut-service.js";
 import {
     SUBSTATUS_TEMPLATES,
     SUBSTATUS_SHORTCODES,
@@ -23,7 +26,8 @@ import {
     textareaListFields,
     TASKS_DB,
     getEffectiveRequiredFields,
-    getEffectiveOptionalFields
+    getEffectiveOptionalFields,
+    getScenarioFields
 } from "./data/notes-data.js";
 import {
     copyHtmlToClipboard,
@@ -32,7 +36,11 @@ import {
 } from "./notes-bridge.js";
 import { runEmailAutomation } from "../email-assistant/email-automation-service.js";
 import { triggerProcessingAnimation, updateNotesBadge, registerCaseCompleted } from "../shared/command-center.js";
-import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
+import { toggleGenieAnimation } from "../shared/animations.js";
+
+// Mesmo raio do Ctrl+K (command-palette.js): é a pista visual de que os dois
+// botões falam da mesma coisa.
+const BOLT_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;flex-shrink:0;"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
 
 export function initCaseNotesAssistant() {
     const CURRENT_VERSION = "v4.0.0";
@@ -53,6 +61,33 @@ export function initCaseNotesAssistant() {
         applyScenario(scenarioId, isSelected);
     });
     scenariosContainer.appendChild(scenarioSelector);
+
+    // "Salvar como atalho": captura a combinação que já está montada na tela
+    // (tipo de caso + status + substatus + cenários marcados) e a transforma
+    // num comando do Ctrl+K. Fica aqui, e não na barra de ações, porque é sobre
+    // a combinação escolhida acima - não sobre a nota pronta.
+    const saveShortcutBtn = document.createElement("button");
+    saveShortcutBtn.type = "button";
+    saveShortcutBtn.className = "cw-save-shortcut-btn";
+    saveShortcutBtn.style.cssText = `
+        margin-top: 10px; padding: 7px 12px; border-radius: 8px;
+        border: 1px dashed ${COLORS.border}; background: transparent;
+        color: ${COLORS.textSub}; font-family: inherit; font-size: 11.5px;
+        font-weight: 600; cursor: pointer; display: inline-flex; align-items: center;
+        gap: 6px; transition: all 0.2s ${EASE};
+    `;
+    saveShortcutBtn.onmouseenter = () => {
+        saveShortcutBtn.style.borderColor = COLORS.primary;
+        saveShortcutBtn.style.color = COLORS.primary;
+        SoundManager.playHover();
+    };
+    saveShortcutBtn.onmouseleave = () => {
+        saveShortcutBtn.style.borderColor = COLORS.border;
+        saveShortcutBtn.style.color = COLORS.textSub;
+    };
+    saveShortcutBtn.onclick = () => handleSaveAsShortcut();
+    saveShortcutBtn.innerHTML = `${BOLT_ICON}<span>${t('salvar_como_atalho')}</span>`;
+    scenariosContainer.appendChild(saveShortcutBtn);
 
     // --- Evidence Container (Attempted Contact) ---
     const evidenceContainer = document.createElement("div");
@@ -202,7 +237,7 @@ export function initCaseNotesAssistant() {
     }
 
     function toggleVisibility() {
-        notesState.visible = !isModuleOpen(popup);
+        notesState.visible = !notesState.visible;
         if (notesState.visible) lockBodyScroll(); else unlockBodyScroll();
         toggleGenieAnimation(notesState.visible, popup, "cw-btn-notes");
     }
@@ -225,14 +260,6 @@ export function initCaseNotesAssistant() {
         const div = document.createElement("div");
         div.innerHTML = `
             <div style="display: flex; gap: 12px; margin-bottom: 8px;">
-                <div style="flex: 1;">
-                    <div class="cw-section-title js-label-idioma" style="font-size: 10px; margin-bottom: 6px;">${t('idioma')}</div>
-                    <div class="cw-segmented-control" id="lang-selector">
-                        <div class="cw-segmented-indicator"></div>
-                        <button data-lang="pt" class="active" style="z-index:2">PT</button>
-                        <button data-lang="es" style="z-index:2">ES</button>
-                    </div>
-                </div>
                 <div style="flex: 1;">
                     <div class="cw-section-title js-label-fluxo" style="font-size: 10px; margin-bottom: 6px;">${t('fluxo')}</div>
                     <div class="cw-segmented-control" id="type-selector">
@@ -310,19 +337,6 @@ export function initCaseNotesAssistant() {
                 indicator.style.transform = `translateX(${index * 100}%) translateX(${index * 2}px)`;
             }
         };
-
-        div.querySelectorAll('#lang-selector button').forEach((btn, idx) => {
-            btn.onclick = () => {
-                notesState.setLanguage(btn.dataset.lang);
-                div.querySelectorAll('#lang-selector button').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                updateIndicator('lang-selector', idx);
-                SoundManager.playClick();
-                if (notesState.currentSubStatus) {
-                    onSubStatusChange(notesState.currentSubStatus);
-                }
-            };
-        });
 
         div.querySelectorAll('#type-selector button').forEach((btn, idx) => {
             btn.onclick = () => {
@@ -541,7 +555,7 @@ export function initCaseNotesAssistant() {
     }
 
     function applyScenario(scenarioId, isSelected) {
-        const data = scenarioSnippets[scenarioId];
+        const data = getScenarioFields(scenarioSnippets[scenarioId], notesState.currentLang, scenarioId);
         if (!data) return;
 
         for (const key in data) {
@@ -875,7 +889,9 @@ export function initCaseNotesAssistant() {
     const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     async function restoreFullState(draft) {
-        notesState.setLanguage(draft.currentLang || "pt");
+        // O idioma da nota não é mais restaurado do rascunho: ele segue o
+        // idioma global do Case Wizard (Configurações), unificado com a
+        // interface, então continua o que já estiver ativo no momento.
         notesState.setCaseType(draft.currentCaseType || "bau");
         notesState.setPortugalCase(draft.isPortugalCase || false);
         notesState.setConsent(draft.consent || false);
@@ -884,10 +900,6 @@ export function initCaseNotesAssistant() {
         }
 
         // Update Segmented Controls visually
-        const langBtn = content.querySelector(`#lang-selector button[data-lang="${notesState.currentLang}"]`);
-        if (langBtn) langBtn.classList.add('active');
-        content.querySelectorAll('#lang-selector button').forEach(b => { if(b !== langBtn) b.classList.remove('active'); });
-
         const typeBtn = content.querySelector(`#type-selector button[data-type="${notesState.currentCaseType}"]`);
         if (typeBtn) typeBtn.classList.add('active');
         content.querySelectorAll('#type-selector button').forEach(b => { if(b !== typeBtn) b.classList.remove('active'); });
@@ -945,6 +957,160 @@ export function initCaseNotesAssistant() {
         notesState.isDirty = false;
     }
 
+    // Atalho do Ctrl+K: abre o Case Notes já no status/substatus certo e com os
+    // cenários do atalho aplicados, pra quem hoje copia e cola essas notas em
+    // vez de passar pelo fluxo normal. Não reimplementa nada - só encadeia as
+    // mesmas peças que o clique manual já usa (troca de select,
+    // onSubStatusChange, clique no chip), então herda de graça qualquer ajuste
+    // futuro nelas.
+    //
+    // Recebe o atalho inteiro (ver shortcut-service.js), não um id de cenário:
+    // um atalho pode combinar vários cenários, ou nenhum - abrir só no
+    // substatus certo já é um atalho útil.
+    async function openWithPreset(shortcut) {
+        const payload = shortcut && shortcut.payload;
+        if (!payload || !payload.subStatus) return { ok: false, reason: 'invalid' };
+
+        // Resolve ANTES de mexer na tela: se o cenário sumiu do catálogo, o
+        // agente precisa saber disso em vez de ver a nota abrir pela metade.
+        const refs = payload.scenarios || [];
+        const resolvidos = refs.map((ref) => resolveScenarioId(ref));
+        const perdidos = refs.filter((_, i) => !resolvidos[i]);
+
+        if (notesState.isDirty) {
+            const confirmed = await confirmDialog(t('substituir_rascunho_confirm'));
+            if (!confirmed) return { ok: false, reason: 'cancelled' };
+        }
+
+        const wasVisible = notesState.visible;
+        if (!wasVisible) toggleVisibility();
+        resetModule();
+
+        // Se o popup ainda não estava aberto, dá tempo do voo do genie
+        // (~550ms, ver animations.js) terminar antes de mexer nos campos -
+        // trocar os selects no meio da animação de abertura ficava estranho.
+        if (!wasVisible) await wait(550);
+
+        if (payload.caseType && payload.caseType !== notesState.currentCaseType) {
+            const typeBtn = content.querySelector(`#type-selector button[data-type="${payload.caseType}"]`);
+            if (typeBtn) typeBtn.click();
+            await wait(60);
+        }
+
+        const mainSelect = content.querySelector('#main-status-select');
+        const subSelect = content.querySelector('#sub-status-select');
+        const status = payload.status || String(payload.subStatus).split('_')[0];
+        mainSelect.value = status;
+        notesState.setStatus(status);
+        updateSubStatusOptions(status, subSelect);
+
+        await wait(60);
+
+        subSelect.value = payload.subStatus;
+        notesState.setSubStatus(payload.subStatus);
+        onSubStatusChange(payload.subStatus);
+
+        await wait(160);
+
+        // Clique real no chip (não chama applyScenario direto): assim o
+        // cenário aparece visualmente selecionado, com o mesmo som de clique
+        // de sempre - igual a um agente teria feito na mão.
+        for (const id of resolvidos.filter(Boolean)) {
+            const chip = scenariosContainer.querySelector(`[data-id="${id}"]`);
+            if (chip) chip.click();
+        }
+
+        await wait(120);
+
+        if (perdidos.length) {
+            // Falhar em silêncio aqui é o pior desfecho possível: o agente
+            // acharia que a nota está completa e mandaria faltando texto.
+            SoundManager.playError();
+            showToast(t('atalho_cenario_sumiu'), { error: true });
+        } else {
+            SoundManager.playSuccess();
+        }
+
+        const pendente = firstEmptyFieldElement();
+        if (pendente) markPendingField(pendente);
+
+        return { ok: true, missing: perdidos.map((r) => r.id) };
+    }
+
+    // O primeiro campo que o atalho deixou vazio de propósito (tipicamente o
+    // SE ID, que só o agente sabe). Antes isso era uma lista `focusIds` escrita
+    // à mão por atalho; derivar da tela dispensa configuração e nunca aponta
+    // pra um campo que aquele substatus não tem.
+    function firstEmptyFieldElement() {
+        const candidatos = content.querySelectorAll(
+            'input[id^="field-"], textarea[id^="field-"], input[id^="evidence-"]'
+        );
+        for (const el of candidatos) {
+            if (el.offsetParent === null) continue; // campo escondido não conta
+            if (!String(el.value || '').trim()) return el;
+        }
+        return null;
+    }
+
+    async function handleSaveAsShortcut() {
+        const capturado = captureCurrentAsShortcut();
+        if (!capturado) {
+            SoundManager.playError();
+            showToast(t('select_substatus'), { error: true });
+            return;
+        }
+
+        if (ShortcutService.listRaw().length >= MAX_SHORTCUTS) {
+            SoundManager.playError();
+            showToast(t('atalho_limite').replace('{max}', MAX_SHORTCUTS), { error: true });
+            return;
+        }
+
+        const sugestao = SUBSTATUS_TEMPLATES[capturado.payload.subStatus]?.name || capturado.payload.subStatus;
+        const nome = await promptDialog(t('atalho_nome_pergunta'), sugestao);
+        if (nome === null) return;
+
+        // A escrita passa por JSONP (até 15s de watchdog): sem desabilitar, um
+        // segundo clique dispara outro save e cria um atalho duplicado.
+        saveShortcutBtn.disabled = true;
+        saveShortcutBtn.style.opacity = '0.6';
+        try {
+            const resultado = await ShortcutService.save({
+                ...capturado,
+                id: newShortcutId(),
+                label: String(nome).trim() || sugestao
+            });
+            if (!resultado.ok) {
+                SoundManager.playError();
+                showToast(t('atalho_limite').replace('{max}', MAX_SHORTCUTS), { error: true });
+                return;
+            }
+
+            SoundManager.playSuccess();
+            showToast(resultado.synced ? t('atalho_salvo') : t('atalho_salvo_local'));
+        } finally {
+            saveShortcutBtn.disabled = false;
+            saveShortcutBtn.style.opacity = '';
+        }
+    }
+
+    // O estado atual da tela, no formato que o atalho guarda. É o que o botão
+    // "Salvar como atalho" captura - por isso o agente nunca configura uma
+    // combinação que a tela não produziria.
+    function captureCurrentAsShortcut() {
+        if (!notesState.currentSubStatus) return null;
+        const selecionados = scenarioSelector.getSelectedIds ? scenarioSelector.getSelectedIds() : [];
+        return {
+            kind: 'note',
+            payload: {
+                caseType: notesState.currentCaseType,
+                status: notesState.currentStatus,
+                subStatus: notesState.currentSubStatus,
+                scenarios: selecionados.map((id) => ({ id, substatus: notesState.currentSubStatus })),
+            },
+        };
+    }
+
     function t(key) {
         return translations[notesState.currentLang]?.[key] || translations['pt']?.[key] || key;
     }
@@ -999,12 +1165,15 @@ export function initCaseNotesAssistant() {
 
     function updateUIFromState(state) {
         // Sync labels when language changes
-        const lIdioma = content.querySelector('.js-label-idioma');
-        if (lIdioma) lIdioma.textContent = t('idioma');
         const lFluxo = content.querySelector('.js-label-fluxo');
         if (lFluxo) lFluxo.textContent = t('fluxo');
         const lPortugal = content.querySelector('.js-label-portugal');
         if (lPortugal) lPortugal.textContent = t('caso_portugal');
+        const portugalBtns = content.querySelectorAll('#portugal-selector button');
+        if (portugalBtns.length === 2) {
+            portugalBtns[0].textContent = t('nao');
+            portugalBtns[1].textContent = t('sim');
+        }
         const lStatus = content.querySelector('.js-label-status');
         if (lStatus) lStatus.textContent = t('status_principal');
         const lSubstatus = content.querySelector('.js-label-substatus');
@@ -1035,8 +1204,13 @@ export function initCaseNotesAssistant() {
         const drawerTitle = popup.querySelector('.js-drawer-title');
         if (drawerTitle) drawerTitle.textContent = t('rascunhos_salvos');
 
+        const historyBtn = popup.querySelector('.js-history-btn');
+        if (historyBtn) historyBtn.title = t('meus_rascunhos');
+
         const lEmail = content.querySelector('.js-label-email-toggle');
         if (lEmail) lEmail.textContent = t('preencher_email_automaticamente');
+
+        saveShortcutBtn.innerHTML = `${BOLT_ICON}<span>${t('salvar_como_atalho')}</span>`;
 
         if (tagSupport && tagSupport.setLanguage) tagSupport.setLanguage(t);
         if (stepTasks && stepTasks.setLanguage) stepTasks.setLanguage(t);
@@ -1047,8 +1221,20 @@ export function initCaseNotesAssistant() {
     actionsSection.style.display = "none";
 
     // Initialize with defaults
-    notesState.setLanguage("pt");
+    notesState.setLanguage(getLanguage());
     notesState.setCaseType("bau");
+
+    // O idioma da nota acompanha o idioma global da interface (trocado em
+    // Configurações). Se houver uma nota em andamento, regenera a saída
+    // já traduzida, igual ao antigo seletor PT/ES fazia ao clicar.
+    onLanguageChange((lang) => {
+        notesState.setLanguage(lang);
+        const helpDescEl = popup.querySelector('.cw-help-description');
+        if (helpDescEl) helpDescEl.textContent = HEADER_DESC[lang] || HEADER_DESC.pt;
+        if (notesState.currentSubStatus) {
+            onSubStatusChange(notesState.currentSubStatus);
+        }
+    });
 
     // Initial Badge Check
     refreshGlobalBadge();
@@ -1057,7 +1243,7 @@ export function initCaseNotesAssistant() {
     setTimeout(async () => {
         const emergencyData = DraftService.getEmergency();
         if (emergencyData) {
-            const confirmed = await confirmDialog("Detectamos um rascunho não salvo da sua última sessão. Deseja restaurar?");
+            const confirmed = await confirmDialog(t('restaurar_rascunho_confirm'));
             if (confirmed) {
                 restoreFullState(emergencyData);
                 showToast("Sessão restaurada!");
@@ -1069,5 +1255,23 @@ export function initCaseNotesAssistant() {
 
     document.body.appendChild(popup);
 
+    // Carrega os modelos de nota publicados na Central. Eles substituem os
+    // cenários embutidos in loco, então basta repintar a lista de chips - e o
+    // formulário, se já houver substatus escolhido - pra o conteúdo novo
+    // aparecer sem o agente ter que reabrir nada.
+    loadNoteTemplates().then((temModelos) => {
+        if (!temModelos) return;
+        if (notesState.currentSubStatus) {
+            if (scenarioSelector.render) {
+                scenarioSelector.render(notesState.currentSubStatus, notesState.currentCaseType);
+            }
+            buildDynamicForm(notesState.currentSubStatus, dynamicFormContainer, notesState);
+        }
+    });
+
+    // Pendurado na própria função (em vez de trocar o retorno por um objeto)
+    // pra não quebrar os callers existentes que chamam initCaseNotesAssistant()
+    // esperando só a função de toggle (app.js, command-center.js, command-palette.js).
+    toggleVisibility.openWithPreset = openWithPreset;
     return toggleVisibility;
 }

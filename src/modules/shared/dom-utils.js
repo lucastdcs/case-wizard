@@ -160,6 +160,41 @@ export function enableArrowKeyNav(container, itemSelector) {
     });
 }
 
+// Realce "pendente" (Quick Launch): pulso âmbar breve pra marcar o campo que
+// ficou proposital/vazio depois de um preset do Ctrl+K preencher o resto da
+// nota - o oposto do check verde acima (isso já está pronto): aqui é "isso
+// ainda falta". Genérico o bastante pra qualquer módulo usar em qualquer input.
+let pendingFieldStylesInjected = false;
+function injectPendingFieldStyles() {
+    if (pendingFieldStylesInjected || document.getElementById('cw-pending-field-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'cw-pending-field-styles';
+    style.textContent = `
+        @keyframes cwPendingPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(251, 188, 5, 0.45); }
+            50% { box-shadow: 0 0 0 6px rgba(251, 188, 5, 0); }
+        }
+        .cw-quicklaunch-pending {
+            border-color: #FBBC05 !important;
+            animation: cwPendingPulse 1.1s ease-out 2;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .cw-quicklaunch-pending { animation: none !important; }
+        }
+    `;
+    document.head.appendChild(style);
+    pendingFieldStylesInjected = true;
+}
+
+export function markPendingField(el, { duration = 2400 } = {}) {
+    if (!el) return;
+    injectPendingFieldStyles();
+    el.classList.add('cw-quicklaunch-pending');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.focus({ preventScroll: true });
+    setTimeout(() => el.classList.remove('cw-quicklaunch-pending'), duration);
+}
+
 export function enableFilledCheck(input, { minLength = 2 } = {}) {
     injectFilledCheckStyles();
 

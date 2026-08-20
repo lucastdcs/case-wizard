@@ -2,6 +2,8 @@
 
 let audioCtx = null;
 let noiseBufferCache = null;
+let thinkingLoopId = null;
+let thinkingStep = 0;
 
 // Configurações de "Mixagem de Escritório"
 // Volume muito baixo para ser percebido apenas pelo subconsciente
@@ -326,6 +328,95 @@ export const SoundManager = {
             osc.start(t);
             osc.stop(t + tone.dur + 0.1);
         });
+    },
+
+    // 6. READY (Surgimento da Pill)
+    // Ref: chime de "power on" de hardware premium - curto, ascendente,
+    // confirma que algo chegou sem soar como notificação nem como sucesso.
+    // Toca uma única vez, no instante em que a pílula surge na tela, pra dar
+    // peso sonoro a um evento que antes era puramente visual (e discreto
+    // demais pra ser percebido).
+    playReady: () => {
+        if (muted) return;
+        const ctx = getContext();
+        if (!ctx) return;
+        const t = ctx.currentTime;
+
+        // Duas notas ascendentes (Ré -> Lá, quinta justa) com um shimmer
+        // (oitava acima) na segunda nota - lê como "pronto", não como alerta.
+        // Volumes na mesma faixa discreta do playSuccess/playHover (ver
+        // comentário de "Mixagem de Escritório" no topo do arquivo) - a
+        // primeira versão tocou alto demais.
+        const notes = [
+            { freq: 587.33, at: 0,    dur: 0.2,  vol: 0.26 }, // D5
+            { freq: 880.00, at: 0.09, dur: 0.3,  vol: 0.3 },  // A5
+            { freq: 1760.0, at: 0.09, dur: 0.26, vol: 0.08 }, // A6 (shimmer)
+        ];
+
+        notes.forEach((n) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.value = n.freq;
+
+            const start = t + n.at;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(MASTER_GAIN * n.vol, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + n.dur);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + n.dur + 0.05);
+        });
+    },
+
+    // 7. THINKING (Loop de Espera)
+    // Ref: o balanço das 3 bolinhas do Processing Center.
+    // Um arpejo de 3 notas (acorde maior, sem tensão) tão baixo que só
+    // confirma "ainda trabalhando" no fundo - não vira trilha sonora.
+    // Precisa de start/stop porque é um loop, diferente dos outros sons
+    // (um tiro só, tocam e morrem sozinhos).
+    startThinking: () => {
+        if (muted) return;
+        const ctx = getContext();
+        if (!ctx || thinkingLoopId) return;
+
+        const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+        thinkingStep = 0;
+
+        const beat = () => {
+            if (muted) return;
+            const t = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(notes[thinkingStep % notes.length], t);
+
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(MASTER_GAIN * 0.15, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.25);
+
+            thinkingStep++;
+        };
+
+        beat();
+        // Acompanha o ritmo do cw-dot-dance (1.1s / 3 pontos ≈ 370ms por batida)
+        thinkingLoopId = setInterval(beat, 370);
+    },
+
+    stopThinking: () => {
+        if (thinkingLoopId) {
+            clearInterval(thinkingLoopId);
+            thinkingLoopId = null;
+        }
     },
 
     // Manter compatibilidade com chamadas antigas

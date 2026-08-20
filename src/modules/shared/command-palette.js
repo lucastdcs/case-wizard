@@ -8,6 +8,8 @@
 
 import { SoundManager } from './sound-manager.js';
 import { lockBodyScroll, unlockBodyScroll } from './dom-utils.js';
+import { getLanguage, onLanguageChange } from './i18n.js';
+import { ShortcutService } from './shortcut-service.js';
 
 const ICONS = {
     notes: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
@@ -23,6 +25,7 @@ const ICONS = {
     enter: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>`,
     arrowDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
     arrowUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
+    bolt: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`,
 };
 
 function injectStyles() {
@@ -70,16 +73,50 @@ function injectStyles() {
         .cw-palette-item-icon { width: 32px; height: 32px; border-radius: 9px; background: #F1F3F4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #5F6368; transition: background-color 0.1s ease, color 0.1s ease; }
         .cw-palette-item-icon svg { width: 18px; height: 18px; }
         .cw-palette-item.selected .cw-palette-item-icon { background: #FFFFFF; color: #1A73E8; }
+        .cw-palette-item-icon--preset { background: #FEF7E0; color: #F9A825; }
+        .cw-palette-item.selected .cw-palette-item-icon--preset { background: #FFFFFF; color: #F9A825; }
         .cw-palette-item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .cw-palette-item-label { font-size: 14px; font-weight: 600; color: #202124; }
         .cw-palette-item-hint { font-size: 12px; color: #5F6368; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .cw-palette-empty { padding: 32px; text-align: center; color: #9AA0A6; font-size: 13px; }
+        .cw-palette-group {
+            padding: 10px 12px 4px; font-size: 10.5px; font-weight: 700;
+            color: #9AA0A6; text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .cw-palette-group:first-child { padding-top: 4px; }
 
         .cw-palette-footer { display: flex; gap: 16px; padding: 10px 20px; border-top: 1px solid #F1F3F4; background: #FAFAFA; font-size: 11px; color: #9AA0A6; font-weight: 600; }
         .cw-palette-footer span { display: flex; align-items: center; gap: 4px; }
         .cw-palette-footer svg { width: 12px; height: 12px; }
     `;
     document.head.appendChild(style);
+}
+
+const CP_DICT = {
+    pt: {
+        ariaLabel: 'Busca rápida',
+        placeholder: 'Buscar um módulo...',
+        empty: 'Nada encontrado.',
+        navigate: 'navegar',
+        select: 'selecionar',
+        close: 'esc fechar',
+        groupShortcuts: 'Meus atalhos',
+        groupModules: 'Módulos',
+    },
+    es: {
+        ariaLabel: 'Búsqueda rápida',
+        placeholder: 'Buscar un módulo...',
+        empty: 'No se encontró nada.',
+        navigate: 'navegar',
+        select: 'seleccionar',
+        close: 'esc cerrar',
+        groupShortcuts: 'Mis atajos',
+        groupModules: 'Módulos',
+    },
+};
+function cpt(key) {
+    const lang = getLanguage();
+    return CP_DICT[lang]?.[key] ?? CP_DICT.pt[key];
 }
 
 export function initCommandPalette(actions) {
@@ -93,42 +130,80 @@ export function initCommandPalette(actions) {
         return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     }
 
-    const ALL_ACTIONS = [
-        { id: 'notes', label: 'Case Notes', hint: 'Montar a nota técnica do caso', keywords: 'notas nota caso anotacoes', icon: ICONS.notes, run: actions.toggleNotes },
-        { id: 'bauform', label: 'BAU Form', hint: 'Solicitação de criação/descarte BAU', keywords: 'bau formulario solicitacao criacao descarte', icon: ICONS.bauform, run: actions.toggleBAUForm },
-        { id: 'email', label: 'Email Assistant', hint: 'Templates inteligentes de e-mail', keywords: 'email e-mail correio template', icon: ICONS.email, run: actions.toggleEmail },
-        { id: 'script', label: 'Call Script', hint: 'Guia interativo de chamada', keywords: 'script roteiro chamada ligacao', icon: ICONS.script, run: actions.toggleScript },
-        { id: 'links', label: 'Central de Links', hint: 'Ferramentas, SOPs e atalhos', keywords: 'links atalhos ferramentas sop sops', icon: ICONS.links, run: actions.toggleLinks },
-        { id: 'library', label: 'Minha Biblioteca', hint: 'Snippets e respostas salvas', keywords: 'biblioteca snippets respostas salvas', icon: ICONS.library, run: actions.toggleLibrary },
-        { id: 'timezone', label: 'Fusos Horários', hint: 'Monitoramento e planejador de chamada', keywords: 'fuso horario timezone', icon: ICONS.timezone, run: actions.toggleTimezone },
-        { id: 'broadcast', label: 'Avisos', hint: 'Comunicados e disponibilidade BAU', keywords: 'avisos broadcast comunicados disponibilidade', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
-        { id: 'configs', label: 'Configurações', hint: 'Perfil, som e preferências', keywords: 'configuracoes config preferencias perfil som', icon: ICONS.configs, run: actions.toggleConfigs },
-    ]
-        .filter(a => typeof a.run === 'function')
-        .map(a => ({ ...a, _haystack: normalize(`${a.label} ${a.hint} ${a.keywords}`) }));
+    // Atalhos do agente: vêm do ShortcutService (preferência da pessoa,
+    // sincronizada na nuvem), não mais de um campo dentro do cenário. São
+    // relidos a cada abertura porque o agente pode ter acabado de criar um em
+    // Configurações ou no próprio Case Notes.
+    //
+    // O `label` e o `alias` são escritos pelo próprio agente, então não têm
+    // versão por idioma; só o hint, que é texto nosso, tem as duas.
+    function noteShortcuts() {
+        if (typeof actions.toggleNotes !== 'function' ||
+            typeof actions.toggleNotes.openWithPreset !== 'function') return [];
+
+        return ShortcutService.list().map((shortcut) => ({
+            id: `shortcut-${shortcut.id}`,
+            label: shortcut.label,
+            hint: { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada' },
+            keywords: `nota atalho atajo preset ${shortcut.alias || ''}`,
+            icon: ICONS.bolt,
+            group: 'shortcuts',
+            isPreset: true,
+            run: () => {
+                ShortcutService.registerUse(shortcut.id);
+                actions.toggleNotes.openWithPreset(shortcut);
+            }
+        }));
+    }
+
+    // label fica em português mesmo pra ES: são os nomes dos módulos, e a
+    // maioria já é em inglês (Case Notes, Call Script...) ou é curta o
+    // bastante (Avisos, Configurações) pra não valer duplicar; só o hint
+    // (descrição) e as keywords de busca variam por idioma.
+    const MODULE_ACTIONS = [
+        { id: 'notes', label: 'Case Notes', hint: { pt: 'Montar a nota técnica do caso', es: 'Armar la nota técnica del caso' }, keywords: 'notas nota caso anotacoes anotaciones', icon: ICONS.notes, run: actions.toggleNotes },
+        { id: 'bauform', label: 'BAU Form', hint: { pt: 'Solicitação de criação/descarte BAU', es: 'Solicitud de creación/descarte BAU' }, keywords: 'bau formulario solicitacao solicitud criacao creacion descarte', icon: ICONS.bauform, run: actions.toggleBAUForm },
+        { id: 'email', label: 'Email Assistant', hint: { pt: 'Templates inteligentes de e-mail', es: 'Plantillas inteligentes de correo' }, keywords: 'email e-mail correio correo template plantilla', icon: ICONS.email, run: actions.toggleEmail },
+        { id: 'script', label: 'Call Script', hint: { pt: 'Guia interativo de chamada', es: 'Guía interactiva de llamada' }, keywords: 'script roteiro guion chamada llamada ligacao', icon: ICONS.script, run: actions.toggleScript },
+        { id: 'links', label: 'Central de Links', hint: { pt: 'Ferramentas, SOPs e atalhos', es: 'Herramientas, SOPs y atajos' }, keywords: 'links atalhos atajos ferramentas herramientas sop sops', icon: ICONS.links, run: actions.toggleLinks },
+        { id: 'library', label: 'Minha Biblioteca', hint: { pt: 'Snippets e respostas salvas', es: 'Snippets y respuestas guardadas' }, keywords: 'biblioteca snippets respostas respuestas salvas guardadas', icon: ICONS.library, run: actions.toggleLibrary },
+        { id: 'timezone', label: 'Fusos Horários', hint: { pt: 'Monitoramento e planejador de chamada', es: 'Monitoreo y planificador de llamada' }, keywords: 'fuso horario timezone', icon: ICONS.timezone, run: actions.toggleTimezone },
+        { id: 'broadcast', label: 'Avisos', hint: { pt: 'Comunicados e disponibilidade BAU', es: 'Comunicados y disponibilidad BAU' }, keywords: 'avisos broadcast comunicados disponibilidade disponibilidad', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
+        { id: 'configs', label: 'Configurações', hint: { pt: 'Perfil, som e preferências', es: 'Perfil, sonido y preferencias' }, keywords: 'configuracoes configuracion config preferencias perfil som sonido', icon: ICONS.configs, run: actions.toggleConfigs },
+    ].map(a => ({ ...a, group: 'modules' }));
+
+    // Os atalhos do agente vêm primeiro: são dele, e são o que ele repete
+    // dezenas de vezes por dia. Os módulos seguem logo abaixo, na ordem de
+    // sempre.
+    function buildActions() {
+        return [...noteShortcuts(), ...MODULE_ACTIONS]
+            .filter(a => typeof a.run === 'function')
+            .map(a => ({ ...a, _haystack: normalize(`${a.label} ${a.hint.pt} ${a.hint.es} ${a.keywords}`) }));
+    }
 
     let isOpen = false;
     let selectedIndex = 0;
-    let filtered = ALL_ACTIONS;
+    let allActions = buildActions();
+    let filtered = allActions;
 
     const overlay = document.createElement('div');
     overlay.className = 'cw-palette-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('aria-label', 'Busca rápida');
+    overlay.setAttribute('aria-label', cpt('ariaLabel'));
 
     const palette = document.createElement('div');
     palette.className = 'cw-palette';
     palette.innerHTML = `
         <div class="cw-palette-search">
             <span class="cw-palette-search-icon">${ICONS.search}</span>
-            <input type="text" class="cw-palette-input" placeholder="Buscar um módulo..." autocomplete="off" spellcheck="false">
+            <input type="text" class="cw-palette-input" placeholder="${cpt('placeholder')}" autocomplete="off" spellcheck="false">
         </div>
         <div class="cw-palette-list"></div>
         <div class="cw-palette-footer">
-            <span>${ICONS.arrowDown}${ICONS.arrowUp} navegar</span>
-            <span>${ICONS.enter} selecionar</span>
-            <span>esc fechar</span>
+            <span class="js-cp-navigate">${ICONS.arrowDown}${ICONS.arrowUp} ${cpt('navigate')}</span>
+            <span class="js-cp-select">${ICONS.enter} ${cpt('select')}</span>
+            <span class="js-cp-close">${cpt('close')}</span>
         </div>
     `;
     overlay.appendChild(palette);
@@ -140,24 +215,41 @@ export function initCommandPalette(actions) {
     function render() {
         list.innerHTML = '';
         if (filtered.length === 0) {
-            list.innerHTML = `<div class="cw-palette-empty">Nada encontrado.</div>`;
+            list.innerHTML = `<div class="cw-palette-empty">${cpt('empty')}</div>`;
             return;
         }
+        // Cabeçalhos de grupo são elementos NÃO selecionáveis: entram no DOM
+        // mas ficam fora de `filtered`, que continua sendo só a lista de ações.
+        // É o que mantém a navegação por setas (selectedIndex) linear - inserir
+        // cabeçalho como item quebraria o índice a cada busca.
+        const itemEls = [];
+        let grupoAnterior = null;
+
         filtered.forEach((action, idx) => {
+            if (action.group !== grupoAnterior) {
+                grupoAnterior = action.group;
+                const header = document.createElement('div');
+                header.className = 'cw-palette-group';
+                header.textContent = cpt(action.group === 'shortcuts' ? 'groupShortcuts' : 'groupModules');
+                header.setAttribute('aria-hidden', 'true');
+                list.appendChild(header);
+            }
+
             const item = document.createElement('div');
             item.className = 'cw-palette-item' + (idx === selectedIndex ? ' selected' : '');
             item.innerHTML = `
-                <span class="cw-palette-item-icon">${action.icon}</span>
+                <span class="cw-palette-item-icon${action.isPreset ? ' cw-palette-item-icon--preset' : ''}">${action.icon}</span>
                 <span class="cw-palette-item-text">
                     <span class="cw-palette-item-label">${action.label}</span>
-                    <span class="cw-palette-item-hint">${action.hint}</span>
+                    <span class="cw-palette-item-hint">${action.hint[getLanguage()] || action.hint.pt}</span>
                 </span>
             `;
             item.onmouseenter = () => { selectedIndex = idx; render(); };
             item.onclick = () => activate(idx);
             list.appendChild(item);
+            itemEls.push(item);
         });
-        const selectedEl = list.children[selectedIndex];
+        const selectedEl = itemEls[selectedIndex];
         if (selectedEl) selectedEl.scrollIntoView({ block: 'nearest' });
     }
 
@@ -172,7 +264,10 @@ export function initCommandPalette(actions) {
     function open() {
         if (isOpen) return;
         isOpen = true;
-        filtered = ALL_ACTIONS;
+        // Relê os atalhos a cada abertura: o agente pode ter criado ou apagado
+        // um segundos atrás, em Configurações ou no Case Notes.
+        allActions = buildActions();
+        filtered = allActions;
         selectedIndex = 0;
         input.value = '';
         render();
@@ -200,8 +295,8 @@ export function initCommandPalette(actions) {
     input.addEventListener('input', () => {
         const term = normalize(input.value.trim());
         filtered = term
-            ? ALL_ACTIONS.filter(a => a._haystack.includes(term))
-            : ALL_ACTIONS;
+            ? allActions.filter(a => a._haystack.includes(term))
+            : allActions;
         selectedIndex = 0;
         render();
     });
@@ -231,6 +326,18 @@ export function initCommandPalette(actions) {
             e.preventDefault();
             toggle();
         }
+    });
+
+    onLanguageChange(() => {
+        overlay.setAttribute('aria-label', cpt('ariaLabel'));
+        input.placeholder = cpt('placeholder');
+        const navigateEl = palette.querySelector('.js-cp-navigate');
+        if (navigateEl) navigateEl.innerHTML = `${ICONS.arrowDown}${ICONS.arrowUp} ${cpt('navigate')}`;
+        const selectEl = palette.querySelector('.js-cp-select');
+        if (selectEl) selectEl.innerHTML = `${ICONS.enter} ${cpt('select')}`;
+        const closeEl = palette.querySelector('.js-cp-close');
+        if (closeEl) closeEl.textContent = cpt('close');
+        render();
     });
 
     return { open, close, toggle };

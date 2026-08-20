@@ -5,6 +5,128 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation, isModuleOpen } from '../shared/animations.js';
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll, createEmptyState } from "../shared/dom-utils.js";
+import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import { DataService } from "../shared/data-service.js";
+
+// Descrição de cada link em espanhol, chaveada pelo texto em português.
+// Estão aqui as 60 descrições — inclusive as que ficam iguais nos dois
+// idiomas (ex: "Setup Inicial") e as que são nome próprio/inglês e não se
+// traduzem (ex: "Ghost Ads", "Help Center"). Mapear todas, e não só as que
+// mudam, faz "ausente deste mapa" significar inequivocamente "ainda não
+// traduzida" — o que torna a checagem de cobertura trivial.
+// O `name` de cada link não entra aqui: são nomes de ferramenta/SOP
+// (Moma Home, RegExr, [SOP] Split), que não se traduzem.
+const LINK_DESC_ES = {
+    'Ponto Eletrônico': 'Control de Asistencia',
+    'Ferramenta de ajuda': 'Herramienta de ayuda',
+    'Intranet Google': 'Intranet Google',
+    'Relatório Follow-ups': 'Informe de Follow-ups',
+    'Dashboard WFM': 'Dashboard WFM',
+    'Tech Solutions SAO': 'Tech Solutions SAO',
+    'Form Gravação': 'Form Grabación',
+    'Form Escalação': 'Form Escalación',
+    'Instruções Split': 'Instrucciones Split',
+    'Single Page App': 'Single Page App',
+    'Procedimento Padrão': 'Procedimiento Estándar',
+    'Validação Código': 'Validación Código',
+    'Conversão Chamada': 'Conversión Llamada',
+    'Validação WCC': 'Validación WCC',
+    'ECW4': 'ECW4',
+    'Monitoramento EC': 'Monitoreo EC',
+    'Resolução problemas': 'Resolución de problemas',
+    'Implementação RMKT': 'Implementación RMKT',
+    'Pontuação Leads': 'Puntuación de Leads',
+    'Instalação Container': 'Instalación Container',
+    'Instalação Config.': 'Instalación Config.',
+    'Validação GA4': 'Validación GA4',
+    'Guia Dev': 'Guía Dev',
+    'Resolução Problemas': 'Resolución de Problemas',
+    'Domínio Cruzado': 'Dominio Cruzado',
+    'Lista Oficial': 'Lista Oficial',
+    'Criador URLs': 'Creador de URLs',
+    'Setup Inicial': 'Setup Inicial',
+    'Otimização Feed': 'Optimización Feed',
+    'Ferramenta Interna': 'Herramienta Interna',
+    'Avaliações': 'Reseñas',
+    'Feeds Offline': 'Feeds Offline',
+    'Help Center': 'Help Center',
+    'Guias CMS': 'Guías CMS',
+    'Soluções Iframes': 'Soluciones Iframes',
+    'Ghost Ads': 'Ghost Ads',
+    'Ghost Analytics': 'Ghost Analytics',
+    'Ghost GTM': 'Ghost GTM',
+    'Ferramenta': 'Herramienta',
+    'Ghost MC': 'Ghost MC',
+    'Playground JS': 'Playground JS',
+    'Testador Regex': 'Probador Regex',
+    'Doc. CSP': 'Doc. CSP',
+    'Guia CoMo': 'Guía CoMo',
+    'Debug CoMo': 'Debug CoMo',
+    'Portal Colaborador': 'Portal del Colaborador',
+    'Apps e Sistemas': 'Apps y Sistemas',
+    'Folha Pagamento': 'Nómina',
+    'Reportar problemas': 'Reportar problemas',
+    'Registro chamadas': 'Registro de llamadas',
+    'Erros de sistema': 'Errores de sistema',
+    'BAU/Descarte/Monitoria': 'BAU/Descarte/Monitoreo',
+    'Feedback positivo': 'Feedback positivo',
+    'Casos difíceis': 'Casos difíciles',
+    'Chat/Email Ads': 'Chat/Email Ads',
+    'Chat/Email Shopping': 'Chat/Email Shopping',
+    'Perfil da Empresa': 'Perfil de la Empresa',
+    'Console API': 'Console API',
+    'Lista de números': 'Lista de números',
+    'Cursos': 'Cursos',
+};
+// Aceita o objeto do link (não só a string) porque os itens vindos da Central
+// de Conteúdo carregam a tradução em `descEs`, editável na tela. O mapa
+// LINK_DESC_ES acima segue valendo para os links do fallback embutido.
+function linkDesc(link) {
+    const obj = (link && typeof link === 'object') ? link : { desc: link };
+    const desc = obj.desc || '';
+    if (getLanguage() !== 'es') return desc;
+    return obj.descEs || LINK_DESC_ES[desc] || desc;
+}
+
+const LINKS_DICT = {
+    pt: {
+        headerTitle: "Central de Links",
+        headerDesc: "Navegue pelas categorias ou use a busca.",
+        searchPlaceholder: "Buscar ferramenta ou SOP...",
+        recent: "Recentes",
+        nothingHereYet: "Nada por aqui ainda",
+        nothingHereSub: "Os links que você abrir aparecem aqui pra acesso rápido depois.",
+        searchResults: "Resultados da busca",
+        nothingFound: "Nada encontrado",
+        noLinkMatches: (term) => `Nenhum link bate com "${term}".`,
+        copyUrl: "Copiar URL",
+        linkCopiedToast: "Link copiado!",
+        copyFailedToast: "Não foi possível copiar o link.",
+        categoryLabels: { tasks: "Tarefas", ads: "Ads", analytics: "GA4", shopping: "Shop", tech: "Tech", hr: "RH", lm: "Forms", qa: "QA", suporte: "Ajuda" },
+    },
+    es: {
+        headerTitle: "Central de Enlaces",
+        headerDesc: "Navega por las categorías o usa la búsqueda.",
+        searchPlaceholder: "Buscar herramienta o SOP...",
+        recent: "Recientes",
+        nothingHereYet: "Todavía no hay nada aquí",
+        nothingHereSub: "Los enlaces que abras aparecen aquí para acceso rápido después.",
+        searchResults: "Resultados de la búsqueda",
+        nothingFound: "No se encontró nada",
+        noLinkMatches: (term) => `Ningún enlace coincide con "${term}".`,
+        copyUrl: "Copiar URL",
+        linkCopiedToast: "¡Enlace copiado!",
+        copyFailedToast: "No se pudo copiar el enlace.",
+        categoryLabels: { tasks: "Tareas", ads: "Ads", analytics: "GA4", shopping: "Shop", tech: "Tech", hr: "RRHH", lm: "Forms", qa: "QA", suporte: "Ayuda" },
+    },
+};
+function lt(key) {
+    const lang = getLanguage();
+    return LINKS_DICT[lang]?.[key] ?? LINKS_DICT.pt[key];
+}
+function catLabel(key) {
+    return lt('categoryLabels')[key] ?? LINKS_DB[key]?.label ?? key;
+}
 
 // --- DADOS (Links) ---
 const LINKS_DB = {
@@ -115,6 +237,65 @@ const LINKS_DB = {
     ]
   }
 };
+
+// --- HIDRATAÇÃO PELA CENTRAL DE CONTEÚDO ---
+// O LINKS_DB acima deixa de ser a fonte da verdade e passa a ser o fallback:
+// é o que aparece no primeiro load offline, quando ainda não há nem resposta da
+// API nem cache local. Assim que a Central responde, a lista publicada vence.
+//
+// Cada item publicado traz `key` = categoria e `value` = JSON com
+// { name, url, desc, desc_es } — o par PT/ES viaja junto do link que descreve,
+// em vez de num mapa paralelo (LINK_DESC_ES) que precisa ser editado à parte.
+function applyContentItems(items) {
+    if (!Array.isArray(items) || !items.length) return false;
+
+    const rebuilt = {};
+
+    for (const item of items) {
+        const cat = item.key;
+        if (!cat) continue;
+
+        let parsed;
+        try {
+            parsed = JSON.parse(item.value || '{}');
+        } catch (e) {
+            continue; // Item malformado não derruba os outros.
+        }
+        if (!parsed.name || !parsed.url) continue;
+
+        if (!rebuilt[cat]) {
+            rebuilt[cat] = { label: LINKS_DB[cat]?.label || cat, links: [] };
+        }
+        rebuilt[cat].links.push({
+            name: parsed.name,
+            url: parsed.url,
+            desc: parsed.desc || '',
+            descEs: parsed.desc_es || ''
+        });
+    }
+
+    if (!Object.keys(rebuilt).length) return false;
+
+    // Substitui o conteúdo preservando a identidade do objeto: o módulo inteiro
+    // já capturou a referência de LINKS_DB, então reatribuir a const quebraria.
+    for (const key of Object.keys(LINKS_DB)) delete LINKS_DB[key];
+    Object.assign(LINKS_DB, rebuilt);
+    return true;
+}
+
+async function hydrateLinksFromContentCentral(onReady) {
+    // Cache primeiro: a lista renderiza na hora com o que já veio da última vez,
+    // sem esperar a rede — e a resposta fresca corrige depois, se mudou.
+    const cached = DataService.getCachedContent('links');
+    if (applyContentItems(cached)) onReady?.();
+
+    try {
+        const items = await DataService.fetchContentModule('links');
+        if (applyContentItems(items)) onReady?.();
+    } catch (e) {
+        console.warn('Central de Conteúdo indisponível; usando links embutidos.', e);
+    }
+}
 
 const CATEGORY_ICONS = {
     tasks: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
@@ -329,11 +510,12 @@ export function initLinksAssistant() {
 
   // 1. HEADER
   const header = createStandardHeader(
-    popup, "Central de Links", CURRENT_VERSION,
-    "Navegue pelas categorias ou use a busca.",
+    popup, lt('headerTitle'), CURRENT_VERSION,
+    lt('headerDesc'),
     animRefs, () => toggleVisibility()
   );
   popup.appendChild(header);
+  const headerTitleEl = header.querySelector('span');
 
   // --- LAYOUT PRINCIPAL ---
   const mainLayout = document.createElement("div");
@@ -364,7 +546,7 @@ export function initLinksAssistant() {
   const searchInput = document.createElement("input");
   searchInput.className = "cw-links-search-input";
   searchInput.type = "text";
-  searchInput.placeholder = "Buscar ferramenta ou SOP...";
+  searchInput.placeholder = lt('searchPlaceholder');
 
   searchInputWrapper.appendChild(searchIcon);
   searchInputWrapper.appendChild(searchInput);
@@ -387,7 +569,7 @@ export function initLinksAssistant() {
 
       const hHead = document.createElement("div");
       hHead.className = "cw-links-history-head";
-      hHead.innerHTML = `<span class="cw-links-history-title">🕒 Recentes</span>`;
+      hHead.innerHTML = `<span class="cw-links-history-title js-links-recent">🕒 ${lt('recent')}</span>`;
 
       const closeBtn = document.createElement("button");
       closeBtn.className = "cw-links-history-close";
@@ -424,8 +606,8 @@ export function initLinksAssistant() {
       if (history.length === 0) {
           list.appendChild(createEmptyState({
               icon: CATEGORY_ICONS.history,
-              title: "Nada por aqui ainda",
-              subtitle: "Os links que você abrir aparecem aqui pra acesso rápido depois.",
+              title: lt('nothingHereYet'),
+              subtitle: lt('nothingHereSub'),
           }));
       } else {
           history.forEach(link => {
@@ -458,7 +640,7 @@ export function initLinksAssistant() {
       sidebar.innerHTML = "";
 
       // Botão "Recentes" (Com Toggle)
-      const histBtn = createNavBtn('history', 'Recentes', CATEGORY_ICONS.history);
+      const histBtn = createNavBtn('history', lt('recent'), CATEGORY_ICONS.history);
       histBtn.id = "cw-sidebar-btn-history";
 
       histBtn.onclick = () => {
@@ -482,8 +664,7 @@ export function initLinksAssistant() {
 
       // Botões de Categoria
       Object.keys(LINKS_DB).forEach(key => {
-          const cat = LINKS_DB[key];
-          const btn = createNavBtn(key, cat.label, CATEGORY_ICONS[key]);
+          const btn = createNavBtn(key, catLabel(key), CATEGORY_ICONS[key]);
           btn.id = `cw-sidebar-btn-${key}`;
 
           btn.onclick = () => {
@@ -551,9 +732,11 @@ export function initLinksAssistant() {
       if (searchTerm.trim() !== "") {
           let results = [];
           Object.entries(LINKS_DB).forEach(([key, cat]) => {
+              // Busca sobre a descrição JÁ traduzida, pra digitar
+              // "resolución" achar o link no idioma que está na tela.
               const filtered = cat.links.filter(l =>
                   l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  l.desc.toLowerCase().includes(searchTerm.toLowerCase())
+                  linkDesc(l).toLowerCase().includes(searchTerm.toLowerCase())
               );
               results.push(...filtered.map(l => ({...l, _cat: key})));
           });
@@ -561,15 +744,15 @@ export function initLinksAssistant() {
           if(results.length === 0) {
               scrollContent.appendChild(createEmptyState({
                   icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
-                  title: "Nada encontrado",
-                  subtitle: `Nenhum link bate com "${searchTerm.trim()}".`,
+                  title: lt('nothingFound'),
+                  subtitle: lt('noLinkMatches')(searchTerm.trim()),
               }));
               return;
           }
 
           const searchHeader = document.createElement("div");
           searchHeader.className = "cw-links-search-results-label";
-          searchHeader.textContent = "Resultados da busca";
+          searchHeader.textContent = lt('searchResults');
           scrollContent.appendChild(searchHeader);
 
           results.forEach(link => {
@@ -588,7 +771,7 @@ export function initLinksAssistant() {
           catHeader.id = `cat-anchor-${key}`;
           catHeader.className = "cw-links-cat-header";
           catHeader.style.setProperty('--cat-color', theme.color);
-          catHeader.innerHTML = `<div class="cw-links-cat-dot"></div>${cat.label}`;
+          catHeader.innerHTML = `<div class="cw-links-cat-dot"></div>${catLabel(key)}`;
 
           catSection.appendChild(catHeader);
 
@@ -636,7 +819,7 @@ export function initLinksAssistant() {
 
       const desc = document.createElement("div");
       desc.className = "cw-links-card-desc";
-      desc.textContent = link.desc;
+      desc.textContent = linkDesc(link);
 
       meta.appendChild(title);
       meta.appendChild(desc);
@@ -645,7 +828,7 @@ export function initLinksAssistant() {
       const copyBtn = document.createElement("div");
       copyBtn.className = "cw-links-copy-btn";
       copyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-      copyBtn.title = "Copiar URL";
+      copyBtn.title = lt('copyUrl');
 
       card.onclick = () => {
           if(!isHistory && catKey) addToHistory(link, catKey);
@@ -660,10 +843,10 @@ export function initLinksAssistant() {
           navigator.clipboard.writeText(link.url).then(() => {
               SoundManager.playClick();
               if(!isHistory && catKey) addToHistory(link, catKey);
-              showToast("Link copiado!");
+              showToast(lt('linkCopiedToast'));
           }).catch(() => {
               SoundManager.playError();
-              showToast("Não foi possível copiar o link.", { error: true });
+              showToast(lt('copyFailedToast'), { error: true });
           });
       };
 
@@ -690,6 +873,30 @@ export function initLinksAssistant() {
   document.body.appendChild(popup);
   renderSidebar();
   renderContent();
+
+  // Busca a lista publicada na Central de Conteúdo e repinta quando chegar.
+  // Não bloqueia a abertura: a tela já subiu com o fallback embutido, então o
+  // pior caso (API fora do ar) é continuar exatamente como era antes.
+  hydrateLinksFromContentCentral(() => {
+      renderSidebar();
+      renderContent();
+      updateSidebarVisuals();
+  });
+
+  // Retraduz header/busca e refaz sidebar+conteúdo, que já são montados do
+  // zero a cada render (inclusive o overlay de histórico, se estiver aberto).
+  onLanguageChange(() => {
+      if (headerTitleEl) headerTitleEl.textContent = lt('headerTitle');
+      const helpTitleEl = popup.querySelector('.cw-help-title');
+      if (helpTitleEl) helpTitleEl.textContent = lt('headerTitle');
+      const helpDescEl = popup.querySelector('.cw-help-description');
+      if (helpDescEl) helpDescEl.textContent = lt('headerDesc');
+      searchInput.placeholder = lt('searchPlaceholder');
+      renderSidebar();
+      renderContent();
+      updateSidebarVisuals();
+      if (isHistoryOpen) showHistoryOverlay();
+  });
 
   return toggleVisibility;
 }

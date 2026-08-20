@@ -15,6 +15,7 @@ const API_URL = isDevelopment
 
 const CACHE_KEY_BROADCAST = "cw_data_broadcast";
 const CACHE_KEY_TIPS = "cw_data_tips";
+const CACHE_KEY_CONTENT_PREFIX = "cw_content_";
 
 const FALLBACK_TIPS = ["Processando...", "Mantenha o foco!", "Aguarde..."];
 
@@ -64,10 +65,12 @@ export const DataService = {
     // ==========================================
     // 1. SISTEMA CORE (Dicas e Inicialização)
     // ==========================================
+    // As dicas passaram a ser gerenciadas pela Central de Conteúdo (módulo
+    // 'tips'). O contrato público daqui não mudou: quem chama segue usando
+    // fetchTips() e getRandomTip() sem saber de onde vem.
     fetchTips: async () => {
         try {
-            const data = await jsonpFetch('tips');
-            if (data?.tips) localStorage.setItem(CACHE_KEY_TIPS, JSON.stringify(data.tips));
+            await DataService.fetchContentModule('tips');
         } catch (err) { console.warn("Tips offline", err); }
     },
 
@@ -83,11 +86,59 @@ export const DataService = {
     },
 
     getCachedBroadcasts: () => JSON.parse(localStorage.getItem(CACHE_KEY_BROADCAST) || "[]"),
+
+    // ==========================================
+    // 1.5 CENTRAL DE CONTEÚDO (conteúdo gerenciável)
+    // ==========================================
+    // Busca o conteúdo publicado de um módulo (links, call_script, ...).
+    // O backend só devolve itens 'live' - não existe parâmetro de status aqui,
+    // então nem por engano o app do agente enxerga algo pendente de aprovação.
+    //
+    // Mesmo contrato dos tips: cacheia no localStorage e devolve o cache quando
+    // a API cai. Quem chama continua responsável por ter um fallback embutido
+    // no código para o primeiro load offline, quando não há cache nenhum.
+    fetchContentModule: async (module) => {
+        const cacheKey = `${CACHE_KEY_CONTENT_PREFIX}${module}`;
+        try {
+            const data = await jsonpFetch('content_public', { module });
+            if (data?.status === 'success' && Array.isArray(data.items)) {
+                localStorage.setItem(cacheKey, JSON.stringify(data.items));
+                return data.items;
+            }
+        } catch (err) {
+            console.warn(`Conteúdo '${module}' offline`, err);
+        }
+        return DataService.getCachedContent(module);
+    },
+
+    getCachedContent: (module) => {
+        try {
+            return JSON.parse(localStorage.getItem(`${CACHE_KEY_CONTENT_PREFIX}${module}`) || "null");
+        } catch (e) {
+            return null;
+        }
+    },
     
     getRandomTip: () => {
-        let tips = FALLBACK_TIPS;
-        const cached = localStorage.getItem(CACHE_KEY_TIPS);
-        if (cached) try { tips = JSON.parse(cached); } catch(e){}
+        let tips = null;
+
+        // 1. Central de Conteúdo (fonte atual).
+        const items = DataService.getCachedContent('tips');
+        if (Array.isArray(items) && items.length) {
+            tips = items.map(i => i.value).filter(Boolean);
+        }
+
+        // 2. Cache da rota antiga. Só importa no primeiro load depois do
+        // deploy, e só se o usuário estiver offline: sem isso ele veria as três
+        // frases genéricas do fallback em vez das dicas que já tinha em cache.
+        if (!tips || !tips.length) {
+            const legado = localStorage.getItem(CACHE_KEY_TIPS);
+            if (legado) try { tips = JSON.parse(legado); } catch (e) { }
+        }
+
+        // 3. Fallback embutido.
+        if (!Array.isArray(tips) || !tips.length) tips = FALLBACK_TIPS;
+
         return tips[Math.floor(Math.random() * tips.length)];
     },
 
@@ -314,6 +365,34 @@ sendBAUEscalation: async (payload, userEmail) => {
             console.error("Erro ao deletar snippet:", e);
             return false;
         }
+    },
+
+    // --- Preferências do agente (blob único por pessoa) ---
+    // Devolve null - e não {} - quando a busca falha: quem chama precisa saber
+    // distinguir "esta pessoa não tem preferência nenhuma" de "não deu pra
+    // perguntar", senão o cache local seria zerado por uma falha de rede.
+    getUserPrefs: async (userEmail) => {
+        try {
+            const response = await jsonpFetch('get_user_prefs', { user: userEmail });
+            if (response && response.status === 'success') return response.prefs || {};
+            return null;
+        } catch (e) {
+            console.warn("Erro ao carregar preferências:", e);
+            return null;
+        }
+    },
+
+    saveUserPrefs: async (prefs, userEmail) => {
+        try {
+            const response = await jsonpFetch('save_user_prefs', {
+                user: userEmail,
+                prefs: JSON.stringify(prefs || {})
+            });
+            return !!(response && response.status === 'success');
+        } catch (e) {
+            console.warn("Erro ao salvar preferências:", e);
+            return false;
+        }
     }
 };
 
@@ -325,3 +404,5 @@ export const fetchUserProfile = DataService.fetchUserProfile;
 export const getUserSnippets = DataService.getUserSnippets;
 export const saveSnippet = DataService.saveSnippet;
 export const deleteSnippet = DataService.deleteSnippet;
+export const getUserPrefs = DataService.getUserPrefs;
+export const saveUserPrefs = DataService.saveUserPrefs;

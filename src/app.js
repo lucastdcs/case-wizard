@@ -14,7 +14,10 @@ import { initConfigsAssistant } from './modules/configs/configs-assistant.js';
 import { initBAUForm } from './modules/bau-form/bau-form-assistant.js';
 
 // Importação do Serviço de Dados
-import { DataService } from './modules/shared/data-service.js';
+import { DataService, fetchUserProfile } from './modules/shared/data-service.js';
+import { getAgentEmail } from './modules/shared/page-data.js';
+import { applyProfileLanguage } from './modules/shared/i18n.js';
+import { UserPrefsService } from './modules/shared/user-prefs-service.js';
 
 // 2. Importação do Núcleo Compartilhado
 import { initCommandCenter } from './modules/shared/command-center.js';
@@ -100,14 +103,34 @@ function initApp() {
             
             // 1. Agora sim, logamos o Start (já teremos o LDAP em cache)
             DataService.logEvent("App", "Start", "Session Start");
-            
-            // 2. Verifica Tutoriais / Changelog
-            initOnboarding(); 
-            
-            setTimeout(() => {
-                checkAndShowChangelog(APP_VERSION);
-            }, 500);
-            
+
+            // 1.1. Aplica o idioma vindo da planilha People (se a pessoa
+            // nunca trocou manualmente em Configurações neste navegador) ANTES
+            // de mostrar Onboarding/Changelog - senão quem usa o Case Wizard
+            // pela primeira vez veria o tutorial em PT por um instante mesmo
+            // sendo hispanofalante, já que o perfil ainda não teria chegado.
+            const agentEmail = getAgentEmail();
+
+            // Preferências do agente (hoje: os atalhos do Ctrl+K). Não bloqueia
+            // nada: a tela já abre com o cache local e se atualiza quando a
+            // planilha responder - o Ctrl+K relê a lista a cada abertura.
+            UserPrefsService.sync();
+
+            const languagePromise = agentEmail
+                ? fetchUserProfile(agentEmail.split('@')[0])
+                    .then(profile => { if (profile) applyProfileLanguage(profile); })
+                    .catch(e => console.warn("Não foi possível resolver o idioma do perfil:", e))
+                : Promise.resolve();
+
+            languagePromise.finally(() => {
+                // 2. Verifica Tutoriais / Changelog
+                initOnboarding();
+
+                setTimeout(() => {
+                    checkAndShowChangelog(APP_VERSION);
+                }, 500);
+            });
+
         }, 2500);
 
     } catch (error) {

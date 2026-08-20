@@ -7,8 +7,14 @@ const SHEET_BROADCAST = "Broadcast";
 const SHEET_LOGS = "Logs";
 const SHEET_TIPS = "Tips";
 const SHEET_SNIPPETS = "Database_Snippets";
-const SHEET_BAU_FORM = "BAU_form_data"; 
+const SHEET_BAU_FORM = "BAU_form_data";
 const SHEET_PEOPLE = "People";
+const SHEET_USER_PREFS = "User_Prefs";
+
+// Teto de segurança para o blob de preferências. O transporte é JSONP (GET), e
+// uma linha de planilha aceita bem mais do que uma URL — o limite real está no
+// caminho, não na célula. Com 8 atalhos o blob fica na casa de 1 KB.
+const USER_PREFS_MAX_BYTES = 8000;
 
 function doGet(e) {
   // Fallback para testes manuais
@@ -22,6 +28,18 @@ function doGet(e) {
   if (e.parameter.page === 'tl') {
     return HtmlService.createHtmlOutputFromFile('TLDashboard')
       .setTitle('Cases Wizard | Visão TL')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+
+  // Central de Conteúdo - página própria, deliberadamente fora do TLDashboard:
+  // aquele arquivo já é monolítico, e o dashboard de TL é um braço do processo
+  // de casos, não o lugar de gerenciar o conteúdo do produto inteiro.
+  // Quem não tem papel em Content_Access vê a tela responder "sem acesso" -
+  // o gate real é por ação, no ContentAPI.gs.
+  if (e.parameter.page === 'content') {
+    return HtmlService.createHtmlOutputFromFile('ContentDashboard')
+      .setTitle('Cases Wizard | Central de Conteúdo')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
@@ -145,11 +163,11 @@ function doGet(e) {
       result = { broadcast: data };
     }
     else if (op === 'tips') {
-      const sheet = ss.getSheetByName(SHEET_TIPS);
-      const raw = sheet.getDataRange().getValues();
-      const tips = [];
-      for(let i=1; i<raw.length; i++) if(raw[i][0]) tips.push(raw[i][0]);
-      result = { tips: tips };
+      // Rota legada, mantida viva porque bundles antigos em cache ainda a
+      // chamam. Depois da migração ela serve o conteúdo da Central, e não mais
+      // a aba Tips - assim as duas versões do app leem a MESMA fonte, e editar
+      // pela Central vale para todo mundo durante a transição.
+      result = { tips: getTipsForLegacyEndpoint(ss) };
     }
 
     // 5. MÓDULO: Escrita (Broadcast Admin)
@@ -178,6 +196,24 @@ function doGet(e) {
          result = { status: 'success', action: 'delete' };
        } else { result = { status: 'error', msg: 'ID not found' }; }
     }
+    // 7. MÓDULO: Central de Conteúdo (leitura pública)
+    // Só devolve itens com status 'live'. Não existe parâmetro de status aqui
+    // de propósito: conteúdo em revisão não tem rota de leitura nenhuma.
+    else if (op === 'content_public') {
+      result = handleContentPublicRead(p);
+    }
+
+    // 8. MÓDULO: Preferências do agente (blob JSON, uma linha por pessoa)
+    // Hoje guarda os atalhos do Ctrl+K; nasceu genérico de propósito para que
+    // som, idioma e ordem da pílula possam migrar pra cá sem novo backend.
+    // Ver docs/decisions/0002-atalhos-ctrl-k-por-agente.md.
+    else if (op === 'get_user_prefs') {
+      result = handleGetUserPrefs(ss, p);
+    }
+    else if (op === 'save_user_prefs') {
+      result = handleSaveUserPrefs(ss, p);
+    }
+
     // 6. MÓDULO: Perfil de Usuário e Permissões (LDAP)
     else if (op === 'get_user_profile') {
       const userEmail = p.user || "";
@@ -205,6 +241,87 @@ function doGet(e) {
 // =========================================================
 //  FUNÇÕES AUXILIARES (HELPERS)
 // =========================================================
+
+// ---------------------------------------------------------
+//  PREFERÊNCIAS DO AGENTE (aba User_Prefs)
+// ---------------------------------------------------------
+// Uma linha por pessoa, um blob JSON. Diferente de Database_Snippets, que é
+// uma lista de itens, aqui o registro inteiro é substituído a cada escrita -
+// o cliente sempre manda o estado completo das preferências dele.
+
+function handleGetUserPrefs(ss, p) {
+  const userEmail = String(p.user || "").toLowerCase().trim();
+  if (!userEmail) throw new Error("User email required");
+
+  const sheet = getOrCreateSheet(ss, SHEET_USER_PREFS);
+  const rowIndex = findUserPrefsRow(sheet, userEmail);
+  if (rowIndex < 0) return { status: 'success', prefs: {} };
+
+  const raw = sheet.getRange(rowIndex, 2).getValue();
+  let prefs = {};
+  try {
+    prefs = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    // Blob corrompido não pode travar o agente fora das próprias preferências:
+    // devolve vazio (o cliente segue com o cache local) e registra o caso.
+    Logger.log("User_Prefs ilegível para " + userEmail + ": " + e);
+    prefs = {};
+  }
+  return { status: 'success', prefs: prefs };
+}
+
+function handleSaveUserPrefs(ss, p) {
+  const userEmail = String(p.user || "").toLowerCase().trim();
+  if (!userEmail) throw new Error("User email required");
+
+  const raw = String(p.prefs || "");
+  if (raw.length > USER_PREFS_MAX_BYTES) throw new Error("Preferences payload too large");
+
+  // Valida antes de gravar: um blob inválido só apareceria como erro na
+  // PRÓXIMA sessão do agente, longe da causa.
+  let parsed;
+  try {
+    parsed = JSON.parse(raw || "{}");
+  } catch (e) {
+    throw new Error("Preferences payload is not valid JSON");
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error("Preferences payload must be an object");
+  }
+
+  const sheet = getOrCreateSheet(ss, SHEET_USER_PREFS);
+  const timestamp = new Date().toISOString();
+  const rowIndex = findUserPrefsRow(sheet, userEmail);
+
+  if (rowIndex > 0) {
+    sheet.getRange(rowIndex, 2).setValue(raw);
+    sheet.getRange(rowIndex, 3).setValue(timestamp);
+    return { status: 'success', action: 'update' };
+  }
+
+  sheet.appendRow([userEmail, raw, timestamp]);
+  return { status: 'success', action: 'create' };
+}
+
+// A chave aqui é o e-mail (coluna 1), não um ID gerado - por isso não dá pra
+// reusar findRowIndexById().
+function findUserPrefsRow(sheet, userEmail) {
+  if (!sheet) return -1;
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).toLowerCase().trim() === userEmail) return i + 1;
+  }
+  return -1;
+}
+
+// Regra de permissão (Overhead) compartilhada entre getUserProfileByLdap() e
+// getActiveTLs() - qualquer roleCategory que não seja Agent/Apprentice é
+// considerada liderança. Extraída pra um só lugar pra não divergir entre os
+// dois pontos que hoje decidem "quem é TL".
+function isOverheadRoleCategory(roleCategory) {
+  const catLower = String(roleCategory || "").toLowerCase();
+  return !(catLower.includes('agent') || catLower.includes('apprentice'));
+}
 
 // Busca o perfil (papel/segmento/permissão) de um LDAP na planilha "People".
 // Extraído do handler de 'get_user_profile' para poder ser reaproveitado
@@ -236,8 +353,7 @@ function getUserProfileByLdap(ldap) {
         const segment = String(data[i][3] || "").trim();
 
         // Regra 1: Permissões (Overhead). Bloqueia APENAS Agent e Apprentice.
-        const catLower = roleCategory.toLowerCase();
-        const isOverhead = !(catLower.includes('agent') || catLower.includes('apprentice'));
+        const isOverhead = isOverheadRoleCategory(roleCategory);
 
         // Regra 2: Idiomas. Staff = PT. PT = PT. ES = ES.
         let lang = "PT-BR"; // Padrão
@@ -318,9 +434,32 @@ function getOrCreateSheet(ss, name) {
         "Adv_Name", "Adv_Email", "Website", "Timezone", "Language", "AM_Name",
         "Sales_Program", "Reason", "Task_Type", "Description", "Availability"
       ]);
+    } else if (name === SHEET_USER_PREFS) {
+      sheet.appendRow(["User_Email", "Prefs_JSON", "LastUpdated"]);
     }
   }
   return sheet;
+}
+
+// Garante que a planilha BAU_form_data tenha as 3 colunas de trilha de
+// auditoria (quem processou, quando, e qual decisão) além das 18 colunas
+// originais do formulário. Idempotente - chamada em todo write/read que
+// depende delas, pra planilhas antigas (já em produção) ganharem as colunas
+// sozinhas na primeira chamada, sem precisar de migração manual.
+const BAU_HISTORY_HEADERS = ["Processed_By", "Processed_At", "Processed_Action"];
+const BAU_HISTORY_FIRST_COL = 19;
+
+function ensureBAUHistoryColumns(sheet) {
+  const neededCols = BAU_HISTORY_FIRST_COL - 1 + BAU_HISTORY_HEADERS.length;
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < neededCols) {
+    sheet.insertColumnsAfter(currentMaxCols, neededCols - currentMaxCols);
+  }
+
+  const headerRange = sheet.getRange(1, BAU_HISTORY_FIRST_COL, 1, BAU_HISTORY_HEADERS.length);
+  const existing = headerRange.getValues()[0];
+  const missing = existing.some(v => !v);
+  if (missing) headerRange.setValues([BAU_HISTORY_HEADERS]);
 }
 
 function findRowIndexById(sheet, id) {

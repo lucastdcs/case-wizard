@@ -33,16 +33,16 @@ export function createTagSupportModule(t) {
     Object.assign(radioContainer.style, styleRadioGroup);
 
     // Opção Sim
-    const rSim = document.createElement("input"); rSim.type = "radio"; rSim.name = "ts_usage_mod"; rSim.value = "Sim"; 
+    const rSim = document.createElement("input"); rSim.type = "radio"; rSim.name = "ts_usage_mod"; rSim.value = "Sim";
     Object.assign(rSim.style, styleCheckboxInput);
-    const lSim = document.createElement("label"); lSim.textContent = "Sim";
+    const lSim = document.createElement("label"); lSim.className = "js-ts-sim-label"; lSim.textContent = t('sim');
     const divSim = document.createElement("div"); Object.assign(divSim.style, { display: 'flex', alignItems: 'center' });
     divSim.appendChild(rSim); divSim.appendChild(lSim);
 
     // Opção Não
     const rNao = document.createElement("input"); rNao.type = "radio"; rNao.name = "ts_usage_mod"; rNao.value = "Não"; rNao.checked = true;
     Object.assign(rNao.style, styleCheckboxInput);
-    const lNao = document.createElement("label"); lNao.textContent = "Não";
+    const lNao = document.createElement("label"); lNao.className = "js-ts-nao-label"; lNao.textContent = t('nao');
     const divNao = document.createElement("div"); Object.assign(divNao.style, { display: 'flex', alignItems: 'center' });
     divNao.appendChild(rNao); divNao.appendChild(lNao);
 
@@ -63,7 +63,7 @@ export function createTagSupportModule(t) {
 
     const warningText = document.createElement("div");
     warningText.className = "js-ts-warning";
-    warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" rel="noopener noreferrer" style="color:#e37400; text-decoration:underline;">Link aqui</a>`;
+    warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" rel="noopener noreferrer" style="color:#e37400; text-decoration:underline;">${t('link_aqui')}</a>`;
     Object.assign(warningText.style, styleWarning);
 
     reasonDiv.appendChild(reasonLabel);
@@ -113,9 +113,9 @@ export function createTagSupportModule(t) {
     function getOutput() {
         if (container.style.display === 'none') return '';
 
-        let text = `<br><b>Utilizou Tag Support?</b> ${rSim.checked ? "✅ Sim" : "❌ Não"}`;
+        let text = `<br><b>${t('tag_support_output_label')}</b> ${rSim.checked ? `✅ ${t('sim')}` : `❌ ${t('nao')}`}`;
         if (rNao.checked && reasonInput.value.trim() !== "") {
-            text += `<br><b>Motivo:</b> ${reasonInput.value}`;
+            text += `<br><b>${t('motivo_output_label')}</b> ${reasonInput.value}`;
         }
         text += `<br>`;
         return text;
@@ -125,7 +125,9 @@ export function createTagSupportModule(t) {
         t = newT;
         mainLabel.textContent = t('utilizou_tag_support');
         reasonLabel.textContent = t('motivo_ts');
-        warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" rel="noopener noreferrer" style="color:#b06000; text-decoration:underline;">Link aqui</a>`;
+        lSim.textContent = t('sim');
+        lNao.textContent = t('nao');
+        warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" rel="noopener noreferrer" style="color:#b06000; text-decoration:underline;">${t('link_aqui')}</a>`;
     }
 
     // Reseta o estado (chamado ao mudar de passo)

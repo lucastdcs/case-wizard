@@ -2,6 +2,12 @@
 import { stylePopup, styleCredit, styleResizeHandle, makeResizable } from "../../shared/utils.js";
 import { createStandardHeader } from "../../shared/header-factory.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
+import { getLanguage } from "../../shared/i18n.js";
+
+export const HEADER_DESC = {
+    pt: "Gera notas padronizadas com excelência visual.",
+    es: "Genera notas estandarizadas con excelencia visual.",
+};
 
 export function createNotesPopup(version, onToggleVisibility) {
     const popup = document.createElement("div"); popup.id = "notes-assistant-popup"; popup.classList.add("cw-module-window");
@@ -20,7 +26,7 @@ export function createNotesPopup(version, onToggleVisibility) {
     });
 
     const animRefs = { popup, googleLine: null };
-    const header = createStandardHeader(popup, "Case Notes", version, "Gera notas padronizadas com excelência visual.", animRefs, onToggleVisibility);
+    const header = createStandardHeader(popup, "Case Notes", version, HEADER_DESC[getLanguage()] || HEADER_DESC.pt, animRefs, onToggleVisibility);
     popup.appendChild(header);
 
     const content = document.createElement("div");

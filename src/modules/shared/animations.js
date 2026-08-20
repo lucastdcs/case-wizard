@@ -1,6 +1,7 @@
 // src/modules/shared/animations.js
 
 import { SoundManager } from "./sound-manager.js";
+import { Z } from "./z-layers.js";
 
 // --- PARÂMETROS DA ANIMAÇÃO "GENIE" ---
 // Abrir é mais longo que fechar de propósito: entrar em cena merece ser
@@ -24,6 +25,11 @@ if (!document.getElementById('cw-module-styles')) {
     style.innerHTML = `
         /* MÓDULO BASE */
         .cw-module-window {
+            /* Degrau de repouso da janela. Precisa estar AQUI, e não só
+               no estilo inline de stylePopup(): o fim do fechamento faz
+               popup.style.zIndex = '', o que apaga o inline e deixaria a
+               janela em z-index:auto na próxima abertura. */
+            z-index: ${Z.MODULE_RESTING};
             /* A transição real de abrir/fechar é aplicada inline por
                toggleGenieAnimation(); esta aqui só cobre as mudanças de
                estado visual (idle/foco) enquanto a janela está aberta. */
@@ -481,7 +487,7 @@ function setupIdleListener(popup, buttonId) {
         if (clickInModule) {
             // Clicou no módulo: FOCA
             popup.classList.remove('idle');
-            popup.style.zIndex = '2147483648'; // Traz pra frente
+            popup.style.zIndex = String(Z.MODULE_FOCUSED); // Traz pra frente
         } else if (clickInPill) {
             // Clicou na pílula:
             // NÃO faz nada aqui. O evento de click do botão vai cuidar de fechar.
@@ -489,7 +495,7 @@ function setupIdleListener(popup, buttonId) {
         } else {
             // Clicou no vazio: IDLE
             popup.classList.add('idle');
-            popup.style.zIndex = '2147483646'; // Recua
+            popup.style.zIndex = String(Z.MODULE_RESTING); // Recua
         }
     };
 

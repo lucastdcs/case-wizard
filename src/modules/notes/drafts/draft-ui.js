@@ -65,7 +65,7 @@ export function createDraftsManager(callbacks) {
 
     // LÓGICA DE SALVAR
     parkButton.onclick = async () => {
-        const confirmed = await confirmDialog("Deseja guardar o rascunho atual e limpar os campos?");
+        const confirmed = await confirmDialog(t('confirmar_guardar_rascunho'));
         if(confirmed) {
             try {
                 const stateData = await onSaveCurrent();
@@ -74,22 +74,23 @@ export function createDraftsManager(callbacks) {
                     renderDrawerList();
                     updateBadge();
                     SoundManager.playSuccess();
-                    showToast("Rascunho salvo com sucesso!");
+                    showToast(t('rascunho_salvo_sucesso'));
                 } else {
                     SoundManager.playError();
-                    showToast("Erro: Não foi possível ler os dados.", { error: true });
+                    showToast(t('erro_ler_dados'), { error: true });
                 }
             } catch (e) {
                 console.error("Erro ao salvar rascunho:", e);
                 SoundManager.playError();
-                showToast("Erro ao salvar.", { error: true });
+                showToast(t('erro_ao_salvar'), { error: true });
             }
         }
     };
 
     // --- 2. BOTÃO DE HISTÓRICO (No Header) ---
     const historyBtnWrapper = document.createElement("div");
-    historyBtnWrapper.title = "Meus Rascunhos";
+    historyBtnWrapper.className = "js-history-btn";
+    historyBtnWrapper.title = t('meus_rascunhos');
     historyBtnWrapper.style.cssText = "position: relative; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s; margin-right: 8px;";
     
     // Ícone de Relógio/Histórico
@@ -215,41 +216,41 @@ export function createDraftsManager(callbacks) {
 
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:flex-start;">
-                    <div style="font-weight:700; color:#202124; font-size:14px; line-height:1.4;">${draft.clientName || 'Cliente Sem Nome'}</div>
+                    <div style="font-weight:700; color:#202124; font-size:14px; line-height:1.4;">${draft.clientName || t('cliente_sem_nome')}</div>
                     <div style="font-size:11px; color:#9AA0A6;">${timeStr}</div>
                 </div>
                 <div style="font-size:12px; color:#5F6368; margin-bottom:12px; line-height:1.5;">
                     <span style="display:block;">🆔 ${draft.cid || '---'}</span>
-                    <span style="display:block; color:${draft.status === 'NI' ? '#E37400' : '#1E8E3E'}">● ${draft.subStatus || draft.status || 'Sem Status'}</span>
+                    <span style="display:block; color:${draft.status === 'NI' ? '#E37400' : '#1E8E3E'}">● ${draft.subStatus || draft.status || t('sem_status')}</span>
                     ${tagsHtml}
                 </div>
                 <div style="display:flex; gap:8px;">
                     <button class="cw-resume-btn" style="flex:1; padding:8px; background:#1A73E8; color:#FFF; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(26,115,232,0.3);">
-                        Retomar Caso
+                        ${t('retomar_caso')}
                     </button>
-                    <button class="cw-del-btn" style="width:36px; padding:8px; background:#FFF; border:1px solid #DADCE0; color:#5F6368; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Descartar">
+                    <button class="cw-del-btn" style="width:36px; padding:8px; background:#FFF; border:1px solid #DADCE0; color:#5F6368; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="${t('descartar')}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                 </div>
             `;
-            
+
             // ... (Listeners de clique do card continuam iguais) ...
             const btnResume = card.querySelector(".cw-resume-btn");
             btnResume.onclick = async () => {
-                const confirmed = await confirmDialog("Retomar este rascunho? O formulário atual será substituído.");
+                const confirmed = await confirmDialog(t('retomar_rascunho_confirm'));
                 if(confirmed) {
                     onLoadDraft(draft);
-                    DraftService.delete(draft.id); 
+                    DraftService.delete(draft.id);
                     renderDrawerList();
                     updateBadge();
                     toggleDrawer(false);
                     SoundManager.playSwoosh();
-                    showToast("Rascunho carregado.");
+                    showToast(t('rascunho_carregado'));
                 }
             };
             const btnDel = card.querySelector(".cw-del-btn");
             btnDel.onclick = async () => {
-                const confirmed = await confirmDialog("Excluir este rascunho?", { danger: true });
+                const confirmed = await confirmDialog(t('excluir_rascunho_confirm'), { danger: true });
                 if(confirmed) {
                     DraftService.delete(draft.id);
                     renderDrawerList();
