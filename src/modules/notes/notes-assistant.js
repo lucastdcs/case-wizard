@@ -17,7 +17,7 @@ import { SoundManager } from "../shared/sound-manager.js";
 import { enableFilledCheck, lockBodyScroll, unlockBodyScroll, markPendingField } from "../shared/dom-utils.js";
 import { getPageData } from "../shared/page-data.js";
 import { getLanguage, onLanguageChange } from "../shared/i18n.js";
-import { ShortcutService, resolveScenarioId, MAX_SHORTCUTS } from "../shared/shortcut-service.js";
+import { ShortcutService, resolveScenarioId, MAX_SHORTCUTS, newShortcutId } from "../shared/shortcut-service.js";
 import {
     SUBSTATUS_TEMPLATES,
     SUBSTATUS_SHORTCODES,
@@ -1070,15 +1070,28 @@ export function initCaseNotesAssistant() {
         const nome = await promptDialog(t('atalho_nome_pergunta'), sugestao);
         if (nome === null) return;
 
-        const resultado = await ShortcutService.save({ ...capturado, label: String(nome).trim() || sugestao });
-        if (!resultado.ok) {
-            SoundManager.playError();
-            showToast(t('atalho_limite').replace('{max}', MAX_SHORTCUTS), { error: true });
-            return;
-        }
+        // A escrita passa por JSONP (até 15s de watchdog): sem desabilitar, um
+        // segundo clique dispara outro save e cria um atalho duplicado.
+        saveShortcutBtn.disabled = true;
+        saveShortcutBtn.style.opacity = '0.6';
+        try {
+            const resultado = await ShortcutService.save({
+                ...capturado,
+                id: newShortcutId(),
+                label: String(nome).trim() || sugestao
+            });
+            if (!resultado.ok) {
+                SoundManager.playError();
+                showToast(t('atalho_limite').replace('{max}', MAX_SHORTCUTS), { error: true });
+                return;
+            }
 
-        SoundManager.playSuccess();
-        showToast(resultado.synced ? t('atalho_salvo') : t('atalho_salvo_local'));
+            SoundManager.playSuccess();
+            showToast(resultado.synced ? t('atalho_salvo') : t('atalho_salvo_local'));
+        } finally {
+            saveShortcutBtn.disabled = false;
+            saveShortcutBtn.style.opacity = '';
+        }
     }
 
     // O estado atual da tela, no formato que o atalho guarda. É o que o botão

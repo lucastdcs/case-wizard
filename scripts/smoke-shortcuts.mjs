@@ -205,6 +205,67 @@ await check('Configurações lista os atalhos e permite excluir um', async () =>
     if (depois !== 2) throw new Error(`esperava 2 depois de excluir, veio ${depois}`);
 });
 
+await check('apelido com HTML aparece como texto, não é interpretado', async () => {
+    // O nome e o apelido são texto do agente. Antes o apelido era interpolado
+    // num innerHTML: um "<" quebrava a linha e uma tag executava.
+    await page.evaluate(() => {
+        const prefs = JSON.parse(localStorage.getItem('cw_user_prefs_v1') || '{}');
+        prefs.shortcuts = [{
+            id: 'sc_xss', kind: 'note', label: 'Teste', order: 0,
+            alias: '<img src=x onerror="window.__executou=true">',
+            payload: { caseType: 'bau', status: 'IN', subStatus: 'IN_Not_Reachable', scenarios: [] },
+        }];
+        localStorage.setItem('cw_user_prefs_v1', JSON.stringify(prefs));
+        window.__executou = false;
+    });
+
+    // Reabre Configurações para a seção se redesenhar com o dado plantado.
+    await abrirPalette('configuracoes');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(700);
+    await abrirPalette('configuracoes');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.cw-sc-item', { timeout: 10000 });
+    await page.waitForTimeout(700);
+
+    const executou = await page.evaluate(() => window.__executou === true);
+    if (executou) throw new Error('o HTML do apelido foi executado');
+
+    const imgs = await page.locator('.cw-sc-meta img').count();
+    if (imgs) throw new Error('o apelido virou elemento no DOM');
+
+    const texto = await page.locator('.cw-sc-meta').first().textContent();
+    if (!texto.includes('<img')) throw new Error('o apelido não apareceu como texto: ' + texto);
+});
+
+await check('a lista de Configurações segue a mesma ordem do Ctrl+K', async () => {
+    await page.evaluate(() => {
+        const prefs = JSON.parse(localStorage.getItem('cw_user_prefs_v1') || '{}');
+        prefs.shortcuts = [
+            { id: 'sc_a', kind: 'note', label: 'Alpha', alias: '', order: 0, payload: { caseType: 'bau', status: 'IN', subStatus: 'IN_Not_Reachable', scenarios: [] } },
+            { id: 'sc_b', kind: 'note', label: 'Beta', alias: '', order: 1, payload: { caseType: 'bau', status: 'IN', subStatus: 'IN_Not_Reachable', scenarios: [] } },
+        ];
+        prefs.shortcutsSortByUsage = true;
+        localStorage.setItem('cw_user_prefs_v1', JSON.stringify(prefs));
+        // Beta usado duas vezes: no modo padrão ele tem que vir primeiro nos DOIS lugares.
+        localStorage.setItem('cw_shortcut_usage_v1', JSON.stringify({ sc_b: 2 }));
+    });
+
+    await abrirPalette();
+    const noPalette = (await page.locator('.cw-palette-item .cw-palette-item-label').allTextContents()).slice(0, 2);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+
+    await abrirPalette('configuracoes');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.cw-sc-item', { timeout: 10000 });
+    await page.waitForTimeout(700);
+    const emConfigs = await page.locator('.cw-sc-item .cw-sc-label').allTextContents();
+
+    if (noPalette[0] !== 'Beta') throw new Error('o palette não ordenou por uso: ' + JSON.stringify(noPalette));
+    if (emConfigs[0] !== 'Beta') throw new Error('Configurações mostrou outra ordem: ' + JSON.stringify(emConfigs));
+});
+
 await check('o construtor de Configurações só oferece cenários do substatus escolhido', async () => {
     // O popup ainda está terminando o voo do genie; clicar no meio da animação
     // é instável (o alvo se move debaixo do ponteiro).

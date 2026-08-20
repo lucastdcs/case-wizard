@@ -10,7 +10,7 @@
 
 import { SoundManager } from "../shared/sound-manager.js";
 import { confirmDialog, showToast } from "../shared/utils.js";
-import { ShortcutService, MAX_SHORTCUTS, shortcutIssues } from "../shared/shortcut-service.js";
+import { ShortcutService, MAX_SHORTCUTS, shortcutIssues, newShortcutId } from "../shared/shortcut-service.js";
 import {
     SUBSTATUS_TEMPLATES,
     getScenariosFor,
@@ -30,13 +30,15 @@ function injectStyles(COLORS) {
         .cw-sc-item {
             display: flex; align-items: center; gap: 10px; padding: 10px 12px;
             border: 1px solid ${COLORS.border}; border-radius: 10px; background: #fff;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            transition: border-color 0.2s var(--cw-ease-standard),
+                        box-shadow 0.2s var(--cw-ease-standard),
+                        opacity 0.2s var(--cw-ease-standard);
         }
         .cw-sc-item + .cw-sc-item { margin-top: 8px; }
         .cw-sc-item:hover { border-color: #bdc1c6; }
         .cw-sc-item.dragging { opacity: 0.4; }
         .cw-sc-item.drop-target { border-color: ${COLORS.primary}; box-shadow: 0 0 0 2px rgba(26,115,232,0.15); }
-        .cw-sc-item.broken { border-color: #f9ab00; background: #fffbf0; }
+        .cw-sc-item.broken { border-color: ${COLORS.warnBorder}; background: ${COLORS.warnBg}; }
         .cw-sc-grip {
             color: #9aa0a6; cursor: grab; display: flex; background: none; border: none;
             padding: 2px; border-radius: 4px;
@@ -52,12 +54,15 @@ function injectStyles(COLORS) {
             font-size: 13px; font-weight: 600; color: ${COLORS.text};
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .cw-sc-meta { font-size: 11px; color: ${COLORS.textSub}; margin-top: 2px; }
-        .cw-sc-warn { color: #b06000; font-weight: 600; }
+        .cw-sc-meta {
+            font-size: 11px; color: ${COLORS.textSub}; margin-top: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .cw-sc-warn { color: ${COLORS.warnText}; font-weight: 600; }
         .cw-sc-iconbtn {
             width: 28px; height: 28px; border-radius: 8px; border: none; background: transparent;
             color: ${COLORS.textSub}; cursor: pointer; display: flex; align-items: center;
-            justify-content: center; transition: background 0.15s ease, color 0.15s ease;
+            justify-content: center; transition: background 0.15s var(--cw-ease-standard), color 0.15s var(--cw-ease-standard);
         }
         .cw-sc-iconbtn:hover { background: #f1f3f4; color: ${COLORS.text}; }
         .cw-sc-iconbtn.danger:hover { background: #fce8e6; color: #d93025; }
@@ -69,7 +74,7 @@ function injectStyles(COLORS) {
             margin-top: 10px; width: 100%; padding: 10px; border-radius: 10px;
             border: 1px dashed ${COLORS.border}; background: transparent; cursor: pointer;
             font-family: inherit; font-weight: 600; font-size: 12px; color: ${COLORS.textSub};
-            transition: all 0.2s ease;
+            transition: all 0.2s var(--cw-ease-standard);
         }
         .cw-sc-add:hover:not(:disabled) { border-color: ${COLORS.primary}; color: ${COLORS.primary}; }
         .cw-sc-add:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -81,12 +86,15 @@ function injectStyles(COLORS) {
         }
         .cw-sc-field input:focus, .cw-sc-field select:focus { border-color: ${COLORS.primary}; }
         .cw-sc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        /* Mesma forma dos chips de cenário do Case Notes (step-scenarios.js):
+           é o mesmo objeto aparecendo em duas telas. */
         .cw-sc-chip {
-            padding: 6px 10px; border-radius: 14px; border: 1px solid ${COLORS.border};
-            background: #fff; font-size: 12px; color: ${COLORS.text}; cursor: pointer;
-            font-family: inherit; transition: all 0.15s ease;
+            padding: 6px 12px; border-radius: 16px; border: 1px solid #dadce0;
+            background: #ffffff; font-size: 13px; color: #3c4043; cursor: pointer;
+            font-family: inherit; transition: all 0.2s var(--cw-ease-elastic);
         }
-        .cw-sc-chip.on { background: #e8f0fe; border-color: ${COLORS.primary}; color: #1967d2; font-weight: 600; }
+        .cw-sc-chip:hover:not(.on) { background: #f1f3f4; }
+        .cw-sc-chip.on { background: #e8f0fe; border-color: #1a73e8; color: #1967d2; font-weight: 600; }
         .cw-sc-editor-actions { display: flex; gap: 8px; }
         .cw-sc-editor-actions button {
             flex: 1; padding: 10px; border-radius: 10px; font-family: inherit;
@@ -94,6 +102,28 @@ function injectStyles(COLORS) {
         }
         .cw-sc-cancel { border: 1px solid ${COLORS.border}; background: #fff; color: ${COLORS.textSub}; }
         .cw-sc-save { border: none; background: ${COLORS.primary}; color: #fff; }
+        .cw-sc-save:disabled { opacity: 0.6; cursor: progress; }
+
+        /* Foco de teclado visível em TODO controle da seção - antes só o punho
+           de arrastar tinha, e quem navega por Tab ficava sem saber onde está. */
+        .cw-sc-iconbtn:focus-visible,
+        .cw-sc-chip:focus-visible,
+        .cw-sc-add:focus-visible,
+        .cw-sc-editor-actions button:focus-visible,
+        .cw-sc-field input:focus-visible,
+        .cw-sc-field select:focus-visible {
+            outline: 2px solid ${COLORS.primary};
+            outline-offset: 1px;
+        }
+
+        /* Mesma cortesia que o resto do app já faz (configs-assistant.js,
+           animations.js, step-scenarios.js): quem pediu menos movimento não
+           deve receber transição nenhuma daqui. */
+        @media (prefers-reduced-motion: reduce) {
+            .cw-sc-item, .cw-sc-iconbtn, .cw-sc-add, .cw-sc-chip {
+                transition: none !important;
+            }
+        }
     `;
     document.head.appendChild(style);
 }
@@ -146,12 +176,31 @@ export function createShortcutsSection(t, COLORS) {
         return partes.join(" · ");
     }
 
+    // O nome e o apelido são texto do agente: entram por textContent, nunca por
+    // innerHTML. Antes o apelido era interpolado num template de innerHTML - um
+    // "<" quebrava a linha e uma tag executava.
+    function preencherMeta(el, shortcut, quebrado) {
+        el.textContent = "";
+        if (quebrado) {
+            const aviso = document.createElement("span");
+            aviso.className = "cw-sc-warn";
+            aviso.textContent = t("scBroken");
+            el.appendChild(aviso);
+            el.appendChild(document.createTextNode(" · "));
+        }
+        el.appendChild(document.createTextNode(meta(shortcut)));
+    }
+
     function renderList() {
         body.innerHTML = "";
         sortToggle.checked = ShortcutService.isSortedByUsage();
 
-        const lista = ShortcutService.listRaw();
-        const podeArrastar = !ShortcutService.isSortedByUsage();
+        // Mostra a MESMA ordem que o Ctrl+K vai mostrar. Listar sempre a ordem
+        // manual fazia a tela de gerenciamento contradizer o palette justamente
+        // no modo padrão (ordenado por uso).
+        const porUso = ShortcutService.isSortedByUsage();
+        const lista = porUso ? ShortcutService.list() : ShortcutService.listRaw();
+        const podeArrastar = !porUso;
 
         if (!lista.length) {
             const vazio = document.createElement("div");
@@ -177,15 +226,15 @@ export function createShortcutsSection(t, COLORS) {
                 <button type="button" class="cw-sc-iconbtn js-sc-edit" aria-label="${t('scEdit')}">${PENCIL}</button>
                 <button type="button" class="cw-sc-iconbtn danger js-sc-del" aria-label="${t('scDelete')}">${TRASH}</button>
             `;
-            item.querySelector(".cw-sc-label").textContent = shortcut.label;
-            item.querySelector(".cw-sc-meta").innerHTML = quebrados.length
-                ? `<span class="cw-sc-warn">${t("scBroken")}</span> · ${meta(shortcut)}`
-                : meta(shortcut);
+            const labelEl = item.querySelector(".cw-sc-label");
+            labelEl.textContent = shortcut.label;
+            labelEl.title = shortcut.label; // nome longo é truncado com ellipsis
+            preencherMeta(item.querySelector(".cw-sc-meta"), shortcut, quebrados.length > 0);
 
             item.querySelector(".js-sc-edit").onclick = () => renderEditor(shortcut);
             item.querySelector(".js-sc-del").onclick = () => remover(shortcut);
 
-            if (podeArrastar) wireDrag(item, idx);
+            if (podeArrastar) wireDrag(item, idx, lista.length);
             body.appendChild(item);
         });
 
@@ -209,33 +258,49 @@ export function createShortcutsSection(t, COLORS) {
 
     // Arrastar para reordenar. O punho também aceita teclado (setas): arrastar
     // é a única forma óbvia com mouse, mas não pode ser a única forma possível.
-    function wireDrag(item, idx) {
+    function wireDrag(item, idx, total) {
         const grip = item.querySelector(".cw-sc-grip");
-        item.draggable = false;
 
-        grip.onmousedown = () => { item.draggable = true; };
-        grip.onmouseup = () => { item.draggable = false; };
+        // O item fica sempre `draggable` e o arrasto é CANCELADO quando não
+        // começou no punho. Alternar o atributo no mousedown/mouseup do punho
+        // deixava o item arrastável pelo corpo inteiro sempre que o mouse era
+        // solto fora dele.
+        item.draggable = true;
+        let veioDoPunho = false;
+        grip.onmousedown = () => { veioDoPunho = true; };
+        item.onmouseup = () => { veioDoPunho = false; };
 
         grip.onkeydown = async (e) => {
             const delta = e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
             if (!delta) return;
             e.preventDefault();
-            await ShortcutService.reorder(item.dataset.id, idx + delta);
+
+            const destino = idx + delta;
+            if (destino < 0 || destino >= total) return; // já está na ponta
+
+            await ShortcutService.reorder(item.dataset.id, destino);
             SoundManager.playClick();
             renderList();
-            // Devolve o foco ao mesmo punho, agora na nova posição.
-            const alvo = body.querySelector(`.cw-sc-item[data-index="${Math.max(0, idx + delta)}"] .cw-sc-grip`);
+
+            // Reencontra o punho pelo ID, não pela posição: com a lista
+            // reordenada, procurar pelo índice antigo devolvia null e o foco
+            // do teclado se perdia.
+            const alvo = body.querySelector(`.cw-sc-item[data-id="${item.dataset.id}"] .cw-sc-grip`);
             if (alvo) alvo.focus();
         };
 
         item.ondragstart = (e) => {
+            if (!veioDoPunho) {
+                e.preventDefault();
+                return;
+            }
             e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData("text/plain", item.dataset.id);
             item.classList.add("dragging");
         };
         item.ondragend = () => {
             item.classList.remove("dragging");
-            item.draggable = false;
+            veioDoPunho = false;
             body.querySelectorAll(".drop-target").forEach((el) => el.classList.remove("drop-target"));
         };
         item.ondragover = (e) => {
@@ -271,6 +336,9 @@ export function createShortcutsSection(t, COLORS) {
         const estado = editando
             ? JSON.parse(JSON.stringify(shortcut))
             : {
+                // Id já aqui, não no primeiro save: assim dois cliques no botão
+                // atualizam o mesmo atalho em vez de criar dois iguais.
+                id: newShortcutId(),
                 kind: "note",
                 label: "",
                 alias: "",
@@ -402,12 +470,22 @@ export function createShortcutsSection(t, COLORS) {
             renderList();
         };
 
-        form.querySelector(".cw-sc-save").onclick = async () => {
+        const btnSalvar = form.querySelector(".cw-sc-save");
+        btnSalvar.onclick = async () => {
             if (!sub.value) {
                 SoundManager.playError();
                 showToast(t("scPickSubStatus"), { error: true });
                 return;
             }
+
+            // A escrita passa por JSONP e pode levar até os 15s do watchdog. Sem
+            // desabilitar, o botão aceita cliques repetidos e o agente fica sem
+            // saber se algo está acontecendo (dom-standards.md: toda chamada à
+            // API precisa de estado visual de loading).
+            const textoOriginal = btnSalvar.textContent;
+            btnSalvar.disabled = true;
+            btnSalvar.textContent = t("scSaving");
+
             const rotulo = nome.value.trim() || SUBSTATUS_TEMPLATES[sub.value].name;
             const resultado = await ShortcutService.save({
                 ...estado,
@@ -422,13 +500,15 @@ export function createShortcutsSection(t, COLORS) {
             });
 
             if (!resultado.ok) {
+                btnSalvar.disabled = false;
+                btnSalvar.textContent = textoOriginal;
                 SoundManager.playError();
                 showToast(t("scLimit").replace("{max}", MAX_SHORTCUTS), { error: true });
                 return;
             }
             SoundManager.playSuccess();
             showToast(resultado.synced ? t("scSaved") : t("scSavedLocal"));
-            renderList();
+            renderList(); // troca o editor pela lista: o botão sai do DOM junto
         };
     }
 

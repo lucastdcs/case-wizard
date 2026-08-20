@@ -40,6 +40,22 @@ versions follow [Semantic Versioning](https://semver.org/).
   módulos agora seguem o idioma único da sessão, trocado em Configurações.
 
 ### Fixed
+- **Atalhos: seis defeitos achados na revisão do próprio código.** Dois cliques
+  no "Salvar" criavam dois atalhos idênticos (o id só nascia na escrita; agora
+  é carimbado ao abrir o editor, e o botão fica desabilitado com estado
+  "Salvando…" enquanto o JSONP não responde). O apelido do agente era
+  interpolado num `innerHTML` — um `<` quebrava a linha e uma tag **executava**;
+  agora nome e apelido entram só por `textContent`. A lista de Configurações
+  mostrava sempre a ordem manual, contradizendo o Ctrl+K no modo padrão
+  (ordenado por uso). Uma preferência salva sem rede era descartada em silêncio
+  pela sincronia seguinte (portado o `_pendingSync` da Biblioteca Pessoal). A
+  seta ↓ no último item perdia o foco do teclado. Soltar o mouse fora do punho
+  deixava o item arrastável pelo corpo inteiro.
+- **Atalhos: a seção destoava do padrão visual do app** — sem
+  `prefers-reduced-motion` (que o próprio `configs-assistant.js` já respeita),
+  com foco de teclado visível só no punho de arrastar, transições com `ease` cru
+  em vez dos tokens `--cw-ease-*`, e chips de cenário com forma diferente da que
+  o Case Notes usa para os mesmos objetos.
 - **Os atalhos de nota do Ctrl+K sumiriam sem aviso quando a Central de Conteúdo
   publicasse os modelos de nota.** `applyNoteTemplateContent()` reescreve
   `scenarioSnippets` inteiro com ids derivados e sem o campo `quickLaunch`, do

@@ -56,7 +56,10 @@ const DEFAULT_SHORTCUTS = [
     },
 ];
 
-function newId() {
+// Exportado porque quem abre um editor precisa carimbar o id ANTES do primeiro
+// save: sem isso, dois cliques no botão "Salvar" (o JSONP pode demorar até os
+// 15s do watchdog) geram dois ids e o agente termina com dois atalhos iguais.
+export function newShortcutId() {
     return "sc_" + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36);
 }
 
@@ -164,7 +167,7 @@ export const ShortcutService = {
             return { ok: false, reason: "limit" };
         }
 
-        const entry = normalize([{ ...shortcut, id: shortcut.id || newId() }])[0];
+        const entry = normalize([{ ...shortcut, id: shortcut.id || newShortcutId() }])[0];
         if (!entry) return { ok: false, reason: "invalid" };
 
         if (idx === -1) {
