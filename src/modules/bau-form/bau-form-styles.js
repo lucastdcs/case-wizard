@@ -1,3 +1,4 @@
+import { Z } from "../shared/z-layers.js";
 
 export const COLORS = {
   blue: "#1A73E8",
@@ -45,7 +46,7 @@ export const injectStyles = () => {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 9999;
+      z-index: ${Z.MODULE_RESTING};
       
       background: #FFFFFF; 
       display: flex;
