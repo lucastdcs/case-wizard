@@ -766,25 +766,29 @@ export function initCommandCenter(actions, splashDone) {
   });
 
   // 3. LISTENERS
-  const toggleModule = (btnClass, actionFn) => {
+  const toggleModule = (actionFn) => {
     SoundManager.playClick();
-    const btn = pill.querySelector(`.${btnClass}`);
-    btn.classList.toggle('active');
+    // O estado 'active' do ícone é responsabilidade exclusiva de
+    // toggleGenieAnimation(), que é por onde TODA abertura/fechamento de
+    // módulo passa (clique aqui, X do header, Esc, command palette).
+    // Alternar a classe aqui também criava uma segunda fonte de verdade: ao
+    // abrir pela palette e fechar pela pílula, os dois se cancelavam e o
+    // ícone ficava marcado como ativo com a janela fechada.
     actionFn();
   };
 
-  pill.querySelector(".notes").onclick = (e) => { e.stopPropagation(); toggleModule('notes', actions.toggleNotes); };
-  pill.querySelector(".bauform").onclick = (e) => { e.stopPropagation(); toggleModule('bauform', actions.toggleBAUForm); };
-  pill.querySelector(".email").onclick = (e) => { e.stopPropagation(); toggleModule('email', actions.toggleEmail); };
-  pill.querySelector(".script").onclick = (e) => { e.stopPropagation(); toggleModule('script', actions.toggleScript); };
-  pill.querySelector(".links").onclick = (e) => { e.stopPropagation(); toggleModule('links', actions.toggleLinks); };
-  pill.querySelector(".library").onclick = (e) => { e.stopPropagation(); toggleModule('library', actions.toggleLibrary); }; // [NOVO]
-  pill.querySelector(".timezone").onclick = (e) => { e.stopPropagation(); toggleModule('timezone', actions.toggleTimezone); };
-  pill.querySelector(".configs").onclick = (e) => { e.stopPropagation(); toggleModule('configs', actions.toggleConfigs); };
+  pill.querySelector(".notes").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleNotes); };
+  pill.querySelector(".bauform").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleBAUForm); };
+  pill.querySelector(".email").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleEmail); };
+  pill.querySelector(".script").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleScript); };
+  pill.querySelector(".links").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleLinks); };
+  pill.querySelector(".library").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleLibrary); }; // [NOVO]
+  pill.querySelector(".timezone").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleTimezone); };
+  pill.querySelector(".configs").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleConfigs); };
 
   pill.querySelector(".broadcast").onclick = (e) => {
     e.stopPropagation();
-    toggleModule('broadcast', () => {
+    toggleModule(() => {
       const badge = e.currentTarget.querySelector('.cw-badge');
       if (badge) badge.remove();
       if (actions.broadcastControl) actions.broadcastControl.toggle();
