@@ -41,14 +41,10 @@ function saveLocal(prefs) {
 
 export const UserPrefsService = {
     // Leitura síncrona: sempre do cache. Quem quiser o dado fresco da nuvem
-    // chama sync() e reage ao onChange.
+    // chama sync(); as telas releem a lista ao abrir.
     get(key, fallback = null) {
         const prefs = loadLocal();
         return key in prefs ? prefs[key] : fallback;
-    },
-
-    getAll() {
-        return loadLocal();
     },
 
     // Escrita otimista: grava local e devolve na hora; a nuvem confirma depois.
@@ -58,7 +54,6 @@ export const UserPrefsService = {
         const prefs = loadLocal();
         prefs[key] = value;
         saveLocal(prefs);
-        notify(key, value);
 
         const userEmail = getAgentEmail();
         if (!userEmail) return { saved: true, synced: false };
@@ -92,7 +87,6 @@ export const UserPrefsService = {
                     const local = loadLocal();
                     if (JSON.stringify(remote) !== JSON.stringify(local)) {
                         saveLocal(remote);
-                        Object.keys(remote).forEach((k) => notify(k, remote[k]));
                     }
                 }
             } catch (e) {
@@ -107,21 +101,4 @@ export const UserPrefsService = {
 
         return syncPromise;
     },
-
-    onChange(key, callback) {
-        const set = listeners.get(key) || new Set();
-        set.add(callback);
-        listeners.set(key, set);
-        return () => set.delete(callback);
-    },
 };
-
-const listeners = new Map();
-
-function notify(key, value) {
-    const set = listeners.get(key);
-    if (!set) return;
-    set.forEach((fn) => {
-        try { fn(value); } catch (e) { console.warn("Listener de preferências falhou:", e); }
-    });
-}

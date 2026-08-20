@@ -210,13 +210,4 @@ export const ShortcutService = {
         } catch (e) { /* contador é acessório: nunca pode atrapalhar o atalho */ }
     },
 
-    getUsage() {
-        return readUsage();
-    },
-
-    onChange(callback) {
-        const offList = UserPrefsService.onChange(PREF_KEY, callback);
-        const offSort = UserPrefsService.onChange(PREF_KEY_SORT, callback);
-        return () => { offList(); offSort(); };
-    },
 };
