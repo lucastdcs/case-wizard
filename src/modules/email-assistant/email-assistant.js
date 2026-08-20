@@ -8,7 +8,7 @@ import {
     styleResizeHandle
 } from "../shared/utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
-import { toggleGenieAnimation } from '../shared/animations.js';
+import { toggleGenieAnimation, isModuleOpen } from '../shared/animations.js';
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll, enableArrowKeyNav } from "../shared/dom-utils.js";
 import { getAgentName, getPageData } from "../shared/page-data.js";
@@ -394,7 +394,7 @@ export function initEmailAssistant() {
     // --- LÓGICA DE INTERAÇÃO ---
 
     function toggleVisibility() {
-        visible = !visible;
+        visible = !isModuleOpen(popup);
         if (visible) {
             lockBodyScroll();
             popup.style.display = "flex";

@@ -84,6 +84,20 @@ if (!document.getElementById('cw-module-styles')) {
             cursor: pointer; /* Indica clicável */
         }
 
+        /* DURANTE O VOO: sem blur de fundo.
+           Compor um backdrop-filter: blur(20px) numa janela de 600x650 a cada
+           quadro enquanto ela é escalada é das coisas mais caras que dá pra
+           pedir ao compositor - e é exatamente o que acontecia nos ~460ms de
+           abertura, ainda por cima concorrendo com o CRM. O custo não comprava
+           nada: o fundo do popup é rgba(255,255,255,0.98), quase opaco, então
+           o que passa pelo blur é ~2% da imagem. Desligamos no trajeto e
+           devolvemos no repouso, onde ele não custa quadro nenhum.
+           Precisa de !important porque stylePopup aplica o blur inline. */
+        .cw-module-window.cw-animating {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
         /* Pulso de "absorção" no ícone da pílula: um anel colapsa pra dentro
            do botão no momento exato em que a janela é sugada (e quando ela
            sai), dando a leitura de que os dois são o mesmo objeto.
@@ -233,11 +247,38 @@ function pulseButton(btn) {
 }
 
 /**
+ * A janela está aberta (ou abrindo)?
+ *
+ * Existe porque cada módulo guardava a própria flag de visibilidade e a
+ * invertia no toggle (`visible = !visible`). Bastava qualquer outro código
+ * mexer nessa flag com a janela aberta pro toggle inverter errado: no Notes,
+ * o botão "Limpar" (e estacionar um rascunho) chamava resetModule() ->
+ * notesState.reset(), que zerava `visible` sem fechar nada. A partir dali o X
+ * REABRIA o módulo em vez de fechar - o bug que o agente via como "fecho e ele
+ * abre de novo".
+ *
+ * Agora a pergunta é feita pra cá, e a resposta vem de quem de fato abre e
+ * fecha a janela. Uma flag desatualizada em qualquer módulo deixa de ser capaz
+ * de inverter o toggle.
+ */
+export function isModuleOpen(popup) {
+    if (!popup) return false;
+    if (typeof popup._cwOpen === 'boolean') return popup._cwOpen;
+    return popup.classList.contains('open');
+}
+
+/**
  * Gerencia a animação Genie e o Foco
  */
 export function toggleGenieAnimation(show, popup, buttonId) {
     const btn = buttonId ? document.getElementById(buttonId) : null;
     if (!popup) return;
+
+    // Intenção corrente da janela, gravada ANTES de qualquer animação.
+    // É a fonte de verdade que isModuleOpen() lê. Note que não dá pra usar a
+    // classe .open no lugar: ela só sai no fim do fechamento, então durante
+    // os ~280ms da animação de saída a janela ainda "parece" aberta.
+    popup._cwOpen = !!show;
 
     // Cada chamada invalida a anterior. Sem isso, o teardown agendado por um
     // fechamento continuava correndo mesmo depois de o módulo ser reaberto -
@@ -279,6 +320,7 @@ export function toggleGenieAnimation(show, popup, buttonId) {
         // isso ligado sempre desperdiçaria memória de GPU nas 8 que estão
         // fechadas e paradas.
         popup.style.willChange = 'transform, opacity';
+        popup.classList.add('cw-animating');
 
         // C. REFLOW
         void popup.offsetWidth;
@@ -305,6 +347,7 @@ export function toggleGenieAnimation(show, popup, buttonId) {
 
             afterTransition(popup, token, reduceMotion ? 150 : OPEN_MS, () => {
                 popup.style.willChange = 'auto';
+                popup.classList.remove('cw-animating');
                 popup._cwSettled = true;
             });
         });
@@ -333,6 +376,7 @@ export function toggleGenieAnimation(show, popup, buttonId) {
               + ` transform ${CLOSE_MS}ms var(--cw-ease-accelerate)`;
         popup.style.pointerEvents = 'none';
         popup.style.willChange = 'transform, opacity';
+        popup.classList.add('cw-animating');
 
         // Devolve o foco pra pílula se ele estava dentro da janela que está
         // fechando - senão o foco fica órfão num elemento invisível e o
@@ -369,6 +413,7 @@ export function toggleGenieAnimation(show, popup, buttonId) {
                 pulseButton(btn);
 
                 popup.style.willChange = 'auto';
+                popup.classList.remove('cw-animating');
                 popup.style.transition = '';
                 // transform e opacity ficam onde estão (colapsados sobre o
                 // ícone). Limpá-los devolveria a janela pro transform do CSS

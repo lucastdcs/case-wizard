@@ -11,7 +11,7 @@ import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 
 import { createStandardHeader } from "../shared/header-factory.js";
-import { toggleGenieAnimation } from "../shared/animations.js";
+import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { getPageData } from "../shared/page-data.js";
 
 import { csaChecklistData, hydrateCallScriptFromContentCentral } from "./call-script-data.js";
@@ -357,7 +357,7 @@ export function initCallScriptAssistant() {
   }
 
   function toggleVisibility() {
-    csaVisible = !csaVisible;
+    csaVisible = !isModuleOpen(csaPopup);
     toggleGenieAnimation(csaVisible, csaPopup, 'cw-btn-script');
 
     if (csaVisible) {

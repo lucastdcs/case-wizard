@@ -42,13 +42,34 @@ export function clamp(value, min, max) {
 // módulo chama lockBodyScroll() ao abrir e unlockBodyScroll() ao fechar; só
 // o último a fechar de fato libera o scroll.
 let scrollLockCount = 0;
+// Largura da barra de rolagem que o `overflow: hidden` vai remover. Sem
+// compensar isso, esconder o scroll da página faz TODO o conteúdo do CRM
+// atrás pular uns 15px pra direita no instante em que um módulo abre - e
+// pular de volta quando fecha. É um solavanco que acontecia em toda abertura
+// e competia com a animação de entrada da janela.
+let lockedScrollbarWidth = 0;
 export function lockBodyScroll() {
+    if (scrollLockCount === 0) {
+        lockedScrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        if (lockedScrollbarWidth > 0) {
+            const current = parseFloat(getComputedStyle(document.body).paddingRight) || 0;
+            document.body.style.paddingRight = `${current + lockedScrollbarWidth}px`;
+        }
+    }
     scrollLockCount++;
     document.body.style.overflow = "hidden";
 }
 export function unlockBodyScroll() {
     scrollLockCount = Math.max(0, scrollLockCount - 1);
-    if (scrollLockCount === 0) document.body.style.overflow = "";
+    if (scrollLockCount === 0) {
+        document.body.style.overflow = "";
+        if (lockedScrollbarWidth > 0) {
+            const current = parseFloat(getComputedStyle(document.body).paddingRight) || 0;
+            const restored = Math.max(0, current - lockedScrollbarWidth);
+            document.body.style.paddingRight = restored ? `${restored}px` : "";
+            lockedScrollbarWidth = 0;
+        }
+    }
 }
 
 // "Check verde" (dopamina) ao preencher um campo - padrão promovido de

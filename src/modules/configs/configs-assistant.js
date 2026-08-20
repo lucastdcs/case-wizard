@@ -4,7 +4,7 @@ import { stylePopup, showToast } from "../shared/utils.js";
 import { getAgentEmail, captureNameWithMagic } from "../shared/page-data.js";
 import { fetchUserProfile } from "../shared/data-service.js"; // Importação crucial adicionada
 import { createStandardHeader } from "../shared/header-factory.js";
-import { toggleGenieAnimation } from "../shared/animations.js";
+import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { getLanguage, setLanguage, onLanguageChange, createTranslator } from "../shared/i18n.js";
@@ -457,7 +457,7 @@ export function initConfigsAssistant() {
     onLanguageChange(applyTexts);
 
     function toggleVisibility() {
-        visible = !visible;
+        visible = !isModuleOpen(popup);
         toggleGenieAnimation(visible, popup, 'cw-btn-configs');
         if (visible) {
             // A lista de atalhos é montada uma vez, no boot, mas o agente pode

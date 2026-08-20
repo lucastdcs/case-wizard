@@ -11,7 +11,7 @@ import {
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
-import { toggleGenieAnimation } from "../shared/animations.js";
+import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { BROADCAST_MESSAGES, setBroadcastMessages } from "./broadcast-data.js";
 import { DataService } from "../shared/data-service.js";
 import { getAgentEmail } from "../shared/page-data.js";
@@ -392,7 +392,7 @@ export function initBroadcastAssistant() {
   const animRefs = { popup, googleLine: null };
 
   function toggleVisibility() {
-    visible = !visible;
+    visible = !isModuleOpen(popup);
     toggleGenieAnimation(visible, popup, "cw-btn-broadcast");
     if (visible) {
       lockBodyScroll();
