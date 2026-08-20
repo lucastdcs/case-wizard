@@ -15,6 +15,9 @@
     "test:emails": "node scripts/test-email-roundtrip.mjs",
     "seed:emails": "node scripts/generate-email-seed.mjs",
     "test:note-templates": "node scripts/test-note-templates.mjs",
+    "test:shortcuts": "node scripts/test-shortcuts.mjs",
+    "test:prefs": "node scripts/test-user-prefs.js",
+    "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },
   "dependencies": {

@@ -453,6 +453,11 @@ export function initConfigsAssistant() {
         visible = !visible;
         toggleGenieAnimation(visible, popup, 'cw-btn-configs');
         if (visible) {
+            // A lista de atalhos é montada uma vez, no boot, mas o agente pode
+            // ter criado um no Case Notes ("Salvar como atalho") desde então -
+            // sem isto, ele abriria Configurações e não veria o que acabou de
+            // salvar.
+            shortcutsSection.refresh();
             lockBodyScroll();
             SoundManager.playClick();
         } else {
