@@ -4,9 +4,13 @@ import { captureNameWithMagic, getSmartGreeting } from "./page-data.js";
 import { SoundManager } from "./sound-manager.js";
 import { esperar, clamp } from "./dom-utils.js";
 import { getLanguage } from "./i18n.js";
+import { Z } from "./z-layers.js";
 
-// Variável global para controlar a pilha de janelas
-let highestZIndex = 10000;
+// Variável global para controlar a pilha de janelas.
+// Começa NO degrau de repouso das janelas (antes começava em 10000, bem
+// abaixo do z-index que a própria janela já tinha: arrastar mandava o
+// painel pra trás do resto da página em vez de trazê-lo pra frente).
+let highestZIndex = Z.MODULE_RESTING;
 
 export function initGlobalStylesAndFont() {
     // Evita duplicidade
@@ -288,7 +292,7 @@ export function showToast(message, opts = {}) {
     fontSize: "14px",
     fontWeight: "500",
     lineHeight: "20px",
-    zIndex: "9999999",
+    zIndex: String(Z.TOAST),
     opacity: "0",
     transition: "all 0.4s var(--cw-ease-spring)", // Efeito Mola
     pointerEvents: "none",
@@ -356,7 +360,9 @@ export function makeDraggable(element, handle = null) {
 
     // --------------------------------------
 
-    highestZIndex++;
+    // Teto no degrau de foco: sem isso, arrastar muitas vezes numa mesma
+    // sessão acabaria passando por cima do backdrop e da pílula.
+    highestZIndex = Math.min(highestZIndex + 1, Z.MODULE_FOCUSED);
     element.style.zIndex = highestZIndex;
     pos3 = e.clientX;
     pos4 = e.clientY;
@@ -446,7 +452,7 @@ export const stylePopup = {
   left: "50%",
   width: "400px",
    maxHeight: "85vh",
-  zIndex: "99999",
+  zIndex: String(Z.MODULE_RESTING),
   overflow: "hidden",
 
   // O SEGREDO APPLE (Glassmorphism + Sombra em Camadas)
@@ -754,7 +760,7 @@ export async function playStartupAnimation() {
             /* Google Sans já vem via <link> logo acima em initGlobalStylesAndFont(),
                chamada antes da splash - esse @import era uma 3a requisição redundante
                pra fonte (a 1a é o <link>, a 2a era o do command-center.js). */
-            .splash-container { font-family: 'Google Sans', sans-serif; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #202124; z-index: 2147483647; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.5s cubic-bezier(0.4, 0.0, 0.2, 1); }
+            .splash-container { font-family: 'Google Sans', sans-serif; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #202124; z-index: ${Z.TOP}; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.5s cubic-bezier(0.4, 0.0, 0.2, 1); }
             .splash-exit { animation: focus-out 0.9s cubic-bezier(0.4, 0.0, 0.2, 1) forwards; }
             @keyframes focus-out { 0% { opacity: 1; transform: scale(1); filter: blur(0); } 100% { opacity: 0; transform: scale(1.15); filter: blur(15px); } }
 
@@ -1110,7 +1116,7 @@ function createBaseOverlay() {
         position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
         background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 2147483647, opacity: 0, transition: 'opacity 0.3s ease'
+        zIndex: Z.TOP, opacity: 0, transition: 'opacity 0.3s ease'
     });
     return overlay;
 }

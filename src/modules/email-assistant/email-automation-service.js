@@ -5,6 +5,7 @@ import { getAgentName } from '../shared/page-data.js';
 import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { getLanguage } from '../shared/i18n.js';
+import { Z } from '../shared/z-layers.js';
 
 const EAS_DICT = {
     pt: {
@@ -79,7 +80,7 @@ function createFloatingWarning(targetElement, message) {
         align-items: flex-start;
         justify-content: space-between;
         gap: 10px;
-        z-index: 999999;
+        z-index: ${Z.TOAST};
         font-family: 'Google Sans', Roboto, sans-serif;
         font-size: 13px;
         color: #202124;

@@ -41,7 +41,7 @@ function injectStyles(COLORS) {
         .cw-sc-item.broken { border-color: ${COLORS.warnBorder}; background: ${COLORS.warnBg}; }
         .cw-sc-grip {
             color: #9aa0a6; cursor: grab; display: flex; background: none; border: none;
-            padding: 2px; border-radius: 4px;
+            padding: 2px; border-radius: 4px; flex-shrink: 0;
         }
         .cw-sc-grip:active { cursor: grabbing; }
         .cw-sc-grip:focus-visible { outline: 2px solid ${COLORS.primary}; outline-offset: 1px; }
@@ -50,17 +50,24 @@ function injectStyles(COLORS) {
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         .cw-sc-text { flex: 1; min-width: 0; }
+        /* display:block é o que faz o ellipsis existir: label e meta são
+           <span>, e overflow/text-overflow não valem em caixa inline - sem
+           isso o nome comprido do atalho passava por cima do lápis e da
+           lixeira em vez de ser cortado. */
         .cw-sc-label {
+            display: block;
             font-size: 13px; font-weight: 600; color: ${COLORS.text};
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .cw-sc-meta {
+            display: block;
             font-size: 11px; color: ${COLORS.textSub}; margin-top: 2px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .cw-sc-warn { color: ${COLORS.warnText}; font-weight: 600; }
         .cw-sc-iconbtn {
-            width: 28px; height: 28px; border-radius: 8px; border: none; background: transparent;
+            width: 28px; height: 28px; flex-shrink: 0;
+            border-radius: 8px; border: none; background: transparent;
             color: ${COLORS.textSub}; cursor: pointer; display: flex; align-items: center;
             justify-content: center; transition: background 0.15s var(--cw-ease-standard), color 0.15s var(--cw-ease-standard);
         }

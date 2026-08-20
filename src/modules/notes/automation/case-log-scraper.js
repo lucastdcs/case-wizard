@@ -4,6 +4,7 @@ import { SoundManager } from '../../shared/sound-manager.js';
 import { ensureOriginalLanguage } from '../../shared/page-data.js';
 import { esperar, simularClique } from '../../shared/dom-utils.js';
 import { getLanguage } from '../../shared/i18n.js';
+import { Z } from '../../shared/z-layers.js';
 
 const CLS_DICT = {
     pt: {
@@ -54,7 +55,7 @@ if (!document.getElementById(styleId)) {
             
             /* Traz para frente do Overlay */
             position: relative;
-            z-index: 1000000 !important; 
+            z-index: ${Z.PAGE_SPOTLIGHT_TARGET} !important; 
             pointer-events: none;
         }
 
@@ -68,7 +69,7 @@ if (!document.getElementById(styleId)) {
             background: rgba(255, 255, 255, 0.4); /* Branco Translúcido */
             backdrop-filter: blur(5px);           /* O Desfoque Apple Glass */
             -webkit-backdrop-filter: blur(5px);
-            z-index: 999999;                      /* Fica atrás do Input (1000000) */
+            z-index: ${Z.PAGE_SPOTLIGHT_OVERLAY};   /* Fica atrás do Input */
             opacity: 0;
             transition: opacity 0.3s ease;
             pointer-events: all;                  /* Bloqueia cliques na página */
