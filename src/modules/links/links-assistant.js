@@ -2,7 +2,7 @@
 
 import { stylePopup, showToast } from "../shared/utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
-import { toggleGenieAnimation } from '../shared/animations.js';
+import { toggleGenieAnimation, isModuleOpen } from '../shared/animations.js';
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll, createEmptyState } from "../shared/dom-utils.js";
 
@@ -682,7 +682,7 @@ export function initLinksAssistant() {
 
   // --- INIT ---
   function toggleVisibility() {
-      visible = !visible;
+      visible = !isModuleOpen(popup);
       if (visible) lockBodyScroll(); else unlockBodyScroll();
       toggleGenieAnimation(visible, popup, 'cw-btn-links');
   }

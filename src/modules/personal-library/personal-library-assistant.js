@@ -2,7 +2,7 @@
 
 import { stylePopup, styleResizeHandle, makeResizable, showToast, confirmDialog, promptDialog } from "../shared/utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
-import { toggleGenieAnimation } from "../shared/animations.js";
+import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { SnippetService } from "./snippet-service.js";
@@ -843,7 +843,7 @@ export function initPersonalLibrary() {
     };
 
     function toggleVisibility() {
-        visible = !visible;
+        visible = !isModuleOpen(popup);
         toggleGenieAnimation(visible, popup, "cw-btn-library");
         if (visible) {
             lockBodyScroll();

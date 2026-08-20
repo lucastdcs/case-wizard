@@ -2,7 +2,7 @@
 
 import { stylePopup, styleSelect, showToast } from "../shared/utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
-import { toggleGenieAnimation } from "../shared/animations.js";
+import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 
@@ -680,7 +680,7 @@ export function initTimezoneAssistant() {
     }
 
     function toggleVisibility() {
-        visible = !visible;
+        visible = !isModuleOpen(popup);
         toggleGenieAnimation(visible, popup, 'cw-btn-timezone'); 
         
         if (visible) {

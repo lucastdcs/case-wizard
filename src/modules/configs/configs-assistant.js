@@ -4,7 +4,7 @@ import { stylePopup, showToast } from "../shared/utils.js";
 import { getPageData, getAgentEmail } from "../shared/page-data.js";
 import { fetchUserProfile } from "../shared/data-service.js"; // Importação crucial adicionada
 import { createStandardHeader } from "../shared/header-factory.js";
-import { toggleGenieAnimation } from "../shared/animations.js";
+import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 
@@ -254,7 +254,7 @@ export function initConfigsAssistant() {
     container.appendChild(supportSection);
 
     function toggleVisibility() {
-        visible = !visible;
+        visible = !isModuleOpen(popup);
         toggleGenieAnimation(visible, popup, 'cw-btn-configs');
         if (visible) {
             lockBodyScroll();

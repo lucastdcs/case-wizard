@@ -1,7 +1,7 @@
 
 import { injectStyles, COLORS } from './bau-form-styles.js';
 import { createStandardHeader } from '../shared/header-factory.js';
-import { toggleGenieAnimation } from '../shared/animations.js';
+import { toggleGenieAnimation, isModuleOpen } from '../shared/animations.js';
 import { showToast, formatToLocalUserDate, confirmDialog } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { lockBodyScroll, unlockBodyScroll } from '../shared/dom-utils.js';
@@ -1410,8 +1410,15 @@ export function initBAUForm() {
     popup.querySelector('#bau-success-back-btn').addEventListener('click', () => switchView('dashboard'));
 
     async function toggleVisibility() {
-        isVisible = !isVisible;
-        popup.style.display = isVisible ? "flex" : "none";
+        isVisible = !isModuleOpen(popup);
+        // Só liga o display; desligar era o que matava a animação de saída.
+        // `display: none` era aplicado ANTES do genie rodar, então a janela do
+        // BAU simplesmente sumia num quadro enquanto os outros 8 módulos eram
+        // sugados pra pílula. Esconder já é responsabilidade da classe base
+        // .cw-module-window (opacity 0 + visibility hidden + pointer-events
+        // none), igual em todos os outros - o display: none inicial continua
+        // valendo só até a primeira abertura.
+        if (isVisible) popup.style.display = "flex";
         if (isVisible) {
             lockBodyScroll();
             switchView('dashboard');

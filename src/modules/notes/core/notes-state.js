@@ -1,10 +1,18 @@
 // src/modules/notes/core/notes-state.js
 export class NotesState {
-    constructor() { this.reset(); }
+    constructor() {
+        // Visibilidade NÃO é estado de formulário, então mora aqui e não no
+        // reset(): "Limpar" e estacionar um rascunho chamam resetModule() com
+        // o módulo aberto, e zerar `visible` ali dessincronizava a flag da
+        // janela real - o clique seguinte no X invertia pro lado errado e
+        // REABRIA o módulo. Ver isModuleOpen() em shared/animations.js.
+        this.visible = false;
+        this.reset();
+    }
     reset() {
         this.currentCaseType = "bau"; this.currentLang = "pt"; this.isPortugalCase = false;
         this.consent = false; this.tagSupportUsed = false; this.forcedScreenshots = new Set();
-        this.visible = false; this.isSplitView = false; this.currentStatus = "";
+        this.isSplitView = false; this.currentStatus = "";
         this.currentSubStatus = ""; this.formData = {}; this.activeTasks = [];
         this.screenshotsData = {}; this.tagSupportState = null; this.isDirty = false;
         this.activeFields = [];

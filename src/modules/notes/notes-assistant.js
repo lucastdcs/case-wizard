@@ -32,7 +32,7 @@ import {
 } from "./notes-bridge.js";
 import { runEmailAutomation } from "../email-assistant/email-automation-service.js";
 import { triggerProcessingAnimation, updateNotesBadge, registerCaseCompleted } from "../shared/command-center.js";
-import { toggleGenieAnimation } from "../shared/animations.js";
+import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 
 export function initCaseNotesAssistant() {
     const CURRENT_VERSION = "v4.0.0";
@@ -202,7 +202,7 @@ export function initCaseNotesAssistant() {
     }
 
     function toggleVisibility() {
-        notesState.visible = !notesState.visible;
+        notesState.visible = !isModuleOpen(popup);
         if (notesState.visible) lockBodyScroll(); else unlockBodyScroll();
         toggleGenieAnimation(notesState.visible, popup, "cw-btn-notes");
     }
