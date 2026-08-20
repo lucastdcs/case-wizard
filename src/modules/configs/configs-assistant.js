@@ -52,6 +52,7 @@ const CONFIGS_DICT = {
         scNoScenarios: "Nenhum cenário disponível para esta combinação.",
         scCancel: "Cancelar",
         scSave: "Salvar",
+        scSaving: "Salvando…",
         scSaved: "Atalho salvo!",
         scSavedLocal: "Atalho salvo neste navegador (sem conexão com a nuvem).",
     },
@@ -96,6 +97,7 @@ const CONFIGS_DICT = {
         scNoScenarios: "Ningún escenario disponible para esta combinación.",
         scCancel: "Cancelar",
         scSave: "Guardar",
+        scSaving: "Guardando…",
         scSaved: "¡Atajo guardado!",
         scSavedLocal: "Atajo guardado en este navegador (sin conexión con la nube).",
     },
@@ -114,6 +116,11 @@ export function initConfigsAssistant() {
         text: "#202124",
         textSub: "#5F6368",
         border: "#DADCE0",
+        // Alerta suave, no tom que o design system pede para fluxo secundário:
+        // chama atenção sem parecer erro de sistema (ver specs/ui-ux).
+        warnBorder: "#F9AB00",
+        warnBg: "#FFFBF0",
+        warnText: "#B06000",
     };
 
     const styleId = "cw-configs-styles";

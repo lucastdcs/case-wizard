@@ -12,6 +12,27 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Texto escrito pelo agente entra no DOM por `textContent`, nunca por `innerHTML`
+
+**Why**: na revisão dos atalhos do Ctrl+K (2026-08-20), o **nome** do atalho
+estava correto (`textContent`) mas o **apelido de busca** era interpolado num
+template de `innerHTML`, junto com o resto da linha de metadados. Um apelido com
+`<` já quebrava a exibição, e um apelido com `<img src=x onerror=...>`
+**executava** — provado revertendo a correção e vendo o smoke acusar "o HTML do
+apelido foi executado". É self-XSS (dado do próprio agente), mas o blob de
+preferências passa pela planilha e volta, e o custo de errar isso é zero-benefício.
+
+O padrão que evita a classe inteira: montar a linha com `document.createElement`
++ `textContent` para as partes que vêm da pessoa, e reservar `innerHTML` para
+markup **nosso** (ícones, estrutura). Quando os dois se misturam numa string, é
+questão de tempo até um campo novo entrar na parte errada.
+
+**When to apply**: em qualquer render que interpole valor digitado pelo agente —
+atalhos, snippets da Biblioteca, nomes de rascunho, campos do BAU Form. Vale
+também para `title=`/`aria-label=` dentro de template string, e para o
+`promptDialog()` de `utils.js`, que hoje injeta o `defaultValue` num
+`value="${...}"`.
+
 ## Não pendure dado novo dentro de uma estrutura que a Central de Conteúdo reescreve
 
 **Why**: os atalhos do Ctrl+K nasceram como um campo `quickLaunch` dentro de dois

@@ -49,7 +49,43 @@ async function carregar() {
 }
 
 const sc = await carregar();
-const { ShortcutService, resolveScenarioId, shortcutIssues, MAX_SHORTCUTS } = sc;
+const { ShortcutService, resolveScenarioId, shortcutIssues, MAX_SHORTCUTS, newShortcutId } = sc;
+
+// Para exercitar a sincronia é preciso controlar a nuvem e a identidade. Em vez
+// de arquivos de stub, o próprio bundle troca os dois módulos por implementações
+// falsas - assim o teste continua num arquivo só.
+async function carregarPrefsComNuvemFalsa() {
+    const stubs = {
+        name: 'stubs',
+        setup(build) {
+            build.onLoad({ filter: /data-service\.js$/ }, () => ({
+                contents: `export const DataService = {
+                    saveUserPrefs: (prefs, user) => globalThis.__nuvem.salvar(prefs, user),
+                    getUserPrefs: (user) => globalThis.__nuvem.ler(user),
+                };`,
+                loader: 'js',
+            }));
+            build.onLoad({ filter: /page-data\.js$/ }, () => ({
+                contents: `export const getAgentEmail = () => globalThis.__email;`,
+                loader: 'js',
+            }));
+        },
+    };
+
+    const bundle = await build({
+        entryPoints: [resolve(here, '../src/modules/shared/user-prefs-service.js')],
+        bundle: true,
+        write: false,
+        format: 'cjs',
+        platform: 'node',
+        logLevel: 'silent',
+        plugins: [stubs],
+    });
+    const mod = { exports: {} };
+    // eslint-disable-next-line no-new-func
+    new Function('module', 'exports', 'require', bundle.outputFiles[0].text)(mod, mod.exports, require);
+    return mod.exports.UserPrefsService;
+}
 
 let fail = 0;
 function check(name, fn) {
@@ -248,6 +284,23 @@ await checkAsync('ordenar por uso põe o mais usado na frente sem perder ningué
     if (manual[0].id !== lista[0].id) throw new Error('desligar a ordenação por uso não voltou à ordem manual');
 });
 
+await checkAsync('dois cliques no "Salvar" não criam dois atalhos iguais', async () => {
+    // O editor carimba o id ao abrir justamente por isto: a escrita passa por
+    // JSONP e pode demorar, então o segundo clique chega antes do primeiro
+    // terminar. Sem o id fixo, cada chamada gerava um novo e o agente ficava
+    // com duas cópias.
+    limparPrefs();
+    const antes = ShortcutService.listRaw().length;
+    const rascunho = { ...novoAtalho('Clique duplo'), id: newShortcutId() };
+
+    await Promise.all([ShortcutService.save(rascunho), ShortcutService.save(rascunho)]);
+
+    const lista = ShortcutService.listRaw();
+    const iguais = lista.filter((s) => s.label === 'Clique duplo');
+    if (iguais.length !== 1) throw new Error(`ficaram ${iguais.length} cópias`);
+    if (lista.length !== antes + 1) throw new Error(`a lista foi de ${antes} para ${lista.length}`);
+});
+
 check('dado corrompido nas preferências não derruba a lista', () => {
     // Um blob inválido é plausível: vem da nuvem, de outra versão do app.
     store['cw_user_prefs_v1'] = JSON.stringify({ shortcuts: [null, { id: 'x' }, 'lixo'] });
@@ -256,7 +309,69 @@ check('dado corrompido nas preferências não derruba a lista', () => {
     if (lista.length !== 0) throw new Error(`esperava descartar tudo que é inválido, sobrou ${lista.length}`);
 });
 
+// ----------------------------------------------------------------
+//  Sincronia com a nuvem (o caso que some sem avisar)
+// ----------------------------------------------------------------
+console.log('\n--- Preferências: escrita pendente ---');
+
+const Prefs = await carregarPrefsComNuvemFalsa();
+globalThis.__email = 'ana@google.com';
+
+await checkAsync('o que foi salvo sem rede NÃO é descartado pela sincronia seguinte', async () => {
+    limparPrefs();
+    delete store['cw_user_prefs_pending_v1'];
+
+    // A nuvem tem um estado antigo; a escrita local falha (rede fora).
+    globalThis.__nuvem = {
+        salvar: async () => false,
+        ler: async () => ({ shortcuts: [{ id: 'antigo', payload: { subStatus: 'IN_Not_Reachable' } }] }),
+    };
+
+    const r = await Prefs.set('shortcuts', [{ id: 'novo', payload: { subStatus: 'IN_Not_Reachable' } }]);
+    if (r.synced) throw new Error('o teste não simulou a falha');
+
+    // Sessão seguinte: sem a marca de pendente, o sync adotaria a nuvem e o
+    // atalho recém-criado sumiria sem o agente jamais saber.
+    await Prefs.sync();
+
+    const depois = Prefs.get('shortcuts', []);
+    if (!depois.some((s) => s.id === 'novo')) throw new Error('o atalho salvo offline foi descartado');
+});
+
+await checkAsync('quando a rede volta, a pendência é empurrada e a marca some', async () => {
+    let enviado = null;
+    globalThis.__nuvem = {
+        salvar: async (prefs) => { enviado = prefs; return true; },
+        ler: async () => ({ shortcuts: [] }),
+    };
+
+    await Prefs.sync();
+
+    if (!enviado) throw new Error('a pendência não foi reenviada');
+    if (!enviado.shortcuts.some((s) => s.id === 'novo')) throw new Error('reenviou o conteúdo errado');
+    if (store['cw_user_prefs_pending_v1']) throw new Error('a marca de pendente ficou de pé');
+});
+
+await checkAsync('sem pendência, a nuvem continua sendo a verdade', async () => {
+    // Espera o cadeado de 2s que o serviço mantém depois de cada escrita (ele
+    // existe pra planilha ter tempo de refletir o save antes de uma leitura de
+    // fundo poder sobrescrever o local). Sem esperar, este teste mediria o
+    // cadeado, não a adoção da nuvem.
+    await new Promise((r) => setTimeout(r, 2100));
+
+    globalThis.__nuvem = {
+        salvar: async () => true,
+        ler: async () => ({ shortcuts: [{ id: 'da-nuvem', payload: { subStatus: 'IN_Not_Reachable' } }] }),
+    };
+
+    await Prefs.sync();
+
+    const depois = Prefs.get('shortcuts', []);
+    if (!depois.some((s) => s.id === 'da-nuvem')) throw new Error('o local não adotou a nuvem');
+});
+
 limparPrefs();
+delete store['cw_user_prefs_pending_v1'];
 
 console.log('\n' + (fail ? '✗' : '✓') + ` atalhos: ${fail} falhas\n`);
 process.exit(fail ? 1 : 0);
