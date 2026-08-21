@@ -134,7 +134,20 @@ Os que existem: `v6.1 — Correções da auditoria`, `v6.2 — Fluxo BAU`,
 
 ## Projects (v2)
 
-Precisa do escopo `project`: `gh auth refresh -s project`.
+⚠️ **Exige o escopo `project`, que o token do repositório não tem por padrão.**
+Nem o `gh project`, nem a mutation `createProjectV2` por GraphQL funcionam sem
+ele — os dois devolvem `INSUFFICIENT_SCOPES`. E `gh auth refresh` é interativo,
+então **o agente não consegue resolver isso sozinho**: peça ao usuário para rodar
+
+```bash
+gh auth refresh -h github.com -s project
+```
+
+Confira antes de prometer qualquer coisa com Projects:
+
+```bash
+gh auth status 2>&1 | grep -i scopes
+```
 
 ```bash
 gh project list --owner lucastdcs
@@ -171,6 +184,48 @@ gh release list
 ⚠️ **Tag não faz deploy, e não pode passar a fazer.** O `RELEASE.md` estabelece
 que o merge para a `main` é o único portão de produção. Se alguém pedir para a
 tag disparar deploy, isso quebra a invariante — levante antes de implementar.
+
+---
+
+## Discussions
+
+Habilitado no repo. As 6 categorias padrão existem (`Announcements`, `General`,
+`Ideas`, `Polls`, `Q&A`, `Show and tell`).
+
+**Quando usar Discussion em vez de issue.** Issue tem dono e desfecho; discussion
+tem participantes e convergência. Se a pergunta é "como implementar", é issue. Se
+é "devemos, e por quê", é discussion — principalmente quando envolve cultura,
+prioridade ou risco aceito.
+
+Na prática aqui: o que está marcado `precisa decisão` e não descreve uma tarefa
+costuma render mais como discussion, com a issue linkando para ela.
+
+Não há `gh discussion` no CLI — é GraphQL:
+
+```bash
+# ids necessários
+gh api graphql -f query='{ repository(owner:"lucastdcs", name:"case-wizard") {
+  id discussionCategories(first:20){ nodes { id name } } } }'
+
+# criar
+Q='mutation($r: ID!, $c: ID!, $t: String!, $b: String!) {
+  createDiscussion(input: {repositoryId: $r, categoryId: $c, title: $t, body: $b}) {
+    discussion { number url } } }'
+gh api graphql -F r=<repoId> -F c=<categoriaId> -F t="Título" -F b=@corpo.md -f query="$Q"
+```
+
+`-F b=@arquivo.md` lê o corpo do arquivo — mesma razão do `--body-file` nas
+issues: markdown inline em shell corrompe silenciosamente.
+
+**Escreva discussion como convite, não como laudo.** Traga o que você mediu, dê
+sua posição, e termine perguntando — uma discussion que só afirma não gera
+conversa. Linke a issue correspondente e comente na issue apontando de volta.
+
+**Habilitar, se um dia estiver desligado:**
+
+```bash
+gh api repos/lucastdcs/case-wizard -X PATCH -F has_discussions=true
+```
 
 ---
 
