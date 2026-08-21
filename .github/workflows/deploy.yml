@@ -132,11 +132,11 @@ jobs:
         env:
           AMBIENTE: desenvolvimento
           DEPLOYMENT_ID: "AKfycbyUtczRMulDAyO_1ku39Rb01zarPMw1JvO7aNOdJPYeAgCC7G9mmb-P_EuXP6kvo8l2LA"
-        run: ./scripts/promote-deployment.sh
+        run: bash scripts/promote-deployment.sh
 
       - name: Promover implantação de produção
         if: github.ref == 'refs/heads/main'
         env:
           AMBIENTE: produção
           DEPLOYMENT_ID: "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg"
-        run: ./scripts/promote-deployment.sh
+        run: bash scripts/promote-deployment.sh
