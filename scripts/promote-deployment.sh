@@ -14,6 +14,13 @@
 #   AMBIENTE       rótulo humano ("produção" / "desenvolvimento"), só para o log
 #
 # Precisa ser rodado a partir da raiz do repositório.
+#
+# O workflow chama isto como `bash scripts/promote-deployment.sh`, e não
+# `./scripts/...`, de propósito: o repositório costuma ser clonado num volume
+# Windows montado (/mnt/c no WSL), onde o bit de execução não persiste - um
+# `chmod +x` local "funciona" mas o git grava 100644, e o step morre com
+# "Permission denied" (exit 126) só no CI. Invocar pelo interpretador tira o
+# modo do arquivo da equação, do mesmo jeito que os `node scripts/*.mjs` daqui.
 
 set -euo pipefail
 
