@@ -12,6 +12,13 @@ jobs:
   # ==========================================
   build-and-deploy-frontend:
     runs-on: ubuntu-latest
+    # O backend vai PRIMEIRO, sempre. Os dois jobs rodavam em paralelo, e é
+    # essa corrida que abre a janela de erro: um frontend novo publicado
+    # antes do backend chama operações que a implantação ainda não conhece,
+    # e o agente vê só o timeout de 15s do JSONP. Na ordem inversa não há
+    # janela - backend novo com frontend antigo continua funcionando, porque
+    # operação nova que ninguém chama ainda é inofensiva.
+    needs: deploy-backend-gas
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -93,43 +100,43 @@ jobs:
           cd gas-backend
           clasp push -f
 
-      # --- PROMOÇÃO AUTOMÁTICA DA IMPLANTAÇÃO (Apenas na refactor-structure) ---
-      # `clasp push` só atualiza o HEAD do projeto (visível no editor); a URL
-      # de produção (/exec) fica travada numa versão até alguém promover uma
-      # implantação existente pra uma versão nova. Aqui automatizamos essa
-      # promoção só pro deployment de desenvolvimento (o ID abaixo é o mesmo
-      # SCRIPT_ID usado em src/modules/shared/data-service.js nesta branch —
-      # se ele for rotacionado algum dia, atualize os dois em conjunto).
-      # A implantação de produção (usada pela `main`) continua manual, de propósito.
+      # --- PROMOÇÃO DA IMPLANTAÇÃO -------------------------------------------
       #
-      # A descrição da implantação (com data/hora + commit) fica visível em
-      # "Gerenciar implantações" no editor do Apps Script, e o mesmo resumo
-      # também vai pro Job Summary desta execução do Actions — assim dá pra
-      # confirmar "a implantação de dev está na versão de tal commit, feita
-      # às tal hora" sem precisar adivinhar ou disparar uma automação manual
-      # só pra checar.
+      # `clasp push` (acima) só atualiza o HEAD do projeto - o que se vê no
+      # editor. As URLs /exec e /dev continuam presas à versão promovida pela
+      # última vez. Promover é um passo à parte, e é ELE que muda o que os
+      # agentes realmente usam.
+      #
+      # Cada branch promove a SUA implantação, e só a sua:
+      #
+      #   refactor-structure  ->  implantação de desenvolvimento
+      #   main                ->  implantação de produção
+      #
+      # Ou seja: enquanto não houver merge para a `main`, nada que se faça na
+      # branch de desenvolvimento altera a produção. O portão de produção é o
+      # merge, não um comando manual depois dele - antes, o frontend ia
+      # sozinho para produção a cada push na `main` enquanto o backend
+      # esperava alguém lembrar de promovê-lo à mão, e os dois lados
+      # divergiam em silêncio.
+      #
+      # Os IDs abaixo precisam bater com o mapa DEPLOYMENTS de
+      # src/modules/shared/data-service.js. Ao rotacionar um, mude os dois.
+      #
+      # A descrição (data/hora + commit) fica visível em "Gerenciar
+      # implantações" no editor do Apps Script, e o mesmo resumo vai pro Job
+      # Summary desta execução - dá pra confirmar em que commit cada ambiente
+      # está sem precisar abrir o editor.
+
       - name: Promover implantação de desenvolvimento
         if: github.ref == 'refs/heads/refactor-structure'
         env:
+          AMBIENTE: desenvolvimento
+          DEPLOYMENT_ID: "AKfycbyUtczRMulDAyO_1ku39Rb01zarPMw1JvO7aNOdJPYeAgCC7G9mmb-P_EuXP6kvo8l2LA"
+        run: ./scripts/promote-deployment.sh
+
+      - name: Promover implantação de produção
+        if: github.ref == 'refs/heads/main'
+        env:
+          AMBIENTE: produção
           DEPLOYMENT_ID: "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg"
-        run: |
-          cd gas-backend
-
-          TIMESTAMP="$(date -u +'%Y-%m-%d %H:%M UTC')"
-          SHORT_SHA="${GITHUB_SHA:0:7}"
-          DESCRIPTION="Deploy automático - $TIMESTAMP - commit $SHORT_SHA"
-
-          DEPLOY_OUTPUT="$(clasp deploy -i "$DEPLOYMENT_ID" -d "$DESCRIPTION")"
-          echo "$DEPLOY_OUTPUT"
-
-          {
-            echo "## 🚀 Implantação de desenvolvimento atualizada"
-            echo ""
-            echo "- **Quando:** $TIMESTAMP"
-            echo "- **Commit:** \`$SHORT_SHA\` ($GITHUB_SHA)"
-            echo "- **Deployment ID:** \`$DEPLOYMENT_ID\`"
-            echo ""
-            echo '```'
-            echo "$DEPLOY_OUTPUT"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: ./scripts/promote-deployment.sh
