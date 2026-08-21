@@ -1,5 +1,5 @@
 {
-  "name": "techsol_DialIn_AutoCopy",
+  "name": "case-wizard",
   "version": "1.0.0",
   "description": "TechSol Operations Assistant - Productivity Suite",
   "main": "src/app.js",

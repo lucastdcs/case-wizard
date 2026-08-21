@@ -9,7 +9,7 @@
 ## What was here (before)
 
 - **Stack**: Node/JavaScript (`package.json`, `esbuild`, `playwright`), Vanilla JS frontend bundled into a browser bookmarklet, Google Apps Script backend (`gas-backend/`, synced via `clasp`), Google Sheets as the data store, no database/ORM in the traditional sense.
-- **Git**: repo with remote `origin` → `github.com/lucastdcs/techsol_DialIn_AutoCopy`. No `.env` files (secrets live in a GitHub Actions secret and hardcoded IDs).
+- **Git**: repo with remote `origin` → `github.com/lucastdcs/case-wizard`. No `.env` files (secrets live in a GitHub Actions secret and hardcoded IDs).
 - **Existing documentation was already substantial**:
   - `README.md` — detailed, project-specific (Portuguese), with screenshots and a demo video.
   - `docs/ARCHITECTURE.md`, `docs/CORE_MODULES.md`, `docs/TL_DASHBOARD_DIAGNOSTIC.md`, `docs/WORKFLOW.md`, `docs/verification/` — an established `docs/` folder.
@@ -24,7 +24,7 @@
 ## What groundrules did
 
 - **Adoption mode: Map in place.** Given `specs/` and `docs/` are pre-existing, actively-maintained conventions with their own internal logic, nothing was moved or reformatted — groundrules only recorded roles and filled genuine gaps.
-- **Project name recorded as "Case Wizard"** (the folder/repo name), chosen over the product-facing "TechSol Operations Assistant" branding and the package.json name `techsol_DialIn_AutoCopy`.
+- **Project name recorded as "Case Wizard"** (the folder/repo name), chosen over the product-facing "TechSol Operations Assistant" branding. The repository and the `package.json` name were later aligned to `case-wizard` to match (see `docs/decisions/0003-rename-repo-to-case-wizard.md`).
 - **Generated** (13 new files, all previously absent): `CLAUDE.md`, `PLAN.md`, `docs/VISION.md`, `docs/LEARNINGS.md`, `docs/GLOSSARY.md`, `docs/ROADMAP.md`, `docs/decisions/README.md` + `0000-template.md`, `docs/media/README.md`, `intake/README.md` + `intake/INTENT.md`, `CHANGELOG.md`, `RELEASE.md`.
 - **`docs/VISION.md` synthesis**: source was `README.md` (overview + features + important notes) and `specs/_MASTER_RULEBOOK.md` (philosophy + stack restrictions), captured verbatim into `intake/INTENT.md` first, then synthesized — because neither `docs/BUSINESS_RULES.md` (an empty stub) nor `specs/_MASTER_RULEBOOK.md` alone (conventions, not vision) was a clean single source.
 - **Declined optional docs, each for a specific reason** (see `.groundrules.json` → `skippedFiles`):
