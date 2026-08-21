@@ -1,7 +1,7 @@
 # 0003 — Rename the repository to `case-wizard`
 
 **Date**: 2026-08-20
-**Status**: Accepted
+**Status**: Accepted — executado em 2026-08-21 (ver "Execução", no fim)
 
 ## Context
 
@@ -55,9 +55,24 @@ the new URL.
 - One extra repository to keep alive indefinitely. It has no CI and no dependencies,
   but it must not be deleted while old bookmarklets are still in circulation.
 - The shim adds a second network hop to the load of anyone still on the old URL.
-- Anyone with an existing clone should run `git remote set-url origin
-  https://github.com/lucastdcs/case-wizard.git`. The redirect makes this optional,
-  but only until the redirect is disturbed.
+- Anyone with an existing clone **must** run:
+
+  ```bash
+  git remote set-url origin https://github.com/lucastdcs/case-wizard.git
+  ```
+
+  This is not optional, and the reason is worth spelling out because it surprised us
+  on the day. GitHub redirects a renamed repository's git URL — but only while the
+  old name stays free. Creating the shim under the old name **consumes** the name and
+  therefore **ends the redirect**. Confirmed right after the rename: `git ls-remote`
+  against the old URL now answers with the shim's single commit, not with this
+  project's refs.
+
+  So a stale `origin` no longer fails loudly with "repository not found" — it
+  silently resolves to a repository that happens to have one unrelated `main`. That
+  is a worse failure than a 404, and it is the direct cost of choosing to occupy the
+  old name. We still consider the trade worth it: the alternative leaves the name
+  claimable by someone else, which would break the Pages shim itself.
 
 ### Neutral
 - GitHub Actions, the `CLASPRC_JSON` secret, `gas-backend/.clasp.json`'s `scriptId`
@@ -100,3 +115,31 @@ Order of operations (the shim must exist before the old URL is relied upon):
 
 Do the rename **after** a production release has settled, never on the same day — a
 rename plus a large deploy at once makes any breakage ambiguous.
+
+## Execução (2026-08-21)
+
+Feito. Duas coisas saíram diferentes do plano acima, e ambas são úteis para a próxima
+vez:
+
+**O shim não precisou de uma branch `gh-pages`.** O repositório do shim foi criado com
+`--add-readme` e o Pages foi apontado direto para `main`, com os dois arquivos
+enviados pela Contents API (`gh api … -X PUT`). Não há git clone, branch órfã nem
+push envolvidos — dois `PUT` e um `POST /pages`. Os passos 5 e 6 acima descrevem o
+caminho por `gh-pages`, que funciona igual, mas é mais trabalho.
+
+**A janela de quebra foi menor que o previsto.** A URL nova
+(`/case-wizard/bundle.js`) já respondia 200 no instante seguinte ao rename: o site do
+Pages migra junto, não precisa rebuildar. O que levou alguns minutos foi só o *primeiro
+build* do Pages do shim, que é o que reativa a URL antiga.
+
+Verificação feita no fim, e é a que vale repetir se isto for refeito:
+
+| Verificação | Resultado |
+|---|---|
+| `/case-wizard/bundle.js` | 200, bundle real (v6.0, `production`, deployment correto) |
+| `/techsol_DialIn_AutoCopy/bundle.js` | 200, shim, apontando para `/case-wizard/bundle.js` |
+| idem para `bundle-dev.js` | 200, shim, apontando para `/case-wizard/bundle-dev.js` |
+| `git ls-remote` na URL antiga | responde o shim — o redirect acabou (ver *Tradeoffs*) |
+
+Ainda pendente depois disto: redistribuir o bookmarklet novo a partir do `README.md`,
+sem pressa — o shim é o que compra esse tempo.
