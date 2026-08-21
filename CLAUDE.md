@@ -40,7 +40,7 @@ TechSol Operations Assistant — a productivity and automation suite for a corpo
 
 - Install deps: `npm install`
 - Run dev: `npm run dev` — builds `dist/bundle-dev.js`; there is no localhost target, load it into the real CRM via the Dev bookmarklet (see `README.md`)
-- Test: `npm run test:content` · `test:call-script` · `test:emails` · `test:note-templates` · `test:shortcuts` · `test:prefs` — node harnesses that stub the browser/Apps Script globals (there is no runner: each script exits non-zero on failure). `npm run smoke:shortcuts` drives the real UI with Playwright over `mock-crm.html`. Anything not covered by these is still verified by hand via the Dev bookmarklet on the CRM plus the Apps Script execution log (see `README.md` → Testing)
+- Test: `npm run test:content` · `test:call-script` · `test:emails` · `test:note-templates` · `test:shortcuts` · `test:prefs` — node harnesses that stub the browser/Apps Script globals (there is no runner: each script exits non-zero on failure). `npm run smoke:shortcuts` and `npm run smoke:wizards` drive the real UI with Playwright over `mock-crm.html`. Anything not covered by these is still verified by hand via the Dev bookmarklet on the CRM plus the Apps Script execution log (see `README.md` → Testing)
 - Lint: none configured
 - Build: `npm run build` — builds `dist/bundle.js` (minified, production)
 

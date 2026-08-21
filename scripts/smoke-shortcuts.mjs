@@ -46,7 +46,12 @@ page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); 
 await page.goto('file://' + resolve(raiz, 'mock-crm.html'));
 await page.evaluate(() => {
     localStorage.setItem('cw_onboarding_seen_v1', 'true');
-    localStorage.setItem('cw_changelog_seen_version', '99.9');
+    // Nada a fazer pelo changelog: sem 'cw_last_version' gravada, ele trata a
+    // sessão como usuário novo, grava a versão e sai calado - o modal não abre.
+    // (Havia aqui um setItem('cw_changelog_seen_version', ...), chave que não
+    // existe em lugar nenhum; funcionava por acidente, por este mesmo caminho.
+    // Gravar uma versão *diferente* da atual é que faria o modal abrir e cobrir
+    // a UI no meio do smoke.)
 });
 await page.addScriptTag({ content: script });
 
