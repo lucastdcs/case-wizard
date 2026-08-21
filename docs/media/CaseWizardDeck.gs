@@ -35,7 +35,7 @@ var FEEDBACK_FORM_URL = 'forms.gle/8icwk1TejBTDYsJS6';
 
 // Bookmarklet de produção (sempre a branch main / bundle.js), copiado
 // literalmente do README.md — não editar sem atualizar lá também.
-var INSTALL_BOOKMARKLET = "javascript:(function(){    const cacheBuster = '?t=' + new Date().getTime();    const scriptUrl = 'https://lucastdcs.github.io/techsol_DialIn_AutoCopy/bundle.js' + cacheBuster;        const policy = trustedTypes.createPolicy('default', {         createHTML: (string) => string,         createScriptURL: string => string,         createScript: string => string,     });    const oldScript = document.getElementById('techsol-app-bundle');    if(oldScript) oldScript.remove();        const script = document.createElement('script');    script.id = 'techsol-app-bundle';    script.src = policy.createScriptURL(scriptUrl);    document.body.appendChild(script);})();";
+var INSTALL_BOOKMARKLET = "javascript:(function(){    const cacheBuster = '?t=' + new Date().getTime();    const scriptUrl = 'https://lucastdcs.github.io/case-wizard/bundle.js' + cacheBuster;        const policy = trustedTypes.createPolicy('default', {         createHTML: (string) => string,         createScriptURL: string => string,         createScript: string => string,     });    const oldScript = document.getElementById('techsol-app-bundle');    if(oldScript) oldScript.remove();        const script = document.createElement('script');    script.id = 'techsol-app-bundle';    script.src = policy.createScriptURL(scriptUrl);    document.body.appendChild(script);})();";
 
 // ============================================================
 // 2. TEMA — tokens extraídos do próprio projeto (não inventados)

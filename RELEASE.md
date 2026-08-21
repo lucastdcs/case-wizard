@@ -30,7 +30,7 @@ Each branch owns one Apps Script deployment and touches only that one.
 | Development | push to `refactor-structure` | GitHub Pages `bundle-dev.js` | dev deployment, promoted by CI on every push |
 | Production | merge + push to `main` | GitHub Pages `bundle.js` | production deployment, promoted by CI on that push only |
 
-URLs: `https://lucastdcs.github.io/techsol_DialIn_AutoCopy/bundle{,-dev}.js`; Apps Script `.../exec`.
+URLs: `https://lucastdcs.github.io/case-wizard/bundle{,-dev}.js`; Apps Script `.../exec`.
 
 ### Order within a deploy
 
@@ -79,4 +79,5 @@ backend is the exact state this ordering exists to prevent.
 - **`clasp push` ≠ live**: it only updates the Apps Script HEAD (visible in the editor) — the `/exec` and `/dev` URLs stay pinned to whatever was last *promoted*. Easy to assume a push "deployed" when it didn't; see `docs/WORKFLOW.md` and `README.md` → Deployment.
 - **JSONP watchdog**: every backend call times out client-side after 15s (`jsonpFetch` in `data-service.js`) if Apps Script doesn't respond — a slow/erroring deployment surfaces as a generic timeout in the browser console, not a clear backend error.
 - **`github.io` reachability**: the bookmarklet hard-depends on reaching `lucastdcs.github.io`; a corporate network block there is silent failure from the agent's point of view (see `README.md` → Troubleshooting).
+- **The Pages URL contains the repo name**: renaming the repository moves the Pages site and GitHub does *not* redirect the old Pages URL, so every installed bookmarklet would 404 silently. A shim repository under the old name keeps them alive — see `docs/decisions/0003-rename-repo-to-case-wizard.md`. **Do not delete `lucastdcs/techsol_DialIn_AutoCopy`** while pre-rename bookmarklets are still in circulation.
 - <fill in as you learn>
