@@ -7,26 +7,43 @@
 
 ```bash
 # Day-to-day (dev): push to refactor-structure.
-# CI builds dist/bundle-dev.js -> GitHub Pages, pushes gas-backend/ -> Apps Script HEAD,
-# AND auto-promotes the pinned dev deployment. Nothing further to do.
+# CI publishes bundle-dev.js and promotes the DEV Apps Script deployment.
+# Production is not touched by this, at all.
 git push origin refactor-structure
 
-# Production: merge refactor-structure into main and push.
-# CI builds dist/bundle.js -> GitHub Pages and pushes the backend HEAD,
-# but does NOT promote the production Apps Script deployment (deliberate).
+# Production: merge refactor-structure into main and push. That push is the
+# release — CI publishes bundle.js and promotes the PRODUCTION deployment.
+# There is no manual step afterwards.
 git checkout main && git merge refactor-structure && git push origin main
-
-# Then, manually, promote the production Apps Script deployment:
-cd gas-backend
-clasp deploy -i <production-deployment-id> -d "Release $(date -u +%F) - $(git rev-parse --short HEAD)"
 ```
+
+**The merge into `main` is the production gate.** Nothing else promotes production:
+no push to `refactor-structure`, no `clasp push` from a laptop, no manual step that
+someone has to remember. If the merge does not happen, production does not move.
 
 ## Environments
 
-| Env | Trigger | Host / target | URL |
+Each branch owns one Apps Script deployment and touches only that one.
+
+| Env | Trigger | Frontend | Apps Script deployment |
 |---|---|---|---|
-| Development | push to `refactor-structure` | GitHub Pages (`bundle-dev.js`) + Apps Script dev deployment (auto-promoted by CI) | `https://lucastdcs.github.io/techsol_DialIn_AutoCopy/bundle-dev.js`; Apps Script `.../dev` |
-| Production | push to `main` (frontend + backend HEAD) then a manual `clasp deploy` (backend deployment) | GitHub Pages (`bundle.js`) + Apps Script production deployment | `https://lucastdcs.github.io/techsol_DialIn_AutoCopy/bundle.js`; Apps Script `.../exec` |
+| Development | push to `refactor-structure` | GitHub Pages `bundle-dev.js` | dev deployment, promoted by CI on every push |
+| Production | merge + push to `main` | GitHub Pages `bundle.js` | production deployment, promoted by CI on that push only |
+
+URLs: `https://lucastdcs.github.io/techsol_DialIn_AutoCopy/bundle{,-dev}.js`; Apps Script `.../exec`.
+
+### Order within a deploy
+
+The `build-and-deploy-frontend` job declares `needs: deploy-backend-gas`, so **the
+backend is promoted before the frontend is published**. The two used to run in
+parallel, which is what opens the window where a new frontend calls an operation the
+live deployment does not have yet — the agent sees only the JSONP watchdog timing out
+after 15s. The reverse order has no such window: a new backend under an old frontend
+is harmless, because an operation nobody calls yet does nothing.
+
+A consequence worth knowing: if the backend job fails, the frontend is **not**
+published. That is deliberate — a half-deploy that leaves the frontend ahead of the
+backend is the exact state this ordering exists to prevent.
 
 ## Pre-release checklist
 
@@ -41,8 +58,11 @@ clasp deploy -i <production-deployment-id> -d "Release $(date -u +%F) - $(git re
 - **`scriptId`** (`gas-backend/.clasp.json`, committed) — identifies which Apps Script project `clasp push` targets. Same for both branches/environments; only the *deployment* differs.
 - **`DEPLOYMENTS`** (`src/modules/shared/data-service.js`, committed) — a map with **both** Apps Script deployment IDs, `production` and `development`. Which one the bundle uses is decided at build time, not at runtime.
 - **`__CW_BUILD_ENV__`** (`.github/workflows/deploy.yml`, injected via `esbuild --define`) — `"production"` on `main`, `"development"` on `refactor-structure`. **Any new build step must pass this flag**: without it `data-service.js` falls back to `"development"` silently, and a production bundle would start talking to the dev backend. (That is exactly the state `main` would have inherited from a plain merge before this split existed.) Building locally with no `--define` is the one case where the fallback is correct.
-- **`DEPLOYMENT_ID`** (`.github/workflows/deploy.yml`, hardcoded) — the pinned *development* deployment CI auto-promotes on `refactor-structure`. Must match `DEPLOYMENTS.development` in `data-service.js` — update both together if the deployment is ever rotated.
-- **Production deployment ID** — `DEPLOYMENTS.production` in `data-service.js`. Deliberately **not** promoted by CI; promoted manually via `clasp deploy -i <id>` or the Apps Script UI (Deploy → Manage deployments). Pushing `main` updates the frontend and the backend HEAD, never the live production deployment.
+- **`DEPLOYMENT_ID`** (`.github/workflows/deploy.yml`, hardcoded twice — once per branch) — which deployment that branch promotes. **Each ID must match the matching entry in `DEPLOYMENTS`** in `data-service.js`; rotating one means editing both files. `scripts/promote-deployment.sh` refuses to run on a placeholder ID rather than letting `clasp` fail deep in the log.
+
+> **Which ID is which, and why.** `DEPLOYMENTS.production` is the deployment that had always been in real use — the one CI kept republishing and that every agent works against. It stays production precisely because it is the one that is current; pointing production anywhere else would aim it at a deployment frozen on an old commit. The `development` deployment is the **new** one, created for this split so that pushes to `refactor-structure` stop republishing the backend everyone is using.
+>
+> The first version of this split got that backwards — it treated the ID that `main` happened to reference as production, and that one had not been promoted since March. Worth remembering: "which deployment does this branch name point at" is not the same question as "which deployment is actually live".
 
 ### App version
 

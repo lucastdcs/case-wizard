@@ -12,6 +12,33 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Script versionado é chamado pelo interpretador (`bash x.sh`), nunca por `./x.sh`
+
+**Why**: o `scripts/promote-deployment.sh` foi criado, `chmod +x` rodou sem erro,
+`bash -n` passou, o commit entrou — e o deploy da `refactor-structure` morreu com
+`Permission denied` / exit 126 (2026-08-21). O motivo: este repositório vive num
+volume Windows montado (`/mnt/c/...` no WSL), e o drvfs não persiste o bit de
+execução. O `chmod` "funciona" localmente e o git grava `100644` mesmo assim, então
+o erro só aparece no CI, depois do merge — e, por causa do `needs:` entre os jobs,
+derruba o deploy inteiro, não só aquele step.
+
+O sintoma é traiçoeiro porque tudo que se testa localmente passa: a sintaxe, a
+execução via `bash`, o `git add`. O único lugar onde a diferença aparece é
+`git ls-files -s`, que mostra `100644` onde se esperava `100755`.
+
+**When to apply**: ao adicionar **qualquer** arquivo executável ao repositório.
+
+- No workflow/`package.json`, invoque pelo interpretador — `bash scripts/x.sh`,
+  `node scripts/x.mjs` —, que é o que o resto do `scripts/` já faz.
+- Se ainda assim quiser o bit correto no git (para quem clona em Linux), ele
+  precisa ser setado no índice, não no filesystem:
+  ```bash
+  git update-index --chmod=+x scripts/x.sh
+  git ls-files -s scripts/x.sh   # confirme 100755
+  ```
+
+---
+
 ## Texto escrito pelo agente entra no DOM por `textContent`, nunca por `innerHTML`
 
 **Why**: na revisão dos atalhos do Ctrl+K (2026-08-20), o **nome** do atalho

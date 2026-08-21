@@ -9,6 +9,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Uma implantação do Apps Script por branch, promovida pelo CI.** Até aqui
+  existia uma implantação só, republicada a cada push em `refactor-structure` —
+  e como o frontend inteiro apontava para ela, um push numa branch de
+  desenvolvimento republicava o backend que os agentes estavam usando. Agora
+  `refactor-structure` promove a implantação de desenvolvimento (nova) e `main`
+  promove a de produção (a que já estava em uso real), cada branch tocando
+  apenas a sua. **O merge para a `main` passa a ser o portão de produção**, sem
+  passo manual depois dele. O job do frontend declara `needs:
+  deploy-backend-gas`, de modo que o backend é promovido antes de o frontend ser
+  publicado — os dois rodavam em paralelo, e era essa corrida que permitia um
+  frontend novo chamar operações que a implantação ainda não conhecia.
+  Ver `docs/decisions/0004-implantacoes-apps-script-por-branch.md`.
 - **Atalhos do Ctrl+K configuráveis por agente.** Cada pessoa escolhe os
   comandos que quer no Ctrl+K: status + substatus + os cenários que quiser (ou
   nenhum), com nome e apelido de busca próprios. Dois caminhos para criar — o
