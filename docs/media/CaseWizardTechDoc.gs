@@ -570,11 +570,12 @@ var INDEX_ROWS = [
   ['16', 'Concorrência e automações', 'LockService, gatilhos de tempo, alerta de volume e backup semanal.'],
   ['17', 'Resiliência e degradação', 'Cache-first, rascunhos de emergência, watchdogs e falha silenciosa.'],
   ['18', 'Design system e UI', 'Glassmorphism, header factory, genie effect e as proibições de UX.'],
-  ['19', 'Build, deploy e ambientes', 'esbuild, dois bundles, dois jobs de CI, clasp push vs. promoção de implantação.'],
-  ['20', 'Governança da documentação', 'Como specs/, docs/ e o código são mantidos em sincronia.'],
-  ['21', 'Limitações e trade-offs', 'O que foi trocado por o quê, e onde o desenho vai doer primeiro.'],
-  ['22', 'Roadmap técnico', 'Dívidas conhecidas e evoluções previstas.'],
-  ['23', 'Guia de retomada', 'O caminho mais curto para alguém novo ficar produtivo.'],
+  ['19', 'Build, deploy e ambientes', 'esbuild e o define de ambiente, ordem dos jobs, clasp push vs. promoção, os IDs que precisam concordar.'],
+  ['20', 'Evolução recente do projeto', 'O rename e o shim, o split de dev e produção, o incidente da v6.0 e a armadilha do bit de execução.'],
+  ['21', 'Governança da documentação', 'Como specs/, docs/, ADRs e aprendizados são mantidos em sincronia com o código.'],
+  ['22', 'Limitações e trade-offs', 'O que foi trocado por o quê, e onde o desenho vai doer primeiro.'],
+  ['23', 'Roadmap técnico', 'Dívidas conhecidas e evoluções previstas.'],
+  ['24', 'Guia de retomada', 'O caminho mais curto para alguém novo ficar produtivo.'],
   ['A', 'Apêndice — Glossário', 'Termos internos, siglas e nomes de domínio.'],
   ['B', 'Apêndice — Mapa de arquivos', 'Onde mora cada coisa, arquivo por arquivo.'],
 ];
@@ -647,7 +648,7 @@ function sec02_(ctx) {
      'A distribuição vira um bookmarklet copiado manualmente. Não há canal de atualização automática além do cache busting.'],
     ['Sem servidor e sem banco de dados provisionáveis',
      'Não há infraestrutura alocada ao projeto',
-     'O backend vira Apps Script e o banco vira Sheets, com todas as quotas e limites que isso implica (seção 21).'],
+     'O backend vira Apps Script e o banco vira Sheets, com todas as quotas e limites que isso implica (seção 22).'],
     ['CORS bloqueia XHR/fetch entre o domínio do CRM e o do Apps Script',
      'Política de origem cruzada do navegador',
      'Todo o transporte é JSONP via tag <script>, inclusive as escritas (seção 09).'],
@@ -1855,35 +1856,44 @@ function sec19_(ctx) {
   h2_(ctx, 'Build', COLOR.modPurple);
   code_(ctx, [
     '// package.json',
-    '"build":     "esbuild src/app.js --bundle --minify --outfile=dist/bundle.js"',
-    '"dev":       "esbuild src/app.js --bundle          --outfile=dist/bundle-dev.js"',
-    '"portfolio": "python3 generate-portfolio.py"',
-  ], 'esbuild é a única dependência de build. Não há transpilação para versões antigas, nem passo de testes: o navegador alvo é conhecido e moderno.');
+    '"build": "esbuild src/app.js --bundle --minify --outfile=dist/bundle.js',
+    '          --define:__CW_BUILD_ENV__=\'\\"production\\"\'"',
+    '"dev":   "esbuild src/app.js --bundle --outfile=dist/bundle-dev.js',
+    '          --define:__CW_BUILD_ENV__=\'\\"development\\"\'"',
+  ], 'esbuild é a única dependência de build. O --define é o que decide com qual backend o bundle vai falar — ver "Roteamento de ambiente", abaixo.');
 
-  para_(ctx, 'Rodar o build à mão antes de commitar não é necessário — o GitHub Actions o executa a ' +
-    'cada push. Vale notar uma pequena divergência: o script dev do package.json não minifica, mas o ' +
-    'workflow de CI passa --minify também no build de desenvolvimento.', { spaceAfter: 10 });
+  para_(ctx, 'Rodar o build à mão antes de commitar não é necessário: o GitHub Actions o executa a ' +
+    'cada push. Há também harnesses de teste em Node (npm run test:content, test:call-script, ' +
+    'test:emails, test:note-templates, test:shortcuts, test:prefs) e dois smokes de Playwright sobre ' +
+    'o mock-crm.html (smoke:shortcuts, smoke:wizards). Não há runner: cada script sai com código ' +
+    'diferente de zero em caso de falha. Não há lint configurado.', { spaceAfter: 10 });
 
-  h2_(ctx, 'O pipeline: dois jobs independentes', COLOR.modPurple);
+  h2_(ctx, 'O pipeline: backend primeiro, sempre', COLOR.modPurple);
   code_(ctx, [
     '.github/workflows/deploy.yml   (gatilho: push em main ou refactor-structure)',
     '',
-    'JOB 1  build-and-deploy-frontend',
-    '  checkout -> node 18 -> npm install esbuild',
-    '  se ref = main                 -> esbuild ... --outfile=dist/bundle.js     --minify',
-    '  se ref = refactor-structure   -> esbuild ... --outfile=dist/bundle-dev.js --minify',
-    '  peaceiris/actions-gh-pages -> publica ./dist na branch gh-pages',
-    '                                (keep_files: true, para os dois bundles coexistirem)',
-    '',
-    'JOB 2  deploy-backend-gas       (roda nas DUAS branches)',
+    'JOB 1  deploy-backend-gas       (roda nas DUAS branches)',
     '  checkout -> node 18 -> npm install -g @google/clasp',
     '  escreve .clasprc.json a partir do secret CLASPRC_JSON',
-    '  valida o JSON com jq  (falha aqui, com mensagem clara, se o secret estiver quebrado)',
-    '  clasp push -f                 -> atualiza o HEAD do projeto Apps Script',
-    '  se ref = refactor-structure   -> clasp deploy -i <DEPLOYMENT_ID>',
-    '                                   (promove a implantacao de DEV; grava resumo no',
-    '                                    Job Summary do Actions com data/hora + commit)',
-  ], 'Os dois jobs são independentes: uma falha no backend não impede a publicação do front, e vice-versa.');
+    '  valida o JSON com jq   (falha aqui, com mensagem clara, se o secret expirou)',
+    '  clasp push -f          -> atualiza o HEAD do projeto Apps Script',
+    '  se ref = refactor-structure -> bash scripts/promote-deployment.sh (DEV)',
+    '  se ref = main               -> bash scripts/promote-deployment.sh (PROD)',
+    '',
+    'JOB 2  build-and-deploy-frontend      needs: deploy-backend-gas',
+    '  checkout -> node 18 -> npm install esbuild',
+    '  se ref = main               -> bundle.js     --define __CW_BUILD_ENV__="production"',
+    '  se ref = refactor-structure -> bundle-dev.js --define __CW_BUILD_ENV__="development"',
+    '  peaceiris/actions-gh-pages  -> publica ./dist na branch gh-pages',
+    '                                 (keep_files: true, os dois bundles coexistem)',
+  ], 'O needs: é a peça central. Os dois jobs já rodaram em paralelo, e foi essa corrida que produziu o incidente descrito na seção 20.');
+
+  callout_(ctx, 'Por que o backend vai primeiro',
+    'Frontend novo sobre backend antigo chama operações que a implantação ainda não conhece, e o ' +
+    'agente vê apenas o watchdog do JSONP estourando em 15 s — sem erro legível. A ordem inversa não ' +
+    'tem essa janela: backend novo sob frontend antigo é inofensivo, porque uma operação que ninguém ' +
+    'chama ainda não faz nada. O preço é assumido: se o job do backend falhar, o frontend NÃO é ' +
+    'publicado. Meio-deploy é exatamente o estado que essa ordem existe para impedir.', COLOR.green);
 
   h2_(ctx, 'A distinção que mais confunde: push vs. promoção', COLOR.modPurple);
   para_(ctx, 'Este é o ponto que quase todo mundo erra ao mexer no backend pela primeira vez:',
@@ -1891,49 +1901,71 @@ function sec19_(ctx) {
 
   table_(ctx, ['Comando', 'O que atualiza', 'O que NÃO atualiza'], [
     ['clasp push -f', 'O HEAD do projeto — o código que você vê ao abrir o editor do Apps Script.',
-     'A URL .../exec, que continua travada na versão em que a implantação foi promovida por último.'],
-    ['clasp deploy -i <id>', 'Promove uma implantação existente para uma versão nova. É isto que muda o comportamento da URL.',
-     'Nada mais: não faz push do código, apenas aponta a implantação para o estado atual.'],
+     'As URLs /exec e /dev, que continuam presas à versão promovida por último.'],
+    ['clasp deploy -i <id>', 'Promove uma implantação existente para a versão que está no HEAD. É isto que muda o que os agentes usam.',
+     'Nada mais: não envia código, apenas aponta aquela implantação para o estado atual.'],
   ], COLOR.modPurple, [0.22, 0.40, 0.38], { monoCols: [0] });
 
-  callout_(ctx, 'Consequência prática',
-    'Editar gas-backend/, fazer push na main e ver o código novo no editor do Apps Script NÃO significa ' +
-    'que a produção mudou. Na main, a promoção da implantação de produção é manual, de propósito: ' +
-    'assim um push não vira produção sem alguém decidir isso explicitamente. Na refactor-structure a ' +
-    'promoção é automática, então o ambiente de dev fica sempre igual ao HEAD.', COLOR.red);
-
   h2_(ctx, 'Os dois ambientes', COLOR.modPurple);
-  table_(ctx, ['', 'Produção', 'Desenvolvimento'], [
-    ['Branch', 'main', 'refactor-structure'],
-    ['Bundle', 'dist/bundle.js', 'dist/bundle-dev.js'],
-    ['Bookmarklet', 'O de produção (com política de Trusted Types)', 'O de DEV (ver README.md)'],
-    ['Implantação Apps Script', 'Deployment de produção, promovido à mão', 'Deployment de dev, promovido pelo CI'],
-    ['URL da API', '.../s/{SCRIPT_ID de produção}/exec', '.../s/{SCRIPT_ID de dev}/exec'],
-    ['Uso no dia a dia', 'Só recebe merge quando algo está pronto', 'É a branch de trabalho real'],
-    ['Sinal no console', '—', '"TechSol DEV carregado!"'],
+  para_(ctx, 'Cada branch é dona de uma implantação do Apps Script e promove apenas a dela. ' +
+    'O merge para a main é o portão de produção — não existe passo manual depois dele.',
+    { spaceAfter: 8 });
+
+  table_(ctx, ['', 'Desenvolvimento', 'Produção'], [
+    ['Branch', 'refactor-structure', 'main'],
+    ['Gatilho', 'Todo push', 'O merge de refactor-structure e o push dele'],
+    ['Bundle publicado', 'dist/bundle-dev.js', 'dist/bundle.js'],
+    ['__CW_BUILD_ENV__', '"development"', '"production"'],
+    ['Implantação Apps Script', 'Dev — promovida pelo CI a cada push', 'Produção — promovida pelo CI só nesse push'],
+    ['Uso no dia a dia', 'É a branch de trabalho real', 'Só recebe merge quando algo está pronto'],
   ], COLOR.modPurple, [0.22, 0.39, 0.39]);
 
-  para_(ctx, 'Os dois ambientes compartilham o mesmo projeto Apps Script e o mesmo código-fonte em ' +
-    'gas-backend/. O que os separa são duas implantações distintas do mesmo projeto, cada uma travada ' +
-    'na versão em que foi promovida por último. O ID de cada uma está hardcoded na constante SCRIPT_ID ' +
-    'de src/modules/shared/data-service.js, com valor diferente por branch.', { spaceAfter: 8 });
+  callout_(ctx, 'O portão de produção é o merge',
+    'Nada mais promove produção: nem push na branch de desenvolvimento, nem clasp push de uma máquina, ' +
+    'nem um passo manual que alguém precise lembrar. Se o merge não acontece, produção não se move — e ' +
+    'quando ele acontece, ela se move inteira, frontend e backend juntos.', COLOR.green);
 
-  callout_(ctx, 'Acoplamento a vigiar',
-    'O DEPLOYMENT_ID do step de promoção em deploy.yml é o mesmo valor da constante SCRIPT_ID em ' +
-    'data-service.js na branch de desenvolvimento. Se ele for rotacionado algum dia, os dois lugares ' +
-    'precisam ser atualizados juntos — e o link do e-mail de alerta de volume, em BAU_Alerts.js, ' +
-    'depende do ID de produção pelo mesmo motivo.', COLOR.yellow);
+  h2_(ctx, 'Roteamento de ambiente no cliente', COLOR.modPurple);
+  para_(ctx, 'Quem escolhe o backend é o BUILD, não o runtime. O esbuild injeta __CW_BUILD_ENV__ e o ' +
+    'data-service.js usa esse valor como chave no mapa de implantações:', { spaceAfter: 8 });
 
-  h2_(ctx, 'Detecção de ambiente no cliente', COLOR.modPurple);
   code_(ctx, [
     '// src/modules/shared/data-service.js',
-    "const isDevelopment = window.location.hostname === 'localhost'",
-    "                   || window.location.hostname === '127.0.0.1';",
+    'const DEPLOYMENTS = {',
+    '  production:  "AKfycbxkheuq...",   // promovida só num merge para a main',
+    '  development: "AKfycbyUtczR...",   // promovida a cada push em refactor-structure',
+    '};',
     '',
-    'const API_URL = isDevelopment',
-    '  ? `https://script.google.com/a/macros/google.com/s/${SCRIPT_ID}/dev`',
-    '  : `https://script.google.com/a/macros/google.com/s/${SCRIPT_ID}/exec`;',
-  ], 'Em localhost o cliente usa a URL /dev (sempre o HEAD, sem promoção); no CRM real usa /exec.');
+    'const BUILD_ENV = typeof __CW_BUILD_ENV__ !== "undefined"',
+    '                ? __CW_BUILD_ENV__ : "development";',
+    '',
+    'const isLocalhost = window.location.hostname === "localhost"',
+    '                 || window.location.hostname === "127.0.0.1";',
+    '',
+    'const SCRIPT_ID = DEPLOYMENTS[BUILD_ENV] || DEPLOYMENTS.development;',
+    'const ENDPOINT  = isLocalhost ? "dev" : "exec";',
+    '',
+    'console.log(`[Case Wizard] backend: ${BUILD_ENV}/${ENDPOINT}`);',
+  ], 'O console.log final é o jeito mais rápido de confirmar, na tela do agente, contra qual backend aquele bundle está falando.');
+
+  callout_(ctx, 'O fallback é silencioso — e essa é a armadilha',
+    'Sem o --define, BUILD_ENV cai em "development". Isso é correto rodando local, e catastrófico num ' +
+    'build de produção: o bundle que os agentes usam passaria a falar com o backend que o CI ' +
+    'republica a cada push de desenvolvimento. Qualquer passo de build novo PRECISA passar o define. ' +
+    'Não há erro, não há aviso — só o console.log denuncia.', COLOR.red);
+
+  h2_(ctx, 'Os IDs que precisam concordar', COLOR.modPurple);
+  table_(ctx, ['Onde', 'O quê', 'Regra'], [
+    ['data-service.js', 'Mapa DEPLOYMENTS, com os dois IDs.', 'É o que o bundle usa em runtime.'],
+    ['deploy.yml', 'DEPLOYMENT_ID, hardcoded duas vezes — uma por branch.', 'É o que o CI promove.'],
+    ['gas-backend/.clasp.json', 'scriptId do projeto Apps Script.', 'Único: é o mesmo projeto nos dois ambientes. Só a implantação difere.'],
+  ], COLOR.modPurple, [0.24, 0.38, 0.38], { monoCols: [0] });
+
+  callout_(ctx, 'O erro que ainda passa silencioso',
+    'Rotacionar uma implantação exige editar data-service.js E deploy.yml juntos. O ' +
+    'scripts/promote-deployment.sh recusa rodar com um ID de placeholder (__ALGO__), mas NÃO detecta ' +
+    'os dois arquivos apontando para implantações diferentes e ambas válidas. Esse continua sendo o ' +
+    'jeito mais fácil de quebrar o deploy sem que nada reclame.', COLOR.red);
 
   h2_(ctx, 'Material visual (opcional)', COLOR.modPurple);
   para_(ctx, 'generate-portfolio.py usa Playwright para abrir mock-crm.html — um HTML estático que ' +
@@ -1943,19 +1975,192 @@ function sec19_(ctx) {
 }
 
 function sec20_(ctx) {
-  h1_(ctx, '20', 'Governança da documentação', COLOR.blue);
+  h1_(ctx, '20', 'Evolução recente do projeto', COLOR.yellow);
+
+  para_(ctx, 'As três mudanças estruturais mais recentes do projeto são todas de infraestrutura, e ' +
+    'todas nasceram do mesmo tipo de problema: algo que parecia estar separado e não estava. Elas ' +
+    'estão documentadas como ADRs no repositório, e esta seção consolida o essencial — inclusive o ' +
+    'que deu errado no caminho, que costuma ser a parte mais útil.', { spaceAfter: 12 });
+
+  h2_(ctx, 'Linha do tempo', COLOR.yellow);
+  table_(ctx, ['Quando', 'Mudança', 'Registro'], [
+    ['2026-08-20', 'Decisão de renomear o repositório de techsol_DialIn_AutoCopy para case-wizard.', 'ADR 0003'],
+    ['2026-08-21', 'Rename executado, com um repo-shim sob o nome antigo.', 'ADR 0003, seção "Execução"'],
+    ['2026-08-21', 'Split de ambiente: uma implantação do Apps Script por branch, promovida pelo CI.', 'ADR 0004'],
+    ['2026-08-21', 'Ordem no pipeline: backend promovido antes de o frontend ser publicado.', 'ADR 0004'],
+    ['2026-08-21', 'Correção do script de promoção: chamado por bash, não pelo bit de execução.', 'docs/LEARNINGS.md'],
+  ], COLOR.yellow, [0.14, 0.58, 0.28]);
+
+  h2_(ctx, 'O rename: por que não foi trivial', COLOR.yellow);
+  para_(ctx, 'O nome techsol_DialIn_AutoCopy sobrou de um script descartável que copiava um campo de ' +
+    'dial-in. Nada nele descrevia o que o projeto virou. A pasta local, o ADOPTION-LOG e o prefixo cw_ ' +
+    'de todo o localStorage já diziam "Case Wizard" — o repositório era o último resquício.',
+    { spaceAfter: 8 });
+
+  para_(ctx, 'O que tornou a mudança arriscada é uma característica de desenho descrita na seção 04: ' +
+    'a URL do bookmarklet contém o nome do repositório. E aqui entra a assimetria que quase ninguém ' +
+    'sabe de cabeça:', { spaceAfter: 8 });
+
+  table_(ctx, ['O que o GitHub faz ao renomear um repositório', 'Redireciona?'], [
+    ['URLs de web, clone e push do repositório', 'Sim — mas só enquanto o nome antigo ficar livre.'],
+    ['O site do GitHub Pages', 'NÃO. O site migra para o nome novo e a URL antiga simplesmente deixa de resolver.'],
+  ], COLOR.yellow, [0.55, 0.45]);
+
+  callout_(ctx, 'O modo de falha que se queria evitar',
+    'Sem tratamento, todo bookmarklet já salvo viraria um 404 silencioso: o <script> injetado não ' +
+    'carrega e absolutamente nada acontece na tela. Do ponto de vista de quem dá suporte, é o pior ' +
+    'modo de falha possível — indistinguível de "o CRM travou de novo".', COLOR.red);
+
+  h3_(ctx, 'A solução: um repo-shim sob o nome antigo');
+  para_(ctx, 'Junto com o rename foi criado um repositório novo e vazio com o nome ANTIGO, servindo ' +
+    'pelo Pages um bundle.js de três linhas que carrega o bundle real da URL nova. Os bookmarklets ' +
+    'instalados continuam funcionando, e a redistribuição do favorito novo passa a poder acontecer ' +
+    'aos poucos, em vez de num prazo.', { spaceAfter: 8 });
+
+  code_(ctx, [
+    '// Shim: this repository was renamed to case-wizard.',
+    '// Kept alive so bookmarklets saved before the rename keep working.',
+    '(function () {',
+    '  var s = document.createElement("script");',
+    '  s.src = "https://lucastdcs.github.io/case-wizard/bundle.js?t=" + Date.now();',
+    '  document.body.appendChild(s);',
+    '})();',
+  ], 'O shim NÃO cria uma política de Trusted Types própria: o bookmarklet de produção já criou a política "default" antes dele rodar, e criar duas com o mesmo nome lança exceção. Como a política já existe, a atribuição simples a s.src passa por ela.');
+
+  h3_(ctx, 'A consequência que surpreendeu');
+  para_(ctx, 'Ocupar o nome antigo com o shim fecha a janela em que outra pessoa poderia reivindicá-lo ' +
+    'e assim quebrar o próprio shim. Mas criar um repositório sob aquele nome CONSOME o nome — e com ' +
+    'isso encerra o redirecionamento da URL git do repositório renomeado.', { spaceAfter: 8 });
+
+  callout_(ctx, 'Atualizar o remote virou obrigatório, não opcional',
+    'Depois do rename, um git ls-remote na URL antiga responde com o commit único do shim, não com os ' +
+    'refs deste projeto. Ou seja: um origin desatualizado deixou de falhar alto com "repository not ' +
+    'found" e passou a resolver em silêncio para um repositório com uma main alheia — falha pior que ' +
+    'um 404. Quem tiver um clone antigo precisa rodar: ' +
+    'git remote set-url origin https://github.com/lucastdcs/case-wizard.git', COLOR.red);
+
+  para_(ctx, 'Duas coisas saíram diferentes do plano, e ambas valem para a próxima vez. O shim ' +
+    'dispensou a branch gh-pages: o repositório foi criado com README, o Pages foi apontado direto ' +
+    'para a main e os dois arquivos subiram pela Contents API — dois PUT e um POST, sem clone nem ' +
+    'branch órfã. E a janela de quebra foi menor que o previsto: a URL nova já respondia 200 no ' +
+    'instante seguinte ao rename, porque o site do Pages migra junto e não precisa rebuildar; o que ' +
+    'levou alguns minutos foi só o primeiro build do Pages do shim.', { spaceAfter: 8 });
+
+  h2_(ctx, 'O split de ambiente: dev e produção de verdade', COLOR.yellow);
+  para_(ctx, 'Até este ponto existia UMA implantação do Apps Script, e o CI a republicava a cada push ' +
+    'na branch de desenvolvimento. Como o frontend inteiro apontava para esse mesmo ID, um push numa ' +
+    'branch de desenvolvimento republicava o backend de produção. Nas palavras do ADR: não havia ' +
+    'ambiente de desenvolvimento de verdade — havia produção, e pessoas empurrando código para dentro ' +
+    'dela.', { spaceAfter: 8 });
+
+  para_(ctx, 'O agravante é que o portão que existia no papel não protegia nada. O RELEASE.md ' +
+    'registrava que a promoção de produção era manual "de propósito", mas o frontend já ia sozinho ' +
+    'para o GitHub Pages a cada push na main, enquanto o backend esperava alguém lembrar de promovê-lo ' +
+    'à mão. O efeito real era os dois lados divergirem em silêncio.', { spaceAfter: 8 });
+
+  callout_(ctx, 'O incidente que forçou a mudança',
+    'No release da v6.0, o frontend novo subiu para produção conversando com uma implantação de ' +
+    'backend de março. Um portão que depende de alguém lembrar não é um portão — e o portão de ' +
+    'verdade, decidir o que vai para produção, já era o merge.', COLOR.red);
+
+  para_(ctx, 'A correção está descrita na seção 19: cada branch passa a ter a sua própria implantação, ' +
+    'e o CI promove apenas a da branch que recebeu o push. Vale registrar o que foi rejeitado no ' +
+    'caminho, porque são as perguntas que qualquer pessoa refaz:', { spaceAfter: 8 });
+
+  table_(ctx, ['Alternativa considerada', 'Por que foi rejeitada'], [
+    ['Manter a promoção de produção manual.',
+     'Era o estado anterior, e foi o que produziu o skew da v6.0.'],
+    ['Eleger como produção a implantação que a main referenciava.',
+     'Foi a primeira tentativa do split, e estava errada: aquele ID não era promovido desde março, então adotá-lo teria feito produção REGREDIR para código antigo.'],
+    ['Dois projetos Apps Script separados, um por ambiente.',
+     'Seria o isolamento mais forte — planilhas, propriedades e gatilhos separados —, mas exige duplicar scriptId, credenciais e a planilha de dados. Fica como o caminho natural caso um dia seja preciso isolar DADOS, e não só versão de código.'],
+    ['Publicar o frontend antes do backend, ou em paralelo.',
+     'É a origem da janela de erro descrita na seção 19.'],
+  ], COLOR.yellow, [0.34, 0.66]);
+
+  callout_(ctx, 'A lição que vale além deste projeto',
+    '"Qual implantação a branch tal referencia" não é a mesma pergunta que "qual implantação está de ' +
+    'fato no ar". Foi confundir as duas que produziu tanto o skew da v6.0 quanto a primeira versão ' +
+    'errada do split.', COLOR.yellow);
+
+  h2_(ctx, 'O bit de execução que só falha no CI', COLOR.yellow);
+  para_(ctx, 'A lógica de promoção virou um script (scripts/promote-deployment.sh) em vez de ficar ' +
+    'inline no YAML, porque os dois ambientes rodam exatamente o mesmo corpo — só mudam o ID e o ' +
+    'rótulo. Duplicar isso no workflow é como uma das metades acaba ficando para trás.',
+    { spaceAfter: 8 });
+
+  para_(ctx, 'O script foi criado, o chmod +x rodou sem erro, o bash -n passou, o commit entrou — e o ' +
+    'deploy morreu no CI com Permission denied (exit 126). O repositório vive num volume Windows ' +
+    'montado (/mnt/c no WSL), e o drvfs não persiste o bit de execução: o chmod "funciona" localmente ' +
+    'e o git grava 100644 mesmo assim.', { spaceAfter: 8 });
+
+  code_(ctx, [
+    '# no workflow: invoque pelo interpretador, nunca por ./script.sh',
+    'run: bash scripts/promote-deployment.sh',
+    '',
+    '# se ainda quiser o bit correto no git, ele vai no ÍNDICE, não no filesystem:',
+    'git update-index --chmod=+x scripts/x.sh',
+    'git ls-files -s scripts/x.sh    # confirme 100755',
+  ], 'Regra registrada em docs/LEARNINGS.md. Por causa do needs: entre os jobs, essa falha derrubava o deploy inteiro, não só aquele step.');
+
+  callout_(ctx, 'Por que o sintoma é traiçoeiro',
+    'Tudo que se testa localmente passa: a sintaxe, a execução via bash, o git add. O único lugar onde ' +
+    'a diferença aparece é git ls-files -s, que mostra 100644 onde se esperava 100755. O erro só ' +
+    'surge no CI, depois do merge.', COLOR.red);
+
+  h2_(ctx, 'Estado atual das branches', COLOR.yellow);
+  para_(ctx, 'Uma observação de quem leu o repositório para montar este documento, e que vale ' +
+    'verificar antes de confiar: o split de ambiente já está na main, mas os commits de documentação ' +
+    'do rename ainda não. Na prática, a main publica o README com a URL ANTIGA do bookmarklet — a que ' +
+    'hoje só resolve através do shim —, enquanto a refactor-structure já traz a URL nova de ' +
+    '/case-wizard/. Nada quebra, porque é exatamente para isso que o shim existe, mas quem instalar o ' +
+    'favorito a partir da main hoje instala o caminho com o salto extra.', { spaceAfter: 8 });
+
+  callout_(ctx, 'Pendência conhecida',
+    'Redistribuir o bookmarklet novo a partir do README, sem pressa — o shim é o que compra esse ' +
+    'tempo. E o shim não pode ser apagado enquanto houver bookmarklets antigos em circulação.',
+    COLOR.yellow);
+}
+
+function sec21_(ctx) {
+  h1_(ctx, '21', 'Governança da documentação', COLOR.blue);
 
   para_(ctx, 'O projeto mantém três corpos de documentação com papéis distintos. Confundi-los leva a ' +
     'documentar no lugar errado e a divergências que ninguém percebe.', { spaceAfter: 10 });
 
-  table_(ctx, ['Pasta', 'Papel', 'Regra'], [
+  table_(ctx, ['Onde', 'Papel', 'Regra'], [
     ['specs/', 'Fonte da verdade normativa: regras que o código DEVE seguir.',
      'Declarada como "lei absoluta" no _MASTER_RULEBOOK.md. Se o código divergir de uma regra, a regra prevalece e o código deve ser refatorado.'],
-    ['docs/', 'Visão geral e histórico de decisões: como as coisas são e por que ficaram assim.',
+    ['docs/', 'Visão geral, decisões e aprendizados: como as coisas são e por que ficaram assim.',
      'Descreve o macro. Não é normativa e aponta para specs/ quando o detalhe importa.'],
+    ['docs/decisions/', 'ADRs — uma decisão estrutural por arquivo, com alternativas e consequências.',
+     'É onde a pergunta "por que foi feito assim?" tem resposta. Menos de uma página cada.'],
+    ['docs/LEARNINGS.md', 'Regras aprendidas com correções e descobertas não triviais.',
+     'Uma entrada = uma regra acionável, com a história por trás e o gatilho de quando aplicar. Ordem cronológica inversa.'],
+    ['RELEASE.md', 'Runbook de publicação: como entregar com segurança.',
+     'O CHANGELOG diz o que subiu; este diz como subir. Atualizado sempre que um release revela uma fragilidade.'],
     ['README.md', 'Porta de entrada: o que é o projeto, como instalar o bookmarklet, material visual.',
      'É onde vivem os bookmarklets canônicos — de produção e de DEV.'],
-  ], COLOR.blue, [0.14, 0.36, 0.50]);
+    ['CLAUDE.md', 'Instruções de trabalho para agentes de IA no repositório.',
+     'Mapa, não território: aponta para os docs em vez de duplicá-los.'],
+  ], COLOR.blue, [0.16, 0.36, 0.48], { monoCols: [0] });
+
+  para_(ctx, 'Além desses, o repositório mantém PLAN.md (o todo ativo), CHANGELOG.md, e em docs/ ' +
+    'ainda VISION.md, ROADMAP.md, GLOSSARY.md, ARCHITECTURE.md, CORE_MODULES.md, WORKFLOW.md e ' +
+    'ADOPTION-LOG.md.', { spaceAfter: 10 });
+
+  h2_(ctx, 'A disciplina de captura', COLOR.blue);
+  para_(ctx, 'O projeto trata a escrita da documentação como parte do trabalho, não como um passo ' +
+    'posterior, e ancora isso num momento concreto: antes de um push, de uma tag ou de um release. ' +
+    'A pergunta se divide em três destinos:', { spaceAfter: 8 });
+  bullets_(ctx, [
+    'Decidiu algo estrutural? Vira um ADR em docs/decisions/.',
+    'Aprendeu algo que muda como se trabalha aqui — inclusive um bloqueio que custou tempo, com a solução? Vira uma entrada em docs/LEARNINGS.md.',
+    'Flagrou o agente repetindo um erro ou derivando? Vira uma regra no CLAUDE.md ou em .claude/rules/.',
+  ]);
+  para_(ctx, 'A justificativa é explícita no CLAUDE.md: captura vence memória — se não foi escrito no ' +
+    'repositório, se perde na próxima sessão. As seções 20 e 22 deste documento são, em boa medida, ' +
+    'apenas a consolidação do que essa disciplina já havia registrado.', { spaceAfter: 10 });
 
   h2_(ctx, 'O que há dentro de specs/', COLOR.blue);
   table_(ctx, ['Arquivo', 'Cobre'], [
@@ -1979,8 +2184,8 @@ function sec20_(ctx) {
     'com uma nota explicando a decisão.', { spaceAfter: 8 });
 }
 
-function sec21_(ctx) {
-  h1_(ctx, '21', 'Limitações e trade-offs', COLOR.red);
+function sec22_(ctx) {
+  h1_(ctx, '22', 'Limitações e trade-offs', COLOR.red);
 
   para_(ctx, 'Nada aqui é surpresa para quem escreveu o sistema: são consequências aceitas ' +
     'conscientemente, dado o ambiente da seção 02. O que esta seção acrescenta é onde cada uma vai ' +
@@ -2002,9 +2207,9 @@ function sec21_(ctx) {
     ['Dependência do DOM de terceiro',
      'É a essência do produto: sem isso não há overlay.',
      'Qualquer atualização do CRM pode quebrar um scraper. A falha é silenciosa por design, então aparece como campo vazio, não como erro.'],
-    ['Sem testes automatizados',
-     'Não há como instanciar o CRM alvo em um ambiente de teste.',
-     'Toda regressão é descoberta em produção, por um agente. É a maior dívida técnica do projeto.'],
+    ['Cobertura de teste parcial',
+     'Não há como instanciar o CRM alvo em um ambiente de teste; o que dá para cobrir é a lógica que não depende dele.',
+     'Existem harnesses em Node e dois smokes de Playwright sobre o mock-crm.html, mas nada exercita o CRM real. Regressões de integração continuam sendo descobertas por um agente, em produção.'],
     ['Sem versionamento de schema',
      'A planilha não tem migrations.',
      'Mudanças de coluna exigem coordenação manual. ensureBAUHistoryColumns é o único padrão de migração que existe, e foi escrito à mão.'],
@@ -2014,9 +2219,12 @@ function sec21_(ctx) {
     ['Segredo de deploy em um único secret',
      'É como o clasp autentica em CI.',
      'A expiração ou rotação de CLASPRC_JSON derruba o deploy do backend. A validação com jq no workflow existe para tornar essa falha legível.'],
-    ['Promoção manual em produção',
-     'Foi uma escolha, não um esquecimento: evita que um push vire produção sem decisão humana.',
-     'É fácil esquecer o passo e concluir que "o deploy não funcionou". Ver seção 19.'],
+    ['Dois IDs de implantação em dois arquivos',
+     'É o preço do split de ambiente, que resolveu um problema maior (seção 20).',
+     'Os dois apontarem para implantações diferentes e ambas válidas é um erro que nenhuma guarda detecta.'],
+    ['Um repositório-shim a manter vivo',
+     'Mantém funcionando os bookmarklets instalados antes do rename.',
+     'Não pode ser apagado enquanto houver favoritos antigos em circulação, e adiciona um salto de rede a quem ainda usa a URL velha.'],
   ], COLOR.red, [0.22, 0.34, 0.44]);
 
   h2_(ctx, 'Divergências conhecidas entre código e spec', COLOR.red);
@@ -2027,8 +2235,8 @@ function sec21_(ctx) {
   ]);
 }
 
-function sec22_(ctx) {
-  h1_(ctx, '22', 'Roadmap técnico', COLOR.modOrange);
+function sec23_(ctx) {
+  h1_(ctx, '23', 'Roadmap técnico', COLOR.modOrange);
 
   h2_(ctx, 'Evoluções previstas', COLOR.modOrange);
   bullets_(ctx, [
@@ -2040,7 +2248,7 @@ function sec22_(ctx) {
 
   h2_(ctx, 'Dívidas técnicas em ordem de risco', COLOR.modOrange);
   table_(ctx, ['#', 'Dívida', 'Impacto se ignorada'], [
-    ['1', 'Ausência total de testes automatizados.', 'Toda regressão chega ao agente. Cresce com o tamanho da base.'],
+    ['1', 'Nenhum teste exercita o CRM real; a integração só é validada à mão.', 'Regressões de integração chegam ao agente. Cresce com o tamanho da base.'],
     ['2', 'Divergência update_bau_status entre cliente e servidor.', 'Uma funcionalidade que parece funcionar e não faz nada, sem erro.'],
     ['3', 'Nenhuma observabilidade de erro do lado do produto.', 'Falhas só são descobertas por relato humano.'],
     ['4', 'Varredura completa da planilha em toda leitura.', 'Degradação progressiva de latência à medida que o histórico cresce.'],
@@ -2056,8 +2264,8 @@ function sec22_(ctx) {
     'sem precisar simular o hospedeiro.', COLOR.modOrange);
 }
 
-function sec23_(ctx) {
-  h1_(ctx, '23', 'Guia de retomada', COLOR.green);
+function sec24_(ctx) {
+  h1_(ctx, '24', 'Guia de retomada', COLOR.green);
 
   para_(ctx, 'Se você acabou de herdar este projeto, este é o caminho mais curto até ser produtivo.',
     { spaceAfter: 10 });
@@ -2091,7 +2299,9 @@ function sec23_(ctx) {
     { spaceAfter: 8 });
   bullets_(ctx, [
     'Por que uma escrita usa GET e o que isso implica para um payload grande?',
-    'Qual é a diferença entre clasp push e clasp deploy, e por que a produção não muda sozinha?',
+    'Qual é a diferença entre clasp push e clasp deploy, e o que exatamente promove produção hoje?',
+    'O que acontece se um passo de build novo esquecer o --define de __CW_BUILD_ENV__?',
+    'Por que o job do backend roda antes do job do frontend, e o que se perde se essa ordem cair?',
     'Por que uma ação restrita ao TL não pode virar um op= no roteador JSONP?',
     'O que acontece se a aba People for renomeada?',
     'Por que o padrão campo || "" é correto na criação de um caso e destrutivo na edição?',
@@ -2118,6 +2328,10 @@ function apxA_(ctx) {
     ['clasp', 'CLI oficial do Google para sincronizar código local com um projeto Apps Script.'],
     ['Implantação (deployment)', 'Uma versão publicada e endereçável de um projeto Apps Script. Um mesmo projeto pode ter várias, cada uma travada numa versão.'],
     ['HEAD (Apps Script)', 'O estado atual do código no editor, atualizado por clasp push. Não é o que a URL /exec serve.'],
+    ['Promoção', 'O ato de apontar uma implantação para a versão que está no HEAD. É o que muda o que os agentes usam.'],
+    ['Shim', 'O repositório vazio mantido sob o nome antigo, que serve um bundle de três linhas redirecionando para a URL nova. Mantém vivos os bookmarklets instalados antes do rename.'],
+    ['__CW_BUILD_ENV__', 'Constante injetada pelo esbuild em tempo de build, que decide se aquele bundle fala com o backend de produção ou o de desenvolvimento.'],
+    ['Skew', 'O estado em que frontend e backend estão em versões incompatíveis — no caso da v6.0, um frontend novo conversando com uma implantação de março.'],
     ['LDAP', 'Identificador de usuário interno — a parte do e-mail corporativo antes do arroba.'],
     ['Overhead', 'No vocabulário do projeto, quem não é Agent nem Apprentice: papéis de liderança e suporte com privilégio elevado.'],
     ['TL', 'Team Leader. O papel que aprova, rejeita e descarta casos no dashboard.'],
@@ -2170,7 +2384,11 @@ function apxB_(ctx) {
   h2_(ctx, 'Infraestrutura e documentação', COLOR.modGray);
   table_(ctx, ['Arquivo', 'Procure aqui quando'], [
     ['.github/workflows/deploy.yml', 'O deploy falhou, ou você precisa entender o que roda em cada branch.'],
-    ['package.json', 'Os scripts de build e as dependências.'],
+    ['scripts/promote-deployment.sh', 'A promoção de uma implantação do Apps Script pelo CI.'],
+    ['RELEASE.md', 'Você vai publicar e quer o runbook, os segredos ou o procedimento de rollback.'],
+    ['docs/decisions/', 'Você quer saber POR QUE algo estrutural foi decidido assim (ADRs 0003 e 0004 cobrem rename e ambientes).'],
+    ['docs/LEARNINGS.md', 'Você quer as armadilhas já pagas por alguém, com o gatilho de quando elas mordem.'],
+    ['package.json', 'Os scripts de build e teste e as dependências.'],
     ['specs/**', 'Você precisa saber qual é a regra, não como o código a implementa.'],
     ['docs/ARCHITECTURE.md', 'Você quer a visão macro em texto curto, ou o histórico de uma decisão.'],
     ['README.md', 'Você precisa dos bookmarklets canônicos ou do material visual.'],
@@ -2195,6 +2413,6 @@ var SECTION_BUILDERS = [
   sec01_, sec02_, sec03_, sec04_, sec05_, sec06_,
   sec07_, sec08_, sec09_, sec10_, sec11_, sec12_,
   sec13_, sec14_, sec15_, sec16_, sec17_, sec18_,
-  sec19_, sec20_, sec21_, sec22_, sec23_,
+  sec19_, sec20_, sec21_, sec22_, sec23_, sec24_,
   apxA_, apxB_,
 ];
