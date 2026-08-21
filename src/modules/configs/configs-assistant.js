@@ -2,7 +2,7 @@
 
 import { stylePopup, showToast } from "../shared/utils.js";
 import { getAgentEmail, captureNameWithMagic } from "../shared/page-data.js";
-import { fetchUserProfile } from "../shared/data-service.js"; // Importação crucial adicionada
+import { fetchUserProfile, getBackendInfo } from "../shared/data-service.js"; // Importação crucial adicionada
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
@@ -25,6 +25,9 @@ const CONFIGS_DICT = {
         langDesc: "Escolha o idioma dos menus, botões e mensagens do Case Wizard.",
         supportSectionTitle: "Suporte & Feedback",
         reportBug: "Reportar Bug/Sugestões",
+        diagSectionTitle: "Diagnóstico",
+        diagLabel: "Ambiente do backend",
+        diagDesc: "Qual implantação do Apps Script este bundle usa. O sufixo tem de bater com o do dashboard.",
         scSectionTitle: "Meus Atalhos (Ctrl+K)",
         scSortLabel: "Ordenar por frequência de uso",
         scSortDesc: "Desligue para definir você mesmo a ordem, arrastando os atalhos.",
@@ -70,6 +73,9 @@ const CONFIGS_DICT = {
         langDesc: "Elige el idioma de los menús, botones y mensajes del Case Wizard.",
         supportSectionTitle: "Soporte y Comentarios",
         reportBug: "Reportar error o sugerencia",
+        diagSectionTitle: "Diagnóstico",
+        diagLabel: "Entorno del backend",
+        diagDesc: "Qué implementación de Apps Script usa este bundle. El sufijo debe coincidir con el del panel.",
         scSectionTitle: "Mis Atajos (Ctrl+K)",
         scSortLabel: "Ordenar por frecuencia de uso",
         scSortDesc: "Desactívalo para definir tú mismo el orden, arrastrando los atajos.",
@@ -429,6 +435,54 @@ export function initConfigsAssistant() {
     `;
     container.appendChild(supportSection);
 
+    // --- SEÇÃO: DIAGNÓSTICO ---
+    // A pílula só marca desenvolvimento; produção fica sem selo, de propósito.
+    // Este bloco é a contrapartida: aqui o ambiente aparece SEMPRE, inclusive
+    // em produção, para que "estou em produção" seja uma confirmação positiva
+    // e não a ausência de um badge — ausência também é o que se vê quando algo
+    // simplesmente não renderizou.
+    //
+    // O sufixo da implantação é o que prova a separação de ambientes: ele tem
+    // de bater com o sufixo mostrado no dashboard. Se divergirem, o frontend e
+    // o backend estão em implantações diferentes.
+    const envInfo = getBackendInfo();
+    const diagSection = document.createElement("div");
+    diagSection.className = "cw-configs-section";
+    diagSection.innerHTML = `
+        <div class="cw-configs-section-title js-diag-section-title"></div>
+        <div class="cw-configs-card">
+            <div class="cw-configs-row">
+                <div>
+                    <div class="cw-configs-label js-diag-label"></div>
+                    <div class="cw-configs-desc js-diag-desc"></div>
+                </div>
+                <div class="cw-env-chip ${envInfo.isDev ? 'is-dev' : 'is-prod'}"></div>
+            </div>
+        </div>
+    `;
+    // textContent, nunca innerHTML: o sufixo vem de uma constante do build,
+    // mas a regra do projeto não abre exceção por origem do dado.
+    diagSection.querySelector(".cw-env-chip").textContent =
+        `${envInfo.isDev ? "DEV" : "PROD"} · …${envInfo.fingerprint}`;
+    container.appendChild(diagSection);
+
+    const diagStyle = document.createElement("style");
+    diagStyle.innerHTML = `
+        .cw-env-chip {
+            font-family: 'Roboto Mono', ui-monospace, monospace;
+            font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+            padding: 5px 10px; border-radius: 100px; white-space: nowrap;
+            border: 1px solid transparent;
+        }
+        .cw-env-chip.is-prod {
+            background: #E6F4EA; color: #137333; border-color: #CEEAD6;
+        }
+        .cw-env-chip.is-dev {
+            background: #FEF7E0; color: #B06000; border-color: #FEEFC3;
+        }
+    `;
+    diagSection.appendChild(diagStyle);
+
     // --- TEXTOS TRADUZIDOS (aplica na criação e sempre que o idioma mudar) ---
     function applyTexts() {
         if (lastRenderedProfile) renderProfileCard(lastRenderedProfile.ldap, lastRenderedProfile.profile);
@@ -446,6 +500,10 @@ export function initConfigsAssistant() {
 
         supportSection.querySelector(".js-support-section-title").textContent = t('supportSectionTitle');
         supportSection.querySelector(".js-support-link").textContent = t('reportBug');
+
+        diagSection.querySelector(".js-diag-section-title").textContent = t('diagSectionTitle');
+        diagSection.querySelector(".js-diag-label").textContent = t('diagLabel');
+        diagSection.querySelector(".js-diag-desc").textContent = t('diagDesc');
 
         if (headerTitleEl) headerTitleEl.textContent = t('title');
         const helpTitleEl = popup.querySelector('.cw-help-title');

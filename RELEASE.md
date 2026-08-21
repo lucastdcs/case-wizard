@@ -30,7 +30,35 @@ Each branch owns one Apps Script deployment and touches only that one.
 | Development | push to `refactor-structure` | GitHub Pages `bundle-dev.js` | dev deployment, promoted by CI on every push |
 | Production | merge + push to `main` | GitHub Pages `bundle.js` | production deployment, promoted by CI on that push only |
 
-URLs: `https://lucastdcs.github.io/techsol_DialIn_AutoCopy/bundle{,-dev}.js`; Apps Script `.../exec`.
+URLs: `https://lucastdcs.github.io/case-wizard/bundle{,-dev}.js`; Apps Script `.../exec`.
+
+### Telling the two apart at a glance
+
+Every surface says which deployment it is talking to, so a leak between
+environments is visible instead of inferred:
+
+| Where | Development | Production |
+|---|---|---|
+| Floating pill | amber ring when collapsed, "Dev" badge when open | nothing |
+| Settings → Diagnóstico | `DEV · …xxxxxx` | `PROD · …xxxxxx` |
+| Browser console at boot | `[Case Wizard] backend: development/exec · implantação …xxxxxx` | same, `production` |
+| TL / Content dashboards | amber chip, bottom-left | nothing |
+
+**Production shows no badge on purpose** — no extra chrome for the agent. The
+Settings block and the console line are always present in both environments, so
+"I am in production" stays a positive confirmation rather than the absence of a
+badge (absence is also what a failed render looks like).
+
+The `…xxxxxx` suffix is the last 6 characters of the deployment ID, and it is
+what actually proves the split: **the suffix in the app and the suffix in the
+dashboard must match**. If they differ, the frontend and the backend are on
+different deployments. A dashboard served by a deployment that is in neither map
+renders a red "IMPLANTAÇÃO DESCONHECIDA" chip rather than guessing.
+
+Covered by `npm run test:deployment-env` (the backend mapping, including the
+unknown-deployment case) and `npm run smoke:env-badge` (both builds in a real
+browser — notably that the badge is *absent from the DOM* in production, not
+merely hidden).
 
 ### Order within a deploy
 
@@ -68,6 +96,41 @@ backend is the exact state this ordering exists to prevent.
 
 `APP_VERSION` (`src/app.js`) drives *when* the "what's new" modal fires; `RELEASE_NOTES.version` (`src/modules/changelog/changelog-data.js`) drives *what it says*. **Bump both in the same commit.** If they diverge, `checkAndShowChangelog` suppresses the modal and logs a warning rather than showing the new version's badge over the old version's content.
 
+## Tags & GitHub Releases
+
+A tag is **bookkeeping, not a deploy**. `deploy.yml` triggers on `push.branches`
+only, so pushing a tag does not match it and promotes nothing; `release.yml`
+triggers on `push.tags: v*` and only publishes release notes. The merge into
+`main` stays the single production gate.
+
+Order — the tag comes **last**, on a commit that is already in production:
+
+```bash
+# 1. Close the section in CHANGELOG.md: move what is under [Unreleased] into
+#    "## [X.Y.Z] - YYYY-MM-DD", leave a fresh empty [Unreleased] above it, and
+#    add the two link refs at the bottom.
+# 2. Align the three version sources in the same commit:
+#    package.json "version", APP_VERSION (src/app.js), RELEASE_NOTES.version
+#    (src/modules/changelog/changelog-data.js). See "App version" above.
+# 3. Merge into main and push — this is what promotes production.
+git checkout main && git merge refactor-structure && git push origin main
+
+# 4. Tag that commit and push the tag — this only publishes the notes.
+git tag -a v6.0.0 -m "v6.0.0"
+git push origin v6.0.0
+```
+
+`release.yml` then refuses to publish if the tag disagrees with
+`package.json`, and `scripts/extract-changelog.sh` refuses if the CHANGELOG has
+no section for that version — a Release published with empty notes is worse than
+a red workflow, because the red one tells you, and the empty one just sits there
+looking deliberate.
+
+**Versioning.** `package.json` is the SemVer source of truth and the number the
+tag must match. `APP_VERSION` and `RELEASE_NOTES.version` use the shorter `vX.Y`
+form because they drive the in-app "what's new" modal, not the release — but
+they must still describe the same release.
+
 ## Rollback
 
 - **Frontend (GitHub Pages)**: revert the offending commit on the relevant branch and push again — CI rebuilds and republishes `dist/`.
@@ -79,4 +142,5 @@ backend is the exact state this ordering exists to prevent.
 - **`clasp push` ≠ live**: it only updates the Apps Script HEAD (visible in the editor) — the `/exec` and `/dev` URLs stay pinned to whatever was last *promoted*. Easy to assume a push "deployed" when it didn't; see `docs/WORKFLOW.md` and `README.md` → Deployment.
 - **JSONP watchdog**: every backend call times out client-side after 15s (`jsonpFetch` in `data-service.js`) if Apps Script doesn't respond — a slow/erroring deployment surfaces as a generic timeout in the browser console, not a clear backend error.
 - **`github.io` reachability**: the bookmarklet hard-depends on reaching `lucastdcs.github.io`; a corporate network block there is silent failure from the agent's point of view (see `README.md` → Troubleshooting).
+- **The Pages URL contains the repo name**: renaming the repository moves the Pages site and GitHub does *not* redirect the old Pages URL, so every installed bookmarklet would 404 silently. A shim repository under the old name keeps them alive — see `docs/decisions/0003-rename-repo-to-case-wizard.md`. **Do not delete `lucastdcs/techsol_DialIn_AutoCopy`** while pre-rename bookmarklets are still in circulation.
 - <fill in as you learn>

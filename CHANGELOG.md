@@ -9,6 +9,36 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [6.0.0] - 2026-08-21
+
+### Added
+- **Marca visível de ambiente, no app e nos dashboards.** Em desenvolvimento a
+  pílula ganha um anel âmbar (colapsada) e um selo "Dev" (aberta), e os
+  dashboards de TL e da Central de Conteúdo mostram um chip âmbar no canto. Em
+  produção não aparece nada — a decisão foi não pôr chrome extra na tela de quem
+  está trabalhando. O contrapeso é **Configurações → Diagnóstico**, que mostra o
+  ambiente SEMPRE, inclusive em produção, para que "estou em produção" seja uma
+  confirmação positiva e não a ausência de um selo (ausência também é o que se vê
+  quando algo não renderizou).
+  Junto vai o sufixo da implantação (últimos 6 caracteres do ID): é ele que prova
+  a separação, porque **o sufixo no app tem de bater com o do dashboard**. Os
+  dashboards não confiam numa constante compilada — descobrem a implantação pelo
+  `ScriptApp.getService().getUrl()` da própria requisição, e uma implantação fora
+  do mapa aparece em vermelho como "IMPLANTAÇÃO DESCONHECIDA" em vez de ser
+  tratada como produção.
+  Coberto por `npm run test:deployment-env` (9 casos) e `npm run smoke:env-badge`
+  (11 checagens, os dois builds num navegador real).
 - **Uma implantação do Apps Script por branch, promovida pelo CI.** Até aqui
   existia uma implantação só, republicada a cada push em `refactor-structure` —
   e como o frontend inteiro apontava para ela, um push numa branch de
@@ -21,6 +51,19 @@ versions follow [Semantic Versioning](https://semver.org/).
   publicado — os dois rodavam em paralelo, e era essa corrida que permitia um
   frontend novo chamar operações que a implantação ainda não conhecia.
   Ver `docs/decisions/0004-implantacoes-apps-script-por-branch.md`.
+- **O bundle escolhe seu backend em tempo de build.** Contraparte do item acima,
+  no lado do cliente: `data-service.js` carrega os dois IDs num mapa
+  `DEPLOYMENTS` e o `esbuild` decide qual vale, pelo `--define:__CW_BUILD_ENV__`
+  que o `deploy.yml` injeta por branch. Sem o define o fallback é
+  `"development"`, então os scripts locais `npm run build` / `npm run dev`
+  também passam a flag — `build` gera o arquivo com nome de produção, e sem isso
+  seria uma armadilha silenciosa. Ver `RELEASE.md` → *Secrets & configuration*.
+- **`npm run smoke:wizards`** (25 checagens, Playwright sobre o
+  `mock-crm.html`): cobre os dois wizards de slides — cross-fade, foco preso no
+  card, scroll-lock, `prefers-reduced-motion`, conteúdo e casca em espanhol,
+  viewport baixa e estreita, e a guarda de descompasso de versão. Lê o
+  `APP_VERSION` de `src/app.js` em vez de fixar um número, para que um bump que
+  esqueça o `changelog-data.js` deixe o teste vermelho.
 - **Atalhos do Ctrl+K configuráveis por agente.** Cada pessoa escolhe os
   comandos que quer no Ctrl+K: status + substatus + os cenários que quiser (ou
   nenhum), com nome e apelido de busca próprios. Dois caminhos para criar — o
@@ -48,10 +91,35 @@ versions follow [Semantic Versioning](https://semver.org/).
   quem recebe/acessa. Ver `docs/decisions/0001-i18n-pt-es.md`.
 
 ### Changed
+- **Os wizards de Onboarding e de Changelog foram reconstruídos sobre uma casca
+  compartilhada** (`shared/wizard-shell.js`). Os dois arquivos eram ~90% o mesmo
+  código, e foi essa duplicação que os deixou de fora da auditoria de movimento:
+  eram os dois últimos módulos sem `prefers-reduced-motion`. A casca traz os
+  tokens `--cw-*` e as 4 curvas canônicas no lugar de hex e `cubic-bezier`
+  literais, transições com propriedades explícitas, navegação completa por
+  teclado (setas, Voltar, `Tab` preso no card, foco devolvido ao fechar), região
+  `aria-live` anunciando cada slide, dots clicáveis e rotulados, e cross-fade na
+  troca de slide. O "Pular" saiu do rodapé para o canto superior — com Voltar +
+  Pular + Próximo a linha estourava a 380px de viewport.
+- **Conteúdo do Onboarding reescrito** (PT e ES): ainda anunciava o "Quick
+  Email", módulo removido e substituído por Email Assistant + Minha Biblioteca,
+  e não citava Ctrl+K, Minha Biblioteca, BAU Form nem o estacionamento de casos.
+  Passa a usar os mesmos rótulos da paleta de comandos, que é por onde a pessoa
+  vai procurar depois.
 - O seletor PT/ES próprio do Notes e o do Call Script foram removidos: os dois
   módulos agora seguem o idioma único da sessão, trocado em Configurações.
 
 ### Fixed
+- **O modal de novidades mostrava o selo de uma versão sobre o texto de outra.**
+  `APP_VERSION` (`src/app.js`) estava em `v5.2` enquanto `RELEASE_NOTES.version`
+  seguia em `v5.1`: o modal abria anunciando "Atualização v5.2" com as
+  novidades da v5.1, e `RELEASE_NOTES.title` sequer era renderizado. Ambos vão
+  para **v6.0**, com as notas reescritas para o que de fato entrou, e
+  `checkAndShowChangelog` passa a suprimir o modal (com `console.warn`) se os
+  dois voltarem a divergir — melhor não mostrar nada do que mostrar errado.
+- O `confirmDialog` de "pular o tutorial" empatava em `z-index` 2147483647 com o
+  overlay do Onboarding e só ficava por cima por ordem de DOM. A casca dos
+  wizards passa a usar 2147483646, um abaixo, explicitamente.
 - **Atalhos: seis defeitos achados na revisão do próprio código.** Dois cliques
   no "Salvar" criavam dois atalhos idênticos (o id só nascia na escrita; agora
   é carimbado ao abrir o editor, e o botão fica desabilitado com estado
@@ -98,3 +166,6 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Added
 - ...
 -->
+
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.0.0...HEAD
+[6.0.0]: https://github.com/lucastdcs/case-wizard/releases/tag/v6.0.0

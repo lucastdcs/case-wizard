@@ -1,0 +1,79 @@
+name: Release (notas a partir do CHANGELOG)
+
+# ⚠️ ESTE WORKFLOW NÃO FAZ DEPLOY. NENHUM.
+#
+# O RELEASE.md é explícito: "o merge para a `main` é o portão de produção —
+# nada mais promove produção". Criar uma tag não pode virar um segundo caminho
+# para produção, senão a invariante que o deploy.yml estabeleceu deixa de valer
+# e ninguém consegue mais responder "o que está no ar?" olhando uma coisa só.
+#
+# O que este workflow faz é só registrar o que JÁ foi para produção: pega a
+# seção da versão no CHANGELOG.md e publica um GitHub Release com aquele texto.
+# Quem promove produção continua sendo, exclusivamente, o push na `main`.
+#
+# Ordem correta de uma release:
+#   1. fechar a seção no CHANGELOG.md (mover [Unreleased] → [X.Y.Z] - data)
+#   2. alinhar package.json, APP_VERSION e RELEASE_NOTES.version
+#   3. merge para a main  ← isto é o que promove produção
+#   4. tag vX.Y.Z na main ← isto só publica as notas
+# Ver RELEASE.md → "Tags e GitHub Releases".
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publicar-notas:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      # A tag é a fonte da verdade do que está sendo publicado; o package.json
+      # é a fonte da verdade do que o projeto acha que é. Se discordarem, é
+      # porque alguém bumpou um e esqueceu o outro — falhar aqui é mais barato
+      # que publicar um Release com o número errado e ter que apagar depois.
+      - name: Conferir se a tag bate com o package.json
+        run: |
+          VERSAO_TAG="${GITHUB_REF_NAME#v}"
+          VERSAO_PKG="$(node -p "require('./package.json').version")"
+
+          echo "tag:          v${VERSAO_TAG}"
+          echo "package.json: ${VERSAO_PKG}"
+
+          if [[ "$VERSAO_TAG" != "$VERSAO_PKG" ]]; then
+            echo "::error::A tag v${VERSAO_TAG} não bate com a versão ${VERSAO_PKG} do package.json."
+            exit 1
+          fi
+
+      - name: Extrair as notas do CHANGELOG
+        run: |
+          VERSAO="${GITHUB_REF_NAME#v}" bash scripts/extract-changelog.sh > /tmp/notas.md
+          echo "--- notas extraídas ---"
+          cat /tmp/notas.md
+
+      - name: Publicar o GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file /tmp/notas.md \
+            --verify-tag
+
+      - name: Resumo
+        run: |
+          {
+            echo "## 🏷️ Release ${GITHUB_REF_NAME} publicado"
+            echo ""
+            echo "Notas extraídas de \`CHANGELOG.md\`."
+            echo ""
+            echo "**Nenhum deploy foi feito por este workflow** — produção é promovida"
+            echo "apenas pelo push na \`main\` (ver \`RELEASE.md\`)."
+            echo ""
+            echo "[Ver o release](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME})"
+          } >> "$GITHUB_STEP_SUMMARY"

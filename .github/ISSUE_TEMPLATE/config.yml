@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Como o projeto funciona
+    url: https://github.com/lucastdcs/case-wizard/blob/refactor-structure/docs/ARCHITECTURE.md
+    about: Visão geral da arquitetura antes de abrir uma issue sobre comportamento.
+  - name: Regras de negócio e contratos
+    url: https://github.com/lucastdcs/case-wizard/blob/refactor-structure/specs/_MASTER_RULEBOOK.md
+    about: Se o código diverge da spec, a spec prevalece — vale checar antes de tratar como bug.
+  - name: Como publicar uma versão
+    url: https://github.com/lucastdcs/case-wizard/blob/refactor-structure/RELEASE.md
+    about: Runbook de deploy, ambientes, tags e rollback.

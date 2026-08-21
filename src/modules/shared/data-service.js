@@ -52,7 +52,32 @@ const ENDPOINT = isLocalhost ? "dev" : "exec";
 
 const API_URL = `https://script.google.com/a/macros/google.com/s/${SCRIPT_ID}/${ENDPOINT}`;
 
-console.log(`[Case Wizard] backend: ${BUILD_ENV}/${ENDPOINT}`);
+// Os 6 últimos caracteres do ID da implantação. É a "impressão digital" que
+// prova a separação de ambientes: se a pílula, o Configurações e o dashboard
+// mostram o mesmo sufixo, os três estão falando com a mesma implantação; se
+// divergem, achou-se o vazamento. O ID inteiro não vai pra tela - é longo e
+// não acrescenta nada a olho nu.
+const DEPLOYMENT_FINGERPRINT = SCRIPT_ID.slice(-6);
+
+/**
+ * De onde este bundle está falando. Usado pelo selo da pílula e pelo bloco de
+ * diagnóstico em Configurações.
+ *
+ * @returns {{env: string, isDev: boolean, endpoint: string, fingerprint: string}}
+ */
+export function getBackendInfo() {
+    return {
+        env: BUILD_ENV,
+        isDev: BUILD_ENV !== "production",
+        endpoint: ENDPOINT,
+        fingerprint: DEPLOYMENT_FINGERPRINT,
+    };
+}
+
+// Em produção não há selo na tela (decisão de produto: nada de chrome extra
+// pro agente). Este log é, junto com o bloco em Configurações, o caminho
+// determinístico pra confirmar o ambiente sem depender de enxergar um badge.
+console.log(`[Case Wizard] backend: ${BUILD_ENV}/${ENDPOINT} · implantação …${DEPLOYMENT_FINGERPRINT}`);
 
 const CACHE_KEY_BROADCAST = "cw_data_broadcast";
 const CACHE_KEY_TIPS = "cw_data_tips";

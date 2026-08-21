@@ -1,6 +1,6 @@
 {
-  "name": "techsol_DialIn_AutoCopy",
-  "version": "1.0.0",
+  "name": "case-wizard",
+  "version": "6.0.0",
   "description": "TechSol Operations Assistant - Productivity Suite",
   "main": "src/app.js",
   "scripts": {
@@ -17,8 +17,10 @@
     "test:note-templates": "node scripts/test-note-templates.mjs",
     "test:shortcuts": "node scripts/test-shortcuts.mjs",
     "test:prefs": "node scripts/test-user-prefs.js",
+    "test:deployment-env": "node scripts/test-deployment-env.js",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
+    "smoke:env-badge": "node scripts/smoke-env-badge.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },
   "dependencies": {

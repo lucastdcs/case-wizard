@@ -17,3 +17,13 @@ Thumbs.db
 # Editores
 .vscode/
 .idea/
+
+# Claude Code — versionado por padrão, com duas exceções.
+# `.claude/settings.json` e `.claude/skills/` são configuração e ferramental de
+# time, e o CLAUDE.md conta com eles no repo. Só ficam de fora:
+#   - worktrees/, que são cópias descartáveis do próprio repositório (já passou
+#     de 119 MB aqui) e nunca deveriam ser versionadas;
+#   - settings.local.json, que é configuração pessoal — o sufixo `.local` é a
+#     convenção do próprio Claude Code para isso.
+.claude/worktrees/
+.claude/settings.local.json
