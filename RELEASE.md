@@ -96,6 +96,41 @@ backend is the exact state this ordering exists to prevent.
 
 `APP_VERSION` (`src/app.js`) drives *when* the "what's new" modal fires; `RELEASE_NOTES.version` (`src/modules/changelog/changelog-data.js`) drives *what it says*. **Bump both in the same commit.** If they diverge, `checkAndShowChangelog` suppresses the modal and logs a warning rather than showing the new version's badge over the old version's content.
 
+## Tags & GitHub Releases
+
+A tag is **bookkeeping, not a deploy**. `deploy.yml` triggers on `push.branches`
+only, so pushing a tag does not match it and promotes nothing; `release.yml`
+triggers on `push.tags: v*` and only publishes release notes. The merge into
+`main` stays the single production gate.
+
+Order — the tag comes **last**, on a commit that is already in production:
+
+```bash
+# 1. Close the section in CHANGELOG.md: move what is under [Unreleased] into
+#    "## [X.Y.Z] - YYYY-MM-DD", leave a fresh empty [Unreleased] above it, and
+#    add the two link refs at the bottom.
+# 2. Align the three version sources in the same commit:
+#    package.json "version", APP_VERSION (src/app.js), RELEASE_NOTES.version
+#    (src/modules/changelog/changelog-data.js). See "App version" above.
+# 3. Merge into main and push — this is what promotes production.
+git checkout main && git merge refactor-structure && git push origin main
+
+# 4. Tag that commit and push the tag — this only publishes the notes.
+git tag -a v6.0.0 -m "v6.0.0"
+git push origin v6.0.0
+```
+
+`release.yml` then refuses to publish if the tag disagrees with
+`package.json`, and `scripts/extract-changelog.sh` refuses if the CHANGELOG has
+no section for that version — a Release published with empty notes is worse than
+a red workflow, because the red one tells you, and the empty one just sits there
+looking deliberate.
+
+**Versioning.** `package.json` is the SemVer source of truth and the number the
+tag must match. `APP_VERSION` and `RELEASE_NOTES.version` use the shorter `vX.Y`
+form because they drive the in-app "what's new" modal, not the release — but
+they must still describe the same release.
+
 ## Rollback
 
 - **Frontend (GitHub Pages)**: revert the offending commit on the relevant branch and push again — CI rebuilds and republishes `dist/`.
