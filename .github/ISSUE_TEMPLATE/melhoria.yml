@@ -1,0 +1,33 @@
+name: Melhoria
+description: Uma capacidade nova, ou algo que funciona mas poderia ser melhor
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Que problema isso resolve
+      description: |
+        Comece pela dor, não pela solução. Uma melhoria sem um problema atrás
+        costuma ser trabalho que ninguém sente falta depois.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Proposta
+      description: O que você faria. Se houver mais de um caminho, liste os dois e diga qual prefere.
+
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: O que foi descartado
+      description: Caminhos considerados e por que não. Evita que a discussão se repita daqui a três meses.
+
+  - type: textarea
+    id: impacto
+    attributes:
+      label: O que isso afeta
+      description: |
+        Contrato de payload (`specs/data-models/`), esquema da planilha, uma
+        spec em `specs/`, o bookmarklet já instalado pelos agentes?

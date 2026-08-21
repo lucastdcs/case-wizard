@@ -1,0 +1,58 @@
+name: Bug
+description: Algo que não funciona como deveria
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Preencha o que souber. Nem todo campo se aplica a todo bug — o único
+        realmente obrigatório é o sintoma.
+
+  - type: textarea
+    id: sintoma
+    attributes:
+      label: Sintoma
+      description: O que acontece, do ponto de vista de quem usa. Sem teoria ainda.
+      placeholder: O selo "Admin" aparece na pílula para todos os usuários, não só para quem está na lista.
+    validations:
+      required: true
+
+  - type: textarea
+    id: causa
+    attributes:
+      label: Causa
+      description: |
+        Se você já investigou, aponte `arquivo:linha`. Se ainda não, deixe em branco —
+        é melhor abrir a issue sem isso do que não abrir.
+      placeholder: |
+        `.cw-pill > *:not(.cw-main-logo)` (command-center.js:310, especificidade 0,2,0)
+        vence `.cw-admin-badge` (:586, 0,1,0) e força opacity: 1.
+
+  - type: textarea
+    id: correcao
+    attributes:
+      label: Correção proposta
+      description: Se houver uma decisão a tomar antes de implementar, escreva a pergunta aqui em vez de uma solução fechada.
+
+  - type: textarea
+    id: verificacao
+    attributes:
+      label: Como verificar
+      description: Como saber que foi resolvido. Um `npm run test:*` existente, ou o passo manual.
+
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Evidência
+      description: Log, medição, print, saída de console. O que te convenceu de que o bug é real.
+      render: shell
+
+  - type: dropdown
+    id: ambiente
+    attributes:
+      label: Onde aconteceu
+      options:
+        - Produção (bundle.js)
+        - Desenvolvimento (bundle-dev.js)
+        - Os dois
+        - Não sei

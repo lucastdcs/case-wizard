@@ -9,6 +9,20 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [6.0.0] - 2026-08-21
+
+### Added
 - **Marca visível de ambiente, no app e nos dashboards.** Em desenvolvimento a
   pílula ganha um anel âmbar (colapsada) e um selo "Dev" (aberta), e os
   dashboards de TL e da Central de Conteúdo mostram um chip âmbar no canto. Em
@@ -152,3 +166,6 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Added
 - ...
 -->
+
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.0.0...HEAD
+[6.0.0]: https://github.com/lucastdcs/case-wizard/releases/tag/v6.0.0
