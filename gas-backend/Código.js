@@ -16,6 +16,131 @@ const SHEET_USER_PREFS = "User_Prefs";
 // caminho, não na célula. Com 8 atalhos o blob fica na casa de 1 KB.
 const USER_PREFS_MAX_BYTES = 8000;
 
+// ---------------------------------------------------------------------------
+// AMBIENTE DA IMPLANTAÇÃO
+//
+// Produção e desenvolvimento são duas IMPLANTAÇÕES do mesmo projeto Apps
+// Script (ver docs/decisions/0004-implantacoes-apps-script-por-branch.md). O
+// código é idêntico nas duas - o que difere é qual delas atendeu a chamada.
+//
+// `ScriptApp.getService().getUrl()` devolve a URL da implantação que está
+// servindo ESTA requisição, e cada implantação tem a sua. É por isso que o
+// dashboard descobre o ambiente sozinho, em vez de confiar numa constante
+// compilada: uma constante repetiria o que alguém digitou, e o que se quer
+// provar aqui é justamente que o roteamento está certo.
+//
+// Ressalva importante, já registrada em BAU_Alerts.js: em contexto de GATILHO
+// DE TEMPO essa chamada pode devolver a URL de outra implantação. Por isso
+// esta função só é usada no caminho de doGet (requisição web), nunca em
+// gatilho.
+const CW_DEPLOYMENTS = {
+  // Precisa bater com o mapa DEPLOYMENTS de src/modules/shared/data-service.js
+  // e com os DEPLOYMENT_ID do .github/workflows/deploy.yml. Ao rotacionar uma
+  // implantação, os três mudam juntos.
+  production: 'AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg',
+  development: 'AKfycbyUtczRMulDAyO_1ku39Rb01zarPMw1JvO7aNOdJPYeAgCC7G9mmb-P_EuXP6kvo8l2LA',
+};
+
+/**
+ * Descobre em qual implantação este request está rodando.
+ *
+ * @returns {{env: string, isDev: boolean, fingerprint: string}}
+ *   `env` é 'production', 'development' ou 'unknown'. 'unknown' aparece se a
+ *   URL não casar com nenhum dos IDs conhecidos - o caso de uma implantação
+ *   nova que ninguém registrou aqui. Mostrar 'unknown' é melhor que assumir
+ *   produção: um ambiente não identificado é exatamente o que se quer ver.
+ */
+function getDeploymentEnv() {
+  var url = '';
+  try {
+    url = ScriptApp.getService().getUrl() || '';
+  } catch (err) {
+    // Sem contexto de web app (execução manual no editor, por exemplo).
+    return { env: 'unknown', isDev: true, fingerprint: '------' };
+  }
+
+  for (var env in CW_DEPLOYMENTS) {
+    var id = CW_DEPLOYMENTS[env];
+    if (url.indexOf(id) !== -1) {
+      return { env: env, isDev: env !== 'production', fingerprint: id.slice(-6) };
+    }
+  }
+
+  // Extrai o ID da própria URL para que o selo mostre ALGO comparável mesmo
+  // sem casar com o mapa - é essa string que denuncia qual implantação
+  // desconhecida respondeu.
+  var m = url.match(/\/s\/([^\/]+)\//);
+  return {
+    env: 'unknown',
+    isDev: true,
+    fingerprint: m ? m[1].slice(-6) : '------',
+  };
+}
+
+/**
+ * HTML do selo de ambiente, ou string vazia em produção.
+ *
+ * Fica montado aqui, e não repetido dentro de cada dashboard, para que os dois
+ * não possam divergir - mesma razão pela qual os wizards do frontend passaram
+ * a dividir uma casca só.
+ *
+ * Em PRODUÇÃO não devolve nada: a decisão foi não pôr chrome extra na tela de
+ * quem está trabalhando. Quem precisa confirmar produção compara o sufixo em
+ * Configurações → Diagnóstico, no app.
+ *
+ * Chip flutuante no canto inferior esquerdo, de propósito: uma faixa no topo
+ * empurraria o layout dos dois dashboards, e o canto não disputa espaço com a
+ * topnav nem com os cards.
+ */
+function buildEnvBadgeHtml(info) {
+  if (!info.isDev) return '';
+
+  var desconhecido = info.env === 'unknown';
+  // Vermelho para implantação não reconhecida - esse caso merece mais alarme
+  // que "estou em dev", porque significa que alguém publicou de um lugar que
+  // este código não conhece.
+  var fundo = desconhecido ? '#FCE8E6' : '#FEF7E0';
+  var borda = desconhecido ? '#F5C6C1' : '#FEEFC3';
+  var texto = desconhecido ? '#C5221F' : '#B06000';
+  var rotulo = desconhecido ? 'IMPLANTAÇÃO DESCONHECIDA' : 'DESENVOLVIMENTO';
+
+  return '' +
+    '<div id="cw-env-banner" role="status" style="' +
+      'position:fixed; left:16px; bottom:16px; z-index:99999;' +
+      'display:flex; align-items:center; gap:8px;' +
+      'padding:8px 14px; border-radius:100px;' +
+      'background:' + fundo + '; border:1px solid ' + borda + '; color:' + texto + ';' +
+      'font-family:\'Google Sans\', Roboto, sans-serif; font-size:11px; font-weight:700;' +
+      'letter-spacing:0.6px; box-shadow:0 2px 10px rgba(0,0,0,0.12); pointer-events:none;' +
+    '">' +
+      '<span>' + rotulo + '</span>' +
+      '<span style="font-family:ui-monospace, monospace; font-weight:600; opacity:0.85;">' +
+        '…' + info.fingerprint +
+      '</span>' +
+    '</div>';
+}
+
+/**
+ * Serve um dashboard já com o selo de ambiente injetado.
+ *
+ * Usa createTemplateFromFile (e não createHtmlOutputFromFile) só por causa
+ * dessa injeção. Os dois HTML não contêm nenhuma sequência `<?`, então passar
+ * pelo avaliador de template é seguro - se um dia passarem a conter, é aqui
+ * que vai quebrar.
+ */
+function renderDashboard(fileName, title) {
+  var info = getDeploymentEnv();
+  var template = HtmlService.createTemplateFromFile(fileName);
+
+  // Consumido por <?!= CW_ENV_BADGE ?> logo depois do <body> de cada dashboard.
+  template.CW_ENV_BADGE = buildEnvBadgeHtml(info);
+
+  return template.evaluate()
+    .setTitle(title)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
 function doGet(e) {
   // Fallback para testes manuais
   if (!e) e = { parameter: { op: 'broadcast' } };
@@ -26,10 +151,7 @@ function doGet(e) {
   const callback = p.callback;
 
   if (e.parameter.page === 'tl') {
-    return HtmlService.createHtmlOutputFromFile('TLDashboard')
-      .setTitle('Cases Wizard | Visão TL')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    return renderDashboard('TLDashboard', 'Cases Wizard | Visão TL');
   }
 
   // Central de Conteúdo - página própria, deliberadamente fora do TLDashboard:
@@ -38,10 +160,7 @@ function doGet(e) {
   // Quem não tem papel em Content_Access vê a tela responder "sem acesso" -
   // o gate real é por ação, no ContentAPI.gs.
   if (e.parameter.page === 'content') {
-    return HtmlService.createHtmlOutputFromFile('ContentDashboard')
-      .setTitle('Cases Wizard | Central de Conteúdo')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    return renderDashboard('ContentDashboard', 'Cases Wizard | Central de Conteúdo');
   }
 
   

@@ -1,6 +1,6 @@
 // src/modules/shared/command-center.js
 
-import { DataService } from './data-service.js';
+import { DataService, getBackendInfo } from './data-service.js';
 import { showToast, triggerGoogleAnimation } from './utils.js';
 import { SoundManager } from './sound-manager.js';
 import { ADMINS } from './config.js';
@@ -607,6 +607,57 @@ export function initCommandCenter(actions, splashDone) {
                 transform: translateX(-50%) scale(1);
             }
 
+            /* --- SELO DE AMBIENTE (só desenvolvimento) --- */
+            /* Em produção este elemento nem chega a ser criado: a decisão foi
+               não pôr chrome extra na tela do agente, e um selo permanente
+               dizendo "está tudo normal" é exatamente isso. Quem precisa
+               confirmar produção olha Configurações → Diagnóstico (ou o
+               console), onde a informação está sempre, de graça.
+
+               Aparece em cima, do lado oposto ao streak, e com a pílula
+               ABERTA - na bolinha fechada não há espaço e o agente não está
+               operando nada. Âmbar, não vermelho: é um aviso de contexto
+               ("cuidado, aqui é dev"), não um erro. */
+            .cw-env-badge {
+                position: absolute; top: -8px; left: -6px;
+                background: #F29900; color: #202124;
+                font-size: 9px; font-weight: 800;
+                letter-spacing: 0.6px; text-transform: uppercase;
+                padding: 2px 7px; border-radius: 100px;
+                border: 1px solid rgba(255,255,255,0.25);
+                box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+                white-space: nowrap;
+                pointer-events: none;
+                z-index: 21;
+                opacity: 0;
+                transform: scale(0.6);
+                transition:
+                    opacity 0.3s var(--cw-ease-standard),
+                    transform 0.3s var(--cw-ease-spring);
+            }
+            .cw-pill:not(.collapsed) .cw-env-badge {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            /* O selo escrito só cabe com a pílula aberta - mas ela passa a
+               maior parte do tempo colapsada numa bolinha de 50px, e uma marca
+               de ambiente que some justamente no estado mais comum não serve
+               pra nada. Então o estado colapsado ganha um anel âmbar.
+               box-shadow, e não border: o anel é desenhado FORA da caixa, logo
+               não é cortado pelo "overflow: hidden" do .collapsed nem empurra
+               o layout interno. A sombra original vem junto na mesma
+               declaração porque box-shadow não se acumula entre regras. */
+            .cw-pill.cw-env-dev.collapsed {
+                box-shadow:
+                    0 12px 32px rgba(0,0,0,0.25),
+                    0 0 0 3px #F29900;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-env-badge { transition: opacity 0.2s linear !important; transform: none !important; }
+                .cw-pill:not(.collapsed) .cw-env-badge { transform: none !important; }
+            }
+
             /* --- RITMO DO TURNO (contador de casos hoje) --- */
             /* Só aparece com a pílula ABERTA - é um indicador de contexto (tem
                espaço pro número, não corta em overflow:hidden), não uma
@@ -703,6 +754,21 @@ export function initCommandCenter(actions, splashDone) {
   }
 
   // 2. CONSTRUÇÃO DO DOM
+  // Selo de ambiente: existe só fora de produção. Em produção a função devolve
+  // string vazia e o elemento nem entra no DOM - é a diferença entre "não
+  // mostrar" e "mostrar escondido", e importa porque o smoke test verifica a
+  // ausência do nó, não a sua invisibilidade.
+  //
+  // O sufixo da implantação vai no title: quem está caçando um vazamento de
+  // ambiente quer comparar esse sufixo com o do dashboard, mas quem só está
+  // trabalhando não precisa de seis caracteres aleatórios na tela.
+  function envBadgeHtml() {
+    const info = getBackendInfo();
+    if (!info.isDev) return "";
+    const titulo = `Ambiente de desenvolvimento — implantação …${info.fingerprint} (${info.endpoint})`;
+    return `<div id="cw-env-tag" class="cw-env-badge" title="${titulo}">Dev</div>`;
+  }
+
   const ICONS = {
     check: `<svg viewBox="0 0 24 24" fill="none" stroke="#81C995" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
     notes: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
@@ -723,12 +789,16 @@ export function initCommandCenter(actions, splashDone) {
 
   const pill = document.createElement("div");
   pill.id = "cw-floating-trigger";
-  pill.className = "cw-pill side-right collapsed";
+  // A classe de ambiente entra no root da pílula, e não só no selo: é ela que
+  // permite marcar também o estado COLAPSADO (anel âmbar), onde o selo escrito
+  // não teria onde caber.
+  pill.className = "cw-pill side-right collapsed" + (getBackendInfo().isDev ? " cw-env-dev" : "");
 
   pill.innerHTML = `
         <div id="cw-command-center" style="display:none;"></div>
         <div class="cw-main-logo js-cc-quicksearch" title="${cct('quickSearch')}">${ICONS.main}${ICONS.mainSpark}</div>
         <div id="cw-admin-tag" class="cw-admin-badge">Admin</div>
+        ${envBadgeHtml()}
         <div id="cw-streak-badge" class="cw-streak-badge js-cc-casestoday" title="${cct('casesToday')}">🔥 <span id="cw-streak-count">0</span></div>
 
         <div class="cw-grip js-cc-drag" title="${cct('drag')}">
