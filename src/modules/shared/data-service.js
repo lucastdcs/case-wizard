@@ -2,16 +2,42 @@
 
 import { getAgentEmail } from './page-data.js'; 
 
-// 1. Verifica se está rodando localmente (Live Server no VS Code/Workstation)
-const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+// --- ROTEAMENTO DE AMBIENTE ---------------------------------------------
+//
+// `clasp push` só atualiza o HEAD do projeto Apps Script; as URLs /exec e
+// /dev continuam presas à versão que foi *promovida* pela última vez. Por
+// isso produção e desenvolvimento têm deployments SEPARADOS, e o frontend
+// precisa saber em qual dos dois falar - senão o bundle de produção acaba
+// conversando com o deployment que o CI republica a cada push na branch de
+// desenvolvimento (foi exatamente o que este split veio corrigir).
+//
+// Quem decide é o build: o esbuild injeta __CW_BUILD_ENV__ via --define
+// (veja .github/workflows/deploy.yml). Sem o define - rodando direto no
+// Live Server, sem passar pelo bundler - o `typeof` cai no fallback
+// "development", que é o comportamento certo pra máquina local.
+//
+// Ao rotacionar um deployment, troque o ID AQUI e, se for o de
+// desenvolvimento, também o DEPLOYMENT_ID do deploy.yml - os dois precisam
+// apontar pro mesmo lugar.
+const DEPLOYMENTS = {
+    // Promovido manualmente (`clasp deploy -i <id>`), nunca pelo CI.
+    production:  "AKfycbxFxh1cVk6r0t_JTA2TBfHBLJe_mOBQFsidwL1jwsUDcBtQYk3afu25SN-FR3vafJChHw",
+    // Promovido automaticamente pelo CI a cada push em refactor-structure.
+    development: "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg",
+};
 
-// 2. Isola o ID do seu script para manter o código limpo
-const SCRIPT_ID = "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg";
+const BUILD_ENV = typeof __CW_BUILD_ENV__ !== "undefined" ? __CW_BUILD_ENV__ : "development";
 
-// 3. Roteia automaticamente para o endpoint correto
-const API_URL = isDevelopment 
-    ? `https://script.google.com/a/macros/google.com/s/${SCRIPT_ID}/dev` 
-    : `https://script.google.com/a/macros/google.com/s/${SCRIPT_ID}/exec`;
+// Live Server local continua falando com o /dev do deployment de
+// desenvolvimento (código não publicado, iteração rápida).
+const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
+const SCRIPT_ID = DEPLOYMENTS[BUILD_ENV] || DEPLOYMENTS.development;
+const ENDPOINT = isLocalhost ? "dev" : "exec";
+
+const API_URL = `https://script.google.com/a/macros/google.com/s/${SCRIPT_ID}/${ENDPOINT}`;
+
+console.log(`[Case Wizard] backend: ${BUILD_ENV}/${ENDPOINT}`);
 
 const CACHE_KEY_BROADCAST = "cw_data_broadcast";
 const CACHE_KEY_TIPS = "cw_data_tips";

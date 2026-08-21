@@ -24,15 +24,22 @@ jobs:
       - name: Install esbuild
         run: npm install esbuild
 
+      # `--define:__CW_BUILD_ENV__` é o que faz src/modules/shared/data-service.js
+      # escolher entre o deployment de produção e o de desenvolvimento do Apps
+      # Script. Sem ele o bundle cai no fallback "development" e produção passa
+      # a falar com o backend que este mesmo workflow republica a cada push na
+      # refactor-structure. Se um dia alguém adicionar um terceiro build aqui,
+      # ele PRECISA vir com o define - o fallback é silencioso.
+
       # --- BUILD DE PRODUÇÃO (Apenas na main) ---
       - name: Build Production (bundle.js)
         if: github.ref == 'refs/heads/main'
-        run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle.js --minify
+        run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle.js --minify --define:__CW_BUILD_ENV__='"production"'
 
       # --- BUILD DE DESENVOLVIMENTO (Apenas na refactor) ---
       - name: Build Development (bundle-dev.js)
         if: github.ref == 'refs/heads/refactor-structure'
-        run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle-dev.js --minify
+        run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle-dev.js --minify --define:__CW_BUILD_ENV__='"development"'
         
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
