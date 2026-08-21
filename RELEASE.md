@@ -39,9 +39,14 @@ clasp deploy -i <production-deployment-id> -d "Release $(date -u +%F) - $(git re
 
 - **`CLASPRC_JSON`** (GitHub Actions secret) — `clasp` OAuth credentials CI uses to authenticate before `clasp push`/`clasp deploy`. Regenerate locally with `clasp login`, then update the repo secret (Settings → Secrets → Actions) with the resulting `~/.clasprc.json` contents.
 - **`scriptId`** (`gas-backend/.clasp.json`, committed) — identifies which Apps Script project `clasp push` targets. Same for both branches/environments; only the *deployment* differs.
-- **`SCRIPT_ID`** (`src/modules/shared/data-service.js`, hardcoded) — used to build the `/exec` and `/dev` API URLs the frontend calls.
-- **`DEPLOYMENT_ID`** (`.github/workflows/deploy.yml`, hardcoded) — the pinned *development* deployment CI auto-promotes on `refactor-structure`. Must match the `SCRIPT_ID` in `data-service.js` used by that branch — update both together if the script is ever rotated.
-- **Production deployment ID** — intentionally **not** automated/hardcoded in CI; used manually via `clasp deploy -i <id>` or the Apps Script UI (Deploy → Manage deployments).
+- **`DEPLOYMENTS`** (`src/modules/shared/data-service.js`, committed) — a map with **both** Apps Script deployment IDs, `production` and `development`. Which one the bundle uses is decided at build time, not at runtime.
+- **`__CW_BUILD_ENV__`** (`.github/workflows/deploy.yml`, injected via `esbuild --define`) — `"production"` on `main`, `"development"` on `refactor-structure`. **Any new build step must pass this flag**: without it `data-service.js` falls back to `"development"` silently, and a production bundle would start talking to the dev backend. (That is exactly the state `main` would have inherited from a plain merge before this split existed.) Building locally with no `--define` is the one case where the fallback is correct.
+- **`DEPLOYMENT_ID`** (`.github/workflows/deploy.yml`, hardcoded) — the pinned *development* deployment CI auto-promotes on `refactor-structure`. Must match `DEPLOYMENTS.development` in `data-service.js` — update both together if the deployment is ever rotated.
+- **Production deployment ID** — `DEPLOYMENTS.production` in `data-service.js`. Deliberately **not** promoted by CI; promoted manually via `clasp deploy -i <id>` or the Apps Script UI (Deploy → Manage deployments). Pushing `main` updates the frontend and the backend HEAD, never the live production deployment.
+
+### App version
+
+`APP_VERSION` (`src/app.js`) drives *when* the "what's new" modal fires; `RELEASE_NOTES.version` (`src/modules/changelog/changelog-data.js`) drives *what it says*. **Bump both in the same commit.** If they diverge, `checkAndShowChangelog` suppresses the modal and logs a warning rather than showing the new version's badge over the old version's content.
 
 ## Rollback
 
