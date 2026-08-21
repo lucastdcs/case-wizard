@@ -567,7 +567,7 @@ var INDEX_ROWS = [
   ['08', 'Integração com o DOM do CRM', 'Scraping defensivo, XPath, execCommand, setters nativos e o rascunho fantasma.'],
   ['09', 'Transporte JSONP', 'Por que não fetch, anatomia da chamada, watchdog de 15s e as consequências do GET.'],
   ['10', 'Backend: roteador e operações', 'doGet, o catálogo de op=, o duplo formato de saída e os pontos de entrada alternativos.'],
-  ['11', 'Backend: modelo de dados', 'As seis abas da planilha, o mapa de 18 colunas do BAU e a regra anti-apagamento.'],
+  ['11', 'Backend: modelo de dados', 'As dez abas da planilha, o mapa de colunas do BAU e a regra anti-apagamento.'],
   ['12', 'Ciclo de vida do caso BAU', 'A máquina de estados, quem pode transicionar o quê e as regras de fila.'],
   ['13', 'Motor de e-mails dinâmicos', 'Template único com placeholders, despacho por tipo de evento e cálculo de urgência.'],
   ['14', 'TL Dashboard', 'A segunda aplicação: HtmlService, google.script.run e por que ela não usa a API JSONP.'],
@@ -624,7 +624,7 @@ function sec01_(ctx) {
     ['Front-end', 'Vanilla JavaScript (ES modules), sem framework, empacotado por esbuild'],
     ['Estilos', 'CSS-in-JS e tags <style> injetadas; arquivos .css externos são proibidos por regra'],
     ['Backend', 'Google Apps Script (runtime V8), publicado como Web App'],
-    ['Banco de dados', 'Google Sheets (seis abas nomeadas)'],
+    ['Banco de dados', 'Google Sheets (dez abas nomeadas)'],
     ['Transporte', 'JSONP sobre GET, tanto para leitura quanto para escrita'],
     ['Hospedagem do bundle', 'GitHub Pages (branch gh-pages)'],
     ['CI/CD', 'GitHub Actions: esbuild para o front, clasp para o backend'],
@@ -901,12 +901,17 @@ function sec06_(ctx) {
     '|-- app.js                       ponto de entrada (secao 05)',
     '`-- modules/',
     '    |-- shared/                  nucleo compartilhado (secao 07)',
-    '    |   |-- data-service.js      cliente da API + jsonpFetch',
+    '    |   |-- data-service.js      cliente da API + jsonpFetch + DEPLOYMENTS',
     '    |   |-- page-data.js         scrapers e identidade do agente',
     '    |   |-- command-center.js    a pilula flutuante',
     '    |   |-- command-palette.js   busca rapida Ctrl/Cmd+K',
+    '    |   |-- shortcut-service.js  atalhos do Ctrl+K por agente',
+    '    |   |-- user-prefs-service.js  preferencias que seguem a pessoa',
+    '    |   |-- i18n.js              idioma de sessao (PT/ES)',
     '    |   |-- header-factory.js    janelas padronizadas (glassmorphism)',
+    '    |   |-- wizard-shell.js      casca comum do Onboarding e do Changelog',
     '    |   |-- animations.js        genie effect e idle listener',
+    '    |   |-- z-layers.js          escala unica de empilhamento',
     '    |   |-- dom-utils.js         esperar(), cliques sinteticos, scroll lock',
     '    |   |-- sound-manager.js     WebAudio + som de boot em base64',
     '    |   |-- streak-tracker.js    contador diario de casos',
@@ -915,7 +920,7 @@ function sec06_(ctx) {
     '    |-- notes/                   Case Notes - o modulo mais complexo',
     '    |   |-- core/                notes-state . form-builder . output-generator',
     '    |   |-- ui/                  notes-popup',
-    '    |   |-- data/                notes-data . screenshot-rules',
+    '    |   |-- data/                notes-data . note-templates-service',
     '    |   |-- components/          step-tasks . step-scenarios . bullet-editor',
     '    |   |                        . split-transfer',
     '    |   |-- drafts/              draft-service . draft-ui',
@@ -924,9 +929,10 @@ function sec06_(ctx) {
     '    |   `-- tag-support.js',
     '    |-- email-assistant/         email-data . email-data-service',
     '    |                            . email-automation-service',
-    '    |-- bau-form/                assistant . config (FORM_CONFIG) . styles',
+    '    |-- bau-form/                assistant . config (FORM_CONFIG) . i18n . styles',
+    '    |-- configs/                 configs-assistant . shortcuts-section',
     '    |-- call-script/  links/  timezone/  personal-library/',
-    '    `-- broadcast/  changelog/  onboarding/  configs/',
+    '    `-- broadcast/  changelog/  onboarding/',
   ], 'Módulos simples são um único arquivo *-assistant.js. Só Case Notes cresceu a ponto de exigir subpastas por responsabilidade.');
 
   h2_(ctx, 'Convenções de nomenclatura', COLOR.modBlue);
@@ -952,15 +958,27 @@ function sec06_(ctx) {
   code_(ctx, [
     'gas-backend/',
     '|-- Codigo.js                doGet(e): roteador + helpers de planilha + perfil',
+    '|                            + preferencias do agente',
     '|-- BAU_API.js               handleBAUEscalation . getAgentCases',
     '|                            . update_bau_case . deleteBAUCase',
     '|-- BAU_Dashboard.js         getPendingBAUCases . updateBAUCaseStatus',
-    '|                            . getCurrentTLProfile',
+    '|                            . getWeeklyHistory . presenca de TLs',
     '|-- BAU_Alerts.js            checkBAUPendingVolume + gatilho de tempo',
+    '|-- Backup.js                runWeeklyBackup para a planilha Archive_BAU',
     '|-- EmailEngine.js           sendDynamicTechSolEmail: despacho por tipo',
     '|-- EmailTemplateDynamic.html   template HTML unico com placeholders',
-    '|-- TLDashboard.html         a pagina do TL, servida por HtmlService',
-    '|-- Backup.js                runWeeklyBackup para a planilha Archive_BAU',
+    '|-- TLDashboard.html         a pagina do TL          (?page=tl)',
+    '|',
+    '|   -- Central de Conteudo (secao 15) --',
+    '|-- ContentAPI.js            ~1000 linhas: itens, rascunhos, aprovacao,',
+    '|                            papeis, travas e validacoes',
+    '|-- ContentDashboard.html    a pagina da Central     (?page=content)',
+    '|-- ContentFields_Notes.js   definicao de campos por sub-status',
+    '|-- ContentSeed_CallScript.js . ContentSeed_Emails.js',
+    '|-- ContentSeed_Links.js      . ContentSeed_NoteTemplates.js',
+    '|-- ContentSeed_Tips.js',
+    '|-- seeds/                   sementes versionadas',
+    '|',
     '|-- Teste.js                 funcoes de execucao manual no editor',
     '|-- appsscript.json          manifesto: V8, fuso, executeAs, access',
     '`-- .clasp.json              scriptId do projeto Apps Script',
@@ -989,10 +1007,20 @@ function sec07_(ctx) {
      'Define o objeto COLORS com a cor de cada módulo — a mesma paleta usada neste documento e no deck.'],
     ['command-palette.js', 'Busca rápida por Ctrl/Cmd+K sobre a mesma lista de módulos.',
      'Injeta os próprios estilos sob demanda (injectStyles), padrão repetido em vários módulos.'],
+    ['shortcut-service.js', 'Atalhos do Ctrl+K montados pelo próprio agente: status + sub-status + cenários, com nome e apelido.',
+     'Guarda a REFERÊNCIA do cenário, nunca o texto da nota. Assim uma correção publicada na Central chega ao atalho sem o agente refazer nada.'],
+    ['user-prefs-service.js', 'Preferências que seguem a pessoa, não o navegador. Um blob JSON por agente.',
+     'Mesmo desenho cache-first da Biblioteca Pessoal. Existe porque trocar de máquina ou de perfil do Chrome é rotina, e é aí que perder a configuração custa caro.'],
+    ['i18n.js', 'Idioma de sessão, resolvido em três níveis: override manual salvo no navegador, depois profile.defaultLanguage da planilha People, depois "pt".',
+     'Há dicionários só de PT e ES; um perfil marcado como EN cai para PT até existir tradução.'],
     ['header-factory.js', 'createStandardHeader: cromo padronizado de janela, com gradiente e botões de controle.',
      'Também monta o overlay de ajuda por janela, a partir de um texto passado na criação.'],
+    ['wizard-shell.js', 'Casca comum dos dois wizards de slides: Onboarding (primeiro uso) e Changelog (quando APP_VERSION muda).',
+     'Os dois eram arquivos separados com ~90% do mesmo código, e foi essa duplicação que os deixou para trás na auditoria de movimento. Uma casca só significa que não conseguem mais divergir.'],
     ['animations.js', 'toggleGenieAnimation: abertura e fechamento em "gênio da lâmpada" a partir do botão de origem.',
      'Calcula a geometria entre o botão da pílula e o centro da tela. Também instala um listener de ociosidade.'],
+    ['z-layers.js', 'Escala única de empilhamento (z-index) do app inteiro.',
+     'Ver a nota abaixo: é um caso exemplar de por que uma constante compartilhada vale mais que a liberdade de cada módulo escolher o próprio número.'],
     ['dom-utils.js', 'esperar(ms), cliques sintéticos, objectToCss, clamp, scroll lock, navegação por setas, estados vazios.',
      'O scroll lock usa contagem de referências (scrollLockCount) para suportar overlays empilhados sem destravar cedo demais.'],
     ['sound-manager.js', 'Feedback sonoro via WebAudio, com mudo persistido em localStorage.',
@@ -1004,6 +1032,23 @@ function sec07_(ctx) {
     ['config.js', 'Lista ADMINS de LDAPs com privilégio no cliente.',
      'É conveniência de UI, não segurança: a autorização real acontece no servidor (seção 16).'],
   ], COLOR.modPurple, [0.17, 0.40, 0.43]);
+
+  h2_(ctx, 'O caso do z-index: por que existe z-layers.js', COLOR.modPurple);
+  para_(ctx, 'Vale contar essa história porque ela é o argumento mais concreto do projeto a favor de ' +
+    'uma constante compartilhada. Antes, cada módulo escolhia o próprio número de empilhamento — 9999, ' +
+    '10000, 99999, 999999, 1000000, 2147483648 — e o resultado aparecia na tela:', { spaceAfter: 8 });
+
+  bullets_(ctx, [
+    'A janela de módulo nascia em 99999, abaixo do painel lateral do Gmail: quem abria o Case Notes via a metade direita do painel coberta pelo add-on.',
+    'Ela só subia para a frente depois do primeiro clique dentro dela, por causa do listener de foco em animations.js.',
+    'Arrastar era pior: o contador de "trazer para frente" começava em 10000, então arrastar EMPURRAVA a janela para trás.',
+  ]);
+
+  callout_(ctx, 'O teto real é 2147483647',
+    'É o maior inteiro de 32 bits com sinal, e o navegador grampeia qualquer valor acima disso. O ' +
+    '2147483648 que animations.js usava para "focar" a janela, portanto, não fazia o que aparentava: ' +
+    'empatava com a pílula em vez de ficar acima dela. Um número maior que o teto não é mais forte — ' +
+    'é apenas igual ao teto, e empate de z-index é resolvido pela ordem no DOM.', COLOR.red);
 
   h2_(ctx, 'Chaves de armazenamento local', COLOR.modPurple);
   para_(ctx, 'O app não tem estado de negócio próprio, mas mantém cache e rascunhos. Todas as chaves ' +
@@ -1018,7 +1063,16 @@ function sec07_(ctx) {
     ['cw_notes_emergency_save', 'DraftService', 'Salvamento de emergência do texto em edição.', 'Perda do texto em edição se a aba morrer.'],
     ['cw_case_streak_v1', 'streak-tracker', 'Contagem de casos do dia.', 'O contador reinicia; sem impacto funcional.'],
     ['cw_sounds_muted', 'SoundManager', 'Preferência de áudio.', 'Volta ao som ligado.'],
+    ['cw_user_prefs_v1', 'UserPrefsService', 'Blob de preferências do agente (hoje, os atalhos do Ctrl+K).', 'Recarregado da planilha: este é cache, a fonte é o backend.'],
+    ['cw_ui_lang', 'i18n', 'Override manual de idioma feito em Configurações.', 'Volta a seguir o segmento da planilha People.'],
+    ['cw_content_*', 'DataService', 'Cache do conteúdo publicado pela Central (um por módulo).', 'Rebuscado na próxima leitura; o app usa o conteúdo embutido enquanto isso.'],
   ], COLOR.modPurple, [0.24, 0.16, 0.34, 0.26], { monoCols: [0] });
+
+  callout_(ctx, 'Duas categorias diferentes na mesma tabela',
+    'Vale distinguir: cw_data_*, cw_content_* e cw_user_prefs_v1 são CACHE de algo que vive no ' +
+    'backend — perder é inofensivo. Já cw_notes_parking_lot e cw_notes_emergency_save são a ÚNICA ' +
+    'cópia de um trabalho do agente. Perder essas duas é perda real, e é por isso que a seção 18 as ' +
+    'trata como requisito e não como conveniência.', COLOR.modPurple);
 }
 
 function sec08_(ctx) {
@@ -1214,8 +1268,12 @@ function sec10_(ctx) {
     "  const op = p.op || 'broadcast';",
     '  const callback = p.callback;',
     '',
-    "  if (e.parameter.page === 'tl') {                  // ponto de entrada alternativo",
+    '  // pontos de entrada alternativos: paginas HTML, nao a API',
+    "  if (e.parameter.page === 'tl') {",
     "    return HtmlService.createHtmlOutputFromFile('TLDashboard') ... ;",
+    '  }',
+    "  if (e.parameter.page === 'content') {",
+    "    return HtmlService.createHtmlOutputFromFile('ContentDashboard') ... ;",
     '  }',
     '',
     '  let result = {};',
@@ -1252,8 +1310,15 @@ function sec10_(ctx) {
     ['new_broadcast', 'Código.js (inline)', 'type, title, text, author', 'Publica um aviso global.'],
     ['update_broadcast', 'Código.js (inline)', 'id + campos', 'Edita um aviso existente.'],
     ['delete_broadcast', 'Código.js (inline)', 'id', 'Exclusão lógica: marca a coluna Active como false.'],
+    ['content_public', 'ContentAPI.js · handleContentPublicRead', 'module, lang', 'Devolve o conteúdo publicado da Central para o app consumir (seção 15).'],
+    ['get_user_prefs', 'Código.js · handleGetUserPrefs', 'user', 'Blob JSON de preferências daquele agente.'],
+    ['save_user_prefs', 'Código.js · handleSaveUserPrefs', 'user, prefs', 'Grava o blob. Hoje carrega os atalhos do Ctrl+K.'],
     ['get_user_profile', 'Código.js · getUserProfileByLdap', 'user ou ldap', 'Devolve papel, categoria, segmento, idioma padrão e isOverhead.'],
   ], COLOR.green, [0.15, 0.24, 0.31, 0.30], { monoCols: [0] });
+
+  para_(ctx, 'Repare que a Central de Conteúdo expõe exatamente UMA operação aqui — a de leitura. ' +
+    'Toda a escrita e a curadoria dela ficam na ponte nativa, pelo mesmo motivo de segurança que vale ' +
+    'para o TL Dashboard (seções 15 e 16).', { spaceAfter: 8 });
 
   callout_(ctx, 'Divergência conhecida a verificar',
     'O DataService do front-end chama uma operação update_bau_status que não aparece na cadeia de ' +
@@ -1308,6 +1373,10 @@ function sec11_(ctx) {
     ['SHEET_TIPS', 'Tips', 'Frases exibidas durante esperas.', 'Não.'],
     ['SHEET_LOGS', 'Logs', 'Telemetria de uso: timestamp, usuário, versão, categoria, ação, rótulo, valor.', 'Sim, por handleLog, com cabeçalho.'],
     ['SHEET_SNIPPETS', 'Database_Snippets', 'Biblioteca pessoal de cada agente.', 'Sim, por getOrCreateSheet, com cabeçalho.'],
+    ['SHEET_USER_PREFS', 'User_Prefs', 'Um blob JSON de preferências por agente (hoje, os atalhos do Ctrl+K).', 'Sim.'],
+    ['SHEET_CONTENT_ITEMS', 'Content_Items', 'Conteúdo publicado pela Central. Uma linha por VERSÃO (seção 15).', 'Sim, por getContentSheet_.'],
+    ['SHEET_CONTENT_DRAFTS', 'Content_Drafts', 'Propostas de mudança em andamento, com trilha de revisão e trava.', 'Sim, por getContentSheet_.'],
+    ['SHEET_CONTENT_ACCESS', 'Content_Access', 'Quem pode propor e aprovar em cada módulo da Central.', 'Sim, por getContentSheet_.'],
   ], COLOR.modOrange, [0.20, 0.18, 0.42, 0.20], { monoCols: [0, 1] });
 
   callout_(ctx, 'Assimetria importante',
