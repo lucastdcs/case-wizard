@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.idx/
+test-results/
+
+# O payload de semeadura da Central de Conteúdo é derivado do código, mas fica
+# versionado em gas-backend/seeds/ de propósito: a semeadura é feita colando o
+# JSON no editor do Apps Script, e ter o arquivo no repo evita precisar de um
+# checkout com node só pra gerar o mesmo conteúdo de novo.
+# Só o gerado na raiz (saída solta do script) é ignorado.
+/links-seed.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/

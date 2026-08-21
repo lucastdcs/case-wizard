@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Reset Universal para E-mail */
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #F8F9FA;
+            font-family: 'Google Sans', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            color: #202124;
+        }
+
+        /* Animação Grata de Entrada */
+        .animate-up { animation: fadeUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+        .ambient-glow-bg {
+            background-color: #F8F9FA;
+            background-image: radial-gradient(ellipse at top center, rgba(66, 133, 244, 0.06) 0%, rgba(248, 249, 250, 0) 70%);
+        }
+
+        @keyframes fadeUp {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Classes Utilitárias (Fallbacks Inline Abaixo) */
+        .text-mono { font-family: 'Roboto Mono', Courier, monospace; }
+        .word-break { word-break: break-word; word-wrap: break-word; overflow-wrap: break-word; }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8F9FA; font-family: 'Google Sans', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #202124;">
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" class="ambient-glow-bg" style="background-color: #F8F9FA;">
+        <tr>
+            <td align="center" style="padding: 64px 20px;">
+
+                <table class="animate-up" width="100%" max-width="640" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px; width: 100%; background-color: #FFFFFF; border-radius: 32px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border: 1px solid #DADCE0; margin: 0 auto;">
+
+                    <tr>
+                        <td style="padding: 0;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #3D3D3D; border-bottom: 1px solid rgba(255,255,255,0.15);">
+                                <tr>
+                                    <td align="center" style="padding: 36px 32px; position: relative;">
+                                        <div style="position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); opacity: 0.8;"></div>
+
+                                        <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px;">
+                                            {{HEADER_ICON}}
+                                            <span style="color: #FFFFFF; vertical-align: middle;">BAU Central</span>
+                                        </div>
+                                        <p style="margin: 0; font-size: 13px; color: {{THEME_COLOR}}; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">
+                                            {{HEADER_SUBTITLE}}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td style="padding: 32px;">
+                            
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 24px;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0 0 8px 0; font-size: 18px; color: #202124; font-weight: 500; letter-spacing: -0.2px;">{{GREETING}}</p>
+                                        <div style="font-size: 13px; color: #5F6368; font-weight: 500;">
+                                            Solicitado por:
+                                            <a href="https://moma.corp.google.com/chat?with={{SENDER_LDAP}}" target="_blank" style="color: #1A73E8; text-decoration: none; font-weight: 600;">@{{SENDER_LDAP}}</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 0 0 32px 0; font-size: 15px; line-height: 1.6; color: #3C4043;">
+                                {{MAIN_MESSAGE}}
+                            </p>
+                            
+                            <div style="margin-bottom: 24px;">
+                                {{URGENCY_BADGE}}
+                            </div>
+                            
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8F9FA; border-radius: 24px; margin-bottom: 32px; border: 1px solid #DADCE0;">
+                                <tr>
+                                    <td style="padding: 24px;">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td valign="top" width="28" style="padding-right: 16px;">
+                                                    <img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/format_quote/default/48px.svg" width="28" height="28" alt="Quote" style="display: block;" />
+                                                </td>
+                                                <td valign="top">
+                                                    <div style="font-size: 12px; color: #5F6368; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600;">{{LABEL_CONTEXT}}</div>
+                                                    <div style="font-size: 15px; color: #202124; line-height: 1.6;">
+                                                        "{{REASON}}"
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8F9FA; border-radius: 24px; border: 1px solid #DADCE0; margin-bottom: 32px;">
+                                <tr>
+                                    <td style="padding: 24px;">
+
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 24px; border-bottom: 1px solid #DADCE0; padding-bottom: 24px;">
+                                            <tr>
+                                                <td valign="top" style="width: 30%; padding-right: 16px;">
+                                                    <div style="font-size: 12px; color: #5F6368; font-weight: 500; margin-bottom: 6px;">Case Connect</div>
+                                                    <a href="https://cases.connect.corp.google.com/#/case/{{CASE_ID}}" target="_blank" style="font-size: 15px; color: #1A73E8; font-weight: 500; text-decoration: none; display: inline-block;">
+                                                        <span style="vertical-align: middle;">{{CASE_ID}}</span>
+                                                        <img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/arrow_outward/default/48px.svg" width="14" height="14" alt="" style="vertical-align: middle; margin-left: 2px;" />
+                                                    </a>
+                                                </td>
+
+                                                <td valign="top" style="width: 35%; padding-right: 16px;">
+                                                    <div style="font-size: 12px; color: #5F6368; font-weight: 500; margin-bottom: 6px;">{{LABEL_DOMAIN}}</div>
+                                                    <div class="word-break" style="font-size: 15px; color: #1A73E8; font-weight: 600;">{{SITE}}</div>
+                                                </td>
+
+                                                <td valign="top" style="width: 35%;">
+                                                    <div style="font-size: 12px; color: #5F6368; font-weight: 500; margin-bottom: 6px;">{{LABEL_SCHEDULE}}</div>
+                                                    <div style="font-size: 13px; color: #202124; background-color: #FFFFFF; padding: 6px 10px; border-radius: 6px; display: inline-block; border: 1px solid #DADCE0;">
+                                                        <img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/schedule/default/48px.svg" width="14" height="14" alt="" style="vertical-align: middle; margin-right: 6px;" />
+                                                        <span class="text-mono" style="vertical-align: middle;">{{AVAILABILITY}}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td valign="top" style="width: 30%; padding-right: 16px;">
+                                                    <div style="font-size: 12px; color: #5F6368; font-weight: 500; margin-bottom: 6px;">Customer ID</div>
+                                                    <div class="text-mono" style="font-size: 14px; color: #1A73E8; background-color: #E8F0FE; padding: 6px 10px; border-radius: 6px; display: inline-block; border: 1px solid rgba(26, 115, 232, 0.2);">
+                                                        {{CID}}
+                                                    </div>
+                                                </td>
+
+                                                <td valign="top" style="width: 70%;">
+                                                    <div style="font-size: 12px; color: #5F6368; font-weight: 500; margin-bottom: 6px;">{{LABEL_TASK}}</div>
+                                                    <div class="word-break" style="font-size: 15px; color: #202124; line-height: 1.5;">{{TASK}}</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <div style="text-align: center;">
+                                <table cellpadding="0" cellspacing="0" border="0" align="center">
+                                    <tr>
+                                        <td align="center" style="border-radius: 100px; background-image: linear-gradient(135deg, #FFFFFF 0%, #F1F3F4 100%);">
+                                            <span style="display: inline-block; color: #202124; font-size: 14px; font-weight: 600; font-family: 'Google Sans', sans-serif; padding: 14px 32px; text-decoration: none; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                                                {{FOOTER_BADGE}}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td style="padding: 32px; text-align: center; border-top: 1px solid #DADCE0;">
+
+                            <div style="margin-bottom: 24px;">
+                                <span style="display: inline-block; background-color: #F8F9FA; color: #5F6368; font-size: 12px; font-weight: 500; padding: 8px 20px; border-radius: 24px; border: 1px solid #DADCE0;">
+                                    Automated by <a href="https://moma.corp.google.com/chat?with=lucaste" target="_blank" style="color: #1A73E8; text-decoration: none; font-weight: 600;">@lucaste</a>
+                                </span>
+                            </div>
+
+                            <p style="margin: 0 0 16px 0; font-size: 12px; color: #5F6368;">
+                                Rastreio: <span class="text-mono" style="color: #202124; background: #F1F3F4; padding: 2px 6px; border-radius: 4px;">{{ID_ESCALACAO}}</span>
+                            </p>
+
+                            <div>
+                                <a href="https://forms.gle/AJX3NXz1TpJRm3mC7" target="_blank" style="color: #1A73E8; text-decoration: none; font-size: 12px; font-weight: 500; display: inline-block; opacity: 0.8;">
+                                    Report Bug / Feature Request
+                                </a>
+                            </div>
+
+                        </td>
+                    </tr>
+
+                </table>
+                
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

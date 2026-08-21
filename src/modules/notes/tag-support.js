@@ -3,25 +3,29 @@
 // Importamos estilos genéricos do utils para manter consistência
 import { styleLabel } from '../shared/utils.js';
 import {styleCheckboxInput} from '../notes/notes-styles.js'
+import { notesState } from './core/notes-state.js';
+import { SoundManager } from '../shared/sound-manager.js';
 
 // Estilos locais específicos deste módulo
 const styleContainer = { 
-    marginTop: "16px", marginBottom: "12px", padding: "10px", 
-    background: "#fff8e1", borderRadius: "6px", border: "1px solid #ffecb3", 
-    display: "none" 
+    marginTop: "24px", marginBottom: "16px", padding: "20px",
+    background: "#fff9e6", borderRadius: "20px", border: "1.5px solid #fbbc0540",
+    display: "none",
+    boxShadow: "0 4px 12px rgba(251, 188, 5, 0.05)"
 };
-const styleWarning = { fontSize: "12px", color: "#e37400", marginTop: "4px" };
-const styleInputLocal = { width: "100%", padding: "8px", borderRadius: "8px", border: "1px solid #dadce0", fontSize: "14px", marginBottom: "12px", boxSizing: "border-box" };
-const styleRadioGroup = { display: 'flex', gap: '15px', marginBottom: '10px' };
+const styleWarning = { fontSize: "12px", color: "#b06000", marginTop: "8px", lineHeight: "1.4" };
+const styleInputLocal = { width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1.5px solid #dadce0", fontSize: "14px", marginBottom: "16px", boxSizing: "border-box", background: "#fff" };
+const styleRadioGroup = { display: 'flex', gap: '20px', marginBottom: '12px' };
 
-export function createTagSupportModule() {
+export function createTagSupportModule(t) {
     // --- 1. CONSTRUÇÃO DA UI ---
     const container = document.createElement("div");
     container.id = "tag-support-container";
     Object.assign(container.style, styleContainer);
 
     const mainLabel = document.createElement("label");
-    mainLabel.textContent = "Utilizou o Tag Support para criar/verificar?";
+    mainLabel.className = "js-ts-main-label";
+    mainLabel.textContent = t('utilizou_tag_support');
     Object.assign(mainLabel.style, styleLabel, { marginTop: "0" });
 
     // Radio Buttons Container
@@ -29,16 +33,16 @@ export function createTagSupportModule() {
     Object.assign(radioContainer.style, styleRadioGroup);
 
     // Opção Sim
-    const rSim = document.createElement("input"); rSim.type = "radio"; rSim.name = "ts_usage_mod"; rSim.value = "Sim"; 
+    const rSim = document.createElement("input"); rSim.type = "radio"; rSim.name = "ts_usage_mod"; rSim.value = "Sim";
     Object.assign(rSim.style, styleCheckboxInput);
-    const lSim = document.createElement("label"); lSim.textContent = "Sim";
+    const lSim = document.createElement("label"); lSim.className = "js-ts-sim-label"; lSim.textContent = t('sim');
     const divSim = document.createElement("div"); Object.assign(divSim.style, { display: 'flex', alignItems: 'center' });
     divSim.appendChild(rSim); divSim.appendChild(lSim);
 
     // Opção Não
     const rNao = document.createElement("input"); rNao.type = "radio"; rNao.name = "ts_usage_mod"; rNao.value = "Não"; rNao.checked = true;
     Object.assign(rNao.style, styleCheckboxInput);
-    const lNao = document.createElement("label"); lNao.textContent = "Não";
+    const lNao = document.createElement("label"); lNao.className = "js-ts-nao-label"; lNao.textContent = t('nao');
     const divNao = document.createElement("div"); Object.assign(divNao.style, { display: 'flex', alignItems: 'center' });
     divNao.appendChild(rNao); divNao.appendChild(lNao);
 
@@ -49,7 +53,8 @@ export function createTagSupportModule() {
     reasonDiv.style.display = "block"; // Default visível pois "Não" é default
 
     const reasonLabel = document.createElement("label");
-    reasonLabel.textContent = "Qual foi o Motivo?";
+    reasonLabel.className = "js-ts-reason-label";
+    reasonLabel.textContent = t('motivo_ts');
     Object.assign(reasonLabel.style, styleLabel, { fontSize: "12px" });
 
     const reasonInput = document.createElement("input");
@@ -57,7 +62,8 @@ export function createTagSupportModule() {
     Object.assign(reasonInput.style, styleInputLocal);
 
     const warningText = document.createElement("div");
-    warningText.innerHTML = `⚠️ <strong>Lembre-se de preencher o Form!</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" style="color:#e37400; text-decoration:underline;">Link aqui</a>`;
+    warningText.className = "js-ts-warning";
+    warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" rel="noopener noreferrer" style="color:#e37400; text-decoration:underline;">${t('link_aqui')}</a>`;
     Object.assign(warningText.style, styleWarning);
 
     reasonDiv.appendChild(reasonLabel);
@@ -69,8 +75,16 @@ export function createTagSupportModule() {
     container.appendChild(reasonDiv);
 
     // --- 2. EVENTOS INTERNOS ---
-    rSim.onchange = () => { reasonDiv.style.display = 'none'; };
-    rNao.onchange = () => { reasonDiv.style.display = 'block'; };
+    rSim.onchange = () => {
+        SoundManager.playClick();
+        reasonDiv.style.display = 'none';
+        notesState.setTagSupportUsed(true);
+    };
+    rNao.onchange = () => {
+        SoundManager.playClick();
+        reasonDiv.style.display = 'block';
+        notesState.setTagSupportUsed(false);
+    };
 
     // --- 3. API PÚBLICA (Métodos que o pai vai chamar) ---
 
@@ -79,21 +93,19 @@ export function createTagSupportModule() {
         // Reset inicial
         container.style.display = 'none';
 
-        if (!subStatus || subStatus.includes('Education')) return;
+        if (!subStatus) return;
         if (!selectedTasksArray || selectedTasksArray.length === 0) return;
 
-        // Verifica Enhanced
-        const hasEnhanced = selectedTasksArray.some(t => t.includes('enhanced') || t === 'ec_google_ads');
+        // Regra específica: Apenas Ads Conversion Tracking ou Enhanced Conversions
+        const hasTargetTasks = selectedTasksArray.some(t =>
+            t === 'ads_conversion_tracking' || t === 'ads_enhanced_conversions'
+        );
 
-        // Verifica Ads Puro
-        const hasAdsConv = selectedTasksArray.some(t => (t.includes('conversion') || t.includes('ads')) && !t.includes('enhanced'));
-        const hasAnalytics = selectedTasksArray.some(t => t.includes('ga4') || t.includes('analytics') || t.includes('ua'));
-        const hasMerchant = selectedTasksArray.some(t => t.includes('merchant') || t.includes('gmc') || t.includes('shopping'));
-        
-        const isOnlyAds = hasAdsConv && !hasAnalytics && !hasMerchant; // GTM permitido
-
-        if (hasEnhanced || isOnlyAds) {
+        if (hasTargetTasks) {
             container.style.display = 'block';
+        } else {
+            reset();
+            notesState.setTagSupportUsed(false);
         }
     }
 
@@ -101,12 +113,21 @@ export function createTagSupportModule() {
     function getOutput() {
         if (container.style.display === 'none') return '';
 
-        let text = `<br><b>Utilizou Tag Support?</b> ${rSim.checked ? "Sim" : "Não"}`;
+        let text = `<br><b>${t('tag_support_output_label')}</b> ${rSim.checked ? `✅ ${t('sim')}` : `❌ ${t('nao')}`}`;
         if (rNao.checked && reasonInput.value.trim() !== "") {
-            text += `<br><b>Motivo:</b> ${reasonInput.value}`;
+            text += `<br><b>${t('motivo_output_label')}</b> ${reasonInput.value}`;
         }
         text += `<br>`;
         return text;
+    }
+
+    function setLanguage(newT) {
+        t = newT;
+        mainLabel.textContent = t('utilizou_tag_support');
+        reasonLabel.textContent = t('motivo_ts');
+        lSim.textContent = t('sim');
+        lNao.textContent = t('nao');
+        warningText.innerHTML = `⚠️ <strong>${t('lembre_preencher_form')}</strong> <a href="https://docs.google.com/forms/d/e/1FAIpQLSeP_JM8D-6qHa5ZC93aTzj38WiO5zx8nyrWNPvbZhjJj6CpkA/viewform" target="_blank" rel="noopener noreferrer" style="color:#b06000; text-decoration:underline;">${t('link_aqui')}</a>`;
     }
 
     // Reseta o estado (chamado ao mudar de passo)
@@ -122,6 +143,7 @@ export function createTagSupportModule() {
         element: container, // O elemento HTML para dar append
         updateVisibility,
         getOutput,
+        setLanguage,
         reset
     };
 }

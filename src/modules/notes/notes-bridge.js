@@ -1,15 +1,8 @@
 // src/modules/notes/notes-bridge.js
 import { showToast } from '../shared/utils.js';
-
-const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-function simularCliqueReal(elemento) {
-    if (!elemento) return;
-    const opts = { bubbles: true, cancelable: true, view: window };
-    ['mouseover', 'mousedown', 'mouseup', 'click'].forEach(evt => 
-        elemento.dispatchEvent(new MouseEvent(evt, opts))
-    );
-}
+import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
+import { SoundManager } from '../shared/sound-manager.js';
+import { getLanguage } from '../shared/i18n.js';
 
 export function copyHtmlToClipboard(html) {
     const container = document.createElement('div');
@@ -25,7 +18,8 @@ export function copyHtmlToClipboard(html) {
     try {
         document.execCommand('copy');
     } catch (err) {
-        showToast("Falha ao copiar", { error: true });
+        SoundManager.playError();
+        showToast(getLanguage() === 'es' ? "Error al copiar" : "Falha ao copiar", { error: true });
     }
     selection.removeAllRanges();
     document.body.removeChild(container);
@@ -47,8 +41,6 @@ function getAllEditors() {
 
 // --- LÓGICA BLINDADA: ABRIR NOVA NOTA ---
 export async function ensureNoteCardIsOpen() {
-    console.log("Iniciando processo de Nova Nota...");
-
     // 1. SNAPSHOT: Guarda quem já estava na tela antes do clique
     const editoresAntes = getAllEditors();
     const qtdAntes = editoresAntes.length;

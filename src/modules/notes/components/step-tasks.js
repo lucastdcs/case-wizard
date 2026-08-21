@@ -1,41 +1,53 @@
-import { TASKS_DB } from "../notes-data.js";
+import { TASKS_DB, getTaskScreenshots } from "../data/notes-data.js";
+import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
+import { createEmptyState, enableArrowKeyNav } from "../../shared/dom-utils.js";
+
+// Tarefas que, com Tag Support já usado, dispensam screenshot de evidência
+// (a menos que o agente force manualmente via "Incluir mesmo assim").
+function isTagSupportTarget(key) {
+  return key === 'ads_conversion_tracking' || key === 'ads_enhanced_conversions';
+}
+
+function shouldSuppressScreenshots(key, notesState) {
+  return notesState.tagSupportUsed && isTagSupportTarget(key) && !notesState.forcedScreenshots.has(key);
+}
 
 // --- 1. DESIGN SYSTEM & CONFIG ---
 const DS = {
-  bg: "#F9FAFB", 
-  white: "#FFFFFF",
-  border: "#E5E7EB",
-  textMain: "#111827",
-  textSub: "#6B7280",
-  blue: "#007AFF", 
-  blueLight: "#EBF5FF",
+  bg: COLORS.bgInput,
+  white: COLORS.surface,
+  border: COLORS.border,
+  textMain: COLORS.text,
+  textSub: COLORS.textSub,
+  blue: COLORS.blue,
+  blueLight: COLORS.primaryBg,
   // Cores Oficiais das Ferramentas
   brands: {
     ads: {
       id: "ads",
       label: "Google Ads",
-      color: "#1967D2",
-      bg: "#E8F0FE",
+      color: COLORS.blue,
+      bg: COLORS.primaryBg,
       icon: "ads",
     },
     ga4: {
       id: "ga4",
       label: "Google Analytics 4",
-      color: "#E37400",
+      color: COLORS.yellow,
       bg: "#FEF7E0",
       icon: "ga4",
     },
     gtm: {
       id: "gtm",
       label: "Tag Manager",
-      color: "#00A1F1",
-      bg: "#E2F4FD",
+      color: COLORS.primary,
+      bg: COLORS.primaryBg,
       icon: "gtm",
     },
     gmc: {
       id: "gmc",
       label: "Merchant Center",
-      color: "#0F9D58",
+      color: COLORS.green,
       bg: "#E6F4EA",
       icon: "gmc",
     },
@@ -69,9 +81,16 @@ const ICONS = {
   default: `<svg viewBox="0 0 24 24"><path fill="#5F6368" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`,
 };
 
-export function createStepTasksComponent(onUpdateCallback) {
-  const selection = {}; 
-  let currentMode = "implementation";
+export function createStepTasksComponent(onUpdateCallback, t, notesState) {
+  const selection = {};
+
+  // Subscribe to state changes to react to Tag Support
+  if (notesState) {
+    notesState.subscribe(() => {
+        updateUI();
+        renderScreenshots();
+    });
+  }
 
   function getBrand(name) {
     const n = name.toLowerCase();
@@ -113,12 +132,13 @@ export function createStepTasksComponent(onUpdateCallback) {
     style.id = styleId;
     style.innerHTML = `
             .cw-zen-container {
-                display: flex; flex-direction: column; height: 100%; width: calc(100% + 32px); margin: -16px;
-                font-family: ${DS.font}; background: ${DS.bg}; position: relative; overflow: hidden;
+                display: flex; flex-direction: column;
+                font-family: ${DS.font}; background: ${DS.bg}; position: relative; overflow: visible;
+                border-radius: 12px; border: 1px solid ${DS.border};
             }
             
             /* SCROLL AREA */
-            .cw-zen-content { flex: 1; overflow-y: auto; padding-bottom: 80px; } /* Espaço para o Status Bar */
+            .cw-zen-content { padding-bottom: 20px; }
 
           /* --- HERO SECTION (Refined) --- */
             .cw-hero-section { padding: 20px 24px 0 24px; }
@@ -128,15 +148,15 @@ export function createStepTasksComponent(onUpdateCallback) {
             /* HERO CARD */
             .cw-hero-card {
                 background: ${DS.white}; 
-                border: 1px solid #E5E7EB; 
-                border-radius: 16px; 
-                padding: 12px;
+                border: 1.5px solid #f1f3f4;
+                border-radius: 20px;
+                padding: 16px;
                 cursor: pointer; 
                 position: relative; 
-                height: 80px; /* Altura fixa confortável */
+                height: 90px;
                 display: flex; flex-direction: column; align-items: center; justify-content: center;
-                transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+                transition: all 0.4s var(--cw-ease-decelerate);
+                box-shadow: 0 2px 6px rgba(0,0,0,0.02);
                 overflow: hidden;
             }
             
@@ -144,15 +164,23 @@ export function createStepTasksComponent(onUpdateCallback) {
             .cw-hero-card:last-child:nth-child(odd) { grid-column: span 2; }
 
             /* Interação */
-            .cw-hero-card:hover { border-color: #D1D5DB; box-shadow: 0 4px 8px rgba(0,0,0,0.03); }
-            .cw-hero-card:active { transform: scale(0.98); }
+            .cw-hero-card:hover { border-color: var(--hero-color); box-shadow: 0 8px 20px rgba(0,0,0,0.06); transform: translateY(-3px); }
+            .cw-hero-card:active { transform: scale(0.96) translateY(0); }
+            .cw-hero-card:focus-visible { outline: 2px solid var(--hero-color); outline-offset: 2px; }
 
             /* HERO ACTIVE STATE (Borda Colorida Apenas) */
             .cw-hero-card.active {
-                background: #FFFFFF; /* Fundo continua branco */
-                border-color: var(--hero-color); /* Cor da borda dinâmica */
-                box-shadow: 0 0 0 1px var(--hero-color), 0 4px 12px rgba(0,0,0,0.05);
+                background: #FFFFFF;
+                border-color: var(--hero-color);
+                box-shadow: 0 0 0 1px var(--hero-color), 0 10px 20px rgba(0,0,0,0.04);
             }
+
+            .cw-hero-card.ts-success {
+                background: #F0FDF4 !important;
+                border-color: #22C55E !important;
+                box-shadow: 0 0 0 1px #22C55E, 0 4px 12px rgba(34, 197, 94, 0.1) !important;
+            }
+            .cw-hero-card.ts-success .cw-hero-label { color: #166534 !important; }
 
             /* CONTAINER DE CONTEÚDO (Para animação de deslize) */
             .cw-hero-main {
@@ -193,13 +221,21 @@ export function createStepTasksComponent(onUpdateCallback) {
             }
             .cw-hero-card.active .cw-hero-stepper { opacity: 1; transform: translateY(0); pointer-events: auto; }
             
-            /* Botões do Stepper */
-            .cw-step-btn {
+            /* Botões do Stepper (Hero: circular) */
+            .cw-step-btn-hero {
                 width: 24px; height: 24px; border-radius: 50%; background: #F3F4F6;
                 color: ${DS.textMain}; display: flex; align-items: center; justify-content: center;
                 font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.1s;
             }
-            .cw-step-btn:hover { background: #E5E7EB; color: var(--hero-color); }            /* LIST SECTION */
+            .cw-step-btn-hero:hover { background: #E5E7EB; color: var(--hero-color); }            /* Some SR (Screen Reader) só - o placeholder do campo de busca já
+               é a dica visual; isso dá o mesmo texto pra quem usa leitor de
+               tela, sem duplicar nada na tela pra quem enxerga. */
+            .cw-sr-only {
+                position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+                overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+            }
+
+            /* LIST SECTION */
             .cw-list-section { padding: 24px 24px; }
             .cw-search-input {
                 width: 100%; box-sizing: border-box; padding: 10px 12px 10px 36px;
@@ -232,7 +268,10 @@ export function createStepTasksComponent(onUpdateCallback) {
             }
             .cw-task-item:last-child { border-bottom: none; }
             .cw-task-item:hover { background: #F3F4F6; }
+            .cw-task-item:focus-visible, .cw-acc-header:focus-visible { outline: 2px solid ${DS.blue}; outline-offset: -2px; }
             .cw-task-item.selected { background: ${DS.blueLight}; }
+            .cw-task-item.ts-success { background: #F0FDF4 !important; border-left: 4px solid #22C55E; }
+            .cw-task-item.ts-success .cw-task-label { color: #166534 !important; }
             
             .cw-task-left { display: flex; align-items: center; gap: 12px; flex: 1; }
             .cw-list-icon {
@@ -248,34 +287,42 @@ export function createStepTasksComponent(onUpdateCallback) {
             .cw-list-stepper { display: none; align-items: center; gap: 6px; }
             .cw-task-item.selected .cw-list-stepper { display: flex; }
 
-            /* BUTTONS */
-            .cw-step-btn {
+            /* BUTTONS (Lista: quadrado) */
+            .cw-step-btn-list {
                 width: 24px; height: 24px; border-radius: 6px; background: #F3F4F6;
                 color: ${DS.textMain}; display: flex; align-items: center; justify-content: center;
                 font-size: 14px; font-weight: bold; transition: background 0.1s; cursor: pointer;
             }
-            .cw-step-btn:hover { background: #E5E7EB; }
+            .cw-step-btn-list:hover { background: #E5E7EB; }
             .cw-step-val { font-size: 13px; font-weight: 600; min-width: 14px; text-align: center; color: ${DS.blue}; }
 
             /* STATUS BAR (Footer) */
             .cw-status-bar {
-                position: absolute; bottom: 0; left: 0; width: 100%; box-sizing: border-box;
+                position: sticky; bottom: 0; left: 0; width: 100%; box-sizing: border-box;
                 padding: 12px 24px; background: rgba(255,255,255,0.92); backdrop-filter: blur(10px);
                 border-top: 1px solid ${DS.border};
+                border-bottom-left-radius: 11px;
+                border-bottom-right-radius: 11px;
                 display: flex; align-items: center; justify-content: space-between;
                 transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                visibility: hidden;
                 box-shadow: ${DS.shadowFloat}; z-index: 10;
+                margin-top: auto;
             }
-            .cw-status-bar.visible { transform: translateY(0); }
+            /* .cw-zen-container usa overflow:visible (pros cards do hero não
+               cortarem sombra/hover), então sem visibility a barra "escondida"
+               via transform continua sendo pintada logo abaixo do card,
+               encostando/sobrepondo o que vem depois no layout. */
+            .cw-status-bar.visible { transform: translateY(0); visibility: visible; }
             .cw-status-text { font-size: 13px; font-weight: 500; color: ${DS.textMain}; }
             
             .cw-footer-icons { display: flex; flex-direction: row-reverse; padding-left: 8px; }
-            .cw-mini-icon { 
+            .cw-mini-icon-status {
                 width: 24px; height: 24px; border-radius: 50%; border: 2px solid white;
                 color: white; display: flex; align-items: center; justify-content: center;
                 box-shadow: 0 1px 2px rgba(0,0,0,0.15); position: relative; margin-left: -8px;
             }
-            .cw-mini-icon svg { width: 12px; height: 12px; fill: currentColor; }
+            .cw-mini-icon-status svg { width: 12px; height: 12px; fill: currentColor; }
 
             @keyframes cwSlideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -289,19 +336,52 @@ export function createStepTasksComponent(onUpdateCallback) {
             /* CARTÃO (Base Física) */
             .cw-screen-card {
                 background: #FFFFFF;
-                border-radius: 12px;
-                /* Borda base sutil */
-                border: 1px solid #E5E7EB; 
-                /* Faixa de identidade na esquerda (Cor injetada via JS) */
-                border-left: 4px solid var(--brand-color);
+                border-radius: 24px;
+                border: 1.5px solid #f1f3f4;
+                border-left: 8px solid var(--brand-color);
                 
-                padding: 16px 20px;
+                padding: 24px;
                 position: relative;
-                transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-                
-                /* Sombra quase invisível, apenas para separar do fundo */
-                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+                transition: all 0.4s var(--cw-ease-decelerate);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+                margin-bottom: 16px;
             }
+
+            .cw-screen-card:hover {
+                box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+                border-color: #e5e7eb;
+            }
+
+            .cw-screen-card.ts-success {
+                background: #F0FDF4;
+                border-color: #BBF7D0;
+                border-left-color: #22C55E;
+            }
+
+            .cw-ts-disclaimer-box {
+                padding: 12px;
+                background: #DCFCE7;
+                border-radius: 8px;
+                font-size: 12px;
+                color: #166534;
+                margin-top: 8px;
+                line-height: 1.4;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .cw-btn-ts-force {
+                align-self: flex-start;
+                padding: 4px 10px;
+                background: #fff;
+                border: 1px solid #22C55E;
+                color: #166534;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            .cw-btn-ts-force:hover { background: #f0fdf4; }
 
             /* Interação de Foco no Cartão */
             .cw-screen-card:focus-within {
@@ -373,32 +453,32 @@ export function createStepTasksComponent(onUpdateCallback) {
             .cw-info-link:hover { text-decoration: underline; }
 
             /* FOOTER ICONS (Limpo & Original) */
-            .cw-mini-icon { 
-                width: 26px; height: 26px; border-radius: 50%; 
+            .cw-mini-icon-screenshot {
+                width: 26px; height: 26px; border-radius: 50%;
                 background: #FFFFFF; border: 1px solid #E0E0E0;
                 display: flex; align-items: center; justify-content: center;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05);
                 margin-left: -8px; position: relative; z-index: 1;
             }
-            .cw-mini-icon svg { width: 14px; height: 14px; } 
+            .cw-mini-icon-screenshot svg { width: 14px; height: 14px; }
 
             /* INPUTS (Campos de Link) */
-            .cw-input-group { margin-bottom: 12px; position: relative; }
+            .cw-input-group { margin-bottom: 16px; position: relative; }
             .cw-input-group:last-child { margin-bottom: 0; }
 
             .cw-input-label {
-                display: block; font-size: 10px; font-weight: 700; color: ${DS.textSub};
-                margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+                display: block; font-size: 11px; font-weight: 700; color: ${DS.textSub};
+                margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.8px;
             }
 
             .cw-input-field {
                 width: 100%; box-sizing: border-box;
-                padding: 10px 12px;
-                border-radius: 8px;
-                border: 1px solid #E5E7EB; /* Borda leve */
-                background: #F9FAFB; /* Fundo levemente cinza */
-                font-size: 13px; color: #374151;
-                transition: all 0.2s ease; outline: none;
+                padding: 12px 14px;
+                border-radius: 12px;
+                border: 1.5px solid #f1f3f4;
+                background: #f8f9fa;
+                font-size: 14px; color: #374151;
+                transition: all 0.25s var(--cw-ease-decelerate); outline: none;
             }
 
             /* Foco no Input: Usa a cor da marca */
@@ -418,13 +498,26 @@ export function createStepTasksComponent(onUpdateCallback) {
 
             /* Check Icon Animado */
             .cw-input-check {
-                position: absolute; right: 10px; bottom: 10px; 
+                position: absolute; right: 10px; bottom: 10px;
                 color: #16A34A; width: 16px; height: 16px;
-                opacity: 0; transform: scale(0.5); 
-                transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                opacity: 0; transform: scale(0.5);
+                transition: all 0.3s var(--cw-ease-spring);
                 pointer-events: none;
             }
             .cw-input-field.filled + .cw-input-check { opacity: 1; transform: scale(1); }
+
+            /* Esta é a etapa mais repetida do app inteiro (escolher a task do
+               caso) e não tinha nenhuma proteção de reduced-motion, apesar
+               dos hero cards, do accordion e do "check verde" animarem
+               transform em praticamente toda interação. */
+            @media (prefers-reduced-motion: reduce) {
+                .cw-hero-card, .cw-hero-card:hover, .cw-hero-main, .cw-hero-stepper,
+                .cw-task-item, .cw-acc-icon, .cw-status-bar, .cw-input-check {
+                    transition: opacity 0.15s ease !important;
+                    transform: none !important;
+                }
+                .cw-acc-group.open .cw-acc-body { animation: none !important; }
+            }
         `;
     document.head.appendChild(style);
   }
@@ -445,14 +538,15 @@ export function createStepTasksComponent(onUpdateCallback) {
   container.innerHTML = `
         <div class="cw-zen-content">
             <div class="cw-hero-section">
-                <div class="cw-section-subtitle" style="font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.8px;">Acesso Rápido</div>
+                <div class="cw-section-subtitle js-hero-title" style="font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.8px;">${t('acesso_rapido')}</div>
                 <div class="cw-hero-grid"></div>
                 <div class="cw-helper-text">Atalhos para as implementações mais frequentes.<br>Use a busca abaixo para o catálogo completo.</div>
             </div>
 
             <div class="cw-list-section">
                 <div class="cw-search-wrapper">
-                    <input class="cw-search-input" placeholder="Buscar no catálogo...">
+                    <label class="cw-sr-only" for="cw-task-search-input">${t('buscar_catalogo')}</label>
+                    <input id="cw-task-search-input" class="cw-search-input" placeholder="${t('buscar_catalogo')}">
                 </div>
                 <div class="cw-acc-container"></div>
                 <div class="cw-results-container" style="display:none"></div>
@@ -469,9 +563,24 @@ export function createStepTasksComponent(onUpdateCallback) {
   const accContainer = container.querySelector(".cw-acc-container");
   const resultsContainer = container.querySelector(".cw-results-container");
   const searchInput = container.querySelector(".cw-search-input");
+  // ↓/↑ anda entre cabeçalhos de categoria e itens visíveis (do acordeão ou
+  // dos resultados de busca, ambos dentro de `container`) sem precisar
+  // reconstruir nada quando a lista muda.
+  enableArrowKeyNav(container, ".cw-acc-header, .cw-task-item");
   const statusBar = container.querySelector(".cw-status-bar");
   const statusText = container.querySelector(".cw-status-text");
   const footerIcons = container.querySelector(".cw-footer-icons");
+
+  // Clicar no card/linha (fora do stepper) alterna a tarefa: liga com
+  // quantidade 1 se estava zerada, zera se já tinha alguma marcada. Usado
+  // tanto pelo card do Hero quanto pela linha da lista/busca.
+  function makeToggleHandler(key, task) {
+    return (e) => {
+      if (e.target.closest(".cw-step-btn-hero, .cw-step-btn-list")) return;
+      const current = selection[key] ? selection[key].count : 0;
+      updateTask(key, current > 0 ? -current : 1, task);
+    };
+  }
 
   // 1. Heroes
   heroTasks.forEach(([key, task]) => {
@@ -489,19 +598,27 @@ export function createStepTasksComponent(onUpdateCallback) {
             </div>
             
             <div class="cw-hero-stepper">
-                <div class="cw-step-btn minus">−</div>
+                <div class="cw-step-btn-hero minus">−</div>
                 <div class="cw-step-val">1</div>
-                <div class="cw-step-btn plus">+</div>
+                <div class="cw-step-btn-hero plus">+</div>
             </div>
         `;
 
-    card.onclick = (e) => {
-      if (e.target.closest(".cw-step-btn")) return;
-      const current = selection[key] ? selection[key].count : 0;
-      updateTask(key, current > 0 ? -current : 1, task);
-    };
+    card.onclick = makeToggleHandler(key, task);
     card.querySelector(".minus").onclick = () => updateTask(key, -1, task);
     card.querySelector(".plus").onclick = () => updateTask(key, 1, task);
+
+    // Cards eram só clicáveis por mouse - a etapa de escolher a task é a
+    // interação central do módulo de Notes, então precisa funcionar por teclado.
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-pressed", "false");
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        card.click();
+      }
+    });
 
     card.dataset.color = brand.color;
 
@@ -525,19 +642,26 @@ export function createStepTasksComponent(onUpdateCallback) {
                 <div class="cw-task-label">${task.name}</div>
             </div>
             <div class="cw-list-stepper">
-                <div class="cw-step-btn minus">−</div>
+                <div class="cw-step-btn-list minus">−</div>
                 <div class="cw-step-val">1</div>
-                <div class="cw-step-btn plus">+</div>
+                <div class="cw-step-btn-list plus">+</div>
             </div>
         `;
 
-    row.onclick = (e) => {
-      if (e.target.closest(".cw-step-btn")) return;
-      const current = selection[key] ? selection[key].count : 0;
-      updateTask(key, current > 0 ? -current : 1, task);
-    };
+    row.onclick = makeToggleHandler(key, task);
     row.querySelector(".minus").onclick = () => updateTask(key, -1, task);
     row.querySelector(".plus").onclick = () => updateTask(key, 1, task);
+
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.setAttribute("aria-pressed", "false");
+    row.setAttribute("aria-label", task.name);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        row.click();
+      }
+    });
 
     return row;
   }
@@ -556,12 +680,25 @@ export function createStepTasksComponent(onUpdateCallback) {
             </div>
             <div class="cw-acc-icon">▼</div>
         `;
+    header.tabIndex = 0;
+    header.setAttribute("role", "button");
+    header.setAttribute("aria-expanded", "false");
     header.onclick = () => {
       accContainer.querySelectorAll(".cw-acc-group.open").forEach((g) => {
-        if (g !== group) g.classList.remove("open");
+        if (g !== group) {
+          g.classList.remove("open");
+          g.querySelector(".cw-acc-header")?.setAttribute("aria-expanded", "false");
+        }
       });
-      group.classList.toggle("open");
+      const isOpen = group.classList.toggle("open");
+      header.setAttribute("aria-expanded", String(isOpen));
     };
+    header.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        header.click();
+      }
+    });
 
     const body = document.createElement("div");
     body.className = "cw-acc-body";
@@ -593,7 +730,6 @@ export function createStepTasksComponent(onUpdateCallback) {
   }
 
   function updateUI() {
-
     heroTasks.forEach(([key]) => {
       const card = heroGrid.querySelector(`#hero-${key}`);
       if (!card) return;
@@ -601,12 +737,15 @@ export function createStepTasksComponent(onUpdateCallback) {
 
       if (sel) {
         card.classList.add("active");
-
+        card.setAttribute("aria-pressed", "true");
         card.querySelector(".cw-step-val").textContent = sel.count;
-
         card.querySelector(".cw-step-val").style.color = card.dataset.color;
+
+        card.classList.toggle("ts-success", shouldSuppressScreenshots(key, notesState));
       } else {
         card.classList.remove("active");
+        card.setAttribute("aria-pressed", "false");
+        card.classList.remove("ts-success");
       }
     });
 
@@ -617,9 +756,14 @@ export function createStepTasksComponent(onUpdateCallback) {
       const sel = selection[key];
       if (sel) {
         row.classList.add("selected");
+        row.setAttribute("aria-pressed", "true");
         row.querySelector(".cw-step-val").textContent = sel.count;
+
+        row.classList.toggle("ts-success", shouldSuppressScreenshots(key, notesState));
       } else {
         row.classList.remove("selected");
+        row.setAttribute("aria-pressed", "false");
+        row.classList.remove("ts-success");
       }
     });
 
@@ -638,14 +782,14 @@ export function createStepTasksComponent(onUpdateCallback) {
 
     if (totalCount > 0) {
       statusBar.classList.add("visible");
-      const txtTask = totalCount > 1 ? "Ações" : "Ação";
-      const txtDef = totalCount > 1 ? "definidas" : "definida";
+      const txtTask = totalCount > 1 ? t('acoes_plural') : t('acao_singular');
+      const txtDef = totalCount > 1 ? t('definidas_plural') : t('definida_singular');
       statusText.textContent = `${totalCount} ${txtTask} ${txtDef}`;
 
       footerIcons.innerHTML = "";
       iconStack.forEach((brand) => {
         const mini = document.createElement("div");
-        mini.className = "cw-mini-icon";
+        mini.className = "cw-mini-icon-status";
 
         mini.innerHTML = ICONS[brand.icon] || ICONS.default;
 
@@ -659,6 +803,8 @@ export function createStepTasksComponent(onUpdateCallback) {
       });
     } else {
       statusBar.classList.remove("visible");
+      statusText.textContent = "";
+      footerIcons.innerHTML = "";
     }
   }
 
@@ -677,6 +823,7 @@ export function createStepTasksComponent(onUpdateCallback) {
           const item = createListItem(key, task);
           if (selection[key]) {
             item.classList.add("selected");
+            item.setAttribute("aria-pressed", "true");
             item.querySelector(".cw-step-val").textContent =
               selection[key].count;
           }
@@ -694,59 +841,54 @@ export function createStepTasksComponent(onUpdateCallback) {
 
 
   function renderScreenshots() {
+    // Preserva o que já foi digitado nos campos de link antes de reconstruir
+    // os cards do zero — trocar a seleção de uma tarefa não pode apagar o
+    // que o agente já preencheu em outra.
+    const savedFieldValues = {};
+    screenList.querySelectorAll(".cw-input-field").forEach((input) => {
+      savedFieldValues[input.id] = input.value;
+    });
 
-screenList.innerHTML = "";
+    screenList.innerHTML = "";
     const keys = Object.keys(selection);
     let hasAny = false;
 
-    // 1. Tenta achar o input de substatus pelo ID (AJUSTE O ID SE NECESSÁRIO)
-    const subStatusEl = document.getElementById("sub-status"); 
-    
-    // 2. Define o padrão
-    let type = "implementation";
-
-    // 3. Se o elemento existir e o valor contiver "Education", muda o tipo
-    if (subStatusEl && subStatusEl.value.toLowerCase().includes("education")) {
-        type = "education";
-    }
-
-
     if (keys.length === 0) {
-      screenList.innerHTML = `<div class="cw-empty-state">Selecione tarefas para ver os campos.</div>`;
-      return;
-    }
-    if (keys.length === 0) {
-      screenList.innerHTML = `<div class="cw-empty-state">Selecione tarefas para ver os campos.</div>`;
+      screenList.appendChild(createEmptyState({
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>`,
+        title: t('selecione_tarefas'),
+      }));
+      screenshotsContainer.style.display = "none";
       return;
     }
 
-    // --- NOVO: DISCLAIMER WIN CRITERIA ---
     const disclaimer = document.createElement("div");
     disclaimer.className = "cw-info-banner";
     disclaimer.innerHTML = `
             <span style="font-size:14px">ℹ️</span>
             <span>
-                Todos os Screenshots são baseados na descrição do 
-                <a href="https://docs.google.com/spreadsheets/d/1X5yeIZZzWQRrPdSDM7oZt2Kt0ooSN4dgLN4J7gWe8O4/" target="_blank" class="cw-info-link">Win Criteria</a>.
+                Os screenshots seguem as diretrizes atuais do Win Criteria e políticas de Tag Support.
             </span>
         `;
     screenList.appendChild(disclaimer);
- 
 
     keys.forEach((key) => {
       const task = selection[key].data;
-      const count = selection[key].count;
+      const taskCount = selection[key].count;
       const brand = selection[key].brand;
-      const prints = task.screenshots
-        ? task.screenshots[type] || []
-        : ["Link da Evidência"];
 
-      if (prints.length > 0) {
+      const useTsLogic = shouldSuppressScreenshots(key, notesState);
+
+      const mode = notesState.screenshotMode || "implementation";
+      const screenshotLabels = getTaskScreenshots(task, mode, notesState.currentLang);
+
+      if (screenshotLabels.length > 0 || useTsLogic) {
         hasAny = true;
 
-        for (let i = 1; i <= count; i++) {
+        for (let i = 1; i <= taskCount; i++) {
           const card = document.createElement("div");
           card.className = "cw-screen-card";
+          if (useTsLogic) card.classList.add("ts-success");
           card.style.setProperty("--brand-color", brand.color);
           card.style.setProperty("--brand-bg", brand.bg);
           card.style.setProperty("--brand-shadow", brand.color + "40");
@@ -767,14 +909,12 @@ screenList.innerHTML = "";
           const nameInput = document.createElement("input");
           nameInput.className = "cw-card-title-input";
           nameInput.id = `name-${key}-${i}`;
-          nameInput.value = `${task.name}${count > 1 ? " #" + i : ""}`;
-          // Tooltip nativo ajuda também
-          nameInput.title = "Clique para renomear esta task";
+          nameInput.value = `${task.name}${taskCount > 1 ? " #" + i : ""}`;
+          nameInput.title = t('renomear_tooltip');
 
-          // Dica Visual (Lápis)
           const editHint = document.createElement("span");
           editHint.className = "cw-edit-hint";
-          editHint.innerHTML = "✎ Renomear";
+          editHint.innerHTML = t('renomear_hint');
 
           titleWrap.appendChild(nameInput);
           titleWrap.appendChild(editHint);
@@ -783,37 +923,52 @@ screenList.innerHTML = "";
           header.appendChild(titleWrap);
           card.appendChild(header);
 
-          
-          prints.forEach((req, idx) => {
-            const group = document.createElement("div");
-            group.className = "cw-input-group";
+          if (useTsLogic) {
+            const tsBox = document.createElement("div");
+            tsBox.className = "cw-ts-disclaimer-box";
+            tsBox.innerHTML = `
+                <span>${t('ts_disclaimer')}</span>
+                <button class="cw-btn-ts-force">${t('incluir_mesmo_assim')}</button>
+            `;
+            tsBox.querySelector('button').onclick = () => {
+                notesState.toggleForcedScreenshot(key, true);
+            };
+            card.appendChild(tsBox);
+          } else {
+            screenshotLabels.forEach((title, idx) => {
+                const group = document.createElement("div");
+                group.className = "cw-input-group";
 
-            const label = document.createElement("label");
-            label.className = "cw-input-label";
-            label.textContent = req.replace(/📷|:|•/g, "").trim();
+                const label = document.createElement("label");
+                label.className = "cw-input-label";
+                label.textContent = title;
 
-            const pInput = document.createElement("input");
-            pInput.className = "cw-input-field";
-            pInput.id = `screen-${key}-${i}-${idx}`;
-            pInput.placeholder = "Cole o link aqui...";
-            pInput.setAttribute("autocomplete", "off");
+                const pInput = document.createElement("input");
+                pInput.className = "cw-input-field";
+                pInput.id = `screen-${key}-${i}-${idx}`;
+                pInput.placeholder = t('cole_link_placeholder');
+                pInput.setAttribute("autocomplete", "off");
 
-            // Lógica de Sucesso
-            pInput.addEventListener("input", () => {
-              if (pInput.value.trim().length > 5)
-                pInput.classList.add("filled");
-              else pInput.classList.remove("filled");
-            });
+                if (savedFieldValues[pInput.id]) {
+                  pInput.value = savedFieldValues[pInput.id];
+                  if (pInput.value.trim().length > 5) pInput.classList.add("filled");
+                }
 
-            const check = document.createElement("div");
-            check.className = "cw-input-check";
-            check.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                pInput.addEventListener("input", () => {
+                  if (pInput.value.trim().length > 5) pInput.classList.add("filled");
+                  else pInput.classList.remove("filled");
+                });
 
-            group.appendChild(label);
-            group.appendChild(pInput);
-            group.appendChild(check);
-            card.appendChild(group);
-          });
+                const check = document.createElement("div");
+                check.className = "cw-input-check";
+                check.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+                group.appendChild(label);
+                group.appendChild(pInput);
+                group.appendChild(check);
+                card.appendChild(group);
+              });
+          }
 
           screenList.appendChild(card);
         }
@@ -832,10 +987,7 @@ screenList.innerHTML = "";
     getCheckedElements: () => {
       return Object.keys(selection).map((key) => ({
         value: key,
-        // Simula o DOM para manter compatibilidade com o código antigo de leitura
-        closest: () => ({
-          querySelector: () => ({ textContent: selection[key].count }),
-        }),
+        count: selection[key].count
       }));
     },
 
@@ -858,9 +1010,14 @@ screenList.innerHTML = "";
       }
     },
     
-    setMode: (mode) => {
-        currentMode = mode;
-        renderScreenshots(); 
+    setLanguage: (newT) => {
+        t = newT;
+        const hTitle = container.querySelector('.js-hero-title');
+        if (hTitle) hTitle.textContent = t('acesso_rapido');
+        const sInput = container.querySelector('.cw-search-input');
+        if (sInput) sInput.placeholder = t('buscar_catalogo');
+        renderScreenshots();
+        updateUI();
     },
     
     reset: () => {

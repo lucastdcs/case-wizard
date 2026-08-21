@@ -1,183 +1,131 @@
 // src/modules/onboarding/onboarding-wizard.js
+//
+// Primeira coisa que alguém vê ao abrir o Case Wizard. Toda a mecânica de
+// slides (overlay, card, dots, teclado, movimento) mora em
+// shared/wizard-shell.js, compartilhada com o Changelog - aqui fica só o que
+// é do onboarding: o conteúdo, a trava de "já viu" e o que acontece no fim.
 
-import { stylePopup, showToast } from "../shared/utils.js";
-import { SoundManager } from "../shared/sound-manager.js";
+import { showToast, confirmDialog } from "../shared/utils.js";
+import { openWizardShell } from "../shared/wizard-shell.js";
+import { getLanguage } from "../shared/i18n.js";
 
-export function initOnboarding() {
-    // 1. Verificação de Segurança (Já viu?)
-    if (localStorage.getItem("cw_onboarding_seen_v1")) {
-        return; // Sai se já viu
-    }
+const SEEN_KEY = "cw_onboarding_seen_v1";
 
-    // --- CONFIGURAÇÃO DOS SLIDES ---
-    const SLIDES = [
+// Os módulos citados aqui precisam bater com os rótulos reais da paleta de
+// comandos (shared/command-palette.js) - é por esse nome que a pessoa vai
+// procurar depois. Ao renomear ou remover um módulo, este texto vem junto:
+// a versão anterior deste arquivo ainda anunciava o "Quick Email", que já
+// tinha sido substituído pelo Email Assistant e pela Minha Biblioteca - e a
+// rodada de i18n acabou traduzindo o slide errado pro espanhol junto.
+//
+// O idioma já vem resolvido do perfil quando isto roda (app.js só chama
+// initOnboarding() depois que a promise do idioma se resolve), então basta
+// ler uma vez: é uma tela única, mostrada uma vez só, no boot.
+const SLIDES_BY_LANG = {
+    pt: [
         {
             icon: "🚀",
-            title: "Bem-vindo ao TechSol Suite",
-            text: "Sua nova central de operações para maximizar produtividade e padronização no CRM."
+            title: "Bem-vindo ao Case Wizard",
+            text: "Uma camada de produtividade que roda por cima do CRM. Ela não substitui nada do que você já usa — só tira o trabalho repetitivo do caminho."
+        },
+        {
+            icon: "⌨️",
+            title: "Tudo começa em dois lugares",
+            text: "A pílula flutuante, sempre no canto da tela, abre qualquer módulo com um clique. E Ctrl+K (ou ⌘K) abre a paleta de comandos: digite o que quer e vá direto, sem tirar a mão do teclado."
         },
         {
             icon: "📝",
-            title: "Notas Automáticas",
-            text: "Gere notas de caso (BAU/LM) perfeitas em segundos. Selecione o Status, as Tasks e deixe o wizard escrever o texto técnico para você."
+            title: "Notas e BAU sem retrabalho",
+            text: "O Case Notes monta a nota técnica do caso a partir do status e das tasks que você marcar. O BAU Form cuida das solicitações de criação e descarte, passo a passo."
         },
         {
-            icon: "⚡",
-            title: "Quick Email & Scripts",
-            text: "Responda e-mails com templates inteligentes que detectam o contexto e use scripts de chamada interativos que guiam seu atendimento."
+            icon: "💬",
+            title: "Na hora de falar com o cliente",
+            text: "O Email Assistant sugere templates que leem o contexto do caso, e o Call Script te guia pela chamada com um roteiro interativo — sem script decorado."
         },
         {
-            icon: "📢",
-            title: "Fique Informado",
-            text: "O módulo Broadcast traz avisos importantes e disponibilidade BAU direto na sua tela, sem precisar abrir planilhas externas."
+            icon: "📚",
+            title: "Seu material e o do time",
+            text: "Minha Biblioteca guarda seus snippets e respostas prontas. A Central de Links reúne SOPs e ferramentas, os Avisos trazem disponibilidade BAU, e os Fusos Horários respondem \"que horas são pra ele agora?\"."
         },
         {
-            icon: "✅",
-            title: "Tudo Pronto!",
-            text: "Explore o Menu Flutuante para começar. Bom trabalho!",
-            isLast: true
+            icon: "🛟",
+            title: "Nada se perde",
+            text: "O que você digita é salvo sozinho a cada poucos segundos, e dá pra estacionar um caso no meio e retomar de onde parou. Fechar a aba sem querer não custa mais nada. Bom trabalho!"
         }
-    ];
-
-    let currentSlide = 0;
-
-    // --- ESTILOS LOCAIS ---
-    const styles = {
-        overlay: {
-            position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-            zIndex: "2147483647", // Acima de tudo
-            display: "flex", alignItems: "center", justifyContent: "center",
-            opacity: "0", transition: "opacity 0.3s ease"
+    ],
+    es: [
+        {
+            icon: "🚀",
+            title: "Bienvenido a Case Wizard",
+            text: "Una capa de productividad que funciona sobre el CRM. No reemplaza nada de lo que ya usas — solo quita el trabajo repetitivo del camino."
         },
-        card: {
-            width: "380px", background: "#fff", borderRadius: "24px",
-            padding: "32px", textAlign: "center", position: "relative",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
-            fontFamily: "'Google Sans', Roboto, sans-serif",
-            transform: "translateY(20px)", transition: "all 0.4s cubic-bezier(0.19, 1, 0.22, 1)"
+        {
+            icon: "⌨️",
+            title: "Todo empieza en dos lugares",
+            text: "La píldora flotante, siempre en la esquina de la pantalla, abre cualquier módulo con un clic. Y Ctrl+K (o ⌘K) abre la paleta de comandos: escribe lo que buscas y ve directo, sin soltar el teclado."
         },
-        icon: { fontSize: "48px", marginBottom: "20px", display: "block" },
-        title: { fontSize: "22px", fontWeight: "700", color: "#202124", marginBottom: "12px" },
-        text: { fontSize: "15px", color: "#5f6368", lineHeight: "1.6", marginBottom: "32px" },
-        dotsContainer: { display: "flex", justifyContent: "center", gap: "8px", marginBottom: "24px" },
-        dot: { width: "8px", height: "8px", borderRadius: "50%", background: "#dadce0", transition: "all 0.3s" },
-        dotActive: { background: "#1a73e8", width: "24px", borderRadius: "4px" },
-        btnContainer: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-        btn: {
-            padding: "10px 24px", borderRadius: "20px", border: "none", cursor: "pointer",
-            fontSize: "14px", fontWeight: "600", transition: "background 0.2s"
+        {
+            icon: "📝",
+            title: "Notas y BAU sin rehacer trabajo",
+            text: "Case Notes arma la nota técnica del caso a partir del estado y de las tareas que marques. BAU Form se encarga de las solicitudes de creación y descarte, paso a paso."
         },
-        btnSkip: { background: "transparent", color: "#5f6368" },
-        btnNext: { background: "#1a73e8", color: "#fff", boxShadow: "0 4px 12px rgba(26,115,232,0.3)" }
-    };
-
-    // --- CONSTRUÇÃO DA UI ---
-    const overlay = document.createElement("div");
-    Object.assign(overlay.style, styles.overlay);
-
-    const card = document.createElement("div");
-    Object.assign(card.style, styles.card);
-
-    // Elementos Internos
-    const iconEl = document.createElement("div");
-    Object.assign(iconEl.style, styles.icon);
-
-    const titleEl = document.createElement("div");
-    Object.assign(titleEl.style, styles.title);
-
-    const textEl = document.createElement("div");
-    Object.assign(textEl.style, styles.text);
-
-    const dotsEl = document.createElement("div");
-    Object.assign(dotsEl.style, styles.dotsContainer);
-
-    const actionsEl = document.createElement("div");
-    Object.assign(actionsEl.style, styles.btnContainer);
-
-    // Botões
-    const btnSkip = document.createElement("button");
-    btnSkip.textContent = "Pular";
-    Object.assign(btnSkip.style, styles.btn, styles.btnSkip);
-    btnSkip.onmouseover = () => btnSkip.style.color = "#202124";
-    btnSkip.onmouseout = () => btnSkip.style.color = "#5f6368";
-
-    const btnNext = document.createElement("button");
-    btnNext.textContent = "Próximo";
-    Object.assign(btnNext.style, styles.btn, styles.btnNext);
-    btnNext.onmouseover = () => btnNext.style.transform = "scale(1.05)";
-    btnNext.onmouseout = () => btnNext.style.transform = "scale(1)";
-
-    // Montagem
-    actionsEl.appendChild(btnSkip);
-    actionsEl.appendChild(btnNext);
-
-    card.appendChild(iconEl);
-    card.appendChild(titleEl);
-    card.appendChild(textEl);
-    card.appendChild(dotsEl);
-    card.appendChild(actionsEl);
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-
-    // --- LÓGICA DE RENDERIZAÇÃO ---
-    function renderSlide(index) {
-        const slide = SLIDES[index];
-        
-        // Conteúdo
-        iconEl.textContent = slide.icon;
-        titleEl.textContent = slide.title;
-        textEl.textContent = slide.text;
-
-        // Dots
-        dotsEl.innerHTML = "";
-        SLIDES.forEach((_, i) => {
-            const d = document.createElement("div");
-            Object.assign(d.style, styles.dot);
-            if (i === index) Object.assign(d.style, styles.dotActive);
-            dotsEl.appendChild(d);
-        });
-
-        // Botões
-        if (slide.isLast) {
-            btnSkip.style.display = "none";
-            btnNext.textContent = "Começar 🚀";
-            btnNext.style.width = "100%";
-        } else {
-            btnSkip.style.display = "block";
-            btnNext.textContent = "Próximo";
-            btnNext.style.width = "auto";
+        {
+            icon: "💬",
+            title: "A la hora de hablar con el cliente",
+            text: "Email Assistant sugiere plantillas que leen el contexto del caso, y Call Script te guía por la llamada con un guion interactivo — sin nada memorizado."
+        },
+        {
+            icon: "📚",
+            title: "Tu material y el del equipo",
+            text: "Mi Biblioteca guarda tus fragmentos y respuestas listas. La Central de Enlaces reúne SOPs y herramientas, los Avisos traen la disponibilidad BAU, y las Zonas Horarias responden \"¿qué hora es para él ahora?\"."
+        },
+        {
+            icon: "🛟",
+            title: "Nada se pierde",
+            text: "Lo que escribes se guarda solo cada pocos segundos, y puedes aparcar un caso a mitad de camino y retomarlo donde lo dejaste. Cerrar la pestaña sin querer ya no cuesta nada. ¡Buen trabajo!"
         }
-    }
+    ],
+};
 
-    function closeWizard() {
-        localStorage.setItem("cw_onboarding_seen_v1", "true");
-        overlay.style.opacity = "0";
-        card.style.transform = "translateY(20px)";
-        setTimeout(() => overlay.remove(), 400);
-        SoundManager.playSuccess();
-        showToast("Tudo pronto! Use o menu flutuante.");
-    }
+const OB_DICT = {
+    pt: {
+        next: "Próximo",
+        start: "Começar 🚀",
+        skip: "Pular",
+        skipConfirm: "Pular a apresentação? Você pode explorar tudo pelo menu flutuante.",
+        readyToast: "Tudo pronto! Use o menu flutuante ou Ctrl+K.",
+    },
+    es: {
+        next: "Siguiente",
+        start: "Empezar 🚀",
+        skip: "Omitir",
+        skipConfirm: "¿Omitir la presentación? Puedes explorar todo desde el menú flotante.",
+        readyToast: "¡Todo listo! Usa el menú flotante o Ctrl+K.",
+    },
+};
 
-    // --- LISTENERS ---
-    btnNext.onclick = () => {
-        SoundManager.playClick();
-        if (currentSlide < SLIDES.length - 1) {
-            currentSlide++;
-            renderSlide(currentSlide);
-        } else {
-            closeWizard();
-        }
-    };
+export function initOnboarding() {
+    // Trava de "já viu". Fica antes de qualquer trabalho de DOM: para a
+    // esmagadora maioria dos boots, esta função não deve fazer nada.
+    if (localStorage.getItem(SEEN_KEY)) return;
 
-    btnSkip.onclick = () => {
-        if(confirm("Pular o tutorial?")) closeWizard();
-    };
+    // Marca como visto na ABERTURA, não no fechamento. Se a pessoa fechar a
+    // aba no meio do tour, ela não deve reencontrar o mesmo tour no próximo
+    // boot - o objetivo é apresentar o app uma vez, não completar um fluxo.
+    localStorage.setItem(SEEN_KEY, "true");
 
-    // Iniciar Animação de Entrada
-    renderSlide(0);
-    requestAnimationFrame(() => {
-        overlay.style.opacity = "1";
-        card.style.transform = "translateY(0)";
+    const lang = getLanguage();
+    const slides = SLIDES_BY_LANG[lang] || SLIDES_BY_LANG.pt;
+    const ob = OB_DICT[lang] || OB_DICT.pt;
+
+    openWizardShell({
+        slides,
+        idPrefix: "cw-onboarding",
+        nextLabel: ob.next,
+        finalLabel: ob.start,
+        skipLabel: ob.skip,
+        onSkip: () => confirmDialog(ob.skipConfirm),
+        onClose: () => showToast(ob.readyToast)
     });
 }

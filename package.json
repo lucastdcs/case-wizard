@@ -1,0 +1,28 @@
+{
+  "name": "techsol_DialIn_AutoCopy",
+  "version": "1.0.0",
+  "description": "TechSol Operations Assistant - Productivity Suite",
+  "main": "src/app.js",
+  "scripts": {
+    "build": "esbuild src/app.js --bundle --minify --outfile=dist/bundle.js --define:__CW_BUILD_ENV__='\"production\"'",
+    "dev": "esbuild src/app.js --bundle --outfile=dist/bundle-dev.js --define:__CW_BUILD_ENV__='\"development\"'",
+    "portfolio": "python3 generate-portfolio.py",
+    "test:content": "node scripts/test-content-api.js",
+    "test:call-script": "node scripts/test-call-script-roundtrip.mjs",
+    "seed:links": "node scripts/generate-links-seed.mjs",
+    "seed:call-script": "node scripts/generate-call-script-seed.mjs",
+    "seed:note-fields": "node scripts/generate-note-fields.mjs",
+    "test:emails": "node scripts/test-email-roundtrip.mjs",
+    "seed:emails": "node scripts/generate-email-seed.mjs",
+    "test:note-templates": "node scripts/test-note-templates.mjs",
+    "test:shortcuts": "node scripts/test-shortcuts.mjs",
+    "test:prefs": "node scripts/test-user-prefs.js",
+    "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
+    "smoke:wizards": "node scripts/smoke-wizards.mjs",
+    "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
+  },
+  "dependencies": {
+    "esbuild": "^0.27.4",
+    "playwright": "^1.58.2"
+  }
+}

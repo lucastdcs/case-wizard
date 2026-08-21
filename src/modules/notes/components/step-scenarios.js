@@ -1,13 +1,25 @@
 // src/modules/notes/components/step-scenarios.js
 
-import { scenarioSnippets } from "../notes-data.js";
+import { getScenarioFields, getScenariosFor, scenarioLabel } from "../data/notes-data.js";
 import { SoundManager } from "../../shared/sound-manager.js";
+import { getLanguage } from "../../shared/i18n.js";
+
+const PREVIEW_PLACEHOLDER = {
+  pt: "Passe o mouse sobre um cenário para visualizar o texto...",
+  es: "Pasa el mouse sobre un escenario para ver el texto...",
+};
+function defaultPreviewText() {
+  return PREVIEW_PLACEHOLDER[getLanguage()] || PREVIEW_PLACEHOLDER.pt;
+}
 
 export function createScenariosComponent(onSelectCallback) {
+  // Hover/preview aqui é todo via estilo inline em JS, sem classe CSS pra
+  // pendurar um @media - checa direto, igual foi feito na animação do genie.
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const container = document.createElement("div");
   container.className = "cw-step-scenarios";
-  
+
   // 1. Área de Chips (Grid)
   const grid = document.createElement("div");
   Object.assign(grid.style, {
@@ -27,107 +39,125 @@ export function createScenariosComponent(onSelectCallback) {
     fontSize: "12px",
     color: "#5f6368",
     lineHeight: "1.5",
-    minHeight: "40px",
+    minHeight: "44px",
     display: "flex",
     alignItems: "center",
     fontStyle: "italic",
-    transition: "all 0.2s ease"
+    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    overflow: "hidden"
   });
-  previewBox.innerHTML = "<span>Passe o mouse sobre um cenário para visualizar o texto...</span>";
+
+  const previewText = document.createElement("span");
+  // 0.05s bate com o setTimeout de 50ms do hover (abaixo) - o texto troca
+  // exatamente quando o fade-out termina, não no meio dele.
+  previewText.style.transition = "opacity 0.05s ease, transform 0.05s ease";
+  previewText.textContent = defaultPreviewText();
+  previewBox.appendChild(previewText);
 
   // Estado interno
-  let activeValue = null;
+  const selectedIds = new Set();
+  let hoverTimeout = null;
 
-  Object.entries(scenarioSnippets).forEach(([label, textValue]) => {
-    const chip = document.createElement("div");
-    chip.textContent = label; 
-    
-    Object.assign(chip.style, {
-      padding: "6px 12px",
-      borderRadius: "16px",
-      border: "1px solid #dadce0",
-      background: "#ffffff",
-      fontSize: "13px",
-      color: "#3c4043",
-      cursor: "pointer",
-      userSelect: "none",
-      transition: "all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)",
-      display: "flex",
-      alignItems: "center",
-      gap: "6px"
-    });
+  // Refined render version
+  container.render = (subStatusKey, caseType) => {
+      selectedIds.clear();
+      // Filtro por substatus real (campo `substatus` de cada snippet em
+      // notes-data.js), não mais por heurística de substring no ID (ex:
+      // "-ni-", "attempted") que só sabia distinguir o STATUS (NI/SO/AS/IN/
+      // DC), nunca o substatus - todo cenário de NI aparecia em qualquer um
+      // dos 4 substatus de NI, sem diferenciação. Regras de quais cenários
+      // pertencem a qual substatus: specs/workflow/case-notes-status-rules.md
+      const filtered = getScenariosFor(subStatusKey, caseType);
 
-    
-    // 1. Hover (Preview)
-    chip.onmouseenter = () => {
-      if (activeValue !== textValue) {
-        previewBox.style.background = "#fff";
-        previewBox.style.borderColor = "#1a73e8";
-        previewBox.style.color = "#202124";
-        previewBox.textContent = `"${textValue.substring(0, 120)}${textValue.length > 120 ? '...' : ''}"`;
-      }
+      grid.innerHTML = "";
+      filtered.forEach(([id, data]) => {
+          const chip = document.createElement("div");
+          chip.textContent = scenarioLabel(id, subStatusKey);
+          chip.dataset.id = id;
+          chip.dataset.sound = "hover";
 
-      if (activeValue !== textValue) chip.style.background = "#f1f3f4";
-    };
+          Object.assign(chip.style, {
+            padding: "6px 12px",
+            borderRadius: "16px",
+            border: "1px solid #dadce0",
+            background: "#ffffff",
+            fontSize: "13px",
+            color: "#3c4043",
+            cursor: "pointer",
+            userSelect: "none",
+            transition: "all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)",
+          });
 
-    chip.onmouseleave = () => {
-      if (activeValue !== textValue) {
+          const localized = getScenarioFields(data, getLanguage(), id);
+          const textPreviewContent = localized['field-REASON_COMMENTS'] || localized['field-CONTEXTO_CALL'] || id;
 
-        if (!activeValue) {
-             previewBox.style.background = "#f8f9fa";
-             previewBox.style.borderColor = "#dadce0";
-             previewBox.style.color = "#5f6368";
-             previewBox.innerHTML = "<span>Passe o mouse sobre um cenário para visualizar o texto...</span>";
-        } else {
+          chip.onmouseenter = () => {
+              if (hoverTimeout) clearTimeout(hoverTimeout);
 
-        }
-        chip.style.background = "#ffffff";
-      }
-    };
+              if (!selectedIds.has(id)) {
+                  chip.style.background = "#f1f3f4";
+              }
 
-    // 2. Clique (Seleção)
-    chip.onclick = () => {
-      SoundManager.playClick();
+              previewText.style.opacity = "0";
+              if (!reduceMotion) previewText.style.transform = "translateY(5px)";
 
-      if (activeValue === textValue) {
-        activeValue = null;
-        updateVisuals();
-        onSelectCallback(""); 
+              hoverTimeout = setTimeout(() => {
+                  previewText.textContent = textPreviewContent.substring(0, 120) + (textPreviewContent.length > 120 ? '...' : '');
+                  previewText.style.opacity = "1";
+                  if (!reduceMotion) previewText.style.transform = "translateY(0)";
+              }, 50);
+          };
+
+          chip.onmouseleave = () => {
+              if (hoverTimeout) clearTimeout(hoverTimeout);
+
+              if (!selectedIds.has(id)) {
+                  chip.style.background = "#ffffff";
+              }
+
+              hoverTimeout = setTimeout(() => {
+                  if (selectedIds.size === 0) {
+                      previewText.style.opacity = "0";
+                      setTimeout(() => {
+                          previewText.textContent = defaultPreviewText();
+                          previewText.style.opacity = "1";
+                      }, 50);
+                  }
+              }, 100);
+          };
+
+          chip.onclick = () => {
+              SoundManager.playClick();
+              const isSelecting = !selectedIds.has(id);
+
+              if (isSelecting) {
+                  selectedIds.add(id);
+                  chip.style.background = "#e8f0fe";
+                  chip.style.borderColor = "#1a73e8";
+                  chip.style.color = "#1967d2";
+              } else {
+                  selectedIds.delete(id);
+                  chip.style.background = "#ffffff";
+                  chip.style.borderColor = "#dadce0";
+                  chip.style.color = "#3c4043";
+              }
+
+              onSelectCallback(id, isSelecting);
+          };
+          grid.appendChild(chip);
+      });
+
+      if (filtered.length === 0) {
+          container.style.display = "none";
       } else {
-        activeValue = textValue;
-        updateVisuals();
-        
-        chip.style.transform = "scale(0.95)";
-        setTimeout(() => chip.style.transform = "scale(1)", 150);
-        
-        onSelectCallback(textValue); 
+          container.style.display = "block";
       }
-    };
+  };
 
-    grid.appendChild(chip);
-  });
-
-
-  function updateVisuals() {
-    Array.from(grid.children).forEach(child => {
-
-        const chipText = scenarioSnippets[child.textContent];
-        
-        if (chipText === activeValue) {
-            // Ativo
-            child.style.background = "#e8f0fe";
-            child.style.borderColor = "#1a73e8";
-            child.style.color = "#1967d2";
-            child.style.fontWeight = "500";
-        } else {
-            // Inativo
-            child.style.background = "#ffffff";
-            child.style.borderColor = "#dadce0";
-            child.style.color = "#3c4043";
-            child.style.fontWeight = "400";
-        }
-    });
-  }
+  // Quais cenários estão marcados agora - é o que o botão "Salvar como atalho"
+  // captura. O Set é interno de propósito (o clique é a única forma de mexer
+  // nele); expor a leitura não abre mão disso.
+  container.getSelectedIds = () => [...selectedIds];
 
   container.appendChild(grid);
   container.appendChild(previewBox);
