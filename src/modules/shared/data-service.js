@@ -16,14 +16,29 @@ import { getAgentEmail } from './page-data.js';
 // Live Server, sem passar pelo bundler - o `typeof` cai no fallback
 // "development", que é o comportamento certo pra máquina local.
 //
-// Ao rotacionar um deployment, troque o ID AQUI e, se for o de
-// desenvolvimento, também o DEPLOYMENT_ID do deploy.yml - os dois precisam
-// apontar pro mesmo lugar.
+// QUAL ID É QUAL, e por quê:
+//
+// A implantação abaixo marcada como `production` é a que sempre esteve em
+// uso de fato - a que o CI vinha republicando e contra a qual todo mundo
+// trabalha. Ela continua sendo a de produção justamente por isso: ela já
+// está em dia, e trocar produção para outro lugar significaria apontá-la
+// para uma implantação parada num commit antigo. (Foi o erro da primeira
+// versão deste split: ele elegeu como produção a implantação que a `main`
+// referenciava, e que não era promovida desde março.)
+//
+// A de `development` é NOVA, criada só para este split. Ela existe para que
+// pushes na branch de desenvolvimento parem de mexer no que os agentes
+// usam: antes, um único ID servia aos dois, então cada push republicava o
+// backend de todo mundo.
+//
+// Ao rotacionar um deployment, troque o ID AQUI e também o do
+// .github/workflows/deploy.yml - os dois precisam apontar pro mesmo lugar.
 const DEPLOYMENTS = {
-    // Promovido manualmente (`clasp deploy -i <id>`), nunca pelo CI.
-    production:  "AKfycbxFxh1cVk6r0t_JTA2TBfHBLJe_mOBQFsidwL1jwsUDcBtQYk3afu25SN-FR3vafJChHw",
-    // Promovido automaticamente pelo CI a cada push em refactor-structure.
-    development: "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg",
+    // Promovida SÓ quando um merge chega na `main`. Nenhum push na branch de
+    // desenvolvimento a toca.
+    production:  "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg",
+    // Promovida automaticamente a cada push em refactor-structure.
+    development: "__NOVO_DEPLOYMENT_DEV__",
 };
 
 const BUILD_ENV = typeof __CW_BUILD_ENV__ !== "undefined" ? __CW_BUILD_ENV__ : "development";
