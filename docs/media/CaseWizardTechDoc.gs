@@ -46,8 +46,13 @@ var DOC = {
   TITLE: 'Case Wizard — Documentação Técnica',
   SUBTITLE: 'TechSol Operations Assistant: arquitetura, contratos de dados e decisões de engenharia de uma aplicação de sobreposição sem servidor próprio',
   AUTHOR: 'Lucas Teixeira Di Cesare Santos (lucaste)',
-  REPO: 'github.com/lucastdcs/techsol_DialIn_AutoCopy',
-  APP_VERSION: 'v5.2',
+  // O repositório foi renomeado em 2026-08-21 (ADR 0003, e seção 21 deste
+  // documento). O nome antigo, techsol_DialIn_AutoCopy, só aparece daqui
+  // pra frente quando o assunto É o rename — em nenhum outro lugar.
+  REPO: 'github.com/lucastdcs/case-wizard',
+  // Precisa acompanhar o APP_VERSION de src/app.js — aparece na capa e no
+  // cabeçalho de todas as páginas deste documento.
+  APP_VERSION: 'v6.0',
   API_VERSION: 'TechSol Backend API v6.0',
   AUDIENCE: 'Engenheiros, TLs técnicos e quem for assumir a manutenção do projeto',
 };
@@ -566,16 +571,17 @@ var INDEX_ROWS = [
   ['12', 'Ciclo de vida do caso BAU', 'A máquina de estados, quem pode transicionar o quê e as regras de fila.'],
   ['13', 'Motor de e-mails dinâmicos', 'Template único com placeholders, despacho por tipo de evento e cálculo de urgência.'],
   ['14', 'TL Dashboard', 'A segunda aplicação: HtmlService, google.script.run e por que ela não usa a API JSONP.'],
-  ['15', 'Segurança e permissões', 'Identidade real vs. declarada, a planilha People, isOverhead e o fallback restritivo.'],
-  ['16', 'Concorrência e automações', 'LockService, gatilhos de tempo, alerta de volume e backup semanal.'],
-  ['17', 'Resiliência e degradação', 'Cache-first, rascunhos de emergência, watchdogs e falha silenciosa.'],
-  ['18', 'Design system e UI', 'Glassmorphism, header factory, genie effect e as proibições de UX.'],
-  ['19', 'Build, deploy e ambientes', 'esbuild e o define de ambiente, ordem dos jobs, clasp push vs. promoção, os IDs que precisam concordar.'],
-  ['20', 'Evolução recente do projeto', 'O rename e o shim, o split de dev e produção, o incidente da v6.0 e a armadilha do bit de execução.'],
-  ['21', 'Governança da documentação', 'Como specs/, docs/, ADRs e aprendizados são mantidos em sincronia com o código.'],
-  ['22', 'Limitações e trade-offs', 'O que foi trocado por o quê, e onde o desenho vai doer primeiro.'],
-  ['23', 'Roadmap técnico', 'Dívidas conhecidas e evoluções previstas.'],
-  ['24', 'Guia de retomada', 'O caminho mais curto para alguém novo ficar produtivo.'],
+  ['15', 'Central de Conteúdo', 'A terceira aplicação: conteúdo editável sem deploy, com proposta, aprovação, versionamento e papéis por módulo.'],
+  ['16', 'Segurança e permissões', 'Identidade real vs. declarada, a planilha People, isOverhead e o fallback restritivo.'],
+  ['17', 'Concorrência e automações', 'LockService, gatilhos de tempo, alerta de volume e backup semanal.'],
+  ['18', 'Resiliência e degradação', 'Cache-first, rascunhos de emergência, watchdogs e falha silenciosa.'],
+  ['19', 'Design system e UI', 'Glassmorphism, header factory, genie effect e as proibições de UX.'],
+  ['20', 'Build, deploy e ambientes', 'esbuild e o define de ambiente, ordem dos jobs, clasp push vs. promoção, os IDs que precisam concordar.'],
+  ['21', 'Evolução recente do projeto', 'O rename e o shim, o split de dev e produção, o incidente da v6.0 e a armadilha do bit de execução.'],
+  ['22', 'Governança da documentação', 'Como specs/, docs/, ADRs e aprendizados são mantidos em sincronia com o código.'],
+  ['23', 'Limitações e trade-offs', 'O que foi trocado por o quê, e onde o desenho vai doer primeiro.'],
+  ['24', 'Roadmap técnico', 'Dívidas conhecidas e evoluções previstas.'],
+  ['25', 'Guia de retomada', 'O caminho mais curto para alguém novo ficar produtivo.'],
   ['A', 'Apêndice — Glossário', 'Termos internos, siglas e nomes de domínio.'],
   ['B', 'Apêndice — Mapa de arquivos', 'Onde mora cada coisa, arquivo por arquivo.'],
 ];
@@ -597,7 +603,7 @@ function sec01_(ctx) {
   para_(ctx, 'A consequência arquitetural mais importante disso é que o app compartilha o mesmo ' +
     'documento, o mesmo objeto window e o mesmo ciclo de vida da página hospedeira. Não existe ' +
     'isolamento: se o Connect Cases recarregar, o Case Wizard some junto; se o Connect Cases travar, ' +
-    'o overlay trava junto. Todo o desenho de resiliência do projeto (seção 17) existe por causa ' +
+    'o overlay trava junto. Todo o desenho de resiliência do projeto (seção 18) existe por causa ' +
     'dessa única característica.', { spaceAfter: 12 });
 
   h2_(ctx, 'O problema que ele resolve', COLOR.blue);
@@ -648,7 +654,7 @@ function sec02_(ctx) {
      'A distribuição vira um bookmarklet copiado manualmente. Não há canal de atualização automática além do cache busting.'],
     ['Sem servidor e sem banco de dados provisionáveis',
      'Não há infraestrutura alocada ao projeto',
-     'O backend vira Apps Script e o banco vira Sheets, com todas as quotas e limites que isso implica (seção 22).'],
+     'O backend vira Apps Script e o banco vira Sheets, com todas as quotas e limites que isso implica (seção 23).'],
     ['CORS bloqueia XHR/fetch entre o domínio do CRM e o do Apps Script',
      'Política de origem cruzada do navegador',
      'Todo o transporte é JSONP via tag <script>, inclusive as escritas (seção 09).'],
@@ -663,7 +669,7 @@ function sec02_(ctx) {
      'Não há autenticação própria; a identidade vem do Google. Isso também impede qualquer chamada anônima ou automação externa.'],
     ['Instabilidade conhecida do CRM hospedeiro',
      'Ambiente de produção de terceiro',
-     'Rascunhos automáticos, salvamento de emergência e watchdogs de timeout viram requisito, não polimento (seção 17).'],
+     'Rascunhos automáticos, salvamento de emergência e watchdogs de timeout viram requisito, não polimento (seção 18).'],
   ], COLOR.red, [0.26, 0.24, 0.50]);
 
   callout_(ctx, 'Leitura recomendada',
@@ -736,7 +742,7 @@ function sec03_(ctx) {
   callout_(ctx, 'Por que isso importa',
     'Ações restritas à liderança vivem no canal da ponte nativa justamente porque lá o servidor sabe ' +
     'quem está chamando. Se uma dessas ações fosse exposta como um op= no roteador JSONP, qualquer ' +
-    'usuário do domínio poderia forjar o parâmetro user e executá-la. Ver seção 15.', COLOR.green);
+    'usuário do domínio poderia forjar o parâmetro user e executá-la. Ver seção 16.', COLOR.green);
 }
 
 function sec04_(ctx) {
@@ -750,7 +756,7 @@ function sec04_(ctx) {
   code_(ctx, [
     'javascript:(function(){',
     "  const cacheBuster = '?t=' + new Date().getTime();",
-    "  const scriptUrl = 'https://lucastdcs.github.io/techsol_DialIn_AutoCopy/bundle.js'",
+    "  const scriptUrl = 'https://lucastdcs.github.io/case-wizard/bundle.js'",
     '                  + cacheBuster;',
     '',
     "  const policy = trustedTypes.createPolicy('default', {",
@@ -769,6 +775,14 @@ function sec04_(ctx) {
     '})();',
   ], 'Bookmarklet de produção (aponta sempre para a branch main). A versão de desenvolvimento é análoga, mas carrega bundle-dev.js — ver README.md.');
 
+  callout_(ctx, 'A URL contém o nome do repositório',
+    'É esse detalhe que transformou um simples rename de repositório numa operação de risco, em ' +
+    '2026-08-21: o GitHub redireciona as URLs de git de um repositório renomeado, mas NÃO redireciona ' +
+    'o GitHub Pages. Favoritos apontando para o nome antigo (techsol_DialIn_AutoCopy) hoje continuam ' +
+    'funcionando por causa de um repositório-shim mantido de propósito sob aquele nome. A história ' +
+    'completa está na seção 21 — se você encontrar a URL antiga em algum lugar, é dela que se trata, ' +
+    'e o endereço canônico é o de /case-wizard/ acima.', COLOR.yellow);
+
   h2_(ctx, 'Linha a linha', COLOR.yellow);
   table_(ctx, ['Trecho', 'O que faz', 'Por que existe'], [
     ['cacheBuster', 'Anexa um timestamp à URL do script.',
@@ -780,8 +794,8 @@ function sec04_(ctx) {
      'Remove a tag de script de uma injeção anterior, se houver.',
      'Torna o clique repetível: o DOM não acumula tags mortas a cada vez que o agente clica no favorito.'],
     ['script.id fixo',
-     'Dá identidade estável à tag injetada.',
-     'É o que permite a limpeza acima e facilita inspecionar no DevTools se o bundle chegou a carregar.'],
+     'Dá identidade estável à tag injetada (techsol-app-bundle).',
+     'É o que permite a limpeza acima e facilita inspecionar no DevTools se o bundle chegou a carregar. O nome desse id é histórico e não tem relação com o nome do repositório — trocá-lo não traria benefício e quebraria a limpeza para quem estivesse com uma instância antiga na página.'],
   ], COLOR.yellow, [0.26, 0.30, 0.44]);
 
   h2_(ctx, 'Idempotência em duas camadas', COLOR.yellow);
@@ -988,7 +1002,7 @@ function sec07_(ctx) {
     ['utils.js', 'Estilos globais, fonte, splash de abertura e o sistema de toast.',
      'initGlobalStylesAndFont é o primeiro efeito colateral do boot.'],
     ['config.js', 'Lista ADMINS de LDAPs com privilégio no cliente.',
-     'É conveniência de UI, não segurança: a autorização real acontece no servidor (seção 15).'],
+     'É conveniência de UI, não segurança: a autorização real acontece no servidor (seção 16).'],
   ], COLOR.modPurple, [0.17, 0.40, 0.43]);
 
   h2_(ctx, 'Chaves de armazenamento local', COLOR.modPurple);
@@ -1171,7 +1185,7 @@ function sec09_(ctx) {
   bullets_(ctx, [
     'Limite prático de tamanho de URL: payloads muito grandes (um snippet longo, uma nota extensa) podem ser truncados pelo navegador ou pelo servidor. É a primeira suspeita quando uma escrita "some" sem erro.',
     'O conteúdo aparece nos logs de execução do Apps Script e no histórico de requisições — nada sensível deve trafegar por aqui.',
-    'Não há semântica de idempotência HTTP: dois cliques rápidos podem gerar dois registros. O backend compensa isso com LockService (seção 16), não o transporte.',
+    'Não há semântica de idempotência HTTP: dois cliques rápidos podem gerar dois registros. O backend compensa isso com LockService (seção 17), não o transporte.',
     'Todo valor chega como string no backend. Booleanos precisam ser normalizados manualmente — daí construções como p.isCode === \'true\' || p.isCode === true em Código.js.',
     'Não há códigos de status: um erro do backend chega como um objeto JSON com status: \'error\', não como um 4xx/5xx. O front precisa checar o campo, não a rede.',
   ]);
@@ -1381,7 +1395,7 @@ function sec11_(ctx) {
 
   para_(ctx, 'Note que a checagem de posse dos snippets compara com o parâmetro user enviado pelo ' +
     'cliente. Ela impede um erro de aplicação, não um usuário mal-intencionado — a barreira real ' +
-    'contra isso é o access DOMAIN do Web App. Ver seção 15.', { spaceAfter: 8 });
+    'contra isso é o access DOMAIN do Web App. Ver seção 16.', { spaceAfter: 8 });
 }
 
 function sec12_(ctx) {
@@ -1441,7 +1455,7 @@ function sec12_(ctx) {
     'Caso contrário, os dados capturados estarão incorretos."', COLOR.red);
 
   para_(ctx, 'Esse aviso não pode ser um window.confirm: as regras de DOM proíbem pop-ups nativos, e a ' +
-    'confirmação tem de usar o sistema de modais customizados do projeto (seção 18).', { spaceAfter: 8 });
+    'confirmação tem de usar o sistema de modais customizados do projeto (seção 19).', { spaceAfter: 8 });
 }
 
 function sec13_(ctx) {
@@ -1581,7 +1595,156 @@ function sec14_(ctx) {
 }
 
 function sec15_(ctx) {
-  h1_(ctx, '15', 'Segurança e permissões', COLOR.red);
+  h1_(ctx, '15', 'Central de Conteúdo', COLOR.modGreen);
+
+  para_(ctx, 'A Central de Conteúdo é a terceira aplicação do projeto e o subsistema mais recente. ' +
+    'Ela resolve um problema que não é técnico, mas de processo: até existir, mudar um link, um passo ' +
+    'de script de ligação ou um modelo de e-mail exigia editar código e fazer deploy. Hoje esse ' +
+    'conteúdo é dado, editável por quem tem permissão, com fluxo de proposta e aprovação.',
+    { spaceAfter: 10 });
+
+  h2_(ctx, 'Onde ela vive', COLOR.modGreen);
+  specList_(ctx, [
+    ['Interface', 'gas-backend/ContentDashboard.html, servida por ?page=content'],
+    ['Lógica', 'gas-backend/ContentAPI.js (cerca de 1.000 linhas)'],
+    ['Leitura pelo app', 'op=content_public no roteador JSONP'],
+    ['Escrita e curadoria', 'google.script.run a partir do dashboard'],
+    ['Sementes iniciais', 'gas-backend/ContentSeed_*.js e a pasta seeds/'],
+  ], COLOR.modGreen);
+
+  callout_(ctx, 'A mesma assimetria da seção 14',
+    'Vale reparar no padrão que se repete: leitura pública passa pelo JSONP, porque qualquer agente ' +
+    'precisa dela; escrita e curadoria passam pela ponte nativa, onde o servidor conhece a identidade ' +
+    'real de quem chama. É a mesma separação que sustenta o TL Dashboard.', COLOR.modGreen);
+
+  h2_(ctx, 'Os módulos editáveis', COLOR.modGreen);
+  para_(ctx, 'A constante CONTENT_MODULES define o universo do que pode ser editado sem deploy: ' +
+    'links, call_script, email_template, note_template e tips. Idiomas possíveis: ALL, PT, ES e EN.',
+    { spaceAfter: 10 });
+
+  h2_(ctx, 'As três abas de dados', COLOR.modGreen);
+  table_(ctx, ['Aba', 'Colunas', 'Papel'], [
+    ['Content_Items',
+     'ID · Module · Key · Field · Lang · Label · Value · Version · Status · Published_By · Published_At · Sort_Order · Lineage',
+     'O conteúdo publicado. Cada publicação é uma LINHA NOVA, não uma edição — o histórico é o próprio acúmulo de versões.'],
+    ['Content_Drafts',
+     'Draft_ID · Item_ID · Module · Key · Field · Lang · Label · Value · Status · Proposed_By · Proposed_At · Reviewed_By · Reviewed_At · Review_Note · Locked_By · Locked_At · Sort_Order · Action',
+     'As propostas em andamento, com trilha de revisão e trava de edição.'],
+    ['Content_Access',
+     'LDAP · Role · Active · Granted_By · Granted_At',
+     'Quem pode editar o quê. Gerenciada pela própria tela, sem deploy.'],
+  ], COLOR.modGreen, [0.18, 0.44, 0.38]);
+
+  h3_(ctx, 'Por que existe uma coluna Lineage');
+  para_(ctx, 'É a decisão de modelagem mais sutil do subsistema, e o comentário no código explica o ' +
+    'porquê: Lineage é a identidade estável do item ao longo das versões. O ID muda a cada publicação, ' +
+    'porque cada versão é uma linha nova. E Key não serve como identidade: em links, Key é a ' +
+    'categoria, compartilhada por dezenas de itens.', { spaceAfter: 8 });
+
+  callout_(ctx, 'O que a Lineage evita',
+    'Sem essa coluna, um rollback arquivaria a categoria inteira em vez de um link só. É o tipo de ' +
+    'erro que só aparece em produção, no dia em que alguém precisa desfazer uma mudança.',
+    COLOR.modGreen);
+
+  h2_(ctx, 'O ciclo de vida de uma proposta', COLOR.modGreen);
+  code_(ctx, [
+    '  saveContentDraft()        -> draft      (rascunho, trava de 10 min)',
+    '           |',
+    '  submitContentDraft()      -> pending    (notifyApprovers_ avisa quem aprova)',
+    '           |',
+    '     +-----+-----+',
+    '     |           |',
+    '  approve      reject',
+    '     |           |',
+    '     v           v',
+    '  approved    rejected',
+    '     |',
+    '     v',
+    '   live        (vira uma linha nova em Content_Items)',
+    '     |',
+    '     v',
+    '  archived     (quando uma versão mais nova a substitui;',
+    '                rollbackContentItem() traz uma versão arquivada de volta)',
+  ], 'Estados de CONTENT_STATUS. Cada transição vai para o log de eventos por logContentEvent_.');
+
+  h3_(ctx, 'Upsert e remove são intenções diferentes');
+  para_(ctx, 'A coluna Action carrega o que a proposta faz com o item quando aprovada: upsert ou ' +
+    'remove. O código registra que essa coluna é explícita de propósito, em vez de inferir a intenção ' +
+    'a partir de um valor vazio — "tirar do ar" e "publicar um valor em branco" são coisas distintas, ' +
+    'e adivinhar erraria uma das duas.', { spaceAfter: 10 });
+
+  h2_(ctx, 'Papéis e permissões', COLOR.modGreen);
+  para_(ctx, 'A matriz CONTENT_ROLES é independente do isOverhead da seção 16: aqui a permissão é por ' +
+    'módulo, não por senioridade.', { spaceAfter: 8 });
+
+  table_(ctx, ['Papel', 'Pode propor em', 'Aprova?', 'Gerencia acessos?'], [
+    ['ADMIN', 'Todos os módulos', 'Sim', 'Sim'],
+    ['TL', 'Todos os módulos', 'Sim', 'Não'],
+    ['QA', 'call_script e note_template', 'Não', 'Não'],
+    ['WFM', 'links', 'Não', 'Não'],
+  ], COLOR.modGreen, [0.16, 0.40, 0.20, 0.24], { monoCols: [0] });
+
+  para_(ctx, 'A regra geral é que ninguém aprova a própria proposta. O ADMIN é a única exceção, e o ' +
+    'código explica a razão: hoje é o único papel de fato ativo, e travar o próprio fluxo não ' +
+    'protegeria ninguém. A aprovação vai para o log como qualquer outra.', { spaceAfter: 8 });
+
+  callout_(ctx, 'A semente de acesso',
+    'CONTENT_BOOTSTRAP_ADMIN existe para resolver o problema do ovo e da galinha: sem ele a tela ' +
+    'nasceria inacessível para todo mundo, inclusive para quem precisaria cadastrar os demais. É um ' +
+    'LDAP fixo no código, e o único privilégio que não vem da planilha.', COLOR.yellow);
+
+  h2_(ctx, 'A trava de edição é cooperativa', COLOR.modGreen);
+  para_(ctx, 'O Sheets não tem bloqueio por linha. A concorrência entre editores é resolvida com uma ' +
+    'trava cooperativa gravada no próprio rascunho (Locked_By e Locked_At), com TTL de 10 minutos ' +
+    '(CONTENT_LOCK_TTL_MS). Ela expira sozinha justamente para nunca deixar um item preso caso alguém ' +
+    'feche a aba no meio da edição.', { spaceAfter: 8 });
+
+  callout_(ctx, 'Não confundir com o LockService',
+    'São mecanismos diferentes para problemas diferentes. O LockService da seção 17 serializa escritas ' +
+    'concorrentes por milissegundos, no servidor. Esta trava é de UX: impede que duas pessoas editem o ' +
+    'mesmo rascunho por minutos, e é cooperativa — não impede a escrita, sinaliza a intenção.',
+    COLOR.modGreen);
+
+  h2_(ctx, 'Validação antes de publicar', COLOR.modGreen);
+  para_(ctx, 'Conteúdo editável por humanos precisa de guardas, porque um placeholder errado só ' +
+    'apareceria na frente do anunciante. Duas validações rodam antes de uma proposta virar conteúdo ' +
+    'vivo, e ambas têm uma função de checagem exposta à tela para dar retorno enquanto se digita:',
+    { spaceAfter: 8 });
+
+  table_(ctx, ['Validação', 'Função', 'O que verifica'], [
+    ['Modelo de nota', 'assertValidNoteTemplate_ / checkNoteTemplate',
+     'Que o modelo corresponde ao sub-status declarado, conforme a definição de campos em ContentFields_Notes.js.'],
+    ['Modelo de e-mail', 'assertValidEmailTemplate_ / checkEmailTemplate',
+     'Os placeholders no formato [TOKEN], via expressão regular, e a coerência com o idioma.'],
+  ], COLOR.modGreen, [0.20, 0.34, 0.46]);
+
+  h2_(ctx, 'Sementes: migrar conteúdo sem perder o que já existia', COLOR.modGreen);
+  para_(ctx, 'Cada módulo migrado para a Central nasceu de um seed: um script que lê o conteúdo que ' +
+    'estava hardcoded no front-end e o transforma nas linhas iniciais de Content_Items. Os geradores ' +
+    'ficam em scripts/generate-*-seed.mjs, a carga no backend em ContentSeed_*.js, e o resultado ' +
+    'versionado na pasta seeds/.', { spaceAfter: 8 });
+
+  bullets_(ctx, [
+    'O gerador roda sem argumentos: a fonte é sempre o próprio código do módulo, para o seed não divergir do que estava no ar.',
+    'Cada migração tem um teste de ida e volta (npm run test:emails, test:call-script, test:note-templates), que confirma que o conteúdo migrado reproduz exatamente o comportamento anterior.',
+    'seedContentModule() é o ponto de entrada no backend, chamado uma vez por módulo.',
+  ]);
+
+  callout_(ctx, 'Por que o teste de round-trip importa',
+    'A migração troca a fonte do conteúdo sem que o agente perceba diferença. O único jeito de provar ' +
+    'isso é comparar a saída antes e depois, item a item — e é exatamente o que esses harnesses fazem.',
+    COLOR.modGreen);
+
+  h2_(ctx, 'Preferências do agente', COLOR.modGreen);
+  para_(ctx, 'Ao lado da Central, e pelo mesmo espírito de "configurável sem deploy", o roteador ganhou ' +
+    'get_user_prefs e save_user_prefs: um blob JSON por pessoa, uma linha por LDAP. Hoje guarda os ' +
+    'atalhos configuráveis do Ctrl+K, mas nasceu genérico de propósito, para que som, idioma e ordem ' +
+    'da pílula possam migrar para lá sem exigir backend novo. A decisão está registrada no ADR 0002.',
+    { spaceAfter: 8 });
+}
+
+function sec16_(ctx) {
+  h1_(ctx, '16', 'Segurança e permissões', COLOR.red);
 
   para_(ctx, 'O modelo de segurança tem três camadas, e entender a diferença entre elas é o que separa ' +
     'uma alteração segura de uma brecha.', { spaceAfter: 10 });
@@ -1667,8 +1830,8 @@ function sec15_(ctx) {
   ]);
 }
 
-function sec16_(ctx) {
-  h1_(ctx, '16', 'Concorrência e automações', COLOR.modTeal);
+function sec17_(ctx) {
+  h1_(ctx, '17', 'Concorrência e automações', COLOR.modTeal);
 
   h2_(ctx, 'LockService: a serialização das escritas', COLOR.modTeal);
   para_(ctx, 'Duas escritas simultâneas na mesma planilha podem se sobrepor, e o JSONP sobre GET não ' +
@@ -1743,8 +1906,8 @@ function sec16_(ctx) {
     'erro visível.', COLOR.red);
 }
 
-function sec17_(ctx) {
-  h1_(ctx, '17', 'Resiliência e degradação', COLOR.modGreen);
+function sec18_(ctx) {
+  h1_(ctx, '18', 'Resiliência e degradação', COLOR.modGreen);
 
   para_(ctx, 'O Case Wizard roda dentro de uma aplicação de terceiro com instabilidade conhecida, sobre ' +
     'um transporte sem garantias e um backend com quotas. A postura de projeto que resulta disso é ' +
@@ -1793,8 +1956,8 @@ function sec17_(ctx) {
     COLOR.modGreen);
 }
 
-function sec18_(ctx) {
-  h1_(ctx, '18', 'Design system e camada de UI', COLOR.modPink);
+function sec19_(ctx) {
+  h1_(ctx, '19', 'Design system e camada de UI', COLOR.modPink);
 
   para_(ctx, 'A interface não usa framework algum. É Vanilla JS com CSS-in-JS, e a coerência visual vem ' +
     'de fábricas compartilhadas em vez de componentes declarativos. As regras estão em ' +
@@ -1844,8 +2007,8 @@ function sec18_(ctx) {
     'modal ainda aberto por cima.', { spaceAfter: 8 });
 }
 
-function sec19_(ctx) {
-  h1_(ctx, '19', 'Build, deploy e ambientes', COLOR.modPurple);
+function sec20_(ctx) {
+  h1_(ctx, '20', 'Build, deploy e ambientes', COLOR.modPurple);
 
   callout_(ctx, 'Não existe localhost',
     'O projeto roda injetado em um ambiente de produção de terceiro. Não há como servir o CRM ' +
@@ -1886,7 +2049,7 @@ function sec19_(ctx) {
     '  se ref = refactor-structure -> bundle-dev.js --define __CW_BUILD_ENV__="development"',
     '  peaceiris/actions-gh-pages  -> publica ./dist na branch gh-pages',
     '                                 (keep_files: true, os dois bundles coexistem)',
-  ], 'O needs: é a peça central. Os dois jobs já rodaram em paralelo, e foi essa corrida que produziu o incidente descrito na seção 20.');
+  ], 'O needs: é a peça central. Os dois jobs já rodaram em paralelo, e foi essa corrida que produziu o incidente descrito na seção 21.');
 
   callout_(ctx, 'Por que o backend vai primeiro',
     'Frontend novo sobre backend antigo chama operações que a implantação ainda não conhece, e o ' +
@@ -1954,6 +2117,20 @@ function sec19_(ctx) {
     'republica a cada push de desenvolvimento. Qualquer passo de build novo PRECISA passar o define. ' +
     'Não há erro, não há aviso — só o console.log denuncia.', COLOR.red);
 
+  h2_(ctx, 'A versão do app: dois arquivos, um commit', COLOR.modPurple);
+  para_(ctx, 'A numeração de versão do produto também é um par que precisa andar junto, e por um ' +
+    'motivo não óbvio:', { spaceAfter: 8 });
+
+  table_(ctx, ['Onde', 'O que controla'], [
+    ['APP_VERSION, em src/app.js', 'QUANDO o modal de "o que há de novo" dispara.'],
+    ['RELEASE_NOTES.version, em changelog-data.js', 'O QUE esse modal diz.'],
+  ], COLOR.modPurple, [0.38, 0.62], { monoCols: [0] });
+
+  callout_(ctx, 'Suba os dois no mesmo commit',
+    'Se divergirem, checkAndShowChangelog suprime o modal e registra um aviso, em vez de mostrar o ' +
+    'selo da versão nova sobre o conteúdo da versão antiga. É uma falha silenciosa deliberada: ' +
+    'ninguém vê o changelog, e nada quebra de forma visível.', COLOR.yellow);
+
   h2_(ctx, 'Os IDs que precisam concordar', COLOR.modPurple);
   table_(ctx, ['Onde', 'O quê', 'Regra'], [
     ['data-service.js', 'Mapa DEPLOYMENTS, com os dois IDs.', 'É o que o bundle usa em runtime.'],
@@ -1974,8 +2151,8 @@ function sec19_(ctx) {
     'pip install playwright e playwright install antes do npm run portfolio.', { spaceAfter: 8 });
 }
 
-function sec20_(ctx) {
-  h1_(ctx, '20', 'Evolução recente do projeto', COLOR.yellow);
+function sec21_(ctx) {
+  h1_(ctx, '21', 'Evolução recente do projeto', COLOR.yellow);
 
   para_(ctx, 'As três mudanças estruturais mais recentes do projeto são todas de infraestrutura, e ' +
     'todas nasceram do mesmo tipo de problema: algo que parecia estar separado e não estava. Elas ' +
@@ -2063,7 +2240,7 @@ function sec20_(ctx) {
     'backend de março. Um portão que depende de alguém lembrar não é um portão — e o portão de ' +
     'verdade, decidir o que vai para produção, já era o merge.', COLOR.red);
 
-  para_(ctx, 'A correção está descrita na seção 19: cada branch passa a ter a sua própria implantação, ' +
+  para_(ctx, 'A correção está descrita na seção 20: cada branch passa a ter a sua própria implantação, ' +
     'e o CI promove apenas a da branch que recebeu o push. Vale registrar o que foi rejeitado no ' +
     'caminho, porque são as perguntas que qualquer pessoa refaz:', { spaceAfter: 8 });
 
@@ -2075,7 +2252,7 @@ function sec20_(ctx) {
     ['Dois projetos Apps Script separados, um por ambiente.',
      'Seria o isolamento mais forte — planilhas, propriedades e gatilhos separados —, mas exige duplicar scriptId, credenciais e a planilha de dados. Fica como o caminho natural caso um dia seja preciso isolar DADOS, e não só versão de código.'],
     ['Publicar o frontend antes do backend, ou em paralelo.',
-     'É a origem da janela de erro descrita na seção 19.'],
+     'É a origem da janela de erro descrita na seção 20.'],
   ], COLOR.yellow, [0.34, 0.66]);
 
   callout_(ctx, 'A lição que vale além deste projeto',
@@ -2122,8 +2299,8 @@ function sec20_(ctx) {
     COLOR.yellow);
 }
 
-function sec21_(ctx) {
-  h1_(ctx, '21', 'Governança da documentação', COLOR.blue);
+function sec22_(ctx) {
+  h1_(ctx, '22', 'Governança da documentação', COLOR.blue);
 
   para_(ctx, 'O projeto mantém três corpos de documentação com papéis distintos. Confundi-los leva a ' +
     'documentar no lugar errado e a divergências que ninguém percebe.', { spaceAfter: 10 });
@@ -2184,8 +2361,8 @@ function sec21_(ctx) {
     'com uma nota explicando a decisão.', { spaceAfter: 8 });
 }
 
-function sec22_(ctx) {
-  h1_(ctx, '22', 'Limitações e trade-offs', COLOR.red);
+function sec23_(ctx) {
+  h1_(ctx, '23', 'Limitações e trade-offs', COLOR.red);
 
   para_(ctx, 'Nada aqui é surpresa para quem escreveu o sistema: são consequências aceitas ' +
     'conscientemente, dado o ambiente da seção 02. O que esta seção acrescenta é onde cada uma vai ' +
@@ -2220,7 +2397,7 @@ function sec22_(ctx) {
      'É como o clasp autentica em CI.',
      'A expiração ou rotação de CLASPRC_JSON derruba o deploy do backend. A validação com jq no workflow existe para tornar essa falha legível.'],
     ['Dois IDs de implantação em dois arquivos',
-     'É o preço do split de ambiente, que resolveu um problema maior (seção 20).',
+     'É o preço do split de ambiente, que resolveu um problema maior (seção 21).',
      'Os dois apontarem para implantações diferentes e ambas válidas é um erro que nenhuma guarda detecta.'],
     ['Um repositório-shim a manter vivo',
      'Mantém funcionando os bookmarklets instalados antes do rename.',
@@ -2235,8 +2412,8 @@ function sec22_(ctx) {
   ]);
 }
 
-function sec23_(ctx) {
-  h1_(ctx, '23', 'Roadmap técnico', COLOR.modOrange);
+function sec24_(ctx) {
+  h1_(ctx, '24', 'Roadmap técnico', COLOR.modOrange);
 
   h2_(ctx, 'Evoluções previstas', COLOR.modOrange);
   bullets_(ctx, [
@@ -2264,8 +2441,8 @@ function sec23_(ctx) {
     'sem precisar simular o hospedeiro.', COLOR.modOrange);
 }
 
-function sec24_(ctx) {
-  h1_(ctx, '24', 'Guia de retomada', COLOR.green);
+function sec25_(ctx) {
+  h1_(ctx, '25', 'Guia de retomada', COLOR.green);
 
   para_(ctx, 'Se você acabou de herdar este projeto, este é o caminho mais curto até ser produtivo.',
     { spaceAfter: 10 });
@@ -2414,5 +2591,6 @@ var SECTION_BUILDERS = [
   sec07_, sec08_, sec09_, sec10_, sec11_, sec12_,
   sec13_, sec14_, sec15_, sec16_, sec17_, sec18_,
   sec19_, sec20_, sec21_, sec22_, sec23_, sec24_,
+  sec25_,
   apxA_, apxB_,
 ];
