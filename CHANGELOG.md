@@ -9,6 +9,22 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Marca visível de ambiente, no app e nos dashboards.** Em desenvolvimento a
+  pílula ganha um anel âmbar (colapsada) e um selo "Dev" (aberta), e os
+  dashboards de TL e da Central de Conteúdo mostram um chip âmbar no canto. Em
+  produção não aparece nada — a decisão foi não pôr chrome extra na tela de quem
+  está trabalhando. O contrapeso é **Configurações → Diagnóstico**, que mostra o
+  ambiente SEMPRE, inclusive em produção, para que "estou em produção" seja uma
+  confirmação positiva e não a ausência de um selo (ausência também é o que se vê
+  quando algo não renderizou).
+  Junto vai o sufixo da implantação (últimos 6 caracteres do ID): é ele que prova
+  a separação, porque **o sufixo no app tem de bater com o do dashboard**. Os
+  dashboards não confiam numa constante compilada — descobrem a implantação pelo
+  `ScriptApp.getService().getUrl()` da própria requisição, e uma implantação fora
+  do mapa aparece em vermelho como "IMPLANTAÇÃO DESCONHECIDA" em vez de ser
+  tratada como produção.
+  Coberto por `npm run test:deployment-env` (9 casos) e `npm run smoke:env-badge`
+  (11 checagens, os dois builds num navegador real).
 - **Uma implantação do Apps Script por branch, promovida pelo CI.** Até aqui
   existia uma implantação só, republicada a cada push em `refactor-structure` —
   e como o frontend inteiro apontava para ela, um push numa branch de

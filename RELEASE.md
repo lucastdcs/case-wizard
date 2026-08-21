@@ -32,6 +32,34 @@ Each branch owns one Apps Script deployment and touches only that one.
 
 URLs: `https://lucastdcs.github.io/case-wizard/bundle{,-dev}.js`; Apps Script `.../exec`.
 
+### Telling the two apart at a glance
+
+Every surface says which deployment it is talking to, so a leak between
+environments is visible instead of inferred:
+
+| Where | Development | Production |
+|---|---|---|
+| Floating pill | amber ring when collapsed, "Dev" badge when open | nothing |
+| Settings → Diagnóstico | `DEV · …xxxxxx` | `PROD · …xxxxxx` |
+| Browser console at boot | `[Case Wizard] backend: development/exec · implantação …xxxxxx` | same, `production` |
+| TL / Content dashboards | amber chip, bottom-left | nothing |
+
+**Production shows no badge on purpose** — no extra chrome for the agent. The
+Settings block and the console line are always present in both environments, so
+"I am in production" stays a positive confirmation rather than the absence of a
+badge (absence is also what a failed render looks like).
+
+The `…xxxxxx` suffix is the last 6 characters of the deployment ID, and it is
+what actually proves the split: **the suffix in the app and the suffix in the
+dashboard must match**. If they differ, the frontend and the backend are on
+different deployments. A dashboard served by a deployment that is in neither map
+renders a red "IMPLANTAÇÃO DESCONHECIDA" chip rather than guessing.
+
+Covered by `npm run test:deployment-env` (the backend mapping, including the
+unknown-deployment case) and `npm run smoke:env-badge` (both builds in a real
+browser — notably that the badge is *absent from the DOM* in production, not
+merely hidden).
+
 ### Order within a deploy
 
 The `build-and-deploy-frontend` job declares `needs: deploy-backend-gas`, so **the
