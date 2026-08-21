@@ -38,7 +38,7 @@ const DEPLOYMENTS = {
     // desenvolvimento a toca.
     production:  "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg",
     // Promovida automaticamente a cada push em refactor-structure.
-    development: "__NOVO_DEPLOYMENT_DEV__",
+    development: "AKfycbyUtczRMulDAyO_1ku39Rb01zarPMw1JvO7aNOdJPYeAgCC7G9mmb-P_EuXP6kvo8l2LA",
 };
 
 const BUILD_ENV = typeof __CW_BUILD_ENV__ !== "undefined" ? __CW_BUILD_ENV__ : "development";

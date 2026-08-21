@@ -95,13 +95,15 @@ O job do frontend declara `needs: deploy-backend-gas`: o backend é promovido
 
 ## Notes
 
-Ao criar a implantação de desenvolvimento, o ID novo precisa entrar em **dois**
-lugares:
+A implantação de desenvolvimento foi criada em 2026-08-21 e o ID já está nos dois
+lugares que precisam concordar:
 
 - `DEPLOYMENTS.development` em `src/modules/shared/data-service.js`
 - o `DEPLOYMENT_ID` do step "Promover implantação de desenvolvimento" em
   `.github/workflows/deploy.yml`
 
-Enquanto isso não acontecer, os dois arquivos carregam o placeholder
-`__NOVO_DEPLOYMENT_DEV__` e o deploy da branch de desenvolvimento falha de
-propósito, com a mensagem apontando o que fazer.
+Ao rotacionar qualquer uma das duas implantações no futuro, os dois arquivos mudam
+juntos. O `scripts/promote-deployment.sh` recusa rodar com um ID de placeholder
+(`__ALGO__`), mas **não** detecta os dois arquivos apontando para implantações
+diferentes e válidas — esse é o erro que ainda passa silencioso, e a razão de os
+dois pontos estarem listados aqui.

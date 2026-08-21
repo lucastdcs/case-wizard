@@ -131,7 +131,7 @@ jobs:
         if: github.ref == 'refs/heads/refactor-structure'
         env:
           AMBIENTE: desenvolvimento
-          DEPLOYMENT_ID: "__NOVO_DEPLOYMENT_DEV__"
+          DEPLOYMENT_ID: "AKfycbyUtczRMulDAyO_1ku39Rb01zarPMw1JvO7aNOdJPYeAgCC7G9mmb-P_EuXP6kvo8l2LA"
         run: ./scripts/promote-deployment.sh
 
       - name: Promover implantação de produção
