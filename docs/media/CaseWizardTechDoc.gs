@@ -216,6 +216,13 @@ function cellAttrs_(pad, bg) {
 
 // Aplica estilo a uma célula e devolve o primeiro parágrafo dela, já pronto
 // para receber texto — o par de chamadas mais repetido do arquivo.
+//
+// CUIDADO AO ENCADEAR: Paragraph.setText() retorna VOID no DocumentApp
+// (diferente de Text.setText(), que devolve o próprio Text). Então
+//     styleCell_(...).setText('x').setAttributes(...)   // TypeError: null
+// quebra. Guarde o parágrafo numa variável e chame setText e setAttributes
+// como instruções separadas. setAttributes e setHeading, esses sim,
+// devolvem o parágrafo e podem ser encadeados à vontade.
 function styleCell_(cell, pad, bg) {
   cell.setAttributes(cellAttrs_(pad, bg));
   return cell.getChild(0).asParagraph();
@@ -328,9 +335,9 @@ function code_(ctx, lines, caption) {
   var cell = t.getCell(0, 0);
   var style = codeAttrs_();
 
-  styleCell_(cell, [12, 14, 12, 14], COLOR.dark)
-    .setText(arr[0] || '')
-    .setAttributes(style);
+  var first = styleCell_(cell, [12, 14, 12, 14], COLOR.dark);
+  first.setText(arr[0] || '');
+  first.setAttributes(style);
 
   for (var i = 1; i < arr.length; i++) {
     cell.appendParagraph(arr[i]).setAttributes(style);
@@ -359,11 +366,11 @@ function callout_(ctx, label, text, accent) {
     .setAttributes(attrs_({ size: 1, spaceBefore: 0, spaceAfter: 0 }));
 
   var cell = t.getCell(0, 1);
-  styleCell_(cell, [10, 14, 10, 14], COLOR.bgAlt)
-    .setText(String(label).toUpperCase())
-    .setAttributes(attrs_({
-      size: SIZE.tiny, bold: true, color: accent, spaceBefore: 0, spaceAfter: 3,
-    }));
+  var head = styleCell_(cell, [10, 14, 10, 14], COLOR.bgAlt);
+  head.setText(String(label).toUpperCase());
+  head.setAttributes(attrs_({
+    size: SIZE.tiny, bold: true, color: accent, spaceBefore: 0, spaceAfter: 3,
+  }));
 
   cell.appendParagraph(text).setAttributes(attrs_({
     size: SIZE.small, color: COLOR.ink, spaceBefore: 0, spaceAfter: 0,
