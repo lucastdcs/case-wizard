@@ -838,15 +838,20 @@ function sec05_(ctx) {
 
   code_(ctx, [
     'A.  initGlobalStylesAndFont()             // estilos globais + fonte no <head>',
-    'A2. SoundManager.initGlobalListeners()    // dentro de try/catch: áudio pode ser bloqueado',
+    'A2. SoundManager.initGlobalListeners()    // dentro de try/catch: audio pode ser bloqueado',
     'B.  DataService.fetchTips()               // dispara (sem await) a busca de dicas',
     'C.  const splashDone = playStartupAnimation()   // guarda a promise da splash',
-    'D.  initCaseNotesAssistant() ... initBAUForm()  // cada módulo devolve seu toggle',
+    'D.  initCaseNotesAssistant() ... initBAUForm()  // cada modulo devolve seu toggle',
     'E.  initCommandCenter(moduleActions, splashDone)',
     'E1. initCommandPalette(moduleActions)     // Ctrl/Cmd+K',
-    'F.  setTimeout(2500) -> DataService.logEvent("App","Start","Session Start")',
-    '                     -> initOnboarding()',
-    '                     -> setTimeout(500) -> checkAndShowChangelog(APP_VERSION)',
+    'F.  setTimeout(2500) -> logEvent("App","Start","Session Start")',
+    '                     -> UserPrefsService.sync()      // nao bloqueia nada',
+    '                     -> fetchUserProfile(ldap)',
+    '                          .then(applyProfileLanguage)',
+    '                        .finally(() => {             // so DEPOIS do idioma:',
+    '                          initOnboarding();',
+    '                          setTimeout(500) -> checkAndShowChangelog(APP_VERSION);',
+    '                        })',
   ], 'Todo o corpo está dentro de um try/catch que, em falha, toca um som de erro e mostra um toast — nunca deixa a página do CRM quebrada.');
 
   h2_(ctx, 'Por que a ordem é essa', COLOR.green);
@@ -865,6 +870,10 @@ function sec05_(ctx) {
      'Assim ela só ancora na tela quando a splash de fato saiu do DOM, em vez de adivinhar o próprio tempo de boot.'],
     ['F', 'Delay tático de 2,5 s',
      'A captura do e-mail do agente (o "Sherlock", seção 08) acontece durante a animação. Só depois dela o log de sessão sai com o LDAP correto em vez de "anon".'],
+    ['F', 'O idioma é resolvido ANTES do onboarding',
+     'O tutorial e o changelog só abrem depois que o perfil da planilha People responde e o idioma é aplicado. Sem esse encadeamento, quem usa o Case Wizard pela primeira vez e é hispanofalante veria o tutorial piscar em português, porque o perfil ainda não teria chegado.'],
+    ['F', 'UserPrefsService.sync() não bloqueia',
+     'As preferências (hoje, os atalhos do Ctrl+K) seguem o padrão cache-first: a tela já abre com o cache local e se atualiza quando a planilha responde. O Ctrl+K relê a lista a cada abertura.'],
   ], COLOR.green, [0.08, 0.30, 0.62]);
 
   callout_(ctx, 'Armadilha de manutenção',
@@ -2053,6 +2062,24 @@ function sec19_(ctx) {
     ['showToast (utils.js)', 'O único canal de notificação transitória do produto.'],
   ], COLOR.modPink, [0.34, 0.66]);
 
+  h2_(ctx, 'O sistema de movimento', COLOR.modPink);
+  para_(ctx, 'A animação do projeto passou por uma auditoria que a transformou de valores literais ' +
+    'espalhados em um sistema fechado. Hoje existem quatro curvas canônicas, definidas como variáveis ' +
+    'CSS em shared/utils.js, e nenhuma transição nova deveria inventar uma quinta:', { spaceAfter: 8 });
+
+  table_(ctx, ['Token', 'Curva', 'Quando usar'], [
+    ['--cw-ease-standard', 'cubic-bezier(0.4, 0, 0.2, 1)', 'Material padrão. É a curva mais usada do projeto.'],
+    ['--cw-ease-decelerate', 'cubic-bezier(0.19, 1, 0.22, 1)', 'Entrada — é a curva do genie abrindo.'],
+    ['--cw-ease-accelerate', 'cubic-bezier(0.5, 0, 1, 1)', 'Saída — a curva do genie fechando.'],
+    ['--cw-ease-spring', 'cubic-bezier(0.34, 1.56, 0.64, 1)', 'Bounce e overshoot, quando algo deve assentar com mola.'],
+  ], COLOR.modPink, [0.26, 0.34, 0.40], { monoCols: [0, 1] });
+
+  bullets_(ctx, [
+    'Toda transição declara as propriedades explicitamente. transition: all é proibido — ele anima propriedades que ninguém pretendia animar e é uma fonte silenciosa de engasgo.',
+    'prefers-reduced-motion: reduce é respeitado em toda a superfície animada. Foi justamente por não terem essa cobertura que o Onboarding e o Changelog acabaram unificados na wizard-shell (seção 07).',
+    'A duração fica junto do token, não espalhada: o genie tem OPEN_MS e CLOSE_MS próprios em animations.js.',
+  ]);
+
   h2_(ctx, 'Proibições de UX', COLOR.modPink);
   callout_(ctx, 'Sem pop-ups nativos',
     'window.alert, window.confirm e window.prompt são proibidos. O motivo é concreto, não estético: um ' +
@@ -2414,6 +2441,7 @@ function sec22_(ctx) {
     ['data-models/db-schema.md', 'O mapa de colunas da planilha e a regra anti-apagamento.'],
     ['data-models/api-payloads.md', 'O contrato de chaves entre front e back, e as regras de payload de criação e edição.'],
     ['workflow/bau-lifecycle.md', 'Estados do caso BAU, ordenação FIFO, separação de abas e o disclaimer de edição.'],
+    ['workflow/case-notes-status-rules.md', 'Regras de status e sub-status das notas — a base que a Central de Conteúdo valida ao publicar um modelo.'],
     ['workflow/scraping-rules.md', 'Proteção de idioma, seletores e falha silenciosa.'],
     ['ui-ux/design-system.md', 'Estética, variações semânticas e componentes.'],
     ['ui-ux/dom-standards.md', 'Proibições de UX, loading, anti-flicker e scroll lock.'],
@@ -2606,6 +2634,11 @@ function apxB_(ctx) {
     ['shared/header-factory.js', 'O cromo de uma janela, o botão de ajuda ou a barra de gradiente.'],
     ['shared/animations.js', 'Uma transição de abertura/fechamento está estranha.'],
     ['shared/dom-utils.js', 'Scroll travado, clique sintético, espera, estado vazio ou navegação por teclado.'],
+    ['shared/z-layers.js', 'Algo aparece atrás do que deveria, ou arrastar uma janela a manda para trás.'],
+    ['shared/i18n.js', 'A interface apareceu no idioma errado.'],
+    ['shared/shortcut-service.js', 'Um atalho do Ctrl+K sumiu, duplicou ou aponta para o cenário errado.'],
+    ['shared/user-prefs-service.js', 'Uma preferência não seguiu a pessoa para outra máquina.'],
+    ['shared/wizard-shell.js', 'O Onboarding ou o Changelog: layout, teclado, foco ou animação.'],
     ['notes/notes-bridge.js', 'A inserção de nota no CRM falhou.'],
     ['notes/data/notes-data.js', 'O texto de uma nota, um template de sub-status ou uma tradução.'],
     ['notes/drafts/draft-service.js', 'Um rascunho foi perdido ou não foi recuperado.'],
@@ -2624,6 +2657,9 @@ function apxB_(ctx) {
     ['gas-backend/EmailTemplateDynamic.html', 'A estrutura visual dos e-mails (é um template só, para todos os tipos).'],
     ['gas-backend/TLDashboard.html', 'A interface do TL: layout, abas, polling, skeletons.'],
     ['gas-backend/Backup.js', 'O arquivamento semanal ou seu gatilho.'],
+    ['gas-backend/ContentAPI.js', 'Qualquer coisa da Central de Conteúdo: proposta, aprovação, papéis, trava ou validação.'],
+    ['gas-backend/ContentDashboard.html', 'A interface da Central: abas, formulários, diff de aprovação.'],
+    ['gas-backend/ContentSeed_*.js', 'A carga inicial de um módulo migrado para a Central.'],
     ['gas-backend/appsscript.json', 'Fuso, runtime, executeAs ou nível de acesso do Web App.'],
   ], COLOR.modGray, [0.34, 0.66], { monoCols: [0] });
 
