@@ -7,6 +7,7 @@
     "build": "esbuild src/app.js --bundle --minify --outfile=dist/bundle.js --define:__CW_BUILD_ENV__='\"production\"'",
     "dev": "esbuild src/app.js --bundle --outfile=dist/bundle-dev.js --define:__CW_BUILD_ENV__='\"development\"'",
     "portfolio": "python3 generate-portfolio.py",
+    "wiki:build": "node scripts/build-wiki.mjs",
     "test:content": "node scripts/test-content-api.js",
     "test:call-script": "node scripts/test-call-script-roundtrip.mjs",
     "seed:links": "node scripts/generate-links-seed.mjs",
