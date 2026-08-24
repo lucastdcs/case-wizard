@@ -24,7 +24,6 @@
            (o app mobile, sobretudo), então TODA regra declarada aqui tem equivalente
            inline no próprio elemento. O que está neste bloco é conveniência de
            leitura e reforço — nunca a única fonte de um estilo. */
-        .text-mono { font-family: {{t.fontMono}}; }
         .word-break { word-break: break-word; word-wrap: break-word; overflow-wrap: break-word; }
 
         /* Modo escuro. Quando o cliente está em dark, o Gmail inverte as cores por
@@ -32,13 +31,12 @@
            par explicitamente é o que existe de mais confiável — não funciona em
            todo cliente, mas onde funciona evita o resultado acidental. */
         @media (prefers-color-scheme: dark) {
-            body       { background-color: {{t.darkPageBg}} !important; color: {{t.darkTextStrong}} !important; }
-            .dm-page   { background-color: {{t.darkPageBg}} !important; }
-            .dm-card   { background-color: {{t.darkCardBg}} !important; border-color: {{t.darkBorder}} !important; }
-            .dm-panel  { background-color: {{t.darkPanelBg}} !important; border-color: {{t.darkBorder}} !important; }
-            .dm-chip   { background-color: {{t.darkChipBg}} !important; border-color: {{t.darkBorder}} !important; }
-            .dm-text   { color: {{t.darkTextStrong}} !important; }
-            .dm-muted  { color: {{t.darkTextMuted}} !important; }
+            body      { background-color: {{t.darkPageBg}} !important; color: {{t.darkTextStrong}} !important; }
+            .dm-page  { background-color: {{t.darkPageBg}} !important; }
+            .dm-card  { background-color: {{t.darkCardBg}} !important; border-color: {{t.darkBorder}} !important; }
+            .dm-text  { color: {{t.darkTextStrong}} !important; }
+            .dm-muted { color: {{t.darkTextMuted}} !important; }
+            .dm-rule  { border-color: {{t.darkBorder}} !important; }
         }
     </style>
 </head>
@@ -52,64 +50,42 @@
 
     <table width="100%" cellpadding="0" cellspacing="0" border="0" class="dm-page" style="background-color: {{t.pageBg}};">
         <tr>
-            <td align="center" style="padding: 40px 16px;">
+            <td align="center" style="padding: 32px 16px;">
 
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" class="dm-card" style="max-width: 640px; width: 100%; background-color: {{t.cardBg}}; border-radius: {{t.radiusCard}}; overflow: hidden; border: 1px solid {{t.border}}; margin: 0 auto;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" class="dm-card" style="max-width: 600px; width: 100%; background-color: {{t.cardBg}}; border: 1px solid {{t.border}}; border-radius: {{t.radiusCard}};">
 
                     <tr>
-                        <td style="padding: 0;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: {{t.headerBg}};">
-                                <tr>
-                                    <td align="center" style="padding: 32px 24px;">
-                                        <div style="font-family: {{t.fontSans}}; font-size: {{t.sizeTitle}}; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px; color: {{t.textOnDark}};">
-                                            {{HEADER_ICON}} BAU Central
-                                        </div>
-                                        <div style="font-family: {{t.fontSans}}; font-size: {{t.sizeSub}}; color: {{THEME_COLOR}}; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">
-                                            {{HEADER_SUBTITLE}}
-                                        </div>
-                                    </td>
-                                </tr>
-                                <!-- Faixa de cor por tipo de e-mail: uma linha de tabela de verdade,
-                                     no lugar do divisor em gradiente posicionado por coordenada, que
-                                     nenhum cliente de e-mail chegava a desenhar. -->
-                                <tr>
-                                    <td style="height: 3px; line-height: 3px; font-size: 0; background-color: {{THEME_COLOR}};">&nbsp;</td>
-                                </tr>
+                        <td style="padding: 32px 32px 8px 32px;">
+
+                            <!-- Identidade do produto. O único toque de Cases Wizard no
+                                 e-mail: o nome, e um filete que carrega a cor do tipo —
+                                 o mesmo código de cor do TL Dashboard, sem virar enfeite. -->
+                            <p style="margin: 0 0 8px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeMeta}}; font-weight: 500; color: {{t.textMuted}};" class="dm-muted">Cases Wizard</p>
+                            <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 26px 0;">
+                                <tr><td style="width: 28px; height: 3px; line-height: 3px; font-size: 0; background-color: {{ACCENT}};">&nbsp;</td></tr>
                             </table>
-                        </td>
-                    </tr>
 
-                    <tr>
-                        <td style="padding: 32px 24px;">
+                            <h1 style="margin: 0 0 12px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeTitle}}; font-weight: 400; line-height: 1.35; color: {{t.textStrong}};" class="dm-text">{{TITLE}}</h1>
 
-                            {{INTRO_BLOCK}}
+                            <p style="margin: 0 0 8px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeBody}}; line-height: 1.6; color: {{t.textBody}};" class="dm-text">{{LEAD}}</p>
 
-                            <p style="margin: 0 0 24px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeBody}}; line-height: 1.6; color: {{t.textBody}}; text-align: {{CONTENT_ALIGN}};" class="dm-text">
-                                {{MAIN_MESSAGE}}
-                            </p>
+                            <p style="margin: 0 0 28px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeSub}}; color: {{t.textMuted}};" class="dm-muted">{{META}}</p>
 
-                            {{URGENCY_BADGE}}
+                            {{CALLOUT}}
 
-                            {{BODY_BLOCKS}}
+                            {{ACTION}}
 
-                            {{FOOTER_ACTION}}
+                            {{BLOCKS}}
 
                         </td>
                     </tr>
 
                     <tr>
-                        <td style="padding: 24px; text-align: center; border-top: 1px solid {{t.border}};">
-
-                            <p style="margin: 0 0 10px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; color: {{t.textMuted}};" class="dm-muted">
-                                Automated by <a href="https://moma.corp.google.com/chat?with=lucaste" target="_blank" style="color: {{t.link}}; text-decoration: none; font-weight: 600;">@lucaste</a>
-                            </p>
-
-                            {{FOOTER_NOTE}}
-
+                        <td style="padding: 20px 32px 28px 32px; border-top: 1px solid {{t.hairline}};" class="dm-rule">
+                            <p style="margin: 0 0 6px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; line-height: 1.6; color: {{t.textMuted}};" class="dm-muted">{{FOOTER_NOTE}}</p>
                             <p style="margin: 0; font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}};">
-                                <a href="https://forms.gle/AJX3NXz1TpJRm3mC7" target="_blank" style="color: {{t.link}}; text-decoration: none; font-weight: 500;">Report Bug / Feature Request</a>
+                                <a href="https://forms.gle/AJX3NXz1TpJRm3mC7" target="_blank" style="color: {{t.link}}; text-decoration: none;">Reportar um problema</a>
                             </p>
-
                         </td>
                     </tr>
 

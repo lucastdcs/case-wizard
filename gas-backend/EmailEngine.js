@@ -24,77 +24,81 @@ const EMAIL_I18N = {
     dateUnavailable: "Data indisponível",
     dateAt: " às ",
     fallbackTeam: "Equipe BAU",
-    defaultGreeting: "Olá,",
+    defaultCase: "Notificação",
     defaultSubject: function (adv) { return "Notificação TechSol: " + adv; },
-    defaultCase: "Caso",
-    footerAutomated: "PROCESSAMENTO AUTOMATIZADO",
-    urgentToday: "🚨 URGENTE: Agendado para Hoje/Amanhã!",
-    urgentSoon: "⚠️ ATENÇÃO: Agendado para os próximos 3 dias",
-    urgentGreen: "📅 STATUS VERDE: Agendado para +5 dias",
-    agentSentFooter: "CASO REGISTRADO",
-    agentSentGreeting: "Olá, Agente!",
-    agentSentMessage: function (adv) { return "A solicitação para o anunciante <strong>" + adv + "</strong> foi materializada e já aguarda a análise da liderança."; },
-    agentSentSubject: function (adv) { return "⚡ Caso na Fila BAU: " + adv; },
-    leadershipGreeting: "Atenção Liderança,",
-    leadershipMessage: function (adv) { return "Uma nova solicitação para o anunciante <strong>" + adv + "</strong> foi enviada e exige abertura de caso."; },
-    leadershipFooter: "AGUARDANDO AÇÃO",
-    leadershipSubject: function (adv) { return "🚨 Requer Ação BAU: " + adv; },
-    createdGreeting: "Boas notícias!",
-    createdMessage: function (adv) { return "A liderança acabou de <strong>CRIAR O CASO BAU</strong> para o anunciante <strong>" + adv + "</strong>. Tudo pronto para o atendimento."; },
-    createdFooter: "SOLICITAÇÃO CONCLUÍDA",
-    createdSubject: function (adv) { return "✅ Caso Criado: " + adv; },
-    discardSentSubtitle: "Descarte Evaluation",
-    discardSentGreeting: "Olá, Agente!",
-    discardSentMessage: function (adv) { return "Sua solicitação de <strong>DESCARTE</strong> para o anunciante <strong>" + adv + "</strong> foi enviada para avaliação do TL."; },
-    discardSentFooter: "AVALIAÇÃO PENDENTE",
-    discardSentSubject: function (adv) { return "🗑️ Descarte em Avaliação: " + adv; },
-    discardDoneSubtitle: "Descarte Concluído",
-    discardDoneGreeting: "Aviso Importante,",
-    discardDoneMessage: function (adv) { return "O descarte do caso do anunciante <strong>" + adv + "</strong> foi <strong>APROVADO E CONCLUÍDO</strong> pela liderança."; },
-    discardDoneFooter: "CASO DESCARTADO",
-    discardDoneSubject: function (adv) { return "❌ Caso Descartado: " + adv; },
-    labelContext: "Contexto / Motivo",
-    labelDomain: "Domínio Final",
+    requestedBy: function (ldap) { return "Solicitado por @" + ldap; },
+    footerTrace: function (id) { return "Cases Wizard · automatizado por @lucaste · rastreio " + id; },
+    actionViewCase: "Ver caso no Case Connect",
+    actionOpenDashboard: "Abrir TL Dashboard",
+    sectionDetails: "Detalhes do caso",
+
+    urgentToday: "Agendado para hoje ou amanhã.",
+    urgentSoon: "Agendado para os próximos 3 dias.",
+
+    agentSentTitle: "Caso na fila BAU",
+    agentSentMessage: function (adv) { return "A solicitação para <strong style=\"font-weight:500;\">" + adv + "</strong> foi registrada e aguarda análise da liderança."; },
+    agentSentSubject: function (adv) { return "Caso na fila BAU: " + adv; },
+
+    leadershipTitle: "Uma solicitação precisa de abertura de caso",
+    leadershipMessage: function (adv) { return "Uma nova solicitação para <strong style=\"font-weight:500;\">" + adv + "</strong> foi enviada e exige abertura de caso."; },
+    leadershipSubject: function (adv) { return "Requer ação BAU: " + adv; },
+
+    createdTitle: "Caso criado",
+    createdMessage: function (adv) { return "A liderança criou o caso BAU para <strong style=\"font-weight:500;\">" + adv + "</strong>. Tudo pronto para o atendimento."; },
+    createdSubject: function (adv) { return "Caso criado: " + adv; },
+
+    discardSentTitle: "Descarte em avaliação",
+    discardSentMessage: function (adv) { return "Sua solicitação de descarte para <strong style=\"font-weight:500;\">" + adv + "</strong> foi enviada para avaliação do TL."; },
+    discardSentSubject: function (adv) { return "Descarte em avaliação: " + adv; },
+
+    discardDoneTitle: "Caso descartado",
+    discardDoneMessage: function (adv) { return "O descarte do caso de <strong style=\"font-weight:500;\">" + adv + "</strong> foi aprovado e concluído pela liderança."; },
+    discardDoneSubject: function (adv) { return "Caso descartado: " + adv; },
+
+    labelContext: "Motivo",
+    labelDomain: "Domínio final",
     labelSchedule: "Agendamento (SLA)",
-    labelTask: "Procedimento / Task BAU"
+    labelTask: "Procedimento"
   },
   es: {
     dateUnavailable: "Fecha no disponible",
     dateAt: " a las ",
     fallbackTeam: "Equipo BAU",
-    defaultGreeting: "Hola,",
+    defaultCase: "Notificación",
     defaultSubject: function (adv) { return "Notificación TechSol: " + adv; },
-    defaultCase: "Caso",
-    footerAutomated: "PROCESAMIENTO AUTOMATIZADO",
-    urgentToday: "🚨 URGENTE: ¡Agendado para Hoy/Mañana!",
-    urgentSoon: "⚠️ ATENCIÓN: Agendado para los próximos 3 días",
-    urgentGreen: "📅 ESTADO VERDE: Agendado para +5 días",
-    agentSentFooter: "CASO REGISTRADO",
-    agentSentGreeting: "¡Hola, Agente!",
-    agentSentMessage: function (adv) { return "La solicitud para el anunciante <strong>" + adv + "</strong> fue registrada y ya espera el análisis de la gerencia."; },
-    agentSentSubject: function (adv) { return "⚡ Caso en la Fila BAU: " + adv; },
-    leadershipGreeting: "Atención Gerencia,",
-    leadershipMessage: function (adv) { return "Una nueva solicitud para el anunciante <strong>" + adv + "</strong> fue enviada y requiere la apertura de un caso."; },
-    leadershipFooter: "ESPERANDO ACCIÓN",
-    leadershipSubject: function (adv) { return "🚨 Requiere Acción BAU: " + adv; },
-    createdGreeting: "¡Buenas noticias!",
-    createdMessage: function (adv) { return "La gerencia acaba de <strong>CREAR EL CASO BAU</strong> para el anunciante <strong>" + adv + "</strong>. Todo listo para la atención."; },
-    createdFooter: "SOLICITUD CONCLUIDA",
-    createdSubject: function (adv) { return "✅ Caso Creado: " + adv; },
-    discardSentSubtitle: "Descarte Evaluation",
-    discardSentGreeting: "¡Hola, Agente!",
-    discardSentMessage: function (adv) { return "Tu solicitud de <strong>DESCARTE</strong> para el anunciante <strong>" + adv + "</strong> fue enviada para evaluación del TL."; },
-    discardSentFooter: "EVALUACIÓN PENDIENTE",
-    discardSentSubject: function (adv) { return "🗑️ Descarte en Evaluación: " + adv; },
-    discardDoneSubtitle: "Descarte Concluido",
-    discardDoneGreeting: "Aviso Importante,",
-    discardDoneMessage: function (adv) { return "El descarte del caso del anunciante <strong>" + adv + "</strong> fue <strong>APROBADO Y CONCLUIDO</strong> por la gerencia."; },
-    discardDoneFooter: "CASO DESCARTADO",
-    discardDoneSubject: function (adv) { return "❌ Caso Descartado: " + adv; },
-    labelContext: "Contexto / Motivo",
-    labelDomain: "Dominio Final",
+    requestedBy: function (ldap) { return "Solicitado por @" + ldap; },
+    footerTrace: function (id) { return "Cases Wizard · automatizado por @lucaste · seguimiento " + id; },
+    actionViewCase: "Ver caso en Case Connect",
+    actionOpenDashboard: "Abrir TL Dashboard",
+    sectionDetails: "Detalles del caso",
+
+    urgentToday: "Agendado para hoy o mañana.",
+    urgentSoon: "Agendado para los próximos 3 días.",
+
+    agentSentTitle: "Caso en la fila BAU",
+    agentSentMessage: function (adv) { return "La solicitud para <strong style=\"font-weight:500;\">" + adv + "</strong> fue registrada y espera el análisis de la gerencia."; },
+    agentSentSubject: function (adv) { return "Caso en la fila BAU: " + adv; },
+
+    leadershipTitle: "Una solicitud requiere la apertura de un caso",
+    leadershipMessage: function (adv) { return "Una nueva solicitud para <strong style=\"font-weight:500;\">" + adv + "</strong> fue enviada y requiere la apertura de un caso."; },
+    leadershipSubject: function (adv) { return "Requiere acción BAU: " + adv; },
+
+    createdTitle: "Caso creado",
+    createdMessage: function (adv) { return "La gerencia creó el caso BAU para <strong style=\"font-weight:500;\">" + adv + "</strong>. Todo listo para la atención."; },
+    createdSubject: function (adv) { return "Caso creado: " + adv; },
+
+    discardSentTitle: "Descarte en evaluación",
+    discardSentMessage: function (adv) { return "Tu solicitud de descarte para <strong style=\"font-weight:500;\">" + adv + "</strong> fue enviada para evaluación del TL."; },
+    discardSentSubject: function (adv) { return "Descarte en evaluación: " + adv; },
+
+    discardDoneTitle: "Caso descartado",
+    discardDoneMessage: function (adv) { return "El descarte del caso de <strong style=\"font-weight:500;\">" + adv + "</strong> fue aprobado y concluido por la gerencia."; },
+    discardDoneSubject: function (adv) { return "Caso descartado: " + adv; },
+
+    labelContext: "Motivo",
+    labelDomain: "Dominio final",
     labelSchedule: "Programación (SLA)",
-    labelTask: "Procedimiento / Task BAU"
+    labelTask: "Procedimiento"
   }
 };
 
@@ -110,41 +114,34 @@ const EMAIL_TOKENS = {
   // Superfícies
   pageBg: "#F8F9FA",
   cardBg: "#FFFFFF",
-  panelBg: "#F8F9FA",
-  headerBg: "#3D3D3D",
-  chipBg: "#F1F3F4",
   border: "#DADCE0",
+  hairline: "#E8EAED",
 
   // Texto
   textStrong: "#202124",
   textBody: "#3C4043",
   textMuted: "#5F6368",
-  textOnDark: "#FFFFFF",
   link: "#1A73E8",
 
-  // Acentos por tipo de e-mail
-  accentBlue: "#8ab4f8",
-  accentGreen: "#81c995",
-  accentRedSoft: "#f28b82",
-  accentRed: "#ea4335",
-  accentAmber: "#F9AB00",
+  // Acentos por tipo. Tons de superfície clara, e não os pastéis do antigo
+  // cabeçalho escuro — num cartão branco aqueles ficavam lavados. Vivem no
+  // filete sob o nome do produto, que é o único lugar onde a cor varia por tipo.
+  accentBlue: "#1A73E8",
+  accentGreen: "#1E8E3E",
+  accentAmber: "#E37400",
+  accentRed: "#D93025",
 
-  // Estados dos avisos de urgência
+  // Avisos. Só aparecem quando há de fato algo a avisar.
   urgentBg: "#FCE8E6",
-  urgentBorder: "#F5C1BC",
+  urgentBorder: "#F6AEA9",
   urgentText: "#C5221F",
   warnBg: "#FEF7E0",
-  warnBorder: "#FADFA1",
+  warnBorder: "#FDE293",
   warnText: "#B06000",
-  okBg: "#E6F4EA",
-  okBorder: "#B7DFC2",
-  okText: "#1E8E3E",
 
   // Modo escuro
   darkPageBg: "#1F1F1F",
   darkCardBg: "#2A2B2E",
-  darkPanelBg: "#202124",
-  darkChipBg: "#303134",
   darkBorder: "#3C4043",
   darkTextStrong: "#E8EAED",
   darkTextMuted: "#9AA0A6",
@@ -154,19 +151,25 @@ const EMAIL_TOKENS = {
   // quem já a tem instalada localmente.
   fontSans: "'Google Sans', Roboto, Helvetica, Arial, sans-serif",
   fontMono: "'Roboto Mono', Consolas, 'Courier New', monospace",
-  sizeTitle: "24px",
-  sizeGreeting: "18px",
+  sizeTitle: "22px",
   sizeBody: "15px",
   sizeMeta: "14px",
   sizeSub: "13px",
   sizeLabel: "12px",
-  sizeMetric: "48px",
 
-  // Forma
-  radiusCard: "16px",
-  radiusPanel: "12px",
-  radiusPill: "100px"
+  // Forma. Botão em 4px, o raio de botão do Material — pílula é outra família.
+  radiusCard: "8px",
+  radiusButton: "4px",
+  radiusCallout: "8px"
 };
+
+// Fixo (não ScriptApp.getService().getUrl()): e-mails saem também por gatilho de
+// tempo, e nesse contexto getUrl() pode devolver a URL de OUTRA implantação do
+// projeto — não a implantação fixa usada em produção, pinada via clasp deploy -i
+// em .github/workflows/deploy.yml e referenciada em src/modules/shared/data-service.js.
+const TL_DASHBOARD_URL = "https://script.google.com/a/macros/google.com/s/AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg/exec?page=tl";
+
+const CASE_CONNECT_BASE = "https://cases.connect.corp.google.com/#/case/";
 
 // Substituição de slot à prova de "$". String.replace trata $&, $1 e afins como
 // referências especiais na string de troca, então um motivo de caso contendo um
@@ -200,106 +203,63 @@ function renderBauEmail(parts) {
 
   let html = template;
   html = fillEmailSlot(html, "{{PREHEADER}}", parts.preheader);
-  html = fillEmailSlot(html, "{{HEADER_ICON}}", parts.headerIcon);
-  html = fillEmailSlot(html, "{{HEADER_SUBTITLE}}", parts.headerSubtitle);
-  html = html.replace(/{{THEME_COLOR}}/g, function () {
-    return parts.themeColor || EMAIL_TOKENS.accentBlue;
-  });
-  html = fillEmailSlot(html, "{{CONTENT_ALIGN}}", parts.contentAlign || "left");
-  html = fillEmailSlot(html, "{{INTRO_BLOCK}}", parts.introBlock);
-  html = fillEmailSlot(html, "{{MAIN_MESSAGE}}", parts.mainMessage);
-  html = fillEmailSlot(html, "{{URGENCY_BADGE}}", parts.urgencyBadge);
-  html = fillEmailSlot(html, "{{BODY_BLOCKS}}", parts.bodyBlocks);
-  html = fillEmailSlot(html, "{{FOOTER_ACTION}}", parts.footerAction);
+  html = fillEmailSlot(html, "{{ACCENT}}", parts.accent || EMAIL_TOKENS.accentBlue);
+  html = fillEmailSlot(html, "{{TITLE}}", parts.title);
+  html = fillEmailSlot(html, "{{LEAD}}", parts.lead);
+  html = fillEmailSlot(html, "{{META}}", parts.meta);
+  html = fillEmailSlot(html, "{{CALLOUT}}", parts.callout);
+  html = fillEmailSlot(html, "{{ACTION}}", parts.action);
+  html = fillEmailSlot(html, "{{BLOCKS}}", parts.blocks);
   html = fillEmailSlot(html, "{{FOOTER_NOTE}}", parts.footerNote);
 
   return applyEmailTokens(html);
 }
 
-// Saudação + quem originou a solicitação. O alerta de volume não tem autor
-// humano, então passa vazio e o bloco simplesmente não existe.
-function renderEmailIntro(greeting, senderLdap) {
-  return '<p style="margin: 0 0 6px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeGreeting}}; color: {{t.textStrong}}; font-weight: 500; letter-spacing: -0.2px;" class="dm-text">' + greeting + '</p>'
-    + '<p style="margin: 0 0 24px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeSub}}; color: {{t.textMuted}}; font-weight: 500;" class="dm-muted">'
-    + 'Solicitado por: <a href="https://moma.corp.google.com/chat?with=' + senderLdap + '" target="_blank" style="color: {{t.link}}; text-decoration: none; font-weight: 600;">@' + senderLdap + '</a>'
-    + '</p>';
-}
-
-// Selo do rodapé do corpo, nos e-mails transacionais.
-function renderEmailBadge(text) {
-  return '<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 0 auto;"><tr>'
-    + '<td align="center" class="dm-chip" style="border-radius: {{t.radiusPill}}; background-color: {{t.chipBg}}; border: 1px solid {{t.border}};">'
-    + '<span style="display: inline-block; font-family: {{t.fontSans}}; color: {{t.textBody}}; font-size: {{t.sizeSub}}; font-weight: 600; padding: 12px 28px; text-transform: uppercase; letter-spacing: 0.5px;" class="dm-text">'
-    + text + '</span></td></tr></table>';
-}
-
-// Botão de ação de verdade, para os e-mails que pedem uma ida ao dashboard.
+// Ação primária. Raio 4px e azul sólido: o botão do Material, não uma pílula.
 function renderEmailButton(label, url) {
-  return '<table cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 0 auto;"><tr>'
-    + '<td align="center" style="border-radius: {{t.radiusPill}}; background-color: {{t.link}};">'
-    + '<a href="' + url + '" target="_blank" style="display: inline-block; font-family: {{t.fontSans}}; color: #FFFFFF; font-size: {{t.sizeMeta}}; font-weight: 600; padding: 14px 32px; text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px;">'
+  return '<table cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 32px 0;"><tr>'
+    + '<td style="background-color: {{t.link}}; border-radius: {{t.radiusButton}};">'
+    + '<a href="' + url + '" target="_blank" style="display: inline-block; padding: 11px 24px; font-family: {{t.fontSans}}; font-size: {{t.sizeMeta}}; font-weight: 500; color: #FFFFFF; text-decoration: none;">'
     + label + '</a></td></tr></table>';
 }
 
-// Rótulo + valor, a célula que se repete no painel de dados do caso.
-function renderEmailField(label, valueHtml, extraClass) {
-  return '<div style="font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; color: {{t.textMuted}}; font-weight: 500; margin-bottom: 6px;" class="dm-muted">' + label + '</div>'
-    + '<div class="dm-text' + (extraClass ? " " + extraClass : "") + '" style="font-family: {{t.fontSans}}; font-size: {{t.sizeMeta}}; color: {{t.textStrong}}; line-height: 1.5; word-break: break-word;">' + valueHtml + '</div>';
-}
-
-// Painel "Contexto / Motivo".
-function renderEmailContextPanel(label, text) {
-  return '<table width="100%" cellpadding="0" cellspacing="0" border="0" class="dm-panel" style="background-color: {{t.panelBg}}; border-radius: {{t.radiusPanel}}; margin-bottom: 24px; border: 1px solid {{t.border}};"><tr>'
-    + '<td style="padding: 20px;">'
-    + '<div style="font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; color: {{t.textMuted}}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600;" class="dm-muted">' + label + '</div>'
-    + '<div style="font-family: {{t.fontSans}}; font-size: {{t.sizeBody}}; color: {{t.textStrong}}; line-height: 1.6; border-left: 3px solid {{t.border}}; padding-left: 14px;" class="dm-text">' + text + '</div>'
-    + '</td></tr></table>';
-}
-
-// Painel com os dados do caso, em duas fileiras de três e duas colunas.
-function renderEmailCasePanel(L, v) {
-  const caseLink = '<a href="https://cases.connect.corp.google.com/#/case/' + v.caseId + '" target="_blank" style="font-family: {{t.fontMono}}; font-size: {{t.sizeMeta}}; color: {{t.link}}; font-weight: 500; text-decoration: none;" class="word-break">' + v.caseId + ' &#8599;</a>';
-  const siteValue = '<span style="color: {{t.link}}; font-weight: 600;">' + v.site + '</span>';
-  const monoValue = function (text) {
-    return '<span class="text-mono" style="font-family: {{t.fontMono}};">' + text + '</span>';
+// Aviso tingido. Só existe quando há algo a avisar — não há callout "está tudo
+// bem", porque um bloco colorido que não pede nada é ruído.
+function renderEmailCallout(kind, text) {
+  const map = {
+    urgent: ["{{t.urgentBg}}", "{{t.urgentBorder}}", "{{t.urgentText}}"],
+    warn: ["{{t.warnBg}}", "{{t.warnBorder}}", "{{t.warnText}}"]
   };
-
-  return '<table width="100%" cellpadding="0" cellspacing="0" border="0" class="dm-panel" style="background-color: {{t.panelBg}}; border-radius: {{t.radiusPanel}}; border: 1px solid {{t.border}}; margin-bottom: 28px;"><tr>'
-    + '<td style="padding: 20px;">'
-
-    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 20px;"><tr>'
-    + '<td valign="top" style="width: 34%; padding-right: 12px;">' + renderEmailField("Case Connect", caseLink) + '</td>'
-    + '<td valign="top" style="width: 33%; padding-right: 12px;">' + renderEmailField(L.labelDomain, siteValue, "word-break") + '</td>'
-    + '<td valign="top" style="width: 33%;">' + renderEmailField(L.labelSchedule, monoValue(v.availability)) + '</td>'
-    + '</tr></table>'
-
-    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top: 1px solid {{t.border}};"><tr>'
-    + '<td valign="top" style="width: 34%; padding: 20px 12px 0 0;">' + renderEmailField("Customer ID", monoValue(v.cid)) + '</td>'
-    + '<td valign="top" style="width: 66%; padding: 20px 0 0 0;">' + renderEmailField(L.labelTask, v.task, "word-break") + '</td>'
-    + '</tr></table>'
-
-    + '</td></tr></table>';
+  const c = map[kind] || map.warn;
+  return '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 28px 0;"><tr>'
+    + '<td style="background-color: ' + c[0] + '; border: 1px solid ' + c[1] + '; border-radius: {{t.radiusCallout}}; padding: 14px 16px; font-family: {{t.fontSans}}; font-size: {{t.sizeMeta}}; line-height: 1.5; color: ' + c[2] + ';">'
+    + text + '</td></tr></table>';
 }
 
-// Número grande + repartição, o painel do alerta de volume.
-function renderEmailMetricPanel(bigNumber, bigLabel, cells) {
-  const columns = cells.map(function (cell, index) {
-    const divider = index < cells.length - 1 ? ' border-right: 1px solid {{t.border}};' : '';
-    return '<td style="padding: 20px; text-align: center; width: ' + Math.floor(100 / cells.length) + '%;' + divider + '">'
-      + '<div style="font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; color: {{t.textMuted}}; font-weight: 500; margin-bottom: 6px;" class="dm-muted">' + cell.label + '</div>'
-      + '<div style="font-family: {{t.fontSans}}; font-size: 20px; font-weight: 700; color: ' + cell.color + ';">' + cell.value + '</div>'
-      + '</td>';
+// Pares rótulo/valor. Sem borda e sem caixa: o que separa as linhas é ritmo
+// vertical, que é como o Material resolve isso.
+function renderEmailFields(rows) {
+  const body = rows.map(function (row) {
+    const valueFont = row.mono ? "{{t.fontMono}}" : "{{t.fontSans}}";
+    return '<tr>'
+      + '<td style="padding: 0 0 14px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeSub}}; color: {{t.textMuted}}; width: 38%; vertical-align: top;" class="dm-muted">' + row.label + '</td>'
+      + '<td class="dm-text word-break" style="padding: 0 0 14px 0; font-family: ' + valueFont + '; font-size: {{t.sizeMeta}}; color: {{t.textStrong}}; vertical-align: top; word-break: break-word;">' + row.value + '</td>'
+      + '</tr>';
   }).join("");
-
-  return '<div style="text-align: center; font-family: {{t.fontSans}}; font-size: {{t.sizeMetric}}; font-weight: 700; color: {{t.warnText}}; line-height: 1;">' + bigNumber + '</div>'
-    + '<div style="text-align: center; font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; color: {{t.textMuted}}; text-transform: uppercase; letter-spacing: 0.5px; margin: 6px 0 24px 0;" class="dm-muted">' + bigLabel + '</div>'
-    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" class="dm-panel" style="background-color: {{t.panelBg}}; border-radius: {{t.radiusPanel}}; border: 1px solid {{t.border}}; margin-bottom: 28px;"><tr>'
-    + columns + '</tr></table>';
+  return '<table width="100%" cellpadding="0" cellspacing="0" border="0">' + body + '</table>';
 }
 
-// Linha discreta do rodapé (rastreio, ou o porquê de o e-mail ter chegado).
-function renderEmailFooterNote(text) {
-  return '<p style="margin: 0 0 10px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; color: {{t.textMuted}};" class="dm-muted">' + text + '</p>';
+// Seção com hairline acima e um rótulo discreto.
+function renderEmailSection(title, inner) {
+  return '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 28px 0;">'
+    + '<tr><td class="dm-rule" style="border-top: 1px solid {{t.hairline}}; padding: 0 0 20px 0; font-size: 0; line-height: 0;">&nbsp;</td></tr>'
+    + '<tr><td style="padding: 0 0 14px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeSub}}; font-weight: 500; color: {{t.textMuted}};" class="dm-muted">' + title + '</td></tr>'
+    + '<tr><td>' + inner + '</td></tr></table>';
+}
+
+// Parágrafo simples dentro de uma seção.
+function renderEmailParagraph(text) {
+  return '<p style="margin: 0; font-family: {{t.fontSans}}; font-size: {{t.sizeMeta}}; line-height: 1.6; color: {{t.textBody}};" class="dm-text">' + text + '</p>';
 }
 
 // Remove marcação para a alternativa em texto puro. As mensagens já trazem
@@ -309,7 +269,6 @@ function stripEmailHtml(value) {
     .replace(/<[^>]*>/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
-    .replace(/&#8599;/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -325,17 +284,12 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   const senderEmail = authorEmailOverride || Session.getActiveUser().getEmail();
   const senderLdap = senderEmail ? senderEmail.split('@')[0] : L.fallbackTeam; // Fallback de segurança
 
-  let themeColor = EMAIL_TOKENS.accentBlue;
-  // Ícone do header como emoji, e não como <img> de SVG do fonts.gstatic.com:
-  // o Gmail não renderiza SVG, então os ícones anteriores simplesmente não
-  // apareciam em produção. O emoji é o mesmo glifo usado na linha de assunto de
-  // cada tipo, de modo que a mensagem lê como contínua desde a lista da caixa.
-  let headerIcon = "⚡";
-  let headerSubtitle = "BAU Escalation Hub";
-  let greeting = L.defaultGreeting;
-  let mainMessage = "";
-  let urgencyBadge = "";
-  let footerBadge = L.footerAutomated;
+  let accent = EMAIL_TOKENS.accentBlue;
+  let title = L.defaultCase;
+  let lead = "";
+  let callout = "";
+  let actionLabel = L.actionViewCase;
+  let actionUrl = CASE_CONNECT_BASE + (data.caseId || "");
   let subject = L.defaultSubject(data.advName || L.defaultCase);
 
   // 2. Formatação da Data (Aproveitada para o cálculo de urgência)
@@ -370,67 +324,53 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   let dateObj = (data.availability && !String(data.availability).includes('|')) ? new Date(data.availability) : null;
 
   // 3. Calculadora de Urgência (Para a Liderança)
-  function urgencyBanner(bg, border, color, text) {
-    return '<div style="background-color: ' + bg + '; border: 1px solid ' + border + '; color: ' + color + '; padding: 12px; border-radius: 8px; margin-bottom: 24px; font-family: {{t.fontSans}}; font-size: {{t.sizeMeta}}; font-weight: 600; text-align: center; letter-spacing: 0.3px;">' + text + '</div>';
-  }
-
+  // Só devolve aviso quando há urgência real. O antigo "STATUS VERDE: agendado
+  // para +5 dias" era um bloco colorido que não pedia nada — e a data já está
+  // nos detalhes logo abaixo.
   function getUrgencyHtml(targetDate) {
     if (!targetDate) return "";
-    const diffTime = targetDate - new Date();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays <= 1) {
-      return urgencyBanner("{{t.urgentBg}}", "{{t.urgentBorder}}", "{{t.urgentText}}", L.urgentToday);
-    } else if (diffDays <= 3) {
-      return urgencyBanner("{{t.warnBg}}", "{{t.warnBorder}}", "{{t.warnText}}", L.urgentSoon);
-    }
-    return urgencyBanner("{{t.okBg}}", "{{t.okBorder}}", "{{t.okText}}", L.urgentGreen);
+    const diffDays = Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 1) return renderEmailCallout("urgent", L.urgentToday);
+    if (diffDays <= 3) return renderEmailCallout("warn", L.urgentSoon);
+    return "";
   }
 
-  // 4. A MÁGICA: Configuração por Tipo de E-mail
+  // 4. Configuração por Tipo de E-mail
   switch(tipoEmail) {
     case 'AGENT_BAU_SENT':
-      greeting = L.agentSentGreeting;
-      mainMessage = L.agentSentMessage(data.advName);
-      footerBadge = L.agentSentFooter;
+      title = L.agentSentTitle;
+      lead = L.agentSentMessage(data.advName);
       subject = L.agentSentSubject(data.advName);
       break;
 
     case 'LEADERSHIP_BAU_RECEIVED':
-      headerIcon = "🚨";
-      greeting = L.leadershipGreeting;
-      mainMessage = L.leadershipMessage(data.advName);
-      urgencyBadge = getUrgencyHtml(dateObj);
-      footerBadge = L.leadershipFooter;
+      accent = EMAIL_TOKENS.accentAmber;
+      title = L.leadershipTitle;
+      lead = L.leadershipMessage(data.advName);
+      callout = getUrgencyHtml(dateObj);
+      actionLabel = L.actionOpenDashboard;
+      actionUrl = TL_DASHBOARD_URL;
       subject = L.leadershipSubject(data.advName);
       break;
 
     case 'AGENT_BAU_CREATED':
-      themeColor = EMAIL_TOKENS.accentGreen;
-      headerIcon = "✅";
-      greeting = L.createdGreeting;
-      mainMessage = L.createdMessage(data.advName);
-      footerBadge = L.createdFooter;
+      accent = EMAIL_TOKENS.accentGreen;
+      title = L.createdTitle;
+      lead = L.createdMessage(data.advName);
       subject = L.createdSubject(data.advName);
       break;
 
     case 'AGENT_DISCARD_SENT':
-      themeColor = EMAIL_TOKENS.accentRedSoft;
-      headerIcon = "🗑️";
-      headerSubtitle = L.discardSentSubtitle;
-      greeting = L.discardSentGreeting;
-      mainMessage = L.discardSentMessage(data.advName);
-      footerBadge = L.discardSentFooter;
+      accent = EMAIL_TOKENS.accentAmber;
+      title = L.discardSentTitle;
+      lead = L.discardSentMessage(data.advName);
       subject = L.discardSentSubject(data.advName);
       break;
 
     case 'AGENT_DISCARD_DONE':
-      themeColor = EMAIL_TOKENS.accentRed;
-      headerIcon = "❌";
-      headerSubtitle = L.discardDoneSubtitle;
-      greeting = L.discardDoneGreeting;
-      mainMessage = L.discardDoneMessage(data.advName);
-      footerBadge = L.discardDoneFooter;
+      accent = EMAIL_TOKENS.accentRed;
+      title = L.discardDoneTitle;
+      lead = L.discardDoneMessage(data.advName);
       subject = L.discardDoneSubject(data.advName);
       break;
   }
@@ -448,43 +388,54 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   };
 
   // Preheader: a linha de resumo que o Gmail mostra na lista, colada ao assunto.
-  // Sem ela o cliente repete o começo do corpo — que seria "Olá, Agente!" em
-  // todos. Anunciante + caso identifica a mensagem sem precisar abrir.
+  // Sem ela o cliente repete o começo do corpo — que seria igual em todos.
   const preheader = [data.advName, v.caseId]
     .filter(function (item) { return !!item; })
     .join(" · ");
 
+  const caseLink = '<a href="' + CASE_CONNECT_BASE + v.caseId + '" target="_blank" style="font-family: {{t.fontMono}}; color: {{t.link}}; text-decoration: none;">' + v.caseId + '</a>';
+
+  const blocks = renderEmailSection(L.sectionDetails, renderEmailFields([
+    { label: "Case Connect", value: caseLink },
+    { label: "Customer ID", value: v.cid, mono: true },
+    { label: L.labelDomain, value: v.site },
+    { label: L.labelSchedule, value: v.availability },
+    { label: L.labelTask, value: v.task }
+  ])) + renderEmailSection(L.labelContext, renderEmailParagraph(v.reason));
+
   const htmlBody = renderBauEmail({
     preheader: preheader,
-    headerIcon: headerIcon,
-    headerSubtitle: headerSubtitle,
-    themeColor: themeColor,
-    introBlock: renderEmailIntro(greeting, senderLdap),
-    mainMessage: mainMessage,
-    urgencyBadge: urgencyBadge,
-    bodyBlocks: renderEmailContextPanel(L.labelContext, v.reason) + renderEmailCasePanel(L, v),
-    footerAction: renderEmailBadge(footerBadge),
-    footerNote: renderEmailFooterNote('Rastreio: <span class="text-mono dm-muted" style="font-family: {{t.fontMono}}; color: {{t.textBody}};">' + escalacaoId + '</span>')
+    accent: accent,
+    title: title,
+    lead: lead,
+    meta: L.requestedBy(senderLdap),
+    callout: callout,
+    action: renderEmailButton(actionLabel, actionUrl),
+    blocks: blocks,
+    footerNote: L.footerTrace(escalacaoId)
   });
 
   // Alternativa em texto puro. MailApp.sendEmail vinha mandando só htmlBody, então
   // cliente em modo texto, leitor de tela e prévia de notificação recebiam a
   // marcação crua.
-  const plainLines = [stripEmailHtml(greeting), "", stripEmailHtml(mainMessage)];
-  if (urgencyBadge) {
-    plainLines.push("", stripEmailHtml(urgencyBadge));
+  const plainLines = [title, "", stripEmailHtml(lead), L.requestedBy(senderLdap)];
+  if (callout) {
+    plainLines.push("", stripEmailHtml(callout));
   }
   plainLines.push(
     "",
-    L.labelContext + ": " + stripEmailHtml(v.reason),
+    actionLabel + ": " + actionUrl,
+    "",
+    L.sectionDetails,
     "Case Connect: " + v.caseId,
+    "Customer ID: " + v.cid,
     L.labelDomain + ": " + v.site,
     L.labelSchedule + ": " + v.availability,
-    "Customer ID: " + v.cid,
     L.labelTask + ": " + v.task,
     "",
-    "https://cases.connect.corp.google.com/#/case/" + v.caseId,
-    "ID: " + escalacaoId
+    L.labelContext + ": " + stripEmailHtml(v.reason),
+    "",
+    stripEmailHtml(L.footerTrace(escalacaoId))
   );
 
   MailApp.sendEmail({

@@ -54,52 +54,45 @@ function checkBAUPendingVolume() {
 // Passa pela mesma casca dos e-mails do fluxo BAU (renderBauEmail, em
 // EmailEngine.js). Antes este arquivo montava um HTML proprio "pra nascer
 // visualmente consistente", e o resultado foi o oposto: as duas copias foram
-// divergindo em cor, raio e espacamento, e esta aqui carregava os mesmos
-// problemas de Gmail que a outra (icone SVG que nao renderiza, gradiente
-// posicionado por coordenada, sem modo escuro e sem alternativa em texto).
-// O que este e-mail tem de proprio sao os slots: metricas no lugar dos dados
-// do caso, e um botao de verdade no lugar do selo.
+// divergindo em cor, raio e espacamento. O que este e-mail tem de proprio sao
+// os slots: a fila no lugar dos dados do caso, e nenhum bloco de motivo.
 function sendBAUVolumeAlertEmail(pendingCount, creationCount, discardCount) {
-  // Fixo (não ScriptApp.getService().getUrl()): esse email é enviado por gatilho de
-  // tempo, e nesse contexto getUrl() pode devolver a URL de OUTRA implantação do
-  // projeto (não a implantação fixa usada em produção, pinada via clasp deploy -i
-  // em .github/workflows/deploy.yml e referenciada em src/modules/shared/data-service.js).
-  const dashboardUrl = "https://script.google.com/a/macros/google.com/s/AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg/exec?page=tl";
-
   const motivo = "Você recebeu isso porque a fila combinada (criação + descarte) passou do limite configurado. "
-    + "Volta a avisar só depois que a fila cair pra " + BAU_VOLUME_ALERT_THRESHOLD + " ou menos e cruzar o limite de novo.";
+    + "O aviso volta só depois que a fila cair para " + BAU_VOLUME_ALERT_THRESHOLD + " ou menos e cruzar o limite de novo.";
 
   const htmlBody = renderBauEmail({
-    preheader: pendingCount + " casos pendentes · " + creationCount + " criação, " + discardCount + " descarte",
-    headerIcon: "⚠️",
-    headerSubtitle: "Alerta de Volume",
-    themeColor: EMAIL_TOKENS.accentAmber,
-    contentAlign: "center",
-    mainMessage: 'A fila de aprovação do BAU passou de <strong>'
-      + BAU_VOLUME_ALERT_THRESHOLD + ' casos</strong> aguardando revisão.',
-    bodyBlocks: renderEmailMetricPanel(pendingCount, "casos pendentes", [
-      { label: "Aprovação de Criação", value: creationCount, color: "{{t.link}}" },
-      { label: "Aprovação de Descarte", value: discardCount, color: "{{t.accentRed}}" }
-    ]),
-    footerAction: renderEmailButton("Abrir TL Dashboard", dashboardUrl),
-    footerNote: renderEmailFooterNote(motivo)
+    preheader: pendingCount + " casos aguardando revisão no BAU",
+    accent: EMAIL_TOKENS.accentAmber,
+    title: pendingCount + " casos aguardando revisão no BAU",
+    lead: "A fila de aprovação passou de " + BAU_VOLUME_ALERT_THRESHOLD + " casos pendentes.",
+    meta: "Verificação automática da fila",
+    action: renderEmailButton("Abrir TL Dashboard", TL_DASHBOARD_URL),
+    blocks: renderEmailSection("Fila atual", renderEmailFields([
+      { label: "Aprovação de criação", value: creationCount },
+      { label: "Aprovação de descarte", value: discardCount },
+      { label: "Total pendente", value: pendingCount }
+    ])),
+    footerNote: motivo
   });
 
   const plainBody = [
-    "A fila de aprovacao do BAU passou de " + BAU_VOLUME_ALERT_THRESHOLD + " casos aguardando revisao.",
+    pendingCount + " casos aguardando revisão no BAU",
     "",
-    pendingCount + " casos pendentes",
-    "Aprovacao de Criacao: " + creationCount,
-    "Aprovacao de Descarte: " + discardCount,
+    "A fila de aprovação passou de " + BAU_VOLUME_ALERT_THRESHOLD + " casos pendentes.",
     "",
-    "Abrir TL Dashboard: " + dashboardUrl,
+    "Abrir TL Dashboard: " + TL_DASHBOARD_URL,
     "",
-    stripEmailHtml(motivo)
+    "Fila atual",
+    "Aprovação de criação: " + creationCount,
+    "Aprovação de descarte: " + discardCount,
+    "Total pendente: " + pendingCount,
+    "",
+    motivo
   ].join("\n");
 
   MailApp.sendEmail({
     to: BAU_VOLUME_ALERT_RECIPIENTS.join(','),
-    subject: `🚨 ${pendingCount} casos aguardando revisão no BAU Central`,
+    subject: pendingCount + " casos aguardando revisão no BAU Central",
     htmlBody: htmlBody,
     body: plainBody,
     name: "Cases Wizard"
