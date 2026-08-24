@@ -27,3 +27,7 @@ Thumbs.db
 #     convenção do próprio Claude Code para isso.
 .claude/worktrees/
 .claude/settings.local.json
+
+# Saída de `npm run wiki:build` — a wiki é publicada a partir daqui, mas o
+# conteúdo é gerado do .gs, então versionar a saída seria versionar duas vezes.
+.wiki-build/
