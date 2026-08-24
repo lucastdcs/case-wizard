@@ -30,3 +30,8 @@ No ADR needed for trivial choices or implementation details.
 | # | Title | Status | Date |
 |---|---|---|---|
 | 0000 | Template | — | — |
+| [0001](0001-i18n-pt-es.md) | Bilinguismo PT/ES: idioma de sessão e separação entre interface e conteúdo | Accepted | 2026-08-19 |
+| [0002](0002-atalhos-ctrl-k-por-agente.md) | Atalhos do Ctrl+K por agente e preferências de usuário na nuvem | Accepted | 2026-08-19 |
+| [0003](0003-rename-repo-to-case-wizard.md) | Rename the repository to `case-wizard` | Accepted | 2026-08-20 |
+| [0004](0004-implantacoes-apps-script-por-branch.md) | Uma implantação do Apps Script por branch, promovida pelo CI | Accepted | 2026-08-21 |
+| [0005](0005-hospedagem-e-integridade-do-bundle.md) | Hospedagem e integridade do bundle | **Proposed** | 2026-08-24 |
