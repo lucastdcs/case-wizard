@@ -125,7 +125,11 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   const senderLdap = senderEmail ? senderEmail.split('@')[0] : L.fallbackTeam; // Fallback de segurança
 
   let themeColor = "#8ab4f8"; // Azul
-  let headerIconName = "bolt"; // Material Symbol - trocado do emoji anterior por espaço/consistência
+  // Ícone do header como emoji, e não como <img> de SVG do fonts.gstatic.com:
+  // o Gmail não renderiza SVG, então os ícones anteriores simplesmente não
+  // apareciam em produção. O emoji é o mesmo glifo usado na linha de assunto de
+  // cada tipo, de modo que a mensagem lê como contínua desde a lista da caixa.
+  let headerIcon = "⚡";
   let headerSubtitle = "BAU Escalation Hub";
   let greeting = L.defaultGreeting;
   let mainMessage = "";
@@ -196,6 +200,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
       break;
       
     case 'LEADERSHIP_BAU_RECEIVED':
+      headerIcon = "🚨";
       greeting = L.leadershipGreeting;
       mainMessage = L.leadershipMessage(data.advName);
       urgencyBadge = getUrgencyHtml(dateObj);
@@ -205,7 +210,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
 
     case 'AGENT_BAU_CREATED':
       themeColor = "#81c995"; // Verde
-      headerIconName = "check_circle"; // mesmo ícone do toast de sucesso do TL Dashboard
+      headerIcon = "✅";
       greeting = L.createdGreeting;
       mainMessage = L.createdMessage(data.advName);
       footerBadge = L.createdFooter;
@@ -214,7 +219,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
 
     case 'AGENT_DISCARD_SENT':
       themeColor = "#f28b82"; // Vermelho Suave
-      headerIconName = "delete_sweep"; // mesmo ícone da aba "Aprovação de Descarte" no TL Dashboard
+      headerIcon = "🗑️";
       headerSubtitle = L.discardSentSubtitle;
       greeting = L.discardSentGreeting;
       mainMessage = L.discardSentMessage(data.advName);
@@ -224,7 +229,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
 
     case 'AGENT_DISCARD_DONE':
       themeColor = "#ea4335"; // Vermelho Forte
-      headerIconName = "delete"; // mesmo ícone do badge de status da linha em descarte, no TL Dashboard
+      headerIcon = "❌";
       headerSubtitle = L.discardDoneSubtitle;
       greeting = L.discardDoneGreeting;
       mainMessage = L.discardDoneMessage(data.advName);
@@ -234,37 +239,78 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   }
 
   // 5. Substituição final e Envio (Agora com o LDAP mapeado corretamente)
-  // Ícone do header como Material Symbol (mesmo CDN já usado no resto do template),
-  // pintado de branco via filter (confiável pra qualquer SVG, sem precisar acertar
-  // um filtro de matiz por cor dinâmica) - a cor por tipo de email já é contada pelo
-  // {{THEME_COLOR}} no subtítulo, não precisa se repetir no ícone.
-  const headerIconHtml = `<img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/${headerIconName}/default/48px.svg" width="26" height="26" alt="" style="vertical-align: middle; margin-right: 8px; filter: brightness(0) invert(1);" />`;
+
+  // Valores resolvidos uma vez só: o corpo HTML e a alternativa em texto puro
+  // precisam mostrar exatamente a mesma coisa.
+  const caseIdValue = data.caseId || "0-0000000000000";
+  const siteValue = data.website || data.site || "N/A";
+  const cidValue = data.cid || "N/A";
+  const taskValue = data.taskType || "N/A";
+  const reasonValue = data.reason || "N/A";
+
+  // Preheader: a linha de resumo que o Gmail mostra na lista, colada ao assunto.
+  // Sem ela o cliente repete o começo do corpo — que hoje seria "Olá, Agente!",
+  // igual em todos. Anunciante + caso identifica a mensagem sem precisar abrir.
+  const preheader = [data.advName, caseIdValue]
+    .filter(function (v) { return !!v; })
+    .join(" · ");
 
   const htmlBody = template
-    .replace("{{HEADER_ICON}}", headerIconHtml)
+    .replace("{{HEADER_ICON}}", headerIcon)
+    .replace("{{PREHEADER}}", preheader)
     .replace("{{HEADER_SUBTITLE}}", headerSubtitle)
     .replace(/{{THEME_COLOR}}/g, themeColor)
     .replace("{{GREETING}}", greeting)
     .replace("{{MAIN_MESSAGE}}", mainMessage)
     .replace("{{URGENCY_BADGE}}", urgencyBadge)
     .replace("{{FOOTER_BADGE}}", footerBadge)
-    .replace(/{{CASE_ID}}/g, data.caseId || "0-0000000000000")
+    .replace(/{{CASE_ID}}/g, caseIdValue)
     .replace(/{{SENDER_LDAP}}/g, senderLdap) // <-- AQUI ESTÁ A CHAVE DE OURO
-    .replace("{{SITE}}", data.website || data.site || "N/A")
+    .replace("{{SITE}}", siteValue)
     .replace("{{AVAILABILITY}}", dataFormatada)
-    .replace("{{CID}}", data.cid || "N/A")
-    .replace("{{TASK}}", data.taskType || "N/A")
-    .replace("{{REASON}}", data.reason || "N/A")
+    .replace("{{CID}}", cidValue)
+    .replace("{{TASK}}", taskValue)
+    .replace("{{REASON}}", reasonValue)
     .replace("{{ID_ESCALACAO}}", escalacaoId)
     .replace("{{LABEL_CONTEXT}}", L.labelContext)
     .replace("{{LABEL_DOMAIN}}", L.labelDomain)
     .replace("{{LABEL_SCHEDULE}}", L.labelSchedule)
     .replace("{{LABEL_TASK}}", L.labelTask);
-  
+
+  // Alternativa em texto puro. MailApp.sendEmail vinha mandando só htmlBody, então
+  // cliente em modo texto, leitor de tela e prévia de notificação recebiam a
+  // marcação crua. As mensagens já trazem <strong> inline, daí a limpeza.
+  function stripHtml(value) {
+    return String(value === null || value === undefined ? "" : value)
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  const plainLines = [stripHtml(greeting), "", stripHtml(mainMessage)];
+  if (urgencyBadge) {
+    plainLines.push("", stripHtml(urgencyBadge));
+  }
+  plainLines.push(
+    "",
+    L.labelContext + ": " + stripHtml(reasonValue),
+    "Case Connect: " + caseIdValue,
+    L.labelDomain + ": " + siteValue,
+    L.labelSchedule + ": " + dataFormatada,
+    "Customer ID: " + cidValue,
+    L.labelTask + ": " + taskValue,
+    "",
+    "https://cases.connect.corp.google.com/#/case/" + caseIdValue,
+    "ID: " + escalacaoId
+  );
+
   MailApp.sendEmail({
     to: destinatario,
     subject: subject,
     htmlBody: htmlBody,
+    body: plainLines.join("\n"),
     name: "Cases Wizard"
   });
 }
