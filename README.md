@@ -31,7 +31,7 @@ A productivity and automation suite for a corporate CRM, delivered as a JavaScri
 - **Timezone Assistant** — live local-time monitoring per supported country and a meeting-time planner for customer calls.
 - **BAU Central** — wizard for escalating a case to BAU (open or discard), plus a dashboard and edit flow for the agent's own escalated cases.
 - **My Library** — personal snippets (notes, emails, general text), synced across devices via Google Sheets.
-- **Broadcast System** — global announcements sourced from the backend, with `localStorage`-based read tracking and a custom emoji-shortcode parser.
+- **Broadcast Center** — read-only feed of operational announcements, published from the Content Center. Tracks what's been read in `localStorage`, filters by the segment the agent serves, and parses emoji shortcodes. Carries a secondary **BAU availability** strip: the flag of the agent's own segment, a swap to the other one, and two dates per segment — the nearer one in amber, full availability in green.
 - **Links Hub** — curated shortcuts to internal tools and pages, grouped by task.
 - **Command Center & Command Palette** — a floating pill that surfaces every module, plus a `Ctrl/Cmd+K` quick-search that calls the same toggle functions as clicking an icon.
 - **Per-agent Ctrl+K shortcuts** — each agent configures their own quick commands (status + substatus + scenarios), created either by capturing a Case Notes screen they already built or from a builder in Settings. Stored per person in the backend so they follow the agent across machines.
@@ -64,7 +64,7 @@ Drop image files into [`docs/media/`](docs/media/) and swap the placeholder cell
 - **Data store**: Google Sheets (accessed from Apps Script — see `specs/data-models/db-schema.md`)
 - **Backend transport**: JSONP (not `fetch`) to avoid CORS restrictions against the Apps Script Web App
 - **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`)
-- **Frontend hosting**: GitHub Pages (serves the built bundle)
+- **Frontend hosting**: Firebase Hosting (serves the built bundle; GitHub Pages still publishes in parallel until every agent has switched bookmarklets)
 - **Visual portfolio generation**: Python 3 + [Playwright](https://playwright.dev/) (optional, dev-only tooling)
 
 ## Prerequisites
@@ -107,19 +107,21 @@ CI (`.github/workflows/deploy.yml`) builds and publishes automatically on every 
 
 Since there's no localhost target, "running" the app means loading the bundle in the browser via a bookmarklet. Create a browser bookmark with one of the following as its URL, then click it while on the CRM page:
 
-**Production** (bypasses CSP via `trustedTypes`, points at the GitHub Pages–hosted `bundle.js`):
+**Production** (bypasses CSP via `trustedTypes`, points at the Firebase-hosted `bundle.js`):
 
 ```javascript
-javascript:(function(){    const cacheBuster = '?t=' + new Date().getTime();    const scriptUrl = 'https://lucastdcs.github.io/case-wizard/bundle.js' + cacheBuster;        const policy = trustedTypes.createPolicy('default', {         createHTML: (string) => string,         createScriptURL: string => string,         createScript: string => string,     });    const oldScript = document.getElementById('techsol-app-bundle');    if(oldScript) oldScript.remove();        const script = document.createElement('script');    script.id = 'techsol-app-bundle';    script.src = policy.createScriptURL(scriptUrl);    document.body.appendChild(script);})();
+javascript:(function(){    const scriptUrl = 'https://cases-wizard.web.app/bundle.js';        const policy = trustedTypes.createPolicy('default', {         createHTML: (string) => string,         createScriptURL: string => string,         createScript: string => string,     });    const oldScript = document.getElementById('techsol-app-bundle');    if(oldScript) oldScript.remove();        const script = document.createElement('script');    script.id = 'techsol-app-bundle';    script.src = policy.createScriptURL(scriptUrl);    document.body.appendChild(script);})();
 ```
 
-**Development** (points at `bundle-dev.js`, logs to console):
+**Development** (points at `bundle-dev.js` on the dev site, logs to console):
 
 ```javascript
-javascript:(function(){    var s = document.createElement('script');    s.src = 'https://lucastdcs.github.io/case-wizard/bundle-dev.js?t=' + new Date().getTime();    s.onload = function() { console.log('✅ TechSol DEV carregado!'); };    s.onerror = function() { alert('❌ Erro ao carregar TechSol DEV: Arquivo não encontrado ou bloqueado.'); };    document.body.appendChild(s);})();
+javascript:(function(){    var s = document.createElement('script');    s.src = 'https://cases-wizard-dev.web.app/bundle-dev.js';    s.onload = function() { console.log('✅ TechSol DEV carregado!'); };    s.onerror = function() { alert('❌ Erro ao carregar TechSol DEV: Arquivo não encontrado ou bloqueado.'); };    document.body.appendChild(s);})();
 ```
 
-Push a change to `refactor-structure`, wait for CI to finish, then click the Dev bookmarklet again to pick it up (the cache-busting timestamp forces a fresh download each click).
+Push a change to `refactor-structure`, wait for CI to finish, then click the Dev bookmarklet again to pick it up.
+
+> **The `?t=` cache-buster is gone, on purpose.** It existed because GitHub Pages served the bundle with a fixed `max-age` and no way to override it, so the only way to guarantee a fresh copy was to make every URL unique — which forced a full ~668 KB download on every single click. Firebase lets us set the header directly: production is served with `Cache-Control: no-cache`, which means *"cache it, but revalidate"*, so a repeat click becomes a `304 Not Modified` instead of a fresh download. The dev site goes further with `no-store`. Adding `?t=` back would defeat both and make loading slower, not safer.
 
 ### 5. Backend changes (optional)
 
@@ -144,7 +146,7 @@ Note that `clasp push` only updates the editor's HEAD — the live `/exec` and `
 │   ├── app.js                      # Entry point — boots the overlay in order (styles, sound, data, modules, command center)
 │   └── modules/
 │       ├── bau-form/                # BAU escalation wizard
-│       ├── broadcast/               # Global announcements
+│       ├── broadcast/               # Announcements feed + BAU availability (read-only)
 │       ├── call-script/             # Call checklist assistant
 │       ├── changelog/               # "What's new" wizard
 │       ├── configs/                 # Agent profile & preferences
@@ -179,7 +181,7 @@ The bookmarklet appends a cache-busting timestamp to the script URL, then — in
 1. Guards against double-injection via `window.techSolInitialized`.
 2. Injects global styles and the Roboto/Google Sans font.
 3. Initializes the sound engine and global hover/click audio listeners.
-4. Kicks off async data fetching (tips, broadcasts) via `DataService`.
+4. Kicks off async data fetching (tips) and resolves the agent's profile, which sets both the interface language and the segment they serve. Each module fetches its own content after that.
 5. Initializes every module, collecting each one's control functions (e.g. `toggleNotes`).
 6. Mounts the floating Command Center pill, wiring each module's toggle into it.
 
@@ -188,8 +190,9 @@ The bookmarklet appends a cache-busting timestamp to the script URL, then — in
 There is no traditional server or database — Google Apps Script acts as the API, backed by a Google Sheet (see `specs/data-models/db-schema.md`):
 
 - **Frontend interface**: `src/modules/shared/data-service.js`
-- **Backend router**: `gas-backend/Código.js`, `doGet(e)` — dispatches by an `op` query param (`op=broadcast`, `op=create_bau`, `op=get_user_profile`, …) to the matching module (`BAU_API.js`, `EmailEngine.js`, …)
-- **Transport**: every call (including writes, like `new_broadcast` or `create_bau`) goes through **JSONP**, not `fetch` — the frontend injects a `<script src="...&callback=cw_cb_XXXX">` tag, and the backend wraps its JSON response in a call to that callback. This sidesteps CORS but means every operation's parameters ride in the URL query string, and the frontend has a 15s watchdog timeout in case Apps Script doesn't respond.
+- **Backend router**: `gas-backend/Código.js`, `doGet(e)` — dispatches by an `op` query param (`op=content_public`, `op=create_bau`, `op=get_user_profile`, …) to the matching module (`BAU_API.js`, `EmailEngine.js`, `ContentAPI.js`, …). `op=broadcast` and `op=tips` remain as legacy routes but serve Content Center data, so older cached bundles read the same source as new ones.
+- **Transport**: every call (including writes, like `create_bau`) goes through **JSONP**, not `fetch` — the frontend injects a `<script src="...&callback=cw_cb_XXXX">` tag, and the backend wraps its JSON response in a call to that callback. This sidesteps CORS but means every operation's parameters ride in the URL query string, and the frontend has a 15s watchdog timeout in case Apps Script doesn't respond.
+- **Content Center** (`gas-backend/ContentAPI.js`, `gas-backend/ContentDashboard.html`): everything the operation edits without a deploy — links, call script, email and note templates, tips, announcements and BAU availability. The agent app reads it over JSONP (`op=content_public`, live items only); **writes never go through JSONP**, only `google.script.run` with a server-verified role. Most modules go through a draft → pending → approved → live queue; announcements and BAU availability publish straight to live, because an alert that waits for a reviewer arrives after it stopped mattering.
 - **TL Dashboard** (`gas-backend/TLDashboard.html`) is a separate HTML Service page served at `?page=tl`, using `google.script.run` instead of the JSONP router — it runs in the authenticated context of whoever loaded the page.
 - **Access control**: the Apps Script Web App is configured with `access: "DOMAIN"` (`gas-backend/appsscript.json`) — only authenticated users on the same Google Workspace domain can call it; it is not public.
 - **Dev vs. production are separate deployments**, not a shared one: each branch's frontend points at a different deployment ID/URL, hardcoded in `data-service.js` (`SCRIPT_ID` + `/dev` vs `/exec`). Both share the same source (`gas-backend/`) and Apps Script project, but each deployment stays pinned to whatever version was last promoted into it.
@@ -264,7 +267,9 @@ In practice, day-to-day work happens on `refactor-structure` (which gets both bu
 
 ### Bookmarklet does nothing / blocked by network
 
-The script depends on reaching `github.io`. If the corporate network blocks that domain, the bundle will never load — check the browser's Network tab for a blocked/failed request to `lucastdcs.github.io`.
+The script depends on reaching `web.app`. If the corporate network blocks that domain, the bundle will never load — check the browser's Network tab for a blocked/failed request to `cases-wizard.web.app` (or `cases-wizard-dev.web.app` for the Dev bookmarklet).
+
+If you are still on an older bookmarklet pointing at `lucastdcs.github.io`, that is the pre-Firebase hosting. It still answers today, but it is being retired — switch to the bookmarklets above.
 
 ### Dev bookmarklet shows old code
 

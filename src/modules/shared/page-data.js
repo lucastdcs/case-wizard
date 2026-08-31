@@ -398,6 +398,34 @@ export function isCurrentUserOverhead() {
     return cachedUserProfile?.isOverhead || false;
 }
 
+// Guarda o perfil resolvido no boot do app.
+//
+// Antes, o perfil só entrava neste cache dentro de getPageData(), que roda
+// quando algum módulo precisa raspar a página do CRM. Quem abrisse só a Central
+// de Avisos nunca passava por lá, e getAgentSegment() abaixo responderia PT
+// para todo mundo — inclusive para quem atende ES. O boot já busca o perfil
+// para resolver o idioma da interface; agora ele também o deixa disponível
+// aqui, que é onde o resto do app pergunta quem é a pessoa.
+export function setUserProfile(profile) {
+    if (profile) cachedUserProfile = profile;
+}
+
+// Segmento que a pessoa atende, vindo da coluna Segmento da aba People
+// (já normalizado pelo backend em profile.defaultLanguage: PT-BR, ES ou EN).
+//
+// Não é a mesma coisa que getLanguage() do i18n: aquele é o idioma da
+// INTERFACE, que a pessoa pode trocar em Configurações. Este é a operação que
+// ela atende, e é o que decide qual disponibilidade BAU e quais avisos
+// segmentados fazem sentido para ela. Quem atende PT e prefere a interface em
+// espanhol continua sendo PT.
+//
+// EN cai em PT porque não há operação BAU em inglês — mesma decisão já tomada
+// em i18n.js, que manda EN para o dicionário PT por não existir tradução.
+export function getAgentSegment() {
+    const raw = String(cachedUserProfile?.defaultLanguage || "").toUpperCase();
+    return raw === 'ES' ? 'ES' : 'PT';
+}
+
 // --- 9. COMPILADOR DE DADOS DA PÁGINA ---
 export async function getPageData() {
     // Garante que os dados estejam no idioma original para evitar falhas de raspagem

@@ -103,12 +103,31 @@ function updateBAUCaseStatus(id, newStatus) {
         // O status já foi gravado na planilha (linha acima) antes de chegar aqui -
         // uma falha no envio do email não pode mais derrubar a ação inteira pro
         // cliente (google.script.run reportaria falha mesmo com o status já salvo).
+        //
+        // O tipo de e-mail é escolhido por processedAction, não por newStatus:
+        // newStatus só tem dois valores possíveis ('CREATED'/'DISCARDED'), que o
+        // front-end recicla pras quatro decisões do TL (ver botões em
+        // TLDashboard.html) — 'DISCARDED' tanto confirma um descarte quanto
+        // rejeita uma criação, e 'CREATED' tanto aprova uma criação quanto nega
+        // um descarte. processedAction já desfaz essa ambiguidade (é o mesmo
+        // valor usado na trilha de auditoria), então usá-lo aqui também evita
+        // mandar "Caso descartado" pra uma rejeição de criação, ou "Caso criado"
+        // pra um caso que só continuou ativo.
         let emailSent = true;
         try {
-          if (newStatus === "CREATED") {
-            sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_BAU_CREATED', tlEmail);
-          } else if (newStatus === "DISCARDED") {
-            sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_DISCARD_DONE', tlEmail);
+          switch (processedAction) {
+            case "APPROVED_CREATION":
+              sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_BAU_CREATED', tlEmail);
+              break;
+            case "REJECTED_CREATION":
+              sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_CREATION_REJECTED', tlEmail);
+              break;
+            case "CONFIRMED_DISCARD":
+              sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_DISCARD_DONE', tlEmail);
+              break;
+            case "KEPT_ACTIVE":
+              sendDynamicTechSolEmail(agentEmail, emailData, id, 'AGENT_DISCARD_DENIED', tlEmail);
+              break;
           }
         } catch (e) {
           emailSent = false;
