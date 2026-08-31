@@ -28,7 +28,7 @@ const EMAIL_I18N = {
     defaultSubject: function (adv) { return "Notificação TechSol: " + adv; },
     requestedBy: function (ldap) { return "Solicitado por @" + ldap; },
     footerTrace: function (id) { return "Cases Wizard · automatizado por @lucaste · rastreio " + id; },
-    actionViewCase: "Ver caso no Case Connect",
+    actionViewCase: "Ver caso",
     actionOpenDashboard: "Abrir TL Dashboard",
     sectionDetails: "Detalhes do caso",
 
@@ -76,7 +76,7 @@ const EMAIL_I18N = {
     defaultSubject: function (adv) { return "Notificación TechSol: " + adv; },
     requestedBy: function (ldap) { return "Solicitado por @" + ldap; },
     footerTrace: function (id) { return "Cases Wizard · automatizado por @lucaste · seguimiento " + id; },
-    actionViewCase: "Ver caso en Case Connect",
+    actionViewCase: "Ver caso",
     actionOpenDashboard: "Abrir TL Dashboard",
     sectionDetails: "Detalles del caso",
 
@@ -151,10 +151,23 @@ const EMAIL_TOKENS = {
   // em qualquer tema (não segue a paleta clara/dm-* do resto do cartão): é
   // identidade de produto, não conteúdo, e por isso não muda com o tema do
   // cliente de e-mail.
+  //
+  // As cores não são as mesmas rgba translúcidas da pill flutuante real
+  // (COLORS.glassBg em command-center.js) de propósito: aquela transparência
+  // é calibrada pra sentar sobre backdrop-filter: blur(12px) em cima do CRM,
+  // que muda de conteúdo o tempo todo. Sem blur (nenhum cliente de e-mail
+  // aplica) e sobre um cartão liso, a mesma transparência renderia clara
+  // demais no card branco e quase invisível no card escuro do dark mode.
+  // Um gradiente opaco na mesma família tonal é o que se comporta igual nos
+  // dois temas.
   glassBg1: "#26272B",
   glassBg2: "#313340",
   glassBorder: "rgba(255,255,255,0.10)",
   glassText: "#E8EAED",
+  // O badge do raio, dentro do chip: aqui sim um branco translúcido de
+  // verdade (sem depender de blur) — é a segunda camada que dá a leitura
+  // "opaco por fora, translúcido por dentro" que a pill tem.
+  glassBadgeBg: "rgba(255,255,255,0.08)",
 
   // Avisos. Só aparecem quando há de fato algo a avisar.
   urgentBg: "#FCE8E6",
