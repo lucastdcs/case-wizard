@@ -20,7 +20,7 @@ Give TechSol's CRM support agents (working BAU/LM cases in PT/ES) a single produ
 - **Communication**: JSONP (`jsonpFetch`), not `fetch`, due to CORS/environment restrictions in the target CRM.
 - **KISS**: code must stay simple, readable, and direct — no premature abstraction.
 - **`specs/` is the absolute source of truth**: if legacy code diverges from a rule in `specs/`, the rule wins and the code must be refactored to match, not the other way around.
-- **Network dependency**: the bookmarklet depends on reaching `github.io`; a corporate network block there breaks loading entirely.
+- **Network dependency**: the bookmarklet depends on reaching `web.app` (Firebase Hosting); a corporate network block there breaks loading entirely. This is a smaller risk than the `github.io` dependency it replaced, since `web.app` is a Google domain, but it is still a single external origin the tool cannot work without.
 - **No durable client-side storage beyond `localStorage`**: user preferences (widget position, sound mute) live there and are lost on a browser cache clear.
 
 ## Out of scope for V1 (non-goals)

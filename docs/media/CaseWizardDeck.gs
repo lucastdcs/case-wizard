@@ -35,7 +35,7 @@ var FEEDBACK_FORM_URL = 'forms.gle/8icwk1TejBTDYsJS6';
 
 // Bookmarklet de produção (sempre a branch main / bundle.js), copiado
 // literalmente do README.md — não editar sem atualizar lá também.
-var INSTALL_BOOKMARKLET = "javascript:(function(){    const cacheBuster = '?t=' + new Date().getTime();    const scriptUrl = 'https://lucastdcs.github.io/case-wizard/bundle.js' + cacheBuster;        const policy = trustedTypes.createPolicy('default', {         createHTML: (string) => string,         createScriptURL: string => string,         createScript: string => string,     });    const oldScript = document.getElementById('techsol-app-bundle');    if(oldScript) oldScript.remove();        const script = document.createElement('script');    script.id = 'techsol-app-bundle';    script.src = policy.createScriptURL(scriptUrl);    document.body.appendChild(script);})();";
+var INSTALL_BOOKMARKLET = "javascript:(function(){    const scriptUrl = 'https://cases-wizard.web.app/bundle.js';        const policy = trustedTypes.createPolicy('default', {         createHTML: (string) => string,         createScriptURL: string => string,         createScript: string => string,     });    const oldScript = document.getElementById('techsol-app-bundle');    if(oldScript) oldScript.remove();        const script = document.createElement('script');    script.id = 'techsol-app-bundle';    script.src = policy.createScriptURL(scriptUrl);    document.body.appendChild(script);})();";
 
 // ============================================================
 // 2. TEMA — tokens extraídos do próprio projeto (não inventados)
@@ -382,7 +382,7 @@ function addStackSlide_(ctx) {
     ['Frontend', 'Vanilla JS (ES modules) + esbuild — sem framework, CSS-in-JS', COLOR.modBlue],
     ['Backend', 'Google Apps Script (V8) — sem servidor/DB tradicional', COLOR.modGreen],
     ['Dados', 'Google Sheets como banco, JSONP como transporte (sem CORS)', COLOR.modOrange],
-    ['Deploy', 'GitHub Actions → GitHub Pages (front) + clasp (backend)', COLOR.modPurple],
+    ['Deploy', 'GitHub Actions → Firebase Hosting (front) + clasp (backend)', COLOR.modPurple],
   ];
   var margin = 64, gap = 16;
   var cardW = (ctx.pageW - margin * 2 - gap * (cards.length - 1)) / cards.length;
@@ -528,10 +528,10 @@ var SOLUTION_BULLETS = [
 ];
 
 var ARCHITECTURE_BULLETS = [
-  'O bookmarklet injeta um <script> que carrega o bundle (GitHub Pages) direto na página do Connect Cases.',
+  'O bookmarklet injeta um <script> que carrega o bundle (Firebase Hosting) direto na página do Connect Cases.',
   'Frontend fala com o backend via JSONP (não fetch) para não esbarrar em CORS — Google Apps Script responde por trás de um roteador único (op=...).',
   'Google Sheets é o banco de dados; não existe servidor ou banco tradicional.',
-  'Deploy 100% automatizado por GitHub Actions a cada push — front pro GitHub Pages, backend via clasp.',
+  'Deploy 100% automatizado por GitHub Actions a cada push — front pro Firebase Hosting, backend via clasp, sem credencial de longa duração no repositório.',
 ];
 
 var INSTABILITY_BULLETS = [
