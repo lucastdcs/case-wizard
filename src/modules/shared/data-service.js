@@ -140,18 +140,20 @@ export const DataService = {
         } catch (err) { console.warn("Tips offline", err); }
     },
 
-    fetchData: async () => {
+    // Cache da rota antiga (op=broadcast). Nada mais escreve nesta chave: os
+    // avisos passaram a ser um módulo da Central e são lidos por
+    // fetchContentModule('broadcast'). A leitura fica de pé pelo mesmo motivo
+    // do fallback legado em getRandomTip(): no primeiro load depois do deploy
+    // ainda não existe cache da Central, e se a pessoa estiver offline nesse
+    // momento ela veria a Central de Avisos vazia em vez dos avisos que já
+    // tinha. Some quando não houver mais bundles antigos em circulação.
+    getCachedBroadcasts: () => {
         try {
-            const data = await jsonpFetch('broadcast');
-            if (data?.broadcast) {
-                localStorage.setItem(CACHE_KEY_BROADCAST, JSON.stringify(data.broadcast));
-                return data;
-            }
-        } catch (err) { console.warn("Broadcast offline", err); }
-        return { broadcast: JSON.parse(localStorage.getItem(CACHE_KEY_BROADCAST) || "[]") };
+            return JSON.parse(localStorage.getItem(CACHE_KEY_BROADCAST) || "[]");
+        } catch (e) {
+            return [];
+        }
     },
-
-    getCachedBroadcasts: () => JSON.parse(localStorage.getItem(CACHE_KEY_BROADCAST) || "[]"),
 
     // ==========================================
     // 1.5 CENTRAL DE CONTEÚDO (conteúdo gerenciável)
@@ -209,42 +211,14 @@ export const DataService = {
     },
 
     // ==========================================
-    // 2. SISTEMA DE BROADCASTS (Avisos)
+    // 2. AVISOS — ESCRITA REMOVIDA
     // ==========================================
-    sendBroadcast: async (payload) => {
-        const fullPayload = {
-            ...payload,
-            date: new Date().toISOString(),
-            id: Date.now().toString() 
-        };
-        return await DataService._performOp('new_broadcast', fullPayload);
-    },
+    // sendBroadcast/updateBroadcast/deleteBroadcast (e o _performOp que só
+    // elas usavam) saíram daqui junto com as rotas que chamavam. Publicar um
+    // aviso é ação da Central de Conteúdo, feita por google.script.run com
+    // identidade do servidor e papel verificado — não por uma URL pública que
+    // qualquer um podia chamar. O app do agente só lê.
 
-    updateBroadcast: async (id, payload) => {
-        const fullPayload = { id, ...payload };
-        return await DataService._performOp('update_broadcast', fullPayload);
-    },
-
-    deleteBroadcast: async (id) => {
-        return await DataService._performOp('delete_broadcast', { id });
-    },
-
-    _performOp: async (op, params) => {
-        try {
-            console.log(`Executando ${op}...`, params);
-            const response = await jsonpFetch(op, params);
-            if (response && response.status === 'success') {
-                console.log("Sucesso:", op);
-                return true; // Mantido true para não quebrar a lógica antiga do broadcast
-            }
-            console.warn("Falha:", response);
-            return false;
-        } catch (e) {
-            console.error("Erro JSONP:", e);
-            return false;
-        }
-    },
-    
     // ==========================================
     // 3. ANALYTICS
     // ==========================================

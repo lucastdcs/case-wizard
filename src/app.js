@@ -15,7 +15,7 @@ import { initBAUForm } from './modules/bau-form/bau-form-assistant.js';
 
 // Importação do Serviço de Dados
 import { DataService, fetchUserProfile } from './modules/shared/data-service.js';
-import { getAgentEmail } from './modules/shared/page-data.js';
+import { getAgentEmail, setUserProfile } from './modules/shared/page-data.js';
 import { applyProfileLanguage } from './modules/shared/i18n.js';
 import { UserPrefsService } from './modules/shared/user-prefs-service.js';
 
@@ -118,7 +118,16 @@ function initApp() {
 
             const languagePromise = agentEmail
                 ? fetchUserProfile(agentEmail.split('@')[0])
-                    .then(profile => { if (profile) applyProfileLanguage(profile); })
+                    .then(profile => {
+                        if (!profile) return;
+                        // Idioma da INTERFACE (a pessoa pode trocar em
+                        // Configurações) e segmento que ela ATENDE saem do mesmo
+                        // perfil, mas são coisas diferentes e vão para lugares
+                        // diferentes. O segmento é o que decide qual
+                        // disponibilidade BAU e quais avisos segmentados ela vê.
+                        applyProfileLanguage(profile);
+                        setUserProfile(profile);
+                    })
                     .catch(e => console.warn("Não foi possível resolver o idioma do perfil:", e))
                 : Promise.resolve();
 

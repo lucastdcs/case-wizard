@@ -1,64 +1,59 @@
 // src/modules/broadcast/broadcast-assistant.js
+//
+// Central de Avisos — SOMENTE LEITURA.
+//
+// Publicar, editar e tirar avisos do ar é trabalho da Central de Conteúdo
+// (gas-backend/ContentDashboard.html). Este módulo só mostra o que está no ar.
+// Antes ele fazia as duas coisas, e o CRUD respondia por metade do arquivo: um
+// editor em overlay, três chamadas de escrita e uma checagem de "é admin?" que
+// rodava no front — do lado errado da fronteira, já que as rotas de escrita
+// eram URLs públicas.
+//
+// A fonte agora são dois módulos da Central:
+//   broadcast        — o feed de avisos
+//   bau_availability — a disponibilidade corrente, em campos de data
+//
+// Eram um só antes, e a disponibilidade era encontrada procurando um aviso com
+// "disponibilidade bau" no título, com as datas extraídas do texto por regex.
+// Essa regex tinha um bug real: sem fronteira de palavra, /ES/i casava o "es"
+// de qualquer palavra portuguesa, e "Disponibilidades para 15/09" era marcada
+// com a bandeira da Espanha.
 
 import {
   stylePopup,
   styleResizeHandle,
   makeResizable,
-  showToast,
-  parseEmojiCodes,
-  confirmDialog
+  parseEmojiCodes
 } from "../shared/utils.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
-import { BROADCAST_MESSAGES, setBroadcastMessages } from "./broadcast-data.js";
 import { DataService } from "../shared/data-service.js";
-import { getAgentEmail } from "../shared/page-data.js";
-import { ADMINS } from "../shared/config.js";
+import { getAgentSegment } from "../shared/page-data.js";
 import { getLanguage, onLanguageChange } from "../shared/i18n.js";
 
 // --- CONFIGURAÇÃO ---
 const POLL_TIME_MS = 60 * 1000;
+const READ_STORAGE_KEY = "cw_read_broadcasts";
 
 const BC_DICT = {
     pt: {
         headerTitle: "Central de Avisos",
         headerDesc: "Comunicação oficial da operação.",
-        newNotice: "Novo Aviso",
         clear: "Limpar",
         searchPlaceholder: "Buscar avisos...",
-        editNotice: "Editar Aviso",
-        saveChanges: "Salvar Alterações",
-        publish: "Publicar",
-        saving: "Salvando...",
-        noticeTypeLabel: "TIPO DO COMUNICADO",
-        typeInfo: "ℹ️ Info",
-        typeCritical: "🚨 Alerta",
-        typeSuccess: "✅ Sucesso",
-        titleLabel: "TÍTULO",
-        titlePlaceholder: "Resumo do assunto",
-        messageLabel: "MENSAGEM",
-        messagePlaceholder: "Escreva os detalhes aqui... Suporta HTML e Emojis :)",
-        cancel: "Cancelar",
-        fillAllFields: "Preencha todos os campos!",
-        updatedToast: "Atualizado!",
-        publishedToast: "Publicado!",
-        saveErrorToast: "Erro ao salvar. Verifique a conexão.",
-        deleteConfirm: "Confirma a exclusão deste aviso?",
-        deletedToast: "Aviso removido.",
-        deleteErrorToast: "Erro ao excluir.",
         details: "Detalhes",
         hide: "Ocultar",
         bauAvailability: "Disponibilidade BAU",
+        attention: "atenção",
+        full: "total",
         dates: "datas",
         date: "data",
         viewDetails: "Ver detalhes",
         nothingFound: "Nada encontrado.",
         allRead: "Tudo lido!",
         history: (n) => `Histórico (${n})`,
-        edit: "Editar",
-        delete: "Excluir",
         typeLabel: { info: "Info", critical: "Alerta", success: "Sucesso" },
         syncing: "🔄 Sincronizando...",
         updated: '<span style="color:#137333">✓ Atualizado</span>',
@@ -67,46 +62,26 @@ const BC_DICT = {
     es: {
         headerTitle: "Central de Avisos",
         headerDesc: "Comunicación oficial de la operación.",
-        newNotice: "Nuevo Aviso",
         clear: "Limpiar",
         searchPlaceholder: "Buscar avisos...",
-        editNotice: "Editar Aviso",
-        saveChanges: "Guardar Cambios",
-        publish: "Publicar",
-        saving: "Guardando...",
-        noticeTypeLabel: "TIPO DE COMUNICADO",
-        typeInfo: "ℹ️ Info",
-        typeCritical: "🚨 Alerta",
-        typeSuccess: "✅ Éxito",
-        titleLabel: "TÍTULO",
-        titlePlaceholder: "Resumen del asunto",
-        messageLabel: "MENSAJE",
-        messagePlaceholder: "Escribe los detalles aquí... Admite HTML y Emojis :)",
-        cancel: "Cancelar",
-        fillAllFields: "¡Complete todos los campos!",
-        updatedToast: "¡Actualizado!",
-        publishedToast: "¡Publicado!",
-        saveErrorToast: "Error al guardar. Verifique la conexión.",
-        deleteConfirm: "¿Confirma la eliminación de este aviso?",
-        deletedToast: "Aviso eliminado.",
-        deleteErrorToast: "Error al eliminar.",
         details: "Detalles",
         hide: "Ocultar",
         bauAvailability: "Disponibilidad BAU",
+        attention: "atención",
+        full: "total",
         dates: "fechas",
         date: "fecha",
         viewDetails: "Ver detalles",
         nothingFound: "No se encontró nada.",
         allRead: "¡Todo leído!",
         history: (n) => `Historial (${n})`,
-        edit: "Editar",
-        delete: "Eliminar",
         typeLabel: { info: "Info", critical: "Alerta", success: "Éxito" },
         syncing: "🔄 Sincronizando...",
         updated: '<span style="color:#137333">✓ Actualizado</span>',
         offline: "⚠️ Sin conexión",
     },
 };
+
 function bt(key) {
     const lang = getLanguage();
     return BC_DICT[lang]?.[key] ?? BC_DICT.pt[key];
@@ -119,11 +94,6 @@ const TYPE_CONFIG = {
 };
 
 // --- FOLHA DE ESTILOS DEDICADA ---
-// Substitui os 4 mecanismos de estilo que coexistiam aqui (classes injetadas,
-// objeto JS aplicado via Object.assign, objectToCss() embutido em template
-// literals do widget BAU, e style="..." cru no HTML do editor) por um só
-// bloco de classes reais — mesmo padrão já usado em personal-library/
-// call-script/configs.
 function injectStyles() {
     if (document.getElementById('cw-broadcast-styles')) return;
     const style = document.createElement("style");
@@ -196,24 +166,15 @@ function injectStyles() {
         }
         .cw-bc-dismiss-btn:hover { color: #1e8e3e; background: #e6f4ea; border-color: #1e8e3e; }
 
-        .cw-card-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 12px 20px; background: #F8F9FA; border-top: 1px solid #F1F3F4; }
-        .cw-action-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: transparent; transition: background-color 0.2s; }
-        .cw-action-btn.edit { color: #1967D2; }
-        .cw-action-btn.edit:hover { background: #E8F0FE; }
-        .cw-action-btn.delete { color: #D93025; }
-        .cw-action-btn.delete:hover { background: #FCE8E6; }
-
         .cw-bc-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 0; color: #BDC1C6; gap: 16px; text-align: center; }
         .cw-bc-history-divider { display: flex; align-items: center; justify-content: center; margin: 20px 0; cursor: pointer; color: #1a73e8; font-size: 13px; font-weight: 500; gap: 8px; padding: 8px 16px; border-radius: 20px; background: #E8F0FE; }
         .cw-bc-history-container { display: none; flex-direction: column; gap: 16px; opacity: 0.8; }
 
-        /* --- WIDGET BAU (destaque proposital, paleta roxa própria) ---
-           Papel secundário por padrão: só a faixa de resumo (cw-bc-bau-header)
-           fica sempre visível, compacta. O conteúdo completo (mesmo layout de
-           sempre — slots, botões, texto integral) só aparece expandido, com
-           1 clique na faixa. Quem usa BAU com frequência (LM) expande e o
-           app lembra disso enquanto o popup ficar aberto; pra todo mundo
-           que só passa o olho nos avisos gerais, ele ocupa bem menos espaço. */
+        /* --- WIDGET BAU ---
+           O visual desta faixa (paleta roxa, ponto pulsante) é o que estava
+           aqui antes e segue por ora: esta seção trocou a FONTE do dado, de
+           texto livre para campos, e misturar o redesenho no mesmo passo
+           tornaria as duas mudanças impossíveis de revisar separadas. */
         .cw-bc-bau { margin: 16px 24px 0 24px; padding: 12px 16px; background: #F3E8FD; border: 1px solid #D8B4FE; border-radius: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.1); transition: padding 0.25s ease; }
         .cw-bc-bau.expanded { padding: 16px; }
         .cw-bc-bau-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
@@ -229,61 +190,16 @@ function injectStyles() {
         .cw-bc-bau.expanded .cw-bc-bau-chevron { transform: rotate(180deg); }
         .cw-bc-bau-detail { display: none; flex-direction: column; gap: 12px; }
         .cw-bc-bau.expanded .cw-bc-bau-detail { display: flex; }
-        .cw-bc-bau-slots { display: flex; justify-content: space-between; align-items: center; }
-        .cw-bc-bau-slots-row { flex: 1; display: flex; gap: 8px; }
+        .cw-bc-bau-slots-row { display: flex; gap: 8px; flex-wrap: wrap; }
         .cw-bc-bau-slot { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.5); border-radius: 8px; flex: 1; justify-content: center; }
-        .cw-bc-bau-flag { font-size: 18px; line-height: 1; }
+        .cw-bc-bau-seg { font-size: 11px; font-weight: 800; color: #6D28D9; letter-spacing: 0.5px; }
         .cw-bc-bau-date { font-size: 16px; font-weight: 700; color: #581C87; letter-spacing: -0.5px; }
-        .cw-bc-bau-actions { display: flex; gap: 8px; margin-left: 12px; align-items: center; }
-        .cw-bc-bau-toggle-btn { background: rgba(255,255,255,0.7); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 12px; padding: 8px 12px; color: #6D28D9; font-size: 12px; font-weight: 600; }
-        .cw-bc-bau-edit-btn { border: 1px solid rgba(139, 92, 246, 0.2); background: rgba(255,255,255,0.5); border-radius: 12px; padding: 8px; color: #6D28D9; display: flex; align-items: center; justify-content: center; }
-        .cw-bc-bau-edit-btn.compact { border: none; border-radius: 6px; padding: 6px; }
-        .cw-bc-bau-full { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(139, 92, 246, 0.3); font-size: 13px; line-height: 1.5; color: #581C87; }
-        .cw-bc-bau-plain { display: flex; justify-content: space-between; align-items: flex-start; }
-        .cw-bc-bau-plain-text { font-size: 13px; color: #581C87; line-height: 1.5; flex: 1; }
-
-        /* --- EDITOR --- */
-        .cw-editor-overlay {
-            position: absolute; inset: 0; background: rgba(255, 255, 255, 0.98);
-            z-index: 200; display: flex; flex-direction: column;
-            transform: translateY(100%); transition: transform 0.35s var(--cw-ease-elastic);
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-        }
-        .cw-editor-overlay.active { transform: translateY(0); }
-        .cw-bc-editor-body { flex: 1; overflow-y: auto; padding: 24px; }
-        .cw-bc-editor-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .cw-bc-editor-title { font-size: 20px; font-weight: 700; color: #202124; }
-        .cw-bc-editor-field { margin-bottom: 20px; }
-        .cw-bc-field-label { font-size: 12px; font-weight: 700; color: #5f6368; margin-bottom: 8px; display: block; }
-        .cw-bc-editor-foot { padding: 16px 24px; border-top: 1px solid #F1F3F4; background: #fff; display: flex; justify-content: flex-end; gap: 12px; }
-
-        .cw-hd-input {
-            width: 100%; padding: 12px 14px; border: 1px solid #DADCE0; border-radius: 12px;
-            font-size: 14px; color: #202124; background: #FFF;
-            transition: border 0.2s, box-shadow 0.2s; box-sizing: border-box; outline: none; font-family: 'Google Sans', Roboto, sans-serif;
-        }
-        .cw-hd-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
-        .cw-hd-input::placeholder { color: #9AA0A6; }
-
-        .cw-radio-group { display: flex; gap: 12px; }
-        .cw-radio-option {
-            flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
-            padding: 12px; border-radius: 12px; border: 1px solid #E0E0E0;
-            font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color 0.2s, color 0.2s, border-color 0.2s; position: relative; color: #5F6368;
-        }
-        .cw-radio-option:hover { background: #F8F9FA; }
-        .cw-radio-option input { position: absolute; opacity: 0; }
-        .cw-radio-option.info.checked { background: #E8F0FE; color: #1967D2; border-color: #1967D2; }
-        .cw-radio-option.critical.checked { background: #FEE2E2; color: #B91C1C; border-color: #EF4444; }
-        .cw-radio-option.success.checked { background: #DCFCE7; color: #15803D; border-color: #22C55E; }
-
-        .cw-bc-btn-secondary { padding: 10px 20px; background: white; border: 1px solid #dadce0; color: #5f6368; border-radius: 24px; font-weight: 600; font-size: 13px; }
-        .cw-bc-btn-primary { padding: 10px 24px; background: #1a73e8; color: white; border: none; border-radius: 24px; font-weight: 600; box-shadow: 0 4px 12px rgba(26,115,232,0.3); font-size: 13px; }
-        .cw-bc-editor-close { background: none; border: none; color: #5f6368; padding: 8px; }
+        .cw-bc-bau-date-label { font-size: 10px; color: #7E22CE; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cw-bc-bau-note { font-size: 13px; line-height: 1.5; color: #581C87; }
 
         @media (prefers-reduced-motion: reduce) {
             .cw-bc-pulse-dot { animation: none !important; }
-            .cw-bc-card, .cw-bc-bau, .cw-bc-bau-chevron, .cw-editor-overlay {
+            .cw-bc-card, .cw-bc-bau, .cw-bc-bau-chevron {
                 transition: opacity 0.15s ease !important;
                 transform: none !important;
             }
@@ -306,6 +222,13 @@ function formatFriendlyDate(dateInput) {
     } catch (e) { return String(dateInput); }
 }
 
+// A data de disponibilidade vem em ISO (AAAA-MM-DD) e aparece curta, sem ano:
+// a fila de BAU se planeja em semanas, e o ano só ocuparia espaço.
+function formatShortDate(iso) {
+    const parts = String(iso || "").split('-');
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}` : String(iso || "");
+}
+
 function parseMessageText(rawText) {
     if (!rawText || typeof rawText !== 'string') return "";
     let html = rawText;
@@ -317,65 +240,121 @@ function parseMessageText(rawText) {
     return html;
 }
 
-// Extrai os slots de disponibilidade (bandeira + data) do texto do aviso de
-// "Disponibilidade BAU". Mesma heurística de sempre (regex de data +
-// keyword-sniffing de região/país, com "memória" do último contexto visto
-// pra linhas de data sem bandeira própria) — só isolada do renderFeed() pra
-// ficar testável/legível separadamente, o comportamento não muda.
-function extractBauSlots(text) {
-    const extractedSlots = [];
-    const lines = (text || "").split('\n');
-    const dateRegex = /\d{1,2}\/\d{1,2}/;
-    let currentContextFlag = "📅";
+// Item da Central -> aviso. Um item com JSON quebrado (edição na planilha à
+// mão) é descartado em vez de derrubar o feed inteiro.
+//
+// O `id` sai de item.key, e não de item.id, de propósito: editar um aviso
+// publica uma LINHA nova, com ID novo, mas a mesma chave. Usar o ID faria todo
+// aviso já lido reaparecer como não lido a cada correção de digitação.
+function normalizeNotice(item) {
+    if (!item) return null;
 
-    lines.forEach(line => {
-        if (/🇧🇷|🇵🇹|PT|BR|BRASIL|BRAZIL|PORTUGAL|LISBOA/i.test(line)) {
-            currentContextFlag = "🇧🇷";
-        } else if (/🇪🇸|🇲🇽|ES|LATAM|ESPANHA|SPAIN|MEXICO|MÉXICO/i.test(line)) {
-            currentContextFlag = "🇪🇸";
-        }
+    let payload = {};
+    try { payload = JSON.parse(item.value || "{}"); } catch (e) { return null; }
 
-        const dateMatch = line.match(dateRegex);
-        if (dateMatch) {
-            const date = dateMatch[0];
-            let lineFlag = currentContextFlag;
-            if (/🇧🇷|🇵🇹|PT|BR/i.test(line)) lineFlag = "🇧🇷";
-            else if (/🇪🇸|🇲🇽|ES|LATAM/i.test(line)) lineFlag = "🇪🇸";
+    const title = String(payload.title || item.label || "").trim();
+    const text = String(payload.text || "").trim();
+    if (!title || !text) return null;
 
-            const exists = extractedSlots.some(s => s.flag === lineFlag && s.date === date);
-            if (!exists) extractedSlots.push({ flag: lineFlag, date });
-        }
+    return {
+        id: String(item.key || item.id || ""),
+        type: TYPE_CONFIG[payload.type] ? payload.type : 'info',
+        title: title,
+        text: text,
+        date: String(payload.publishedAt || item.publishedAt || ""),
+        author: String(payload.author || item.publishedBy || ""),
+        lang: String(item.lang || 'ALL').toUpperCase()
+    };
+}
+
+// Cache da rota antiga, lido só quando a Central ainda não respondeu nenhuma
+// vez neste navegador. Descarta os avisos de disponibilidade: naquele formato
+// eles eram um aviso comum, e apareceriam soltos no feed com as datas em prosa.
+function normalizeLegacyNotice(msg) {
+    if (!msg) return null;
+
+    const title = String(msg.title || "").trim();
+    const text = String(msg.text || "").trim();
+    if (!title || !text) return null;
+    if (title.toLowerCase().includes("disponibilidade bau")) return null;
+
+    return {
+        id: String(msg.id || ""),
+        type: TYPE_CONFIG[msg.type] ? msg.type : 'info',
+        title: title,
+        text: text,
+        date: String(msg.date || ""),
+        author: String(msg.author || ""),
+        lang: 'ALL'
+    };
+}
+
+// Módulo singleton: a lista tem no máximo um item. Segmentos sem nenhuma data
+// são descartados aqui para a tela não precisar checar isso em cada render.
+function normalizeAvailability(items) {
+    const item = (items || [])[0];
+    if (!item) return null;
+
+    let payload = {};
+    try { payload = JSON.parse(item.value || "{}"); } catch (e) { return null; }
+
+    const raw = payload.segments || {};
+    const segments = {};
+    Object.keys(raw).forEach(code => {
+        const attention = String(raw[code]?.attention || "");
+        const full = String(raw[code]?.full || "");
+        if (attention || full) segments[code] = { attention, full };
     });
 
-    if (extractedSlots.length === 0) {
-        const anyDates = (text || "").match(/\d{1,2}\/\d{1,2}/g);
-        if (anyDates) [...new Set(anyDates)].forEach(d => extractedSlots.push({ flag: "📅", date: d }));
-    }
+    if (!Object.keys(segments).length) return null;
 
-    return extractedSlots;
+    return {
+        updatedAt: String(payload.updatedAt || item.publishedAt || ""),
+        author: String(payload.author || item.publishedBy || ""),
+        note: String(payload.note || ""),
+        segments: segments
+    };
+}
+
+// Um aviso marcado para um segmento não aparece para quem atende o outro.
+// 'ALL' vale para todo mundo, e é o padrão de quem publica sem escolher.
+function isForSegment(notice, segment) {
+    return notice.lang === 'ALL' || notice.lang === segment;
+}
+
+function readReadIds() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(READ_STORAGE_KEY) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function writeReadIds(ids) {
+    try {
+        localStorage.setItem(READ_STORAGE_KEY, JSON.stringify(ids));
+    } catch (e) { /* localStorage indisponível — segue só em memória nesta sessão */ }
 }
 
 export function initBroadcastAssistant() {
-  const CURRENT_VERSION = "v4.9";
+  const CURRENT_VERSION = "v5.0";
   let visible = false;
   let pollInterval = null;
-  let currentEditingId = null;
   let searchTerm = "";
   // Sobrevive a re-renders (busca, polling) enquanto o popup ficar aberto —
   // mesma ideia do searchTerm logo acima.
   let bauExpanded = false;
 
-  // Estado de admin — escopo do módulo em vez de window (nada mais no repo
-  // lê essas 3 variáveis; não precisavam estar globais).
-  let isAdmin = false;
-  let currentUser = null;
-  let adminRetries = 0;
+  let notices = [];
+  let availability = null;
 
-  // IDs vistos no fetch anterior — usado só para saber se algo *novo* chegou
-  // entre polls (pra tocar playNotification só uma vez por aviso, não a cada
-  // sync). Começa null de propósito: no primeiro fetch (carga inicial) ainda
-  // não há "anterior" pra comparar, então não soa nada nesse momento.
-  let knownMessageIds = null;
+  // IDs vistos no fetch anterior e carimbo da última disponibilidade — usados
+  // só para saber se algo *novo* chegou entre polls, e tocar o som uma vez por
+  // novidade em vez de a cada sync. Começam null de propósito: na carga
+  // inicial ainda não há "anterior" pra comparar, então não soa nada.
+  let knownNoticeIds = null;
+  let knownAvailabilityStamp = null;
 
   injectStyles();
 
@@ -409,43 +388,7 @@ export function initBroadcastAssistant() {
     animRefs, () => toggleVisibility()
   );
   const headerTitleEl = header.querySelector('span');
-
   const actionContainer = header.querySelector('.cw-header-actions') || header.lastElementChild;
-  let editorOverlay = null;
-
-  function tryInjectAdminButton() {
-      let email = null;
-      try { email = getAgentEmail(); } catch(e) { console.warn("TechSol: Auth Pending"); }
-
-      if (email) {
-          currentUser = email.split('@')[0].toLowerCase();
-          isAdmin = ADMINS.includes(currentUser);
-
-          if (isAdmin && actionContainer && !actionContainer.querySelector('#cw-admin-btn')) {
-              const addBtn = document.createElement("div");
-              addBtn.id = 'cw-admin-btn';
-              addBtn.className = "cw-btn-interactive";
-              addBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
-              Object.assign(addBtn.style, {
-                  width: "32px", height: "32px", borderRadius: "50%",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "#1a73e8", background: "rgba(26, 115, 232, 0.1)",
-                  marginRight: "8px"
-              });
-              addBtn.title = bt('newNotice');
-              addBtn.onclick = (e) => { e.stopPropagation(); openEditor(); };
-              actionContainer.insertBefore(addBtn, actionContainer.firstChild);
-
-              if (!editorOverlay) createEditorOverlay();
-              renderFeed();
-          }
-      } else {
-          if (adminRetries < 5) {
-              adminRetries++;
-              setTimeout(tryInjectAdminButton, 2000);
-          }
-      }
-  }
 
   // Botão Limpar
   if (actionContainer) {
@@ -456,8 +399,7 @@ export function initBroadcastAssistant() {
       markAll.onclick = (e) => {
           e.stopPropagation();
           SoundManager.playSuccess();
-          const allIds = BROADCAST_MESSAGES.map(m => m.id);
-          localStorage.setItem("cw_read_broadcasts", JSON.stringify(allIds));
+          writeReadIds(notices.map(m => m.id));
           renderFeed();
           updateBadge();
       };
@@ -501,215 +443,99 @@ export function initBroadcastAssistant() {
   statusEl.style.cssText = "padding: 8px; text-align: center; font-size: 11px; color: #5f6368; background: #FAFAFA; border-bottom: 1px solid transparent; font-weight:500; display:none;";
   popup.appendChild(statusEl);
 
-  // --- EDITOR OVERLAY ---
-  function createEditorOverlay() {
-      editorOverlay = document.createElement("div");
-      editorOverlay.className = "cw-editor-overlay";
-
-      editorOverlay.innerHTML = `
-        <div class="cw-bc-editor-body">
-            <div class="cw-bc-editor-head">
-                <span id="cw-editor-title-label" class="cw-bc-editor-title">${bt('newNotice')}</span>
-                <button id="cw-bc-close-x" class="cw-btn-interactive cw-bc-editor-close"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-            </div>
-
-            <div class="cw-bc-editor-field">
-                <label class="cw-bc-field-label js-bc-type-label">${bt('noticeTypeLabel')}</label>
-                <div class="cw-radio-group">
-                    <div class="cw-radio-option info" onclick="this.querySelector('input').click()">
-                        <input type="radio" name="cw-bc-type" value="info" checked> <span class="js-bc-type-info">${bt('typeInfo')}</span>
-                    </div>
-                    <div class="cw-radio-option critical" onclick="this.querySelector('input').click()">
-                        <input type="radio" name="cw-bc-type" value="critical"> <span class="js-bc-type-critical">${bt('typeCritical')}</span>
-                    </div>
-                    <div class="cw-radio-option success" onclick="this.querySelector('input').click()">
-                        <input type="radio" name="cw-bc-type" value="success"> <span class="js-bc-type-success">${bt('typeSuccess')}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="cw-bc-editor-field">
-                 <label class="cw-bc-field-label js-bc-title-label">${bt('titleLabel')}</label>
-                 <input id="cw-bc-title" class="cw-hd-input" placeholder="${bt('titlePlaceholder')}">
-            </div>
-
-            <div class="cw-bc-editor-field">
-                 <label class="cw-bc-field-label js-bc-message-label">${bt('messageLabel')}</label>
-                 <textarea id="cw-bc-text" class="cw-hd-input" placeholder="${bt('messagePlaceholder')}" style="height:160px; resize:none; line-height:1.6;"></textarea>
-            </div>
-        </div>
-
-        <div class="cw-bc-editor-foot">
-            <button id="cw-bc-cancel" class="cw-btn-interactive cw-bc-btn-secondary">${bt('cancel')}</button>
-            <button id="cw-bc-send" class="cw-btn-interactive cw-bc-btn-primary">${bt('publish')}</button>
-        </div>
-      `;
-
-      editorOverlay.querySelectorAll('input[name="cw-bc-type"]').forEach(radio => {
-          radio.addEventListener('change', () => {
-              editorOverlay.querySelectorAll('.cw-radio-option').forEach(opt => opt.classList.remove('checked'));
-              radio.parentElement.classList.add('checked');
-          });
-      });
-      setTimeout(() => {
-          const def = editorOverlay.querySelector('.cw-radio-option.info');
-          if (def) def.classList.add('checked');
-      }, 100);
-
-      const btnCancel = editorOverlay.querySelector('#cw-bc-cancel');
-      const btnCloseX = editorOverlay.querySelector('#cw-bc-close-x');
-      const btnSend = editorOverlay.querySelector('#cw-bc-send');
-
-      btnCancel.onclick = closeEditor;
-      btnCloseX.onclick = closeEditor;
-      btnSend.onclick = handleSend;
-
-      popup.appendChild(editorOverlay);
-  }
-
-  function openEditor(editData = null) {
-      if (!editorOverlay) return;
-
-      const titleLabel = editorOverlay.querySelector('#cw-editor-title-label');
-      const inputTitle = editorOverlay.querySelector('#cw-bc-title');
-      const inputText = editorOverlay.querySelector('#cw-bc-text');
-      const btnSend = editorOverlay.querySelector('#cw-bc-send');
-
-      if (editData) {
-          currentEditingId = editData.id;
-          titleLabel.textContent = bt('editNotice');
-          inputTitle.value = editData.title || "";
-          inputText.value = editData.text || "";
-          btnSend.textContent = bt('saveChanges');
-
-          const type = editData.type || 'info';
-          const radio = editorOverlay.querySelector(`input[name="cw-bc-type"][value="${type}"]`);
-          if (radio) radio.click();
-      } else {
-          currentEditingId = null;
-          titleLabel.textContent = bt('newNotice');
-          inputTitle.value = "";
-          inputText.value = "";
-          btnSend.textContent = bt('publish');
-          const infoRadio = editorOverlay.querySelector(`input[name="cw-bc-type"][value="info"]`);
-          if (infoRadio) infoRadio.click();
-      }
-
-      editorOverlay.classList.add('active');
-      setTimeout(() => inputTitle.focus(), 300);
-  }
-
-  function closeEditor() {
-      if (editorOverlay) editorOverlay.classList.remove('active');
-      currentEditingId = null;
-  }
-
-  async function handleSend() {
-      const btnSend = editorOverlay.querySelector('#cw-bc-send');
-      const inputTitle = editorOverlay.querySelector('#cw-bc-title');
-      const inputText = editorOverlay.querySelector('#cw-bc-text');
-      const typeInput = editorOverlay.querySelector('input[name="cw-bc-type"]:checked');
-      const type = typeInput ? typeInput.value : 'info';
-
-      if (!inputTitle.value.trim() || !inputText.value.trim()) {
-          SoundManager.playError();
-          showToast(bt('fillAllFields'), { error: true });
-          return;
-      }
-
-      btnSend.textContent = bt('saving');
-      btnSend.style.opacity = "0.7";
-
-      let success = false;
-
-      if (currentEditingId) {
-          success = await DataService.updateBroadcast(currentEditingId, {
-              title: inputTitle.value,
-              text: inputText.value,
-              type: type
-          });
-      } else {
-          success = await DataService.sendBroadcast({
-              title: inputTitle.value,
-              text: inputText.value,
-              type: type,
-              author: currentUser || 'admin'
-          });
-      }
-
-      if (success) {
-          showToast(currentEditingId ? bt('updatedToast') : bt('publishedToast'));
-          SoundManager.playSuccess();
-          closeEditor();
-          setTimeout(() => checkForUpdates(), 1500);
-      } else {
-          SoundManager.playError();
-          showToast(bt('saveErrorToast'), { error: true });
-          btnSend.textContent = currentEditingId ? bt('saveChanges') : bt('publish');
-          btnSend.style.opacity = "1";
-      }
-  }
-
-  async function handleDelete(id) {
-      const confirmed = await confirmDialog(bt('deleteConfirm'), { danger: true });
-      if (confirmed) {
-          const success = await DataService.deleteBroadcast(id);
-          if (success) {
-              showToast(bt('deletedToast'));
-              SoundManager.playClick();
-              const oldMsg = BROADCAST_MESSAGES.findIndex(m => m.id === id);
-              if (oldMsg > -1) BROADCAST_MESSAGES.splice(oldMsg, 1);
-              renderFeed();
-              setTimeout(() => checkForUpdates(), 1500);
-          } else {
-              SoundManager.playError();
-              showToast(bt('deleteErrorToast'), { error: true });
-          }
-      }
-  }
-
   const feed = document.createElement("div");
   feed.className = "cw-nice-scroll cw-bc-feed";
   popup.appendChild(feed);
 
+  // --- CARGA ---
+
+  // Nunca lança: API fora do ar não pode apagar o que o agente já tinha na
+  // tela. Devolve true se conseguiu falar com a Central nesta rodada.
   async function checkForUpdates() {
       if (visible) {
           statusEl.style.display = 'block';
           statusEl.innerHTML = bt('syncing');
       }
 
-      try {
-          const data = await DataService.fetchData();
-          if (data && data.broadcast) {
-              // Toca só quando um aviso novo e não lido chega num poll em
-              // segundo plano (pílula fechada/idle) - com o popup aberto o
-              // próprio feed atualizando já é o feedback, um som ali em cima
-              // seria redundante.
-              if (knownMessageIds && !visible) {
-                  const readMessages = JSON.parse(localStorage.getItem("cw_read_broadcasts") || "[]");
-                  const hasNewUnread = data.broadcast.some(m => !knownMessageIds.has(m.id) && !readMessages.includes(m.id));
-                  if (hasNewUnread) SoundManager.playNotification();
-              }
-              knownMessageIds = new Set(data.broadcast.map(m => m.id));
+      let online = true;
+      const segment = getAgentSegment();
 
-              setBroadcastMessages(data.broadcast);
-              updateBadge();
-              if (visible) {
-                  renderFeed();
-                  statusEl.innerHTML = bt('updated');
-                  setTimeout(() => { statusEl.style.display = 'none'; }, 1500);
-              }
+      try {
+          const [rawNotices, rawAvailability] = await Promise.all([
+              DataService.fetchContentModule('broadcast'),
+              DataService.fetchContentModule('bau_availability')
+          ]);
+
+          if (Array.isArray(rawNotices)) {
+              const parsed = rawNotices
+                  .map(normalizeNotice)
+                  .filter(Boolean)
+                  .filter(n => isForSegment(n, segment));
+
+              // Uma resposta vazia é informação legítima (todo aviso saiu do
+              // ar), mas só se a Central de fato respondeu. Aqui ela respondeu.
+              notices = sortByDateDesc(parsed);
+          } else {
+              online = false;
           }
+
+          availability = normalizeAvailability(rawAvailability);
       } catch (error) {
-          if (visible) statusEl.innerHTML = bt('offline');
+          online = false;
       }
+
+      announceNews();
+      updateBadge();
+
+      // Repinta sempre, mesmo com o popup fechado. Antes isto ficava atrás de
+      // um `if (visible)`, e o conteúdo recém-buscado só chegava à tela quando
+      // alguém abria o módulo — que dispara outro sync e mostra o render
+      // anterior enquanto a resposta não volta. O custo de manter o feed
+      // pintado é um punhado de nós de DOM a cada 60s; o benefício é o módulo
+      // abrir já certo, sem piscar o estado velho.
+      renderFeed();
+
+      // O texto de status, esse sim, só faz sentido para quem está olhando.
+      if (visible) {
+          statusEl.innerHTML = online ? bt('updated') : bt('offline');
+          if (online) setTimeout(() => { statusEl.style.display = 'none'; }, 1500);
+      }
+  }
+
+  // Toca só quando algo novo e não lido chega num poll em segundo plano
+  // (pílula fechada/idle). Com o popup aberto, o próprio feed atualizando já é
+  // o feedback — um som ali seria redundante.
+  function announceNews() {
+      const stamp = availability ? availability.updatedAt : null;
+      const primeiraCarga = knownNoticeIds === null;
+
+      if (!primeiraCarga && !visible) {
+          const readIds = readReadIds();
+          const avisoNovo = notices.some(n => !knownNoticeIds.has(n.id) && !readIds.includes(n.id));
+          // A disponibilidade não é um aviso não-lido: ela se sobrescreve. O
+          // que marca "chegou coisa nova" aqui é o carimbo ter mudado.
+          const disponibilidadeNova = !!stamp && stamp !== knownAvailabilityStamp;
+
+          if (avisoNovo || disponibilidadeNova) SoundManager.playNotification();
+      }
+
+      knownNoticeIds = new Set(notices.map(n => n.id));
+      knownAvailabilityStamp = stamp;
+  }
+
+  function sortByDateDesc(list) {
+      return list.slice().sort((a, b) => {
+          const dateA = new Date(a.date).getTime() || 0;
+          const dateB = new Date(b.date).getTime() || 0;
+          return dateB - dateA;
+      });
   }
 
   function updateBadge() {
       const btn = document.getElementById("cw-btn-broadcast");
       if (!btn) return;
-      const readMessages = JSON.parse(localStorage.getItem("cw_read_broadcasts") || "[]");
-      const hasUnread = BROADCAST_MESSAGES.some(m => !readMessages.includes(m.id));
+      const readIds = readReadIds();
+      const hasUnread = notices.some(m => !readIds.includes(m.id));
       if (hasUnread) {
           btn.classList.add("has-new");
           if (!btn.querySelector('.cw-badge')) {
@@ -735,66 +561,47 @@ export function initBroadcastAssistant() {
       return haystack.includes(term);
   }
 
-  // Monta e insere o widget de "Disponibilidade BAU" logo após o status.
-  // Widget fica sempre visível quando existe (não é filtrado pela busca —
-  // é um card operacional fixo, não uma "mensagem" pra procurar), mas tem
-  // papel secundário por padrão: só a faixa de resumo aparece de cara, o
-  // conteúdo completo (mesmo de sempre) só mostra expandido — a maioria de
-  // quem abre a Central de Avisos não é LM e não precisa ver isso em
-  // destaque toda vez.
-  function renderBauWidget(bauMessage) {
-      const oldBau = popup.querySelector('#cw-bau-widget');
-      if (oldBau) oldBau.remove();
+  // --- RENDER ---
 
-      const bauWidget = document.createElement("div");
-      bauWidget.id = "cw-bau-widget";
-      bauWidget.className = "cw-bc-bau";
+  // Faixa de disponibilidade, logo abaixo do status. Nunca é filtrada pela
+  // busca: é estado operacional fixo, não uma mensagem para procurar.
+  function renderBauWidget() {
+      const old = popup.querySelector('#cw-bau-widget');
+      if (old) old.remove();
+      if (!availability) return;
 
-      const extractedSlots = extractBauSlots(bauMessage.text);
+      const codes = Object.keys(availability.segments);
 
-      let contentHTML = "";
-      let buttonsHTML = `<button id="cw-bau-toggle-btn" class="cw-btn-interactive cw-bc-bau-toggle-btn">${bt('details')}</button>`;
+      const slotsHTML = codes.map(code => {
+          const seg = availability.segments[code];
+          const datas = [];
+          if (seg.attention) {
+              datas.push(`<span class="cw-bc-bau-date-label">${bt('attention')}</span>
+                          <span class="cw-bc-bau-date">${formatShortDate(seg.attention)}</span>`);
+          }
+          if (seg.full) {
+              datas.push(`<span class="cw-bc-bau-date-label">${bt('full')}</span>
+                          <span class="cw-bc-bau-date">${formatShortDate(seg.full)}</span>`);
+          }
+          return `<div class="cw-bc-bau-slot">
+                      <span class="cw-bc-bau-seg">${code}</span>
+                      ${datas.join('')}
+                  </div>`;
+      }).join('');
 
-      if (isAdmin) {
-          buttonsHTML = `
-            <button class="cw-bau-edit cw-btn-interactive cw-bc-bau-edit-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-            </button>
-            ${buttonsHTML}
-          `;
-      }
+      const totalDatas = codes.reduce((n, code) => {
+          const seg = availability.segments[code];
+          return n + (seg.attention ? 1 : 0) + (seg.full ? 1 : 0);
+      }, 0);
 
-      if (extractedSlots.length > 0) {
-          const slotsHTML = extractedSlots.map(slot => `
-              <div class="cw-bc-bau-slot">
-                  <span class="cw-bc-bau-flag">${slot.flag}</span>
-                  <span class="cw-bc-bau-date">${slot.date}</span>
-              </div>
-          `).join('');
-
-          contentHTML = `
-              <div class="cw-bc-bau-slots">
-                  <div class="cw-bc-bau-slots-row">${slotsHTML}</div>
-                  <div class="cw-bc-bau-actions">${buttonsHTML}</div>
-              </div>
-              <div id="cw-bau-full" class="cw-bc-bau-full">${parseMessageText(bauMessage.text)}</div>
-          `;
-      } else {
-          contentHTML = `
-            <div class="cw-bc-bau-plain">
-                <div class="cw-bc-bau-plain-text">${parseMessageText(bauMessage.text)}</div>
-                ${isAdmin ? `<div style="margin-left:12px;"><button class="cw-bau-edit cw-btn-interactive cw-bc-bau-edit-btn compact">✏️</button></div>` : ''}
-            </div>
-          `;
-      }
-
-      const uniqueFlags = [...new Set(extractedSlots.map(s => s.flag))].join('');
-      const hintText = extractedSlots.length > 0
-          ? `${uniqueFlags} · ${extractedSlots.length} ${extractedSlots.length > 1 ? bt('dates') : bt('date')}`
+      const hintText = totalDatas
+          ? `${codes.join(' · ')} · ${totalDatas} ${totalDatas > 1 ? bt('dates') : bt('date')}`
           : bt('viewDetails');
 
-      bauWidget.className = "cw-bc-bau" + (bauExpanded ? " expanded" : "");
-      bauWidget.innerHTML = `
+      const widget = document.createElement("div");
+      widget.id = "cw-bau-widget";
+      widget.className = "cw-bc-bau" + (bauExpanded ? " expanded" : "");
+      widget.innerHTML = `
           <div class="cw-bc-bau-header cw-btn-interactive">
               <div class="cw-bc-live-indicator">
                   <div class="cw-bc-pulse-dot"></div>
@@ -802,49 +609,30 @@ export function initBroadcastAssistant() {
               </div>
               <div class="cw-bc-bau-right">
                   <span class="cw-bc-bau-hint">${hintText}</span>
-                  <span class="cw-bc-bau-timestamp">${formatFriendlyDate(bauMessage.date)}</span>
+                  <span class="cw-bc-bau-timestamp">${formatFriendlyDate(availability.updatedAt)}</span>
                   <svg class="cw-bc-bau-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </div>
           </div>
-          <div class="cw-bc-bau-detail">${contentHTML}</div>
+          <div class="cw-bc-bau-detail">
+              <div class="cw-bc-bau-slots-row">${slotsHTML}</div>
+              ${availability.note ? `<div class="cw-bc-bau-note">${parseMessageText(availability.note)}</div>` : ''}
+          </div>
       `;
 
-      statusEl.after(bauWidget);
+      statusEl.after(widget);
 
-      const headerRow = bauWidget.querySelector('.cw-bc-bau-header');
-      headerRow.onclick = () => {
+      widget.querySelector('.cw-bc-bau-header').onclick = () => {
           bauExpanded = !bauExpanded;
-          bauWidget.classList.toggle('expanded', bauExpanded);
+          widget.classList.toggle('expanded', bauExpanded);
           SoundManager.playClick();
       };
-
-      const toggleBtn = bauWidget.querySelector('#cw-bau-toggle-btn');
-      const fullText = bauWidget.querySelector('#cw-bau-full');
-      if (toggleBtn && fullText) {
-          toggleBtn.onclick = (e) => {
-              e.stopPropagation();
-              const isHidden = fullText.style.display === "none" || !fullText.style.display;
-              fullText.style.display = isHidden ? "block" : "none";
-              toggleBtn.textContent = isHidden ? bt('hide') : bt('details');
-          };
-      }
-      if (isAdmin) {
-          const editBtn = bauWidget.querySelector('.cw-bau-edit');
-          if (editBtn) editBtn.onclick = (e) => { e.stopPropagation(); openEditor(bauMessage); };
-      }
   }
 
-  // Monta a lista de mensagens não-lidas + histórico colapsável de lidas.
-  function renderMessageList(messages, readMessages, hasBauWidget) {
-      const sortedMessages = messages.sort((a, b) => {
-          const aRead = readMessages.includes(a.id);
-          const bRead = readMessages.includes(b.id);
-          return aRead === bRead ? 0 : aRead ? 1 : -1;
-      });
-
+  // Lista de não-lidos + histórico colapsável de lidos.
+  function renderMessageList(messages, readIds, hasBauWidget) {
       const isSearching = searchTerm.trim().length > 0;
 
-      if (sortedMessages.length === 0 && !hasBauWidget) {
+      if (messages.length === 0 && !hasBauWidget) {
            const empty = document.createElement("div");
            empty.className = "cw-bc-empty";
            empty.innerHTML = isSearching
@@ -857,8 +645,8 @@ export function initBroadcastAssistant() {
            return;
       }
 
-      const unreadMsgs = sortedMessages.filter(m => !readMessages.includes(m.id));
-      const readMsgs = sortedMessages.filter(m => readMessages.includes(m.id));
+      const unreadMsgs = messages.filter(m => !readIds.includes(m.id));
+      const readMsgs = messages.filter(m => readIds.includes(m.id));
 
       unreadMsgs.forEach(msg => feed.appendChild(createCard(msg, false)));
 
@@ -885,53 +673,28 @@ export function initBroadcastAssistant() {
 
   function renderFeed() {
       feed.innerHTML = "";
-      const oldBau = popup.querySelector('#cw-bau-widget');
-      if (oldBau) oldBau.remove();
 
-      const readMessages = JSON.parse(localStorage.getItem("cw_read_broadcasts") || "[]");
-      let allMessages = [...BROADCAST_MESSAGES].sort((a, b) => {
-          const dateA = new Date(a.date).getTime() || 0;
-          const dateB = new Date(b.date).getTime() || 0;
-          return dateB - dateA;
-      });
+      renderBauWidget();
 
-      // 1. WIDGET BAU (nunca filtrado pela busca)
-      const bauIndex = allMessages.findIndex(m => m.title && m.title.toLowerCase().includes("disponibilidade bau"));
-      let hasBauWidget = false;
-      if (bauIndex !== -1) {
-          const bauMessage = allMessages[bauIndex];
-          allMessages.splice(bauIndex, 1);
-          renderBauWidget(bauMessage);
-          hasBauWidget = true;
-      }
-
-      // 2. LISTA (filtrada pela busca, se houver termo)
+      const readIds = readReadIds();
       const term = searchTerm.trim().toLowerCase();
-      const filteredMessages = allMessages.filter(m => matchesSearch(m, term));
-      renderMessageList(filteredMessages, readMessages, hasBauWidget);
+      renderMessageList(notices.filter(m => matchesSearch(m, term)), readIds, !!availability);
   }
 
   function createCard(msg, isHistory) {
     const card = document.createElement("div");
     card.className = "cw-bc-card" + (isHistory ? " history" : "");
-    const theme = TYPE_CONFIG[msg.type] || TYPE_CONFIG.info;
+    const typeKey = TYPE_CONFIG[msg.type] ? msg.type : 'info';
+    const theme = TYPE_CONFIG[typeKey];
 
-    // Header
     const cardHead = document.createElement("div");
     cardHead.className = "cw-bc-card-head";
 
-    const typeKey = TYPE_CONFIG[msg.type] ? msg.type : 'info';
     const typeLabel = document.createElement("div");
     typeLabel.className = "cw-bc-type-tag " + typeKey;
     typeLabel.innerHTML = `${theme.icon} <span>${bt('typeLabel')[typeKey]}</span>`;
-
-    const dateLabel = document.createElement("span");
-    dateLabel.className = "cw-bc-date-tag";
-    dateLabel.textContent = formatFriendlyDate(msg.date);
-
     cardHead.appendChild(typeLabel);
 
-    // Dismiss
     if (!isHistory) {
         const dismissBtn = document.createElement("button");
         dismissBtn.className = "cw-btn-interactive cw-bc-dismiss-btn";
@@ -944,19 +707,21 @@ export function initBroadcastAssistant() {
             // 300ms = duração real da transição de .cw-bc-card (opacity/transform);
             // removia o card da lista no meio do slide-out antes.
             setTimeout(() => {
-                const currentRead = JSON.parse(localStorage.getItem("cw_read_broadcasts") || "[]");
+                const currentRead = readReadIds();
                 currentRead.push(msg.id);
-                localStorage.setItem("cw_read_broadcasts", JSON.stringify(currentRead));
+                writeReadIds(currentRead);
                 renderFeed();
                 updateBadge();
             }, 300);
         };
         cardHead.appendChild(dismissBtn);
     } else {
+        const dateLabel = document.createElement("span");
+        dateLabel.className = "cw-bc-date-tag";
+        dateLabel.textContent = formatFriendlyDate(msg.date);
         cardHead.appendChild(dateLabel);
     }
 
-    // Content
     const bodyContainer = document.createElement("div");
     bodyContainer.className = "cw-bc-card-content";
 
@@ -973,44 +738,31 @@ export function initBroadcastAssistant() {
     meta.innerHTML = `Publicado por <b>${msg.author || 'Sistema'}</b>`;
     if (!isHistory) meta.innerHTML += ` • ${formatFriendlyDate(msg.date)}`;
 
-    bodyContainer.appendChild(title);
-    bodyContainer.appendChild(text);
-    bodyContainer.appendChild(meta);
-
-    card.appendChild(cardHead);
-    card.appendChild(bodyContainer);
-
-    // --- CRUD FOOTER (Admin) ---
-    if (isAdmin) {
-        const cardActions = document.createElement("div");
-        cardActions.className = "cw-card-actions";
-
-        const btnEdit = document.createElement("button");
-        btnEdit.className = "cw-action-btn edit";
-        btnEdit.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> ${bt('edit')}`;
-        btnEdit.onclick = () => openEditor(msg);
-
-        const btnDel = document.createElement("button");
-        btnDel.className = "cw-action-btn delete";
-        btnDel.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> ${bt('delete')}`;
-        btnDel.onclick = () => handleDelete(msg.id);
-
-        cardActions.appendChild(btnEdit);
-        cardActions.appendChild(btnDel);
-        card.appendChild(cardActions);
-    }
+    bodyContainer.append(title, text, meta);
+    card.append(cardHead, bodyContainer);
 
     return card;
   }
 
   // --- STARTUP ---
-  const cachedData = DataService.getCachedBroadcasts();
-  if (cachedData.length > 0) {
-      setBroadcastMessages(cachedData);
-      renderFeed();
+  // Pinta do cache antes de qualquer rede, como os outros módulos da Central.
+  const cachedNotices = DataService.getCachedContent('broadcast');
+  if (Array.isArray(cachedNotices) && cachedNotices.length) {
+      notices = sortByDateDesc(
+          cachedNotices.map(normalizeNotice).filter(Boolean)
+              .filter(n => isForSegment(n, getAgentSegment()))
+      );
+  } else {
+      // Primeiro load depois do deploy: ainda não há cache da Central, mas
+      // pode haver o da rota antiga. Sem isto, quem abrir offline veria a
+      // Central de Avisos vazia em vez dos avisos que já tinha.
+      notices = sortByDateDesc(
+          DataService.getCachedBroadcasts().map(normalizeLegacyNotice).filter(Boolean)
+      );
   }
+  availability = normalizeAvailability(DataService.getCachedContent('bau_availability'));
+  renderFeed();
 
-  setTimeout(tryInjectAdminButton, 500);
   checkForUpdates();
   if (!pollInterval) pollInterval = setInterval(checkForUpdates, POLL_TIME_MS);
 
@@ -1021,12 +773,11 @@ export function initBroadcastAssistant() {
   makeResizable(popup, resizeHandle);
   document.body.appendChild(popup);
 
-  const readMessages = JSON.parse(localStorage.getItem("cw_read_broadcasts") || "[]");
-  const hasUnread = BROADCAST_MESSAGES.some((m) => !readMessages.includes(m.id));
+  const hasUnread = notices.some((m) => !readReadIds().includes(m.id));
 
-  // Retraduz os pedaços montados uma única vez (header, busca, botão "Limpar"
-  // e os rótulos fixos do editor) e refaz o feed, que já é gerado do zero a
-  // cada render e por isso pega o idioma atual sozinho.
+  // Retraduz os pedaços montados uma única vez (header, busca e o botão
+  // "Limpar") e refaz o feed, que já é gerado do zero a cada render e por isso
+  // pega o idioma atual sozinho.
   onLanguageChange(() => {
       if (headerTitleEl) headerTitleEl.textContent = bt('headerTitle');
       const helpTitleEl = popup.querySelector('.cw-help-title');
@@ -1034,34 +785,9 @@ export function initBroadcastAssistant() {
       const helpDescEl = popup.querySelector('.cw-help-description');
       if (helpDescEl) helpDescEl.textContent = bt('headerDesc');
       searchInput.placeholder = bt('searchPlaceholder');
-      const addBtn = document.getElementById('cw-admin-btn');
-      if (addBtn) addBtn.title = bt('newNotice');
       if (actionContainer) {
           const clearBtn = [...actionContainer.children].find(el => el.tagName === 'BUTTON');
           if (clearBtn) clearBtn.textContent = bt('clear');
-      }
-      if (editorOverlay) {
-          const q = (sel) => editorOverlay.querySelector(sel);
-          const typeLabel = q('.js-bc-type-label');
-          if (typeLabel) typeLabel.textContent = bt('noticeTypeLabel');
-          const typeInfo = q('.js-bc-type-info');
-          if (typeInfo) typeInfo.textContent = bt('typeInfo');
-          const typeCritical = q('.js-bc-type-critical');
-          if (typeCritical) typeCritical.textContent = bt('typeCritical');
-          const typeSuccess = q('.js-bc-type-success');
-          if (typeSuccess) typeSuccess.textContent = bt('typeSuccess');
-          const titleLabel = q('.js-bc-title-label');
-          if (titleLabel) titleLabel.textContent = bt('titleLabel');
-          const inputTitle = q('#cw-bc-title');
-          if (inputTitle) inputTitle.placeholder = bt('titlePlaceholder');
-          const messageLabel = q('.js-bc-message-label');
-          if (messageLabel) messageLabel.textContent = bt('messageLabel');
-          const inputText = q('#cw-bc-text');
-          if (inputText) inputText.placeholder = bt('messagePlaceholder');
-          const cancelBtn = q('#cw-bc-cancel');
-          if (cancelBtn) cancelBtn.textContent = bt('cancel');
-          const sendBtn = q('#cw-bc-send');
-          if (sendBtn) sendBtn.textContent = currentEditingId ? bt('saveChanges') : bt('publish');
       }
       renderFeed();
   });
