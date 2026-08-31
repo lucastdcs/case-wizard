@@ -228,28 +228,137 @@ console.log('\n--- Smoke: Central de Avisos (leitura da Central de Conteúdo) --
 }
 
 // ------------------------------------------------ disponibilidade BAU
+// A faixa mostra UM segmento por vez — o do agente — com a bandeira do idioma
+// que ele atende. O outro fica atrás do botão de troca.
+const faixa = (page) => page.evaluate(() => {
+    const w = document.querySelector('#cw-bau-widget');
+    if (!w) return null;
+    return {
+        segmento: w.querySelector('.cw-bc-bau-seg')?.textContent.trim() || null,
+        // O primeiro <rect> de cada bandeira é o campo de fundo: verde no
+        // Brasil, vermelho na Espanha. É o jeito de provar qual SVG entrou sem
+        // comparar o markup inteiro.
+        bandeira: w.querySelector('.cw-bc-bau-flag rect')?.getAttribute('fill') || null,
+        datas: Array.from(w.querySelectorAll('.cw-bc-bau-date')).map(d => ({
+            tipo: d.classList.contains('attention') ? 'atencao' : 'total',
+            valor: d.querySelector('.cw-bc-bau-value')?.textContent.trim(),
+        })),
+        temSwap: !!w.querySelector('.cw-bc-bau-swap'),
+        rotuloSwap: w.querySelector('.cw-bc-bau-swap')?.getAttribute('aria-label') || null,
+    };
+});
+
+const VERDE_BR = '#009B3A';
+const VERMELHO_ES = '#AA151B';
+
+const doisSegmentos = disponibilidade({
+    PT: { attention: '2026-09-15', full: '2026-09-22' },
+    ES: { attention: '2026-09-18', full: '2026-09-25' },
+});
+
+{
+    const page = await novaPagina({
+        segmento: 'PT',
+        rodadas: [{ avisos: [], disponibilidade: doisSegmentos }],
+    });
+
+    await check('mostra a bandeira e as datas do segmento que o agente atende', async () => {
+        const f = await faixa(page);
+        igual(f.segmento, 'PT-BR', 'segmento exibido');
+        igual(f.bandeira, VERDE_BR, 'bandeira exibida');
+        igual(f.datas, [
+            { tipo: 'atencao', valor: '15/09' },
+            { tipo: 'total', valor: '22/09' },
+        ], 'datas do segmento');
+    });
+
+    await check('o botão de troca diz para qual segmento leva', async () => {
+        const f = await faixa(page);
+        igual(f.temSwap, true, 'botão de troca presente');
+        if (!/ES/.test(f.rotuloSwap)) throw new Error('aria-label não nomeia o destino: ' + f.rotuloSwap);
+    });
+
+    await check('a troca leva ao outro segmento, com bandeira e datas dele', async () => {
+        // Abre o módulo antes: fechado ele fica em scale(0.05) e o clique não
+        // alcança nada. Clicar no swap é, por definição, algo que se faz
+        // olhando para a faixa.
+        await page.evaluate(() => window.__cw.api.toggle());
+        await page.waitForTimeout(400);
+        await page.click('.cw-bc-bau-swap');
+        await page.waitForTimeout(150);
+
+        const f = await faixa(page);
+        igual(f.segmento, 'ES', 'segmento após a troca');
+        igual(f.bandeira, VERMELHO_ES, 'bandeira após a troca');
+        igual(f.datas.map(d => d.valor), ['18/09', '25/09'], 'datas após a troca');
+    });
+
+    await check('a troca não persiste: reabrir volta ao segmento do agente', async () => {
+        // O módulo já está aberto e mostrando ES, do teste anterior.
+        await page.evaluate(() => window.__cw.api.toggle());  // fecha
+        await page.waitForTimeout(300);
+        await page.evaluate(() => window.__cw.api.toggle());  // abre de novo
+        await page.waitForTimeout(400);
+
+        const f = await faixa(page);
+        igual(f.segmento, 'PT-BR', 'segmento ao reabrir');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await novaPagina({
+        segmento: 'ES',
+        rodadas: [{ avisos: [], disponibilidade: doisSegmentos }],
+    });
+
+    await check('quem atende ES abre já na bandeira e nas datas de ES', async () => {
+        const f = await faixa(page);
+        igual(f.segmento, 'ES', 'segmento exibido');
+        igual(f.bandeira, VERMELHO_ES, 'bandeira exibida');
+        igual(f.datas.map(d => d.valor), ['18/09', '25/09'], 'datas do segmento');
+    });
+
+    await page.close();
+}
+
 {
     const page = await novaPagina({
         segmento: 'PT',
         rodadas: [{
             avisos: [],
-            disponibilidade: disponibilidade({
-                PT: { attention: '2026-09-15', full: '2026-09-22' },
-                ES: { attention: '2026-09-18', full: '' },
-            }),
+            disponibilidade: disponibilidade({ PT: { attention: '', full: '2026-09-22' } }),
         }],
     });
 
-    await check('faixa de disponibilidade aparece com as datas curtas', async () => {
-        const datas = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('.cw-bc-bau-date')).map(e => e.textContent.trim()));
-        igual(datas, ['15/09', '22/09', '18/09'], 'datas na faixa');
+    await check('campo flexível: com uma data só, mostra só ela', async () => {
+        const f = await faixa(page);
+        igual(f.datas, [{ tipo: 'total', valor: '22/09' }], 'datas exibidas');
     });
 
-    await check('segmento sem nenhuma data não vira slot vazio', async () => {
-        const segs = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('.cw-bc-bau-seg')).map(e => e.textContent.trim()));
-        igual(segs, ['PT', 'ES'], 'segmentos com data');
+    await check('sem um segundo segmento, não há botão de troca', async () => {
+        igual((await faixa(page)).temSwap, false, 'botão de troca');
+    });
+
+    await page.close();
+}
+
+{
+    // Só ES publicado, agente de PT. Mostrar a faixa vazia seria pior do que
+    // mostrar a do outro segmento devidamente rotulada.
+    const page = await novaPagina({
+        segmento: 'PT',
+        rodadas: [{
+            avisos: [],
+            disponibilidade: disponibilidade({ ES: { attention: '2026-09-18', full: '' } }),
+        }],
+    });
+
+    await check('sem disponibilidade do próprio segmento, mostra a que existe, rotulada', async () => {
+        const f = await faixa(page);
+        igual(f.segmento, 'ES', 'segmento exibido');
+        igual(f.bandeira, VERMELHO_ES, 'bandeira exibida');
     });
 
     await page.close();

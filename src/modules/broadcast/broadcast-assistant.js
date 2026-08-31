@@ -43,14 +43,15 @@ const BC_DICT = {
         headerDesc: "Comunicação oficial da operação.",
         clear: "Limpar",
         searchPlaceholder: "Buscar avisos...",
-        details: "Detalhes",
-        hide: "Ocultar",
         bauAvailability: "Disponibilidade BAU",
         attention: "atenção",
         full: "total",
-        dates: "datas",
-        date: "data",
-        viewDetails: "Ver detalhes",
+        noDates: "sem datas publicadas",
+        swapTo: (seg) => `Ver disponibilidade de ${seg}`,
+        justNow: "agora",
+        minutesAgo: (n) => `há ${n} min`,
+        hoursAgo: (n) => `há ${n} h`,
+        yesterday: "ontem",
         nothingFound: "Nada encontrado.",
         allRead: "Tudo lido!",
         history: (n) => `Histórico (${n})`,
@@ -64,14 +65,15 @@ const BC_DICT = {
         headerDesc: "Comunicación oficial de la operación.",
         clear: "Limpiar",
         searchPlaceholder: "Buscar avisos...",
-        details: "Detalles",
-        hide: "Ocultar",
         bauAvailability: "Disponibilidad BAU",
         attention: "atención",
         full: "total",
-        dates: "fechas",
-        date: "fecha",
-        viewDetails: "Ver detalles",
+        noDates: "sin fechas publicadas",
+        swapTo: (seg) => `Ver disponibilidad de ${seg}`,
+        justNow: "ahora",
+        minutesAgo: (n) => `hace ${n} min`,
+        hoursAgo: (n) => `hace ${n} h`,
+        yesterday: "ayer",
         nothingFound: "No se encontró nada.",
         allRead: "¡Todo leído!",
         history: (n) => `Historial (${n})`,
@@ -87,6 +89,28 @@ function bt(key) {
     return BC_DICT[lang]?.[key] ?? BC_DICT.pt[key];
 }
 
+// Segmentos da operação, na ordem em que o swap alterna.
+//
+// A bandeira é SVG inline, e não emoji, por um motivo antes técnico que
+// estético: 🇧🇷 é um par de "regional indicators", e o Chrome no Windows não
+// tem a fonte que os compõe — o agente veria as letras B e R em duas
+// caixinhas, não uma bandeira. O SVG renderiza igual em qualquer máquina.
+//
+// PT usa a bandeira do Brasil (e não a de Portugal) porque é a operação que o
+// segmento atende — mesma escolha que o código anterior já fazia.
+const SEGMENTS = {
+    PT: {
+        label: "PT-BR",
+        flag: `<svg class="cw-bc-bau-flag" viewBox="0 0 21 15" aria-hidden="true"><rect width="21" height="15" fill="#009B3A"/><path d="M10.5 1.9 19.1 7.5 10.5 13.1 1.9 7.5Z" fill="#FEDF00"/><circle cx="10.5" cy="7.5" r="3.3" fill="#002776"/></svg>`
+    },
+    ES: {
+        label: "ES",
+        flag: `<svg class="cw-bc-bau-flag" viewBox="0 0 21 15" aria-hidden="true"><rect width="21" height="15" fill="#AA151B"/><rect y="3.75" width="21" height="7.5" fill="#F1BF00"/></svg>`
+    }
+};
+
+const SWAP_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 2 21 6 17 10"></polyline><path d="M3 12V10a4 4 0 0 1 4-4h14"></path><polyline points="7 22 3 18 7 14"></polyline><path d="M21 12v2a4 4 0 0 1-4 4H3"></path></svg>`;
+
 const TYPE_CONFIG = {
     critical: { icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>` },
     info: { icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>` },
@@ -99,12 +123,6 @@ function injectStyles() {
     const style = document.createElement("style");
     style.id = 'cw-broadcast-styles';
     style.textContent = `
-        @keyframes cw-bc-pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(147, 51, 234, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(147, 51, 234, 0); }
-        }
-
         .cw-btn-interactive { transition: transform 0.1s ease, background 0.2s ease; cursor: pointer; user-select: none; }
         .cw-btn-interactive:active { transform: scale(0.96); }
 
@@ -170,36 +188,51 @@ function injectStyles() {
         .cw-bc-history-divider { display: flex; align-items: center; justify-content: center; margin: 20px 0; cursor: pointer; color: #1a73e8; font-size: 13px; font-weight: 500; gap: 8px; padding: 8px 16px; border-radius: 20px; background: #E8F0FE; }
         .cw-bc-history-container { display: none; flex-direction: column; gap: 16px; opacity: 0.8; }
 
-        /* --- WIDGET BAU ---
-           O visual desta faixa (paleta roxa, ponto pulsante) é o que estava
-           aqui antes e segue por ora: esta seção trocou a FONTE do dado, de
-           texto livre para campos, e misturar o redesenho no mesmo passo
-           tornaria as duas mudanças impossíveis de revisar separadas. */
-        .cw-bc-bau { margin: 16px 24px 0 24px; padding: 12px 16px; background: #F3E8FD; border: 1px solid #D8B4FE; border-radius: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.1); transition: padding 0.25s ease; }
-        .cw-bc-bau.expanded { padding: 16px; }
-        .cw-bc-bau-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
-        .cw-bc-bau.expanded .cw-bc-bau-header { margin-bottom: -4px; }
-        .cw-bc-bau-timestamp { font-size: 10px; opacity: 0.7; color: #7E22CE; flex-shrink: 0; }
-        .cw-bc-live-indicator { display: flex; align-items: center; gap: 8px; min-width: 0; }
-        .cw-bc-pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #9333EA; box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.7); animation: cw-bc-pulse 2s infinite; flex-shrink: 0; }
-        .cw-bc-bau-label { font-size: 11px; font-weight: 800; color: #7E22CE; text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cw-bc-bau-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .cw-bc-bau-hint { font-size: 11px; font-weight: 600; color: #6D28D9; white-space: nowrap; }
-        .cw-bc-bau.expanded .cw-bc-bau-hint { display: none; }
-        .cw-bc-bau-chevron { color: #7E22CE; transition: transform 0.25s ease; flex-shrink: 0; }
-        .cw-bc-bau.expanded .cw-bc-bau-chevron { transform: rotate(180deg); }
-        .cw-bc-bau-detail { display: none; flex-direction: column; gap: 12px; }
-        .cw-bc-bau.expanded .cw-bc-bau-detail { display: flex; }
-        .cw-bc-bau-slots-row { display: flex; gap: 8px; flex-wrap: wrap; }
-        .cw-bc-bau-slot { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.5); border-radius: 8px; flex: 1; justify-content: center; }
-        .cw-bc-bau-seg { font-size: 11px; font-weight: 800; color: #6D28D9; letter-spacing: 0.5px; }
-        .cw-bc-bau-date { font-size: 16px; font-weight: 700; color: #581C87; letter-spacing: -0.5px; }
-        .cw-bc-bau-date-label { font-size: 10px; color: #7E22CE; text-transform: uppercase; letter-spacing: 0.5px; }
-        .cw-bc-bau-note { font-size: 13px; line-height: 1.5; color: #581C87; }
+        /* --- FAIXA DE DISPONIBILIDADE BAU ---
+           Papel secundário, e o visual precisa dizer isso. A versão anterior
+           usava uma paleta roxa própria (#F3E8FD / #9333EA), sombra colorida e
+           um ponto pulsando sem parar — três recursos de destaque numa coisa
+           que não deve competir com os avisos. Fora que roxo não existe na
+           paleta do resto do app.
+
+           Agora é uma faixa clara com hairline, sem sombra e sem animação. A
+           cor sobrou só onde carrega significado: laranja para a data de
+           atenção (a mais próxima, com folga apertada) e verde para a de
+           disponibilidade total. */
+        .cw-bc-bau {
+            margin: 12px 24px 0 24px; padding: 12px 14px;
+            background: #FFFFFF; border: 1px solid #DADCE0; border-radius: 8px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .cw-bc-bau-top { display: flex; align-items: center; gap: 8px; }
+        /* O contorno de 1px existe para a faixa amarela da bandeira da Espanha
+           e o verde claro da do Brasil não encostarem no branco do cartão. */
+        .cw-bc-bau-flag { width: 16px; height: 11px; border-radius: 1px; box-shadow: 0 0 0 1px rgba(0,0,0,0.18); flex-shrink: 0; display: block; }
+        .cw-bc-bau-label { font-size: 12px; font-weight: 500; color: #202124; white-space: nowrap; }
+        .cw-bc-bau-seg { font-size: 11px; color: #5f6368; }
+        .cw-bc-bau-time { font-size: 11px; color: #80868b; margin-left: auto; white-space: nowrap; }
+        .cw-bc-bau-swap {
+            width: 26px; height: 26px; border-radius: 50%; border: none; padding: 0;
+            background: transparent; color: #5f6368; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .cw-bc-bau-swap:hover { background: #F1F3F4; color: #202124; }
+        .cw-bc-bau-swap:focus-visible { outline: 2px solid #1a73e8; outline-offset: 1px; }
+        .cw-bc-bau-dates { display: flex; gap: 20px; flex-wrap: wrap; }
+        .cw-bc-bau-date { display: flex; align-items: center; gap: 6px; }
+        .cw-bc-bau-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .cw-bc-bau-date.attention .cw-bc-bau-dot { background: #B06000; }
+        .cw-bc-bau-date.full .cw-bc-bau-dot { background: #137333; }
+        .cw-bc-bau-kind { font-size: 11px; color: #5f6368; }
+        /* tabular-nums para as datas não dançarem de largura entre um poll e
+           outro (o "1" é mais estreito que os outros dígitos em Google Sans). */
+        .cw-bc-bau-value { font-size: 13px; font-weight: 500; color: #202124; font-variant-numeric: tabular-nums; }
+        .cw-bc-bau-empty { font-size: 12px; color: #80868b; }
+        .cw-bc-bau-note { font-size: 12px; line-height: 1.45; color: #5f6368; }
 
         @media (prefers-reduced-motion: reduce) {
-            .cw-bc-pulse-dot { animation: none !important; }
-            .cw-bc-card, .cw-bc-bau, .cw-bc-bau-chevron {
+            .cw-bc-card, .cw-bc-bau {
                 transition: opacity 0.15s ease !important;
                 transform: none !important;
             }
@@ -227,6 +260,24 @@ function formatFriendlyDate(dateInput) {
 function formatShortDate(iso) {
     const parts = String(iso || "").split('-');
     return parts.length === 3 ? `${parts[2]}/${parts[1]}` : String(iso || "");
+}
+
+// "há 3 min" em vez de um carimbo completo. A faixa é sobre estado corrente:
+// o que importa é se o dado é de agora ou de ontem, não a hora exata. Passado
+// um dia, volta a mostrar a data — "há 37 h" não ajuda ninguém.
+function formatRelative(iso) {
+    const then = new Date(iso).getTime();
+    if (!then || isNaN(then)) return "";
+
+    const minutos = Math.floor((Date.now() - then) / 60000);
+    if (minutos < 1) return bt('justNow');
+    if (minutos < 60) return bt('minutesAgo')(minutos);
+
+    const horas = Math.floor(minutos / 60);
+    if (horas < 24) return bt('hoursAgo')(horas);
+    if (horas < 48) return bt('yesterday');
+
+    return formatFriendlyDate(iso).split(' às')[0];
 }
 
 function parseMessageText(rawText) {
@@ -342,9 +393,13 @@ export function initBroadcastAssistant() {
   let visible = false;
   let pollInterval = null;
   let searchTerm = "";
-  // Sobrevive a re-renders (busca, polling) enquanto o popup ficar aberto —
-  // mesma ideia do searchTerm logo acima.
-  let bauExpanded = false;
+  // Segmento em exibição na faixa de disponibilidade. null = o do agente.
+  //
+  // Sobrevive a re-renders (busca, polling) enquanto o popup ficar aberto, e é
+  // zerado ao reabrir: trocar de segmento é uma consulta rápida ao outro time,
+  // não uma preferência. Quem atende PT tem que reencontrar PT ao abrir de
+  // novo, sem depender de lembrar que deixou o swap ligado.
+  let shownSegment = null;
 
   let notices = [];
   let availability = null;
@@ -377,6 +432,7 @@ export function initBroadcastAssistant() {
       lockBodyScroll();
       const btn = document.getElementById("cw-btn-broadcast");
       if (btn) btn.classList.remove("has-new");
+      shownSegment = null;
       checkForUpdates();
     } else {
       unlockBodyScroll();
@@ -565,67 +621,75 @@ export function initBroadcastAssistant() {
 
   // Faixa de disponibilidade, logo abaixo do status. Nunca é filtrada pela
   // busca: é estado operacional fixo, não uma mensagem para procurar.
+  //
+  // Mostra UM segmento por vez — o que a pessoa atende — porque é a resposta
+  // que ela precisa em 99% das vezes. O outro fica a um clique no botão de
+  // troca, para quem eventualmente cobre os dois.
   function renderBauWidget() {
       const old = popup.querySelector('#cw-bau-widget');
       if (old) old.remove();
       if (!availability) return;
 
-      const codes = Object.keys(availability.segments);
+      const codes = Object.keys(SEGMENTS).filter(c => availability.segments[c]);
+      if (!codes.length) return;
 
-      const slotsHTML = codes.map(code => {
-          const seg = availability.segments[code];
-          const datas = [];
-          if (seg.attention) {
-              datas.push(`<span class="cw-bc-bau-date-label">${bt('attention')}</span>
-                          <span class="cw-bc-bau-date">${formatShortDate(seg.attention)}</span>`);
-          }
-          if (seg.full) {
-              datas.push(`<span class="cw-bc-bau-date-label">${bt('full')}</span>
-                          <span class="cw-bc-bau-date">${formatShortDate(seg.full)}</span>`);
-          }
-          return `<div class="cw-bc-bau-slot">
-                      <span class="cw-bc-bau-seg">${code}</span>
-                      ${datas.join('')}
-                  </div>`;
-      }).join('');
+      // Sem escolha explícita, mostra o segmento do agente. Se ele não tem
+      // disponibilidade publicada, cai no primeiro que tiver — melhor mostrar
+      // a do outro segmento, rotulada, do que uma faixa vazia.
+      const preferido = shownSegment && codes.includes(shownSegment)
+          ? shownSegment
+          : (codes.includes(getAgentSegment()) ? getAgentSegment() : codes[0]);
 
-      const totalDatas = codes.reduce((n, code) => {
-          const seg = availability.segments[code];
-          return n + (seg.attention ? 1 : 0) + (seg.full ? 1 : 0);
-      }, 0);
+      const seg = SEGMENTS[preferido];
+      const datas = availability.segments[preferido] || {};
 
-      const hintText = totalDatas
-          ? `${codes.join(' · ')} · ${totalDatas} ${totalDatas > 1 ? bt('dates') : bt('date')}`
-          : bt('viewDetails');
+      const chip = (kind, iso) => `
+          <span class="cw-bc-bau-date ${kind}">
+              <span class="cw-bc-bau-dot"></span>
+              <span class="cw-bc-bau-kind">${bt(kind)}</span>
+              <span class="cw-bc-bau-value">${formatShortDate(iso)}</span>
+          </span>`;
+
+      const chips = [
+          datas.attention ? chip('attention', datas.attention) : '',
+          datas.full ? chip('full', datas.full) : ''
+      ].join('');
+
+      // O botão de troca só existe quando há de fato outro segmento para ver.
+      const outro = codes.find(c => c !== preferido);
+      const swapHTML = outro
+          ? `<button class="cw-bc-bau-swap" type="button"
+                     aria-label="${bt('swapTo')(SEGMENTS[outro].label)}"
+                     title="${bt('swapTo')(SEGMENTS[outro].label)}">${SWAP_ICON}</button>`
+          : '';
 
       const widget = document.createElement("div");
       widget.id = "cw-bau-widget";
-      widget.className = "cw-bc-bau" + (bauExpanded ? " expanded" : "");
+      widget.className = "cw-bc-bau";
       widget.innerHTML = `
-          <div class="cw-bc-bau-header cw-btn-interactive">
-              <div class="cw-bc-live-indicator">
-                  <div class="cw-bc-pulse-dot"></div>
-                  <span class="cw-bc-bau-label">${bt('bauAvailability')}</span>
-              </div>
-              <div class="cw-bc-bau-right">
-                  <span class="cw-bc-bau-hint">${hintText}</span>
-                  <span class="cw-bc-bau-timestamp">${formatFriendlyDate(availability.updatedAt)}</span>
-                  <svg class="cw-bc-bau-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </div>
+          <div class="cw-bc-bau-top">
+              ${seg.flag}
+              <span class="cw-bc-bau-label">${bt('bauAvailability')}</span>
+              <span class="cw-bc-bau-seg">${seg.label}</span>
+              <span class="cw-bc-bau-time">${formatRelative(availability.updatedAt)}</span>
+              ${swapHTML}
           </div>
-          <div class="cw-bc-bau-detail">
-              <div class="cw-bc-bau-slots-row">${slotsHTML}</div>
-              ${availability.note ? `<div class="cw-bc-bau-note">${parseMessageText(availability.note)}</div>` : ''}
+          <div class="cw-bc-bau-dates">
+              ${chips || `<span class="cw-bc-bau-empty">${bt('noDates')}</span>`}
           </div>
+          ${availability.note ? `<div class="cw-bc-bau-note">${parseMessageText(availability.note)}</div>` : ''}
       `;
 
       statusEl.after(widget);
 
-      widget.querySelector('.cw-bc-bau-header').onclick = () => {
-          bauExpanded = !bauExpanded;
-          widget.classList.toggle('expanded', bauExpanded);
-          SoundManager.playClick();
-      };
+      const swapBtn = widget.querySelector('.cw-bc-bau-swap');
+      if (swapBtn) {
+          swapBtn.onclick = () => {
+              shownSegment = outro;
+              SoundManager.playClick();
+              renderBauWidget();
+          };
+      }
   }
 
   // Lista de não-lidos + histórico colapsável de lidos.
