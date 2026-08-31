@@ -121,7 +121,13 @@ javascript:(function(){    var s = document.createElement('script');    s.src = 
 
 Push a change to `refactor-structure`, wait for CI to finish, then click the Dev bookmarklet again to pick it up.
 
-> **The `?t=` cache-buster is gone, on purpose.** It existed because GitHub Pages served the bundle with a fixed `max-age` and no way to override it, so the only way to guarantee a fresh copy was to make every URL unique — which forced a full ~668 KB download on every single click. Firebase lets us set the header directly: production is served with `Cache-Control: no-cache`, which means *"cache it, but revalidate"*, so a repeat click becomes a `304 Not Modified` instead of a fresh download. The dev site goes further with `no-store`. Adding `?t=` back would defeat both and make loading slower, not safer.
+> **The `?t=` cache-buster is gone, on purpose.** It existed because GitHub Pages served the bundle with a fixed `max-age` we couldn't override, so the only way to guarantee a fresh copy was to make every URL unique. That guaranteed a full download on every click and made the browser cache useless. Firebase lets us set the header directly, so production is served with `Cache-Control: no-cache` — *"cache it, but revalidate"* — and the URL is stable.
+>
+> **Measured caveat, so nobody repeats the mistake:** conditional requests with `If-None-Match` currently come back `200`, not `304` — verified against the live production URL with the correct encoding-specific ETag. So the revalidation is not yet saving the transfer. What removing `?t=` does buy is a stable cache entry instead of a guaranteed miss.
+>
+> Also worth knowing: the bundle is ~660 KB uncompressed but **~134 KB on the wire** with Brotli. Size arguments about this file should use the compressed number.
+>
+> If repeat-click latency ever matters enough, the fix is a short `max-age` (say 300s, which is roughly what GitHub Pages did) rather than putting `?t=` back — that would serve from cache with no network at all, at the cost of a deploy taking that long to reach agents.
 
 ### 5. Backend changes (optional)
 
@@ -157,7 +163,7 @@ Note that `clasp push` only updates the editor's HEAD — the live `/exec` and `
 │       ├── personal-library/        # Cross-device snippet library
 │       ├── shared/                  # Command center, DOM utils, sound, animations, data service
 │       └── timezone/                # Timezone/meeting planner
-├── dist/                            # Build output (gitignored, published to GitHub Pages)
+├── dist/                            # Build output (gitignored, published to Firebase Hosting)
 ├── gas-backend/                     # Google Apps Script backend, synced via clasp
 │   ├── Código.js                    # doGet(e) router — dispatches by `op=`
 │   ├── BAU_API.js / BAU_Dashboard.js / BAU_Alerts.js
@@ -174,7 +180,7 @@ Note that `clasp push` only updates the editor's HEAD — the live `/exec` and `
 
 ### Injection Mechanism
 
-The bookmarklet appends a cache-busting timestamp to the script URL, then — in the production variant — creates a `trustedTypes` policy named `default` to satisfy the CRM's strict Content Security Policy before injecting a `<script>` tag pointing at the GitHub Pages–hosted bundle.
+The bookmarklet — in the production variant — creates a `trustedTypes` policy named `default` to satisfy the CRM's strict Content Security Policy, then injects a `<script>` tag pointing at the Firebase-hosted bundle. The URL is stable; see the note above on why the `?t=` cache-buster was removed.
 
 ### Boot Sequence (`src/app.js`)
 
@@ -245,11 +251,13 @@ There is no automated test suite in this repository today. Verification is manua
 
 Deployment is fully automated by `.github/workflows/deploy.yml`, triggered on every push to `main` or `refactor-structure`, with two independent jobs:
 
-### Frontend → GitHub Pages
+### Frontend → Firebase Hosting
 
-1. Installs `esbuild`.
-2. Builds `dist/bundle.js` (on `main`) or `dist/bundle-dev.js` (on `refactor-structure`).
-3. Publishes `dist/` to the `gh-pages` branch via `peaceiris/actions-gh-pages`, which GitHub Pages serves from.
+1. Installs dependencies with `npm ci` (locked versions, not a loose `npm install`).
+2. Builds `dist/bundle.js` (on `main`) or `dist/bundle-dev.js` (on `refactor-structure`), each with the matching `--define:__CW_BUILD_ENV__`.
+3. Publishes to the matching Firebase site — `cases-wizard.web.app` from `main`, `cases-wizard-dev.web.app` from `refactor-structure` — authenticating via Workload Identity Federation, so no service-account key is stored in the repository.
+
+**During the transition** the same job also publishes to the `gh-pages` branch via `peaceiris/actions-gh-pages`, so agents who have not switched bookmarklets keep receiving updates. The two destinations are independent: a failure in one does not stop the other. That step is removed at cutover, along with disabling GitHub Pages on both `case-wizard` and `techsol_DialIn_AutoCopy`.
 
 ### Backend → Google Apps Script
 
@@ -273,7 +281,7 @@ If you are still on an older bookmarklet pointing at `lucastdcs.github.io`, that
 
 ### Dev bookmarklet shows old code
 
-The cache-buster (`?t=...`) forces a fresh download, but GitHub Pages/CI can lag behind a push. Confirm the `build-and-deploy-frontend` job finished for your commit before re-clicking the bookmarklet.
+The dev site is served with `Cache-Control: no-store`, so the browser should never hold a stale copy — but CI can lag behind a push. Confirm the `build-and-deploy-frontend` job finished for your commit before re-clicking the bookmarklet.
 
 ### "Timeout: A API demorou muito para responder" in console
 

@@ -7,8 +7,8 @@ O projeto é uma **Overlay Application** (Aplicação de Sobreposição) injetad
 
 ### 1.1 O Mecanismo de Injeção
 Para contornar a *Content Security Policy (CSP)* estrita do CRM, o bookmarklet de instalação utiliza a API `trustedTypes`.
-* **Política:** Cria uma política chamada `default` que autoriza a execução de scripts vindos do domínio `lucastdcs.github.io`.
-* **Cache Busting:** Anexa um timestamp (`?t=...`) na URL do script para forçar o navegador a baixar a versão mais recente a cada execução.
+* **Política:** Cria uma política chamada `default` que autoriza a execução de scripts vindos do domínio de hospedagem do bundle — hoje `cases-wizard.web.app` (Firebase Hosting). Durante a transição, `lucastdcs.github.io` continua servindo em paralelo para quem ainda não trocou o favorito.
+* **Cache:** O bundle é servido com `Cache-Control` definido no `firebase.json` (`no-cache` em produção, `no-store` em dev) e a URL é estável. O cache-buster `?t=...` foi removido: ele existia porque o GitHub Pages servia com `max-age` fixo e sem controle nosso, e tornava cada clique um URL novo — o que garantia download completo e inutilizava o cache do navegador.
 
 ## 2. Estrutura de Inicialização (`src/app.js`)
 O ponto de entrada é o arquivo `app.js`. Ele orquestra o "boot" da aplicação em uma ordem específica para garantir estabilidade visual e funcional:
