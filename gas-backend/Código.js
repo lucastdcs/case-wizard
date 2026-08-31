@@ -276,10 +276,10 @@ function doGet(e) {
 
     // 4. MÓDULO: Leitura (Broadcast/Tips Legado)
     else if (op === 'broadcast') {
-      const sheet = ss.getSheetByName(SHEET_BROADCAST);
-      let data = getSheetData(sheet);
-      data.reverse();
-      result = { broadcast: data };
+      // Mesma situação do 'tips' logo abaixo: rota legada, mantida viva porque
+      // bundles antigos em cache ainda a chamam, mas servindo o conteúdo da
+      // Central em vez da aba Broadcast.
+      result = { broadcast: getBroadcastForLegacyEndpoint(ss) };
     }
     else if (op === 'tips') {
       // Rota legada, mantida viva porque bundles antigos em cache ainda a
@@ -289,32 +289,21 @@ function doGet(e) {
       result = { tips: getTipsForLegacyEndpoint(ss) };
     }
 
-    // 5. MÓDULO: Escrita (Broadcast Admin)
-    else if (op === 'new_broadcast') {
-       const sheet = ss.getSheetByName(SHEET_BROADCAST);
-       const newId = p.id || ("msg_" + new Date().getTime());
-       const newDate = p.date || new Date().toISOString();
-       sheet.appendRow([newId, newDate, p.type || 'info', p.title || 'Sem título', p.text || '', p.author || 'Anon', true]);
-       result = { status: 'success', action: 'create', id: newId };
-    }
-    else if (op === 'update_broadcast') {
-       const sheet = ss.getSheetByName(SHEET_BROADCAST);
-       const rowIndex = findRowIndexById(sheet, p.id);
-       if (rowIndex > 0) {
-         if(p.type) sheet.getRange(rowIndex, 3).setValue(p.type);
-         if(p.title) sheet.getRange(rowIndex, 4).setValue(p.title);
-         if(p.text) sheet.getRange(rowIndex, 5).setValue(p.text);
-         result = { status: 'success', action: 'update' };
-       } else { result = { status: 'error', msg: 'ID not found' }; }
-    }
-    else if (op === 'delete_broadcast') {
-       const sheet = ss.getSheetByName(SHEET_BROADCAST);
-       const rowIndex = findRowIndexById(sheet, p.id);
-       if (rowIndex > 0) {
-         sheet.getRange(rowIndex, 7).setValue(false);
-         result = { status: 'success', action: 'delete' };
-       } else { result = { status: 'error', msg: 'ID not found' }; }
-    }
+    // 5. MÓDULO: Escrita de avisos — REMOVIDO.
+    //
+    // new_broadcast, update_broadcast e delete_broadcast saíram daqui: o
+    // controle de avisos vive na Central de Conteúdo (publishContentDirect /
+    // unpublishContentDirect em ContentAPI.gs), chamada pela tela da Central
+    // via google.script.run, com identidade do servidor e papel verificado.
+    //
+    // Estas rotas eram escrita por URL pública: quem descobrisse o endereço do
+    // web app publicava um aviso para toda a operação, sem papel nenhum. O
+    // único controle era o botão só aparecer para quem estava na lista ADMINS
+    // do bundle — uma checagem de front, do lado errado da fronteira.
+    //
+    // A leitura (`op=broadcast`, logo acima) continua pública de propósito: é
+    // como o app do agente recebe os avisos.
+
     // 7. MÓDULO: Central de Conteúdo (leitura pública)
     // Só devolve itens com status 'live'. Não existe parâmetro de status aqui
     // de propósito: conteúdo em revisão não tem rota de leitura nenhuma.

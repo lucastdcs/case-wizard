@@ -802,5 +802,347 @@ check('ES ainda não tem a seção de Tag Support (lacuna conhecida)', () => {
   if (!ptMeio.length) throw new Error('PT deveria ter a seção de Tag Support');
 });
 
+// =========================================================
+//  AVISOS E DISPONIBILIDADE BAU (publicação direta)
+// =========================================================
+
+const bcast = (over) => JSON.stringify(Object.assign(
+  { type: 'info', title: 'Título', text: 'Mensagem', publishedAt: '2026-08-31T10:00:00', author: 'lucaste' },
+  over || {}
+));
+
+const bau = (segments, over) => JSON.stringify(Object.assign(
+  { updatedAt: '2026-08-31T10:00:00', author: 'lucaste', note: '', segments: segments },
+  over || {}
+));
+
+console.log('\n--- Avisos: papéis e caminho de escrita ---');
+
+check('avisos e disponibilidade são módulos da Central', () => {
+  const s = api.getContentSession();
+  if (s.modules.indexOf('broadcast') === -1) throw new Error('broadcast fora de CONTENT_MODULES');
+  if (s.modules.indexOf('bau_availability') === -1) throw new Error('bau_availability fora de CONTENT_MODULES');
+});
+
+check('avisos não entram pela fila de aprovação', () => {
+  throws(
+    () => api.saveContentDraft({ module: 'broadcast', key: 'x', label: 'X', value: bcast() }),
+    /publica direto, sem rascunho/
+  );
+});
+
+check('disponibilidade BAU não entra pela fila de aprovação', () => {
+  throws(
+    () => api.saveContentDraft({ module: 'bau_availability', key: 'current', label: 'X', value: bau({}) }),
+    /publica direto, sem rascunho/
+  );
+});
+
+check('módulo de fila não aceita publicação direta', () => {
+  throws(
+    () => api.publishContentDirect({ module: 'links', key: 'tech', label: 'X', value: '{}' }),
+    /publica pela fila de aprovação/
+  );
+});
+
+check('WFM publica disponibilidade BAU', () => {
+  api.saveContentAccess('wfm1', 'WFM', true);
+  as('wfm1', () => {
+    const r = api.publishContentDirect({
+      module: 'bau_availability',
+      label: 'Disponibilidade BAU',
+      value: bau({ PT: { attention: '2026-09-15', full: '2026-09-22' } })
+    });
+    eq(r.status, 'success');
+    eq(r.key, 'current');
+  });
+});
+
+check('WFM NÃO publica aviso geral', () => {
+  as('wfm1', () => {
+    throws(
+      () => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast() }),
+      /não edita o módulo 'broadcast'/
+    );
+  });
+});
+
+check('QA não publica aviso nem disponibilidade', () => {
+  as('quality1', () => {
+    throws(() => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast() }), /não edita o módulo/);
+    throws(() => api.publishContentDirect({ module: 'bau_availability', label: 'X', value: bau({}) }), /não edita o módulo/);
+  });
+});
+
+check('LDAP sem papel não publica nada', () => {
+  as('estranho', () => {
+    throws(() => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast() }), /Acesso negado/);
+  });
+});
+
+console.log('\n--- Avisos: validação ---');
+
+check('tipo de aviso desconhecido é recusado', () => {
+  throws(
+    () => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast({ type: 'urgente' }) }),
+    /Tipo de aviso desconhecido/
+  );
+});
+
+check('aviso sem título ou sem texto é recusado', () => {
+  throws(() => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast({ title: '  ' }) }), /precisa de um título/);
+  throws(() => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast({ text: '' }) }), /precisa de uma mensagem/);
+});
+
+check('aviso que não é JSON é recusado', () => {
+  throws(
+    () => api.publishContentDirect({ module: 'broadcast', label: 'X', value: 'texto solto' }),
+    /não é um JSON válido/
+  );
+});
+
+console.log('\n--- Disponibilidade BAU: as duas datas ---');
+
+check('data de atenção depois da data total é recusada', () => {
+  // É a regra que dá sentido às cores: laranja é a data mais próxima e mais
+  // apertada, verde é a de disponibilidade total. Invertidas, as cores mentem.
+  throws(
+    () => api.publishContentDirect({
+      module: 'bau_availability',
+      label: 'X',
+      value: bau({ PT: { attention: '2026-09-22', full: '2026-09-15' } })
+    }),
+    /é posterior à de disponibilidade total/
+  );
+});
+
+check('data que não existe no calendário é recusada', () => {
+  throws(
+    () => api.publishContentDirect({
+      module: 'bau_availability',
+      label: 'X',
+      value: bau({ ES: { attention: '2026-02-31', full: '' } })
+    }),
+    /Data inexistente/
+  );
+});
+
+check('data fora do formato ISO é recusada', () => {
+  throws(
+    () => api.publishContentDirect({
+      module: 'bau_availability',
+      label: 'X',
+      value: bau({ PT: { attention: '15/09', full: '' } })
+    }),
+    /use o formato AAAA-MM-DD/
+  );
+});
+
+check('campo é flexível: só uma das duas datas basta', () => {
+  const r = api.publishContentDirect({
+    module: 'bau_availability',
+    label: 'Disponibilidade BAU',
+    value: bau({ PT: { attention: '', full: '2026-09-22' } })
+  });
+  eq(r.status, 'success');
+});
+
+check('publicação sem nenhuma data é recusada', () => {
+  throws(
+    () => api.publishContentDirect({
+      module: 'bau_availability',
+      label: 'X',
+      value: bau({ PT: { attention: '', full: '' }, ES: { attention: '', full: '' } })
+    }),
+    /ao menos uma data/
+  );
+});
+
+check('segmento fora de PT/ES é recusado', () => {
+  throws(
+    () => api.publishContentDirect({
+      module: 'bau_availability',
+      label: 'X',
+      value: bau({ EN: { attention: '2026-09-15', full: '' } })
+    }),
+    /Segmento desconhecido/
+  );
+});
+
+check('publicação recusada não derruba a versão que estava no ar', () => {
+  const antes = api.listContentItems('bau_availability');
+  eq(antes.length, 1, 'pré-condição:');
+
+  throws(() => api.publishContentDirect({
+    module: 'bau_availability', label: 'X', value: bau({ PT: { attention: '2026-13-01', full: '' } })
+  }));
+
+  const depois = api.listContentItems('bau_availability');
+  eq(depois.length, 1, 'segue exatamente uma linha no ar:');
+  eq(depois[0].id, antes[0].id, 'e é a mesma linha:');
+});
+
+console.log('\n--- Ciclo de vida ---');
+
+check('disponibilidade é singleton: republicar arquiva a anterior', () => {
+  const r = api.publishContentDirect({
+    module: 'bau_availability',
+    label: 'Disponibilidade BAU',
+    value: bau({
+      PT: { attention: '2026-09-15', full: '2026-09-22' },
+      ES: { attention: '2026-09-18', full: '2026-09-25' }
+    })
+  });
+
+  const live = api.listContentItems('bau_availability');
+  eq(live.length, 1, 'exatamente uma disponibilidade no ar:');
+  eq(live[0].id, r.itemId);
+  if (r.version < 2) throw new Error('deveria ter versionado, veio v' + r.version);
+
+  // Versão nova herda a linhagem: o histórico é de UM item ao longo do tempo.
+  const todas = api.listContentItems('bau_availability');
+  const linhagens = new Set(todas.map(i => i.lineage));
+  eq(linhagens.size, 1, 'uma linhagem só:');
+});
+
+check('avisos são feed: cada um é sua própria linhagem', () => {
+  const a = api.publishContentDirect({ module: 'broadcast', label: 'Primeiro', value: bcast({ title: 'Primeiro' }) });
+  const b = api.publishContentDirect({ module: 'broadcast', label: 'Segundo', value: bcast({ title: 'Segundo' }) });
+
+  const live = api.listContentItems('broadcast');
+  eq(live.length, 2, 'dois avisos no ar:');
+  if (a.key === b.key) throw new Error('dois avisos novos não podem dividir a mesma chave');
+});
+
+check('editar um aviso versiona, não duplica', () => {
+  const a = api.publishContentDirect({ module: 'broadcast', label: 'Manutenção', value: bcast({ title: 'Manutenção' }) });
+  const antes = api.listContentItems('broadcast').length;
+
+  const b = api.publishContentDirect({
+    module: 'broadcast', key: a.key, label: 'Manutenção (adiada)',
+    value: bcast({ title: 'Manutenção (adiada)', type: 'critical' })
+  });
+
+  eq(b.version, 2);
+  const depois = api.listContentItems('broadcast');
+  eq(depois.length, antes, 'a contagem no ar não muda numa edição:');
+
+  const vivo = depois.filter(i => i.key === a.key);
+  eq(vivo.length, 1, 'uma versão viva por chave:');
+  eq(JSON.parse(vivo[0].value).type, 'critical');
+});
+
+check('tirar um aviso do ar arquiva, não apaga', () => {
+  const a = api.publishContentDirect({ module: 'broadcast', label: 'Temporário', value: bcast({ title: 'Temporário' }) });
+
+  api.unpublishContentDirect(a.itemId);
+
+  eq(api.listContentItems('broadcast').filter(i => i.id === a.itemId).length, 0, 'saiu do ar:');
+
+  // listContentItems() devolve só o que está no ar; a linha arquivada continua
+  // existindo e aparece no histórico da linhagem, que é o que permite reverter.
+  // Item novo inaugura a própria linhagem, então lineage === itemId aqui.
+  const historico = api.listContentItemHistory(a.itemId, 'broadcast');
+  eq(historico.length, 1, 'a linha continua existindo no histórico:');
+  eq(historico[0].status, 'archived');
+});
+
+check('tirar do ar duas vezes é recusado', () => {
+  const a = api.publishContentDirect({ module: 'broadcast', label: 'Dupla', value: bcast({ title: 'Dupla' }) });
+  api.unpublishContentDirect(a.itemId);
+  throws(() => api.unpublishContentDirect(a.itemId), /já não está no ar/);
+});
+
+check('remoção pela fila é recusada em módulo de publicação direta', () => {
+  const a = api.publishContentDirect({ module: 'broadcast', label: 'Fila', value: bcast({ title: 'Fila' }) });
+  throws(() => api.requestContentRemoval(a.itemId, 'motivo'), /sai do ar direto/);
+});
+
+check('leitura pública só enxerga o que está no ar', () => {
+  const a = api.publishContentDirect({ module: 'broadcast', label: 'Some', value: bcast({ title: 'Some' }) });
+  api.unpublishContentDirect(a.itemId);
+
+  const pub = api.handleContentPublicRead({ module: 'broadcast' });
+  eq(pub.status, 'success');
+  eq(pub.items.filter(i => i.id === a.itemId).length, 0, 'item arquivado não vaza:');
+  pub.items.forEach(i => eq(i.status, 'live', 'tudo que sai é live:'));
+});
+
+check('leitura pública da disponibilidade devolve uma linha só', () => {
+  const pub = api.handleContentPublicRead({ module: 'bau_availability' });
+  eq(pub.items.length, 1);
+  const parsed = JSON.parse(pub.items[0].value);
+  eq(Object.keys(parsed.segments).sort(), ['ES', 'PT']);
+});
+
+console.log('\n--- Migração da aba Broadcast ---');
+
+check('seedBroadcastNow() migra a aba numa planilha zerada, sem argumentos', () => {
+  // Caminho que só roda UMA vez em produção e onde um erro custa caro pra
+  // desfazer — por isso é exercitado num contexto limpo, chamado sem
+  // parâmetros, exatamente como o botão Executar do editor do Apps Script faz.
+  const freshSS = new FakeSpreadsheet();
+  const freshCtx = vm.createContext({
+    SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
+    Session: {
+      getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }),
+      getScriptTimeZone: () => 'America/Sao_Paulo'
+    },
+    MailApp: { sendEmail: () => { } },
+    Logger: { log: () => { } },
+    Utilities: {
+      getUuid: () => require('node:crypto').randomUUID(),
+      formatDate: (d) => d.toISOString().slice(0, 19)
+    },
+    handleLog: () => { },
+    console,
+  });
+
+  vm.runInContext(fs.readFileSync(SRC, 'utf8'), freshCtx);
+  // Código.gs entra junto porque é lá que moram SHEET_BROADCAST e
+  // getSheetData(), que o arquivo de migração usa — no Apps Script os dois
+  // arquivos dividem o mesmo escopo global.
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'Código.js'), 'utf8'), freshCtx);
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'ContentSeed_Broadcast.js'), 'utf8'),
+    freshCtx
+  );
+
+  const sheet = freshSS.insertSheet('Broadcast');
+  sheet.appendRow(['ID', 'Date', 'Type', 'Title', 'Text', 'Author', 'Active']);
+  sheet.appendRow(['msg_1', '2026-08-01T09:00:00', 'Alerta', 'Instabilidade', 'CRM fora do ar.', 'lucaste', true]);
+  sheet.appendRow(['msg_2', '2026-08-10T09:00:00', 'info', 'Nova política', 'Detalhes no link.', 'lucaste', true]);
+  sheet.appendRow(['msg_3', '2026-08-05T09:00:00', 'info', 'Aviso apagado', 'Não deve migrar.', 'lucaste', false]);
+  sheet.appendRow(['msg_4', '2026-08-20T09:00:00', 'info', 'Disponibilidade BAU', 'PT 15/09, ES 18/09.', 'lucaste', true]);
+  sheet.appendRow(['', '2026-08-21T09:00:00', 'info', 'Sem ID', 'Linha órfã.', 'lucaste', true]);
+
+  const res = freshCtx.seedBroadcastNow();
+  eq(res.status, 'success');
+  eq(res.seeded, 2, 'só os dois avisos ativos e não-BAU migram:');
+
+  const live = freshCtx.listContentItems('broadcast');
+  eq(live.map(i => i.key).sort(), ['msg_1', 'msg_2'], 'preserva os IDs antigos:');
+
+  // O ID antigo é o que o localStorage de "lido" guarda. Trocá-lo faria todo
+  // aviso já lido reaparecer como novo para a operação inteira.
+  const alerta = live.filter(i => i.key === 'msg_1')[0];
+  eq(JSON.parse(alerta.value).type, 'critical', '"Alerta" normaliza para critical:');
+
+  // Todo item semeado tem que passar na própria validação — senão a migração
+  // publicaria algo que a tela recusaria depois.
+  live.forEach(i => {
+    const r = freshCtx.checkBroadcast(i.value);
+    if (!r.ok) throw new Error('aviso semeado inválido [' + i.label + ']: ' + r.error);
+  });
+
+  // Idempotência: rodar de novo não duplica.
+  eq(freshCtx.seedBroadcastNow().status, 'skipped');
+
+  // E a rota legada passa a servir da Central, mais novo primeiro.
+  const legado = freshCtx.getBroadcastForLegacyEndpoint(freshSS);
+  eq(legado.map(m => m.id), ['msg_2', 'msg_1'], 'mais novo primeiro:');
+  eq(legado[0].active, true);
+});
+
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);
 process.exit(fail ? 1 : 0);

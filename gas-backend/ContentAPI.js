@@ -16,7 +16,40 @@ const SHEET_CONTENT_ACCESS = "Content_Access";
 // Módulos gerenciáveis. Adicionar um módulo novo é acrescentar uma string
 // aqui - não uma aba nova, que é justamente a dívida que Tips/Broadcast/
 // Database_Snippets acumularam ao ganhar cada um seu próprio schema.
-const CONTENT_MODULES = ['links', 'call_script', 'email_template', 'note_template', 'tips'];
+const CONTENT_MODULES = [
+  'links', 'call_script', 'email_template', 'note_template', 'tips',
+  // Avisos e disponibilidade BAU: eram a aba "Broadcast", com schema próprio e
+  // CRUD dentro do módulo do agente. São dois módulos e não um porque têm ciclos
+  // de vida diferentes - ver CONTENT_SINGLETON_MODULES logo abaixo.
+  'broadcast', 'bau_availability'
+];
+
+// Módulos que publicam direto em 'live', sem passar pela fila de aprovação.
+//
+// A fila existe para conteúdo que é lido como referência (links, scripts,
+// modelos): vale mais revisar do que publicar rápido. Aviso operacional é o
+// contrário - um alerta que espera revisor chega depois de já não importar, e
+// uma data de disponibilidade BAU que espera aprovação é uma data errada na
+// tela do agente. Quem pode publicar é decidido pela matriz de papéis
+// (CONTENT_ROLES.propose), não por este conjunto: aqui só se diz que, para
+// quem já tem o papel, não há espera.
+//
+// A publicação direta não abre mão de nada além da fila: continua versionando,
+// arquivando a versão anterior e indo para o log.
+const CONTENT_DIRECT_PUBLISH_MODULES = ['broadcast', 'bau_availability'];
+
+// Módulos que guardam UM valor corrente em vez de uma lista.
+//
+// Disponibilidade BAU é estado, não mensagem: existe exatamente uma resposta
+// certa para "qual a disponibilidade hoje", e publicar uma nova substitui a
+// anterior. Tratar isso como feed é o que obrigava o código antigo a caçar o
+// aviso certo por `title.includes("disponibilidade bau")` e a adivinhar as
+// datas com regex em texto livre.
+const CONTENT_SINGLETON_MODULES = ['bau_availability'];
+
+// Chave única dos módulos singleton - fixa, para que a linhagem do item
+// atravesse todas as versões.
+const CONTENT_SINGLETON_KEY = 'current';
 
 // Idiomas aceitos na coluna `lang`. 'ALL' = vale para todos (caso dos links,
 // cujo par PT/ES mora no próprio valor do item).
@@ -56,8 +89,11 @@ const CONTENT_ROLES = {
     manageAccess: false,
     selfApprove: false
   },
+  // WFM publica a disponibilidade BAU (é quem tem o dado), mas não publica
+  // aviso geral - comunicado da operação continua sendo de ADMIN e TL, que
+  // herdam os dois módulos por `propose: CONTENT_MODULES` lá em cima.
   WFM: {
-    propose: ['links'],
+    propose: ['links', 'bau_availability'],
     approve: false,
     manageAccess: false,
     selfApprove: false
@@ -418,6 +454,159 @@ function checkEmailTemplate(rawValue, lang) {
   }
 }
 
+// ---------------------------------------------------------
+//  Validação: avisos
+// ---------------------------------------------------------
+
+const BROADCAST_TYPES = ['info', 'critical', 'success'];
+
+// Um aviso é um registro composto num `Value` só, no mesmo padrão já usado por
+// email_template e note_template. O que a validação garante é o que a tela do
+// agente assume sem checar: tipo conhecido, título e texto presentes.
+function assertValidBroadcast_(rawValue) {
+  let parsed;
+  try {
+    parsed = JSON.parse(String(rawValue || ""));
+  } catch (e) {
+    throw new Error("Aviso inválido: o conteúdo não é um JSON válido.");
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error("Aviso inválido: esperado um objeto com tipo, título e texto.");
+  }
+
+  const type = String(parsed.type || "").trim();
+  if (BROADCAST_TYPES.indexOf(type) === -1) {
+    throw new Error("Tipo de aviso desconhecido: '" + type + "'. Use info, critical ou success.");
+  }
+
+  if (!String(parsed.title || "").trim()) throw new Error("O aviso precisa de um título.");
+  if (!String(parsed.text || "").trim()) throw new Error("O aviso precisa de uma mensagem.");
+
+  return parsed;
+}
+
+function checkBroadcast(rawValue) {
+  try {
+    assertValidBroadcast_(rawValue);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// ---------------------------------------------------------
+//  Validação: disponibilidade BAU
+// ---------------------------------------------------------
+
+// Segmentos atendidos. Espelha os idiomas que o app tem dicionário para
+// (src/modules/shared/i18n.js) - EN existe em CONTENT_LANGS mas não há
+// operação BAU em inglês hoje.
+const BAU_SEGMENTS = ['PT', 'ES'];
+
+// Datas em ISO (YYYY-MM-DD) e não no "15/09" que chega no aviso: ISO ordena e
+// compara como string, sem ambiguidade de dia/mês e sem depender do ano
+// corrente estar implícito. A formatação curta é trabalho da tela.
+const BAU_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function assertValidBauDate_(value, label) {
+  const date = String(value || "").trim();
+  if (!date) return ""; // Campo flexível: um segmento pode ter só uma das duas datas.
+
+  if (!BAU_DATE_RE.test(date)) {
+    throw new Error("Data inválida em " + label + ": use o formato AAAA-MM-DD.");
+  }
+
+  // Rejeita 2026-02-31 e afins, que passam no regex mas não existem no calendário.
+  const parts = date.split('-');
+  const probe = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  if (probe.getMonth() !== Number(parts[1]) - 1 || probe.getDate() !== Number(parts[2])) {
+    throw new Error("Data inexistente em " + label + ": " + date + ".");
+  }
+
+  return date;
+}
+
+// O aviso chega como "disponibilidade para a data X, com melhor disponibilidade
+// para a data Y". São dois campos por segmento, ambos opcionais:
+//   attention - a data mais próxima, com folga apertada (laranja na tela)
+//   full      - a data de disponibilidade total (verde na tela)
+// A ordem entre elas não é estilo, é o significado: `attention` só quer dizer
+// "atenção" por ser a mais próxima das duas. Invertidas, as cores mentem, então
+// a inversão é erro de dado e não passa.
+function assertValidBauAvailability_(rawValue) {
+  let parsed;
+  try {
+    parsed = JSON.parse(String(rawValue || ""));
+  } catch (e) {
+    throw new Error("Disponibilidade inválida: o conteúdo não é um JSON válido.");
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error("Disponibilidade inválida: esperado um objeto com os segmentos.");
+  }
+
+  const segments = parsed.segments;
+  if (!segments || typeof segments !== 'object') {
+    throw new Error("Disponibilidade inválida: falta o bloco 'segments'.");
+  }
+
+  const unknown = Object.keys(segments).filter(function (s) {
+    return BAU_SEGMENTS.indexOf(s) === -1;
+  });
+  if (unknown.length) {
+    throw new Error("Segmento desconhecido: " + unknown.join(', ') + ". Use PT ou ES.");
+  }
+
+  const normalized = {};
+  let anyDate = false;
+
+  BAU_SEGMENTS.forEach(function (seg) {
+    const raw = segments[seg] || {};
+    const attention = assertValidBauDate_(raw.attention, seg + " / atenção");
+    const full = assertValidBauDate_(raw.full, seg + " / total");
+
+    if (attention && full && attention > full) {
+      throw new Error(
+        "Em " + seg + ", a data de atenção (" + attention + ") é posterior à de " +
+        "disponibilidade total (" + full + "). A de atenção é a mais próxima das duas."
+      );
+    }
+
+    if (attention || full) anyDate = true;
+    normalized[seg] = { attention: attention, full: full };
+  });
+
+  if (!anyDate) {
+    throw new Error("Informe ao menos uma data de disponibilidade.");
+  }
+
+  return {
+    updatedAt: String(parsed.updatedAt || ""),
+    author: String(parsed.author || ""),
+    note: String(parsed.note || ""),
+    segments: normalized
+  };
+}
+
+function checkBauAvailability(rawValue) {
+  try {
+    assertValidBauAvailability_(rawValue);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// Porta única de validação por módulo. Deixa `publishContentDirect()` sem um
+// if/else por módulo e garante que um módulo novo entre aqui de propósito, e
+// não por esquecimento.
+function assertValidDirectValue_(module, rawValue) {
+  if (module === 'broadcast') return assertValidBroadcast_(rawValue);
+  if (module === 'bau_availability') return assertValidBauAvailability_(rawValue);
+  throw new Error("Módulo sem validação de publicação direta: " + module);
+}
+
 // =========================================================
 //  LEITURA
 // =========================================================
@@ -555,6 +744,15 @@ function saveContentDraft(payload) {
   const p = payload || {};
   const session = assertContentRole_('propose', p.module);
   assertValidModule_(p.module);
+
+  // Um módulo tem um caminho de escrita só. Deixar avisos entrarem também pela
+  // fila criaria duas fontes de verdade para "o que está no ar", e a tela teria
+  // de reconciliar as duas.
+  if (CONTENT_DIRECT_PUBLISH_MODULES.indexOf(p.module) !== -1) {
+    throw new Error(
+      "O módulo '" + p.module + "' publica direto, sem rascunho. Use publishContentDirect()."
+    );
+  }
 
   if (CONTENT_LANGS.indexOf(p.lang || 'ALL') === -1) {
     throw new Error("Idioma inválido: " + p.lang);
@@ -837,6 +1035,14 @@ function requestContentRemoval(itemId, reason) {
   const item = findContentRow_(SHEET_CONTENT_ITEMS, 'ID', itemId);
   if (!item) throw new Error("Item não encontrado.");
 
+  // Mesmo motivo do bloqueio em saveContentDraft(): quem publica sem fila
+  // também tira do ar sem fila.
+  if (CONTENT_DIRECT_PUBLISH_MODULES.indexOf(String(item.Module).trim()) !== -1) {
+    throw new Error(
+      "O módulo '" + String(item.Module).trim() + "' sai do ar direto. Use unpublishContentDirect()."
+    );
+  }
+
   const session = assertContentRole_('propose', String(item.Module).trim());
   const sheet = getContentSheet_(SHEET_CONTENT_DRAFTS);
   const now = contentNow_();
@@ -863,6 +1069,140 @@ function requestContentRemoval(itemId, reason) {
 
   logContentEvent_(session.ldap, 'removal_request', String(item.Module) + '/' + String(item.Key), reason || "");
   return { status: 'success', draftId: draftId };
+}
+
+// =========================================================
+//  PUBLICAÇÃO DIRETA (avisos e disponibilidade BAU)
+//
+//  Mesma máquina de versionamento de approveContentDraft(), sem a etapa de
+//  fila. Ver CONTENT_DIRECT_PUBLISH_MODULES para o porquê.
+// =========================================================
+
+function assertDirectPublishModule_(module) {
+  assertValidModule_(module);
+  if (CONTENT_DIRECT_PUBLISH_MODULES.indexOf(module) === -1) {
+    throw new Error(
+      "O módulo '" + module + "' publica pela fila de aprovação, não direto. " +
+      "Use saveContentDraft()."
+    );
+  }
+}
+
+// Item no ar que esta publicação substitui, ou null se é um item novo.
+// Singleton: a linha viva do módulo, qualquer que seja a chave. Feed: a linha
+// viva com a mesma chave, que é como uma edição encontra o que edita.
+function findLiveItemToReplace_(module, key) {
+  const isSingleton = CONTENT_SINGLETON_MODULES.indexOf(module) !== -1;
+
+  const live = readContentRows_(SHEET_CONTENT_ITEMS).filter(function (r) {
+    if (String(r.Module).trim() !== module) return false;
+    if (String(r.Status).trim() !== CONTENT_STATUS.LIVE) return false;
+    return isSingleton ? true : String(r.Key).trim() === String(key).trim();
+  });
+
+  if (!live.length) return null;
+
+  // Mais de uma linha viva só acontece se alguém editar a planilha na mão.
+  // Substituir a mais recente é o comportamento menos surpreendente; as outras
+  // seguem no ar e aparecem na tela da Central para serem removidas.
+  return live.sort(function (a, b) {
+    return String(b.Published_At || "").localeCompare(String(a.Published_At || ""));
+  })[0];
+}
+
+/**
+ * Publica direto em 'live'. Quem pode chamar é decidido pela matriz de papéis:
+ * ADMIN e TL nos dois módulos, WFM só em bau_availability.
+ *
+ * payload: { module, key?, field?, lang?, label, value, sortOrder? }
+ *   - `value` é a string JSON do registro (ver assertValidBroadcast_ /
+ *     assertValidBauAvailability_).
+ *   - `key` é ignorada em módulos singleton, que usam CONTENT_SINGLETON_KEY.
+ *     Omitida num módulo de feed, nasce um item novo.
+ */
+function publishContentDirect(payload) {
+  const data = (typeof payload === 'string') ? JSON.parse(payload) : (payload || {});
+  const module = String(data.module || "").trim();
+
+  assertDirectPublishModule_(module);
+  const session = assertContentRole_('propose', module);
+
+  const isSingleton = CONTENT_SINGLETON_MODULES.indexOf(module) !== -1;
+  const key = isSingleton
+    ? CONTENT_SINGLETON_KEY
+    : (String(data.key || "").trim() || newContentId_('ntc'));
+
+  const lang = String(data.lang || 'ALL').trim().toUpperCase();
+  if (CONTENT_LANGS.indexOf(lang) === -1) {
+    throw new Error("Idioma desconhecido: " + lang + ".");
+  }
+
+  // Valida antes de escrever qualquer coisa: uma publicação recusada não pode
+  // ter arquivado a versão que estava no ar.
+  const parsed = assertValidDirectValue_(module, data.value);
+
+  const now = contentNow_();
+  const sheet = getContentSheet_(SHEET_CONTENT_ITEMS);
+  const previous = findLiveItemToReplace_(module, key);
+
+  let version = 1;
+  let lineage = "";
+
+  if (previous) {
+    version = (Number(previous.Version) || 1) + 1;
+    lineage = String(previous.Lineage || previous.ID);
+    sheet.getRange(previous._row, 9).setValue(CONTENT_STATUS.ARCHIVED);
+  }
+
+  const newItemId = newContentId_('itm');
+  sheet.appendRow([
+    newItemId,
+    module,
+    key,
+    String(data.field || (isSingleton ? 'availability' : 'notice')),
+    lang,
+    String(data.label || parsed.title || ""),
+    String(data.value || ""),
+    version,
+    CONTENT_STATUS.LIVE,
+    session.ldap,
+    now,
+    Number(data.sortOrder) || 0,
+    lineage || newItemId
+  ]);
+
+  logContentEvent_(
+    session.ldap,
+    previous ? 'publish_direct_update' : 'publish_direct',
+    module + '/' + key,
+    'v' + version
+  );
+
+  return { status: 'success', itemId: newItemId, key: key, version: version };
+}
+
+/**
+ * Tira um item de publicação direta do ar. Arquiva, não apaga: a leitura
+ * pública só enxerga 'live', e a linha arquivada é o que permite reverter.
+ */
+function unpublishContentDirect(itemId) {
+  const item = findContentRow_(SHEET_CONTENT_ITEMS, 'ID', itemId);
+  if (!item) throw new Error("Item não encontrado.");
+
+  const module = String(item.Module).trim();
+  assertDirectPublishModule_(module);
+  const session = assertContentRole_('propose', module);
+
+  if (String(item.Status).trim() !== CONTENT_STATUS.LIVE) {
+    throw new Error("Este item já não está no ar.");
+  }
+
+  getContentSheet_(SHEET_CONTENT_ITEMS)
+    .getRange(item._row, 9)
+    .setValue(CONTENT_STATUS.ARCHIVED);
+
+  logContentEvent_(session.ldap, 'unpublish_direct', module + '/' + String(item.Key), String(item.Label || ""));
+  return { status: 'success', itemId: itemId };
 }
 
 // =========================================================
