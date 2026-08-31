@@ -1,0 +1,15 @@
+# Normaliza as quebras de linha.
+#
+# O repositório armazena LF, mas o desenvolvimento acontece em Windows/WSL, onde
+# o editor grava CRLF. Sem esta regra, todo arquivo tocado aparece como modificado
+# no `git status` mesmo sem mudança de conteúdo — chegamos a ter 29 arquivos assim,
+# com 2.880 linhas de diff que somem inteiras sob `--ignore-all-space`.
+#
+# `text=auto eol=lf` faz o git normalizar para LF ao gravar, independentemente do
+# que o editor produziu. Os arquivos binários abaixo ficam de fora, porque
+# normalizar bytes de imagem ou vídeo os corrompe.
+
+* text=auto eol=lf
+
+*.png  binary
+*.webm binary
