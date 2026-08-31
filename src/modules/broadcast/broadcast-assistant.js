@@ -42,7 +42,12 @@ const BC_DICT = {
         headerTitle: "Central de Avisos",
         headerDesc: "Comunicação oficial da operação.",
         clear: "Limpar",
-        searchPlaceholder: "Buscar avisos...",
+        searchPlaceholder: "Buscar avisos…",
+        clearSearch: "Limpar a busca",
+        markRead: (t) => `Marcar “${t}” como lido`,
+        markReadShort: "Marcar como lido",
+        publishedBy: (a) => `Publicado por ${a}`,
+        system: "Sistema",
         bauAvailability: "Disponibilidade BAU",
         attention: "atenção",
         full: "total",
@@ -56,15 +61,20 @@ const BC_DICT = {
         allRead: "Tudo lido!",
         history: (n) => `Histórico (${n})`,
         typeLabel: { info: "Info", critical: "Alerta", success: "Sucesso" },
-        syncing: "🔄 Sincronizando...",
-        updated: '<span style="color:#137333">✓ Atualizado</span>',
-        offline: "⚠️ Offline",
+        syncing: "Sincronizando…",
+        updated: "Atualizado",
+        offline: "Sem conexão — mostrando o que já estava aqui",
     },
     es: {
         headerTitle: "Central de Avisos",
         headerDesc: "Comunicación oficial de la operación.",
         clear: "Limpiar",
-        searchPlaceholder: "Buscar avisos...",
+        searchPlaceholder: "Buscar avisos…",
+        clearSearch: "Limpiar la búsqueda",
+        markRead: (t) => `Marcar “${t}” como leído`,
+        markReadShort: "Marcar como leído",
+        publishedBy: (a) => `Publicado por ${a}`,
+        system: "Sistema",
         bauAvailability: "Disponibilidad BAU",
         attention: "atención",
         full: "total",
@@ -78,9 +88,9 @@ const BC_DICT = {
         allRead: "¡Todo leído!",
         history: (n) => `Historial (${n})`,
         typeLabel: { info: "Info", critical: "Alerta", success: "Éxito" },
-        syncing: "🔄 Sincronizando...",
-        updated: '<span style="color:#137333">✓ Actualizado</span>',
-        offline: "⚠️ Sin conexión",
+        syncing: "Sincronizando…",
+        updated: "Actualizado",
+        offline: "Sin conexión — mostrando lo que ya estaba aquí",
     },
 };
 
@@ -111,11 +121,11 @@ const SEGMENTS = {
 
 const SWAP_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 2 21 6 17 10"></polyline><path d="M3 12V10a4 4 0 0 1 4-4h14"></path><polyline points="7 22 3 18 7 14"></polyline><path d="M21 12v2a4 4 0 0 1-4 4H3"></path></svg>`;
 
-const TYPE_CONFIG = {
-    critical: { icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>` },
-    info: { icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>` },
-    success: { icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>` }
-};
+// Tipos aceitos. O objeto virou só o conjunto de chaves válidas: o ícone SVG
+// que morava aqui saiu junto com a pílula — o tipo agora é dito por um ponto
+// na cor semântica e pela palavra, em texto normal.
+const TYPE_CONFIG = { critical: true, info: true, success: true };
+
 
 // --- FOLHA DE ESTILOS DEDICADA ---
 function injectStyles() {
@@ -126,67 +136,126 @@ function injectStyles() {
         .cw-btn-interactive { transition: transform 0.1s ease, background 0.2s ease; cursor: pointer; user-select: none; }
         .cw-btn-interactive:active { transform: scale(0.96); }
 
+        /* --- SUPERFÍCIES ---
+           O módulo era o único do app que anulava o vidro: sobrescrevia o
+           backgroundColor translúcido de stylePopup por #FAFAFA opaco, e
+           empilhava um feed #F8F9FA e cards #FFFFFF por cima. Três camadas
+           opacas dentro de um contêiner que existe para ser translúcido.
+           Agora segue o mesmo tratamento da Biblioteca Pessoal, que é a
+           referência da casa. */
+
         /* --- BUSCA --- */
-        /* padding vertical simétrico (12px em cima E embaixo) é o que importa
-           aqui: os ícones são posicionados com top:50% relativo à caixa do
-           wrap, que inclui o padding. Com padding-top/bottom diferentes
-           (era 12px/0), os 50% do wrap não batiam com o centro vertical
-           real do input — os ícones ficavam "flutuando" alguns pixels acima. */
-        .cw-bc-search-wrap { position: relative; padding: 12px 24px; flex-shrink: 0; background: #FAFAFA; }
-        .cw-bc-search-icon { position: absolute; left: 36px; top: 50%; transform: translateY(-50%); color: #80868b; pointer-events: none; display: flex; }
+        /* padding vertical simétrico é o que importa aqui: os ícones são
+           posicionados com top:50% relativo à caixa do wrap, que inclui o
+           padding. Com padding-top/bottom diferentes, os 50% do wrap não batem
+           com o centro vertical real do input. */
+        /* O padding e o posicionamento dos ícones ficam em elementos
+           DIFERENTES de propósito. Quando estavam no mesmo, o top:50% dos
+           ícones era relativo à caixa com padding, não ao input — e qualquer
+           padding vertical assimétrico os jogava fora do centro. Foi um bug
+           real duas vezes neste arquivo; separar resolve por construção. */
+        .cw-bc-search-wrap { padding: 16px 24px 8px 24px; flex-shrink: 0; background: transparent; }
+        .cw-bc-search-field { position: relative; display: flex; }
+        .cw-bc-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #80868b; pointer-events: none; display: flex; }
         .cw-bc-search-input {
-            width: 100%; box-sizing: border-box; height: 36px; padding: 0 34px 0 34px;
-            border-radius: 10px; border: 1px solid #DADCE0; background: #fff;
+            width: 100%; box-sizing: border-box; height: 38px; padding: 0 36px;
+            border-radius: 12px; border: 1px solid transparent;
+            background: rgba(255,255,255,0.75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             font-size: 13px; font-family: 'Google Sans', Roboto, sans-serif; color: #202124; outline: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
         .cw-bc-search-input::placeholder { color: #9aa0a6; }
-        .cw-bc-search-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.14); }
+        .cw-bc-search-input:focus { background: #fff; border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.14); }
         .cw-bc-search-clear {
-            position: absolute; right: 30px; top: 50%; transform: translateY(-50%);
-            width: 20px; height: 20px; border-radius: 50%; display: none;
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            width: 22px; height: 22px; padding: 0; border: none; border-radius: 50%; display: none;
             align-items: center; justify-content: center; color: #80868b; cursor: pointer;
+            background: transparent; touch-action: manipulation;
+            transition: background-color 0.15s ease, color 0.15s ease;
         }
-        .cw-bc-search-clear:hover { background: rgba(0,0,0,0.06); }
+        .cw-bc-search-clear:hover { background: rgba(0,0,0,0.06); color: #202124; }
         .cw-bc-search-clear.visible { display: flex; }
 
         /* --- FEED --- */
-        .cw-bc-feed { padding: 20px 24px 80px 24px; overflow-y: auto; flex-grow: 1; background: #F8F9FA; display: flex; flex-direction: column; gap: 20px; }
+        /* overscroll-behavior: o feed rola dentro de uma janela flutuante, e
+           sem isto chegar ao fim dele passa a rolagem para a página do CRM
+           atrás. */
+        .cw-bc-feed {
+            padding: 8px 24px 80px 24px; overflow-y: auto; overscroll-behavior: contain;
+            flex-grow: 1; background: transparent;
+            display: flex; flex-direction: column; gap: 16px;
+        }
 
+        /* Um contêiner por aviso, e só um. A versão anterior era caixa dentro
+           de caixa: o card tinha borda e sombra, o cabeçalho tinha outra borda
+           embaixo, e o rodapé de ações tinha fundo próprio. A hierarquia agora
+           vem de tipografia e espaço, que é como o Material resolve. */
         .cw-bc-card {
-            background: #FFFFFF; border-radius: 16px; border: 1px solid rgba(0,0,0,0.12);
-            box-shadow: 0 4px 12px rgba(60,64,67,0.08);
-            overflow: hidden; transition: opacity 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease; position: relative; width: 100%; box-sizing: border-box; flex-shrink: 0;
+            background: rgba(255,255,255,0.68); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.5); border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(60,64,67,0.08);
+            padding: 16px; width: 100%; box-sizing: border-box; flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 8px;
+            transition: opacity 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
         }
-        .cw-bc-card.history {
-            border: 1px solid rgba(0,0,0,0.05); box-shadow: none; opacity: 0.6; filter: grayscale(0.8);
-            margin-bottom: 16px;
-        }
+        .cw-bc-card.history { box-shadow: none; opacity: 0.62; filter: grayscale(0.8); }
 
-        .cw-bc-card-head { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #F1F3F4; }
-        .cw-bc-type-tag { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; padding: 4px 8px; border-radius: 6px; }
-        .cw-bc-type-tag.critical { color: #991B1B; background: #FEF2F2; }
-        .cw-bc-type-tag.info { color: #1E40AF; background: #EFF6FF; }
-        .cw-bc-type-tag.success { color: #166534; background: #F0FDF4; }
-        .cw-bc-date-tag { font-size: 11px; color: #5f6368; font-weight: 500; }
-        .cw-bc-card-content { padding: 16px 20px 20px 20px; }
-        .cw-bc-msg-title { font-size: 16px; font-weight: 700; color: #202124; margin-bottom: 8px; line-height: 1.4; }
-        .cw-bc-msg-body { font-size: 14px; color: #3c4043; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+        .cw-bc-card-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        /* O tipo do aviso é dito em texto normal, com um ponto na cor
+           semântica. Era uma pílula em caixa alta sobre fundo colorido, que lê
+           como selo decorativo — e disputava com o título a primeira leitura
+           do card, sendo a informação menos importante dos dois. */
+        .cw-bc-type { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #5f6368; white-space: nowrap; }
+        .cw-bc-type-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .cw-bc-type-dot.critical { background: #D93025; }
+        .cw-bc-type-dot.info { background: #1A73E8; }
+        .cw-bc-type-dot.success { background: #1E8E3E; }
+        .cw-bc-meta-sep { color: #BDC1C6; font-size: 12px; }
+        .cw-bc-date-tag { font-size: 12px; color: #80868b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+        .cw-bc-msg-title { font-size: 15px; font-weight: 600; color: #202124; line-height: 1.35; margin: 0; text-wrap: pretty; }
+        .cw-bc-msg-body { font-size: 13.5px; color: #3c4043; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
         /* Global (não escopado a .cw-bc-msg-body): parseMessageText() é usada
-           tanto nos cards normais quanto no texto do widget BAU. */
+           tanto nos cards quanto na nota da faixa de disponibilidade. */
         .cw-bc-link { color: #1967d2; text-decoration: none; font-weight: 500; }
-        .cw-bc-msg-meta { font-size: 11px; color: #9aa0a6; margin-top: 12px; display: flex; align-items: center; gap: 6px; }
+        .cw-bc-link:hover { text-decoration: underline; }
+        .cw-bc-msg-author { font-size: 11px; color: #9aa0a6; }
 
         .cw-bc-dismiss-btn {
             width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1);
-            background: #fff; color: #5f6368; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; margin-left: 12px;
+            background: rgba(255,255,255,0.6); color: #5f6368; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; margin-left: auto;
+            padding: 0; touch-action: manipulation;
+            transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
         }
         .cw-bc-dismiss-btn:hover { color: #1e8e3e; background: #e6f4ea; border-color: #1e8e3e; }
 
-        .cw-bc-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 0; color: #BDC1C6; gap: 16px; text-align: center; }
-        .cw-bc-history-divider { display: flex; align-items: center; justify-content: center; margin: 20px 0; cursor: pointer; color: #1a73e8; font-size: 13px; font-weight: 500; gap: 8px; padding: 8px 16px; border-radius: 20px; background: #E8F0FE; }
-        .cw-bc-history-container { display: none; flex-direction: column; gap: 16px; opacity: 0.8; }
+        .cw-bc-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 0; color: #BDC1C6; gap: 16px; text-align: center; }
+
+        .cw-bc-history-divider {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin: 8px 0; padding: 8px 16px; border: none; border-radius: 100px;
+            cursor: pointer; color: #1a73e8; font-size: 13px; font-weight: 500;
+            font-family: inherit; background: rgba(26,115,232,0.10); touch-action: manipulation;
+            align-self: center; transition: background-color 0.2s ease;
+        }
+        .cw-bc-history-divider:hover { background: rgba(26,115,232,0.18); }
+        .cw-bc-history-divider svg { transition: transform 0.25s ease; }
+        .cw-bc-history-divider[aria-expanded="true"] svg { transform: rotate(180deg); }
+        .cw-bc-history-container { display: none; flex-direction: column; gap: 16px; }
+
+        /* --- FOCO ---
+           Uma regra só, para todo controle do módulo. Antes nenhum tinha foco
+           visível: quem navega por teclado percorria o feed às cegas. */
+        .cw-bc-search-input:focus-visible,
+        .cw-bc-search-clear:focus-visible,
+        .cw-bc-dismiss-btn:focus-visible,
+        .cw-bc-history-divider:focus-visible,
+        .cw-bc-bau-swap:focus-visible {
+            outline: 2px solid #1a73e8;
+            outline-offset: 2px;
+        }
 
         /* --- FAIXA DE DISPONIBILIDADE BAU ---
            Papel secundário, e o visual precisa dizer isso. A versão anterior
@@ -243,15 +312,19 @@ function injectStyles() {
 
 // --- PARSERS & UTILS (puros, sem dependência de closure) ---
 
+// Formata no idioma da interface, e não sempre em pt-BR como antes: quem
+// atende ES via a interface em espanhol e as datas em português.
+const DATE_LOCALE = { pt: 'pt-BR', es: 'es-ES' };
+
 function formatFriendlyDate(dateInput) {
     if (!dateInput) return "";
     try {
         const date = new Date(dateInput);
         if (isNaN(date.getTime())) return String(dateInput);
-        return date.toLocaleString('pt-BR', {
+        return new Intl.DateTimeFormat(DATE_LOCALE[getLanguage()] || 'pt-BR', {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
-        }).replace(',', ' às');
+        }).format(date);
     } catch (e) { return String(dateInput); }
 }
 
@@ -277,7 +350,7 @@ function formatRelative(iso) {
     if (horas < 24) return bt('hoursAgo')(horas);
     if (horas < 48) return bt('yesterday');
 
-    return formatFriendlyDate(iso).split(' às')[0];
+    return formatFriendlyDate(iso).split(',')[0];
 }
 
 function parseMessageText(rawText) {
@@ -420,7 +493,10 @@ export function initBroadcastAssistant() {
   Object.assign(popup.style, stylePopup, {
     right: "auto", left: "50%", width: "420px", height: "680px",
     display: "flex", flexDirection: "column", transform: "translateX(-50%) scale(0.05)",
-    backgroundColor: '#FAFAFA', overflow: "hidden"
+    overflow: "hidden"
+    // Sem backgroundColor aqui de propósito: o de stylePopup é translúcido
+    // (rgba branco + backdrop-filter). Sobrescrever por #FAFAFA opaco era o que
+    // tirava o vidro só deste módulo.
   });
 
   const animRefs = { popup, googleLine: null };
@@ -449,6 +525,7 @@ export function initBroadcastAssistant() {
   // Botão Limpar
   if (actionContainer) {
       const markAll = document.createElement("button");
+      markAll.type = "button";
       markAll.textContent = bt('clear');
       markAll.className = "cw-btn-interactive";
       Object.assign(markAll.style, { fontSize: "12px", color: "#1a73e8", background: "transparent", border: "none", padding: "8px", fontWeight: "600" });
@@ -469,15 +546,27 @@ export function initBroadcastAssistant() {
   searchWrap.className = "cw-bc-search-wrap";
   const searchIcon = document.createElement("div");
   searchIcon.className = "cw-bc-search-icon";
+  searchIcon.setAttribute('aria-hidden', 'true');
   searchIcon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
   const searchInput = document.createElement("input");
   searchInput.className = "cw-bc-search-input no-drag";
-  searchInput.type = "text";
+  searchInput.type = "search";
+  searchInput.name = "cw-broadcast-search";
+  searchInput.autocomplete = "off";
+  searchInput.spellcheck = false;
   searchInput.placeholder = bt('searchPlaceholder');
-  const searchClear = document.createElement("div");
-  searchClear.className = "cw-bc-search-clear cw-btn-interactive";
-  searchClear.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-  searchWrap.append(searchIcon, searchInput, searchClear);
+  // Sem rótulo visível: o campo é o único da tela e o placeholder já explica.
+  searchInput.setAttribute('aria-label', bt('searchPlaceholder'));
+  // <button> e não <div>: era um div com onclick, invisível para o teclado.
+  const searchClear = document.createElement("button");
+  searchClear.type = "button";
+  searchClear.className = "cw-bc-search-clear";
+  searchClear.setAttribute('aria-label', bt('clearSearch'));
+  searchClear.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+  const searchField = document.createElement("div");
+  searchField.className = "cw-bc-search-field";
+  searchField.append(searchIcon, searchInput, searchClear);
+  searchWrap.appendChild(searchField);
   popup.appendChild(searchWrap);
 
   searchInput.addEventListener("input", (e) => {
@@ -496,11 +585,17 @@ export function initBroadcastAssistant() {
   // --- ELEMENTO DE STATUS (FIXO NO TOPO) ---
   const statusEl = document.createElement('div');
   statusEl.id = 'cw-update-status';
-  statusEl.style.cssText = "padding: 8px; text-align: center; font-size: 11px; color: #5f6368; background: #FAFAFA; border-bottom: 1px solid transparent; font-weight:500; display:none;";
+  // O texto muda sozinho quando o poll responde; sem aria-live um leitor de
+  // tela nunca fica sabendo que sincronizou nem que caiu a conexão.
+  statusEl.setAttribute('role', 'status');
+  statusEl.setAttribute('aria-live', 'polite');
+  statusEl.style.cssText = "padding: 6px 24px; text-align: center; font-size: 11px; color: #5f6368; font-weight:500; display:none;";
   popup.appendChild(statusEl);
 
   const feed = document.createElement("div");
   feed.className = "cw-nice-scroll cw-bc-feed";
+  feed.setAttribute('role', 'feed');
+  feed.setAttribute('aria-label', bt('headerTitle'));
   popup.appendChild(feed);
 
   // --- CARGA ---
@@ -510,7 +605,7 @@ export function initBroadcastAssistant() {
   async function checkForUpdates() {
       if (visible) {
           statusEl.style.display = 'block';
-          statusEl.innerHTML = bt('syncing');
+          statusEl.textContent = bt('syncing');
       }
 
       let online = true;
@@ -553,7 +648,8 @@ export function initBroadcastAssistant() {
 
       // O texto de status, esse sim, só faz sentido para quem está olhando.
       if (visible) {
-          statusEl.innerHTML = online ? bt('updated') : bt('offline');
+          statusEl.textContent = online ? bt('updated') : bt('offline');
+          statusEl.style.color = online ? '#137333' : '#B06000';
           if (online) setTimeout(() => { statusEl.style.display = 'none'; }, 1500);
       }
   }
@@ -715,21 +811,29 @@ export function initBroadcastAssistant() {
       unreadMsgs.forEach(msg => feed.appendChild(createCard(msg, false)));
 
       if (readMsgs.length > 0) {
-          const divider = document.createElement("div");
-          divider.className = "cw-bc-history-divider";
-          divider.innerHTML = `<span>${bt('history')(readMsgs.length)}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
-
           const historyContainer = document.createElement("div");
           historyContainer.className = "cw-bc-history-container";
+          historyContainer.id = "cw-bc-history";
           readMsgs.forEach(msg => historyContainer.appendChild(createCard(msg, true)));
 
-          let isHistoryOpen = false;
+          // <button> e não <div>: é um controle que abre e fecha uma região, e
+          // como tal precisa ser alcançável por teclado e dizer em que estado
+          // está. A rotação da seta é do CSS, atrelada ao aria-expanded, para
+          // não existirem duas fontes de verdade para "está aberto?".
+          const divider = document.createElement("button");
+          divider.type = "button";
+          divider.className = "cw-bc-history-divider";
+          divider.setAttribute('aria-expanded', 'false');
+          divider.setAttribute('aria-controls', 'cw-bc-history');
+          divider.innerHTML = `<span>${bt('history')(readMsgs.length)}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+
           divider.onclick = () => {
               SoundManager.playClick();
-              isHistoryOpen = !isHistoryOpen;
-              historyContainer.style.display = isHistoryOpen ? "flex" : "none";
-              divider.querySelector('svg').style.transform = isHistoryOpen ? "rotate(180deg)" : "rotate(0deg)";
+              const aberto = divider.getAttribute('aria-expanded') === 'true';
+              divider.setAttribute('aria-expanded', String(!aberto));
+              historyContainer.style.display = aberto ? "none" : "flex";
           };
+
           feed.appendChild(divider);
           feed.appendChild(historyContainer);
       }
@@ -745,24 +849,39 @@ export function initBroadcastAssistant() {
       renderMessageList(notices.filter(m => matchesSearch(m, term)), readIds, !!availability);
   }
 
+  let cardSeq = 0;
+
   function createCard(msg, isHistory) {
-    const card = document.createElement("div");
+    const card = document.createElement("article");
     card.className = "cw-bc-card" + (isHistory ? " history" : "");
+
     const typeKey = TYPE_CONFIG[msg.type] ? msg.type : 'info';
-    const theme = TYPE_CONFIG[typeKey];
+    const titleId = `cw-bc-title-${++cardSeq}`;
+    // O card é anunciado pelo próprio título, que é a informação que
+    // identifica o aviso — sem isto, um leitor de tela lê "artigo" e nada mais.
+    card.setAttribute('aria-labelledby', titleId);
 
-    const cardHead = document.createElement("div");
-    cardHead.className = "cw-bc-card-head";
-
-    const typeLabel = document.createElement("div");
-    typeLabel.className = "cw-bc-type-tag " + typeKey;
-    typeLabel.innerHTML = `${theme.icon} <span>${bt('typeLabel')[typeKey]}</span>`;
-    cardHead.appendChild(typeLabel);
+    // Linha de contexto: tipo, data e a ação de dispensar. Uma linha só, em
+    // texto normal — não um cabeçalho com borda própria.
+    const meta = document.createElement("div");
+    meta.className = "cw-bc-card-meta";
+    meta.innerHTML = `
+        <span class="cw-bc-type">
+            <span class="cw-bc-type-dot ${typeKey}"></span>${bt('typeLabel')[typeKey]}
+        </span>
+        <span class="cw-bc-meta-sep" aria-hidden="true">·</span>
+        <span class="cw-bc-date-tag">${formatFriendlyDate(msg.date)}</span>
+    `;
 
     if (!isHistory) {
         const dismissBtn = document.createElement("button");
-        dismissBtn.className = "cw-btn-interactive cw-bc-dismiss-btn";
-        dismissBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        dismissBtn.type = "button";
+        dismissBtn.className = "cw-bc-dismiss-btn";
+        // Botão só de ícone precisa dizer o que faz, e dizer o que ACONTECE
+        // (marcar como lido) e não como parece (um check).
+        dismissBtn.setAttribute('aria-label', bt('markRead')(msg.title));
+        dismissBtn.title = bt('markReadShort');
+        dismissBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         dismissBtn.onclick = (e) => {
             e.stopPropagation();
             SoundManager.playClick();
@@ -778,33 +897,23 @@ export function initBroadcastAssistant() {
                 updateBadge();
             }, 300);
         };
-        cardHead.appendChild(dismissBtn);
-    } else {
-        const dateLabel = document.createElement("span");
-        dateLabel.className = "cw-bc-date-tag";
-        dateLabel.textContent = formatFriendlyDate(msg.date);
-        cardHead.appendChild(dateLabel);
+        meta.appendChild(dismissBtn);
     }
 
-    const bodyContainer = document.createElement("div");
-    bodyContainer.className = "cw-bc-card-content";
-
-    const title = document.createElement("div");
+    const title = document.createElement("h3");
     title.className = "cw-bc-msg-title";
+    title.id = titleId;
     title.textContent = msg.title;
 
     const text = document.createElement("div");
     text.className = "cw-bc-msg-body";
     text.innerHTML = parseMessageText(msg.text);
 
-    const meta = document.createElement("div");
-    meta.className = "cw-bc-msg-meta";
-    meta.innerHTML = `Publicado por <b>${msg.author || 'Sistema'}</b>`;
-    if (!isHistory) meta.innerHTML += ` • ${formatFriendlyDate(msg.date)}`;
+    const author = document.createElement("div");
+    author.className = "cw-bc-msg-author";
+    author.textContent = bt('publishedBy')(msg.author || bt('system'));
 
-    bodyContainer.append(title, text, meta);
-    card.append(cardHead, bodyContainer);
-
+    card.append(meta, title, text, author);
     return card;
   }
 

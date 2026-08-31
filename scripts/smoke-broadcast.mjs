@@ -364,6 +364,108 @@ const doisSegmentos = disponibilidade({
     await page.close();
 }
 
+// ------------------------------------------------ acessibilidade e registro visual
+{
+    const page = await novaPagina({
+        segmento: 'PT',
+        rodadas: [{
+            avisos: [item('msg_1', { title: 'Instabilidade', type: 'critical' })],
+            disponibilidade: disponibilidade({
+                PT: { attention: '2026-09-15', full: '2026-09-22' },
+                ES: { attention: '2026-09-18', full: '' },
+            }),
+        }],
+    });
+
+    await check('todo controle é <button> alcançável por teclado', async () => {
+        const tags = await page.evaluate(() => {
+            const p = document.querySelector('#broadcast-popup');
+            return {
+                limparBusca: p.querySelector('.cw-bc-search-clear')?.tagName,
+                dispensar: p.querySelector('.cw-bc-dismiss-btn')?.tagName,
+                troca: p.querySelector('.cw-bc-bau-swap')?.tagName,
+            };
+        });
+        igual(tags, { limparBusca: 'BUTTON', dispensar: 'BUTTON', troca: 'BUTTON' }, 'tags dos controles');
+    });
+
+    await check('botões só de ícone dizem o que fazem', async () => {
+        const rotulos = await page.evaluate(() => {
+            const p = document.querySelector('#broadcast-popup');
+            return ['.cw-bc-search-clear', '.cw-bc-dismiss-btn', '.cw-bc-bau-swap']
+                .map(sel => p.querySelector(sel)?.getAttribute('aria-label') || null);
+        });
+        rotulos.forEach((r, i) => {
+            if (!r || !r.trim()) throw new Error('controle ' + i + ' sem aria-label');
+        });
+    });
+
+    await check('ícones decorativos ficam fora da leitura de tela', async () => {
+        const expostos = await page.evaluate(() => {
+            const p = document.querySelector('#broadcast-popup');
+            // Um SVG dentro de um botão que já tem aria-label, ou solto num
+            // elemento decorativo, não deve ser anunciado por si.
+            return Array.from(p.querySelectorAll('.cw-bc-card svg, .cw-bc-bau svg, .cw-bc-search-icon svg'))
+                .filter(svg => svg.getAttribute('aria-hidden') !== 'true'
+                            && svg.closest('[aria-hidden="true"]') === null).length;
+        });
+        igual(expostos, 0, 'SVGs decorativos expostos');
+    });
+
+    await check('o card é anunciado pelo próprio título', async () => {
+        const ok = await page.evaluate(() => {
+            const card = document.querySelector('.cw-bc-card');
+            const id = card?.getAttribute('aria-labelledby');
+            return !!(card && card.tagName === 'ARTICLE' && id && card.querySelector('#' + CSS.escape(id)));
+        });
+        igual(ok, true, 'card com título associado');
+    });
+
+    await check('o status de sincronização é anunciado', async () => {
+        const live = await page.evaluate(() =>
+            document.querySelector('#cw-update-status')?.getAttribute('aria-live'));
+        igual(live, 'polite', 'aria-live do status');
+    });
+
+    await check('sem emoji no chrome do módulo', async () => {
+        // Regra do registro visual do projeto: emoji em cabeçalho, botão ou
+        // rótulo de estado lê como ferramenta interna, não como Google. O
+        // texto dos avisos em si segue livre — é conteúdo de quem publica.
+        const comEmoji = await page.evaluate(() => {
+            const p = document.querySelector('#broadcast-popup');
+            const alvos = [
+                ...p.querySelectorAll('.cw-bc-type, .cw-bc-date-tag, .cw-bc-msg-author, .cw-bc-bau-label, .cw-bc-bau-kind, .cw-bc-history-divider'),
+                document.querySelector('#cw-update-status'),
+            ].filter(Boolean);
+            const re = /\p{Extended_Pictographic}/u;
+            return alvos.filter(e => re.test(e.textContent)).map(e => e.className + ': ' + e.textContent.trim());
+        });
+        igual(comEmoji, [], 'elementos de chrome com emoji');
+    });
+
+    await check('o tipo do aviso é dito em texto, não em pílula maiúscula', async () => {
+        const t = await page.evaluate(() => {
+            const el = document.querySelector('.cw-bc-type');
+            return { texto: el?.textContent.trim(), transform: getComputedStyle(el).textTransform };
+        });
+        igual(t.texto, 'Alerta', 'rótulo do tipo');
+        igual(t.transform, 'none', 'text-transform do tipo');
+    });
+
+    await check('o histórico diz se está aberto ou fechado', async () => {
+        // Nenhum aviso lido nesta página, então o divisor não existe: o que se
+        // prova aqui é que, quando existe, ele é um botão com aria-expanded.
+        // Coberto pela página de estado de leitura mais acima.
+        const marcado = await page.evaluate(() => {
+            const d = document.querySelector('.cw-bc-history-divider');
+            return d ? (d.tagName === 'BUTTON' && d.hasAttribute('aria-expanded')) : 'ausente';
+        });
+        if (marcado !== 'ausente' && marcado !== true) throw new Error('divisor sem aria-expanded');
+    });
+
+    await page.close();
+}
+
 // ------------------------------------------------ som
 {
     const page = await novaPagina({
