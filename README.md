@@ -107,19 +107,21 @@ CI (`.github/workflows/deploy.yml`) builds and publishes automatically on every 
 
 Since there's no localhost target, "running" the app means loading the bundle in the browser via a bookmarklet. Create a browser bookmark with one of the following as its URL, then click it while on the CRM page:
 
-**Production** (bypasses CSP via `trustedTypes`, points at the GitHub Pages–hosted `bundle.js`):
+**Production** (bypasses CSP via `trustedTypes`, points at the Firebase-hosted `bundle.js`):
 
 ```javascript
-javascript:(function(){    const cacheBuster = '?t=' + new Date().getTime();    const scriptUrl = 'https://lucastdcs.github.io/case-wizard/bundle.js' + cacheBuster;        const policy = trustedTypes.createPolicy('default', {         createHTML: (string) => string,         createScriptURL: string => string,         createScript: string => string,     });    const oldScript = document.getElementById('techsol-app-bundle');    if(oldScript) oldScript.remove();        const script = document.createElement('script');    script.id = 'techsol-app-bundle';    script.src = policy.createScriptURL(scriptUrl);    document.body.appendChild(script);})();
+javascript:(function(){    const scriptUrl = 'https://cases-wizard.web.app/bundle.js';        const policy = trustedTypes.createPolicy('default', {         createHTML: (string) => string,         createScriptURL: string => string,         createScript: string => string,     });    const oldScript = document.getElementById('techsol-app-bundle');    if(oldScript) oldScript.remove();        const script = document.createElement('script');    script.id = 'techsol-app-bundle';    script.src = policy.createScriptURL(scriptUrl);    document.body.appendChild(script);})();
 ```
 
-**Development** (points at `bundle-dev.js`, logs to console):
+**Development** (points at `bundle-dev.js` on the dev site, logs to console):
 
 ```javascript
-javascript:(function(){    var s = document.createElement('script');    s.src = 'https://lucastdcs.github.io/case-wizard/bundle-dev.js?t=' + new Date().getTime();    s.onload = function() { console.log('✅ TechSol DEV carregado!'); };    s.onerror = function() { alert('❌ Erro ao carregar TechSol DEV: Arquivo não encontrado ou bloqueado.'); };    document.body.appendChild(s);})();
+javascript:(function(){    var s = document.createElement('script');    s.src = 'https://cases-wizard-dev.web.app/bundle-dev.js';    s.onload = function() { console.log('✅ TechSol DEV carregado!'); };    s.onerror = function() { alert('❌ Erro ao carregar TechSol DEV: Arquivo não encontrado ou bloqueado.'); };    document.body.appendChild(s);})();
 ```
 
-Push a change to `refactor-structure`, wait for CI to finish, then click the Dev bookmarklet again to pick it up (the cache-busting timestamp forces a fresh download each click).
+Push a change to `refactor-structure`, wait for CI to finish, then click the Dev bookmarklet again to pick it up.
+
+> **The `?t=` cache-buster is gone, on purpose.** It existed because GitHub Pages served the bundle with a fixed `max-age` and no way to override it, so the only way to guarantee a fresh copy was to make every URL unique — which forced a full ~668 KB download on every single click. Firebase lets us set the header directly: production is served with `Cache-Control: no-cache`, which means *"cache it, but revalidate"*, so a repeat click becomes a `304 Not Modified` instead of a fresh download. The dev site goes further with `no-store`. Adding `?t=` back would defeat both and make loading slower, not safer.
 
 ### 5. Backend changes (optional)
 
@@ -264,7 +266,9 @@ In practice, day-to-day work happens on `refactor-structure` (which gets both bu
 
 ### Bookmarklet does nothing / blocked by network
 
-The script depends on reaching `github.io`. If the corporate network blocks that domain, the bundle will never load — check the browser's Network tab for a blocked/failed request to `lucastdcs.github.io`.
+The script depends on reaching `web.app`. If the corporate network blocks that domain, the bundle will never load — check the browser's Network tab for a blocked/failed request to `cases-wizard.web.app` (or `cases-wizard-dev.web.app` for the Dev bookmarklet).
+
+If you are still on an older bookmarklet pointing at `lucastdcs.github.io`, that is the pre-Firebase hosting. It still answers today, but it is being retired — switch to the bookmarklets above.
 
 ### Dev bookmarklet shows old code
 

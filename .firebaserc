@@ -1,0 +1,13 @@
+{
+  "projects": {
+    "default": "cases-wizard"
+  },
+  "targets": {
+    "cases-wizard": {
+      "hosting": {
+        "prod": ["cases-wizard"],
+        "dev": ["cases-wizard-dev"]
+      }
+    }
+  }
+}
