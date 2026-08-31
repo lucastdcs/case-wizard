@@ -41,7 +41,6 @@ const BC_DICT = {
     pt: {
         headerTitle: "Central de Avisos",
         headerDesc: "Comunicação oficial da operação.",
-        clear: "Limpar",
         searchPlaceholder: "Buscar avisos…",
         clearSearch: "Limpar a busca",
         markRead: (t) => `Marcar “${t}” como lido`,
@@ -52,6 +51,13 @@ const BC_DICT = {
         attention: "atenção",
         full: "total",
         noDates: "sem datas publicadas",
+        asideLabel: "Estado da operação",
+        filtersTitle: "Filtrar por tipo",
+        filterAll: "Todos",
+        readTitle: "Leitura",
+        readCount: (n) => n === 1 ? "1 lido" : `${n} lidos`,
+        markAllRead: "Marcar tudo como lido",
+        updatedAgo: (q) => `Atualizado ${q}`,
         swapTo: (seg) => `Ver disponibilidade de ${seg}`,
         justNow: "agora",
         minutesAgo: (n) => `há ${n} min`,
@@ -68,7 +74,6 @@ const BC_DICT = {
     es: {
         headerTitle: "Central de Avisos",
         headerDesc: "Comunicación oficial de la operación.",
-        clear: "Limpiar",
         searchPlaceholder: "Buscar avisos…",
         clearSearch: "Limpiar la búsqueda",
         markRead: (t) => `Marcar “${t}” como leído`,
@@ -79,6 +84,13 @@ const BC_DICT = {
         attention: "atención",
         full: "total",
         noDates: "sin fechas publicadas",
+        asideLabel: "Estado de la operación",
+        filtersTitle: "Filtrar por tipo",
+        filterAll: "Todos",
+        readTitle: "Lectura",
+        readCount: (n) => n === 1 ? "1 leído" : `${n} leídos`,
+        markAllRead: "Marcar todo como leído",
+        updatedAgo: (q) => `Actualizado ${q}`,
         swapTo: (seg) => `Ver disponibilidad de ${seg}`,
         justNow: "ahora",
         minutesAgo: (n) => `hace ${n} min`,
@@ -137,44 +149,53 @@ function injectStyles() {
         .cw-btn-interactive:active { transform: scale(0.96); }
 
         /* --- SUPERFÍCIES ---
-           O módulo era o único do app que anulava o vidro: sobrescrevia o
-           backgroundColor translúcido de stylePopup por #FAFAFA opaco, e
-           empilhava um feed #F8F9FA e cards #FFFFFF por cima. Três camadas
-           opacas dentro de um contêiner que existe para ser translúcido.
-           Agora segue o mesmo tratamento da Biblioteca Pessoal, que é a
-           referência da casa. */
+           O vidro precisa de um chão. A versão anterior empilhava card branco
+           translúcido sobre um popup branco quase sólido, com borda de realce
+           branca — medido, a borda dava contraste 1.00 (invisível) e o card não
+           se separava do fundo. Era o "tudo branco junto" que tornava a leitura
+           difícil.
+
+           A janela SEGUE translúcida (o backgroundColor de stylePopup não é
+           sobrescrito). O fundo ambiente vai na área de conteúdo, aqui dentro:
+           assim o módulo continua sendo um painel de vidro sobre o CRM, e os
+           cards passam a ter sobre o que flutuar. */
+        /* O contexto de container fica na JANELA, não no corpo. Um elemento não
+           pode ser estilizado pela própria container query: com o
+           container-type aqui no .cw-bc-body, a regra que troca o
+           flex-direction dele mais abaixo simplesmente não valia, e encolher a
+           janela espremia o feed a uma coluna de um caractere. */
+        #broadcast-popup { container-type: inline-size; container-name: cwbc; }
+        .cw-bc-body {
+            flex: 1; min-height: 0; display: flex; gap: 0;
+            background: linear-gradient(160deg, #E1E7EF 0%, #EFF2F7 55%, #E6EBF2 100%);
+        }
 
         /* --- BUSCA --- */
-        /* padding vertical simétrico é o que importa aqui: os ícones são
-           posicionados com top:50% relativo à caixa do wrap, que inclui o
-           padding. Com padding-top/bottom diferentes, os 50% do wrap não batem
-           com o centro vertical real do input. */
         /* O padding e o posicionamento dos ícones ficam em elementos
            DIFERENTES de propósito. Quando estavam no mesmo, o top:50% dos
            ícones era relativo à caixa com padding, não ao input — e qualquer
            padding vertical assimétrico os jogava fora do centro. Foi um bug
            real duas vezes neste arquivo; separar resolve por construção. */
-        .cw-bc-search-wrap { padding: 16px 24px 8px 24px; flex-shrink: 0; background: transparent; }
+        .cw-bc-search-wrap { padding: 14px 20px; flex-shrink: 0; background: rgba(255,255,255,0.55); border-bottom: 1px solid rgba(0,0,0,0.07); }
         .cw-bc-search-field { position: relative; display: flex; }
-        .cw-bc-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #80868b; pointer-events: none; display: flex; }
+        .cw-bc-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #5f6368; pointer-events: none; display: flex; }
         .cw-bc-search-input {
             width: 100%; box-sizing: border-box; height: 38px; padding: 0 36px;
-            border-radius: 12px; border: 1px solid transparent;
-            background: rgba(255,255,255,0.75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border-radius: 10px; border: 1px solid rgba(0,0,0,0.10);
+            background: rgba(255,255,255,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             font-size: 13px; font-family: 'Google Sans', Roboto, sans-serif; color: #202124; outline: none;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
             transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
-        .cw-bc-search-input::placeholder { color: #9aa0a6; }
+        .cw-bc-search-input::placeholder { color: #70757a; }
         .cw-bc-search-input:focus { background: #fff; border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.14); }
         .cw-bc-search-clear {
             position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
             width: 22px; height: 22px; padding: 0; border: none; border-radius: 50%; display: none;
-            align-items: center; justify-content: center; color: #80868b; cursor: pointer;
+            align-items: center; justify-content: center; color: #5f6368; cursor: pointer;
             background: transparent; touch-action: manipulation;
             transition: background-color 0.15s ease, color 0.15s ease;
         }
-        .cw-bc-search-clear:hover { background: rgba(0,0,0,0.06); color: #202124; }
+        .cw-bc-search-clear:hover { background: rgba(0,0,0,0.08); color: #202124; }
         .cw-bc-search-clear.visible { display: flex; }
 
         /* --- FEED --- */
@@ -182,37 +203,41 @@ function injectStyles() {
            sem isto chegar ao fim dele passa a rolagem para a página do CRM
            atrás. */
         .cw-bc-feed {
-            padding: 8px 24px 80px 24px; overflow-y: auto; overscroll-behavior: contain;
-            flex-grow: 1; background: transparent;
-            display: flex; flex-direction: column; gap: 16px;
+            padding: 16px 20px 72px 20px; overflow-y: auto; overscroll-behavior: contain;
+            flex: 1; min-width: 0;
+            display: flex; flex-direction: column; gap: 12px;
         }
 
         /* Um contêiner por aviso, e só um. A versão anterior era caixa dentro
            de caixa: o card tinha borda e sombra, o cabeçalho tinha outra borda
            embaixo, e o rodapé de ações tinha fundo próprio. A hierarquia agora
-           vem de tipografia e espaço, que é como o Material resolve. */
+           vem de tipografia e espaço, que é como o Material resolve.
+
+           As duas arestas são o que faz o vidro ler: hairline escura por fora
+           para separar do fundo, realce branco por dentro para o painel ter
+           volume. Só a de dentro, sobre fundo claro, não separa nada. */
         .cw-bc-card {
-            background: rgba(255,255,255,0.68); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            border: 1px solid rgba(255,255,255,0.5); border-radius: 16px;
-            box-shadow: 0 1px 3px rgba(60,64,67,0.08);
-            padding: 16px; width: 100%; box-sizing: border-box; flex-shrink: 0;
-            display: flex; flex-direction: column; gap: 8px;
+            background: rgba(255,255,255,0.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(0,0,0,0.12); border-radius: 14px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 3px rgba(60,64,67,0.14);
+            padding: 14px 16px; width: 100%; box-sizing: border-box; flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 6px;
             transition: opacity 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
         }
-        .cw-bc-card.history { box-shadow: none; opacity: 0.62; filter: grayscale(0.8); }
+        .cw-bc-card.history { box-shadow: none; opacity: 0.72; background: rgba(255,255,255,0.5); }
 
         .cw-bc-card-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
         /* O tipo do aviso é dito em texto normal, com um ponto na cor
            semântica. Era uma pílula em caixa alta sobre fundo colorido, que lê
            como selo decorativo — e disputava com o título a primeira leitura
            do card, sendo a informação menos importante dos dois. */
-        .cw-bc-type { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #5f6368; white-space: nowrap; }
+        .cw-bc-type { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #444746; white-space: nowrap; }
         .cw-bc-type-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-        .cw-bc-type-dot.critical { background: #D93025; }
+        .cw-bc-type-dot.critical { background: #C5221F; }
         .cw-bc-type-dot.info { background: #1A73E8; }
-        .cw-bc-type-dot.success { background: #1E8E3E; }
-        .cw-bc-meta-sep { color: #BDC1C6; font-size: 12px; }
-        .cw-bc-date-tag { font-size: 12px; color: #80868b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .cw-bc-type-dot.success { background: #188038; }
+        .cw-bc-meta-sep { color: #9aa0a6; font-size: 12px; }
+        .cw-bc-date-tag { font-size: 12px; color: #5f6368; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
         .cw-bc-msg-title { font-size: 15px; font-weight: 600; color: #202124; line-height: 1.35; margin: 0; text-wrap: pretty; }
         .cw-bc-msg-body { font-size: 13.5px; color: #3c4043; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -220,30 +245,137 @@ function injectStyles() {
            tanto nos cards quanto na nota da faixa de disponibilidade. */
         .cw-bc-link { color: #1967d2; text-decoration: none; font-weight: 500; }
         .cw-bc-link:hover { text-decoration: underline; }
-        .cw-bc-msg-author { font-size: 11px; color: #9aa0a6; }
+        .cw-bc-msg-author { font-size: 11px; color: #5f6368; }
 
         .cw-bc-dismiss-btn {
-            width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1);
-            background: rgba(255,255,255,0.6); color: #5f6368; cursor: pointer; flex-shrink: 0;
+            width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.12);
+            background: rgba(255,255,255,0.7); color: #444746; cursor: pointer; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center; margin-left: auto;
             padding: 0; touch-action: manipulation;
             transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
         }
-        .cw-bc-dismiss-btn:hover { color: #1e8e3e; background: #e6f4ea; border-color: #1e8e3e; }
+        .cw-bc-dismiss-btn:hover { color: #137333; background: #e6f4ea; border-color: #137333; }
 
-        .cw-bc-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 0; color: #BDC1C6; gap: 16px; text-align: center; }
+        .cw-bc-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 16px; color: #5f6368; gap: 14px; text-align: center; font-size: 13px; }
+        .cw-bc-empty svg { color: #9aa0a6; }
 
-        .cw-bc-history-divider {
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            margin: 8px 0; padding: 8px 16px; border: none; border-radius: 100px;
-            cursor: pointer; color: #1a73e8; font-size: 13px; font-weight: 500;
-            font-family: inherit; background: rgba(26,115,232,0.10); touch-action: manipulation;
-            align-self: center; transition: background-color 0.2s ease;
+        .cw-bc-history-container { display: none; flex-direction: column; gap: 12px; }
+
+        /* --- ASIDE ---
+           O que é ESTADO fica aqui; o que é FLUXO fica no feed. A
+           disponibilidade BAU era uma faixa fixa em cima da lista, empurrando
+           os avisos para baixo em toda abertura — estado ocupando o lugar do
+           fluxo. Junto com ela vieram os filtros, o histórico e o estado de
+           sincronização, que também são estado e também estavam espalhados
+           dentro do feed. */
+        .cw-bc-aside {
+            width: 264px; flex-shrink: 0; overflow-y: auto; overscroll-behavior: contain;
+            padding: 16px 16px 72px 0;
+            display: flex; flex-direction: column; gap: 12px;
         }
-        .cw-bc-history-divider:hover { background: rgba(26,115,232,0.18); }
-        .cw-bc-history-divider svg { transition: transform 0.25s ease; }
+        /* A janela é redimensionável. Abaixo de 620px as duas colunas ficariam
+           espremidas, então o aside passa para cima do feed, em linha. */
+        @container cwbc (max-width: 620px) {
+            .cw-bc-body { flex-direction: column-reverse; }
+            .cw-bc-aside {
+                width: auto; padding: 12px 20px 0 20px; overflow: visible;
+                flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 8px;
+            }
+            /* align-items: flex-start acima, senão os painéis esticam para a
+               altura da linha e viram três retângulos vazios. */
+            .cw-bc-aside .cw-bc-panel { flex: 1 1 200px; }
+            .cw-bc-feed { padding-top: 12px; }
+        }
+
+        .cw-bc-panel {
+            background: rgba(255,255,255,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,0,0,0.11); border-radius: 12px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+            padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;
+        }
+        .cw-bc-panel-title {
+            font-size: 11px; font-weight: 600; color: #444746;
+            letter-spacing: 0.3px;
+        }
+
+        /* --- Disponibilidade BAU (agora um item do aside) --- */
+        .cw-bc-bau-top { display: flex; align-items: center; gap: 8px; }
+        /* O contorno de 1px existe para a faixa amarela da bandeira da Espanha
+           e o verde claro da do Brasil não encostarem no fundo claro. */
+        .cw-bc-bau-flag { width: 16px; height: 11px; border-radius: 1px; box-shadow: 0 0 0 1px rgba(0,0,0,0.25); flex-shrink: 0; display: block; }
+        .cw-bc-bau-label { font-size: 12px; font-weight: 600; color: #202124; white-space: nowrap; }
+        .cw-bc-bau-seg { font-size: 11px; color: #5f6368; }
+        .cw-bc-bau-swap {
+            width: 26px; height: 26px; border-radius: 50%; border: none; padding: 0;
+            background: transparent; color: #5f6368; cursor: pointer; flex-shrink: 0;
+            margin-left: auto;
+            display: flex; align-items: center; justify-content: center;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .cw-bc-bau-swap:hover { background: rgba(0,0,0,0.07); color: #202124; }
+        .cw-bc-bau-dates { display: flex; flex-direction: column; gap: 6px; }
+        .cw-bc-bau-date { display: flex; align-items: center; gap: 7px; }
+        .cw-bc-bau-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .cw-bc-bau-date.attention .cw-bc-bau-dot { background: #B06000; }
+        .cw-bc-bau-date.full .cw-bc-bau-dot { background: #137333; }
+        .cw-bc-bau-kind { font-size: 11.5px; color: #5f6368; flex: 1; }
+        /* tabular-nums para as datas não dançarem de largura entre um poll e
+           outro (o "1" é mais estreito que os outros dígitos em Google Sans). */
+        .cw-bc-bau-value { font-size: 14px; font-weight: 600; color: #202124; font-variant-numeric: tabular-nums; }
+        .cw-bc-bau-empty { font-size: 12px; color: #5f6368; }
+        .cw-bc-bau-note { font-size: 11.5px; line-height: 1.45; color: #5f6368; }
+
+        /* --- Filtros por tipo ---
+           A contagem não muda com a busca de propósito: um número que dança
+           enquanto se digita não serve para nada. Ela conta os avisos do
+           segmento; a busca estreita o que aparece, não o que existe. */
+        .cw-bc-filters { display: flex; flex-direction: column; gap: 2px; }
+        .cw-bc-filter {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 7px 8px; border: none; border-radius: 8px; cursor: pointer;
+            background: transparent; font-family: inherit; font-size: 12.5px; color: #3c4043;
+            text-align: left; touch-action: manipulation;
+            transition: background-color 0.15s ease;
+        }
+        .cw-bc-filter:hover { background: rgba(0,0,0,0.055); }
+        .cw-bc-filter[aria-pressed="true"] { background: #E8F0FE; color: #1967d2; font-weight: 600; }
+        .cw-bc-filter-count { margin-left: auto; font-size: 12px; color: #5f6368; font-variant-numeric: tabular-nums; }
+        .cw-bc-filter[aria-pressed="true"] .cw-bc-filter-count { color: #1967d2; }
+
+        /* --- Histórico, limpar e sincronização --- */
+        .cw-bc-history-divider {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 7px 8px; border: none; border-radius: 8px; cursor: pointer;
+            background: transparent; font-family: inherit; font-size: 12.5px; color: #3c4043;
+            text-align: left; touch-action: manipulation; transition: background-color 0.15s ease;
+        }
+        .cw-bc-history-divider:hover { background: rgba(0,0,0,0.055); }
+        .cw-bc-history-divider svg { margin-left: auto; transition: transform 0.25s ease; color: #5f6368; }
+        .cw-bc-history-divider[aria-expanded="true"] { background: #E8F0FE; color: #1967d2; font-weight: 600; }
         .cw-bc-history-divider[aria-expanded="true"] svg { transform: rotate(180deg); }
-        .cw-bc-history-container { display: none; flex-direction: column; gap: 16px; }
+
+        .cw-bc-clear-btn {
+            border: none; background: transparent; color: #1967d2; cursor: pointer;
+            font-family: inherit; font-size: 12.5px; font-weight: 500;
+            padding: 7px 8px; border-radius: 8px; text-align: left; touch-action: manipulation;
+            transition: background-color 0.15s ease;
+        }
+        .cw-bc-clear-btn:hover { background: rgba(26,115,232,0.10); }
+        .cw-bc-clear-btn:disabled { color: #70757a; cursor: default; background: transparent; }
+
+        /* O texto "Sincronizando" morava numa faixa no topo do feed, que
+           aparecia e sumia empurrando a lista inteira. Virou um ponto fixo no
+           aside: gira enquanto busca, e fora disso diz quando foi a última vez. */
+        .cw-bc-sync { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #5f6368; }
+        .cw-bc-sync.offline { color: #9A5400; }
+        .cw-bc-spinner {
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; box-sizing: border-box;
+            border: 2px solid rgba(0,0,0,0.14); border-top-color: #1a73e8;
+            animation: cw-bc-spin 0.7s linear infinite;
+        }
+        @keyframes cw-bc-spin { to { transform: rotate(360deg); } }
+        .cw-bc-sync-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #137333; }
+        .cw-bc-sync.offline .cw-bc-sync-dot { background: #9A5400; }
 
         /* --- FOCO ---
            Uma regra só, para todo controle do módulo. Antes nenhum tinha foco
@@ -252,56 +384,16 @@ function injectStyles() {
         .cw-bc-search-clear:focus-visible,
         .cw-bc-dismiss-btn:focus-visible,
         .cw-bc-history-divider:focus-visible,
+        .cw-bc-filter:focus-visible,
+        .cw-bc-clear-btn:focus-visible,
         .cw-bc-bau-swap:focus-visible {
             outline: 2px solid #1a73e8;
             outline-offset: 2px;
         }
 
-        /* --- FAIXA DE DISPONIBILIDADE BAU ---
-           Papel secundário, e o visual precisa dizer isso. A versão anterior
-           usava uma paleta roxa própria (#F3E8FD / #9333EA), sombra colorida e
-           um ponto pulsando sem parar — três recursos de destaque numa coisa
-           que não deve competir com os avisos. Fora que roxo não existe na
-           paleta do resto do app.
-
-           Agora é uma faixa clara com hairline, sem sombra e sem animação. A
-           cor sobrou só onde carrega significado: laranja para a data de
-           atenção (a mais próxima, com folga apertada) e verde para a de
-           disponibilidade total. */
-        .cw-bc-bau {
-            margin: 12px 24px 0 24px; padding: 12px 14px;
-            background: #FFFFFF; border: 1px solid #DADCE0; border-radius: 8px;
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        .cw-bc-bau-top { display: flex; align-items: center; gap: 8px; }
-        /* O contorno de 1px existe para a faixa amarela da bandeira da Espanha
-           e o verde claro da do Brasil não encostarem no branco do cartão. */
-        .cw-bc-bau-flag { width: 16px; height: 11px; border-radius: 1px; box-shadow: 0 0 0 1px rgba(0,0,0,0.18); flex-shrink: 0; display: block; }
-        .cw-bc-bau-label { font-size: 12px; font-weight: 500; color: #202124; white-space: nowrap; }
-        .cw-bc-bau-seg { font-size: 11px; color: #5f6368; }
-        .cw-bc-bau-time { font-size: 11px; color: #80868b; margin-left: auto; white-space: nowrap; }
-        .cw-bc-bau-swap {
-            width: 26px; height: 26px; border-radius: 50%; border: none; padding: 0;
-            background: transparent; color: #5f6368; cursor: pointer; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            transition: background-color 0.15s ease, color 0.15s ease;
-        }
-        .cw-bc-bau-swap:hover { background: #F1F3F4; color: #202124; }
-        .cw-bc-bau-swap:focus-visible { outline: 2px solid #1a73e8; outline-offset: 1px; }
-        .cw-bc-bau-dates { display: flex; gap: 20px; flex-wrap: wrap; }
-        .cw-bc-bau-date { display: flex; align-items: center; gap: 6px; }
-        .cw-bc-bau-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-        .cw-bc-bau-date.attention .cw-bc-bau-dot { background: #B06000; }
-        .cw-bc-bau-date.full .cw-bc-bau-dot { background: #137333; }
-        .cw-bc-bau-kind { font-size: 11px; color: #5f6368; }
-        /* tabular-nums para as datas não dançarem de largura entre um poll e
-           outro (o "1" é mais estreito que os outros dígitos em Google Sans). */
-        .cw-bc-bau-value { font-size: 13px; font-weight: 500; color: #202124; font-variant-numeric: tabular-nums; }
-        .cw-bc-bau-empty { font-size: 12px; color: #80868b; }
-        .cw-bc-bau-note { font-size: 12px; line-height: 1.45; color: #5f6368; }
-
         @media (prefers-reduced-motion: reduce) {
-            .cw-bc-card, .cw-bc-bau {
+            .cw-bc-spinner { animation: none; border-top-color: rgba(0,0,0,0.14); }
+            .cw-bc-card {
                 transition: opacity 0.15s ease !important;
                 transform: none !important;
             }
@@ -474,6 +566,11 @@ export function initBroadcastAssistant() {
   // novo, sem depender de lembrar que deixou o swap ligado.
   let shownSegment = null;
 
+  // Tipo selecionado nos filtros do aside. null = todos.
+  let activeType = null;
+  // Histórico (avisos já lidos) aberto no feed. O controle vive no aside.
+  let historyOpen = false;
+
   let notices = [];
   let availability = null;
 
@@ -484,6 +581,10 @@ export function initBroadcastAssistant() {
   let knownNoticeIds = null;
   let knownAvailabilityStamp = null;
 
+  // Quando a Central respondeu pela última vez. Alimenta a linha de
+  // sincronização do aside ("Atualizado há 2 min").
+  let lastSyncAt = null;
+
   injectStyles();
 
   // --- UI SETUP ---
@@ -491,7 +592,11 @@ export function initBroadcastAssistant() {
   popup.id = "broadcast-popup";
   popup.classList.add("cw-module-window");
   Object.assign(popup.style, stylePopup, {
-    right: "auto", left: "50%", width: "420px", height: "680px",
+    // 760 e não 420: a 420 o texto de um aviso quebrava em ~45 caracteres,
+    // estreito demais para leitura corrida, e não havia onde pôr o estado
+    // (disponibilidade, filtros, histórico) sem empurrar a lista para baixo.
+    // Agora são duas colunas — feed com ~70 caracteres de medida, e o aside.
+    right: "auto", left: "50%", width: "760px", height: "680px",
     display: "flex", flexDirection: "column", transform: "translateX(-50%) scale(0.05)",
     overflow: "hidden"
     // Sem backgroundColor aqui de propósito: o de stylePopup é translúcido
@@ -509,6 +614,8 @@ export function initBroadcastAssistant() {
       const btn = document.getElementById("cw-btn-broadcast");
       if (btn) btn.classList.remove("has-new");
       shownSegment = null;
+      activeType = null;
+      historyOpen = false;
       checkForUpdates();
     } else {
       unlockBodyScroll();
@@ -520,28 +627,10 @@ export function initBroadcastAssistant() {
     animRefs, () => toggleVisibility()
   );
   const headerTitleEl = header.querySelector('span');
-  const actionContainer = header.querySelector('.cw-header-actions') || header.lastElementChild;
-
-  // Botão Limpar
-  if (actionContainer) {
-      const markAll = document.createElement("button");
-      markAll.type = "button";
-      markAll.textContent = bt('clear');
-      markAll.className = "cw-btn-interactive";
-      Object.assign(markAll.style, { fontSize: "12px", color: "#1a73e8", background: "transparent", border: "none", padding: "8px", fontWeight: "600" });
-      markAll.onclick = (e) => {
-          e.stopPropagation();
-          SoundManager.playSuccess();
-          writeReadIds(notices.map(m => m.id));
-          renderFeed();
-          updateBadge();
-      };
-      actionContainer.insertBefore(markAll, actionContainer.firstChild);
-  }
 
   popup.appendChild(header);
 
-  // --- BUSCA ---
+  // --- BUSCA (largura inteira, acima das duas colunas) ---
   const searchWrap = document.createElement("div");
   searchWrap.className = "cw-bc-search-wrap";
   const searchIcon = document.createElement("div");
@@ -563,6 +652,7 @@ export function initBroadcastAssistant() {
   searchClear.className = "cw-bc-search-clear";
   searchClear.setAttribute('aria-label', bt('clearSearch'));
   searchClear.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+
   const searchField = document.createElement("div");
   searchField.className = "cw-bc-search-field";
   searchField.append(searchIcon, searchInput, searchClear);
@@ -582,31 +672,67 @@ export function initBroadcastAssistant() {
       searchInput.focus();
   };
 
-  // --- ELEMENTO DE STATUS (FIXO NO TOPO) ---
-  const statusEl = document.createElement('div');
-  statusEl.id = 'cw-update-status';
-  // O texto muda sozinho quando o poll responde; sem aria-live um leitor de
-  // tela nunca fica sabendo que sincronizou nem que caiu a conexão.
-  statusEl.setAttribute('role', 'status');
-  statusEl.setAttribute('aria-live', 'polite');
-  statusEl.style.cssText = "padding: 6px 24px; text-align: center; font-size: 11px; color: #5f6368; font-weight:500; display:none;";
-  popup.appendChild(statusEl);
+  // --- CORPO: feed (fluxo) + aside (estado) ---
+  const body = document.createElement("div");
+  body.className = "cw-bc-body";
+  popup.appendChild(body);
 
   const feed = document.createElement("div");
   feed.className = "cw-nice-scroll cw-bc-feed";
   feed.setAttribute('role', 'feed');
   feed.setAttribute('aria-label', bt('headerTitle'));
-  popup.appendChild(feed);
+  body.appendChild(feed);
+
+  const aside = document.createElement("aside");
+  aside.className = "cw-nice-scroll cw-bc-aside";
+  aside.setAttribute('aria-label', bt('asideLabel'));
+  body.appendChild(aside);
+
+  // Painel da disponibilidade. Fica escondido enquanto não houver nada
+  // publicado — um painel vazio no aside seria só um buraco.
+  const bauPanel = document.createElement("div");
+  bauPanel.id = "cw-bau-widget";
+  bauPanel.className = "cw-bc-panel";
+  bauPanel.style.display = "none";
+  aside.appendChild(bauPanel);
+
+  const filtersPanel = document.createElement("div");
+  filtersPanel.className = "cw-bc-panel";
+  aside.appendChild(filtersPanel);
+
+  const readPanel = document.createElement("div");
+  readPanel.className = "cw-bc-panel";
+  aside.appendChild(readPanel);
+
+  // Estado da sincronização. Mantém o id e os atributos que já existiam: o
+  // texto muda sozinho quando o poll responde, e sem aria-live um leitor de
+  // tela nunca fica sabendo que sincronizou nem que caiu a conexão.
+  const statusEl = document.createElement('div');
+  statusEl.id = 'cw-update-status';
+  statusEl.className = 'cw-bc-sync';
+  statusEl.setAttribute('role', 'status');
+  statusEl.setAttribute('aria-live', 'polite');
+  aside.appendChild(statusEl);
+
+  function renderSync({ syncing = false, online = true } = {}) {
+      statusEl.classList.toggle('offline', !syncing && !online);
+      if (syncing) {
+          statusEl.innerHTML = `<span class="cw-bc-spinner" aria-hidden="true"></span><span>${bt('syncing')}</span>`;
+          return;
+      }
+      const quando = lastSyncAt ? formatRelative(lastSyncAt) : '';
+      const texto = online
+          ? (quando ? bt('updatedAgo')(quando) : bt('updated'))
+          : bt('offline');
+      statusEl.innerHTML = `<span class="cw-bc-sync-dot" aria-hidden="true"></span><span>${texto}</span>`;
+  }
 
   // --- CARGA ---
 
   // Nunca lança: API fora do ar não pode apagar o que o agente já tinha na
   // tela. Devolve true se conseguiu falar com a Central nesta rodada.
   async function checkForUpdates() {
-      if (visible) {
-          statusEl.style.display = 'block';
-          statusEl.textContent = bt('syncing');
-      }
+      renderSync({ syncing: true });
 
       let online = true;
       const segment = getAgentSegment();
@@ -635,6 +761,8 @@ export function initBroadcastAssistant() {
           online = false;
       }
 
+      if (online) lastSyncAt = new Date().toISOString();
+
       announceNews();
       updateBadge();
 
@@ -645,13 +773,7 @@ export function initBroadcastAssistant() {
       // pintado é um punhado de nós de DOM a cada 60s; o benefício é o módulo
       // abrir já certo, sem piscar o estado velho.
       renderFeed();
-
-      // O texto de status, esse sim, só faz sentido para quem está olhando.
-      if (visible) {
-          statusEl.textContent = online ? bt('updated') : bt('offline');
-          statusEl.style.color = online ? '#137333' : '#B06000';
-          if (online) setTimeout(() => { statusEl.style.display = 'none'; }, 1500);
-      }
+      renderSync({ online });
   }
 
   // Toca só quando algo novo e não lido chega num poll em segundo plano
@@ -707,27 +829,26 @@ export function initBroadcastAssistant() {
       }
   }
 
-  function matchesSearch(msg, term) {
-      if (!term) return true;
-      const haystack = `${msg.title || ""} ${msg.text || ""}`.toLowerCase();
-      return haystack.includes(term);
-  }
-
   // --- RENDER ---
 
-  // Faixa de disponibilidade, logo abaixo do status. Nunca é filtrada pela
-  // busca: é estado operacional fixo, não uma mensagem para procurar.
+  // --- ASIDE: disponibilidade ---
   //
   // Mostra UM segmento por vez — o que a pessoa atende — porque é a resposta
   // que ela precisa em 99% das vezes. O outro fica a um clique no botão de
   // troca, para quem eventualmente cobre os dois.
-  function renderBauWidget() {
-      const old = popup.querySelector('#cw-bau-widget');
-      if (old) old.remove();
-      if (!availability) return;
+  function renderBauPanel() {
+      if (!availability) {
+          bauPanel.style.display = "none";
+          bauPanel.innerHTML = "";
+          return;
+      }
 
       const codes = Object.keys(SEGMENTS).filter(c => availability.segments[c]);
-      if (!codes.length) return;
+      if (!codes.length) {
+          bauPanel.style.display = "none";
+          bauPanel.innerHTML = "";
+          return;
+      }
 
       // Sem escolha explícita, mostra o segmento do agente. Se ele não tem
       // disponibilidade publicada, cai no primeiro que tiver — melhor mostrar
@@ -739,16 +860,16 @@ export function initBroadcastAssistant() {
       const seg = SEGMENTS[preferido];
       const datas = availability.segments[preferido] || {};
 
-      const chip = (kind, iso) => `
+      const linha = (kind, iso) => `
           <span class="cw-bc-bau-date ${kind}">
               <span class="cw-bc-bau-dot"></span>
               <span class="cw-bc-bau-kind">${bt(kind)}</span>
               <span class="cw-bc-bau-value">${formatShortDate(iso)}</span>
           </span>`;
 
-      const chips = [
-          datas.attention ? chip('attention', datas.attention) : '',
-          datas.full ? chip('full', datas.full) : ''
+      const linhas = [
+          datas.attention ? linha('attention', datas.attention) : '',
+          datas.full ? linha('full', datas.full) : ''
       ].join('');
 
       // O botão de troca só existe quando há de fato outro segmento para ver.
@@ -759,94 +880,107 @@ export function initBroadcastAssistant() {
                      title="${bt('swapTo')(SEGMENTS[outro].label)}">${SWAP_ICON}</button>`
           : '';
 
-      const widget = document.createElement("div");
-      widget.id = "cw-bau-widget";
-      widget.className = "cw-bc-bau";
-      widget.innerHTML = `
+      bauPanel.style.display = "flex";
+      bauPanel.innerHTML = `
           <div class="cw-bc-bau-top">
               ${seg.flag}
               <span class="cw-bc-bau-label">${bt('bauAvailability')}</span>
               <span class="cw-bc-bau-seg">${seg.label}</span>
-              <span class="cw-bc-bau-time">${formatRelative(availability.updatedAt)}</span>
               ${swapHTML}
           </div>
           <div class="cw-bc-bau-dates">
-              ${chips || `<span class="cw-bc-bau-empty">${bt('noDates')}</span>`}
+              ${linhas || `<span class="cw-bc-bau-empty">${bt('noDates')}</span>`}
           </div>
           ${availability.note ? `<div class="cw-bc-bau-note">${parseMessageText(availability.note)}</div>` : ''}
       `;
 
-      statusEl.after(widget);
-
-      const swapBtn = widget.querySelector('.cw-bc-bau-swap');
+      const swapBtn = bauPanel.querySelector('.cw-bc-bau-swap');
       if (swapBtn) {
           swapBtn.onclick = () => {
               shownSegment = outro;
               SoundManager.playClick();
-              renderBauWidget();
+              renderBauPanel();
           };
       }
   }
 
-  // Lista de não-lidos + histórico colapsável de lidos.
-  function renderMessageList(messages, readIds, hasBauWidget) {
-      const isSearching = searchTerm.trim().length > 0;
+  // --- ASIDE: filtros por tipo ---
+  //
+  // A contagem é sobre os avisos do segmento, e NÃO é afetada pela busca: um
+  // número que muda enquanto se digita não serve de panorama. A busca estreita
+  // o que aparece no feed, não o que existe.
+  function renderFiltersPanel() {
+      const contagem = { critical: 0, info: 0, success: 0 };
+      notices.forEach(n => { contagem[n.type] = (contagem[n.type] || 0) + 1; });
 
-      if (messages.length === 0 && !hasBauWidget) {
-           const empty = document.createElement("div");
-           empty.className = "cw-bc-empty";
-           empty.innerHTML = isSearching
-               ? `<div style="font-weight:500;">${bt('nothingFound')}</div>`
-               : `
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>
-                <div style="font-weight:500;">${bt('allRead')}</div>
-               `;
-           feed.appendChild(empty);
-           return;
-      }
+      const linha = (tipo, rotulo, n) => `
+          <button class="cw-bc-filter" type="button" data-tipo="${tipo}"
+                  aria-pressed="${activeType === tipo}">
+              ${tipo === 'all' ? '' : `<span class="cw-bc-type-dot ${tipo}"></span>`}
+              <span>${rotulo}</span>
+              <span class="cw-bc-filter-count">${n}</span>
+          </button>`;
 
-      const unreadMsgs = messages.filter(m => !readIds.includes(m.id));
-      const readMsgs = messages.filter(m => readIds.includes(m.id));
+      filtersPanel.innerHTML = `
+          <div class="cw-bc-panel-title">${bt('filtersTitle')}</div>
+          <div class="cw-bc-filters">
+              ${linha('all', bt('filterAll'), notices.length)}
+              ${Object.keys(contagem).map(t => linha(t, bt('typeLabel')[t], contagem[t])).join('')}
+          </div>
+      `;
 
-      unreadMsgs.forEach(msg => feed.appendChild(createCard(msg, false)));
-
-      if (readMsgs.length > 0) {
-          const historyContainer = document.createElement("div");
-          historyContainer.className = "cw-bc-history-container";
-          historyContainer.id = "cw-bc-history";
-          readMsgs.forEach(msg => historyContainer.appendChild(createCard(msg, true)));
-
-          // <button> e não <div>: é um controle que abre e fecha uma região, e
-          // como tal precisa ser alcançável por teclado e dizer em que estado
-          // está. A rotação da seta é do CSS, atrelada ao aria-expanded, para
-          // não existirem duas fontes de verdade para "está aberto?".
-          const divider = document.createElement("button");
-          divider.type = "button";
-          divider.className = "cw-bc-history-divider";
-          divider.setAttribute('aria-expanded', 'false');
-          divider.setAttribute('aria-controls', 'cw-bc-history');
-          divider.innerHTML = `<span>${bt('history')(readMsgs.length)}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
-
-          divider.onclick = () => {
+      filtersPanel.querySelectorAll('.cw-bc-filter').forEach(btn => {
+          btn.onclick = () => {
+              const tipo = btn.dataset.tipo;
+              // Clicar no filtro já ativo o desliga: sair de um filtro não deve
+              // exigir achar o "Todos".
+              activeType = (tipo === 'all' || tipo === activeType) ? null : tipo;
               SoundManager.playClick();
-              const aberto = divider.getAttribute('aria-expanded') === 'true';
-              divider.setAttribute('aria-expanded', String(!aberto));
-              historyContainer.style.display = aberto ? "none" : "flex";
+              renderFeed();
           };
+      });
 
-          feed.appendChild(divider);
-          feed.appendChild(historyContainer);
-      }
+      // "Todos" fica marcado quando não há filtro nenhum.
+      const todos = filtersPanel.querySelector('[data-tipo="all"]');
+      if (todos) todos.setAttribute('aria-pressed', String(activeType === null));
   }
 
-  function renderFeed() {
-      feed.innerHTML = "";
-
-      renderBauWidget();
-
+  // --- ASIDE: lidos ---
+  //
+  // O divisor de histórico morava dentro do feed, entre os cards. Aqui ele é
+  // estado ("12 lidos") e um controle, que é o que sempre foi. O botão de
+  // marcar tudo como lido veio do cabeçalho para junto dele, que é onde
+  // pertence semanticamente.
+  function renderReadPanel() {
       const readIds = readReadIds();
-      const term = searchTerm.trim().toLowerCase();
-      renderMessageList(notices.filter(m => matchesSearch(m, term)), readIds, !!availability);
+      const lidos = notices.filter(m => readIds.includes(m.id)).length;
+      const naoLidos = notices.length - lidos;
+
+      readPanel.innerHTML = `
+          <div class="cw-bc-panel-title">${bt('readTitle')}</div>
+          <button class="cw-bc-history-divider" type="button"
+                  aria-expanded="${historyOpen}" aria-controls="cw-bc-history">
+              <span>${bt('readCount')(lidos)}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <button class="cw-bc-clear-btn" type="button" ${naoLidos ? '' : 'disabled'}>
+              ${bt('markAllRead')}
+          </button>
+      `;
+
+      readPanel.querySelector('.cw-bc-history-divider').onclick = () => {
+          SoundManager.playClick();
+          historyOpen = !historyOpen;
+          renderFeed();
+      };
+
+      readPanel.querySelector('.cw-bc-clear-btn').onclick = () => {
+          if (!naoLidos) return;
+          SoundManager.playSuccess();
+          writeReadIds(notices.map(m => m.id));
+          renderFeed();
+          updateBadge();
+      };
   }
 
   let cardSeq = 0;
@@ -917,6 +1051,57 @@ export function initBroadcastAssistant() {
     return card;
   }
 
+  function matchesFilters(msg, term) {
+      if (activeType && msg.type !== activeType) return false;
+      if (!term) return true;
+      const haystack = `${msg.title || ""} ${msg.text || ""}`.toLowerCase();
+      return haystack.includes(term);
+  }
+
+  // O feed é só o FLUXO: não-lidos, e os lidos abaixo quando o aside pede.
+  // O divisor, os filtros e a disponibilidade saíram daqui — eram estado
+  // ocupando o lugar da lista.
+  function renderMessageList(messages, readIds) {
+      const naoLidos = messages.filter(m => !readIds.includes(m.id));
+      const lidos = messages.filter(m => readIds.includes(m.id));
+
+      if (!naoLidos.length && !(historyOpen && lidos.length)) {
+          const filtrando = searchTerm.trim().length > 0 || activeType !== null;
+          const empty = document.createElement("div");
+          empty.className = "cw-bc-empty";
+          empty.innerHTML = filtrando
+              ? `<div>${bt('nothingFound')}</div>`
+              : `
+               <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>
+               <div>${bt('allRead')}</div>
+              `;
+          feed.appendChild(empty);
+          return;
+      }
+
+      naoLidos.forEach(msg => feed.appendChild(createCard(msg, false)));
+
+      if (historyOpen && lidos.length) {
+          const historyContainer = document.createElement("div");
+          historyContainer.className = "cw-bc-history-container";
+          historyContainer.id = "cw-bc-history";
+          historyContainer.style.display = "flex";
+          lidos.forEach(msg => historyContainer.appendChild(createCard(msg, true)));
+          feed.appendChild(historyContainer);
+      }
+  }
+
+  function renderFeed() {
+      renderBauPanel();
+      renderFiltersPanel();
+      renderReadPanel();
+
+      feed.innerHTML = "";
+      const readIds = readReadIds();
+      const term = searchTerm.trim().toLowerCase();
+      renderMessageList(notices.filter(m => matchesFilters(m, term)), readIds);
+  }
+
   // --- STARTUP ---
   // Pinta do cache antes de qualquer rede, como os outros módulos da Central.
   const cachedNotices = DataService.getCachedContent('broadcast');
@@ -958,11 +1143,14 @@ export function initBroadcastAssistant() {
       const helpDescEl = popup.querySelector('.cw-help-description');
       if (helpDescEl) helpDescEl.textContent = bt('headerDesc');
       searchInput.placeholder = bt('searchPlaceholder');
-      if (actionContainer) {
-          const clearBtn = [...actionContainer.children].find(el => el.tagName === 'BUTTON');
-          if (clearBtn) clearBtn.textContent = bt('clear');
-      }
+      searchInput.setAttribute('aria-label', bt('searchPlaceholder'));
+      searchClear.setAttribute('aria-label', bt('clearSearch'));
+      feed.setAttribute('aria-label', bt('headerTitle'));
+      aside.setAttribute('aria-label', bt('asideLabel'));
+      // O botão de marcar tudo como lido não está mais no cabeçalho: ele é
+      // remontado pelo renderReadPanel() dentro do renderFeed() logo abaixo.
       renderFeed();
+      renderSync({ online: true });
   });
 
   return { toggle: toggleVisibility, hasUnread };
