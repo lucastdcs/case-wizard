@@ -67,6 +67,33 @@ jobs:
         if: github.ref == 'refs/heads/refactor-structure'
         run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle-dev.js --minify --define:__CW_BUILD_ENV__='"development"'
         
+      # --- DESTINO ANTIGO: GITHUB PAGES --------------------------------------
+      #
+      # Vai PRIMEIRO, pela mesma lógica que faz o backend ir antes do frontend:
+      # o caminho de que as pessoas já dependem nunca pode ficar refém do
+      # caminho novo. Este passo esteve depois do Firebase por um commit, e a
+      # primeira falha do deploy novo pulou a publicação legada inteira - os
+      # agentes com o favorito antigo teriam ficado sem a atualização por causa
+      # de um problema numa rota que nenhum deles usa ainda.
+      #
+      # Mantido de propósito durante a transição. Enquanto houver agente com o
+      # favorito antigo, desligar isto congelaria o bundle dele na última
+      # versão publicada - o pior modo de falha, porque a ferramenta continua
+      # abrindo e ninguém percebe que parou de receber correções.
+      #
+      # Remover este passo é o corte, e só depois que todos migrarem. Junto
+      # dele, desativar o GitHub Pages nos DOIS repositórios: `case-wizard` e
+      # `techsol_DialIn_AutoCopy`, cujo bundle.js ainda responde 200 e é o que
+      # o README instalava até recentemente.
+      - name: Deploy to GitHub Pages (legado, remover no corte)
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          cname: ''
+          keep_files: true
+
       # --- DESTINO NOVO: FIREBASE HOSTING ------------------------------------
       #
       # Autentica por Workload Identity Federation. O GitHub emite um token
@@ -77,6 +104,12 @@ jobs:
       #
       # Diferente do CLASPRC_JSON do job de backend, aqui não existe
       # credencial armazenada: nada a vazar, nada a rotacionar.
+      #
+      # A service account precisa de DOIS papéis, e é fácil parar no primeiro:
+      # `firebasehosting.admin` autoriza publicar, mas resolver o projeto passa
+      # pela API de gerenciamento e exige `firebase.viewer`. Só com o primeiro,
+      # o deploy falha com "Failed to get Firebase project", que parece
+      # problema de credencial e é de permissão.
 
       - name: Autenticar no Google Cloud (WIF)
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
@@ -103,26 +136,6 @@ jobs:
             --project cases-wizard \
             --message "${GITHUB_SHA}" \
             --non-interactive
-
-      # --- DESTINO ANTIGO: GITHUB PAGES --------------------------------------
-      #
-      # Mantido de propósito durante a transição. Enquanto houver agente com o
-      # favorito antigo, desligar isto congelaria o bundle dele na última
-      # versão publicada - o pior modo de falha, porque a ferramenta continua
-      # abrindo e ninguém percebe que parou de receber correções.
-      #
-      # Remover este passo é o corte, e só depois que todos migrarem. Junto
-      # dele, desativar o GitHub Pages nos DOIS repositórios: `case-wizard` e
-      # `techsol_DialIn_AutoCopy`, cujo bundle.js ainda responde 200 e é o que
-      # o README instalava até este commit.
-      - name: Deploy to GitHub Pages (legado, remover no corte)
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          publish_branch: gh-pages
-          cname: ''
-          keep_files: true
 
   # ==========================================
   # JOB 2: BACKEND (Clasp -> Google Apps Script)
