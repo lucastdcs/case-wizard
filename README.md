@@ -64,7 +64,7 @@ Drop image files into [`docs/media/`](docs/media/) and swap the placeholder cell
 - **Data store**: Google Sheets (accessed from Apps Script — see `specs/data-models/db-schema.md`)
 - **Backend transport**: JSONP (not `fetch`) to avoid CORS restrictions against the Apps Script Web App
 - **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`)
-- **Frontend hosting**: GitHub Pages (serves the built bundle)
+- **Frontend hosting**: Firebase Hosting (serves the built bundle; GitHub Pages still publishes in parallel until every agent has switched bookmarklets)
 - **Visual portfolio generation**: Python 3 + [Playwright](https://playwright.dev/) (optional, dev-only tooling)
 
 ## Prerequisites
