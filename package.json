@@ -22,6 +22,7 @@
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",
+    "smoke:broadcast": "node scripts/smoke-broadcast.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },
   "dependencies": {

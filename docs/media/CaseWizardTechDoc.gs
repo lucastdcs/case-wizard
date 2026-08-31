@@ -1065,7 +1065,7 @@ function sec07_(ctx) {
     'a mesma origem:', { spaceAfter: 8 });
 
   table_(ctx, ['Chave', 'Módulo', 'Conteúdo', 'Se sumir'], [
-    ['cw_data_broadcast', 'DataService', 'Último payload de avisos recebido.', 'Os avisos ficam vazios até o próximo fetch.'],
+    ['cw_data_broadcast', 'DataService', 'Cache da rota legada de avisos. Nada mais escreve nele; só é lido no primeiro load pós-migração.', 'Nenhum impacto — a Central tem o próprio cache (cw_content_broadcast).'],
     ['cw_data_tips', 'DataService', 'Lista de dicas exibidas durante esperas.', 'Cai em FALLBACK_TIPS ("Processando...").'],
     ['cw_personal_library_v1', 'SnippetService', 'Snippets pessoais do agente (cache-first).', 'Recarregados da planilha na próxima sincronização.'],
     ['cw_notes_parking_lot', 'DraftService', 'Até 5 rascunhos de nota salvos (MAX_DRAFTS).', 'Perda real de trabalho não enviado.'],
@@ -1314,11 +1314,8 @@ function sec10_(ctx) {
     ['save_snippet', 'Código.js (inline)', 'id?, user, type, title, content, subject, isCode, isRich', 'Cria ou atualiza um snippet; verifica a posse antes de editar.'],
     ['delete_snippet', 'Código.js (inline)', 'id, user', 'Remove a linha; verifica a posse antes.'],
     ['log', 'Código.js · handleLog', 'user, version, category, action, label, value', 'Acrescenta uma linha na aba Logs.'],
-    ['broadcast', 'Código.js (inline)', '—', 'Lista os avisos ativos, do mais novo para o mais antigo.'],
-    ['tips', 'Código.js (inline)', '—', 'Lista as dicas exibidas durante esperas.'],
-    ['new_broadcast', 'Código.js (inline)', 'type, title, text, author', 'Publica um aviso global.'],
-    ['update_broadcast', 'Código.js (inline)', 'id + campos', 'Edita um aviso existente.'],
-    ['delete_broadcast', 'Código.js (inline)', 'id', 'Exclusão lógica: marca a coluna Active como false.'],
+    ['broadcast', 'ContentSeed_Broadcast.js · getBroadcastForLegacyEndpoint', '—', 'Rota legada. Serve os avisos da Central, do mais novo para o mais antigo, para bundles antigos em cache.'],
+    ['tips', 'ContentSeed_Tips.js · getTipsForLegacyEndpoint', '—', 'Rota legada. Serve as dicas da Central.'],
     ['content_public', 'ContentAPI.js · handleContentPublicRead', 'module, lang', 'Devolve o conteúdo publicado da Central para o app consumir (seção 15).'],
     ['get_user_prefs', 'Código.js · handleGetUserPrefs', 'user', 'Blob JSON de preferências daquele agente.'],
     ['save_user_prefs', 'Código.js · handleSaveUserPrefs', 'user, prefs', 'Grava o blob. Hoje carrega os atalhos do Ctrl+K.'],
@@ -1329,6 +1326,13 @@ function sec10_(ctx) {
     'Toda a escrita e a curadoria dela ficam na ponte nativa, pelo mesmo motivo de segurança que vale ' +
     'para o TL Dashboard (seções 15 e 16).', { spaceAfter: 8 });
 
+  para_(ctx, 'As rotas new_broadcast, update_broadcast e delete_broadcast já estiveram nesta tabela e ' +
+    'foram removidas. Eram escrita por URL pública: quem descobrisse o endereço do Web App publicava ' +
+    'um aviso para toda a operação, e o único controle era o botão só aparecer para quem estava numa ' +
+    'lista embutida no bundle — uma checagem de front, do lado errado da fronteira. Publicar um aviso ' +
+    'passou a ser ação da Central, por google.script.run com papel verificado no servidor.',
+    { spaceAfter: 8 });
+
   callout_(ctx, 'Divergência conhecida a verificar',
     'O DataService do front-end chama uma operação update_bau_status que não aparece na cadeia de ' +
     'despacho de Código.js. Ou ela foi renomeada e o cliente não acompanhou, ou o handler foi removido. ' +
@@ -1337,9 +1341,10 @@ function sec10_(ctx) {
     'HTTP 200.', COLOR.red);
 
   h2_(ctx, 'Exclusão lógica vs. física', COLOR.green);
-  para_(ctx, 'Vale notar a inconsistência deliberada: delete_broadcast faz exclusão lógica (marca a ' +
-    'coluna Active como false, preservando o histórico), enquanto delete_snippet chama sheet.deleteRow ' +
-    'e apaga a linha de fato. Avisos são conteúdo institucional que alguém pode precisar auditar; ' +
+  para_(ctx, 'Vale notar a inconsistência deliberada: tirar um aviso do ar arquiva a versão na Central ' +
+    '(unpublishContentDirect muda o status para archived, e a leitura pública só enxerga live), ' +
+    'enquanto delete_snippet chama sheet.deleteRow e apaga a linha de fato. Avisos são conteúdo ' +
+    'institucional que alguém pode precisar auditar — e a linha arquivada é o que permite reverter; ' +
     'snippets são conteúdo pessoal do agente, que ele espera ver desaparecer quando apaga.',
     { spaceAfter: 8 });
 
@@ -1378,7 +1383,7 @@ function sec11_(ctx) {
   table_(ctx, ['Constante', 'Aba', 'Papel', 'Criada automaticamente?'], [
     ['SHEET_BAU_FORM', 'BAU_form_data', 'Fila de escalações BAU: a tabela central do sistema, 18 colunas.', 'Sim, por getOrCreateSheet, com cabeçalho.'],
     ['SHEET_PEOPLE', 'People', 'Cadastro de pessoas: LDAP, papel, categoria e segmento. Fonte da autorização.', 'Não — é mantida manualmente.'],
-    ['SHEET_BROADCAST', 'Broadcast', 'Avisos globais exibidos no app.', 'Não.'],
+    ['SHEET_BROADCAST', 'Broadcast', 'Fonte histórica dos avisos. Migrada para a Central por seedBroadcastNow(); mantida intocada como caminho de volta.', 'Não.'],
     ['SHEET_TIPS', 'Tips', 'Frases exibidas durante esperas.', 'Não.'],
     ['SHEET_LOGS', 'Logs', 'Telemetria de uso: timestamp, usuário, versão, categoria, ação, rótulo, valor.', 'Sim, por handleLog, com cabeçalho.'],
     ['SHEET_SNIPPETS', 'Database_Snippets', 'Biblioteca pessoal de cada agente.', 'Sim, por getOrCreateSheet, com cabeçalho.'],
@@ -2020,7 +2025,7 @@ function sec18_(ctx) {
   table_(ctx, ['Se isto falhar', 'O que acontece', 'O agente percebe?'], [
     ['A API JSONP inteira', 'Módulos de conteúdo local (Notes, Call Script, Timezone) continuam funcionando; BAU Central e Biblioteca ficam degradados.', 'Sim: toast de erro e skeleton que termina em 15 s.'],
     ['A aba Tips', 'A UI usa FALLBACK_TIPS ("Processando...", "Mantenha o foco!").', 'Não.'],
-    ['A aba Broadcast', 'O painel de avisos mostra o último cache; se não houver, fica vazio.', 'Não.'],
+    ['A aba Content_Items', 'O painel de avisos e a faixa de disponibilidade mostram o último cache; se não houver, ficam vazios.', 'Não.'],
     ['A aba People', 'Todo mundo vira o perfil de fallback: Agent, PT-BR, sem privilégio.', 'Só a liderança, ao perder acesso ao dashboard.'],
     ['O scraping de um campo', 'O campo fica vazio para preenchimento manual, com um console.warn.', 'Sim, ao ver o formulário.'],
     ['O envio de e-mail', 'A operação é concluída e persistida; emailSent volta false.', 'Depende de o cliente exibir o aviso.'],
