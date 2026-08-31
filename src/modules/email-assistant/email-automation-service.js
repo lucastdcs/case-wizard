@@ -156,35 +156,109 @@ function getVisibleEditor() {
     return editor;
 }
 
+// --- NOVA UI DO CRM: SPEED DIAL -> COMPOSE ---
+// A atualização da interface escondeu o botão de e-mail atrás de um speed dial:
+// primeiro o "+ Open" (#action-bar-speed-dial-container) e depois o mini-fab de
+// envelope (material-button.compose) no menu que abre.
+
+// offsetParent sozinho não serve aqui: o menu do speed dial flutua com
+// position:fixed, o que zera offsetParent mesmo com o botão visível na tela.
+const estaVisivel = (el) =>
+    !!el && el.getClientRects().length > 0 && el.getAttribute('aria-disabled') !== 'true';
+
+// Poll no DOM em vez de um delay fixo: a duração da animação do menu varia com a
+// carga da página, então esperamos o botão existir de fato (com teto de tempo).
+async function esperarPor(buscar, { timeout = 3000, intervalo = 100 } = {}) {
+    const limite = Date.now() + timeout;
+    while (Date.now() < limite) {
+        const alvo = buscar();
+        if (alvo) return alvo;
+        await esperar(intervalo);
+    }
+    return null;
+}
+
+// Escopo restrito ao menu do speed dial, para não clicar por engano em algum
+// outro ícone "email" que exista na página.
+function acharBotaoCompose() {
+    const candidatos = Array.from(document.querySelectorAll(
+        'material-button.compose, material-button.speed-dial-mini-fab[role="menuitem"]'
+    ));
+    const porClasse = candidatos.find(el => el.classList.contains('compose') && estaVisivel(el));
+    if (porClasse) return porClasse;
+
+    // Se a classe .compose sumir numa próxima atualização, ancoramos na ligadura
+    // do ícone, que é o que o usuário de fato enxerga.
+    return candidatos.find(el => {
+        const icone = el.querySelector('i.material-icons-extended');
+        return estaVisivel(el) && icone && icone.textContent.trim() === 'email';
+    }) || null;
+}
+
+async function openEmailComposer() {
+    try {
+        // Idempotente: se o menu já estiver aberto, reclicar o speed dial o
+        // fecharia. Por isso checamos o Compose antes de tocar no "+ Open".
+        let compose = acharBotaoCompose();
+
+        if (compose) {
+            log("Menu do speed dial já estava aberto.");
+        } else {
+            const speedDial =
+                document.querySelector('#action-bar-speed-dial-container material-button') ||
+                document.querySelector('material-button.action-bar-speed-dial-button');
+
+            if (!estaVisivel(speedDial)) {
+                log("Speed dial (+ Open) não encontrado.", 'warn');
+                return false;
+            }
+
+            log("Speed dial (+ Open) encontrado. Abrindo o menu...");
+            simularCliqueReal(speedDial);
+            await esperar(350);
+            compose = await esperarPor(acharBotaoCompose, { timeout: 3000 });
+        }
+
+        if (!compose) {
+            log("Menu abriu, mas o botão Compose não apareceu.", 'warn');
+            return false;
+        }
+
+        await esperar(120);
+        simularCliqueReal(compose);
+        log("Compose clicado via speed dial.", 'success');
+        return true;
+    } catch (erro) {
+        // Falha silenciosa: o caminho manual continua disponível pro usuário.
+        log(`Falha no speed dial: ${erro.message}`, 'error');
+        return false;
+    }
+}
+
+// Caminho antigo, mantido como plano B enquanto as duas interfaces convivem:
+// em algumas telas o envelope ainda fica solto na action bar.
+function clicarBotaoEmailDireto() {
+    const icones = Array.from(document.querySelectorAll('i.material-icons-extended'));
+    const iconeEmail = icones.find(el => el.innerText.trim() === 'email' && el.offsetParent !== null);
+    if (!iconeEmail) return false;
+
+    log("Botão de email direto encontrado.");
+    const botaoAlvo = iconeEmail.closest('material-button') || iconeEmail.closest('material-fab') || iconeEmail;
+    simularCliqueReal(botaoAlvo);
+    return true;
+}
+
 // --- CORE: ABRIR E LIMPAR ---
 async function openAndClearEmail() {
     log("🚀 FASE 1: Tentando abrir a janela de email...");
-    let emailAberto = false;
-    
-    const todosIcones = Array.from(document.querySelectorAll('i.material-icons-extended'));
-    const iconeEmail = todosIcones.find(el => el.innerText.trim() === 'email');
 
-    if (iconeEmail && iconeEmail.offsetParent !== null) {
-        log("Botão de email direto encontrado.");
-        const botaoAlvo = iconeEmail.closest('material-button') || iconeEmail.closest('material-fab') || iconeEmail;
-        simularCliqueReal(botaoAlvo);
-        emailAberto = true;
-    } else {
-        log("Botão direto não visível. Tentando Speed Dial (+)...", 'warn');
-        const speedDial = document.querySelector('material-fab-speed-dial');
-        if (speedDial) {
-            const triggerBtn = speedDial.querySelector('.trigger');
-            if (triggerBtn) {
-                simularCliqueReal(triggerBtn);
-                await esperar(800);
-                const iconesNovos = Array.from(document.querySelectorAll('i.material-icons-extended'));
-                const emailBtnNovo = iconesNovos.find(el => el.innerText.trim() === 'email');
-                if (emailBtnNovo) {
-                    simularCliqueReal(emailBtnNovo);
-                    emailAberto = true;
-                }
-            }
-        }
+    // O speed dial vem primeiro: é o fluxo da UI nova do CRM. O botão direto fica
+    // como plano B para as telas que ainda não migraram.
+    let emailAberto = await openEmailComposer();
+
+    if (!emailAberto) {
+        log("Speed dial indisponível. Tentando o botão de email direto...", 'warn');
+        emailAberto = clicarBotaoEmailDireto();
     }
 
     if (!emailAberto) {

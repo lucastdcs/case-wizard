@@ -51,86 +51,50 @@ function checkBAUPendingVolume() {
   }
 }
 
-// Email autocontido (não passa por sendDynamicTechSolEmail/EmailTemplateDynamic.html,
-// que são desenhados em torno de um caso só) - mesma paleta clara do resto do
-// dashboard/emails (gas-backend/TLDashboard.html, gas-backend/EmailTemplateDynamic.html),
-// pra nascer visualmente consistente.
+// Passa pela mesma casca dos e-mails do fluxo BAU (renderBauEmail, em
+// EmailEngine.js). Antes este arquivo montava um HTML proprio "pra nascer
+// visualmente consistente", e o resultado foi o oposto: as duas copias foram
+// divergindo em cor, raio e espacamento. O que este e-mail tem de proprio sao
+// os slots: a fila no lugar dos dados do caso, e nenhum bloco de motivo.
 function sendBAUVolumeAlertEmail(pendingCount, creationCount, discardCount) {
-  // Fixo (não ScriptApp.getService().getUrl()): esse email é enviado por gatilho de
-  // tempo, e nesse contexto getUrl() pode devolver a URL de OUTRA implantação do
-  // projeto (não a implantação fixa usada em produção, pinada via clasp deploy -i
-  // em .github/workflows/deploy.yml e referenciada em src/modules/shared/data-service.js).
-  const dashboardUrl = "https://script.google.com/a/macros/google.com/s/AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg/exec?page=tl";
+  const motivo = "Você recebeu isso porque a fila combinada (criação + descarte) passou do limite configurado. "
+    + "O aviso volta só depois que a fila cair para " + BAU_VOLUME_ALERT_THRESHOLD + " ou menos e cruzar o limite de novo.";
 
-  const html = `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8F9FA;">
-      <tr>
-        <td align="center" style="padding: 64px 20px; font-family: 'Google Sans', Roboto, Helvetica, Arial, sans-serif;">
-          <table width="100%" max-width="560" cellpadding="0" cellspacing="0" border="0" style="max-width: 560px; width: 100%; background-color: #FFFFFF; border-radius: 32px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border: 1px solid #DADCE0; margin: 0 auto;">
-            <tr>
-              <td style="padding: 0;">
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #3D3D3D; border-bottom: 1px solid rgba(255,255,255,0.15);">
-                  <tr>
-                    <td align="center" style="padding: 36px 32px; position: relative;">
-                      <div style="position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570); opacity: 0.8;"></div>
-                      <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px;">
-                        <img src="https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/warning/default/48px.svg" width="26" height="26" alt="" style="vertical-align: middle; margin-right: 8px; filter: brightness(0) invert(1);" />
-                        <span style="color: #FFFFFF; vertical-align: middle;">BAU Central</span>
-                      </div>
-                      <p style="margin: 0; font-size: 13px; color: #F9AB00; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Alerta de Volume</p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 32px; text-align: center;">
-                <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #3C4043;">
-                  A fila de aprovação do BAU passou de <strong style="color:#202124;">${BAU_VOLUME_ALERT_THRESHOLD} casos</strong> aguardando revisão.
-                </p>
+  const htmlBody = renderBauEmail({
+    preheader: pendingCount + " casos aguardando revisão no BAU",
+    accent: EMAIL_TOKENS.accentAmber,
+    title: pendingCount + " casos aguardando revisão no BAU",
+    lead: "A fila de aprovação passou de " + BAU_VOLUME_ALERT_THRESHOLD + " casos pendentes.",
+    meta: "Verificação automática da fila",
+    action: renderEmailButton("Abrir TL Dashboard", TL_DASHBOARD_URL),
+    blocks: renderEmailSection("Fila atual", renderEmailFields([
+      { label: "Aprovação de criação", value: creationCount },
+      { label: "Aprovação de descarte", value: discardCount },
+      { label: "Total pendente", value: pendingCount }
+    ])),
+    footerNote: motivo
+  });
 
-                <div style="font-size: 56px; font-weight: 700; color: #B06000; line-height: 1;">${pendingCount}</div>
-                <div style="font-size: 12px; color: #5F6368; text-transform: uppercase; letter-spacing: 0.5px; margin: 4px 0 24px 0;">casos pendentes</div>
-
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8F9FA; border-radius: 24px; border: 1px solid #DADCE0; margin-bottom: 32px;">
-                  <tr>
-                    <td style="padding: 20px; text-align: center; width: 50%; border-right: 1px solid #DADCE0;">
-                      <div style="font-size: 12px; color: #5F6368; font-weight: 500; margin-bottom: 6px;">Aprovação de Criação</div>
-                      <div style="font-size: 20px; font-weight: 700; color: #1A73E8;">${creationCount}</div>
-                    </td>
-                    <td style="padding: 20px; text-align: center; width: 50%;">
-                      <div style="font-size: 12px; color: #5F6368; font-weight: 500; margin-bottom: 6px;">Aprovação de Descarte</div>
-                      <div style="font-size: 20px; font-weight: 700; color: #D93025;">${discardCount}</div>
-                    </td>
-                  </tr>
-                </table>
-
-                <table cellpadding="0" cellspacing="0" border="0" align="center">
-                  <tr>
-                    <td align="center" style="border-radius: 100px; background-color: #1A73E8;">
-                      <a href="${dashboardUrl}" target="_blank" style="display: inline-block; color: #FFFFFF; font-size: 14px; font-weight: 600; font-family: 'Google Sans', sans-serif; padding: 14px 32px; text-decoration: none; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Abrir TL Dashboard
-                      </a>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 24px 32px; text-align: center; border-top: 1px solid #DADCE0;">
-                <p style="margin: 0; font-size: 12px; color: #5F6368;">Você recebeu isso porque a fila combinada (criação + descarte) passou do limite configurado. Volta a avisar só depois que a fila cair pra ${BAU_VOLUME_ALERT_THRESHOLD} ou menos e cruzar o limite de novo.</p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  `;
+  const plainBody = [
+    pendingCount + " casos aguardando revisão no BAU",
+    "",
+    "A fila de aprovação passou de " + BAU_VOLUME_ALERT_THRESHOLD + " casos pendentes.",
+    "",
+    "Abrir TL Dashboard: " + TL_DASHBOARD_URL,
+    "",
+    "Fila atual",
+    "Aprovação de criação: " + creationCount,
+    "Aprovação de descarte: " + discardCount,
+    "Total pendente: " + pendingCount,
+    "",
+    motivo
+  ].join("\n");
 
   MailApp.sendEmail({
     to: BAU_VOLUME_ALERT_RECIPIENTS.join(','),
-    subject: `🚨 ${pendingCount} casos aguardando revisão no BAU Central`,
-    htmlBody: html,
+    subject: pendingCount + " casos aguardando revisão no BAU Central",
+    htmlBody: htmlBody,
+    body: plainBody,
     name: "Cases Wizard"
   });
 }

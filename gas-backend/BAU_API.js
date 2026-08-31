@@ -215,6 +215,7 @@ function update_bau_case(ss, p) {
                 cid: rowUpdate[2],
                 website: rowUpdate[6],
                 reason: rowUpdate[11],
+                taskType: rowUpdate[12],
                 availability: rowUpdate[14]
               };
               sendDynamicTechSolEmail(userEmail, emailData, p.id, 'AGENT_DISCARD_SENT', userEmail);

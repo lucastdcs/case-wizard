@@ -12,6 +12,37 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Estudo de viabilidade traz números medidos e a conta explícita, não adjetivos
+
+**Why**: no estudo de #332 (hospedagem do bundle), a primeira versão da análise
+comparou as alternativas qualitativamente e chegou a escrever "precisa ser medido,
+não estimado" — sem medir. Lucas devolveu pedindo o estudo "com base em dados
+reais e cálculos baseados na infra". Ao medir de fato, a conclusão **se inverteu**:
+a opção recomendada uma seção antes (servir o bundle pelo Apps Script) caiu, porque
+o TTFB medido é 0,49–0,90 s contra 0,068–0,078 s do CDN, e a resposta do Apps
+Script vem com `no-cache, no-store` — cada carregamento rebaixaria 668 KB.
+Identificar que algo precisa de medição não substitui a medição, e uma
+recomendação dada antes dos números não sobrevive a eles por inércia.
+
+**When to apply**: em qualquer issue `tipo: pesquisa` — hoje #331 (escala), #333
+(Sheets como banco), #334 (peso dos dashboards) — e sempre que a pergunta for de
+capacidade, cota ou desempenho. O mínimo aceitável:
+
+1. buscar os **limites oficiais** da plataforma em vez de citá-los de memória
+   (eles mudam, e a página de quotas do Apps Script diz isso explicitamente);
+2. **medir a linha de base** do que já existe, quando for alcançável — `curl -w`
+   resolve latência, tamanho e cabeçalhos de cache em um comando;
+3. mostrar a **aritmética**: usuários × requisições × duração, e o ponto em que o
+   limite é atingido;
+4. separar o **verificado** do **inferido**, dizendo qual é qual.
+
+Cuidado com uma armadilha específica do Apps Script: as cotas são por *usuário
+efetivo*. Com `executeAs: "USER_DEPLOYING"`, todos os agentes dividem o pool de 30
+execuções simultâneas **do mantenedor** — não têm 30 cada. Isso já vale para o
+`jsonpFetch` de hoje, não só para propostas futuras.
+
+---
+
 ## Script versionado é chamado pelo interpretador (`bash x.sh`), nunca por `./x.sh`
 
 **Why**: o `scripts/promote-deployment.sh` foi criado, `chmod +x` rodou sem erro,
