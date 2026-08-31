@@ -30,8 +30,15 @@ jobs:
     # Workload Identity Federation troca por credencial do Google Cloud. É o
     # que substitui uma chave de service account guardada como secret: nada
     # de longa duração fica no repositório, e o token vale minutos.
+    #
+    # `contents: write` existe por causa do passo legado do GitHub Pages, que
+    # empurra um commit para a branch `gh-pages`. Enquanto não houve bloco
+    # `permissions:` no workflow, o GITHUB_TOKEN vinha com o conjunto
+    # permissivo padrão e isso funcionava por acidente; declarar apenas
+    # `contents: read` derrubou a publicação com 403. Some junto com o passo
+    # do Pages, no corte - a partir dali o job volta a precisar só de leitura.
     permissions:
-      contents: read
+      contents: write
       id-token: write
 
     steps:
@@ -59,11 +66,13 @@ jobs:
 
       # --- BUILD DE PRODUÇÃO (Apenas na main) ---
       - name: Build Production (bundle.js)
+        id: build_prod
         if: github.ref == 'refs/heads/main'
         run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle.js --minify --define:__CW_BUILD_ENV__='"production"'
 
       # --- BUILD DE DESENVOLVIMENTO (Apenas na refactor) ---
       - name: Build Development (bundle-dev.js)
+        id: build_dev
         if: github.ref == 'refs/heads/refactor-structure'
         run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle-dev.js --minify --define:__CW_BUILD_ENV__='"development"'
         
@@ -111,7 +120,22 @@ jobs:
       # o deploy falha com "Failed to get Firebase project", que parece
       # problema de credencial e é de permissão.
 
+      # A condição dos dois passos abaixo mantém os destinos INDEPENDENTES.
+      # Passos de um job são sequenciais, então sem ela um destino que falha
+      # pula o outro - e a ordem só decide qual dos dois sequestra o outro. Já
+      # aconteceu nos dois sentidos: o Firebase falhando pulou o Pages, depois
+      # o Pages falhando pulou o Firebase. O job ainda falha se qualquer um
+      # falhar, então nenhum sinal de erro se perde; o que muda é que uma rota
+      # quebrada não impede a publicação da outra.
+      #
+      # A condição olha o BUILD, não só `!cancelled()`. A diferença importa:
+      # com `!cancelled()` sozinho, um build que falhasse ainda dispararia o
+      # deploy, e `firebase deploy` com dist/ vazio APAGA os arquivos do site.
+      # O Pages não corre esse risco porque usa keep_files. Como um dos dois
+      # builds é sempre pulado por branch, a condição aceita qualquer um dos
+      # dois com sucesso.
       - name: Autenticar no Google Cloud (WIF)
+        if: ${{ !cancelled() && (steps.build_prod.outcome == 'success' || steps.build_dev.outcome == 'success') }}
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           project_id: cases-wizard
@@ -128,9 +152,21 @@ jobs:
       # nada que constrói ou publica deve ser baixado solto. Ao atualizar,
       # mude aqui de propósito.
       - name: Publicar no Firebase Hosting
+        if: ${{ !cancelled() && (steps.build_prod.outcome == 'success' || steps.build_dev.outcome == 'success') }}
         env:
           TARGET: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+          BUNDLE: ${{ github.ref == 'refs/heads/main' && 'bundle.js' || 'bundle-dev.js' }}
         run: |
+          # Trava contra publicar vazio. `firebase deploy` sincroniza o
+          # diretório: se dist/ chegar sem o bundle, ele não falha - ele apaga
+          # o site e reporta sucesso. Falhar aqui é sempre melhor.
+          if [ ! -s "dist/${BUNDLE}" ]; then
+            echo "::error::dist/${BUNDLE} não existe ou está vazio. Abortando para não esvaziar o site."
+            ls -la dist/ || echo "(dist/ nem existe)"
+            exit 1
+          fi
+          echo "Publicando dist/${BUNDLE} ($(stat -c%s "dist/${BUNDLE}") bytes) em hosting:${TARGET}"
+
           npx --yes firebase-tools@15.28.2 deploy \
             --only "hosting:${TARGET}" \
             --project cases-wizard \
