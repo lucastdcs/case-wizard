@@ -8,42 +8,22 @@
 // diz* é este arquivo. Quando os dois divergem, o modal aparece com o selo da
 // versão nova anunciando as novidades da versão velha - foi o que aconteceu
 // entre a v5.1 e a v5.2. Ao subir a versão, os dois sobem juntos.
+//
+// Numa release de correção (patch), este arquivo guarda só o que mudou nela.
+// As notas da v6.0 saíram daqui na v6.0.1 de propósito: quem já viu a v6.0 não
+// precisa reler seis slides para chegar no aviso novo, e o modal só consegue
+// contar uma release por vez (o localStorage guarda uma única versão vista).
 
 export const RELEASE_NOTES = {
-    version: "v6.0",
+    version: "v6.0.1",
 
-    title: "Case Wizard v6.0",
+    title: "Case Wizard v6.0.1",
 
     slides: [
         {
-            icon: "⌨️",
-            title: "Ctrl+K abre tudo",
-            text: "A nova paleta de comandos chega em qualquer módulo por um atalho. Digite parte do nome — com ou sem acento, \"fusos\" acha \"Fusos Horários\" — e vá direto."
-        },
-        {
-            icon: "📚",
-            title: "Minha Biblioteca",
-            text: "Seus snippets, templates de e-mail e respostas prontas agora vivem num módulo só, com busca e uma fila de \"usados recentemente\" pra copiar sem procurar."
-        },
-        {
-            icon: "📝",
-            title: "Case Notes reconstruído",
-            text: "Campos que você apaga viram chips para readicionar, transferências dividem a nota corretamente, e o rascunho é salvo continuamente. Estacionar um caso e retomar depois ficou confiável."
-        },
-        {
-            icon: "🧾",
-            title: "BAU Form e Avisos",
-            text: "O formulário de criação e descarte BAU ganhou fluxo próprio em etapas, e a leitura dos comunicados de disponibilidade agora entende datas e bandeiras quebradas em várias linhas."
-        },
-        {
-            icon: "♿",
-            title: "Teclado e leitor de tela",
-            text: "Navegação completa por teclado em todos os módulos, foco visível, rolagem travada corretamente com popups abertos e estados vazios que explicam o que fazer em vez de ficarem em branco."
-        },
-        {
-            icon: "🎬",
-            title: "Movimento revisado de ponta a ponta",
-            text: "Todas as animações passaram para quatro curvas canônicas, o descompasso entre a splash e a pílula acabou, e quem usa \"reduzir movimento\" no sistema agora é respeitado em todo o app."
+            icon: "📧",
+            title: "Módulo de e-mails estabilizado",
+            text: "A atualização de interface do Connect Cases quebrou a abertura automática do compositor de e-mail. A correção já está no ar — o Case Wizard acompanha o novo fluxo do Connect Cases e nada precisa ser feito do seu lado."
         }
     ]
 };
