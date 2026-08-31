@@ -1,10 +1,16 @@
-name: Build and Deploy (GH Pages & Apps Script)
+name: Build and Deploy (Firebase, GH Pages & Apps Script)
 
 on:
   push:
     branches:
       - main
       - refactor-structure
+
+# Declarado explicitamente para que o GITHUB_TOKEN não venha com o conjunto
+# permissivo padrão. `id-token: write` é o que permite ao job do frontend
+# pedir o token OIDC do WIF, e por isso fica só nele, não aqui.
+permissions:
+  contents: read
 
 jobs:
   # ==========================================
@@ -19,17 +25,30 @@ jobs:
     # janela - backend novo com frontend antigo continua funcionando, porque
     # operação nova que ninguém chama ainda é inofensiva.
     needs: deploy-backend-gas
+
+    # `id-token: write` deixa o runner pedir ao GitHub o token OIDC que o
+    # Workload Identity Federation troca por credencial do Google Cloud. É o
+    # que substitui uma chave de service account guardada como secret: nada
+    # de longa duração fica no repositório, e o token vale minutos.
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Install esbuild
-        run: npm install esbuild
+      # `npm ci` no lugar de `npm install esbuild`: instala exatamente o que
+      # está no package-lock.json em vez de baixar o compilador solto a cada
+      # build. Fecha a #352.
+      - name: Install dependencies
+        run: npm ci
 
       # `--define:__CW_BUILD_ENV__` é o que faz src/modules/shared/data-service.js
       # escolher entre o deployment de produção e o de desenvolvimento do Apps
@@ -48,7 +67,55 @@ jobs:
         if: github.ref == 'refs/heads/refactor-structure'
         run: ./node_modules/.bin/esbuild src/app.js --bundle --outfile=dist/bundle-dev.js --minify --define:__CW_BUILD_ENV__='"development"'
         
-      - name: Deploy to GitHub Pages
+      # --- DESTINO NOVO: FIREBASE HOSTING ------------------------------------
+      #
+      # Autentica por Workload Identity Federation. O GitHub emite um token
+      # OIDC para ESTE repositório - não para uma pessoa - e o Google troca
+      # por credencial de curta duração. A condição travada no provider
+      # (`assertion.repository == 'lucastdcs/case-wizard'`) é o que impede
+      # qualquer outro repositório de assumir a mesma identidade.
+      #
+      # Diferente do CLASPRC_JSON do job de backend, aqui não existe
+      # credencial armazenada: nada a vazar, nada a rotacionar.
+
+      - name: Autenticar no Google Cloud (WIF)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: cases-wizard
+          workload_identity_provider: projects/185063379439/locations/global/workloadIdentityPools/github/providers/github
+          service_account: gh-deployer@cases-wizard.iam.gserviceaccount.com
+
+      # Cada branch publica no SEU site, espelhando a separação que o job de
+      # backend já faz entre as implantações do Apps Script:
+      #
+      #   refactor-structure  ->  cases-wizard-dev.web.app
+      #   main                ->  cases-wizard.web.app
+      #
+      # A versão do firebase-tools é fixa pelo mesmo motivo do `npm ci` acima:
+      # nada que constrói ou publica deve ser baixado solto. Ao atualizar,
+      # mude aqui de propósito.
+      - name: Publicar no Firebase Hosting
+        env:
+          TARGET: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+        run: |
+          npx --yes firebase-tools@15.28.2 deploy \
+            --only "hosting:${TARGET}" \
+            --project cases-wizard \
+            --message "${GITHUB_SHA}" \
+            --non-interactive
+
+      # --- DESTINO ANTIGO: GITHUB PAGES --------------------------------------
+      #
+      # Mantido de propósito durante a transição. Enquanto houver agente com o
+      # favorito antigo, desligar isto congelaria o bundle dele na última
+      # versão publicada - o pior modo de falha, porque a ferramenta continua
+      # abrindo e ninguém percebe que parou de receber correções.
+      #
+      # Remover este passo é o corte, e só depois que todos migrarem. Junto
+      # dele, desativar o GitHub Pages nos DOIS repositórios: `case-wizard` e
+      # `techsol_DialIn_AutoCopy`, cujo bundle.js ainda responde 200 e é o que
+      # o README instalava até este commit.
+      - name: Deploy to GitHub Pages (legado, remover no corte)
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
