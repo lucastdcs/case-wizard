@@ -58,11 +58,20 @@
                         <td style="padding: 32px 32px 8px 32px;">
 
                             <!-- Identidade do produto. O único toque de Cases Wizard no
-                                 e-mail: o nome, e um filete que carrega a cor do tipo —
-                                 o mesmo código de cor do TL Dashboard, sem virar enfeite. -->
-                            <p style="margin: 0 0 8px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeMeta}}; font-weight: 500; color: {{t.textMuted}};" class="dm-muted">Cases Wizard</p>
+                                 e-mail: um chip escuro (a mesma família do dark glass do
+                                 header do app, em header-factory.js — sem backdrop-filter,
+                                 que nenhum cliente de e-mail aplica de verdade) com a cor
+                                 do tipo na base, no lugar de um filete solto. Pequeno de
+                                 propósito: é o único elemento escuro da página. -->
                             <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 26px 0;">
-                                <tr><td style="width: 28px; height: 3px; line-height: 3px; font-size: 0; background-color: {{ACCENT}};">&nbsp;</td></tr>
+                                <tr>
+                                    <td style="border-radius: 8px 8px 0 0; background: linear-gradient(135deg, {{t.glassBg1}} 0%, {{t.glassBg2}} 100%); border: 1px solid {{t.glassBorder}}; border-bottom: none; padding: 7px 12px 5px 12px;">
+                                        <span style="font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; font-weight: 500; letter-spacing: 0.2px; color: {{t.glassText}};">Cases Wizard</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="height: 2px; line-height: 2px; font-size: 0; background-color: {{ACCENT}}; border-radius: 0 0 8px 8px;">&nbsp;</td>
+                                </tr>
                             </table>
 
                             <h1 style="margin: 0 0 12px 0; font-family: {{t.fontSans}}; font-size: {{t.sizeTitle}}; font-weight: 400; line-height: 1.35; color: {{t.textStrong}};" class="dm-text">{{TITLE}}</h1>

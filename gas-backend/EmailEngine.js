@@ -55,6 +55,14 @@ const EMAIL_I18N = {
     discardDoneMessage: function (adv) { return "O descarte do caso de <strong style=\"font-weight:500;\">" + adv + "</strong> foi aprovado e concluído pela liderança."; },
     discardDoneSubject: function (adv) { return "Caso descartado: " + adv; },
 
+    creationRejectedTitle: "Solicitação recusada",
+    creationRejectedMessage: function (adv) { return "A solicitação para <strong style=\"font-weight:500;\">" + adv + "</strong> foi recusada pela liderança e não será aberta como caso."; },
+    creationRejectedSubject: function (adv) { return "Solicitação recusada: " + adv; },
+
+    discardDeniedTitle: "Descarte negado",
+    discardDeniedMessage: function (adv) { return "A liderança negou o pedido de descarte do caso de <strong style=\"font-weight:500;\">" + adv + "</strong>. O caso permanece ativo."; },
+    discardDeniedSubject: function (adv) { return "Descarte negado: " + adv; },
+
     labelContext: "Motivo",
     labelDomain: "Domínio final",
     labelSchedule: "Agendamento (SLA)",
@@ -95,6 +103,14 @@ const EMAIL_I18N = {
     discardDoneMessage: function (adv) { return "El descarte del caso de <strong style=\"font-weight:500;\">" + adv + "</strong> fue aprobado y concluido por la gerencia."; },
     discardDoneSubject: function (adv) { return "Caso descartado: " + adv; },
 
+    creationRejectedTitle: "Solicitud rechazada",
+    creationRejectedMessage: function (adv) { return "La solicitud para <strong style=\"font-weight:500;\">" + adv + "</strong> fue rechazada por la gerencia y no será abierta como caso."; },
+    creationRejectedSubject: function (adv) { return "Solicitud rechazada: " + adv; },
+
+    discardDeniedTitle: "Descarte denegado",
+    discardDeniedMessage: function (adv) { return "La gerencia denegó la solicitud de descarte del caso de <strong style=\"font-weight:500;\">" + adv + "</strong>. El caso permanece activo."; },
+    discardDeniedSubject: function (adv) { return "Descarte denegado: " + adv; },
+
     labelContext: "Motivo",
     labelDomain: "Dominio final",
     labelSchedule: "Programación (SLA)",
@@ -124,12 +140,21 @@ const EMAIL_TOKENS = {
   link: "#1A73E8",
 
   // Acentos por tipo. Tons de superfície clara, e não os pastéis do antigo
-  // cabeçalho escuro — num cartão branco aqueles ficavam lavados. Vivem no
-  // filete sob o nome do produto, que é o único lugar onde a cor varia por tipo.
+  // cabeçalho escuro — num cartão branco aqueles ficavam lavados. Vivem na base
+  // do chip de identidade, que é o único lugar onde a cor varia por tipo.
   accentBlue: "#1A73E8",
   accentGreen: "#1E8E3E",
   accentAmber: "#E37400",
   accentRed: "#D93025",
+
+  // O chip "Cases Wizard" — o único toque de liquid glass do e-mail. Fica escuro
+  // em qualquer tema (não segue a paleta clara/dm-* do resto do cartão): é
+  // identidade de produto, não conteúdo, e por isso não muda com o tema do
+  // cliente de e-mail.
+  glassBg1: "#26272B",
+  glassBg2: "#313340",
+  glassBorder: "rgba(255,255,255,0.10)",
+  glassText: "#E8EAED",
 
   // Avisos. Só aparecem quando há de fato algo a avisar.
   urgentBg: "#FCE8E6",
@@ -180,12 +205,13 @@ function fillEmailSlot(html, token, value) {
 }
 
 function applyEmailTokens(html) {
-  const resolved = html.replace(/{{t\.([A-Za-z]+)}}/g, function (match, key) {
+  // [A-Za-z0-9]+, não só letras: glassBg1/glassBg2 têm dígito no nome.
+  const resolved = html.replace(/{{t\.([A-Za-z0-9]+)}}/g, function (match, key) {
     return Object.prototype.hasOwnProperty.call(EMAIL_TOKENS, key) ? EMAIL_TOKENS[key] : match;
   });
   // Token inexistente é erro de digitação, não valor vazio: estourar aqui é bem
   // melhor do que entregar "{{t.corDoTexto}}" no meio de um atributo style.
-  const unknown = resolved.match(/{{t\.[A-Za-z]+}}/g);
+  const unknown = resolved.match(/{{t\.[A-Za-z0-9]+}}/g);
   if (unknown) {
     throw new Error("Token de e-mail desconhecido: " + unknown.join(", "));
   }
@@ -372,6 +398,31 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
       title = L.discardDoneTitle;
       lead = L.discardDoneMessage(data.advName);
       subject = L.discardDoneSubject(data.advName);
+      break;
+
+    // A liderança recusou o pedido de ABERTURA de um caso novo. Distinto de
+    // AGENT_DISCARD_DONE: ali um caso existente é descartado; aqui o caso nunca
+    // chegou a existir. Antes das duas linhas abaixo, updateBAUCaseStatus()
+    // reciclava o valor de status 'DISCARDED' pra essa decisão e o agente
+    // recebia "Caso descartado" para uma solicitação que nunca tinha sido
+    // aberta.
+    case 'AGENT_CREATION_REJECTED':
+      accent = EMAIL_TOKENS.accentRed;
+      title = L.creationRejectedTitle;
+      lead = L.creationRejectedMessage(data.advName);
+      subject = L.creationRejectedSubject(data.advName);
+      break;
+
+    // A liderança negou o pedido de DESCARTE de um caso existente — o caso
+    // continua ativo. Distinto de AGENT_BAU_CREATED: ali um caso passa a
+    // existir agora; aqui um caso que já existia apenas não foi descartado.
+    // Mesma razão do caso acima: updateBAUCaseStatus() reciclava o status
+    // 'CREATED' e o agente recebia "Caso criado" para um caso que já existia.
+    case 'AGENT_DISCARD_DENIED':
+      accent = EMAIL_TOKENS.accentGreen;
+      title = L.discardDeniedTitle;
+      lead = L.discardDeniedMessage(data.advName);
+      subject = L.discardDeniedSubject(data.advName);
       break;
   }
 
