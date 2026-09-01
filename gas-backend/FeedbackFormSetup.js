@@ -1,9 +1,13 @@
 /**
- * Setup único: roda uma vez pelo editor do Apps Script (selecionar
- * `criarFormularioFeedback` no dropdown de função e clicar em "Executar").
- * Cria o Google Form de bugs/sugestões e conecta as respostas a uma aba
- * ("Feedback") nesta mesma planilha. Depois de rodar, apague ou deixe este
- * arquivo — ele não faz parte do fluxo do bookmarklet.
+ * Setup único: cole este arquivo no MESMO projeto Apps Script que já está
+ * vinculado à planilha de operações (o que o clasp sincroniza — abra a
+ * planilha e vá em Extensões > Apps Script, não crie um projeto avulso em
+ * script.google.com, senão SpreadsheetApp.getActiveSpreadsheet() volta null
+ * e o script quebra na hora de achar a planilha ativa).
+ * Depois, selecione `criarFormularioFeedback` no dropdown de função e
+ * clique em "Executar". Cria o Google Form de bugs/sugestões e conecta as
+ * respostas a uma aba ("Feedback") nesta mesma planilha. Depois de rodar,
+ * apague ou deixe este arquivo — ele não faz parte do fluxo do bookmarklet.
  *
  * A imagem de topo (docs/media/feedback-form-banner.png) não é aplicada por
  * aqui — o FormApp não tem API para o banner de tema do Google Forms, só a
@@ -46,6 +50,13 @@ function criarFormularioFeedback() {
     .setRequired(false);
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    throw new Error(
+      'Nenhuma planilha ativa. Este script precisa estar no projeto Apps Script ' +
+      'vinculado à planilha de operações — abra a planilha e use Extensões > Apps ' +
+      'Script, em vez de rodar num projeto avulso criado em script.google.com.'
+    );
+  }
   const abasAntes = ss.getSheets().map((sheet) => sheet.getName());
   form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
 
