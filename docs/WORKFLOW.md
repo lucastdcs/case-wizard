@@ -9,8 +9,11 @@ Como o projeto roda injetado em um ambiente de produção de terceiros, **não e
     * `npm run dev` → `dist/bundle-dev.js` (sem minificação, debug).
     * O GitHub Actions roda o build automaticamente a cada push (`.github/workflows/deploy.yml`), não é necessário rodar manualmente antes de commitar.
 3.  **Deploy:**
-    * Commits na branch `main` geram o `dist/bundle.js` (Produção), publicado via GitHub Pages.
-    * Commits na branch `refactor-structure` geram o `dist/bundle-dev.js` (Desenvolvimento) — na prática, essa é a branch usada no dia a dia; `main` só recebe merge quando algo está pronto para produção.
+    * Commits na branch `main` geram o `dist/bundle.js` (Produção), publicado em `cases-wizard.web.app`.
+    * Commits na branch `refactor-structure` geram o `dist/bundle-dev.js` (Desenvolvimento), publicado em `cases-wizard-dev.web.app` — na prática, essa é a branch usada no dia a dia; `main` só recebe merge quando algo está pronto para produção.
+    * Cada ambiente tem seu próprio site no Firebase Hosting, com URL estável, espelhando a separação que o backend já faz entre as implantações do Apps Script.
+    * **Durante a transição**, o mesmo job também publica no GitHub Pages, para que os agentes que ainda não trocaram o favorito continuem recebendo atualizações. Os dois destinos são independentes: um que falhe não impede o outro. Esse passo sai no corte, junto com a desativação do Pages nos repositórios `case-wizard` e `techsol_DialIn_AutoCopy`.
+    * A autenticação do deploy é por Workload Identity Federation: o GitHub emite um token OIDC para o repositório e o Google troca por credencial de curta duração. Não há chave de service account guardada como secret.
 4.  **Teste:**
     * Vá até o CRM.
     * Use o **Bookmarklet de DEV** (veja `README.md`) para injetar a versão de teste.

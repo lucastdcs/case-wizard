@@ -141,7 +141,11 @@ function buildTechDoc() {
   cleanupLeadingBlank_(body);
   doc.setName(DOC.TITLE);
 
-  DocumentApp.getUi().alert(
+  // O documento já está montado neste ponto — se getUi() falhar (função
+  // rodada direto pelo editor do Apps Script, sem passar pelo menu do Doc,
+  // em vez de "Case Wizard > Montar documentação"), isso não pode parecer
+  // uma falha da montagem em si.
+  alertOuLog_(
     'Pronto! ' + SECTION_BUILDERS.length + ' seções montadas.\n\n' +
     'Dica: abra Ver > Mostrar estrutura do documento para navegar pelos títulos.');
 }
@@ -149,7 +153,15 @@ function buildTechDoc() {
 function clearDocument() {
   var doc = DocumentApp.getActiveDocument();
   resetDocument_(doc, doc.getBody());
-  DocumentApp.getUi().alert('Documento limpo.');
+  alertOuLog_('Documento limpo.');
+}
+
+function alertOuLog_(message) {
+  try {
+    DocumentApp.getUi().alert(message);
+  } catch (e) {
+    Logger.log(message);
+  }
 }
 
 // ============================================================
@@ -626,8 +638,8 @@ function sec01_(ctx) {
     ['Backend', 'Google Apps Script (runtime V8), publicado como Web App'],
     ['Banco de dados', 'Google Sheets (dez abas nomeadas)'],
     ['Transporte', 'JSONP sobre GET, tanto para leitura quanto para escrita'],
-    ['Hospedagem do bundle', 'GitHub Pages (branch gh-pages)'],
-    ['CI/CD', 'GitHub Actions: esbuild para o front, clasp para o backend'],
+    ['Hospedagem do bundle', 'Firebase Hosting (dois sites: prod e dev). GitHub Pages segue em paralelo até o corte'],
+    ['CI/CD', 'GitHub Actions: esbuild para o front, clasp para o backend. Deploy no Firebase por Workload Identity Federation, sem chave armazenada'],
     ['Autenticação', 'Delegada ao Google Workspace: o Web App é publicado com access DOMAIN'],
   ], COLOR.blue);
 
@@ -690,7 +702,7 @@ function sec03_(ctx) {
     '  |                      |    |         |                                      |',
     '  | GitHub Actions       |    |         |   +--------------------------------+ |',
     '  |   deploy.yml         v    |  HTTPS  |   | bundle.js (Case Wizard)        | |',
-    '  | GitHub Pages -- bundle.js-+-------->|   |  app.js -> modulos -> overlay  | |',
+    '  | Firebase Hosting-bundle.js+-------->|   |  app.js -> modulos -> overlay  | |',
     '  +---------------------------+         |   +---------------+----------------+ |',
     '                                        +-------------------+------------------+',
     '                                                            | JSONP (GET, <script>)',
@@ -712,7 +724,7 @@ function sec03_(ctx) {
 
   h2_(ctx, 'Responsabilidade de cada camada', COLOR.blue);
   table_(ctx, ['Camada', 'Onde vive', 'Responsabilidade', 'O que ela NÃO faz'], [
-    ['Distribuição', '.github/workflows/deploy.yml, branch gh-pages',
+    ['Distribuição', '.github/workflows/deploy.yml, firebase.json, .firebaserc',
      'Transformar o fonte em um artefato único e publicá-lo em uma URL estável.',
      'Não versiona o backend por conta própria: a promoção da implantação de produção é manual.'],
     ['Execução', 'src/**, servido como dist/bundle.js',
@@ -755,9 +767,7 @@ function sec04_(ctx) {
 
   code_(ctx, [
     'javascript:(function(){',
-    "  const cacheBuster = '?t=' + new Date().getTime();",
-    "  const scriptUrl = 'https://lucastdcs.github.io/case-wizard/bundle.js'",
-    '                  + cacheBuster;',
+    "  const scriptUrl = 'https://cases-wizard.web.app/bundle.js';",
     '',
     "  const policy = trustedTypes.createPolicy('default', {",
     '    createHTML:      (string) => string,',
@@ -785,8 +795,8 @@ function sec04_(ctx) {
 
   h2_(ctx, 'Linha a linha', COLOR.yellow);
   table_(ctx, ['Trecho', 'O que faz', 'Por que existe'], [
-    ['cacheBuster', 'Anexa um timestamp à URL do script.',
-     'GitHub Pages e o navegador cacheiam agressivamente. Sem isso, o agente continuaria rodando a versão de ontem depois de um deploy.'],
+    ['URL estável, sem cacheBuster', 'A URL do script não muda entre cliques.',
+     'O timestamp `?t=` existia porque o GitHub Pages servia com max-age fixo e sem controle nosso: a única forma de garantir versão nova era tornar cada URL única, o que garantia download completo e inutilizava o cache. No Firebase o header é definido no firebase.json (no-cache em prod, no-store em dev), então a URL pode ser estável. Nota medida: requisições condicionais com If-None-Match ainda voltam 200, não 304 — a revalidação não está economizando a transferência. O bundle são ~660 KB crus, mas ~134 KB na rede com Brotli.'],
     ["trustedTypes.createPolicy('default', ...)",
      'Registra uma política chamada default com transformações identidade para HTML, URL de script e script.',
      'A CSP do CRM exige Trusted Types. Sem uma política registrada, atribuir uma string a script.src é rejeitado pelo navegador.'],
@@ -2145,11 +2155,14 @@ function sec20_(ctx) {
     '  se ref = main               -> bash scripts/promote-deployment.sh (PROD)',
     '',
     'JOB 2  build-and-deploy-frontend      needs: deploy-backend-gas',
-    '  checkout -> node 18 -> npm install esbuild',
+    '  checkout -> node 20 -> npm ci',
     '  se ref = main               -> bundle.js     --define __CW_BUILD_ENV__="production"',
     '  se ref = refactor-structure -> bundle-dev.js --define __CW_BUILD_ENV__="development"',
-    '  peaceiris/actions-gh-pages  -> publica ./dist na branch gh-pages',
-    '                                 (keep_files: true, os dois bundles coexistem)',
+    '  peaceiris/actions-gh-pages  -> publica ./dist na branch gh-pages (legado, sai no corte)',
+    '  google-github-actions/auth  -> WIF: token OIDC do repo -> credencial curta',
+    '  firebase-tools deploy       -> hosting:prod (main) ou hosting:dev (refactor)',
+    '                                 os dois destinos sao independentes: um que',
+    '                                 falha nao impede o outro de publicar',
   ], 'O needs: é a peça central. Os dois jobs já rodaram em paralelo, e foi essa corrida que produziu o incidente descrito na seção 21.');
 
   callout_(ctx, 'Por que o backend vai primeiro',

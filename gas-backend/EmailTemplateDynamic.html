@@ -58,15 +58,24 @@
                         <td style="padding: 32px 32px 8px 32px;">
 
                             <!-- Identidade do produto. O único toque de Cases Wizard no
-                                 e-mail: um chip escuro (a mesma família do dark glass do
-                                 header do app, em header-factory.js — sem backdrop-filter,
-                                 que nenhum cliente de e-mail aplica de verdade) com a cor
-                                 do tipo na base, no lugar de um filete solto. Pequeno de
-                                 propósito: é o único elemento escuro da página. -->
+                                 e-mail: um chip escuro (a mesma família do dark glass da
+                                 pill flutuante do app, em command-center.js — sem
+                                 backdrop-filter, que nenhum cliente de e-mail aplica de
+                                 verdade) com o raio da pill dentro de um badge circular, e
+                                 a cor do tipo na base do chip. Pequeno de propósito: é o
+                                 único elemento escuro da página.
+
+                                 O raio da pill é um SVG (path "M13 2L3 14h9l-1 8 10-12h-9
+                                 l1-8z"), mas SVG não renderiza em e-mail — nem inline. O
+                                 emoji ⚡ é o substituto seguro: mesmo glifo, sem depender
+                                 de rede nem de suporte a SVG. -->
                             <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 26px 0;">
                                 <tr>
-                                    <td style="border-radius: 8px 8px 0 0; background: linear-gradient(135deg, {{t.glassBg1}} 0%, {{t.glassBg2}} 100%); border: 1px solid {{t.glassBorder}}; border-bottom: none; padding: 7px 12px 5px 12px;">
-                                        <span style="font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; font-weight: 500; letter-spacing: 0.2px; color: {{t.glassText}};">Cases Wizard</span>
+                                    <td style="border-radius: 8px 8px 0 0; background: linear-gradient(135deg, {{t.glassBg1}} 0%, {{t.glassBg2}} 100%); border: 1px solid {{t.glassBorder}}; border-bottom: none; padding: 6px 12px 5px 6px;">
+                                        <table cellpadding="0" cellspacing="0" border="0"><tr>
+                                            <td style="width: 20px; height: 20px; border-radius: 50%; background-color: {{t.glassBadgeBg}}; text-align: center; vertical-align: middle; font-size: 11px; line-height: 20px;">⚡</td>
+                                            <td style="padding-left: 7px; font-family: {{t.fontSans}}; font-size: {{t.sizeLabel}}; font-weight: 500; letter-spacing: 0.2px; color: {{t.glassText}}; vertical-align: middle;">Cases Wizard</td>
+                                        </tr></table>
                                     </td>
                                 </tr>
                                 <tr>

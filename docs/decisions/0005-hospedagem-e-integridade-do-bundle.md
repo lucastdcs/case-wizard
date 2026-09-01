@@ -1,7 +1,40 @@
 # 0005 — Hospedagem e integridade do bundle
 
 **Date**: 2026-08-24
-**Status**: Proposed
+**Status**: Superseded (2026-08-31) — pela migração para o Firebase Hosting
+
+> **Nota de superação.** O corpo abaixo fica **como foi escrito**, porque registra a
+> análise e as medições que levaram à decisão da época. O que mudou foi a resposta,
+> não o problema.
+>
+> Este ADR propunha manter o bundle no GitHub Pages e verificar sua integridade por
+> um hash servido do Apps Script. Em 31/08/2026, após conversa com um SME, o projeto
+> tomou um caminho diferente: **mover a hospedagem para o Firebase Hosting**, o que
+> ataca a mesma preocupação pela raiz — o controle de escrita passa a ser IAM do
+> Google Cloud em vez de uma conta pessoal do GitHub — em vez de detectar adulteração
+> depois do fato.
+>
+> O que a migração resolve e o que ela **não** resolve:
+>
+> - **Integridade (quem escreve)**: resolvido em boa parte. Deploy por Workload
+>   Identity Federation, sem credencial de longa duração no repositório.
+> - **Rollback**: resolvido. O Hosting guarda histórico de releases.
+> - **Confidencialidade (quem lê)**: **não** resolvido. O Firebase Hosting é público,
+>   igual ao Pages. A discussão de tornar o repositório privado continua aberta.
+> - **`main` sem proteção**: **não** resolvido. A CI continua disparando no push, e a
+>   #350 segue necessária. É fácil supor que a migração cobriu isso; não cobriu.
+>
+> Duas medições deste documento merecem correção, feita aqui e não no corpo:
+>
+> - O bundle é citado como 668 KB. Esse é o tamanho **descomprimido**; na rede, com
+>   Brotli, são ~134 KB. Argumentos de tamanho sobre este arquivo devem usar o número
+>   comprimido. As conclusões sobre servir pelo Apps Script não mudam, porque lá o
+>   que dominava era latência, não banda.
+> - A medição de TTFB do Apps Script (0,49–0,90 s) cobre apenas o **primeiro** dos
+>   dois saltos: o `/exec` responde 302 para um segundo host, e o conteúdo vem só na
+>   requisição seguinte. O custo real é maior que o registrado.
+>
+> A issue #356, que testaria a proposta deste ADR, fica sem objeto na forma original.
 
 > Este documento existe para responder, por escrito e antes de ser perguntado,
 > como se justifica que uma ferramenta interna carregue seu código de um GitHub

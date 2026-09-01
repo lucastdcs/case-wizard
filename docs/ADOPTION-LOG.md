@@ -19,7 +19,7 @@
 - **No global/enterprise CLAUDE.md** found (`~/.claude/CLAUDE.md`, macOS/Linux managed paths all absent) → no deference note needed, no AI-attribution policy detected anywhere.
 - **No `PLAN.md`/`TODO.md`/`TASKS.md`/`BACKLOG.md` equivalent** found anywhere in the repo (case-insensitive search, depth 3).
 - **No `docs/superpowers/`** — not in use.
-- CI/CD present (`.github/workflows/deploy.yml`): builds + deploys the frontend to GitHub Pages and syncs/deploys the backend to Apps Script on every push to `main` or `refactor-structure`, with production deployment promotion deliberately left manual.
+- CI/CD present (`.github/workflows/deploy.yml`): builds + deploys the frontend to Firebase Hosting (and, during the transition, to GitHub Pages in parallel) and syncs/deploys the backend to Apps Script on every push to `main` or `refactor-structure`. Each branch promotes its own Apps Script deployment; the production gate is the merge to `main`.
 
 ## What groundrules did
 
