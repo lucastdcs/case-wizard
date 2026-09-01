@@ -18,6 +18,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Fila do TL Dashboard agora é FIFO de verdade: `getPendingBAUCases` ordena do
+  mais antigo pro mais recente pela data de envio, em vez de devolver a planilha
+  invertida (mais novo primeiro), como já exigia `specs/workflow/bau-lifecycle.md`.
+
 ### Security
 
 ## [6.0.0] - 2026-08-21

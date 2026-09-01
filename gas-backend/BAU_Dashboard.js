@@ -47,7 +47,17 @@ function getPendingBAUCases() {
       });
     }
   }
-  return cases.reverse(); 
+  // FIFO por data de envio, não pela ordem da planilha: o timestamp pode vir
+  // do cliente (p.date em handleBAUEscalation) e divergir da ordem de append.
+  cases.sort((a, b) => toQueueTime(a.date) - toQueueTime(b.date));
+  return cases;
+}
+
+// Data vazia/inválida vira 0 pro caso aparecer no topo da fila em vez de
+// ficar preso no fim esperando pra sempre.
+function toQueueTime(value) {
+  const time = new Date(value).getTime();
+  return isNaN(time) ? 0 : time;
 }
 
 // Classifica a transição de status numa ação legível, usada tanto pra trilha

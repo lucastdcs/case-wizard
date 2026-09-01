@@ -12,6 +12,25 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Antes de mexer no TL Dashboard, confira o código contra `specs/`
+
+**Why**: a fila do TL saía do caso mais novo pro mais antigo porque
+`getPendingBAUCases` terminava em `cases.reverse()` — enquanto
+`specs/workflow/bau-lifecycle.md` já mandava, desde sempre, ordenar do mais
+antigo pro mais recente por `Data_Envio` ("o TL aprova primeiro quem está
+esperando há mais tempo"). O spec estava certo e o código, calado, fazia LIFO:
+quem escalava primeiro era atendido por último. Ninguém tinha percebido porque a
+ordem "parece plausível" na tela. `specs/` é lei e vence o código quando os dois
+divergem — mas isso **não** quer dizer que o código já obedece.
+
+**When to apply**: ao tocar em qualquer leitura da aba `BAU_Form` ou em
+ordenação/filtro de fila — abra a regra em `specs/` primeiro e compare, em vez
+de assumir que o comportamento atual é o desejado. Cuidado com `Data_Envio`: o
+timestamp pode vir do cliente (`p.date` em `handleBAUEscalation`), então a ordem
+de append da planilha não é fonte confiável de ordem de chegada.
+
+---
+
 ## Estudo de viabilidade traz números medidos e a conta explícita, não adjetivos
 
 **Why**: no estudo de #332 (hospedagem do bundle), a primeira versão da análise
