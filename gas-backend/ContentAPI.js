@@ -21,7 +21,11 @@ const CONTENT_MODULES = [
   // Avisos e disponibilidade BAU: eram a aba "Broadcast", com schema próprio e
   // CRUD dentro do módulo do agente. São dois módulos e não um porque têm ciclos
   // de vida diferentes - ver CONTENT_SINGLETON_MODULES logo abaixo.
-  'broadcast', 'bau_availability'
+  'broadcast', 'bau_availability',
+  // Diretório de autorização (aba People). Entra na mesma máquina de fila e log
+  // do resto, mas com destino, leitura e aprovação próprios - ver os três
+  // conjuntos logo abaixo e PeopleAPI.gs.
+  'people'
 ];
 
 // Módulos que publicam direto em 'live', sem passar pela fila de aprovação.
@@ -37,6 +41,29 @@ const CONTENT_MODULES = [
 // A publicação direta não abre mão de nada além da fila: continua versionando,
 // arquivando a versão anterior e indo para o log.
 const CONTENT_DIRECT_PUBLISH_MODULES = ['broadcast', 'bau_availability'];
+
+// Módulos cuja LEITURA é tão restrita quanto a escrita: quem não propõe,
+// também não lê.
+//
+// Vale para o diretório de autorização e não para links ou dicas porque a
+// lista de quem tem poder é ela própria informação sensível - saber quem é TL
+// é o primeiro passo para escolher a quem se passar. QA e WFM têm acesso à
+// Central sem terem nada a ver com o cadastro do time.
+const CONTENT_RESTRICTED_READ_MODULES = ['people'];
+
+// Módulos que SÓ o ADMIN aprova, mesmo que outros papéis aprovem o resto.
+//
+// TL aprova conteúdo porque conteúdo errado se corrige republicando. Um papel
+// errado na aba People não: ele abre o TL Dashboard para quem não devia, e a
+// própria pessoa que aprovou pode ser a beneficiada. Promoção aprovada por par
+// não é revisão - é combinação.
+const CONTENT_ADMIN_ONLY_APPROVAL_MODULES = ['people'];
+
+// Módulos que a leitura pública (JSONP, sem identidade) nunca serve, mesmo que
+// um dia passem a ter linha em Content_Items. Hoje people não tem - a barreira
+// é estrutural, e esta é a segunda tranca, para o dia em que alguém mudar isso
+// sem lembrar do porquê.
+const CONTENT_PRIVATE_MODULES = ['people'];
 
 // Módulos que guardam UM valor corrente em vez de uma lista.
 //
@@ -267,12 +294,25 @@ function assertContentRole_(action, module) {
 
   const perms = CONTENT_ROLES[role];
 
+  // Restrição de módulo que vale para QUALQUER ação, leitura inclusive. Vem
+  // antes do switch de propósito: um `read` em 'people' precisa cair aqui, e
+  // o switch abaixo não olha para leitura.
+  if (module && CONTENT_RESTRICTED_READ_MODULES.indexOf(module) !== -1 &&
+    perms.propose.indexOf(module) === -1) {
+    throw new Error("Acesso negado: seu papel (" + role + ") não tem acesso ao módulo '" + module + "'.");
+  }
+
   if (action === 'propose') {
     if (perms.propose.indexOf(module) === -1) {
       throw new Error("Acesso negado: seu papel (" + role + ") não edita o módulo '" + module + "'.");
     }
   } else if (action === 'approve') {
     if (!perms.approve) throw new Error("Acesso negado: seu papel (" + role + ") não aprova mudanças.");
+    if (module && CONTENT_ADMIN_ONLY_APPROVAL_MODULES.indexOf(module) !== -1 && role !== 'ADMIN') {
+      throw new Error(
+        "Acesso negado: alterações no módulo '" + module + "' só o ADMIN aprova."
+      );
+    }
   } else if (action === 'manageAccess') {
     if (!perms.manageAccess) throw new Error("Acesso negado: apenas o ADMIN gerencia acessos.");
   }
@@ -709,12 +749,22 @@ function listPendingApprovals() {
       // O aprovador precisa ver o valor atual ao lado do proposto - sem isso a
       // revisão vira "confie no texto novo", que é exatamente o que o fluxo
       // de aprovação existe pra evitar.
-      const current = d.itemId ? findContentRow_(SHEET_CONTENT_ITEMS, 'ID', d.itemId) : null;
-      d.currentValue = current ? String(current.Value || "") : "";
-      d.currentLabel = current ? String(current.Label || "") : "";
-      d.isNew = !d.itemId;
+      if (d.module === PEOPLE_MODULE) {
+        // People não tem linha em Content_Items: o "hoje no ar" é a própria
+        // aba People, lida na hora da revisão e não na hora da proposta.
+        const person = findPeopleRow_(d.key);
+        d.currentValue = person ? peopleValueJson_(person) : "";
+        d.currentLabel = d.key;
+        d.isNew = !person;
+      } else {
+        const current = d.itemId ? findContentRow_(SHEET_CONTENT_ITEMS, 'ID', d.itemId) : null;
+        d.currentValue = current ? String(current.Value || "") : "";
+        d.currentLabel = current ? String(current.Label || "") : "";
+        d.isNew = !d.itemId;
+      }
       d.isSelfProposed = (d.proposedBy === session.ldap);
-      d.canReview = session.perms.selfApprove || !d.isSelfProposed;
+      d.canReview = (session.perms.selfApprove || !d.isSelfProposed) &&
+        (CONTENT_ADMIN_ONLY_APPROVAL_MODULES.indexOf(d.module) === -1 || session.role === 'ADMIN');
       return d;
     })
     .sort(function (a, b) { return String(a.proposedAt).localeCompare(String(b.proposedAt)); });
@@ -765,6 +815,9 @@ function saveContentDraft(payload) {
   }
   if (p.module === 'email_template') {
     assertValidEmailTemplate_(String(p.value || ""), String(p.lang || 'PT'));
+  }
+  if (p.module === PEOPLE_MODULE) {
+    assertValidPeopleValue_(String(p.value || ""));
   }
 
   const sheet = getContentSheet_(SHEET_CONTENT_DRAFTS);
@@ -893,6 +946,14 @@ function approveContentDraft(draftId, note) {
   // A regra de não-autoaprovação, com a exceção explícita do ADMIN.
   if (String(draft.Proposed_By).trim() === session.ldap && !session.perms.selfApprove) {
     throw new Error("Você não pode aprovar a própria proposta. Peça a revisão de outra pessoa.");
+  }
+
+  // People é o único módulo cuja aprovação não escreve em Content_Items: a
+  // linha aprovada vai para a aba People, que é o que getUserProfileByLdap()
+  // lê. Tudo que vem ANTES desta linha (papel, status pendente, regra de
+  // não-autoaprovação) vale igual para ele - só o destino muda.
+  if (String(draft.Module).trim() === PEOPLE_MODULE) {
+    return applyApprovedPeopleDraft_(draft, session, note);
   }
 
   const itemsSheet = getContentSheet_(SHEET_CONTENT_ITEMS);
@@ -1264,6 +1325,10 @@ function saveContentAccess(ldap, role, active) {
 function handleContentPublicRead(p) {
   const module = String((p && p.module) || "").trim();
   assertValidModule_(module);
+
+  if (CONTENT_PRIVATE_MODULES.indexOf(module) !== -1) {
+    throw new Error("Módulo '" + module + "' não tem leitura pública.");
+  }
 
   const items = readContentRows_(SHEET_CONTENT_ITEMS)
     .filter(function (r) {

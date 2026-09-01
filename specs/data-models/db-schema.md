@@ -85,3 +85,64 @@
   uma escrita na nuvem a cada Ctrl+K.
 
 Ver `docs/decisions/0002-atalhos-ctrl-k-por-agente.md`.
+
+---
+
+# Aba `People` (Diretório de autorização)
+
+- **Nome/Constante:** `SHEET_PEOPLE` (`"People"`)
+- **Cardinalidade:** **uma linha por pessoa**, chaveada pelo LDAP.
+- **Papel no sistema:** é a fonte de autorização, não um cadastro informativo.
+  `getUserProfileByLdap()` a lê para derivar **quem abre o TL Dashboard** e **em
+  que idioma o app abre**. Tratar como conteúdo comum é o erro a evitar.
+
+| Índice | Nome da Coluna (Header) | Chave do Payload | Notas |
+| :--- | :--- | :--- | :--- |
+| `0` | LDAP | `ldap` | Chave da linha. Só o usuário, sem `@`, minúsculo, sem espaço — validado por `PEOPLE_LDAP_RE`. |
+| `1` | Role | `role` | Cargo exibido (texto livre). Não tem efeito de permissão. |
+| `2` | Role_Category | `roleCategory` | **Decide a permissão.** Ver regra de `isOverhead` abaixo. |
+| `3` | Segment | `segment` | O "fluxo" da pessoa. **Decide o idioma.** Ver regra abaixo. |
+
+A leitura é **por índice** (`data[i][0..3]`), no `Código.gs` e no `PeopleAPI.gs`.
+O cabeçalho existe para quem abre a planilha; não reordene as colunas.
+
+## As duas regras derivadas
+
+Ambas moram no `Código.gs` e são as **únicas** implementações — a tela da Central
+mostra o resultado delas antes de salvar, e não pode ter uma segunda cópia:
+
+```js
+// Permissão (Overhead) — por lista de EXCLUSÃO
+isOverheadRoleCategory(cat) // !(cat contém 'agent' || cat contém 'apprentice')
+
+// Idioma padrão, derivado do segmento
+defaultLanguageForSegment(seg) // 'es' → ES · 'en' → EN · qualquer outro → PT-BR
+```
+
+> ⚠️ A regra de permissão é **permissiva por construção**: uma categoria nova que
+> não contenha "agent" nem "apprentice" (`Intern`, `Contractor`…) ganha acesso de
+> liderança sozinha, sem mudança de código. A aba "Pessoas" da Central anuncia
+> isso no editor justamente para o erro não passar batido.
+
+## Fallback restritivo
+
+LDAP não encontrado, ou aba ausente, devolve `role: "Unknown"`,
+`roleCategory: "Agent"`, `segment: "PT"`, `defaultLanguage: "PT-BR"`,
+`isOverhead: false`. **Desconhecido é agente sem privilégio** — é por isso que
+dar baixa apagando a linha é seguro.
+
+## Regras de escrita (módulo `people` da Central de Conteúdo)
+
+- **Nenhuma escrita pelo `doGet`/JSONP.** A identidade lá é o parâmetro `user`,
+  forjável. Tudo passa por `google.script.run` — ver `api-payloads.md`.
+- **Só as quatro colunas do contrato são escritas.** Coluna extra que alguém
+  tenha acrescentado na planilha à mão é preservada, pela mesma regra de
+  "nunca reescrever o que não veio no payload" do `BAU_form_data`.
+- **Nunca zerar a liderança.** Uma alteração que leve a contagem de `isOverhead`
+  de ≥1 para 0 é recusada, na proposta **e** de novo na aprovação. Uma aba que
+  já estava sem liderança (planilha nova) não é bloqueada — a trava é sobre a
+  queda, não sobre a existência.
+- **Uma proposta pendente por pessoa.** A segunda é recusada, para que uma
+  aprovação não sobrescreva em silêncio a decisão da outra.
+- **Baixa apaga a linha.** O histórico fica em `Content_Drafts` (com o motivo) e
+  na aba `Logs`, não na aba People.

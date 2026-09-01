@@ -67,7 +67,28 @@ const sandbox = {
 
 const vm = require('node:vm');
 const ctx = vm.createContext(sandbox);
+
+// Código.gs primeiro: é dele que vêm SHEET_PEOPLE, isOverheadRoleCategory() e
+// defaultLanguageForSegment(), que o PeopleAPI.gs usa pelo escopo global
+// compartilhado. Ele também DECLARA handleLog(), sobrescrevendo o stub do
+// sandbox - por isso a captura de log é reapontada logo abaixo, depois de
+// todos os arquivos entrarem.
+const CORE_SRC = path.join(__dirname, '..', 'gas-backend', 'Código.js');
+vm.runInContext(fs.readFileSync(CORE_SRC, 'utf8'), ctx);
+
 vm.runInContext(fs.readFileSync(SRC, 'utf8'), ctx);
+
+// PeopleAPI.gs não é opcional para o ContentAPI: approveContentDraft(),
+// saveContentDraft() e listPendingApprovals() desviam para ele quando o módulo
+// é 'people'. No Apps Script os dois arquivos estão sempre no mesmo projeto -
+// carregar só um aqui testaria um ambiente que não existe.
+const PEOPLE_SRC = path.join(__dirname, '..', 'gas-backend', 'PeopleAPI.js');
+vm.runInContext(fs.readFileSync(PEOPLE_SRC, 'utf8'), ctx);
+
+// Devolve o handleLog ao stub que o teste inspeciona (o do Código.gs escreveria
+// numa aba Logs de verdade).
+sandbox.__captureLog = (p) => LOGGED.push(p);
+vm.runInContext('handleLog = __captureLog;', ctx);
 
 // O arquivo de semeadura entra no mesmo escopo global, como no Apps Script -
 // é assim que seedLinksNow() enxerga seedContentModule() sem nenhum import.
@@ -441,7 +462,11 @@ function makeTipsEnv(linhas) {
     console,
   });
 
+  // Mesmo conjunto de arquivos do contexto principal, e pelo mesmo motivo: o
+  // ContentAPI desvia para o PeopleAPI, que por sua vez lê globais do Código.gs.
+  vm.runInContext(fs.readFileSync(CORE_SRC, 'utf8'), ctx2);
   vm.runInContext(fs.readFileSync(SRC, 'utf8'), ctx2);
+  vm.runInContext(fs.readFileSync(PEOPLE_SRC, 'utf8'), ctx2);
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'ContentSeed_Tips.js'), 'utf8'),
     ctx2

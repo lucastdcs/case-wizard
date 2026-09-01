@@ -364,6 +364,125 @@ const doisSegmentos = disponibilidade({
     await page.close();
 }
 
+// ------------------------------------------------ aside: filtros, leitura, sincronização
+const aside = (page) => page.evaluate(() => {
+    const a = document.querySelector('.cw-bc-aside');
+    return {
+        existe: !!a,
+        bauVisivel: document.querySelector('#cw-bau-widget')?.style.display !== 'none',
+        filtros: Array.from(a.querySelectorAll('.cw-bc-filter')).map(b => ({
+            tipo: b.dataset.tipo,
+            contagem: b.querySelector('.cw-bc-filter-count').textContent.trim(),
+            ativo: b.getAttribute('aria-pressed') === 'true',
+        })),
+        lidos: a.querySelector('.cw-bc-history-divider span')?.textContent.trim(),
+        limparDesativado: a.querySelector('.cw-bc-clear-btn')?.disabled,
+        sync: document.querySelector('#cw-update-status')?.textContent.trim(),
+    };
+});
+
+const naLista = (page) => page.evaluate(() =>
+    Array.from(document.querySelectorAll('#broadcast-popup .cw-bc-card:not(.history) .cw-bc-msg-title'))
+        .map(e => e.textContent));
+
+{
+    const page = await novaPagina({
+        segmento: 'PT',
+        rodadas: [{
+            avisos: [
+                item('a1', { title: 'Queda do CNS', type: 'critical' }),
+                item('a2', { title: 'Fluxo novo', type: 'info' }),
+                item('a3', { title: 'Janela de manutenção', type: 'info' }),
+                item('a4', { title: 'Meta batida', type: 'success' }),
+            ],
+            disponibilidade: disponibilidade({ PT: { attention: '2026-09-15', full: '2026-09-22' } }),
+        }],
+    });
+
+    await check('o aside existe e traz a contagem por tipo', async () => {
+        const a = await aside(page);
+        igual(a.existe, true, 'aside presente');
+        igual(a.filtros.map(f => [f.tipo, f.contagem]), [
+            ['all', '4'], ['critical', '1'], ['info', '2'], ['success', '1'],
+        ], 'contagem por tipo');
+    });
+
+    await check('"Todos" nasce marcado, sem filtro nenhum', async () => {
+        const a = await aside(page);
+        igual(a.filtros.find(f => f.tipo === 'all').ativo, true, 'Todos marcado');
+        igual(a.filtros.filter(f => f.tipo !== 'all').some(f => f.ativo), false, 'nenhum tipo marcado');
+    });
+
+    await check('filtrar por tipo estreita o feed', async () => {
+        await page.evaluate(() => window.__cw.api.toggle());
+        await page.waitForTimeout(400);
+        await page.click('.cw-bc-filter[data-tipo="info"]');
+        await page.waitForTimeout(200);
+        igual(await naLista(page), ['Fluxo novo', 'Janela de manutenção'], 'avisos após filtrar Info');
+    });
+
+    await check('a contagem NÃO muda com a busca', async () => {
+        // Um número que dança enquanto se digita não serve de panorama: ele
+        // conta o que existe, e a busca estreita o que aparece.
+        await page.fill('.cw-bc-search-input', 'manutenção');
+        await page.waitForTimeout(250);
+        const a = await aside(page);
+        igual(a.filtros.map(f => f.contagem), ['4', '1', '2', '1'], 'contagem durante a busca');
+        igual(await naLista(page), ['Janela de manutenção'], 'feed durante busca + filtro');
+        await page.fill('.cw-bc-search-input', '');
+        await page.waitForTimeout(250);
+    });
+
+    await check('clicar no filtro ativo o desliga', async () => {
+        await page.click('.cw-bc-filter[data-tipo="info"]');
+        await page.waitForTimeout(200);
+        igual((await naLista(page)).length, 4, 'avisos após desligar o filtro');
+    });
+
+    await check('o painel de leitura conta os lidos e habilita "marcar tudo"', async () => {
+        const a = await aside(page);
+        igual(a.lidos, '0 lidos', 'contagem de lidos');
+        igual(a.limparDesativado, false, '"marcar tudo" habilitado com não-lidos');
+    });
+
+    await check('marcar tudo como lido esvazia a lista e desabilita o botão', async () => {
+        await page.click('.cw-bc-clear-btn');
+        await page.waitForTimeout(300);
+        igual(await naLista(page), [], 'lista após marcar tudo');
+        const a = await aside(page);
+        igual(a.lidos, '4 lidos', 'contagem de lidos');
+        igual(a.limparDesativado, true, '"marcar tudo" desabilitado sem não-lidos');
+    });
+
+    await check('o histórico do aside traz os lidos de volta ao feed', async () => {
+        await page.click('.cw-bc-history-divider');
+        await page.waitForTimeout(250);
+        const n = await page.evaluate(() =>
+            document.querySelectorAll('#cw-bc-history .cw-bc-card.history').length);
+        igual(n, 4, 'cards no histórico');
+    });
+
+    await check('a linha de sincronização diz quando foi a última vez', async () => {
+        const a = await aside(page);
+        if (!/Atualizado/.test(a.sync)) throw new Error('linha de sync inesperada: ' + a.sync);
+    });
+
+    await page.close();
+}
+
+{
+    const page = await novaPagina({
+        segmento: 'PT',
+        rodadas: [{ avisos: [item('a1')] }],   // sem disponibilidade publicada
+    });
+
+    await check('sem disponibilidade publicada, o painel some em vez de ficar vazio', async () => {
+        igual((await aside(page)).bauVisivel, false, 'painel de disponibilidade oculto');
+    });
+
+    await page.close();
+}
+
 // ------------------------------------------------ acessibilidade e registro visual
 {
     const page = await novaPagina({

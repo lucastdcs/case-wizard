@@ -141,7 +141,11 @@ function buildTechDoc() {
   cleanupLeadingBlank_(body);
   doc.setName(DOC.TITLE);
 
-  DocumentApp.getUi().alert(
+  // O documento já está montado neste ponto — se getUi() falhar (função
+  // rodada direto pelo editor do Apps Script, sem passar pelo menu do Doc,
+  // em vez de "Case Wizard > Montar documentação"), isso não pode parecer
+  // uma falha da montagem em si.
+  alertOuLog_(
     'Pronto! ' + SECTION_BUILDERS.length + ' seções montadas.\n\n' +
     'Dica: abra Ver > Mostrar estrutura do documento para navegar pelos títulos.');
 }
@@ -149,7 +153,15 @@ function buildTechDoc() {
 function clearDocument() {
   var doc = DocumentApp.getActiveDocument();
   resetDocument_(doc, doc.getBody());
-  DocumentApp.getUi().alert('Documento limpo.');
+  alertOuLog_('Documento limpo.');
+}
+
+function alertOuLog_(message) {
+  try {
+    DocumentApp.getUi().alert(message);
+  } catch (e) {
+    Logger.log(message);
+  }
 }
 
 // ============================================================

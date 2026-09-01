@@ -468,6 +468,19 @@ function isOverheadRoleCategory(roleCategory) {
   return !(catLower.includes('agent') || catLower.includes('apprentice'));
 }
 
+// Idioma padrão derivado do segmento da planilha People. Mesma extração de
+// isOverheadRoleCategory() e pelo mesmo motivo: a aba "Pessoas" da Central
+// mostra ao TL qual idioma o segmento digitado vai produzir ANTES de ele
+// salvar, e uma segunda cópia dessa regra faria a tela prometer um idioma e o
+// app entregar outro - divergência que ninguém veria, porque as duas telas
+// nunca aparecem juntas.
+function defaultLanguageForSegment(segment) {
+  const segLower = String(segment || "").toLowerCase().trim();
+  if (segLower === 'es') return "ES";
+  if (segLower === 'en') return "EN";
+  return "PT-BR";
+}
+
 // Busca o perfil (papel/segmento/permissão) de um LDAP na planilha "People".
 // Extraído do handler de 'get_user_profile' para poder ser reaproveitado
 // pela checagem de permissão (assertCallerIsOverhead).
@@ -501,13 +514,7 @@ function getUserProfileByLdap(ldap) {
         const isOverhead = isOverheadRoleCategory(roleCategory);
 
         // Regra 2: Idiomas. Staff = PT. PT = PT. ES = ES.
-        let lang = "PT-BR"; // Padrão
-        const segLower = segment.toLowerCase();
-        if (segLower === 'es') {
-          lang = "ES";
-        } else if (segLower === 'en') {
-          lang = "EN";
-        }
+        const lang = defaultLanguageForSegment(segment);
 
         profile = {
           ldap: ldap,
