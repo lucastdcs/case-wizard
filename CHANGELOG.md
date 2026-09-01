@@ -9,6 +9,20 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [6.1.0] - 2026-09-01
+
+### Added
 - **Aba "Pessoas" na Central de Conteúdo — a planilha People editável pela
   tela.** Entrada, saída, troca de fluxo e troca de idioma de um agente passam a
   ser feitas ali, por **ADMIN e TL**, em vez de digitando na planilha. O TL
@@ -33,6 +47,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   `getUserProfileByLdap()`) e **`npm run smoke:people`** — o primeiro smoke que
   dirige o `ContentDashboard.html` real num Chromium, com `google.script.run`
   ligado ao backend GAS de verdade.
+- **Formulário de bugs e sugestões**, com banner no app e script de setup da
+  planilha de respostas.
+- **Avisos em duas colunas**, com o contraste corrigido e um aside de estado.
 
 ### Changed
 - **`test:content` passa a carregar `Código.js` e `PeopleAPI.js` no mesmo
@@ -43,17 +60,21 @@ versions follow [Semantic Versioning](https://semver.org/).
   no `Código.js`**, usada tanto por `getUserProfileByLdap()` quanto pela tela.
   Duas cópias fariam a Central prometer um idioma e o app entregar outro.
 
-### Deprecated
-
-### Removed
-
 ### Fixed
-
-- Fila do TL Dashboard agora é FIFO de verdade: `getPendingBAUCases` ordena do
-  mais antigo pro mais recente pela data de envio, em vez de devolver a planilha
-  invertida (mais novo primeiro), como já exigia `specs/workflow/bau-lifecycle.md`.
+- **Fila do TL Dashboard em FIFO.** `getPendingBAUCases` devolvia
+  `cases.reverse()` (mais novo primeiro), contra a regra de ordenação de
+  `specs/workflow/bau-lifecycle.md`. Quem escalava primeiro era atendido por
+  último.
+- **E-mails:** CTA encurtado e o raio da pill aplicado ao chip de identidade.
+- **Form de feedback:** nome correto da aba de respostas, sem coleta forçada de
+  e-mail, e o setup passa a exigir planilha ativa.
+- **Gerador de doc técnico:** o alerta final não parece mais uma falha.
 
 ### Security
+- **O diretório de pessoas nunca sai pela leitura pública.** O módulo `people`
+  entrou em `CONTENT_PRIVATE_MODULES`: `op=content_public&module=people` é
+  recusado, e a escrita não tem rota JSONP nenhuma — a identidade ali é um
+  parâmetro forjável.
 
 ## [6.0.0] - 2026-08-21
 
@@ -202,5 +223,6 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.0.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...HEAD
+[6.1.0]: https://github.com/lucastdcs/case-wizard/compare/v6.0.0...v6.1.0
 [6.0.0]: https://github.com/lucastdcs/case-wizard/releases/tag/v6.0.0

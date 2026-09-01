@@ -15,15 +15,25 @@
 // contar uma release por vez (o localStorage guarda uma única versão vista).
 
 export const RELEASE_NOTES = {
-    version: "v6.0.1",
+    version: "v6.1.0",
 
-    title: "Case Wizard v6.0.1",
+    title: "Case Wizard v6.1.0",
 
     slides: [
         {
-            icon: "📧",
-            title: "Módulo de e-mails estabilizado",
-            text: "A atualização de interface do Connect Cases quebrou a abertura automática do compositor de e-mail. A correção já está no ar — o Case Wizard acompanha o novo fluxo do Connect Cases e nada precisa ser feito do seu lado."
+            icon: "🐞",
+            title: "Achou um bug? Agora dá pra contar",
+            text: "Tem um formulário de bugs e sugestões dentro do app. Se algo travar, sair errado ou só te irritar, manda por ali — chega direto para quem cuida do Case Wizard, sem precisar caçar ninguém no chat."
+        },
+        {
+            icon: "📢",
+            title: "Avisos mais fáceis de ler",
+            text: "O painel de avisos foi redesenhado em duas colunas, com o contraste corrigido e um espaço próprio para o estado de cada aviso. Menos rolagem para achar o que importa hoje."
+        },
+        {
+            icon: "🗂️",
+            title: "Para a liderança: o time se atualiza pela Central",
+            text: "A Central de Conteúdo ganhou a aba Pessoas. Entrada, saída, troca de fluxo e troca de idioma de um agente passam a ser feitas por ali, em vez de na planilha. TL propõe, ADMIN aprova — e o idioma em que o app abre para a pessoa acompanha a mudança."
         }
     ]
 };
