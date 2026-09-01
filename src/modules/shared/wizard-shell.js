@@ -24,6 +24,7 @@
 import { SoundManager } from "./sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "./dom-utils.js";
 import { getLanguage } from "./i18n.js";
+import { FEEDBACK_FORM_URL, AUTHOR_CREDIT } from "./config.js";
 
 const STYLE_ID = "cw-wizard-shell-styles";
 
@@ -39,6 +40,7 @@ const SHELL_DICT = {
         next: "Próximo",
         done: "Concluir",
         dotsGroup: "Navegação entre os slides",
+        report: "Reportar bug ou sugestão",
         slideLabel: (i, n) => `Slide ${i} de ${n}`,
         announce: (i, n, title, text) => `Slide ${i} de ${n}: ${title}. ${text}`,
     },
@@ -48,6 +50,7 @@ const SHELL_DICT = {
         next: "Siguiente",
         done: "Finalizar",
         dotsGroup: "Navegación entre las diapositivas",
+        report: "Reportar error o sugerencia",
         slideLabel: (i, n) => `Diapositiva ${i} de ${n}`,
         announce: (i, n, title, text) => `Diapositiva ${i} de ${n}: ${title}. ${text}`,
     },
@@ -223,6 +226,27 @@ function injectStyles() {
         .cw-wiz-actions {
             display: flex; align-items: center; gap: 8px;
         }
+
+        /* Onboarding e Changelog são as duas únicas telas do app que não
+           passam pelo header-factory, então não herdavam o overlay de ajuda
+           com crédito e link de report. Este rodapé é o equivalente enxuto:
+           uma linha, sem competir com os botões de navegação acima. */
+        .cw-wiz-footer {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--cw-hairline, #e8eaed);
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            font-size: 11px; color: #9aa0a6; letter-spacing: 0.3px;
+        }
+        .cw-wiz-footer a {
+            color: var(--cw-primary, #1a73e8); text-decoration: none;
+        }
+        .cw-wiz-footer a:hover { text-decoration: underline; }
+        .cw-wiz-footer a:focus-visible {
+            outline: 2px solid var(--cw-primary, #1a73e8);
+            outline-offset: 2px; border-radius: 2px;
+        }
+        .cw-wiz-footer .cw-wiz-credit-name { color: var(--cw-primary, #1a73e8); font-weight: 500; }
         .cw-wiz-btn {
             padding: 11px 24px;
             border-radius: 20px;
@@ -446,6 +470,29 @@ export function openWizardShell({
     card.appendChild(liveEl);
     card.appendChild(dotsEl);
     card.appendChild(actionsEl);
+
+    const footerEl = document.createElement("div");
+    footerEl.className = "cw-wiz-footer";
+    const reportLink = document.createElement("a");
+    reportLink.href = FEEDBACK_FORM_URL;
+    reportLink.target = "_blank";
+    reportLink.rel = "noopener noreferrer";
+    reportLink.textContent = wt("report");
+    const sep = document.createElement("span");
+    sep.textContent = "·";
+    sep.style.opacity = "0.5";
+    sep.setAttribute("aria-hidden", "true");
+    const creditEl = document.createElement("span");
+    // textContent no nome, não innerHTML: a regra do projeto não abre exceção
+    // por o dado vir de uma constante do próprio código.
+    creditEl.append(getLanguage() === "es" ? "creado por " : "criado por ");
+    const creditName = document.createElement("span");
+    creditName.className = "cw-wiz-credit-name";
+    creditName.textContent = AUTHOR_CREDIT;
+    creditEl.appendChild(creditName);
+    footerEl.append(reportLink, sep, creditEl);
+    card.appendChild(footerEl);
+
     overlay.appendChild(card);
 
     // --- DOTS ---

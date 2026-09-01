@@ -3,6 +3,7 @@ import { stylePopup, styleCredit, styleResizeHandle, makeResizable } from "../..
 import { createStandardHeader } from "../../shared/header-factory.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
 import { getLanguage } from "../../shared/i18n.js";
+import { AUTHOR_CREDIT } from "../../shared/config.js";
 
 export const HEADER_DESC = {
     pt: "Gera notas padronizadas com excelência visual.",
@@ -44,7 +45,7 @@ export function createNotesPopup(version, onToggleVisibility) {
 
     // Credit element
     const credit = document.createElement("div");
-    credit.textContent = "created by lucaste@";
+    credit.textContent = `created by ${AUTHOR_CREDIT}`;
     Object.assign(credit.style, styleCredit, {
         padding: "16px 24px",
         borderTop: `1px solid ${COLORS.bgInput}`,

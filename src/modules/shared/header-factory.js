@@ -2,6 +2,7 @@
 
 import { makeDraggable } from './utils.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
+import { FEEDBACK_FORM_URL, AUTHOR_CREDIT } from './config.js';
 
 // Textos fixos do header/overlay de ajuda, compartilhados por TODO popup de
 // módulo (Notes, Email, Configs, etc.) - traduzir aqui já cobre esses
@@ -222,7 +223,7 @@ function createHelpOverlay(parentPopup, title, version, description) {
         </div>
 
         <div style="margin-bottom: 32px;">
-            <a href="https://forms.gle/vkvMzSEiuEHpTnKu6" target="_blank" id="cw-feedback-link" style="
+            <a href="${FEEDBACK_FORM_URL}" target="_blank" rel="noopener noreferrer" id="cw-feedback-link" style="
                 display: inline-flex; align-items: center; gap: 8px;
                 padding: 10px 20px;
                 background-color: #F8F9FA;
@@ -239,7 +240,7 @@ function createHelpOverlay(parentPopup, title, version, description) {
         </div>
 
         <div class="cw-help-created-by" style="font-size: 12px; color: #9aa0a6;">
-            ${ht('createdBy')} <span style="color: #1a73e8; font-weight: 500;">@lucaste</span>
+            ${ht('createdBy')} <span style="color: #1a73e8; font-weight: 500;">${AUTHOR_CREDIT}</span>
         </div>
 
         <button id="close-help-internal" style="margin-top: 24px; padding: 8px 24px; border: 1px solid #dadce0; background: white; border-radius: 18px; color: #5f6368; cursor: pointer; font-weight: 500; transition: background 0.2s;">

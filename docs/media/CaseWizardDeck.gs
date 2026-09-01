@@ -29,9 +29,9 @@ var CONFIG = {
   DRIVE_FOLDER_ID: 'COLOQUE_O_ID_DA_PASTA_AQUI',
 };
 
-// Mesmo link usado dentro do próprio app (Configurações > "Reportar
-// Bug/Sugestões", src/modules/configs/configs-assistant.js).
-var FEEDBACK_FORM_URL = 'forms.gle/8icwk1TejBTDYsJS6';
+// Mesmo link usado dentro do próprio app (src/modules/shared/config.js →
+// FEEDBACK_FORM_URL). Sem o esquema, porque aqui vira texto de slide.
+var FEEDBACK_FORM_URL = 'docs.google.com/forms/d/1v8mi4eLmx3a2GX2lEMmxMDR2n8AdzGL9WP_p_YEaveg/viewform';
 
 // Bookmarklet de produção (sempre a branch main / bundle.js), copiado
 // literalmente do README.md — não editar sem atualizar lá também.

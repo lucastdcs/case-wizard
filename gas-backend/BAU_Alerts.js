@@ -60,6 +60,11 @@ function sendBAUVolumeAlertEmail(pendingCount, creationCount, discardCount) {
   const motivo = "Você recebeu isso porque a fila combinada (criação + descarte) passou do limite configurado. "
     + "O aviso volta só depois que a fila cair para " + BAU_VOLUME_ALERT_THRESHOLD + " ou menos e cruzar o limite de novo.";
 
+  // Mesmo traço de autoria dos e-mails do fluxo BAU (EMAIL_I18N.footerTrace).
+  // Aqui não há ID de escalação para rastrear - o que identifica o e-mail é a
+  // origem: é a verificação automática da fila, não uma ação de alguém.
+  const rodape = motivo + " · Cases Wizard · automatizado por " + CW_AUTHOR_CREDIT;
+
   const htmlBody = renderBauEmail({
     preheader: pendingCount + " casos aguardando revisão no BAU",
     accent: EMAIL_TOKENS.accentAmber,
@@ -72,7 +77,7 @@ function sendBAUVolumeAlertEmail(pendingCount, creationCount, discardCount) {
       { label: "Aprovação de descarte", value: discardCount },
       { label: "Total pendente", value: pendingCount }
     ])),
-    footerNote: motivo
+    footerNote: rodape
   });
 
   const plainBody = [
@@ -87,7 +92,7 @@ function sendBAUVolumeAlertEmail(pendingCount, creationCount, discardCount) {
     "Aprovação de descarte: " + discardCount,
     "Total pendente: " + pendingCount,
     "",
-    motivo
+    rodape
   ].join("\n");
 
   MailApp.sendEmail({

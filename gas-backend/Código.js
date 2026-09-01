@@ -16,6 +16,15 @@ const SHEET_USER_PREFS = "User_Prefs";
 // caminho, não na célula. Com 8 atalhos o blob fica na casa de 1 KB.
 const USER_PREFS_MAX_BYTES = 8000;
 
+// Espelho do que src/modules/shared/config.js define para o front. São duas
+// cópias porque são dois runtimes: o Apps Script não importa módulos ES do
+// src/. Trocar o form significa trocar nos dois lugares — este comentário é o
+// único link entre eles.
+//
+// O sufixo /viewform é obrigatório: sem ele a URL abre o EDITOR do form.
+const CW_FEEDBACK_FORM_URL = "https://docs.google.com/forms/d/1v8mi4eLmx3a2GX2lEMmxMDR2n8AdzGL9WP_p_YEaveg/viewform";
+const CW_AUTHOR_CREDIT = "@lucaste";
+
 // ---------------------------------------------------------------------------
 // AMBIENTE DA IMPLANTAÇÃO
 //
@@ -121,6 +130,31 @@ function buildEnvBadgeHtml(info) {
 }
 
 /**
+ * Rodapé de autoria dos dashboards do Apps Script.
+ *
+ * As telas servidas pelo Apps Script (Central de Conteúdo e TL Dashboard) são
+ * as únicas do projeto que não passam pelo header-factory do front, então eram
+ * as únicas sem crédito nem caminho para reportar bug. Este bloco cobre as
+ * duas de uma vez, pela mesma injeção que já existia para o selo de ambiente.
+ *
+ * Fica à DIREITA porque o selo de ambiente ocupa o canto inferior esquerdo.
+ */
+function buildCreditHtml() {
+  return '' +
+    '<div id="cw-credit" style="' +
+      'position:fixed; right:16px; bottom:16px; z-index:99998;' +
+      'display:flex; align-items:center; gap:10px;' +
+      'font-family:\'Google Sans\', Roboto, sans-serif; font-size:11px;' +
+      'color:#9AA0A6; letter-spacing:0.3px;' +
+    '">' +
+      '<a href="' + CW_FEEDBACK_FORM_URL + '" target="_blank" rel="noopener noreferrer" ' +
+        'style="color:#1a73e8; text-decoration:none;">Reportar bug ou sugestão</a>' +
+      '<span style="opacity:0.5;">·</span>' +
+      '<span>criado por <span style="color:#1a73e8; font-weight:500;">' + CW_AUTHOR_CREDIT + '</span></span>' +
+    '</div>';
+}
+
+/**
  * Serve um dashboard já com o selo de ambiente injetado.
  *
  * Usa createTemplateFromFile (e não createHtmlOutputFromFile) só por causa
@@ -134,6 +168,9 @@ function renderDashboard(fileName, title) {
 
   // Consumido por <?!= CW_ENV_BADGE ?> logo depois do <body> de cada dashboard.
   template.CW_ENV_BADGE = buildEnvBadgeHtml(info);
+
+  // Consumido por <?!= CW_CREDIT ?>, logo depois do selo de ambiente.
+  template.CW_CREDIT = buildCreditHtml();
 
   return template.evaluate()
     .setTitle(title)

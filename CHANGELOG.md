@@ -9,8 +9,33 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Crédito de autoria nos dashboards do Apps Script.** A Central de Conteúdo e
+  o TL Dashboard eram as únicas telas do projeto sem crédito e sem caminho para
+  reportar um bug — não passam pelo `header-factory` do front. Agora recebem um
+  rodapé discreto (link do form + "criado por @lucaste") pela mesma injeção de
+  template que já servia o selo de ambiente (`CW_CREDIT`, em `Código.js`).
+- **"Reportar um problema" traduzido nos e-mails automáticos.** O rótulo estava
+  fixo em português dentro do `EmailTemplateDynamic.html`, mesmo nos e-mails que
+  saem em espanhol. Virou slot (`{{FEEDBACK_LABEL}}`) alimentado por
+  `EMAIL_I18N`, com fallback em PT para quem não passa o rótulo. O link do form
+  também passou a aparecer na alternativa em texto puro, que só tinha o rodapé
+  de rastreio.
+- **Rodapé de crédito no Onboarding e no Changelog.** Os dois wizards de slides
+  passam por `wizard-shell.js` e eram as únicas telas do front fora do
+  `header-factory` — ficavam sem crédito e sem caminho para reportar. Ganharam
+  uma linha só, abaixo dos botões, com o link do form e a autoria (PT/ES).
+- **Traço de autoria no alerta de volume BAU.** `BAU_Alerts.js` montava o rodapé
+  só com o motivo do disparo; agora fecha com "Cases Wizard · automatizado por
+  @lucaste", como os demais e-mails do fluxo.
 
 ### Changed
+- **Form de bugs e sugestões unificado em uma variável só.** Havia três URLs
+  diferentes em produção (overlay de ajuda, Configurações → Suporte e rodapé dos
+  e-mails). Agora existe um ponto de verdade por runtime — `FEEDBACK_FORM_URL`
+  em `src/modules/shared/config.js` e `CW_FEEDBACK_FORM_URL` em
+  `gas-backend/Código.js` — apontando para o form novo.
+- **Crédito de autoria em formato único.** Convivia `@lucaste`, `lucaste@` e
+  `by lucaste@`. Passou a sair de `AUTHOR_CREDIT` / `CW_AUTHOR_CREDIT`.
 
 ### Deprecated
 
