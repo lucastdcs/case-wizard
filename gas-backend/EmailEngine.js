@@ -27,7 +27,8 @@ const EMAIL_I18N = {
     defaultCase: "Notificação",
     defaultSubject: function (adv) { return "Notificação TechSol: " + adv; },
     requestedBy: function (ldap) { return "Solicitado por @" + ldap; },
-    footerTrace: function (id) { return "Cases Wizard · automatizado por @lucaste · rastreio " + id; },
+    footerTrace: function (id) { return "Cases Wizard · automatizado por " + CW_AUTHOR_CREDIT + " · rastreio " + id; },
+    reportProblem: "Reportar um problema",
     actionViewCase: "Ver caso",
     actionOpenDashboard: "Abrir TL Dashboard",
     sectionDetails: "Detalhes do caso",
@@ -75,7 +76,8 @@ const EMAIL_I18N = {
     defaultCase: "Notificación",
     defaultSubject: function (adv) { return "Notificación TechSol: " + adv; },
     requestedBy: function (ldap) { return "Solicitado por @" + ldap; },
-    footerTrace: function (id) { return "Cases Wizard · automatizado por @lucaste · seguimiento " + id; },
+    footerTrace: function (id) { return "Cases Wizard · automatizado por " + CW_AUTHOR_CREDIT + " · seguimiento " + id; },
+    reportProblem: "Reportar un problema",
     actionViewCase: "Ver caso",
     actionOpenDashboard: "Abrir TL Dashboard",
     sectionDetails: "Detalles del caso",
@@ -250,6 +252,10 @@ function renderBauEmail(parts) {
   html = fillEmailSlot(html, "{{ACTION}}", parts.action);
   html = fillEmailSlot(html, "{{BLOCKS}}", parts.blocks);
   html = fillEmailSlot(html, "{{FOOTER_NOTE}}", parts.footerNote);
+  html = fillEmailSlot(html, "{{FEEDBACK_URL}}", CW_FEEDBACK_FORM_URL);
+  // Cai em PT quando o chamador não passa rótulo — mesma regra do resto do
+  // arquivo: e-mail no idioma errado é melhor que e-mail que não sai.
+  html = fillEmailSlot(html, "{{FEEDBACK_LABEL}}", parts.reportLabel || EMAIL_I18N.pt.reportProblem);
 
   return applyEmailTokens(html);
 }
@@ -476,7 +482,8 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
     callout: callout,
     action: renderEmailButton(actionLabel, actionUrl),
     blocks: blocks,
-    footerNote: L.footerTrace(escalacaoId)
+    footerNote: L.footerTrace(escalacaoId),
+    reportLabel: L.reportProblem
   });
 
   // Alternativa em texto puro. MailApp.sendEmail vinha mandando só htmlBody, então
@@ -499,7 +506,8 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
     "",
     L.labelContext + ": " + stripEmailHtml(v.reason),
     "",
-    stripEmailHtml(L.footerTrace(escalacaoId))
+    stripEmailHtml(L.footerTrace(escalacaoId)),
+    L.reportProblem + ": " + CW_FEEDBACK_FORM_URL
   );
 
   MailApp.sendEmail({

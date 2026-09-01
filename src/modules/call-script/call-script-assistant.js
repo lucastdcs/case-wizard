@@ -16,6 +16,7 @@ import { getPageData } from "../shared/page-data.js";
 
 import { csaChecklistData, hydrateCallScriptFromContentCentral } from "./call-script-data.js";
 import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import { AUTHOR_CREDIT } from "../shared/config.js";
 
 const CSA_DICT = {
     pt: {
@@ -503,7 +504,7 @@ export function initCallScriptAssistant() {
   footer.className = "csa-footer";
   const credit = document.createElement("span");
   credit.className = "csa-credit";
-  credit.textContent = "by lucaste@";
+  credit.textContent = `by ${AUTHOR_CREDIT}`;
 
   const resetBtn = document.createElement("button");
   resetBtn.className = "csa-reset-btn";

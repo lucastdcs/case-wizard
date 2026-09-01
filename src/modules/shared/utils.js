@@ -5,6 +5,7 @@ import { SoundManager } from "./sound-manager.js";
 import { esperar, clamp } from "./dom-utils.js";
 import { getLanguage } from "./i18n.js";
 import { Z } from "./z-layers.js";
+import { AUTHOR_CREDIT } from "./config.js";
 
 // Variável global para controlar a pilha de janelas.
 // Começa NO degrau de repouso das janelas (antes começava em 10000, bem
@@ -815,7 +816,7 @@ export async function playStartupAnimation() {
                 <div class="sextou-badge">🎉 Sextou!</div>
             </div>
         </div>
-        <div class="credit-pro">created by <span>@lucaste</span></div>
+        <div class="credit-pro">created by <span>${AUTHOR_CREDIT}</span></div>
         <div class="loader-line"></div>
     `;
   document.body.appendChild(splash);

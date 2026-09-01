@@ -9,6 +9,7 @@ import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { getLanguage, setLanguage, onLanguageChange, createTranslator } from "../shared/i18n.js";
 import { createShortcutsSection } from "./shortcuts-section.js";
+import { FEEDBACK_FORM_URL } from "../shared/config.js";
 
 const CONFIGS_DICT = {
     pt: {
@@ -429,7 +430,7 @@ export function initConfigsAssistant() {
         <div class="cw-configs-section-title js-support-section-title"></div>
         <div class="cw-configs-card">
             <div style="display:flex; flex-direction:column; gap:12px;">
-                <a class="cw-configs-btn js-support-link" href="https://forms.gle/8icwk1TejBTDYsJS6" target="_blank"></a>
+                <a class="cw-configs-btn js-support-link" href="${FEEDBACK_FORM_URL}" target="_blank" rel="noopener noreferrer"></a>
             </div>
         </div>
     `;
