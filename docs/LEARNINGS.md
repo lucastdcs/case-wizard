@@ -28,6 +28,66 @@ ordenação/filtro de fila — abra a regra em `specs/` primeiro e compare, em v
 de assumir que o comportamento atual é o desejado. Cuidado com `Data_Envio`: o
 timestamp pode vir do cliente (`p.date` em `handleBAUEscalation`), então a ordem
 de append da planilha não é fonte confiável de ordem de chegada.
+## Trava de segurança se escreve como delta (de 1 para 0), não como invariante
+
+**Why**: a trava que impede a aba People de ficar sem nenhuma liderança nasceu
+como `if (lideres === 0) throw`. Parecia obviamente certo — e passou em 38 dos 39
+testes. O que caiu foi o cadastro numa aba **vazia**: numa planilha nova, o
+primeiro registro só poderia ser o de um TL, e admitir um agente ficaria
+impossível pela tela, exigindo editar a planilha na mão. A regra que se queria
+nunca foi "tem de haver liderança"; era "esta alteração não pode **tirar** a
+última". Escrita como invariante absoluta, ela cobra de quem não causou o
+problema — e o bloqueio aparece justamente no pior momento, o da configuração
+inicial, quando ninguém ainda sabe como a tela funciona.
+
+A forma correta compara os dois estados:
+
+```js
+if (antes > 0 && depois === 0) throw new Error(...);
+```
+
+**When to apply**: em qualquer guarda de "não pode ficar sem X" — o último
+ADMIN em `Content_Access`, a última liderança em `People`, o último item de uma
+lista obrigatória. Pergunte sempre: *e se já estivesse em zero antes?* Se a
+resposta bloqueia quem está tentando **sair** do zero, a trava está escrita como
+invariante e precisa virar delta. O teste que pega isso é o do estado vazio, que
+é fácil de não escrever porque parece um caso degenerado sem interesse.
+
+---
+
+## Tela do Apps Script se testa de verdade: dá para ligar `google.script.run` a um backend real
+
+**Why**: o `ContentDashboard.html` e o `TLDashboard.html` nunca tiveram teste de
+tela, e a razão parecia definitiva — `google.script.run` não existe fora do Apps
+Script, então a página não roda em lugar nenhum. Na prática, a ponte é
+reconstruível em ~20 linhas, e sem mock de regra nenhuma: o Chromium carrega o
+HTML **real** e cada chamada é encaminhada para o backend GAS **real** rodando
+num contexto `vm` do Node sobre a planilha falsa que os harnesses já usam.
+
+```js
+window.google = { script: { run: (function make(ok, err) {
+  return new Proxy({}, { get: function (_, prop) {
+    if (prop === 'withSuccessHandler') return function (f) { return make(f, err); };
+    if (prop === 'withFailureHandler') return function (f) { return make(ok, f); };
+    return function () { /* encaminha para o Node via page.exposeFunction */ };
+  }});
+})(null, null) } };
+```
+
+Foi isso que provou o que nenhum teste de unidade alcançava: que a aba nem
+aparece para QA, que a linha do TL vira "em revisão" **sem a planilha mudar**, e
+que o pisca é verde quando aplica e âmbar quando enfileira. Duas asserções
+minhas quebraram ao acrescentar um rótulo de leitor de tela na coluna de idioma —
+o teste estava lendo `textContent` e passou a enxergar o texto do `.sr-only`.
+Lição de brinde: asserção de tela compara o **visível**, então o valor merece um
+elemento próprio em vez de dividir o nó com o rótulo acessível.
+
+**When to apply**: ao mexer em qualquer coisa dentro de `ContentDashboard.html`
+ou `TLDashboard.html`. Ver `scripts/smoke-people.mjs` — é o molde. Também vale
+como aviso: se um arquivo do `gas-backend/` desvia para outro (hoje o
+`ContentAPI` chama o `PeopleAPI`), o harness precisa carregar **todos** eles no
+mesmo contexto, porque é isso que o Apps Script faz; carregar só um testa um
+ambiente que não existe.
 
 ---
 

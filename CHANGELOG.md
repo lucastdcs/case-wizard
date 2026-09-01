@@ -9,8 +9,39 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Aba "Pessoas" na Central de Conteúdo — a planilha People editável pela
+  tela.** Entrada, saída, troca de fluxo e troca de idioma de um agente passam a
+  ser feitas ali, por **ADMIN e TL**, em vez de digitando na planilha. O TL
+  propõe e a alteração vai para a fila; o **ADMIN aprova** — e, por já poder
+  aprovar sozinho, aplica na hora, numa chamada só. A aba People é o diretório de
+  autorização (`isOverhead` e idioma padrão saem dela), então a escrita **não
+  passa pelo JSONP**, onde a identidade é forjável: tudo por `google.script.run`.
+  Aprovação de gente é exclusiva do ADMIN, mesmo que o TL aprove conteúdo.
+  Backend em `gas-backend/PeopleAPI.js`; ADR em
+  `docs/decisions/0006-aba-people-editavel-na-central.md`.
+- **Cor de identificação por segmento e por categoria.** Cada linha traz o
+  segmento (o "fluxo") e a categoria como chip colorido — cores fixas para
+  PT/ES/EN/Staff e um hash estável para qualquer valor novo, que assim nasce com
+  cor própria sem precisar de deploy. Quem tem acesso de liderança leva um escudo
+  ao lado do LDAP.
+- **Edição no lugar da linha, sem modal.** A linha se abre como editor, mostrando
+  enquanto se digita o que a regra do servidor vai derivar: o idioma em que o app
+  abrirá e se aquela categoria dá acesso ao TL Dashboard — a regra permissiva do
+  `isOverhead` deixa de ser invisível. A linha alterada pisca em verde (aplicada)
+  ou âmbar (na fila), com busca e filtro por segmento na mesma tela.
+- **`npm run test:people`** (40 checagens da regra, incluindo o round-trip até
+  `getUserProfileByLdap()`) e **`npm run smoke:people`** — o primeiro smoke que
+  dirige o `ContentDashboard.html` real num Chromium, com `google.script.run`
+  ligado ao backend GAS de verdade.
 
 ### Changed
+- **`test:content` passa a carregar `Código.js` e `PeopleAPI.js` no mesmo
+  contexto**, como o Apps Script faz — o `ContentAPI` agora desvia para o
+  `PeopleAPI` quando o módulo é `people`, e um harness com só um dos arquivos
+  testaria um ambiente que não existe.
+- **A derivação de idioma a partir do segmento virou `defaultLanguageForSegment()`
+  no `Código.js`**, usada tanto por `getUserProfileByLdap()` quanto pela tela.
+  Duas cópias fariam a Central prometer um idioma e o app entregar outro.
 
 ### Deprecated
 

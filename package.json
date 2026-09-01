@@ -18,11 +18,13 @@
     "test:note-templates": "node scripts/test-note-templates.mjs",
     "test:shortcuts": "node scripts/test-shortcuts.mjs",
     "test:prefs": "node scripts/test-user-prefs.js",
+    "test:people": "node scripts/test-people-api.js",
     "test:deployment-env": "node scripts/test-deployment-env.js",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",
     "smoke:broadcast": "node scripts/smoke-broadcast.mjs",
+    "smoke:people": "node scripts/smoke-people.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },
   "dependencies": {

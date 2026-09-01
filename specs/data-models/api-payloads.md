@@ -34,3 +34,28 @@ Ctrl+K). Esquema da aba em `db-schema.md`.
 ## Construção do Payload (Edição)
 - **Bloqueio de Data Wiping:** Ao editar, o `bau-form.js` **NÃO DEVE** injetar fallbacks de string vazia (`|| ""`) para campos que o usuário não interagiu ou que não existem na tela atual.
 - Se o campo não foi modificado ou não faz parte do fluxo, não o envie no payload ou envie estritamente como `undefined`. Isso permite que o Back-end saiba que deve manter o dado original da planilha.
+
+## Diretório de pessoas (módulo `people` da Central)
+
+Estas ops **não existem no roteador JSONP** e não devem ser adicionadas a ele:
+são chamadas por `google.script.run` a partir do `ContentDashboard.html`, onde a
+identidade é `Session.getActiveUser()`. Esquema da aba em `db-schema.md`;
+o porquê em `docs/decisions/0006-aba-people-editavel-na-central.md`.
+
+| Função | Params | Quem pode | Resposta |
+| :--- | :--- | :--- | :--- |
+| `listPeople()` | — | ADMIN, TL | Lista de pessoas com `isOverhead`/`defaultLanguage` derivados e a proposta pendente de cada uma (`pending`), mais as admissões propostas ainda fora da aba (`isIncoming: true`) |
+| `savePeopleChange(p)` | `{ ldap, role, roleCategory, segment }` | ADMIN, TL | `{ applied, isNew, ldap, draftId? }` — `applied: true` só para quem tem `selfApprove` (ADMIN) |
+| `requestPeopleRemoval(ldap, reason)` | LDAP + motivo **obrigatório** | ADMIN, TL | `{ applied, ldap }` |
+| `approveContentDraft(draftId, note)` | — | **só ADMIN**, quando o módulo é `people` | `{ action, outcome, ldap }` — `outcome`: `created` \| `updated` \| `removed` |
+
+### Regras
+- **Uma chamada, dois desfechos.** `savePeopleChange` aplica na hora para o
+  ADMIN e enfileira para o TL. Não existe "salvar" e depois "enviar": trocar o
+  segmento de alguém não pode custar três cliques a quem já pode aprovar.
+- **`applied` é o que a tela deve comunicar**, não o papel de quem chamou. É ele
+  que decide entre "aplicado na planilha" e "enviado para aprovação".
+- **A validação roda duas vezes** — na proposta e de novo na aprovação. Uma
+  proposta espera na fila, e a aba pode ter mudado nesse meio-tempo.
+- **`people` nunca é servido por `handleContentPublicRead`** (está em
+  `CONTENT_PRIVATE_MODULES`), nem mesmo se um dia tiver linha em `Content_Items`.

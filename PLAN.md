@@ -37,6 +37,18 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
       `cases.reverse()` (mais novo primeiro), contrariando a regra de ordenação
       de `specs/workflow/bau-lifecycle.md`. Agora ordena pela data de envio,
       crescente. (2026-09-01)
+- [~] **Aba "Pessoas" na Central de Conteúdo** — a planilha `People` editável
+      pela tela, para ADMIN e TL, com aprovação exclusiva do ADMIN (que, por já
+      poder aprovar sozinho, aplica na hora). Cobre entrada, saída, troca de
+      fluxo e de idioma. Backend em `gas-backend/PeopleAPI.js`, tela na aba
+      "Pessoas" do `ContentDashboard.html`. ADR em
+      `docs/decisions/0006-aba-people-editavel-na-central.md`; esquema e
+      contrato em `specs/data-models/`. Testes: `test:people` (40) e
+      `smoke:people` (36, a tela real no Chromium). **Falta validar em produção
+      com a planilha de verdade** — em especial: conferir se os nomes das
+      colunas da aba People batem com o cabeçalho que a Central cria quando a
+      aba não existe, e passar os olhos na lista de segmentos reais para ver se
+      alguma cor de chip ficou ruim. (2026-09-01)
 - [~] **Atalhos do Ctrl+K por agente** — captura no Case Notes + construtor em
       Configurações, persistência em `User_Prefs` (nuvem, cache-first), grupos e
       ranking por uso no palette. ADR em
