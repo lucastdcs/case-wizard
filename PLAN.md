@@ -33,6 +33,10 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Recently done
 
+- [x] **Fila do TL Dashboard em FIFO** — `getPendingBAUCases` estava devolvendo
+      `cases.reverse()` (mais novo primeiro), contrariando a regra de ordenação
+      de `specs/workflow/bau-lifecycle.md`. Agora ordena pela data de envio,
+      crescente. (2026-09-01)
 - [~] **Atalhos do Ctrl+K por agente** — captura no Case Notes + construtor em
       Configurações, persistência em `User_Prefs` (nuvem, cache-first), grupos e
       ranking por uso no palette. ADR em
