@@ -215,6 +215,142 @@ function findContentRow_(sheetName, idHeader, id) {
   return null;
 }
 
+// Escreve um bloco de colunas CONTÍGUAS numa linha, numa chamada só.
+//
+// O padrão anterior era um getRange().setValue() por coluna, e cada um é uma
+// ida ao serviço do Sheets: aprovar uma proposta custava cinco. Só colunas
+// contíguas entram aqui de propósito - escrever um bloco maior "de uma vez"
+// exigiria reescrever colunas que a operação não quer tocar.
+function setContentRowBlock_(sheet, row, startCol, values) {
+  sheet.getRange(row, startCol, 1, values.length).setValues([values]);
+}
+
+// =========================================================
+//  TRAVA DE ESCRITA
+// =========================================================
+
+// O Sheets não tem transação. Entre ler "esta proposta está pendente?" e
+// escrever a linha nova existe uma janela em que outra execução passa pela
+// mesma checagem e escreve também - e o resultado são duas linhas 'live' na
+// mesma linhagem, que o app do agente renderiza como item duplicado, para
+// sempre, sem erro em log nenhum.
+//
+// A trava é do script inteiro (não por linha, que o Sheets não oferece) e
+// cobre o caminho de publicação: aprovar, rejeitar, reverter, publicar direto,
+// tirar do ar, enviar para revisão e semear.
+//
+// Fora dela ficam os caminhos que só anexam linha de rascunho: dois rascunhos
+// criados ao mesmo tempo são duas linhas independentes, e serializar isso só
+// tornaria a edição mais lenta sem proteger nada.
+const CONTENT_WRITE_LOCK_TIMEOUT_MS = 25 * 1000;
+
+function withContentWriteLock_(fn) {
+  let lock = null;
+
+  // Contexto sem LockService (execução de teste) não pode derrubar a operação:
+  // a trava é proteção contra concorrência, e onde não há concorrência não há
+  // o que proteger.
+  try {
+    lock = LockService.getScriptLock();
+  } catch (e) {
+    return fn();
+  }
+
+  if (!lock.tryLock(CONTENT_WRITE_LOCK_TIMEOUT_MS)) {
+    throw new Error(
+      "Outra publicação está acontecendo agora. Espere alguns segundos e tente de novo."
+    );
+  }
+
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// =========================================================
+//  CACHE DA LEITURA PÚBLICA
+// =========================================================
+
+// A leitura pública varre Content_Items inteira - todas as versões, live e
+// arquivadas - a cada chamada, e é o caminho quente do produto: é por ele que
+// passa todo agente que abre o app. Sem cache, cem pessoas entrando no turno
+// são centenas de execuções numa janela curta, contra o teto de execuções
+// simultâneas do Apps Script.
+//
+// TTL curto E invalidação explícita em toda escrita que muda o que está no ar.
+// O TTL sozinho faria conteúdo aprovado demorar até cinco minutos para chegar
+// ao agente, que é o oposto do motivo de a Central existir; a invalidação
+// sozinha deixaria entrada órfã se uma escrita falhasse no meio.
+const CONTENT_PUBLIC_CACHE_TTL_S = 300;
+const CONTENT_PUBLIC_CACHE_PREFIX = 'cw_content_pub_v1_';
+
+// O CacheService recusa valores acima de 100 KB por chave. Um módulo grande
+// (call_script, note_template) pode passar disso, e nesse caso a resposta é
+// servida direto da planilha em vez de estourar: cache é otimização, não
+// caminho obrigatório.
+const CONTENT_PUBLIC_CACHE_MAX_BYTES = 90 * 1024;
+
+function contentCache_() {
+  try {
+    return CacheService.getScriptCache();
+  } catch (e) {
+    return null;
+  }
+}
+
+function contentCacheKey_(module) {
+  return CONTENT_PUBLIC_CACHE_PREFIX + module;
+}
+
+// Invalida o módulo cujo conteúdo no ar acabou de mudar. Chamada por toda
+// escrita que publica, arquiva ou restaura - se um caminho novo de publicação
+// aparecer e esquecer disso, o agente fica com conteúdo velho por até 5 min.
+function invalidateContentCache_(module) {
+  const cache = contentCache_();
+  if (!cache || !module) return;
+  try {
+    cache.remove(contentCacheKey_(module));
+  } catch (e) {
+    // Cache indisponível não pode derrubar uma publicação que já aconteceu.
+  }
+}
+
+// Os itens 'live' de um módulo, do cache quando houver.
+function readLiveItemsCached_(module) {
+  const cache = contentCache_();
+
+  if (cache) {
+    try {
+      const hit = cache.get(contentCacheKey_(module));
+      if (hit) return JSON.parse(hit);
+    } catch (e) {
+      // Cache corrompido é o mesmo que cache vazio.
+    }
+  }
+
+  const items = readContentRows_(SHEET_CONTENT_ITEMS)
+    .filter(function (r) {
+      return String(r.Module).trim() === module && String(r.Status).trim() === CONTENT_STATUS.LIVE;
+    })
+    .map(mapItemRow_)
+    .sort(function (a, b) { return a.sortOrder - b.sortOrder; });
+
+  if (cache) {
+    try {
+      const payload = JSON.stringify(items);
+      if (payload.length <= CONTENT_PUBLIC_CACHE_MAX_BYTES) {
+        cache.put(contentCacheKey_(module), payload, CONTENT_PUBLIC_CACHE_TTL_S);
+      }
+    } catch (e) {
+      // Idem: não cachear é degradar, não falhar.
+    }
+  }
+
+  return items;
+}
+
 function contentNow_() {
   return new Date().toISOString();
 }
@@ -838,13 +974,14 @@ function saveContentDraft(payload) {
     }
 
     const row = existing._row;
-    sheet.getRange(row, 5).setValue(p.field || "");
-    sheet.getRange(row, 6).setValue(p.lang || 'ALL');
-    sheet.getRange(row, 7).setValue(p.label || "");
-    sheet.getRange(row, 8).setValue(p.value || "");
-    sheet.getRange(row, 9).setValue(CONTENT_STATUS.DRAFT);
-    sheet.getRange(row, 15).setValue(session.ldap);
-    sheet.getRange(row, 16).setValue(now);
+    setContentRowBlock_(sheet, row, 5, [
+      p.field || "",
+      p.lang || 'ALL',
+      p.label || "",
+      p.value || "",
+      CONTENT_STATUS.DRAFT
+    ]);
+    setContentRowBlock_(sheet, row, 15, [session.ldap, now]);
 
     logContentEvent_(session.ldap, 'draft_update', p.module + '/' + p.key, p.draftId);
     return { status: 'success', draftId: p.draftId };
@@ -876,6 +1013,14 @@ function saveContentDraft(payload) {
 
 // Manda o rascunho para a fila de revisão.
 function submitContentDraft(draftId) {
+  return withContentWriteLock_(function () {
+    return submitContentDraftLocked_(draftId);
+  });
+}
+
+// Sob trava porque o envio é o que dispara o e-mail aos aprovadores: dois
+// cliques simultâneos no mesmo rascunho mandariam dois avisos do mesmo pedido.
+function submitContentDraftLocked_(draftId) {
   const existing = findContentRow_(SHEET_CONTENT_DRAFTS, 'Draft_ID', draftId);
   if (!existing) throw new Error("Rascunho não encontrado.");
 
@@ -891,14 +1036,31 @@ function submitContentDraft(draftId) {
   const sheet = getContentSheet_(SHEET_CONTENT_DRAFTS);
   sheet.getRange(existing._row, 9).setValue(CONTENT_STATUS.PENDING);
   sheet.getRange(existing._row, 11).setValue(contentNow_());
-  // Solta a trava: em revisão ninguém mais edita mesmo.
-  sheet.getRange(existing._row, 15).setValue("");
-  sheet.getRange(existing._row, 16).setValue("");
+  // Solta a trava de edição: em revisão ninguém mais edita mesmo.
+  setContentRowBlock_(sheet, existing._row, 15, ["", ""]);
 
   logContentEvent_(session.ldap, 'draft_submit', String(existing.Module) + '/' + String(existing.Key), draftId);
   notifyApprovers_(existing, session.ldap);
 
   return { status: 'success' };
+}
+
+/**
+ * Salva e envia para revisão numa execução só.
+ *
+ * A tela fazia isso em duas chamadas encadeadas (três nos e-mails, que ainda
+ * validavam antes), cada uma com a latência do google.script.run. Além da
+ * espera, o encadeamento tinha um estado ruim no meio: falhar no envio deixava
+ * um rascunho salvo que a pessoa achava que tinha mandado.
+ *
+ * A validação não se perdeu no caminho: saveContentDraft() já valida o valor de
+ * cada módulo antes de gravar, então o erro continua chegando com o texto ainda
+ * na tela - só que numa viagem em vez de duas.
+ */
+function saveAndSubmitContentDraft(payload) {
+  const saved = saveContentDraft(payload);
+  submitContentDraft(saved.draftId);
+  return { status: 'success', draftId: saved.draftId };
 }
 
 // Avisa quem pode aprovar. Sem isso, "pendente" pode ficar parado indefinidamente
@@ -929,11 +1091,81 @@ function notifyApprovers_(draftRow, proposedBy) {
   }
 }
 
+// Avisa quem propôs qual foi a decisão. O contrário do notifyApprovers_: lá o
+// pedido sai à procura de revisor; aqui a resposta volta para quem esperava.
+//
+// Sem isto, a rejeição é invisível - o rascunho volta para 'draft' na tela e o
+// motivo escrito pelo revisor fica numa coluna que ninguém abre. A justificativa
+// vai no corpo justamente porque é a parte acionável: é ela que diz o que
+// corrigir antes de reenviar.
+function notifyProposerDecision_(draftRow, session, approved, note) {
+  const proposer = String(draftRow.Proposed_By || "").trim();
+  if (!proposer) return;
+
+  // Quem decide sobre a própria proposta (autoaprovação do ADMIN) já sabe.
+  if (proposer === session.ldap) return;
+
+  const label = String(draftRow.Label || draftRow.Key || "").trim();
+  const module = String(draftRow.Module || "").trim();
+
+  let url = '';
+  try {
+    url = buildDeploymentPageUrl('content');
+  } catch (e) {
+    url = '';
+  }
+
+  const botao = url
+    ? '<p style="margin:24px 0"><a href="' + url + '" ' +
+      'style="background:#1A73E8;color:#fff;text-decoration:none;' +
+      'padding:10px 20px;border-radius:4px;display:inline-block;' +
+      'font-family:Roboto,Arial,sans-serif;font-size:14px">' +
+      'Abrir a Central de Conteúdo</a></p>'
+    : '';
+
+  const corpo = approved
+    ? '<p><strong>' + session.ldap + '</strong> aprovou sua proposta em <strong>' +
+      module + '</strong> (' + label + '). Já está no ar.</p>' +
+      (String(note || "").trim()
+        ? '<p style="color:#5F6368">Comentário: ' + String(note).trim() + '</p>'
+        : '')
+    : '<p><strong>' + session.ldap + '</strong> devolveu sua proposta em <strong>' +
+      module + '</strong> (' + label + ').</p>' +
+      '<p><strong>Motivo:</strong> ' + String(note || "").trim() + '</p>' +
+      '<p style="color:#5F6368">Ela voltou como rascunho: corrija e reenvie, ' +
+      'sem redigitar do zero.</p>';
+
+  try {
+    MailApp.sendEmail({
+      to: proposer + "@google.com",
+      subject: approved
+        ? "✅ Central de Conteúdo: sua proposta foi publicada"
+        : "↩️ Central de Conteúdo: sua proposta voltou para ajuste",
+      htmlBody: corpo + botao,
+      name: "Cases Wizard"
+    });
+  } catch (e) {
+    // A decisão já aconteceu e não pode ser desfeita por falha de e-mail. Mas,
+    // diferente do notifyApprovers_, aqui o silêncio total esconderia que a
+    // pessoa nunca foi avisada - então fica no log.
+    logContentEvent_(session.ldap, 'notify_failed', module + '/' + String(draftRow.Key || ""), String(e));
+  }
+}
+
 /**
  * Aprova uma proposta: arquiva a versão live anterior e publica a nova.
  * É o único caminho pelo qual algo chega a Content_Items com status 'live'.
  */
 function approveContentDraft(draftId, note) {
+  return withContentWriteLock_(function () {
+    return approveContentDraftLocked_(draftId, note);
+  });
+}
+
+// O corpo roda SEMPRE dentro da trava: a leitura do rascunho precisa acontecer
+// depois de a trava ser obtida, senão a checagem de "ainda está pendente?" é
+// feita sobre um estado que outra execução já mudou.
+function approveContentDraftLocked_(draftId, note) {
   const draft = findContentRow_(SHEET_CONTENT_DRAFTS, 'Draft_ID', draftId);
   if (!draft) throw new Error("Proposta não encontrada.");
 
@@ -953,7 +1185,9 @@ function approveContentDraft(draftId, note) {
   // lê. Tudo que vem ANTES desta linha (papel, status pendente, regra de
   // não-autoaprovação) vale igual para ele - só o destino muda.
   if (String(draft.Module).trim() === PEOPLE_MODULE) {
-    return applyApprovedPeopleDraft_(draft, session, note);
+    const peopleResult = applyApprovedPeopleDraft_(draft, session, note);
+    notifyProposerDecision_(draft, session, true, note);
+    return peopleResult;
   }
 
   const itemsSheet = getContentSheet_(SHEET_CONTENT_ITEMS);
@@ -998,9 +1232,11 @@ function approveContentDraft(draftId, note) {
 
   const draftsSheet = getContentSheet_(SHEET_CONTENT_DRAFTS);
   draftsSheet.getRange(draft._row, 9).setValue(CONTENT_STATUS.APPROVED);
-  draftsSheet.getRange(draft._row, 12).setValue(session.ldap);
-  draftsSheet.getRange(draft._row, 13).setValue(now);
-  draftsSheet.getRange(draft._row, 14).setValue(note || "");
+  setContentRowBlock_(draftsSheet, draft._row, 12, [session.ldap, now, note || ""]);
+
+  // O que está no ar mudou: o cache do módulo tem que cair agora, não daqui a
+  // cinco minutos.
+  invalidateContentCache_(String(draft.Module).trim());
 
   const selfFlag = (String(draft.Proposed_By).trim() === session.ldap) ? ' (autoaprovação ADMIN)' : '';
   logContentEvent_(
@@ -1010,10 +1246,18 @@ function approveContentDraft(draftId, note) {
     'v' + version + ' por ' + String(draft.Proposed_By)
   );
 
+  notifyProposerDecision_(draft, session, true, note);
+
   return { status: 'success', itemId: newItemId, version: version, action: action };
 }
 
 function rejectContentDraft(draftId, note) {
+  return withContentWriteLock_(function () {
+    return rejectContentDraftLocked_(draftId, note);
+  });
+}
+
+function rejectContentDraftLocked_(draftId, note) {
   const draft = findContentRow_(SHEET_CONTENT_DRAFTS, 'Draft_ID', draftId);
   if (!draft) throw new Error("Proposta não encontrada.");
 
@@ -1029,11 +1273,11 @@ function rejectContentDraft(draftId, note) {
   const sheet = getContentSheet_(SHEET_CONTENT_DRAFTS);
   // Volta para 'draft', não some: quem propôs corrige e reenvia sem redigitar.
   sheet.getRange(draft._row, 9).setValue(CONTENT_STATUS.DRAFT);
-  sheet.getRange(draft._row, 12).setValue(session.ldap);
-  sheet.getRange(draft._row, 13).setValue(contentNow_());
-  sheet.getRange(draft._row, 14).setValue(note);
+  setContentRowBlock_(sheet, draft._row, 12, [session.ldap, contentNow_(), note]);
 
   logContentEvent_(session.ldap, 'reject', String(draft.Module) + '/' + String(draft.Key), note);
+  notifyProposerDecision_(draft, session, false, note);
+
   return { status: 'success' };
 }
 
@@ -1043,6 +1287,12 @@ function rejectContentDraft(draftId, note) {
  * algo ruim passou e o custo de esperar uma segunda revisão é alto demais.
  */
 function rollbackContentItem(archivedItemId) {
+  return withContentWriteLock_(function () {
+    return rollbackContentItemLocked_(archivedItemId);
+  });
+}
+
+function rollbackContentItemLocked_(archivedItemId) {
   const archived = findContentRow_(SHEET_CONTENT_ITEMS, 'ID', archivedItemId);
   if (!archived) throw new Error("Versão não encontrada.");
 
@@ -1079,6 +1329,8 @@ function rollbackContentItem(archivedItemId) {
     Number(archived.Sort_Order) || 0,
     lineage
   ]);
+
+  invalidateContentCache_(String(archived.Module).trim());
 
   logContentEvent_(
     session.ldap,
@@ -1182,6 +1434,12 @@ function findLiveItemToReplace_(module, key) {
  *     Omitida num módulo de feed, nasce um item novo.
  */
 function publishContentDirect(payload) {
+  return withContentWriteLock_(function () {
+    return publishContentDirectLocked_(payload);
+  });
+}
+
+function publishContentDirectLocked_(payload) {
   const data = (typeof payload === 'string') ? JSON.parse(payload) : (payload || {});
   const module = String(data.module || "").trim();
 
@@ -1232,6 +1490,8 @@ function publishContentDirect(payload) {
     lineage || newItemId
   ]);
 
+  invalidateContentCache_(module);
+
   logContentEvent_(
     session.ldap,
     previous ? 'publish_direct_update' : 'publish_direct',
@@ -1247,6 +1507,12 @@ function publishContentDirect(payload) {
  * pública só enxerga 'live', e a linha arquivada é o que permite reverter.
  */
 function unpublishContentDirect(itemId) {
+  return withContentWriteLock_(function () {
+    return unpublishContentDirectLocked_(itemId);
+  });
+}
+
+function unpublishContentDirectLocked_(itemId) {
   const item = findContentRow_(SHEET_CONTENT_ITEMS, 'ID', itemId);
   if (!item) throw new Error("Item não encontrado.");
 
@@ -1261,6 +1527,8 @@ function unpublishContentDirect(itemId) {
   getContentSheet_(SHEET_CONTENT_ITEMS)
     .getRange(item._row, 9)
     .setValue(CONTENT_STATUS.ARCHIVED);
+
+  invalidateContentCache_(module);
 
   logContentEvent_(session.ldap, 'unpublish_direct', module + '/' + String(item.Key), String(item.Label || ""));
   return { status: 'success', itemId: itemId };
@@ -1323,21 +1591,45 @@ function saveContentAccess(ldap, role, active) {
 // aceita nenhum parâmetro de status, para não existir sequer a possibilidade de
 // alguém pedir o conteúdo pendente pela URL.
 function handleContentPublicRead(p) {
+  // `modules=a,b,c` existe para o boot do agente caber numa execução só. Antes
+  // dele o app fazia uma chamada por módulo - sete por sessão -, e cem pessoas
+  // entrando no turno estouravam o teto de execuções simultâneas.
+  const raw = String((p && p.modules) || "").trim();
+
+  if (raw) {
+    const names = raw.split(',')
+      .map(function (n) { return String(n).trim(); })
+      .filter(function (n) { return n; });
+
+    if (!names.length) throw new Error("Nenhum módulo informado.");
+    if (names.length > CONTENT_MODULES.length) {
+      throw new Error("Módulos demais numa chamada só.");
+    }
+
+    const out = {};
+    names.forEach(function (name) {
+      out[name] = readPublicModuleItems_(name);
+    });
+
+    return { status: 'success', modules: out };
+  }
+
   const module = String((p && p.module) || "").trim();
+  return { status: 'success', module: module, items: readPublicModuleItems_(module) };
+}
+
+// Valida e devolve os itens no ar de um módulo público. Separado de
+// handleContentPublicRead() para que a rota de um módulo e a de vários
+// compartilhem exatamente a mesma regra - inclusive a de módulo privado, que é
+// o que impede `people` de vazar por uma URL.
+function readPublicModuleItems_(module) {
   assertValidModule_(module);
 
   if (CONTENT_PRIVATE_MODULES.indexOf(module) !== -1) {
     throw new Error("Módulo '" + module + "' não tem leitura pública.");
   }
 
-  const items = readContentRows_(SHEET_CONTENT_ITEMS)
-    .filter(function (r) {
-      return String(r.Module).trim() === module && String(r.Status).trim() === CONTENT_STATUS.LIVE;
-    })
-    .map(mapItemRow_)
-    .sort(function (a, b) { return a.sortOrder - b.sortOrder; });
-
-  return { status: 'success', module: module, items: items };
+  return readLiveItemsCached_(module);
 }
 
 // =========================================================
@@ -1390,6 +1682,7 @@ function seedContentModule(payloadJson) {
 
   if (rows.length) {
     sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, CONTENT_ITEMS_HEADERS.length).setValues(rows);
+    invalidateContentCache_(module);
   }
 
   logContentEvent_(session.ldap, 'seed', module, rows.length + ' itens');

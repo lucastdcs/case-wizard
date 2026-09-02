@@ -18,25 +18,42 @@ const path = require('path');
 const SRC = path.join(__dirname, '..', 'gas-backend', 'ContentAPI.js');
 
 // ---- Stub de planilha ----
+// O range real conhece a coluna de origem: setValues() escreve um BLOCO a
+// partir de (row, col), não a linha inteira. O stub antigo ignorava a coluna e
+// substituía a linha toda - o que passava enquanto todo mundo escrevia célula a
+// célula, e mentiria agora que as escritas são em lote.
 class FakeRange {
-  constructor(sheet, row, col) { this.sheet = sheet; this.row = row; this.col = col; }
+  constructor(sheet, row, col, numRows, numCols) {
+    this.sheet = sheet;
+    this.row = row;
+    this.col = col;
+    this.numRows = numRows;
+    this.numCols = numCols;
+  }
   setValue(v) { this.sheet._data[this.row - 1][this.col - 1] = v; return this; }
   setValues(rows) {
     rows.forEach((r, i) => {
       const target = this.row - 1 + i;
       while (this.sheet._data.length <= target) this.sheet._data.push([]);
-      this.sheet._data[target] = r.slice();
+      const line = this.sheet._data[target];
+      r.forEach((v, j) => { line[this.col - 1 + j] = v; });
     });
     return this;
   }
-  getValues() { return this.sheet._data.map(r => r.slice()); }
+  getValues() {
+    // getDataRange() (col 1, sem limites) segue devolvendo a aba inteira.
+    if (this.col === 1 && !this.numCols) return this.sheet._data.map(r => r.slice());
+    return this.sheet._data
+      .slice(this.row - 1, this.row - 1 + (this.numRows || 1))
+      .map(r => r.slice(this.col - 1, this.col - 1 + (this.numCols || 1)));
+  }
 }
 
 class FakeSheet {
   constructor(name) { this.name = name; this._data = []; }
   appendRow(row) { this._data.push(row.slice()); }
   getDataRange() { return new FakeRange(this, 1, 1); }
-  getRange(row, col) { return new FakeRange(this, row, col); }
+  getRange(row, col, numRows, numCols) { return new FakeRange(this, row, col, numRows, numCols); }
   getLastRow() { return this._data.length; }
   setFrozenRows() { return this; }
 }
@@ -55,7 +72,31 @@ const LOGGED = [];
 
 const LOGGER = [];
 
+// Trava e cache: o código de produção degrada sozinho quando os serviços não
+// existem, mas então os testes não exercitariam nem a trava nem a invalidação.
+// Com stub, dá pra provar as duas - inclusive que a trava é liberada mesmo
+// quando o corpo lança.
+const LOCK_STATE = { held: false, acquires: 0, releases: 0, denyNext: false };
+const CACHE = new Map();
+
 const sandbox = {
+  LockService: {
+    getScriptLock: () => ({
+      tryLock: () => {
+        if (LOCK_STATE.denyNext) { LOCK_STATE.denyNext = false; return false; }
+        if (LOCK_STATE.held) return false;
+        LOCK_STATE.held = true; LOCK_STATE.acquires++; return true;
+      },
+      releaseLock: () => { LOCK_STATE.held = false; LOCK_STATE.releases++; }
+    })
+  },
+  CacheService: {
+    getScriptCache: () => ({
+      get: (k) => (CACHE.has(k) ? CACHE.get(k) : null),
+      put: (k, v) => { CACHE.set(k, v); },
+      remove: (k) => { CACHE.delete(k); }
+    })
+  },
   SpreadsheetApp: { getActiveSpreadsheet: () => SS },
   Session: { getActiveUser: () => ({ getEmail: () => CURRENT_USER }) },
   MailApp: { sendEmail: (o) => SENT_MAIL.push(o) },
@@ -1167,6 +1208,237 @@ check('seedBroadcastNow() migra a aba numa planilha zerada, sem argumentos', () 
   const legado = freshCtx.getBroadcastForLegacyEndpoint(freshSS);
   eq(legado.map(m => m.id), ['msg_2', 'msg_1'], 'mais novo primeiro:');
   eq(legado[0].active, true);
+});
+
+console.log('\n--- Trava de escrita (concorrência) ---');
+
+// A corrida real não é "aprovar duas vezes em sequência" — essa a máquina de
+// estados já barra sozinha. É uma segunda execução entrando na janela ENTRE o
+// appendRow da linha nova e a virada do status do rascunho, quando a proposta
+// ainda consta como pendente. Este gancho reproduz exatamente essa janela.
+function duranteOAppendDeItems(fn) {
+  const sheet = SS.getSheetByName('Content_Items');
+  const original = sheet.appendRow.bind(sheet);
+  const capturado = { erro: null };
+  let disparou = false;
+
+  sheet.appendRow = (row) => {
+    original(row);
+    if (!disparou) {
+      disparou = true;
+      try { fn(); } catch (e) { capturado.erro = e; }
+    }
+  };
+
+  capturado.restaurar = () => { sheet.appendRow = original; };
+  return capturado;
+}
+
+function proposta(label) {
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: label,
+    value: 'Feche o caso com o substatus certo.'
+  });
+  api.submitContentDraft(d.draftId);
+  return d.draftId;
+}
+
+check('SEM a trava, a reentrância publica o item duas vezes', () => {
+  // Contraprova: sem esta demonstração, o teste seguinte passaria mesmo que a
+  // trava não estivesse fazendo nada.
+  const draftId = proposta('Dica sem trava');
+  const lockReal = sandbox.LockService;
+  sandbox.LockService = { getScriptLock: () => { throw new Error('sem LockService'); } };
+
+  const hook = duranteOAppendDeItems(() => api.approveContentDraft(draftId, ''));
+  try {
+    api.approveContentDraft(draftId, '');
+  } finally {
+    hook.restaurar();
+    sandbox.LockService = lockReal;
+  }
+
+  const live = api.handleContentPublicRead({ module: 'tips' }).items
+    .filter(i => i.label === 'Dica sem trava');
+  eq(live.length, 2, 'duplicou, como se esperava sem trava:');
+});
+
+check('COM a trava, a mesma reentrância é barrada e publica uma linha só', () => {
+  const draftId = proposta('Dica com trava');
+
+  const hook = duranteOAppendDeItems(() => api.approveContentDraft(draftId, ''));
+  try {
+    api.approveContentDraft(draftId, '');
+  } finally {
+    hook.restaurar();
+  }
+
+  eq(hook.erro !== null, true, 'a segunda execução foi recusada:');
+  eq(/Outra publicação/.test(hook.erro.message), true, 'recusada pela trava:');
+
+  const live = api.handleContentPublicRead({ module: 'tips' }).items
+    .filter(i => i.label === 'Dica com trava');
+  eq(live.length, 1, 'uma linha só no ar:');
+});
+
+check('trava ocupada recusa a publicação em vez de escrever junto', () => {
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica travada',
+    value: 'Confira o idioma do anunciante.'
+  });
+  api.submitContentDraft(d.draftId);
+
+  LOCK_STATE.denyNext = true;
+  throws(() => api.approveContentDraft(d.draftId, ''), /Outra publicação/, 'com a trava ocupada:');
+
+  // E nada foi escrito: a recusa acontece antes de qualquer setValue.
+  const pub = api.handleContentPublicRead({ module: 'tips' }).items;
+  eq(pub.filter(i => i.label === 'Dica travada').length, 0, 'nada publicado:');
+
+  // Com a trava livre de novo, a mesma proposta publica normalmente.
+  api.approveContentDraft(d.draftId, '');
+  eq(api.handleContentPublicRead({ module: 'tips' }).items
+    .filter(i => i.label === 'Dica travada').length, 1);
+});
+
+check('a trava é liberada mesmo quando a operação falha', () => {
+  const acquiresAntes = LOCK_STATE.releases;
+  throws(() => api.approveContentDraft('drf_inexistente', ''), /não encontrada/);
+  eq(LOCK_STATE.held, false, 'trava solta depois do erro:');
+  eq(LOCK_STATE.releases > acquiresAntes, true, 'releaseLock foi chamado:');
+});
+
+console.log('\n--- Cache da leitura pública ---');
+
+check('publicar invalida o cache do módulo na hora', () => {
+  const antes = api.handleContentPublicRead({ module: 'tips' }).items.length;
+
+  // A leitura acima populou o cache. Sem invalidação, a próxima devolveria a
+  // lista velha — e o agente veria conteúdo aprovado só depois do TTL.
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica nova',
+    value: 'Revise o caso antes de fechar.'
+  });
+  api.submitContentDraft(d.draftId);
+  api.approveContentDraft(d.draftId, '');
+
+  const depois = api.handleContentPublicRead({ module: 'tips' }).items;
+  eq(depois.length, antes + 1, 'a lista nova chegou sem esperar o TTL:');
+  eq(depois.filter(i => i.label === 'Dica nova').length, 1);
+});
+
+check('tirar do ar por publicação direta também invalida', () => {
+  const pub = api.publishContentDirect({
+    module: 'broadcast', key: 'aviso_cache', lang: 'ALL',
+    value: JSON.stringify({ type: 'info', title: 'Cache', text: 'Teste de cache.' })
+  });
+  eq(api.handleContentPublicRead({ module: 'broadcast' }).items
+    .filter(i => i.key === 'aviso_cache').length, 1, 'no ar:');
+
+  api.unpublishContentDirect(pub.itemId);
+  eq(api.handleContentPublicRead({ module: 'broadcast' }).items
+    .filter(i => i.key === 'aviso_cache').length, 0, 'saiu do ar na hora:');
+});
+
+check('cache não vaza entre módulos', () => {
+  const tips = api.handleContentPublicRead({ module: 'tips' }).items;
+  const links = api.handleContentPublicRead({ module: 'links' }).items;
+  tips.forEach(i => eq(i.module, 'tips', 'item de tips:'));
+  links.forEach(i => eq(i.module, 'links', 'item de links:'));
+});
+
+console.log('\n--- Leitura pública em lote ---');
+
+check('modules=a,b devolve os dois numa chamada só', () => {
+  const r = api.handleContentPublicRead({ modules: 'tips,links' });
+  eq(r.status, 'success');
+  eq(Object.keys(r.modules).sort(), ['links', 'tips']);
+
+  // Mesmo conteúdo da rota de um módulo: o lote é transporte, não regra nova.
+  eq(r.modules.tips.length, api.handleContentPublicRead({ module: 'tips' }).items.length);
+});
+
+check('lote recusa módulo desconhecido', () => {
+  throws(() => api.handleContentPublicRead({ modules: 'tips,inventado' }), /desconhecido/i);
+});
+
+check('lote NÃO é caminho para vazar módulo privado', () => {
+  // A regra do módulo privado é a mesma nas duas rotas — é o que impede que a
+  // aba People escape por uma URL só porque a chamada agora aceita lista.
+  throws(() => api.handleContentPublicRead({ modules: 'tips,people' }), /não tem leitura pública/);
+  throws(() => api.handleContentPublicRead({ module: 'people' }), /não tem leitura pública/);
+});
+
+console.log('\n--- Salvar e enviar numa viagem ---');
+
+check('saveAndSubmitContentDraft deixa a proposta pendente', () => {
+  const r = api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica de uma viagem',
+    value: 'Use o atalho para abrir a nota.'
+  });
+  eq(r.status, 'success');
+
+  const pend = api.listPendingApprovals().filter(d => d.draftId === r.draftId);
+  eq(pend.length, 1, 'está na fila de revisão:');
+  eq(pend[0].status, 'pending');
+});
+
+check('validação continua acontecendo antes de gravar', () => {
+  // O ganho é de viagens, não de rigor: um valor inválido tem que ser recusado
+  // igual, e sem deixar rascunho órfão para trás.
+  const antes = api.listContentDrafts('email_template').length;
+  throws(() => api.saveAndSubmitContentDraft({
+    module: 'email_template', key: 'x', lang: 'PT', label: 'Quebrado',
+    value: JSON.stringify({ subject: '', template: '' })
+  }));
+  eq(api.listContentDrafts('email_template').length, antes, 'nenhum rascunho órfão:');
+});
+
+console.log('\n--- E-mail de decisão ---');
+
+check('rejeição avisa quem propôs, com o motivo', () => {
+  as('qa_pessoa', () => { });
+  api.saveContentAccess('qa_pessoa', 'QA', true);
+
+  const d = as('qa_pessoa', () => api.saveAndSubmitContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo proposto', value: 'Confirme o nome do anunciante.'
+  }));
+
+  const antes = SENT_MAIL.length;
+  api.rejectContentDraft(d.draftId, 'Falta citar o CID.');
+
+  const enviados = SENT_MAIL.slice(antes);
+  const paraAutor = enviados.filter(m => m.to === 'qa_pessoa@google.com');
+  eq(paraAutor.length, 1, 'o autor foi avisado:');
+  eq(/Falta citar o CID/.test(paraAutor[0].htmlBody), true, 'o motivo vai no corpo:');
+  eq(/voltou para ajuste/.test(paraAutor[0].subject), true);
+});
+
+check('aprovação avisa o autor, e só ele', () => {
+  const d = as('qa_pessoa', () => api.saveAndSubmitContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo aprovado', value: 'Pergunte o melhor horário de retorno.'
+  }));
+
+  const antes = SENT_MAIL.length;
+  api.approveContentDraft(d.draftId, '');
+
+  const enviados = SENT_MAIL.slice(antes);
+  eq(enviados.length, 1, 'um e-mail só:');
+  eq(enviados[0].to, 'qa_pessoa@google.com', 'endereçado ao autor:');
+  eq(/publicada/.test(enviados[0].subject), true);
+});
+
+check('autoaprovação do ADMIN não manda e-mail para si mesmo', () => {
+  const d = api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica do admin',
+    value: 'Confirme o substatus antes de salvar.'
+  });
+
+  const antes = SENT_MAIL.length;
+  api.approveContentDraft(d.draftId, '');
+  eq(SENT_MAIL.length, antes, 'nenhum e-mail:');
 });
 
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);

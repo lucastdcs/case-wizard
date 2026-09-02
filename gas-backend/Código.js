@@ -87,6 +87,25 @@ function getDeploymentEnv() {
 }
 
 /**
+ * URL desta implantação para uma página do dashboard (`tl`, `content`).
+ *
+ * Vale a MESMA ressalva de getDeploymentEnv(): só use em contexto de
+ * requisição web. Num gatilho de tempo, getUrl() pode devolver a URL de outra
+ * implantação do projeto - por isso o e-mail de BAU, que também sai por
+ * gatilho, usa a constante fixa TL_DASHBOARD_URL de EmailEngine.gs em vez
+ * desta função. Não troque uma pela outra sem olhar de onde o e-mail sai.
+ *
+ * Implantação desconhecida cai em produção: um link que abre a Central certa
+ * na maioria dos casos é melhor que um link quebrado.
+ */
+function buildDeploymentPageUrl(page) {
+  var info = getDeploymentEnv();
+  var id = CW_DEPLOYMENTS[info.env] || CW_DEPLOYMENTS.production;
+  return 'https://script.google.com/a/macros/google.com/s/' + id +
+    '/exec?page=' + encodeURIComponent(page);
+}
+
+/**
  * HTML do selo de ambiente, ou string vazia em produção.
  *
  * Fica montado aqui, e não repetido dentro de cada dashboard, para que os dois

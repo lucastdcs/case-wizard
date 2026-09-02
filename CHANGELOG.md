@@ -40,6 +40,32 @@ versions follow [Semantic Versioning](https://semver.org/).
   @lucaste", como os demais e-mails do fluxo.
 
 ### Changed
+- **Central de Conteúdo, fase 1 — correção e carga** (ADR-0008). A leitura
+  pública passou a ser servida por `CacheService` (TTL de 5 min, invalidado na
+  hora por toda escrita que muda o que está no ar) e aceita `modules=a,b,c`,
+  então o boot do agente pede os sete módulos numa execução em vez de sete.
+  Salvar uma proposta virou uma viagem ao servidor (`saveAndSubmitContentDraft`)
+  no lugar de duas — três nos e-mails e nas notas. As escritas de linha agora
+  vão em bloco (`setValues`) em vez de uma chamada por coluna.
+
+### Fixed
+- **Duas aprovações simultâneas publicavam o mesmo item duas vezes.** Entre o
+  `appendRow` da linha nova e a virada do status do rascunho havia uma janela em
+  que a proposta ainda constava como pendente; uma segunda execução entrando ali
+  passava pela mesma checagem e publicava de novo, deixando duas linhas `live`
+  na mesma linhagem — item duplicado na tela do agente, sem erro em log nenhum.
+  O caminho de publicação passou a rodar sob `LockService`.
+- **Falha ao carregar as propostas em andamento virava "não há nenhuma".** A
+  tela desenhava a lista como se o módulo não tivesse pendência, e quem então
+  editava um item com proposta em revisão levava uma recusa do servidor sem ter
+  como explicar. Agora a falha aparece, com botão de tentar de novo.
+
+### Added
+- **E-mail de decisão para quem propôs.** Aprovação e rejeição avisam o autor da
+  proposta, com a justificativa do revisor no corpo e um botão para a Central —
+  a URL derivada da implantação em execução, não fixa. Antes a rejeição era
+  invisível: o rascunho voltava para "draft" e o motivo ficava numa coluna que
+  ninguém abre.
 - **Form de bugs e sugestões unificado em uma variável só.** Havia três URLs
   diferentes em produção (overlay de ajuda, Configurações → Suporte e rodapé dos
   e-mails). Agora existe um ponto de verdade por runtime — `FEEDBACK_FORM_URL`

@@ -21,7 +21,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
 Plano em seis fases da Central de Conteúdo, em ordem de dependência (não de
 prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
 
-- [ ] **Fase 1 — correção e carga** (invisível, sustenta o pico de turno).
+- [~] **Fase 1 — correção e carga** — entregue, aguardando revisão do PR.
       `LockService` em aprovar/publicar/reverter — hoje duas aprovações
       simultâneas do mesmo rascunho publicam o item duas vezes, sem erro em log
       nenhum; `CacheService` na leitura pública com invalidação explícita;
@@ -33,6 +33,14 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       revisor e link derivado de `getDeploymentEnv()` — corrigindo junto o
       `TL_DASHBOARD_URL` do `EmailEngine.js`, hoje fixo em produção mesmo quando
       o e-mail sai de dev.
+      **Correção de rota durante a implementação:** o `TL_DASHBOARD_URL` fixo
+      NÃO é bug — o comentário no `EmailEngine.js` explica que aqueles e-mails
+      também saem por gatilho de tempo, onde `getUrl()` pode devolver outra
+      implantação. Ficou como está; o link novo da Central usa
+      `buildDeploymentPageUrl()` porque aprovar/rejeitar só roda em requisição
+      web. **Fora do PR:** o manifesto (módulo → versão) foi descartado — com a
+      chamada em lote ele não reduz execução nenhuma, só payload, e não paga a
+      complexidade. Ver a nota no ADR-0008.
 - [ ] **Fase 2 — casca e arquitetura** (maior risco de regressão do plano).
       Smoke Playwright da tela **antes** de qualquer mudança — hoje o
       `ContentDashboard.html` não tem teste nenhum; quebra do arquivo em includes
