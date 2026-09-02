@@ -9,6 +9,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Smoke da Central de Conteúdo** (`npm run smoke:content`). A maior tela do
+  projeto era a única sem teste nenhum, e a reorganização da navegação
+  (ADR-0007) toca todos os seus renderizadores de uma vez. O smoke carrega o
+  `ContentDashboard.html` num navegador de verdade com o `google.script.run`
+  dublado, e trava o que precisa continuar valendo depois do redesenho: acesso,
+  régua de papéis, um painel visível por vez, o regime de publicação dito em
+  cada módulo, uma chamada por proposta salva e falha de rede aparente.
 - **Três ADRs propondo a próxima fase da Central de Conteúdo** (`docs/decisions/`):
   [0007](docs/decisions/0007-arquitetura-da-central-de-conteudo.md) troca as dez
   abas por um trilho agrupado pelo regime de publicação;
