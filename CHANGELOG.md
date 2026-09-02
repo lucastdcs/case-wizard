@@ -9,6 +9,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Três ADRs propondo a próxima fase da Central de Conteúdo** (`docs/decisions/`):
+  [0007](docs/decisions/0007-arquitetura-da-central-de-conteudo.md) troca as dez
+  abas por um trilho agrupado pelo regime de publicação;
+  [0008](docs/decisions/0008-cache-e-retencao-do-conteudo.md) define cache da
+  leitura pública e retenção por aba (por linhagem em `Content_Items`, 24 meses
+  em `Content_Log`, trimestral em `Logs`);
+  [0009](docs/decisions/0009-rbac-editavel-da-central.md) tira os papéis do
+  código e os move para uma matriz editável. Nenhum código de produção mudou —
+  são decisões aguardando validação.
+- O índice de `docs/decisions/README.md` voltou a listar todos os ADRs: o 0006
+  (aba People) tinha ficado de fora.
 - **Crédito de autoria nos dashboards do Apps Script.** A Central de Conteúdo e
   o TL Dashboard eram as únicas telas do projeto sem crédito e sem caminho para
   reportar um bug — não passam pelo `header-factory` do front. Agora recebem um

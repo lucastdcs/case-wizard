@@ -7,11 +7,57 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
-- [ ] (add the first active tasks here)
+- [~] **Fase 0 da Central de Conteúdo — decidir antes de codar.** Três ADRs
+      escritos e aguardando validação: `0007` (trilho por regime no lugar das dez
+      abas), `0008` (cache da leitura pública + retenção por aba) e `0009`
+      (matriz RBAC editável). Falta a **maquete estática** do "Hoje" + trilho
+      para validação visual antes de propagar — `docs/LEARNINGS.md` já cobrou
+      esse preço uma vez com a paleta. Revisão de UX que originou o plano feita
+      em 2026-09-02, revalidada contra a `refactor-structure` depois da entrada
+      da aba Pessoas.
 
 ## Up next
 
-- [ ] ...
+Plano em seis fases da Central de Conteúdo, em ordem de dependência (não de
+prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
+
+- [ ] **Fase 1 — correção e carga** (invisível, sustenta o pico de turno).
+      `LockService` em aprovar/publicar/reverter — hoje duas aprovações
+      simultâneas do mesmo rascunho publicam o item duas vezes, sem erro em log
+      nenhum; `CacheService` na leitura pública com invalidação explícita;
+      parâmetro `modules=a,b,c` + manifesto para o boot do agente virar uma
+      chamada em vez de sete; leituras/escritas em lote; um
+      `saveAndSubmitContentDraft` no lugar das três idas em série de hoje; falha
+      de rede visível em vez de lista vazia. **PR irmão:** e-mail de decisão
+      (aprovação e rejeição) para o autor da proposta, com a justificativa do
+      revisor e link derivado de `getDeploymentEnv()` — corrigindo junto o
+      `TL_DASHBOARD_URL` do `EmailEngine.js`, hoje fixo em produção mesmo quando
+      o e-mail sai de dev.
+- [ ] **Fase 2 — casca e arquitetura** (maior risco de regressão do plano).
+      Smoke Playwright da tela **antes** de qualquer mudança — hoje o
+      `ContentDashboard.html` não tem teste nenhum; quebra do arquivo em includes
+      do `HtmlService` como primeiro commit, mecânico; trilho escuro/glass com os
+      três grupos; home "Hoje" moldada pelo papel; idioma único e persistente no
+      lugar dos `select` independentes; rota por hash. **PR irmão:** changelog de
+      versão na Central e no TL Dash, a partir de fonte única no repo.
+- [ ] **Fase 3 — ciclo de vida do item.** Gaveta com histórico e "voltar para
+      esta versão" — `listContentItemHistory` e `rollbackContentItem` existem no
+      backend e nunca foram chamados, enquanto o modal de remoção promete que a
+      versão "pode voltar"; rascunho de verdade, separado do envio; trava de
+      edição visível; diff por palavra e prévia renderizada na revisão.
+      **PR irmão:** aba `Content_Log` estruturada + backfill, e a barra lateral
+      "Atividade recente" com foto, reusando o `avatarImgHtml()` do TL Dash.
+- [ ] **Fase 4 — RBAC editável** (ADR-0009). Aba `Content_Roles`, matriz módulo
+      × ação, permissões globais à parte, papéis atuais como presets para o dia 1
+      não mudar nada. As três invariantes (anti-lockout, escalação declarada,
+      revogação imediata) nascem como teste no servidor, não como validação de
+      tela.
+- [ ] **Fase 5 — diferenciais e auditoria.** Prévia "como o agente vê"; busca
+      global Ctrl+K; agendamento e validade de aviso; "ver como" por papel e
+      segmento; cobrança diária de pendência parada — esta lendo `CW_DEPLOYMENTS`
+      e não a URL do serviço, porque em gatilho de tempo a derivação não é
+      confiável (ver `Código.js`). **PR final:** aba de auditoria restrita ao
+      ADMIN, com filtros, paginação e exportação.
 
 ## Ideas — to triage
 
