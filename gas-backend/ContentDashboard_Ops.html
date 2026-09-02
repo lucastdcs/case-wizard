@@ -1,0 +1,355 @@
+<!-- Parte de gas-backend/ContentDashboard.html. Ver o cabeçalho de lá. -->
+<!-- Módulos de OPERAÇÃO: publicam direto, sem fila.
+     Avisos e Disponibilidade BAU. -->
+<script>
+        // =====================================================
+        //  AVISOS
+        //
+        //  Publicam direto, sem fila. Por isso não há rascunho para reconciliar
+        //  aqui: o que a lista mostra é sempre o que o agente está vendo.
+        // =====================================================
+        var BC_ITEMS = [];
+
+        var BC_TYPE_LABEL = { info: 'Informativo', critical: 'Alerta', success: 'Sucesso' };
+        var BC_LANG_LABEL = { ALL: 'Todos os segmentos', PT: 'Só PT-BR', ES: 'Só ES' };
+
+        // O `value` de cada item é o registro composto em JSON. Um item com JSON
+        // quebrado (edição na planilha à mão) não pode derrubar a lista inteira.
+        function bcParse(item) {
+            try {
+                var p = JSON.parse(item.value || '{}');
+                return {
+                    type: p.type || 'info',
+                    title: p.title || item.label || '',
+                    text: p.text || '',
+                    publishedAt: p.publishedAt || item.publishedAt || '',
+                    author: p.author || item.publishedBy || ''
+                };
+            } catch (e) {
+                return { type: 'info', title: item.label || '(ilegível)', text: '', publishedAt: '', author: '', broken: true };
+            }
+        }
+
+        function bcFormatDate(raw) {
+            if (!raw) return '';
+            var d = new Date(raw);
+            if (isNaN(d.getTime())) return String(raw);
+            return d.toLocaleDateString('pt-BR') + ' às ' +
+                d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function loadBroadcast() {
+            google.script.run
+                .withSuccessHandler(function (items) { BC_ITEMS = items || []; renderBroadcast(); })
+                .withFailureHandler(function (err) {
+                    document.getElementById('bc-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar os avisos</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('broadcast');
+        }
+
+        function renderBroadcast() {
+            var host = document.getElementById('bc-list');
+            var summary = document.getElementById('bc-summary');
+
+            if (!BC_ITEMS.length) {
+                summary.textContent = 'Nenhum aviso no ar.';
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">campaign</span>' +
+                    '<h2>Nenhum aviso publicado</h2>' +
+                    '<p>Se os avisos antigos ainda não apareceram aqui, rode a migração ' +
+                    '(<strong>seedBroadcastNow</strong>) uma vez pelo editor do Apps Script.</p></div>';
+                return;
+            }
+
+            // Mais novo primeiro, que é a ordem em que o agente os vê.
+            var ordered = BC_ITEMS.slice().sort(function (a, b) {
+                return String(bcParse(b).publishedAt).localeCompare(String(bcParse(a).publishedAt));
+            });
+
+            summary.textContent = ordered.length + (ordered.length === 1 ? ' aviso publicado' : ' avisos publicados');
+
+            var podeEditar = canPropose('broadcast');
+
+            host.innerHTML = ordered.map(function (it) {
+                var p = bcParse(it);
+
+                var actions = podeEditar
+                    ? '<div style="display:flex;gap:8px">' +
+                    '<button class="btn btn-ghost btn-sm" onclick="openBroadcastEditor(\'' + it.id + '\')">Editar</button>' +
+                    '<button class="btn btn-danger btn-sm" onclick="askUnpublish(\'' + it.id + '\')">Tirar do ar</button>' +
+                    '</div>'
+                    : '';
+
+                var segmento = it.lang && it.lang !== 'ALL'
+                    ? ' · ' + esc(BC_LANG_LABEL[it.lang] || it.lang)
+                    : '';
+
+                // O texto vai truncado: a lista é para reconhecer o aviso, não
+                // para ler. O texto inteiro está a um clique, no editor.
+                var preview = p.text.replace(/\s+/g, ' ').slice(0, 120);
+                if (p.text.length > 120) preview += '…';
+
+                return '<div class="item-row">' +
+                    '<div class="item-main">' +
+                    '<div class="item-name">' + esc(p.title) +
+                    ' <span class="pill type-' + esc(p.type) + '">' +
+                    esc(BC_TYPE_LABEL[p.type] || p.type) + '</span></div>' +
+                    '<div class="item-meta">' + esc(preview) + '</div>' +
+                    '<div class="item-meta">por ' + esc(p.author || it.publishedBy || '—') +
+                    ' em ' + esc(bcFormatDate(p.publishedAt)) + segmento + '</div>' +
+                    '</div>' + actions + '</div>';
+            }).join('');
+        }
+
+        function openBroadcastEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < BC_ITEMS.length; i++) {
+                if (BC_ITEMS[i].id === itemId) item = BC_ITEMS[i];
+            }
+            var p = item ? bcParse(item) : { type: 'info', title: '', text: '' };
+            var lang = item ? (item.lang || 'ALL') : 'ALL';
+
+            function opt(value, label, atual) {
+                return '<option value="' + value + '"' + (value === atual ? ' selected' : '') + '>' +
+                    esc(label) + '</option>';
+            }
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar aviso' : 'Novo aviso') + '</h2>' +
+                '<p class="card-sub">Publica na hora, para todo mundo que abrir o módulo de avisos.</p>' +
+                '<div class="grid-2" style="margin-top:14px">' +
+                '<div>' +
+                '<label class="fld" for="bc-type">Tipo</label>' +
+                '<select id="bc-type">' +
+                opt('info', 'Informativo', p.type) +
+                opt('critical', 'Alerta', p.type) +
+                opt('success', 'Sucesso', p.type) +
+                '</select>' +
+                '</div>' +
+                '<div>' +
+                '<label class="fld" for="bc-lang">Quem vê</label>' +
+                '<select id="bc-lang">' +
+                opt('ALL', 'Todos os segmentos', lang) +
+                opt('PT', 'Só PT-BR', lang) +
+                opt('ES', 'Só ES', lang) +
+                '</select>' +
+                '</div>' +
+                '</div>' +
+                '<label class="fld" for="bc-title">Título</label>' +
+                '<input type="text" id="bc-title" autocomplete="off" placeholder="ex.: Instabilidade no CNS" ' +
+                'value="' + esc(p.title) + '">' +
+                '<label class="fld" for="bc-text">Mensagem</label>' +
+                '<textarea id="bc-text" style="min-height:130px" ' +
+                'placeholder="O que aconteceu, o que o agente deve fazer e até quando.">' + esc(p.text) + '</textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="bc-save">' +
+                (item ? 'Publicar alteração' : 'Publicar aviso') + '</button>' +
+                '</div></div></div>';
+
+            document.getElementById('bc-save').onclick = function () {
+                submitBroadcast(item, this);
+            };
+            document.getElementById('bc-title').focus();
+        }
+
+        function submitBroadcast(item, btn) {
+            var title = document.getElementById('bc-title').value.trim();
+            var text = document.getElementById('bc-text').value.trim();
+
+            if (!title) return toast('Dê um título ao aviso.', true);
+            if (!text) return toast('Escreva a mensagem do aviso.', true);
+
+            var rotulo = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Publicando…';
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    closeModal();
+                    toast(item ? 'Aviso atualizado.' : 'Aviso publicado.');
+                    loadBroadcast();
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = rotulo;
+                    toast(err.message, true);
+                })
+                .publishContentDirect({
+                    module: 'broadcast',
+                    // Editar reusa a chave do item: é o que faz a publicação
+                    // versionar em vez de nascer um aviso duplicado.
+                    key: item ? item.key : '',
+                    lang: document.getElementById('bc-lang').value,
+                    label: title,
+                    value: JSON.stringify({
+                        type: document.getElementById('bc-type').value,
+                        title: title,
+                        text: text,
+                        publishedAt: new Date().toISOString(),
+                        author: SESSION.ldap
+                    })
+                });
+        }
+
+        function askUnpublish(itemId) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>Tirar este aviso do ar?</h2>' +
+                '<p class="card-sub">Sai do módulo dos agentes na próxima atualização, em até um minuto. ' +
+                'Nada é apagado — a versão fica arquivada.</p>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-danger" id="bc-unpub">Tirar do ar</button>' +
+                '</div></div></div>';
+
+            document.getElementById('bc-unpub').onclick = function () {
+                this.disabled = true;
+                this.textContent = 'Tirando…';
+
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Aviso fora do ar.');
+                        loadBroadcast();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .unpublishContentDirect(itemId);
+            };
+        }
+
+        // =====================================================
+        //  DISPONIBILIDADE BAU
+        //
+        //  Módulo singleton: existe uma resposta certa para "qual a
+        //  disponibilidade hoje", e publicar substitui a anterior. Por isso não
+        //  há lista aqui, e sim um estado corrente mais um formulário.
+        // =====================================================
+        var BAU_SEGMENTS_UI = [
+            { code: 'PT', label: 'PT-BR' },
+            { code: 'ES', label: 'ES' }
+        ];
+
+        function bauInput(seg, campo) {
+            return document.getElementById('bau-' + seg.toLowerCase() + '-' + campo);
+        }
+
+        // ISO (AAAA-MM-DD) é o que a planilha guarda e o que <input type="date">
+        // lê e escreve — não há conversão a fazer nesse sentido. A formatação
+        // curta existe só para a leitura do estado corrente.
+        function bauShortDate(iso) {
+            if (!iso) return '';
+            var p = String(iso).split('-');
+            return p.length === 3 ? p[2] + '/' + p[1] : String(iso);
+        }
+
+        function loadBau() {
+            google.script.run
+                .withSuccessHandler(function (items) { renderBau((items || [])[0] || null); })
+                .withFailureHandler(function (err) {
+                    document.getElementById('bau-current').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar a disponibilidade</h2><p>' + esc(err.message) + '</p></div>';
+                    document.getElementById('bau-current-meta').textContent = '';
+                })
+                .listContentItems('bau_availability');
+        }
+
+        function renderBau(item) {
+            var host = document.getElementById('bau-current');
+            var meta = document.getElementById('bau-current-meta');
+
+            if (!item) {
+                meta.textContent = '';
+                host.innerHTML =
+                    '<p class="bau-current-empty">Nenhuma disponibilidade publicada ainda. ' +
+                    'Enquanto isso o módulo do agente não mostra a faixa de disponibilidade.</p>';
+                return;
+            }
+
+            var data;
+            try { data = JSON.parse(item.value || '{}'); } catch (e) { data = {}; }
+            var segments = data.segments || {};
+
+            meta.textContent = 'Publicada por ' + (data.author || item.publishedBy || '—') +
+                ' em ' + bcFormatDate(data.updatedAt || item.publishedAt) +
+                ' · versão ' + item.version;
+
+            host.innerHTML = BAU_SEGMENTS_UI.map(function (seg) {
+                var s = segments[seg.code] || {};
+                var partes = [];
+
+                if (s.attention) {
+                    partes.push('<span class="bau-current-date"><span class="bau-dot attention"></span>' +
+                        '<span class="label">atenção</span> ' + esc(bauShortDate(s.attention)) + '</span>');
+                }
+                if (s.full) {
+                    partes.push('<span class="bau-current-date"><span class="bau-dot full"></span>' +
+                        '<span class="label">total</span> ' + esc(bauShortDate(s.full)) + '</span>');
+                }
+                if (!partes.length) {
+                    partes.push('<span class="bau-current-empty">sem data publicada</span>');
+                }
+
+                return '<div class="bau-current-row">' +
+                    '<span class="bau-current-seg">' + esc(seg.label) + '</span>' +
+                    partes.join('') + '</div>';
+            }).join('') +
+                (data.note
+                    ? '<p class="card-sub" style="margin-top:12px">' + esc(data.note) + '</p>'
+                    : '');
+
+            // O formulário nasce preenchido com o que está no ar: quase toda
+            // publicação é ajustar uma das quatro datas, não redigitar as quatro.
+            BAU_SEGMENTS_UI.forEach(function (seg) {
+                var s = segments[seg.code] || {};
+                bauInput(seg.code, 'attention').value = s.attention || '';
+                bauInput(seg.code, 'full').value = s.full || '';
+            });
+            document.getElementById('bau-note-text').value = data.note || '';
+        }
+
+        function submitBau(btn) {
+            var segments = {};
+            BAU_SEGMENTS_UI.forEach(function (seg) {
+                segments[seg.code] = {
+                    attention: bauInput(seg.code, 'attention').value || '',
+                    full: bauInput(seg.code, 'full').value || ''
+                };
+            });
+
+            btn.disabled = true;
+            btn.textContent = 'Publicando…';
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    btn.disabled = false;
+                    btn.textContent = 'Publicar disponibilidade';
+                    toast('Disponibilidade publicada.');
+                    loadBau();
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = 'Publicar disponibilidade';
+                    // O servidor é quem valida (data invertida, data inexistente,
+                    // nenhuma data). A mensagem dele já diz o que corrigir.
+                    toast(err.message, true);
+                })
+                .publishContentDirect({
+                    module: 'bau_availability',
+                    label: 'Disponibilidade BAU',
+                    value: JSON.stringify({
+                        updatedAt: new Date().toISOString(),
+                        author: SESSION.ldap,
+                        note: document.getElementById('bau-note-text').value.trim(),
+                        segments: segments
+                    })
+                });
+        }
+
+</script>
