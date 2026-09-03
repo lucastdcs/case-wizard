@@ -235,8 +235,7 @@ async function openEmailComposer() {
     }
 }
 
-// Caminho antigo, mantido como plano B enquanto as duas interfaces convivem:
-// em algumas telas o envelope ainda fica solto na action bar.
+// Envelope solto na action bar, sem menu nenhum no caminho.
 function clicarBotaoEmailDireto() {
     const icones = Array.from(document.querySelectorAll('i.material-icons-extended'));
     const iconeEmail = icones.find(el => el.innerText.trim() === 'email' && el.offsetParent !== null);
@@ -248,17 +247,68 @@ function clicarBotaoEmailDireto() {
     return true;
 }
 
+// Envelope visível em qualquer ponto da página. Só é chamado depois que o botão
+// direto já falhou, e é isso que torna a busca sem escopo segura aqui: se não
+// havia envelope visível um instante atrás, o que aparecer agora veio do menu
+// que acabamos de abrir.
+function acharEnvelopeVisivel() {
+    return Array.from(document.querySelectorAll('i.material-icons-extended'))
+        .find(el => el.textContent.trim() === 'email' && estaVisivel(el)) || null;
+}
+
+// Speed dial da interface ANTIGA do CRM, que ainda convive com a nova. O markup
+// é outro (material-fab-speed-dial + .trigger, sem o container com id), então
+// nenhum seletor do fluxo novo alcança este caminho - ele precisa existir por
+// conta própria. Foi removido junto com a migração para a UI nova e o resultado
+// foi o agente sem nenhuma rota: o envelope existe, mas escondido atrás do menu
+// fechado, então o clique direto também não o enxerga.
+async function abrirPelaSpeedDialAntiga() {
+    try {
+        const speedDial = document.querySelector('material-fab-speed-dial');
+        const trigger = speedDial && speedDial.querySelector('.trigger');
+        if (!trigger) return false;
+
+        log("Speed dial da UI antiga encontrado. Abrindo o menu...");
+        simularCliqueReal(trigger);
+
+        // Mesma razão do fluxo novo: os 800ms fixos que existiam aqui falhavam
+        // quando o CRM estava lento. Esperamos o envelope aparecer de fato.
+        const iconeEmail = await esperarPor(acharEnvelopeVisivel, { timeout: 3000 });
+        if (!iconeEmail) {
+            log("Menu antigo abriu, mas o envelope não apareceu.", 'warn');
+            return false;
+        }
+
+        const botaoAlvo = iconeEmail.closest('material-button') || iconeEmail.closest('material-fab') || iconeEmail;
+        simularCliqueReal(botaoAlvo);
+        log("Email aberto via speed dial da UI antiga.", 'success');
+        return true;
+    } catch (erro) {
+        // Falha silenciosa: o caminho manual continua disponível pro usuário.
+        log(`Falha no speed dial antigo: ${erro.message}`, 'error');
+        return false;
+    }
+}
+
 // --- CORE: ABRIR E LIMPAR ---
 async function openAndClearEmail() {
     log("🚀 FASE 1: Tentando abrir a janela de email...");
 
-    // O speed dial vem primeiro: é o fluxo da UI nova do CRM. O botão direto fica
-    // como plano B para as telas que ainda não migraram.
+    // Três rotas em cadeia, cada uma checando o próprio markup antes de agir.
+    // As duas versões da interface do CRM convivem entre os agentes (a
+    // atualização chega em ondas), então nenhuma delas pode ser removida quando
+    // a próxima chegar - só acrescentada na frente. No CRM antigo a primeira
+    // falha sem clicar em nada, porque o seletor é por id e não casa.
     let emailAberto = await openEmailComposer();
 
     if (!emailAberto) {
-        log("Speed dial indisponível. Tentando o botão de email direto...", 'warn');
+        log("Speed dial novo indisponível. Tentando o botão de email direto...", 'warn');
         emailAberto = clicarBotaoEmailDireto();
+    }
+
+    if (!emailAberto) {
+        log("Botão direto não visível. Tentando o speed dial da UI antiga...", 'warn');
+        emailAberto = await abrirPelaSpeedDialAntiga();
     }
 
     if (!emailAberto) {

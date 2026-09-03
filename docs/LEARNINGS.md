@@ -12,6 +12,38 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Automação de DOM do CRM: o caminho novo entra na frente, o antigo nunca sai
+
+**Why**: o Connect Cases escondeu o botão de e-mail atrás de um speed dial novo
+(`#action-bar-speed-dial-container` → `material-button.compose`) e a FASE 1 do
+`openAndClearEmail` foi reescrita para segui-lo. Só que a reescrita **removeu** o
+caminho da UI antiga (`material-fab-speed-dial` → `.trigger`) em vez de mantê-lo
+atrás do novo. Parecia seguro porque sobrou um plano B — o clique no envelope
+solto na action bar —, mas esse plano B exige o ícone já visível
+(`offsetParent !== null`), e na UI antiga ele está escondido dentro do menu
+fechado. Resultado: agente na UI antiga sem nenhuma rota, com o toast genérico de
+"botão não encontrado" como única pista. O custo foi alto porque a atualização do
+CRM chega **em ondas**: no dia do merge parte da operação já estava na UI nova e
+parte não, o bug foi para produção via `main`, e o modal de novidades da v6.0.1
+tinha acabado de anunciar que o módulo de e-mails estava corrigido — para quem
+estava na UI antiga, a mensagem era o oposto do que a tela fazia.
+
+A forma correta é uma cadeia: cada rota checa o próprio markup antes de agir e
+devolve `false` sem clicar em nada quando não reconhece a tela, e a rota nova só
+entra **na frente** das que já existiam. No CRM antigo a rota nova custa ~0ms
+(seletor por id não casa), então não há preço em mantê-las todas de pé. O log
+deve dizer qual rota abriu — é o que transforma o próximo report de "quebrou" em
+"quebrou na rota X".
+
+**When to apply**: sempre que uma atualização do CRM mudar o markup que o
+Case Wizard clica ou raspa. Antes de apagar um seletor antigo, pergunte "existe
+hoje um agente vendo a tela que este seletor atende?" — enquanto a resposta não
+for um "não" comprovado, o caminho antigo continua como elo da cadeia. Vale
+também para a leitura do `specs/workflow/scraping-rules.md`: a regra da falha
+silenciosa só protege quem tem outra rota para tentar.
+
+---
+
 ## Antes de mexer no TL Dashboard, confira o código contra `specs/`
 
 **Why**: a fila do TL saía do caso mais novo pro mais antigo porque
