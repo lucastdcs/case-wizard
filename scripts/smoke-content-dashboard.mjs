@@ -110,6 +110,25 @@ const ITENS = {
     broadcast: [], bau_availability: [], people: [],
 };
 
+// Duas versões do mesmo link: é o mínimo para provar que a versão arquivada
+// aparece e que só ela oferece "voltar para esta versão".
+const HISTORICO = {
+    itm_1: [
+        {
+            id: 'itm_1', module: 'links', key: 'tasks', lang: 'ALL', label: 'Fila de tarefas',
+            version: 2, status: 'live', publishedBy: 'lucaste', publishedAt: '2026-09-01T10:00:00Z',
+            lineage: 'itm_1',
+            value: JSON.stringify({ name: 'Fila de tarefas', url: 'https://go/fila', desc: 'Fila do dia' }),
+        },
+        {
+            id: 'itm_0', module: 'links', key: 'tasks', lang: 'ALL', label: 'Fila de tarefas',
+            version: 1, status: 'archived', publishedBy: 'anaflor', publishedAt: '2026-08-20T09:00:00Z',
+            lineage: 'itm_1',
+            value: JSON.stringify({ name: 'Fila antiga', url: 'https://go/antiga', desc: 'Versão anterior' }),
+        },
+    ],
+};
+
 // ------------------------------------------------------- montagem da página
 async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '' } = {}) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
@@ -121,7 +140,8 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '' } =
 
     // O dublê precisa existir ANTES do script da página rodar: o boot dispara
     // no DOMContentLoaded.
-    await page.addInitScript(({ sessao, itens, falhar }) => {
+    await page.addInitScript(({ sessao, itens, falhar, historico }) => {
+        const HISTORICO = historico;
         window.__chamadas = [];
 
         const RESPOSTAS = {
@@ -132,6 +152,8 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '' } =
                 return [];
             },
             listPendingApprovals: () => [],
+            listContentItemHistory: (lineage) => (HISTORICO[lineage] || []),
+            rollbackContentItem: () => ({ status: 'success', itemId: 'itm_revivido' }),
             listContentAccess: () => [{ ldap: 'lucaste', role: 'ADMIN', active: true, grantedBy: 'system' }],
             listPeople: () => [],
             getNoteFieldCatalog: () => ({ fields: {}, substatus: [] }),
@@ -180,7 +202,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '' } =
             value: { script: { get run() { return construir(); } } },
             writable: true,
         });
-    }, { sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe });
+    }, { sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe, historico: HISTORICO });
 
     await page.goto('file://' + ARQUIVO + hash, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(300);
@@ -484,6 +506,81 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         const publicou = await page.evaluate(() => window.__chamadas
             .filter(c => c.metodo === 'publishContentDirect').length);
         igual(publicou, 1, 'chamadas de publicação');
+    });
+
+    await page.close();
+}
+
+// ------------------------------------------------------ histórico do item
+{
+    const page = await abrir({ sessao: 'admin' });
+    await page.evaluate(() => switchTab('links'));
+    await page.waitForTimeout(200);
+
+    await check('todo item publicado oferece o histórico', async () => {
+        verdade(await page.locator('button:has-text("Histórico")').first().isVisible(),
+            'o botão de histórico deveria aparecer na linha do item');
+    });
+
+    await check('o histórico lista as versões, da mais nova para a mais antiga', async () => {
+        await page.locator('button:has-text("Histórico")').first().click();
+        await page.waitForTimeout(300);
+
+        const versoes = await page.evaluate(() => Array.from(
+            document.querySelectorAll('#hist-corpo .item-name')).map(e => e.textContent.trim()));
+        igual(versoes.length, 2, 'versões listadas');
+        verdade(/Versão 2/.test(versoes[0]), 'a mais nova vem primeiro');
+        verdade(/no ar/.test(versoes[0]), 'a versão no ar é identificada');
+        verdade(/Versão 1/.test(versoes[1]), 'a anterior vem depois');
+    });
+
+    await check('só a versão arquivada oferece voltar', async () => {
+        const botoes = await page.locator('#hist-corpo button:has-text("Voltar para esta versão")').count();
+        igual(botoes, 1, 'botões de reverter');
+    });
+
+    await check('reverter declara o alcance antes de acontecer', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.locator('#hist-corpo button:has-text("Voltar para esta versão")').click();
+        await page.waitForTimeout(200);
+
+        const reverteu = await page.evaluate(() => window.__chamadas
+            .some(c => c.metodo === 'rollbackContentItem'));
+        igual(reverteu, false, 'reverteu sem confirmar');
+        verdade(await page.locator('#pub-titulo').isVisible(), 'a confirmação deveria aparecer');
+    });
+
+    await check('confirmar republica a versão escolhida', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('#pub-sim');
+        await page.waitForTimeout(300);
+
+        const chamadas = await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'rollbackContentItem'));
+        igual(chamadas.length, 1, 'chamadas de rollback');
+        igual(chamadas[0].args[0], 'itm_0', 'reverteu para a versão arquivada, não para a que já está no ar');
+    });
+
+    await page.close();
+}
+
+{
+    // Quem não aprova vê por onde o item passou, mas não republica: reverter
+    // vai ao ar sem revisão, e isso é decisão de quem aprova.
+    const page = await abrir({ sessao: 'wfm' });
+    await page.evaluate(() => switchTab('links'));
+    await page.waitForTimeout(200);
+
+    await check('quem não aprova vê o histórico, mas não o botão de reverter', async () => {
+        await page.locator('button:has-text("Histórico")').first().click();
+        await page.waitForTimeout(300);
+
+        const versoes = await page.locator('#hist-corpo .item-name').count();
+        igual(versoes, 2, 'versões listadas');
+        igual(await page.locator('#hist-corpo button:has-text("Voltar para esta versão")').count(), 0,
+            'botões de reverter');
+        verdade(/não republica/.test(await page.locator('#hist-corpo').textContent()),
+            'a tela precisa dizer por que não há o botão');
     });
 
     await page.close();

@@ -9,6 +9,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Histórico e "voltar para esta versão" na Central** (fase 3). Cada item
+  publicado passou a oferecer o seu histórico: quais versões existiram, quem
+  publicou cada uma e quando. `listContentItemHistory` e `rollbackContentItem`
+  existiam no backend desde o começo e nunca tinham sido chamados pela tela —
+  enquanto isso o modal de remoção prometia que "a versão fica arquivada e pode
+  voltar", sem oferecer caminho para fazê-la voltar. Ver o histórico é leitura,
+  e aparece para quem enxerga o item; republicar uma versão anterior vai ao ar
+  sem passar pela fila, então exige o papel de quem aprova e o mesmo passo de
+  confirmação da publicação direta.
 - **Smoke da Central de Conteúdo** (`npm run smoke:content`). A maior tela do
   projeto era a única sem teste nenhum, e a reorganização da navegação
   (ADR-0007) toca todos os seus renderizadores de uma vez. O smoke carrega o

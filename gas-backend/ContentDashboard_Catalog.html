@@ -69,12 +69,17 @@
                             : '<span class="pill draft">rascunho</span>';
                     }
 
+                    // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
+                    // passou. Só reverter é que depende de aprovar.
+                    var historico = '<button class="btn btn-ghost btn-sm" '
+                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'links\')">Histórico</button>';
+
                     var actions = canPropose('links')
-                        ? '<div style="display:flex;gap:8px">' +
+                        ? '<div style="display:flex;gap:8px">' + historico +
                         '<button class="btn btn-ghost btn-sm" onclick="openLinkEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Tirar do ar</button>' +
                         '</div>'
-                        : '';
+                        : '<div style="display:flex;gap:8px">' + historico + '</div>';
 
                     html += '<div class="item-row">' +
                         '<div class="item-main">' +
@@ -317,12 +322,17 @@
                             : '<span class="pill draft">rascunho</span>')
                         : '';
 
+                    // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
+                    // passou. Só reverter é que depende de aprovar.
+                    var historico = '<button class="btn btn-ghost btn-sm" '
+                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'call_script\')">Histórico</button>';
+
                     var actions = canPropose('call_script')
-                        ? '<div style="display:flex;gap:8px">' +
+                        ? '<div style="display:flex;gap:8px">' + historico +
                         '<button class="btn btn-ghost btn-sm" onclick="openStepEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
                         '</div>'
-                        : '';
+                        : '<div style="display:flex;gap:8px">' + historico + '</div>';
 
                     html += '<div class="item-row">' +
                         '<div class="item-main">' +
@@ -522,12 +532,17 @@
                         ? '<span class="pill draft">' + esc(String(it.field).toUpperCase()) + '</span>'
                         : '';
 
+                    // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
+                    // passou. Só reverter é que depende de aprovar.
+                    var historico = '<button class="btn btn-ghost btn-sm" '
+                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'note_template\')">Histórico</button>';
+
                     var actions = canPropose('note_template')
-                        ? '<div style="display:flex;gap:8px">' +
+                        ? '<div style="display:flex;gap:8px">' + historico +
                         '<button class="btn btn-ghost btn-sm" onclick="openTemplateEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
                         '</div>'
-                        : '';
+                        : '<div style="display:flex;gap:8px">' + historico + '</div>';
 
                     html += '<div class="item-row">' +
                         '<div class="item-main">' +
@@ -751,11 +766,16 @@
                         ? nPh + ' campo' + (nPh === 1 ? '' : 's')
                         : Object.keys(v.labels || {}).length + ' rótulos';
 
+                    // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
+                    // passou. Só reverter é que depende de aprovar.
+                    var historico = '<button class="btn btn-ghost btn-sm" '
+                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'email_template\')">Histórico</button>';
+
                     var actions = canPropose('email_template')
-                        ? '<div style="display:flex;gap:8px">' +
+                        ? '<div style="display:flex;gap:8px">' + historico +
                         '<button class="btn btn-ghost btn-sm" onclick="openEmailEditor(\'' + it.id + '\')">Editar</button>' +
                         '</div>'
-                        : '';
+                        : '<div style="display:flex;gap:8px">' + historico + '</div>';
 
                     html += '<div class="item-row">' +
                         '<div class="item-main">' +
@@ -915,12 +935,17 @@
                         : '<span class="pill draft">rascunho</span>')
                     : '';
 
+                // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
+                // passou. Só reverter é que depende de aprovar.
+                var historico = '<button class="btn btn-ghost btn-sm" '
+                    + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'tips\')">Histórico</button>';
+
                 var actions = canPropose('tips')
-                    ? '<div style="display:flex;gap:8px">' +
+                    ? '<div style="display:flex;gap:8px">' + historico +
                     '<button class="btn btn-ghost btn-sm" onclick="openTipEditor(\'' + it.id + '\')">Editar</button>' +
                     '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
                     '</div>'
-                    : '';
+                    : '<div style="display:flex;gap:8px">' + historico + '</div>';
 
                 return '<div class="item-row">' +
                     '<div class="item-main">' +
