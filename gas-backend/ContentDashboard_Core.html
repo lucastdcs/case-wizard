@@ -1,0 +1,174 @@
+<!-- Parte de gas-backend/ContentDashboard.html. Ver o cabeçalho de lá. -->
+<!-- Estado da sessão, helpers, navegação e boot. É o que todo o resto usa. -->
+<script>
+        var SESSION = null;
+        var LIVE_LINKS = [];
+        var MY_DRAFTS = [];
+
+        var CATEGORY_LABELS = {
+            tasks: 'Tarefas', ads: 'Ads', analytics: 'GA4', shopping: 'Shop',
+            tech: 'Tech', hr: 'RH', lm: 'Forms', qa: 'QA', suporte: 'Ajuda'
+        };
+
+        function toast(msg, isErr) {
+            var t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = isErr ? 'show err' : 'show';
+            setTimeout(function () { t.className = ''; }, isErr ? 5200 : 3200);
+        }
+
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // O valor de um link é JSON no campo `value`: assim name/url/desc/desc_es
+        // viajam como um item só e o par PT/ES fica junto do link que descreve,
+        // em vez de num mapa paralelo como o LINK_DESC_ES de hoje.
+        function parseLinkValue(raw) {
+            try {
+                var v = JSON.parse(raw || '{}');
+                return { name: v.name || '', url: v.url || '', desc: v.desc || '', desc_es: v.desc_es || '' };
+            } catch (e) {
+                return { name: '', url: '', desc: '', desc_es: '' };
+            }
+        }
+
+        // Recarrega as listas de conteúdo. Genérico de propósito: aprovar ou
+        // remover algo pode afetar qualquer módulo, e a aba visível nem sempre é
+        // a do item mexido.
+        function refreshContentLists() {
+            loadLinks();
+            if (!document.getElementById('pane-callscript').classList.contains('hidden')) {
+                loadCallScript();
+            }
+            if (!document.getElementById('pane-notes').classList.contains('hidden')) {
+                loadNoteTemplates();
+            }
+            if (!document.getElementById('pane-emails').classList.contains('hidden')) {
+                loadEmails();
+            }
+            if (!document.getElementById('pane-tips').classList.contains('hidden')) {
+                loadTips();
+            }
+            if (!document.getElementById('pane-people').classList.contains('hidden')) {
+                loadPeople();
+            }
+        }
+
+        // A UI é conveniência, não a fronteira: o servidor recusa a ação de
+        // qualquer jeito. Esconder o botão evita oferecer algo que vai falhar.
+        function canPropose(module) {
+            return !!(SESSION && SESSION.proposableModules &&
+                SESSION.proposableModules.indexOf(module) !== -1);
+        }
+
+        function switchTab(tab) {
+            ['links', 'callscript', 'notes', 'emails', 'tips', 'broadcast', 'bau', 'people', 'approvals', 'access']
+                .forEach(function (t) {
+                    var pane = document.getElementById('pane-' + t);
+                    if (pane) pane.classList.toggle('hidden', t !== tab);
+                });
+            document.querySelectorAll('.tab-btn').forEach(function (b) {
+                b.classList.toggle('active', b.dataset.tab === tab);
+            });
+            if (tab === 'callscript') loadCallScript();
+            if (tab === 'notes') loadNoteTemplates();
+            if (tab === 'emails') loadEmails();
+            if (tab === 'tips') loadTips();
+            if (tab === 'broadcast') loadBroadcast();
+            if (tab === 'bau') loadBau();
+            if (tab === 'people') loadPeople();
+            if (tab === 'approvals') loadApprovals();
+            if (tab === 'access') loadAccess();
+        }
+
+        // --- Boot ---
+        function boot() {
+            google.script.run
+                .withSuccessHandler(function (s) {
+                    SESSION = s;
+                    document.getElementById('boot-state').classList.add('hidden');
+                    document.getElementById('user-ldap').textContent = s.ldap || '';
+
+                    if (!s.hasAccess) {
+                        document.getElementById('denied-state').classList.remove('hidden');
+                        return;
+                    }
+
+                    var badge = document.getElementById('user-role');
+                    badge.textContent = s.role;
+                    badge.classList.remove('hidden');
+
+                    document.getElementById('app').classList.remove('hidden');
+                    if (s.canManageAccess) document.getElementById('tab-access').classList.remove('hidden');
+                    // Pessoas nem aparece para QA/WFM: no servidor, a leitura do
+                    // diretório é tão restrita quanto a escrita.
+                    if (canPropose('people')) {
+                        document.getElementById('tab-people').classList.remove('hidden');
+                    }
+
+                    if (!canPropose('links')) {
+                        document.getElementById('links-new-btn').classList.add('hidden');
+                        document.getElementById('links-note').textContent =
+                            'Seu papel (' + s.role + ') vê os links, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('call_script')) {
+                        document.getElementById('cs-new-btn').classList.add('hidden');
+                        document.getElementById('cs-note').textContent =
+                            'Seu papel (' + s.role + ') vê o roteiro, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('tips')) {
+                        document.getElementById('tp-new-btn').classList.add('hidden');
+                        document.getElementById('tp-note').textContent =
+                            'Seu papel (' + s.role + ') vê as dicas, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('email_template')) {
+                        document.getElementById('em-note').textContent =
+                            'Seu papel (' + s.role + ') vê os modelos, mas não propõe alterações neste módulo.';
+                    }
+                    if (!canPropose('note_template')) {
+                        document.getElementById('nt-new-btn').classList.add('hidden');
+                        document.getElementById('nt-note').textContent =
+                            'Seu papel (' + s.role + ') vê os trechos, mas não propõe alterações neste módulo.';
+                    }
+                    // Avisos e disponibilidade seguem a mesma regra do resto da
+                    // tela: quem tem acesso enxerga o que está no ar, e só quem
+                    // tem o papel vê o caminho de publicar. É o WFM que separa
+                    // os dois na prática — publica disponibilidade, não avisos.
+                    if (!canPropose('broadcast')) {
+                        document.getElementById('bc-new-btn').classList.add('hidden');
+                        document.getElementById('bc-note').textContent =
+                            'Seu papel (' + s.role + ') vê os avisos no ar, mas não publica neste módulo.';
+                    }
+                    if (!canPropose('bau_availability')) {
+                        document.getElementById('bau-editor').classList.add('hidden');
+                        document.getElementById('bau-note').textContent =
+                            'Seu papel (' + s.role + ') vê a disponibilidade no ar, mas não publica neste módulo.';
+                    }
+
+                    loadLinks();
+                    if (s.canApprove) loadPendingCount();
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('boot-state').classList.add('hidden');
+                    document.getElementById('denied-state').classList.remove('hidden');
+                    toast(err.message || 'Falha ao verificar acesso.', true);
+                })
+                .getContentSession();
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // O bridge do google.script.run nem sempre está pronto no window.onload -
+        // mesma lição que o TLDashboard aprendeu ao vivo com a primeira chamada.
+        //
+        // Registrar aqui e não no fim da última parte é a ÚNICA coisa que mudou
+        // de lugar nesta divisão: as duas linhas pertencem ao boot, que mora
+        // neste arquivo. É seguro porque ambas são só registro de listener, e
+        // todo script embutido roda antes do DOMContentLoaded disparar.
+        document.addEventListener('DOMContentLoaded', boot);
+</script>

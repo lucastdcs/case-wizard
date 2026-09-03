@@ -174,12 +174,31 @@ function buildCreditHtml() {
 }
 
 /**
+ * Cola o conteúdo de outro arquivo HTML do projeto.
+ *
+ * O Apps Script não tem pastas nem imports: um dashboard grande ou vira um
+ * arquivo único de milhares de linhas, ou é montado por chamadas destas dentro
+ * de um template. A Central de Conteúdo usa o segundo caminho — as partes
+ * entram todas no MESMO documento e, portanto, no mesmo escopo global.
+ *
+ * Usa createHtmlOutputFromFile (e não createTemplateFromFile) porque as partes
+ * não contêm `<?`: elas são coladas como texto, sem passar de novo pelo
+ * avaliador de template. Uma parte que precise de template tem que ser
+ * incluída de outro jeito, e este é o comentário que vai avisar disso.
+ */
+function include(fileName) {
+  return HtmlService.createHtmlOutputFromFile(fileName).getContent();
+}
+
+/**
  * Serve um dashboard já com o selo de ambiente injetado.
  *
- * Usa createTemplateFromFile (e não createHtmlOutputFromFile) só por causa
- * dessa injeção. Os dois HTML não contêm nenhuma sequência `<?`, então passar
- * pelo avaliador de template é seguro - se um dia passarem a conter, é aqui
- * que vai quebrar.
+ * Usa createTemplateFromFile (e não createHtmlOutputFromFile) porque as duas
+ * telas dependem do avaliador de template: para a injeção do selo/crédito nas
+ * duas, e para os `include()` que montam a Central a partir de suas partes.
+ *
+ * As partes incluídas, essas sim, não podem conter `<?`: elas entram por
+ * createHtmlOutputFromFile (ver include() acima) e não passam pelo avaliador.
  */
 function renderDashboard(fileName, title) {
   var info = getDeploymentEnv();

@@ -1,0 +1,641 @@
+<!-- Parte de gas-backend/ContentDashboard.html. Ver o cabeçalho de lá. -->
+<!-- GOVERNANÇA: Aprovações, Pessoas e Acessos. -->
+<script>
+        // --- Aprovações ---
+        function loadPendingCount() {
+            if (!SESSION || !SESSION.canApprove) return;
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    var chip = document.getElementById('pending-count');
+                    chip.textContent = (list || []).length;
+                    chip.classList.toggle('zero', !(list || []).length);
+                })
+                .withFailureHandler(function () { })
+                .listPendingApprovals();
+        }
+
+        function loadApprovals() {
+            var host = document.getElementById('approvals-list');
+
+            if (!SESSION.canApprove) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">visibility_off</span>' +
+                    '<h2>Seu papel não revisa propostas</h2>' +
+                    '<p>Suas próprias propostas aparecem na aba do módulo, com o selo “em revisão”.</p></div>';
+                return;
+            }
+
+            host.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    if (!list || !list.length) {
+                        host.innerHTML =
+                            '<div class="state"><span class="material-symbols-rounded">task_alt</span>' +
+                            '<h2>Nada esperando revisão</h2><p>Toda proposta enviada aparece aqui.</p></div>';
+                        return;
+                    }
+
+                    host.innerHTML = list.map(function (d) {
+                        var cur = d.currentValue ? prettyValue(d.currentValue) : '(item novo)';
+                        var neu = d.value ? prettyValue(d.value) : '(remoção — item sai do ar)';
+                        var selfNote = d.isSelfProposed
+                            ? (d.canReview
+                                ? '<div class="note warn">Proposta sua. Como ADMIN, você pode aprovar mesmo assim — fica registrado como autoaprovação.</div>'
+                                : '<div class="note warn">Proposta sua. Outra pessoa precisa revisar.</div>')
+                            : '';
+
+                        return '<div class="card">' +
+                            '<div class="row-between">' +
+                            '<div><div class="card-title">' + esc(d.label) + '</div>' +
+                            '<p class="card-sub">' + esc(d.module) + ' · ' + esc(d.key) +
+                            ' · proposto por <strong>' + esc(d.proposedBy) + '</strong></p></div>' +
+                            '<span class="pill pending">pendente</span>' +
+                            '</div>' + selfNote +
+                            '<div class="diff">' +
+                            '<div class="diff-side"><div class="diff-label">Hoje no ar</div>' +
+                            '<div class="diff-body">' + esc(cur) + '</div></div>' +
+                            '<div class="diff-side new"><div class="diff-label">Proposto</div>' +
+                            '<div class="diff-body">' + esc(neu) + '</div></div>' +
+                            '</div>' +
+                            '<div class="modal-actions" style="margin-top:8px">' +
+                            '<button class="btn btn-danger btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',false)">Rejeitar</button>' +
+                            '<button class="btn btn-success btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',true)"' +
+                            (d.canReview ? '' : ' disabled') + '>Aprovar e publicar</button>' +
+                            '</div></div>';
+                    }).join('');
+                })
+                .withFailureHandler(function (err) {
+                    host.innerHTML = '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Falha ao carregar a fila</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listPendingApprovals();
+        }
+
+        // Links chegam como JSON; mostrar o objeto cru na revisão atrapalha mais
+        // do que ajuda, então viram linhas legíveis.
+        function prettyValue(raw) {
+            try {
+                var v = JSON.parse(raw);
+                // Registro de pessoa: o revisor precisa ver o que a mudança
+                // PRODUZ (idioma e acesso), não só os campos digitados — é
+                // disso que depende a decisão dele.
+                if (v && v.ldap && v.roleCategory) {
+                    return 'LDAP: ' + v.ldap +
+                        '\nCargo: ' + (v.role || '—') +
+                        '\nCategoria: ' + (v.roleCategory || '—') +
+                        '\nSegmento: ' + (v.segment || '—') +
+                        '\nIdioma do app: ' + peopleLangFor(v.segment) +
+                        '\nAcesso: ' + (peopleIsOverhead(v.roleCategory) ? 'liderança (abre o TL Dashboard)' : 'agente');
+                }
+                if (v && v.url) {
+                    return 'Nome: ' + v.name + '\nURL: ' + v.url +
+                        '\nDescrição (PT): ' + (v.desc || '—') +
+                        '\nDescrição (ES): ' + (v.desc_es || '—');
+                }
+                return raw;
+            } catch (e) {
+                return raw;
+            }
+        }
+
+        function reviewDraft(draftId, approve) {
+            if (approve) {
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        toast(res.outcome
+                            ? peopleOutcomeMessage(res)
+                            : (res.action === 'remove'
+                                ? 'Item retirado do ar. A versão fica arquivada e pode voltar.'
+                                : 'Publicado (versão ' + res.version + ').'));
+                        loadApprovals();
+                        loadPendingCount();
+                        refreshContentLists();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .approveContentDraft(draftId, '');
+                return;
+            }
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>Rejeitar proposta</h2>' +
+                '<p class="card-sub">Volta como rascunho para quem propôs, com o seu comentário.</p>' +
+                '<label class="fld" for="rej-note">Motivo</label>' +
+                '<textarea id="rej-note" placeholder="o que precisa mudar"></textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-danger" id="rej-go">Rejeitar</button>' +
+                '</div></div></div>';
+
+            document.getElementById('rej-go').onclick = function () {
+                var note = document.getElementById('rej-note').value.trim();
+                if (!note) return toast('Explique o motivo para quem propôs.', true);
+                this.disabled = true;
+
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Proposta devolvida ao autor.');
+                        loadApprovals();
+                        loadPendingCount();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .rejectContentDraft(draftId, note);
+            };
+        }
+
+        // --- Pessoas (aba People da planilha) ---
+        //
+        // A tela derive as MESMAS coisas que o backend deriva (idioma e
+        // liderança) para poder mostrá-las enquanto a pessoa digita, antes de
+        // salvar. As duas cópias não podem divergir: as funções servidoras são
+        // defaultLanguageForSegment() e isOverheadRoleCategory(), no Código.gs,
+        // e o teste `npm run test:people` prova o resultado do lado de lá.
+        var PEOPLE = [];
+        var PPL_SEGMENT = '';
+        var PPL_QUERY = '';
+        var PPL_EDITING = null;   // ldap em edição, '__new__', ou null
+        var PPL_FLASH = null;     // { ldap, kind } a piscar no próximo render
+
+        var PPL_NEW = '__new__';
+
+        function peopleLangFor(segment) {
+            var seg = String(segment || '').toLowerCase().trim();
+            if (seg === 'es') return 'ES';
+            if (seg === 'en') return 'EN';
+            return 'PT-BR';
+        }
+
+        // Regra por lista de EXCLUSÃO, igual à do servidor: qualquer categoria
+        // que não seja agent/apprentice conta como liderança. É permissiva de
+        // propósito lá, e a tela mostra isso em vez de escondê-lo — daí o aviso
+        // no editor quando a categoria digitada dá acesso.
+        function peopleIsOverhead(roleCategory) {
+            var c = String(roleCategory || '').toLowerCase();
+            return !(c.indexOf('agent') !== -1 || c.indexOf('apprentice') !== -1);
+        }
+
+        // Paleta de identificação. Segmentos conhecidos têm cor fixa; qualquer
+        // outro cai num hash estável — um segmento novo na planilha nasce com
+        // cor própria e constante, sem precisar de deploy.
+        var PPL_SEGMENT_COLORS = {
+            pt: { bg: '#E8F0FE', fg: '#174EA6', dot: '#1A73E8' },
+            'pt-br': { bg: '#E8F0FE', fg: '#174EA6', dot: '#1A73E8' },
+            es: { bg: '#FEF7E0', fg: '#B06000', dot: '#F9AB00' },
+            en: { bg: '#E6F4EA', fg: '#0D652D', dot: '#1E8E3E' },
+            staff: { bg: '#F3E8FD', fg: '#6A1B9A', dot: '#9B72CB' }
+        };
+
+        var PPL_FALLBACK_COLORS = [
+            { bg: '#E0F7F5', fg: '#00695C', dot: '#00BFA5' },
+            { bg: '#FCE8E6', fg: '#B3261E', dot: '#D93025' },
+            { bg: '#EDE7F6', fg: '#4527A0', dot: '#673AB7' },
+            { bg: '#FFF3E0', fg: '#8C4B00', dot: '#E8710A' },
+            { bg: '#E8EAED', fg: '#3C4043', dot: '#80868B' }
+        ];
+
+        function pplHashColor(value) {
+            var str = String(value || '');
+            var h = 0;
+            for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 100000;
+            return PPL_FALLBACK_COLORS[h % PPL_FALLBACK_COLORS.length];
+        }
+
+        function pplSegmentColor(segment) {
+            var key = String(segment || '').toLowerCase().trim();
+            return PPL_SEGMENT_COLORS[key] || pplHashColor('seg:' + key);
+        }
+
+        // Categorias herdam a mesma ideia, com uma exceção que é semântica e não
+        // estética: tudo que dá liderança vem no roxo Gemini, porque é o estado
+        // que muda quem entra no TL Dashboard.
+        function pplCategoryColor(category) {
+            var key = String(category || '').toLowerCase().trim();
+            if (peopleIsOverhead(key)) return { bg: '#F3E8FD', fg: '#6A1B9A', dot: '#9B72CB' };
+            if (key.indexOf('apprentice') !== -1) return { bg: '#E0F7F5', fg: '#00695C', dot: '#00BFA5' };
+            return { bg: '#E8EAED', fg: '#3C4043', dot: '#80868B' };
+        }
+
+        function pplChip(text, color) {
+            return '<span class="ppl-chip" style="background:' + color.bg + ';color:' + color.fg + '">' +
+                '<span class="ppl-dot" style="background:' + color.dot + '" aria-hidden="true"></span>' +
+                esc(text || '—') + '</span>';
+        }
+
+        function peopleOutcomeMessage(res) {
+            if (res.outcome === 'removed') return 'Baixa aplicada. A pessoa perdeu o perfil e volta ao acesso mínimo.';
+            if (res.outcome === 'created') return 'Pessoa cadastrada. O perfil vale no próximo carregamento do app dela.';
+            return 'Alteração aplicada na aba People.';
+        }
+
+        function loadPeople() {
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    PEOPLE = list || [];
+                    renderPeople();
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('people-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar o time</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listPeople();
+        }
+
+        function pplMatches(p) {
+            if (PPL_SEGMENT && String(p.segment).toLowerCase() !== PPL_SEGMENT) return false;
+            if (!PPL_QUERY) return true;
+            var hay = (p.ldap + ' ' + p.role + ' ' + p.roleCategory + ' ' + p.segment).toLowerCase();
+            return hay.indexOf(PPL_QUERY) !== -1;
+        }
+
+        function renderPeople() {
+            renderPeopleFilters();
+
+            var host = document.getElementById('people-list');
+            var visible = PEOPLE.filter(pplMatches);
+            var lideranca = PEOPLE.filter(function (p) { return p.isOverhead && !p.isIncoming; }).length;
+            var emRevisao = PEOPLE.filter(function (p) { return !!p.pending; }).length;
+
+            document.getElementById('ppl-summary').textContent =
+                PEOPLE.filter(function (p) { return !p.isIncoming; }).length + ' pessoas · ' +
+                lideranca + ' com acesso de liderança' +
+                (emRevisao ? ' · ' + emRevisao + ' em revisão' : '') +
+                (visible.length !== PEOPLE.length ? ' · ' + visible.length + ' na busca' : '');
+
+            var html = visible.length
+                ? '<div class="ppl-head" aria-hidden="true">' +
+                  '<div class="ppl-id">Pessoa</div>' +
+                  '<div class="ppl-chips">Categoria e segmento</div>' +
+                  '<div class="ppl-lang">Idioma</div>' +
+                  '<div class="ppl-actions">&nbsp;</div>' +
+                  '</div>'
+                : '';
+            html += (PPL_EDITING === PPL_NEW) ? renderPersonEditor(null) : '';
+
+            if (!visible.length && PPL_EDITING !== PPL_NEW) {
+                html += '<div class="state"><span class="material-symbols-rounded">group_off</span>' +
+                    '<h2>' + (PEOPLE.length ? 'Ninguém bate com a busca' : 'A aba People está vazia') + '</h2>' +
+                    '<p>' + (PEOPLE.length
+                        ? 'Limpe a busca ou o filtro de segmento.'
+                        : 'Cadastre a primeira pessoa para o app parar de tratar todo mundo como agente sem perfil.') +
+                    '</p></div>';
+            }
+
+            visible.forEach(function (p) {
+                html += (PPL_EDITING === p.ldap) ? renderPersonEditor(p) : renderPersonRow(p);
+            });
+
+            host.innerHTML = html;
+            pplWireEditor();
+            pplPlayFlash();
+        }
+
+        function renderPeopleFilters() {
+            var segs = [];
+            PEOPLE.forEach(function (p) {
+                var s = String(p.segment || '').trim();
+                if (s && segs.indexOf(s) === -1) segs.push(s);
+            });
+            segs.sort();
+
+            var host = document.getElementById('ppl-filters');
+            var botoes = [['', 'Todos os segmentos']].concat(segs.map(function (s) { return [s.toLowerCase(), s]; }));
+
+            host.innerHTML = botoes.map(function (b) {
+                var ativo = (PPL_SEGMENT === b[0]);
+                var cor = b[0] ? pplSegmentColor(b[0]) : null;
+                return '<button type="button" class="ppl-filter" data-act="filter" data-seg="' + esc(b[0]) + '"' +
+                    ' aria-pressed="' + ativo + '">' +
+                    (cor ? '<span class="ppl-dot" style="background:' + cor.dot + '" aria-hidden="true"></span>' : '') +
+                    esc(b[1]) + '</button>';
+            }).join('');
+        }
+
+        function renderPersonRow(p) {
+            var pend = p.pending;
+            var classes = 'ppl-row' + (pend ? ' is-pending' : '') + (p.isIncoming ? ' is-incoming' : '');
+
+            var acoes = pend
+                ? '<span class="pill pending">em revisão</span>'
+                : '<button class="btn btn-ghost btn-sm" data-act="edit" data-ldap="' + esc(p.ldap) + '"' +
+                  ' aria-label="Editar ' + esc(p.ldap) + '">Editar</button>' +
+                  '<button class="btn btn-ghost btn-sm" data-act="remove" data-ldap="' + esc(p.ldap) + '"' +
+                  ' aria-label="Dar baixa em ' + esc(p.ldap) + '">Dar baixa</button>';
+
+            var linha = '<div class="' + classes + '" data-row="' + esc(p.ldap) + '">' +
+                '<div class="ppl-id">' +
+                '<div class="ppl-ldap">' + esc(p.ldap) +
+                (p.isOverhead
+                    ? '<span class="ppl-lead" title="Abre o TL Dashboard">' +
+                      '<span class="material-symbols-rounded" aria-hidden="true">shield_person</span>' +
+                      '<span class="sr-only">acesso de liderança</span></span>'
+                    : '') +
+                '</div>' +
+                '<div class="ppl-role">' + esc(p.role || '—') + '</div>' +
+                '</div>' +
+                '<div class="ppl-chips">' +
+                pplChip(p.roleCategory, pplCategoryColor(p.roleCategory)) +
+                pplChip(p.segment, pplSegmentColor(p.segment)) +
+                '</div>' +
+                '<div class="ppl-lang" title="Idioma em que o app abre para esta pessoa">' +
+                '<span class="sr-only">Idioma do app: </span>' +
+                '<span class="ppl-lang-code">' + esc(p.defaultLanguage) + '</span></div>' +
+                '<div class="ppl-actions">' + acoes + '</div>' +
+                '</div>';
+
+            if (pend) {
+                var proposto = pend.action === 'remove'
+                    ? 'baixa proposta'
+                    : pplDescribeChange(p, pend);
+                linha += '<div class="ppl-pending-note">' + esc(proposto) +
+                    ' · proposto por ' + esc(pend.proposedBy) +
+                    ' · aguardando o ADMIN na aba Aprovações</div>';
+            }
+
+            return linha;
+        }
+
+        // Diz o que MUDA, não o que foi enviado: numa fila, "segmento PT → ES"
+        // se lê num relance, e o objeto inteiro não.
+        function pplDescribeChange(atual, pend) {
+            var novo;
+            try { novo = JSON.parse(pend.value || '{}'); } catch (e) { novo = {}; }
+
+            if (atual.isIncoming) return 'entrada proposta';
+
+            var difs = [];
+            if (novo.role && novo.role !== atual.role) difs.push('cargo ' + atual.role + ' → ' + novo.role);
+            if (novo.roleCategory && novo.roleCategory !== atual.roleCategory) {
+                difs.push('categoria ' + atual.roleCategory + ' → ' + novo.roleCategory);
+            }
+            if (novo.segment && novo.segment !== atual.segment) {
+                difs.push('segmento ' + atual.segment + ' → ' + novo.segment);
+            }
+            return difs.length ? difs.join(' · ') : 'alteração proposta';
+        }
+
+        function pplDatalist(id, values) {
+            var vistos = {};
+            var opts = '';
+            values.forEach(function (v) {
+                var val = String(v || '').trim();
+                if (!val || vistos[val.toLowerCase()]) return;
+                vistos[val.toLowerCase()] = true;
+                opts += '<option value="' + esc(val) + '"></option>';
+            });
+            return '<datalist id="' + id + '">' + opts + '</datalist>';
+        }
+
+        // Editor no lugar da linha. `p` nulo = admissão.
+        function renderPersonEditor(p) {
+            var novo = !p;
+            var podeAplicar = SESSION && SESSION.canSelfApprove;
+
+            return '<div class="ppl-editor" data-editor="1">' +
+                '<div class="card-title" style="margin-bottom:10px">' +
+                (novo ? 'Adicionar pessoa' : 'Editando ' + esc(p.ldap)) + '</div>' +
+                (novo
+                    ? '<label class="fld" for="ppl-f-ldap">LDAP</label>' +
+                      '<input type="text" id="ppl-f-ldap" autocomplete="off" placeholder="ex.: anaflor">'
+                    : '') +
+                '<div class="ppl-editor-grid">' +
+                '<div><label class="fld" for="ppl-f-role">Cargo</label>' +
+                '<input type="text" id="ppl-f-role" list="ppl-dl-role" autocomplete="off" value="' +
+                esc(novo ? '' : p.role) + '"></div>' +
+                '<div><label class="fld" for="ppl-f-cat">Categoria</label>' +
+                '<input type="text" id="ppl-f-cat" list="ppl-dl-cat" autocomplete="off" value="' +
+                esc(novo ? '' : p.roleCategory) + '"></div>' +
+                '<div><label class="fld" for="ppl-f-seg">Segmento (fluxo)</label>' +
+                '<input type="text" id="ppl-f-seg" list="ppl-dl-seg" autocomplete="off" value="' +
+                esc(novo ? '' : p.segment) + '"></div>' +
+                '</div>' +
+                pplDatalist('ppl-dl-role', PEOPLE.map(function (x) { return x.role; })) +
+                pplDatalist('ppl-dl-cat', PEOPLE.map(function (x) { return x.roleCategory; })) +
+                pplDatalist('ppl-dl-seg', PEOPLE.map(function (x) { return x.segment; })) +
+                '<div class="ppl-derived" id="ppl-derived" role="status" aria-live="polite"></div>' +
+                '<div class="modal-actions" style="margin-top:14px">' +
+                '<button class="btn btn-ghost" data-act="cancel">Cancelar</button>' +
+                '<button class="btn btn-primary" data-act="save" data-ldap="' + esc(novo ? '' : p.ldap) + '">' +
+                (podeAplicar ? 'Salvar' : 'Enviar para aprovação') + '</button>' +
+                '</div></div>';
+        }
+
+        // Mostra, enquanto se digita, o que a regra do servidor VAI derivar. Sem
+        // isto, "Segmento" é um campo de texto qualquer — e é ele que decide o
+        // idioma em que o app abre para a pessoa.
+        function pplRefreshDerived() {
+            var host = document.getElementById('ppl-derived');
+            if (!host) return;
+
+            var seg = (document.getElementById('ppl-f-seg') || {}).value || '';
+            var cat = (document.getElementById('ppl-f-cat') || {}).value || '';
+            var lider = peopleIsOverhead(cat);
+
+            host.innerHTML =
+                '<span>O app abrirá em <strong>' + esc(peopleLangFor(seg)) + '</strong></span>' +
+                '<span aria-hidden="true">·</span>' +
+                (String(cat).trim()
+                    ? (lider
+                        ? '<span class="ppl-warn-lead">esta categoria dá acesso de liderança (TL Dashboard)</span>'
+                        : '<span>sem acesso de liderança</span>')
+                    : '<span>preencha a categoria</span>');
+        }
+
+        function pplWireEditor() {
+            var editor = document.querySelector('[data-editor]');
+            if (!editor) return;
+
+            ['ppl-f-seg', 'ppl-f-cat'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.addEventListener('input', pplRefreshDerived);
+            });
+            pplRefreshDerived();
+
+            editor.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                    e.preventDefault();
+                    editor.querySelector('[data-act="save"]').click();
+                }
+                if (e.key === 'Escape') {
+                    e.stopPropagation();
+                    closePersonEditor();
+                }
+            });
+
+            var primeiro = document.getElementById('ppl-f-ldap') || document.getElementById('ppl-f-role');
+            if (primeiro) primeiro.focus();
+        }
+
+        function openPersonEditor(ldap) {
+            PPL_EDITING = ldap || PPL_NEW;
+            renderPeople();
+        }
+
+        function closePersonEditor() {
+            PPL_EDITING = null;
+            renderPeople();
+        }
+
+        function savePerson(ldapOriginal, btn) {
+            var campoLdap = document.getElementById('ppl-f-ldap');
+            var payload = {
+                ldap: campoLdap ? campoLdap.value : ldapOriginal,
+                role: (document.getElementById('ppl-f-role') || {}).value || '',
+                roleCategory: (document.getElementById('ppl-f-cat') || {}).value || '',
+                segment: (document.getElementById('ppl-f-seg') || {}).value || ''
+            };
+
+            btn.disabled = true;
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    PPL_EDITING = null;
+                    PPL_FLASH = { ldap: res.ldap, kind: res.applied ? 'applied' : 'queued' };
+                    toast(res.applied
+                        ? (res.isNew
+                            ? 'Pessoa cadastrada. O perfil vale no próximo carregamento do app dela.'
+                            : 'Alteração aplicada na aba People.')
+                        : 'Enviado para aprovação do ADMIN. Nada mudou na planilha ainda.');
+                    loadPeople();
+                    loadPendingCount();
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    toast(err.message, true);
+                })
+                .savePeopleChange(payload);
+        }
+
+        function askPersonRemoval(ldap) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="ppl-rm-title">' +
+                '<h2 id="ppl-rm-title">Dar baixa em ' + esc(ldap) + '</h2>' +
+                '<p class="card-sub">A linha sai da aba People. A pessoa passa a ser tratada pelo app como ' +
+                'agente sem perfil, sem nenhum acesso de liderança. O histórico fica na fila e no log.</p>' +
+                '<label class="fld" for="ppl-rm-note">Motivo</label>' +
+                '<textarea id="ppl-rm-note" placeholder="saiu do time, mudou de área…"></textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-danger" id="ppl-rm-go">Dar baixa</button>' +
+                '</div></div></div>';
+
+            document.getElementById('ppl-rm-note').focus();
+
+            document.getElementById('ppl-rm-go').onclick = function () {
+                var motivo = document.getElementById('ppl-rm-note').value.trim();
+                if (!motivo) return toast('Diga o motivo da baixa.', true);
+                this.disabled = true;
+
+                google.script.run
+                    .withSuccessHandler(function (res) {
+                        closeModal();
+                        PPL_FLASH = { ldap: res.ldap, kind: res.applied ? 'applied' : 'queued' };
+                        toast(res.applied
+                            ? 'Baixa aplicada. A pessoa perdeu o perfil e volta ao acesso mínimo.'
+                            : 'Baixa enviada para aprovação do ADMIN. Ninguém saiu da planilha ainda.');
+                        loadPeople();
+                        loadPendingCount();
+                    })
+                    .withFailureHandler(function (err) {
+                        document.getElementById('ppl-rm-go').disabled = false;
+                        toast(err.message, true);
+                    })
+                    .requestPeopleRemoval(ldap, motivo);
+            };
+        }
+
+        // O pisca acontece DEPOIS do repinte, na linha que mudou: é o que liga o
+        // toast ("aplicado") ao lugar onde aquilo aconteceu.
+        function pplPlayFlash() {
+            if (!PPL_FLASH) return;
+            var row = document.querySelector('[data-row="' + PPL_FLASH.ldap + '"]');
+            var kind = PPL_FLASH.kind;
+            PPL_FLASH = null;
+            if (!row) return;
+
+            row.classList.add('flash-' + kind);
+            row.scrollIntoView({ block: 'nearest' });
+            setTimeout(function () { row.classList.remove('flash-' + kind); }, 950);
+        }
+
+        // Um listener só para a lista inteira: as linhas são repintadas a cada
+        // alteração, e religar handler por botão a cada render é como se perde
+        // clique em lista que muda.
+        document.getElementById('people-list').addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-act]');
+            if (!btn) return;
+            var act = btn.dataset.act;
+
+            if (act === 'edit') openPersonEditor(btn.dataset.ldap);
+            else if (act === 'remove') askPersonRemoval(btn.dataset.ldap);
+            else if (act === 'cancel') closePersonEditor();
+            else if (act === 'save') savePerson(btn.dataset.ldap, btn);
+        });
+
+        document.getElementById('ppl-filters').addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-act="filter"]');
+            if (!btn) return;
+            PPL_SEGMENT = btn.dataset.seg;
+            renderPeople();
+        });
+
+        document.getElementById('ppl-search').addEventListener('input', function (e) {
+            PPL_QUERY = e.target.value.toLowerCase().trim();
+            renderPeople();
+        });
+
+        // --- Acessos ---
+        function loadAccess() {
+            if (!SESSION.canManageAccess) return;
+
+            google.script.run
+                .withSuccessHandler(function (list) {
+                    var host = document.getElementById('access-list');
+                    host.innerHTML = (list || []).map(function (a) {
+                        return '<div class="item-row">' +
+                            '<div class="item-main">' +
+                            '<div class="item-name">' + esc(a.ldap) + '</div>' +
+                            '<div class="item-meta">concedido por ' + esc(a.grantedBy) + '</div>' +
+                            '</div>' +
+                            '<div style="display:flex;gap:8px;align-items:center">' +
+                            '<span class="pill ' + (a.active ? 'live' : 'archived') + '">' +
+                            esc(a.role) + (a.active ? '' : ' · inativo') + '</span>' +
+                            (a.ldap === SESSION.ldap ? '' :
+                                '<button class="btn btn-ghost btn-sm" onclick="toggleAccess(\'' +
+                                esc(a.ldap) + '\',\'' + esc(a.role) + '\',' + (!a.active) + ')">' +
+                                (a.active ? 'Desativar' : 'Reativar') + '</button>') +
+                            '</div></div>';
+                    }).join('');
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .listContentAccess();
+        }
+
+        function saveAccess() {
+            var ldap = document.getElementById('acc-ldap').value.trim();
+            if (!ldap) return toast('Informe o LDAP.', true);
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    document.getElementById('acc-ldap').value = '';
+                    toast('Acesso salvo.');
+                    loadAccess();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .saveContentAccess(ldap, document.getElementById('acc-role').value, true);
+        }
+
+        function toggleAccess(ldap, role, active) {
+            google.script.run
+                .withSuccessHandler(function () {
+                    toast('Acesso atualizado.');
+                    loadAccess();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .saveContentAccess(ldap, role, active);
+        }
+</script>

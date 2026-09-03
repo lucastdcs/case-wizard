@@ -48,10 +48,31 @@ const ARQUIVO = join(tmpdir(), 'cw-content-dashboard-smoke.html');
 
 async function prepararArquivo() {
     let html = await readFile(resolve(raiz, 'gas-backend/ContentDashboard.html'), 'utf8');
-    // As duas tags são preenchidas pelo renderDashboard() do Código.gs. Fora do
-    // Apps Script elas ficariam literais no DOM.
+
+    // A tela é montada por include() (Código.gs), que só existe dentro do Apps
+    // Script. Aqui as partes são coladas do mesmo jeito, a partir do disco —
+    // é o que faz o smoke testar a tela REAL, e não uma cópia.
+    const incluidos = [];
+    html = html.replace(/<\?!=\s*include\('([^']+)'\)\s*\?>/g, (_, nome) => {
+        incluidos.push(nome);
+        return '\u0000' + nome + '\u0000';
+    });
+    for (const nome of incluidos) {
+        const parte = await readFile(resolve(raiz, 'gas-backend/' + nome + '.html'), 'utf8');
+        html = html.replace('\u0000' + nome + '\u0000', () => parte);
+    }
+
+    // Se sobrar qualquer include, a tela iria ao ar sem um pedaço e o smoke
+    // acusaria coisas estranhas em vez do problema real.
+    if (/<\?!=\s*include\(/.test(html)) throw new Error('sobrou include não resolvido');
+
+    // As duas tags restantes são preenchidas pelo renderDashboard() do
+    // Código.gs. Fora do Apps Script elas ficariam literais no DOM.
     html = html.replace(/<\?!=\s*CW_ENV_BADGE\s*\?>/g, '')
         .replace(/<\?!=\s*CW_CREDIT\s*\?>/g, '');
+
+    if (/<\?/.test(html)) throw new Error('sobrou tag de template não resolvida');
+
     await writeFile(ARQUIVO, html, 'utf8');
 }
 

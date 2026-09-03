@@ -47,6 +47,13 @@ versions follow [Semantic Versioning](https://semver.org/).
   @lucaste", como os demais e-mails do fluxo.
 
 ### Changed
+- **`ContentDashboard.html` dividido em partes** (`include()` do `HtmlService`).
+  Eram ~3.500 linhas com estilo, marcação e dez renderizadores no mesmo arquivo;
+  agora a casca tem 413 e o resto está em quatro partes cortadas pelo **regime**
+  de cada módulo — catálogo (passa pela fila), operação (publica direto) e
+  governança —, o mesmo corte que a navegação vai passar a mostrar. Sem mudança
+  de comportamento: o HTML remontado é idêntico ao anterior, exceto pelos dois
+  `addEventListener` finais, que foram para junto do `boot`.
 - **Central de Conteúdo, fase 1 — correção e carga** (ADR-0008). A leitura
   pública passou a ser servida por `CacheService` (TTL de 5 min, invalidado na
   hora por toda escrita que muda o que está no ar) e aceita `modules=a,b,c`,

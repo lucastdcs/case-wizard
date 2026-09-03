@@ -1,0 +1,998 @@
+<!-- Parte de gas-backend/ContentDashboard.html. Ver o cabeçalho de lá. -->
+<!-- Tokens e componentes da Central. Copiados do TLDashboard de propósito,
+     não importados dele — ver o comentário no topo deste bloco. -->
+<style>
+        /* Tokens copiados do TLDashboard.html de propósito, não importados dele:
+           lá o CSS é inline num arquivo de ~2000 linhas, e extrair um parcial
+           compartilhado sem regressão custaria mais agora do que a duplicação.
+           A origem é a mesma, então a identidade visual não diverge. */
+        :root {
+            --bg-base: #F1F3F4;
+            --surface-level-1: #FFFFFF;
+            --surface-level-2: #F8F9FA;
+            --surface-level-3: #E8EAED;
+            --border-subtle: #DADCE0;
+
+            --text-primary: #202124;
+            --text-secondary: #5F6368;
+            --text-tertiary: #5F6368;
+
+            --gemini-blue: #1A73E8;
+            --gemini-blue-light: #E8F0FE;
+            --gemini-purple: #9B72CB;
+            --gemini-gradient: linear-gradient(90deg, #4285f4, #9b72cb, #d96570);
+
+            --success: #1E8E3E;
+            --success-light: #E6F4EA;
+            --danger: #D93025;
+            --danger-light: #FCE8E6;
+            --warning: #F9AB00;
+            --warning-light: #FEF7E0;
+            --warning-text: #B06000;
+
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-pill: 100px;
+
+            --nav-bg: #3D3D3D;
+            --nav-surface: #333333;
+            --nav-border: rgba(255, 255, 255, 0.15);
+            --nav-text-primary: #E3E3E3;
+            --nav-text-secondary: #9AA0A6;
+
+            --spring-expressive: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            --spring-functional: cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Google Sans', system-ui, sans-serif;
+            background-color: var(--bg-base);
+            margin: 0;
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .ambient-glow {
+            position: fixed;
+            top: -20vh;
+            left: 10vw;
+            width: 80vw;
+            height: 50vh;
+            background: radial-gradient(ellipse at center, rgba(66, 133, 244, 0.06) 0%, rgba(241, 243, 244, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* --- Top nav --- */
+        .topnav {
+            background: rgba(61, 61, 61, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 0 32px;
+            height: 72px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--nav-border);
+            background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
+        }
+
+        .topnav::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--gemini-gradient);
+            opacity: 0.7;
+        }
+
+        .brand-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+            color: var(--nav-text-primary);
+        }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--nav-text-secondary);
+            font-size: 13px;
+        }
+
+        .role-badge {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid var(--nav-border);
+            color: var(--nav-text-primary);
+            padding: 4px 12px;
+            border-radius: var(--radius-pill);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+        }
+
+        /* --- Layout --- */
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        .page-head {
+            margin-bottom: 24px;
+        }
+
+        .page-head h1 {
+            font-size: 28px;
+            font-weight: 500;
+            margin: 0 0 6px;
+            letter-spacing: -0.5px;
+        }
+
+        .page-head p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* --- Tabs --- */
+        .tab-section {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 12px 18px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color .2s var(--spring-functional), border-color .2s var(--spring-functional);
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            color: var(--gemini-blue);
+            border-bottom-color: var(--gemini-blue);
+        }
+
+        .tab-btn:focus-visible {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: 2px;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        }
+
+        .count-chip {
+            background: var(--danger);
+            color: #fff;
+            border-radius: var(--radius-pill);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 1px 7px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .count-chip.zero {
+            display: none;
+        }
+
+        /* --- Cards --- */
+        .card {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 500;
+            margin: 0 0 4px;
+        }
+
+        .card-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .row-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: var(--radius-pill);
+            padding: 9px 20px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background .2s var(--spring-functional), box-shadow .2s var(--spring-functional);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background: var(--gemini-blue);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 1px 6px rgba(26, 115, 232, .45);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--gemini-blue);
+            border-color: var(--border-subtle);
+        }
+
+        .btn-ghost:hover {
+            background: var(--gemini-blue-light);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--danger);
+            border-color: var(--danger-light);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-light);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-sm {
+            font-size: 13px;
+            padding: 6px 14px;
+        }
+
+        /* --- Forms --- */
+        label.fld {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin: 14px 0 5px;
+        }
+
+        input[type=text],
+        input[type=url],
+        input[type=date],
+        select,
+        textarea {
+            width: 100%;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--surface-level-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: -1px;
+            background: var(--surface-level-1);
+        }
+
+        textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 16px;
+        }
+
+        @media (max-width: 700px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* --- Status pills --- */
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .4px;
+            padding: 3px 10px;
+            border-radius: var(--radius-pill);
+            text-transform: uppercase;
+        }
+
+        .pill.live {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .pill.draft {
+            background: var(--surface-level-3);
+            color: var(--text-secondary);
+        }
+
+        .pill.pending {
+            background: var(--warning-light);
+            color: var(--warning-text);
+        }
+
+        .pill.archived {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        /* --- Diff --- */
+        .diff {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 14px 0;
+        }
+
+        @media (max-width: 700px) {
+            .diff {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .diff-side {
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            background: var(--surface-level-2);
+            overflow-x: auto;
+        }
+
+        .diff-side.new {
+            border-color: var(--success);
+            background: var(--success-light);
+        }
+
+        .diff-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .diff-side.new .diff-label {
+            color: var(--success);
+        }
+
+        .diff-body {
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Roboto Mono', ui-monospace, monospace;
+        }
+
+        /* --- Item list --- */
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-wrap: wrap;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .item-main {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .item-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .item-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .cat-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 26px 0 4px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .cat-head:first-of-type {
+            margin-top: 6px;
+        }
+
+        /* --- States --- */
+        .state {
+            text-align: center;
+            padding: 64px 24px;
+            color: var(--text-secondary);
+        }
+
+        .state .material-symbols-rounded {
+            font-size: 44px;
+            color: var(--border-subtle);
+            display: block;
+            margin: 0 auto 12px;
+        }
+
+        .state h2 {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 0 0 6px;
+        }
+
+        .state p {
+            margin: 0 auto;
+            max-width: 44ch;
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- Toast --- */
+        #toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translate(-50%, 20px);
+            background: #202124;
+            color: #fff;
+            padding: 12px 22px;
+            border-radius: var(--radius-pill);
+            font-size: 14px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s var(--spring-functional), transform .25s var(--spring-functional);
+            z-index: 999;
+            max-width: 90vw;
+            text-align: center;
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        #toast.err {
+            background: var(--danger);
+        }
+
+        /* --- Modal --- */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(32, 33, 36, .5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 24px;
+        }
+
+        .modal {
+            background: var(--surface-level-1);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 {
+            font-size: 20px;
+            font-weight: 500;
+            margin: 0 0 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .skeleton {
+            height: 58px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(90deg, var(--surface-level-2) 25%, var(--surface-level-3) 50%, var(--surface-level-2) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes shimmer {
+            to {
+                background-position: -200% 0;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
+            }
+        }
+
+        .note {
+            background: var(--gemini-blue-light);
+            border-left: 3px solid var(--gemini-blue);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 18px;
+        }
+
+        .note.warn {
+            background: var(--warning-light);
+            border-left-color: var(--warning);
+        }
+
+        /* --- Avisos e disponibilidade BAU ---
+           O tipo do aviso é a informação mais importante da linha: um alerta e
+           um comunicado informativo pedem reações diferentes de quem lê. Por
+           isso as três pílulas usam a cor semântica da paleta, e não uma cor
+           só — "ALERTA" em azul se leria como informativo. */
+        .pill.type-critical {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        .pill.type-info {
+            background: var(--gemini-blue-light);
+            color: var(--gemini-blue);
+        }
+
+        .pill.type-success {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        /* As duas datas de cada segmento. A cor aqui carrega significado e não
+           estilo: laranja é a data mais próxima, com folga apertada, e verde é
+           a de disponibilidade total. Por isso o ponto colorido acompanha o
+           rótulo do campo, e não só o valor - quem preenche precisa ver qual é
+           qual antes de digitar. */
+        .bau-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 7px;
+            vertical-align: middle;
+        }
+
+        .bau-dot.attention {
+            background: var(--warning-text);
+        }
+
+        .bau-dot.full {
+            background: var(--success);
+        }
+
+        .bau-segment {
+            margin-bottom: 22px;
+        }
+
+        .bau-segment-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .bau-current-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .bau-current-row:last-of-type {
+            border-bottom: none;
+        }
+
+        .bau-current-seg {
+            font-size: 13px;
+            font-weight: 700;
+            min-width: 34px;
+        }
+
+        .bau-current-date {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .bau-current-date .label {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .bau-current-empty {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* --- Aba Pessoas ---------------------------------------------------
+           A cor aqui é funcional, não decorativa (design-system.md): segmento e
+           categoria são exatamente os dois campos que se lê em varredura, sem
+           parar para ler. O resto da linha segue em texto normal. */
+        .ppl-toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .ppl-search {
+            flex: 1;
+            min-width: 220px;
+        }
+
+        .ppl-filters {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .ppl-filter {
+            border: 1px solid var(--border-subtle);
+            background: var(--surface-level-1);
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 13px;
+            padding: 5px 12px;
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background .18s var(--spring-functional), color .18s var(--spring-functional);
+        }
+
+        .ppl-filter:hover {
+            background: var(--surface-level-3);
+        }
+
+        .ppl-filter[aria-pressed="true"] {
+            background: var(--text-primary);
+            border-color: var(--text-primary);
+            color: #FFF;
+        }
+
+        .ppl-filter:focus-visible {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: 2px;
+        }
+
+        .ppl-count {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Cabeçalho de colunas: sem ele, a coluna de idioma é um "PT-BR" solto
+           no meio da linha, e ninguém adivinha que aquilo é consequência do
+           segmento — não um campo que se digita. */
+        .ppl-head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 14px 8px 15px;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 760px) {
+            .ppl-head {
+                display: none;
+            }
+        }
+
+        /* A linha inteira é a unidade de edição — não a célula. Trocar cargo e
+           segmento na mesma pessoa é UMA alteração; por célula, viraria duas
+           propostas, e a segunda esbarraria na primeira ainda em revisão. */
+        .ppl-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px 10px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            border-left: 3px solid transparent;
+            border-radius: var(--radius-sm);
+            transition: background .16s var(--spring-functional),
+                        border-color .16s var(--spring-functional);
+        }
+
+        .ppl-row:last-child {
+            border-bottom: none;
+        }
+
+        .ppl-row:hover {
+            background: var(--surface-level-2);
+        }
+
+        .ppl-row.is-pending {
+            background: var(--warning-light);
+            border-left-color: var(--warning);
+        }
+
+        .ppl-row.is-incoming {
+            border-style: dashed;
+            border-color: var(--border-subtle);
+            border-left: 3px dashed var(--gemini-blue);
+            background: var(--surface-level-2);
+        }
+
+        .ppl-id {
+            min-width: 150px;
+            flex: 1 1 150px;
+        }
+
+        .ppl-ldap {
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ppl-role {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .ppl-chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+            flex: 2 1 260px;
+        }
+
+        .ppl-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 11px;
+            border-radius: var(--radius-pill);
+            white-space: nowrap;
+        }
+
+        .ppl-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex: none;
+        }
+
+        /* Liderança não é uma cor a mais: é o único estado da linha que muda
+           quem entra no TL Dashboard, então ganha ícone além da cor. */
+        .ppl-lead {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--gemini-purple);
+        }
+
+        .ppl-lead .material-symbols-rounded {
+            font-size: 16px;
+        }
+
+        /* O escudo de liderança é ícone puro: quem usa leitor de tela precisa da
+           palavra, e ela não pode ocupar espaço na linha. */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Largura fixa (não min-width): é o que mantém o cabeçalho da coluna
+           alinhado com os valores, já que "Idioma" é mais largo que "ES". */
+        .ppl-lang {
+            font-size: 12px;
+            color: var(--text-secondary);
+            width: 64px;
+            flex: none;
+        }
+
+        .ppl-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .ppl-pending-note {
+            font-size: 12px;
+            color: var(--warning-text);
+            padding: 0 14px 10px 15px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        /* Editor embutido: a linha se abre no lugar, sem modal. Trocar o fluxo
+           de alguém é a operação mais repetida da tela — não pode custar uma
+           janela. */
+        .ppl-editor {
+            padding: 14px;
+            background: var(--gemini-blue-light);
+            border-left: 3px solid var(--gemini-blue);
+            border-radius: var(--radius-sm);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .ppl-editor-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0 14px;
+        }
+
+        @media (max-width: 760px) {
+            .ppl-editor-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ppl-row {
+                flex-wrap: wrap;
+            }
+        }
+
+        .ppl-editor label.fld {
+            margin-top: 0;
+        }
+
+        .ppl-derived {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .ppl-derived strong {
+            color: var(--text-primary);
+        }
+
+        .ppl-warn-lead {
+            color: var(--gemini-purple);
+            font-weight: 500;
+        }
+
+        /* Feedback tátil: a linha responde à mudança que acabou de acontecer,
+           em verde quando foi aplicada e em âmbar quando entrou na fila. O
+           toast diz o que houve; isto diz ONDE houve. */
+        @keyframes ppl-flash-applied {
+            0% { background: var(--success-light); transform: translateX(2px); }
+            100% { background: transparent; transform: none; }
+        }
+
+        @keyframes ppl-flash-queued {
+            0% { background: var(--warning-light); transform: translateX(2px); }
+            100% { background: var(--warning-light); transform: none; }
+        }
+
+        .ppl-row.flash-applied {
+            animation: ppl-flash-applied .9s var(--spring-functional);
+        }
+
+        .ppl-row.flash-queued {
+            animation: ppl-flash-queued .9s var(--spring-functional);
+        }
+
+        .ppl-row .btn:active {
+            transform: scale(.96);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .ppl-row,
+            .ppl-row.flash-applied,
+            .ppl-row.flash-queued,
+            .ppl-filter {
+                animation: none;
+                transition: none;
+            }
+
+            .ppl-row .btn:active {
+                transform: none;
+            }
+        }
+</style>
