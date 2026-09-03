@@ -184,6 +184,148 @@
             });
         }
 
+        // Publicação direta declara o ALCANCE antes de acontecer.
+        //
+        // A fricção estava invertida na tela: a ação que muda a produção de todo
+        // mundo disparava num clique, enquanto rejeitar uma proposta — que é
+        // reversível — exigia modal e justificativa. Aqui o passo a mais existe
+        // para que ninguém publique para a operação inteira sem ler para quem.
+        function confirmarPublicacao(quem, oque, aoConfirmar) {
+            // A confirmação é uma CAMADA por cima do editor, não uma troca do
+            // conteúdo do modal. Trocar por innerHTML recriaria os campos: o
+            // texto digitado sobreviveria à ida e volta, mas os handlers ligados
+            // por JS e a referência do botão que disparou a ação apontariam para
+            // nós já descartados.
+            var camada = document.createElement('div');
+            camada.className = 'modal-backdrop';
+            camada.style.zIndex = '300';
+            camada.innerHTML =
+                '<div class="modal" style="max-width:460px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="pub-titulo">' +
+                '<h2 id="pub-titulo">Publicar agora?</h2>' +
+                '<p class="card-sub">Isto vai ao ar imediatamente para <strong>' + esc(quem) +
+                '</strong>. Não passa por revisão.</p>' +
+                '<div class="note warn" style="margin-top:16px">' + esc(oque) + '</div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" id="pub-nao">Voltar e revisar</button>' +
+                '<button class="btn btn-primary" id="pub-sim">Publicar agora</button>' +
+                '</div></div>';
+
+            document.getElementById('modal-root').appendChild(camada);
+
+            function fechar() {
+                if (camada.parentNode) camada.parentNode.removeChild(camada);
+            }
+
+            // Voltar devolve o editor intacto: confirmar não pode custar o
+            // trabalho de quem desistiu no último passo.
+            camada.querySelector('#pub-nao').onclick = fechar;
+            camada.querySelector('#pub-sim').onclick = function () {
+                fechar();
+                aoConfirmar();
+            };
+            camada.querySelector('#pub-sim').focus();
+        }
+
+        // --- Histórico do item ---
+        //
+        // `listContentItemHistory` e `rollbackContentItem` existem no backend
+        // desde o começo e NUNCA foram chamados pela tela. Enquanto isso, o
+        // modal de remoção promete que "nada é apagado — a versão fica
+        // arquivada e pode voltar", sem oferecer caminho nenhum para fazê-la
+        // voltar. Isto é a porta que faltava.
+        function abrirHistorico(itemId, lineage, module) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:680px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="hist-titulo">' +
+                '<h2 id="hist-titulo">Histórico</h2>' +
+                '<div id="hist-corpo"><div class="skeleton"></div><div class="skeleton"></div></div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>' +
+                '</div></div></div>';
+
+            google.script.run
+                .withSuccessHandler(function (versoes) {
+                    renderHistorico(versoes || [], itemId, module);
+                })
+                .withFailureHandler(function (err) {
+                    var host = document.getElementById('hist-corpo');
+                    if (host) host.innerHTML = '<div class="note warn">' + esc(err.message) + '</div>';
+                })
+                .listContentItemHistory(lineage, module);
+        }
+
+        function dataCurta(iso) {
+            if (!iso) return '';
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return String(iso);
+            // Intl no idioma da interface, não formato fixo — mesma regra do
+            // resto do produto (specs/ui-ux/design-system.md).
+            return d.toLocaleString(idiomaAtual() === 'ES' ? 'es' : 'pt-BR',
+                { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderHistorico(versoes, itemId, module) {
+            var host = document.getElementById('hist-corpo');
+            if (!host) return;
+
+            if (!versoes.length) {
+                host.innerHTML = '<div class="state"><span class="material-symbols-rounded" ' +
+                    'aria-hidden="true">history</span><h2>Sem histórico</h2>' +
+                    '<p>Este item ainda está na primeira versão.</p></div>';
+                return;
+            }
+
+            var titulo = document.getElementById('hist-titulo');
+            if (titulo) titulo.textContent = 'Histórico de ' + (versoes[0].label || 'item');
+
+            // Reverter republica sem passar pela fila: é a mesma natureza da
+            // publicação direta, e quem pode fazer é quem aprova.
+            var podeReverter = !!(SESSION && SESSION.canApprove);
+
+            host.innerHTML = versoes.map(function (v) {
+                var noAr = v.status === 'live';
+                var acao = (!noAr && podeReverter)
+                    ? '<button class="btn btn-ghost btn-sm" ' +
+                      'onclick="pedirRollback(\'' + v.id + '\',' + v.version + ',\'' + module + '\')">' +
+                      'Voltar para esta versão</button>'
+                    : '';
+
+                return '<div class="item-row">' +
+                    '<div class="item-main">' +
+                    '<div class="item-name">Versão ' + v.version +
+                    (noAr ? ' <span class="estado">no ar</span>' : '') + '</div>' +
+                    '<div class="item-meta">por ' + esc(v.publishedBy) + ' · ' +
+                    esc(dataCurta(v.publishedAt)) + '</div>' +
+                    '<div class="diff-body" style="margin-top:8px;max-height:120px;overflow:auto">' +
+                    esc(prettyValue(v.value)) + '</div>' +
+                    '</div>' + acao + '</div>';
+            }).join('');
+
+            if (!podeReverter) {
+                host.innerHTML = '<div class="note">Seu papel vê o histórico, mas não republica ' +
+                    'uma versão anterior — isso vai ao ar sem passar por revisão.</div>' + host.innerHTML;
+            }
+        }
+
+        function pedirRollback(archivedItemId, versao, module) {
+            confirmarPublicacao(
+                'todos os agentes',
+                'Republica a versão ' + versao + '. A que está no ar agora vai para o histórico.',
+                function () {
+                    google.script.run
+                        .withSuccessHandler(function () {
+                            closeModal();
+                            toast('Versão ' + versao + ' republicada.');
+                            refreshContentLists();
+                        })
+                        .withFailureHandler(function (err) { toast(err.message, true); })
+                        .rollbackContentItem(archivedItemId);
+                }
+            );
+        }
+
         // --- Hoje ---
         //
         // Responde "o que está acontecendo no conteúdo agora", que é a pergunta
