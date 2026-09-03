@@ -126,11 +126,217 @@
             letter-spacing: 0.6px;
         }
 
-        /* --- Layout --- */
+        /* --- Layout ---
+           A tela é um trilho fixo à esquerda mais a área de conteúdo. O vidro
+           escuro do header desce pelo trilho: é a assinatura do Cases Wizard, e
+           fica no CHROME. A área de conteúdo segue Material claro, como manda
+           specs/ui-ux/design-system.md - vidro ali deixaria a Central parecida
+           com um SaaS genérico e diferente do TL Dashboard, que é a irmã dela. */
+        .shell {
+            display: grid;
+            grid-template-columns: 248px minmax(0, 1fr);
+            align-items: start;
+        }
+
         .wrap {
             max-width: 1180px;
-            margin: 0 auto;
             padding: 32px;
+            min-width: 0;
+        }
+
+        /* Estados de boot e de acesso negado aparecem sem trilho: não há
+           navegação a oferecer antes de saber quem é a pessoa. */
+        .shell.sem-trilho {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .shell.sem-trilho .wrap {
+            margin: 0 auto;
+        }
+
+        /* --- Trilho --- */
+        .rail {
+            position: sticky;
+            top: 72px;
+            align-self: start;
+            height: calc(100vh - 72px);
+            overflow-y: auto;
+            padding: 20px 12px 28px;
+            background: rgba(61, 61, 61, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid var(--nav-border);
+            background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.04), transparent);
+        }
+
+        .rail-group {
+            margin-bottom: 22px;
+        }
+
+        .rail-group:last-of-type {
+            margin-bottom: 0;
+        }
+
+        /* O rótulo do grupo é o que carrega o REGIME de publicação. Antes isso
+           morava num parágrafo dentro do painel, e a caixa de texto fazia o
+           trabalho que a estrutura deveria fazer. */
+        .rail-group-title {
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--nav-text-secondary);
+            padding: 0 12px;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .rail-group-title small {
+            display: block;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            text-transform: none;
+            opacity: 0.75;
+        }
+
+        .rail-item {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            margin-bottom: 2px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--nav-text-primary);
+            font-family: inherit;
+            font-size: 13.5px;
+            font-weight: 500;
+            text-align: left;
+            cursor: pointer;
+            transition: background .15s var(--spring-functional);
+        }
+
+        /* Caixa fixa para o ícone. Material Symbols desenha por ligadura: se a
+           fonte não carregar (rede, CSP), o nome do ícone aparece como texto
+           largo e empurra o rótulo do destino para fora. Com a caixa fixa, a
+           falha da fonte custa o ícone, não a navegação. */
+        .rail-item .material-symbols-rounded {
+            font-size: 19px;
+            flex: 0 0 19px;
+            width: 19px;
+            overflow: hidden;
+            opacity: .8;
+        }
+
+        .rail-item .rail-label {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .rail-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .rail-item[aria-current="page"] {
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .rail-item[aria-current="page"] .material-symbols-rounded {
+            opacity: 1;
+        }
+
+        .rail-item:focus-visible {
+            outline: 2px solid #8AB4F8;
+            outline-offset: -2px;
+        }
+
+        .rail-item .rail-count {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--nav-text-secondary);
+        }
+
+        /* Publicação direta ganha marca própria no trilho: é a diferença entre
+           "isto vira proposta" e "isto vai ao ar agora, para todo agente". */
+        .rail-item .ao-vivo {
+            margin-left: auto;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--warning);
+        }
+
+        .rail-lang {
+            margin: 4px 12px 20px;
+        }
+
+        .rail-lang label {
+            display: block;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            color: var(--nav-text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .rail-lang select {
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid var(--nav-border);
+            color: var(--nav-text-primary);
+            font-size: 13px;
+            padding: 7px 10px;
+        }
+
+        .rail-lang select:focus {
+            outline: 2px solid #8AB4F8;
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        /* Abaixo de 900px o trilho vira uma faixa horizontal rolável: um menu
+           lateral fixo comeria metade da largura útil. */
+        @media (max-width: 900px) {
+            .shell {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .rail {
+                position: static;
+                height: auto;
+                display: flex;
+                gap: 16px;
+                overflow-x: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--nav-border);
+                padding: 14px 16px;
+            }
+
+            .rail-group {
+                margin-bottom: 0;
+                flex: 0 0 auto;
+            }
+
+            .rail-group .rail-items {
+                display: flex;
+                gap: 4px;
+            }
+
+            .rail-item {
+                white-space: nowrap;
+                margin-bottom: 0;
+            }
+
+            .rail-lang {
+                margin: 0;
+                flex: 0 0 auto;
+            }
         }
 
         .page-head {

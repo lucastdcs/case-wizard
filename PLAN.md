@@ -41,7 +41,7 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       web. **Fora do PR:** o manifesto (módulo → versão) foi descartado — com a
       chamada em lote ele não reduz execução nenhuma, só payload, e não paga a
       complexidade. Ver a nota no ADR-0008.
-- [ ] **Fase 2 — casca e arquitetura** (maior risco de regressão do plano).
+- [~] **Fase 2 — casca e arquitetura** — entregue em três PRs, aguardando revisão.
       Smoke Playwright da tela **antes** de qualquer mudança — hoje o
       `ContentDashboard.html` não tem teste nenhum; quebra do arquivo em includes
       do `HtmlService` como primeiro commit, mecânico; trilho escuro/glass com os

@@ -277,7 +277,7 @@
 
         function renderCallScript() {
             var host = document.getElementById('cs-list');
-            var lang = document.getElementById('cs-lang').value;
+            var lang = idiomaAtual();
             var flow = document.getElementById('cs-flow').value;
 
             var mine = CS_ITEMS.filter(function (i) { return i.lang === lang && i.key === flow; });
@@ -343,7 +343,7 @@
 
             var existingDraft = itemId ? csDraftForItem(itemId) : null;
             var src = existingDraft || item;
-            var lang = document.getElementById('cs-lang').value;
+            var lang = idiomaAtual();
             var flow = document.getElementById('cs-flow').value;
             var group = src ? src.field : 'inicio';
             var text = src ? src.value : '';
@@ -382,7 +382,7 @@
             if (!text) return toast('Escreva o texto do passo.', true);
 
             var group = document.getElementById('cs-group').value;
-            var lang = document.getElementById('cs-lang').value;
+            var lang = idiomaAtual();
             var flow = document.getElementById('cs-flow').value;
 
             // Passo novo vai para o fim da seção; passo existente mantém a posição.
@@ -483,7 +483,7 @@
         function renderNoteTemplates() {
             var host = document.getElementById('nt-list');
             var fSub = document.getElementById('nt-sub').value;
-            var lang = document.getElementById('nt-lang').value;
+            var lang = idiomaAtual();
 
             var mine = NT_ITEMS.filter(function (i) {
                 if (i.lang !== lang) return false;
@@ -555,7 +555,7 @@
             var v = src ? parseTpl(src.value) : { fields: {} };
 
             var curSub = src ? src.key : (document.getElementById('nt-sub').value || (NOTE_SUBSTATUS[0] || {}).key);
-            var curLang = src ? src.lang : document.getElementById('nt-lang').value;
+            var curLang = src ? src.lang : idiomaAtual();
             var curEsc = src ? (src.field || 'all') : 'all';
 
             var subOptions = NOTE_SUBSTATUS.map(function (s) {
@@ -717,7 +717,7 @@
 
         function renderEmails() {
             var host = document.getElementById('em-list');
-            var lang = document.getElementById('em-lang').value;
+            var lang = idiomaAtual();
             var mine = EM_ITEMS.filter(function (i) { return i.lang === lang; });
 
             if (!mine.length) {

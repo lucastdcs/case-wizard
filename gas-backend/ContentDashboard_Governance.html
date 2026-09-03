@@ -6,9 +6,17 @@
             if (!SESSION || !SESSION.canApprove) return;
             google.script.run
                 .withSuccessHandler(function (list) {
+                    PENDING_TOTAL = (list || []).length;
+
                     var chip = document.getElementById('pending-count');
-                    chip.textContent = (list || []).length;
-                    chip.classList.toggle('zero', !(list || []).length);
+                    chip.textContent = PENDING_TOTAL;
+                    chip.classList.toggle('hidden', !PENDING_TOTAL);
+
+                    // A home mostra o mesmo número: se ela estiver aberta,
+                    // precisa acompanhar em vez de ficar com o valor velho.
+                    if (!document.getElementById('pane-home').classList.contains('hidden')) {
+                        renderHome();
+                    }
                 })
                 .withFailureHandler(function () { })
                 .listPendingApprovals();

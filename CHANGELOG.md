@@ -47,6 +47,21 @@ versions follow [Semantic Versioning](https://semver.org/).
   @lucaste", como os demais e-mails do fluxo.
 
 ### Changed
+- **A Central de Conteúdo trocou as dez abas por um trilho agrupado pelo regime
+  de publicação** (ADR-0007). Catálogo (passa por revisão), Operação (vai ao ar
+  na hora) e Governança: o grupo passa a carregar a informação que antes morava
+  num parágrafo dentro de cada painel. A tela abre num **Hoje** — fila de
+  revisão, propostas em andamento e o que o seu papel publica sem fila — em vez
+  de numa lista de links sem contexto. Cada destino tem endereço próprio
+  (`#/aprovacoes`), então uma pendência cabe num chat.
+- **O idioma é escolhido uma vez, no trilho.** Eram três seletores independentes
+  (call script, notas, e-mails), posicionados de um jeito em cada painel e sem
+  nada sincronizando — dava para revisar ES num e PT no outro sem perceber.
+- **Publicar um aviso ou uma disponibilidade agora declara o alcance antes.** A
+  fricção estava invertida: a ação que muda a produção de todo mundo disparava
+  num clique, enquanto rejeitar uma proposta — reversível — exigia modal e
+  justificativa. A confirmação é uma camada por cima do editor, então voltar não
+  custa o que foi digitado.
 - **`ContentDashboard.html` dividido em partes** (`include()` do `HtmlService`).
   Eram ~3.500 linhas com estilo, marcação e dez renderizadores no mesmo arquivo;
   agora a casca tem 413 e o resto está em quatro partes cortadas pelo **regime**

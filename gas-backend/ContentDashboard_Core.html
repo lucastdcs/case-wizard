@@ -5,6 +5,10 @@
         var LIVE_LINKS = [];
         var MY_DRAFTS = [];
 
+        // Quantas propostas esperam revisão. Fica no estado, e não só no DOM,
+        // porque a home também precisa do número.
+        var PENDING_TOTAL = 0;
+
         var CATEGORY_LABELS = {
             tasks: 'Tarefas', ads: 'Ads', analytics: 'GA4', shopping: 'Shop',
             tech: 'Tech', hr: 'RH', lm: 'Forms', qa: 'QA', suporte: 'Ajuda'
@@ -64,24 +68,193 @@
                 SESSION.proposableModules.indexOf(module) !== -1);
         }
 
+        // Um destino por linha: rótulo do cabeçalho, subtítulo e o que carregar.
+        // Ter isso numa tabela em vez de espalhado em ifs é o que permite a rota
+        // por hash, o teclado e o título da página lerem a MESMA fonte.
+        var DESTINOS = {
+            home: { titulo: 'Hoje', sub: 'O que está acontecendo no conteúdo agora.' },
+            links: {
+                titulo: 'Links', carregar: null,
+                sub: 'Atalhos que o agente abre pela pílula. Editar cria uma proposta.'
+            },
+            callscript: {
+                titulo: 'Call Script', carregar: function () { loadCallScript(); },
+                sub: 'O roteiro da ligação, passo a passo. Editar cria uma proposta.'
+            },
+            notes: {
+                titulo: 'Case Notes', carregar: function () { loadNoteTemplates(); },
+                sub: 'Notas prontas por substatus. Editar cria uma proposta.'
+            },
+            emails: {
+                titulo: 'E-mails', carregar: function () { loadEmails(); },
+                sub: 'Modelos que o agente envia ao anunciante. Editar cria uma proposta.'
+            },
+            tips: {
+                titulo: 'Dicas', carregar: function () { loadTips(); },
+                sub: 'Frases curtas exibidas durante os carregamentos do app.'
+            },
+            broadcast: {
+                titulo: 'Avisos', carregar: function () { loadBroadcast(); }, aoVivo: true,
+                sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.'
+            },
+            bau: {
+                titulo: 'Disponibilidade', carregar: function () { loadBau(); }, aoVivo: true,
+                sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.'
+            },
+            approvals: {
+                titulo: 'Aprovações', carregar: function () { loadApprovals(); },
+                sub: 'Propostas esperando revisão, de todos os módulos.'
+            },
+            people: {
+                titulo: 'Pessoas', carregar: function () { loadPeople(); },
+                sub: 'O diretório que decide quem é liderança e em que idioma o app abre.'
+            },
+            access: {
+                titulo: 'Acessos', carregar: function () { loadAccess(); },
+                sub: 'Quem entra na Central e com qual papel.'
+            }
+        };
+
+        var DESTINO_PADRAO = 'home';
+
         function switchTab(tab) {
-            ['links', 'callscript', 'notes', 'emails', 'tips', 'broadcast', 'bau', 'people', 'approvals', 'access']
-                .forEach(function (t) {
-                    var pane = document.getElementById('pane-' + t);
-                    if (pane) pane.classList.toggle('hidden', t !== tab);
-                });
-            document.querySelectorAll('.tab-btn').forEach(function (b) {
-                b.classList.toggle('active', b.dataset.tab === tab);
+            var destino = DESTINOS[tab] ? tab : DESTINO_PADRAO;
+
+            Object.keys(DESTINOS).forEach(function (t) {
+                var pane = document.getElementById('pane-' + t);
+                if (pane) pane.classList.toggle('hidden', t !== destino);
             });
-            if (tab === 'callscript') loadCallScript();
-            if (tab === 'notes') loadNoteTemplates();
-            if (tab === 'emails') loadEmails();
-            if (tab === 'tips') loadTips();
-            if (tab === 'broadcast') loadBroadcast();
-            if (tab === 'bau') loadBau();
-            if (tab === 'people') loadPeople();
-            if (tab === 'approvals') loadApprovals();
-            if (tab === 'access') loadAccess();
+
+            // aria-current é o que um leitor de tela anuncia como "página atual".
+            // A classe sozinha só pintava o item.
+            document.querySelectorAll('.rail-item').forEach(function (b) {
+                if (b.dataset.tab === destino) b.setAttribute('aria-current', 'page');
+                else b.removeAttribute('aria-current');
+            });
+
+            var def = DESTINOS[destino];
+            document.getElementById('page-title').textContent = def.titulo;
+            document.getElementById('page-sub').textContent = def.sub;
+
+            // O endereço acompanha o destino: uma pendência passa a caber num
+            // chat, que antes era "abre a Central, vai em Aprovações, procura".
+            if (location.hash !== '#/' + destino) {
+                history.replaceState(null, '', '#/' + destino);
+            }
+
+            if (destino === 'home') renderHome();
+            else if (def.carregar) def.carregar();
+        }
+
+        // O destino inicial vem do endereço, e cai no padrão quando ele não
+        // aponta para lugar nenhum.
+        function destinoDaURL() {
+            var m = String(location.hash || '').match(/^#\/([a-z]+)/);
+            return (m && DESTINOS[m[1]]) ? m[1] : DESTINO_PADRAO;
+        }
+
+        // Setas navegam entre os destinos VISÍVEIS - incluir os escondidos faria
+        // o foco sumir em itens que a pessoa não pode usar.
+        function itensVisiveisDoTrilho() {
+            return Array.prototype.filter.call(
+                document.querySelectorAll('.rail-item'),
+                function (b) { return !b.classList.contains('hidden'); }
+            );
+        }
+
+        function ligarTecladoDoTrilho() {
+            var rail = document.getElementById('rail');
+            if (!rail) return;
+
+            rail.addEventListener('keydown', function (e) {
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' &&
+                    e.key !== 'Home' && e.key !== 'End') return;
+
+                var itens = itensVisiveisDoTrilho();
+                var atual = itens.indexOf(document.activeElement);
+                if (atual === -1) return;
+
+                e.preventDefault();
+                var proximo = atual;
+                if (e.key === 'ArrowDown') proximo = (atual + 1) % itens.length;
+                if (e.key === 'ArrowUp') proximo = (atual - 1 + itens.length) % itens.length;
+                if (e.key === 'Home') proximo = 0;
+                if (e.key === 'End') proximo = itens.length - 1;
+                itens[proximo].focus();
+            });
+        }
+
+        // --- Hoje ---
+        //
+        // Responde "o que está acontecendo no conteúdo agora", que é a pergunta
+        // que a tela não respondia em lugar nenhum: ela abria numa lista de
+        // links, sem contexto.
+        function renderHome() {
+            var host = document.getElementById('home-content');
+            if (!host || !SESSION) return;
+
+            var cartoes = [];
+
+            if (SESSION.canApprove) {
+                var n = PENDING_TOTAL;
+                cartoes.push(
+                    '<div class="card">' +
+                    '<div class="card-title">Esperando sua revisão</div>' +
+                    '<p class="card-sub">' +
+                    (n ? n + (n === 1 ? ' proposta pendente.' : ' propostas pendentes.')
+                       : 'Nada na fila.') +
+                    '</p>' +
+                    (n ? '<div style="margin-top:14px">' +
+                         '<button class="btn btn-primary btn-sm" onclick="switchTab(\'approvals\')">' +
+                         'Abrir a fila</button></div>' : '') +
+                    '</div>');
+            }
+
+            var meus = MY_DRAFTS.length;
+            cartoes.push(
+                '<div class="card">' +
+                '<div class="card-title">Suas propostas em andamento</div>' +
+                '<p class="card-sub">' +
+                (meus ? meus + (meus === 1 ? ' proposta sua ainda não publicada.'
+                                           : ' propostas suas ainda não publicadas.')
+                      : 'Nenhuma proposta sua em andamento.') +
+                '</p></div>');
+
+            // O que a pessoa pode publicar SEM fila é a informação mais
+            // consequente da tela: é o único caminho que muda a vida do agente
+            // no mesmo instante.
+            var direto = [];
+            if (canPropose('broadcast')) direto.push('avisos');
+            if (canPropose('bau_availability')) direto.push('disponibilidade BAU');
+
+            cartoes.push(
+                '<div class="card">' +
+                '<div class="card-title">Seu papel: ' + esc(SESSION.role) + '</div>' +
+                '<p class="card-sub">' +
+                (direto.length
+                    ? 'Você publica <strong>' + direto.join(' e ') + '</strong> direto, sem revisão. ' +
+                      'O resto do que você edita vira proposta.'
+                    : 'Tudo que você edita vira proposta e passa por revisão.') +
+                '</p></div>');
+
+            host.innerHTML = cartoes.join('');
+        }
+
+        // --- Idioma ---
+        //
+        // Um seletor só, no trilho. Antes eram três selects independentes (call
+        // script, notas, e-mails), posicionados de um jeito em cada painel e sem
+        // nada sincronizando: dava para estar revisando ES num e PT no outro sem
+        // perceber, num produto cuja tradução ES ainda espera revisão nativa.
+        function idiomaAtual() {
+            var sel = document.getElementById('lang-global');
+            return sel ? sel.value : 'PT';
+        }
+
+        function aoTrocarIdioma() {
+            if (!document.getElementById('pane-callscript').classList.contains('hidden')) renderCallScript();
+            if (!document.getElementById('pane-notes').classList.contains('hidden')) renderNoteTemplates();
+            if (!document.getElementById('pane-emails').classList.contains('hidden')) renderEmails();
         }
 
         // --- Boot ---
@@ -109,29 +282,39 @@
                         document.getElementById('tab-people').classList.remove('hidden');
                     }
 
+                    // A caixa de aviso de alguns módulos nasce escondida: o
+                    // regime agora é dito pelo trilho, e prosa repetida é ruído.
+                    // A exceção é justamente esta — "você não pode editar isto"
+                    // é informação que só existe aqui, então tem que aparecer.
+                    function explicarSemPermissao(idNota, texto) {
+                        var nota = document.getElementById(idNota);
+                        nota.textContent = texto;
+                        nota.classList.remove('hidden');
+                    }
+
                     if (!canPropose('links')) {
                         document.getElementById('links-new-btn').classList.add('hidden');
-                        document.getElementById('links-note').textContent =
-                            'Seu papel (' + s.role + ') vê os links, mas não propõe alterações neste módulo.';
+                        explicarSemPermissao('links-note',
+                            'Seu papel (' + s.role + ') vê os links, mas não propõe alterações neste módulo.');
                     }
                     if (!canPropose('call_script')) {
                         document.getElementById('cs-new-btn').classList.add('hidden');
-                        document.getElementById('cs-note').textContent =
-                            'Seu papel (' + s.role + ') vê o roteiro, mas não propõe alterações neste módulo.';
+                        explicarSemPermissao('cs-note',
+                            'Seu papel (' + s.role + ') vê o roteiro, mas não propõe alterações neste módulo.');
                     }
                     if (!canPropose('tips')) {
                         document.getElementById('tp-new-btn').classList.add('hidden');
-                        document.getElementById('tp-note').textContent =
-                            'Seu papel (' + s.role + ') vê as dicas, mas não propõe alterações neste módulo.';
+                        explicarSemPermissao('tp-note',
+                            'Seu papel (' + s.role + ') vê as dicas, mas não propõe alterações neste módulo.');
                     }
                     if (!canPropose('email_template')) {
-                        document.getElementById('em-note').textContent =
-                            'Seu papel (' + s.role + ') vê os modelos, mas não propõe alterações neste módulo.';
+                        explicarSemPermissao('em-note',
+                            'Seu papel (' + s.role + ') vê os modelos, mas não propõe alterações neste módulo.');
                     }
                     if (!canPropose('note_template')) {
                         document.getElementById('nt-new-btn').classList.add('hidden');
-                        document.getElementById('nt-note').textContent =
-                            'Seu papel (' + s.role + ') vê os trechos, mas não propõe alterações neste módulo.';
+                        explicarSemPermissao('nt-note',
+                            'Seu papel (' + s.role + ') vê os modelos de nota, mas não propõe alterações neste módulo.');
                     }
                     // Avisos e disponibilidade seguem a mesma regra do resto da
                     // tela: quem tem acesso enxerga o que está no ar, e só quem
@@ -139,17 +322,30 @@
                     // os dois na prática — publica disponibilidade, não avisos.
                     if (!canPropose('broadcast')) {
                         document.getElementById('bc-new-btn').classList.add('hidden');
-                        document.getElementById('bc-note').textContent =
-                            'Seu papel (' + s.role + ') vê os avisos no ar, mas não publica neste módulo.';
+                        explicarSemPermissao('bc-note',
+                            'Seu papel (' + s.role + ') vê os avisos no ar, mas não publica neste módulo.');
                     }
                     if (!canPropose('bau_availability')) {
                         document.getElementById('bau-editor').classList.add('hidden');
-                        document.getElementById('bau-note').textContent =
-                            'Seu papel (' + s.role + ') vê a disponibilidade no ar, mas não publica neste módulo.';
+                        explicarSemPermissao('bau-note',
+                            'Seu papel (' + s.role + ') vê a disponibilidade no ar, mas não publica neste módulo.');
                     }
 
+                    document.getElementById('rail').classList.remove('hidden');
+                    document.getElementById('shell').classList.remove('sem-trilho');
+                    ligarTecladoDoTrilho();
+
+                    // Links continua sendo carregado no boot porque a home e a
+                    // reconciliação de propostas dependem dele.
                     loadLinks();
                     if (s.canApprove) loadPendingCount();
+
+                    switchTab(destinoDaURL());
+
+                    // Voltar/avançar do navegador passam a funcionar.
+                    window.addEventListener('hashchange', function () {
+                        switchTab(destinoDaURL());
+                    });
                 })
                 .withFailureHandler(function (err) {
                     document.getElementById('boot-state').classList.add('hidden');
