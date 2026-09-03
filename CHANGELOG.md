@@ -117,6 +117,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Removed
 
 ### Fixed
+- **O atalho de e-mail voltou a funcionar na interface antiga do Connect
+  Cases.** A migração para o speed dial da UI nova (`#action-bar-speed-dial-container`
+  → `material-button.compose`) removeu o caminho da UI antiga
+  (`material-fab-speed-dial` → `.trigger`) em vez de mantê-lo como alternativa.
+  O clique no envelope solto, que ficou como único plano B, exige o ícone já
+  visível — e na UI antiga ele está escondido atrás do menu fechado, então o
+  agente ficava sem nenhuma rota e via só o toast de erro. As duas interfaces
+  convivem enquanto a atualização do CRM chega em ondas, então a FASE 1 passou a
+  tentar três rotas em cadeia (speed dial novo → envelope direto → speed dial
+  antigo), cada uma checando o próprio markup antes de agir, e o log diz qual
+  delas abriu o compositor.
 
 ### Security
 
