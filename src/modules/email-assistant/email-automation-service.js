@@ -235,80 +235,65 @@ async function openEmailComposer() {
     }
 }
 
-// Envelope solto na action bar, sem menu nenhum no caminho.
-function clicarBotaoEmailDireto() {
-    const icones = Array.from(document.querySelectorAll('i.material-icons-extended'));
-    const iconeEmail = icones.find(el => el.innerText.trim() === 'email' && el.offsetParent !== null);
-    if (!iconeEmail) return false;
+// Fluxo da interface ANTIGA do CRM, transplantado LITERALMENTE do commit
+// anterior à migração (269127d, 21/08) - envelope direto e, se ele não estiver
+// visível, o speed dial antigo. Esta é a versão que rodou meses em produção sem
+// reclamação.
+//
+// NÃO "melhore" este bloco. A primeira tentativa de restaurá-lo foi reescrevendo
+// o que ele fazia (polling no lugar dos 800ms fixos, checagem de visibilidade no
+// ícone, clique no <material-button> em vez do próprio <i>, textContent no lugar
+// de innerText) - tudo defensável no papel, e mesmo assim continuou falhando no
+// CRM antigo. Sem uma tela antiga onde testar, o texto original é a única versão
+// com prova de funcionamento; qualquer diferença aqui é uma hipótese não testada
+// disfarçada de melhoria.
+async function abrirPeloFluxoAntigo() {
+    const todosIcones = Array.from(document.querySelectorAll('i.material-icons-extended'));
+    const iconeEmail = todosIcones.find(el => el.innerText.trim() === 'email');
 
-    log("Botão de email direto encontrado.");
-    const botaoAlvo = iconeEmail.closest('material-button') || iconeEmail.closest('material-fab') || iconeEmail;
-    simularCliqueReal(botaoAlvo);
-    return true;
-}
-
-// Envelope visível em qualquer ponto da página. Só é chamado depois que o botão
-// direto já falhou, e é isso que torna a busca sem escopo segura aqui: se não
-// havia envelope visível um instante atrás, o que aparecer agora veio do menu
-// que acabamos de abrir.
-function acharEnvelopeVisivel() {
-    return Array.from(document.querySelectorAll('i.material-icons-extended'))
-        .find(el => el.textContent.trim() === 'email' && estaVisivel(el)) || null;
-}
-
-// Speed dial da interface ANTIGA do CRM, que ainda convive com a nova. O markup
-// é outro (material-fab-speed-dial + .trigger, sem o container com id), então
-// nenhum seletor do fluxo novo alcança este caminho - ele precisa existir por
-// conta própria. Foi removido junto com a migração para a UI nova e o resultado
-// foi o agente sem nenhuma rota: o envelope existe, mas escondido atrás do menu
-// fechado, então o clique direto também não o enxerga.
-async function abrirPelaSpeedDialAntiga() {
-    try {
-        const speedDial = document.querySelector('material-fab-speed-dial');
-        const trigger = speedDial && speedDial.querySelector('.trigger');
-        if (!trigger) return false;
-
-        log("Speed dial da UI antiga encontrado. Abrindo o menu...");
-        simularCliqueReal(trigger);
-
-        // Mesma razão do fluxo novo: os 800ms fixos que existiam aqui falhavam
-        // quando o CRM estava lento. Esperamos o envelope aparecer de fato.
-        const iconeEmail = await esperarPor(acharEnvelopeVisivel, { timeout: 3000 });
-        if (!iconeEmail) {
-            log("Menu antigo abriu, mas o envelope não apareceu.", 'warn');
-            return false;
-        }
-
+    if (iconeEmail && iconeEmail.offsetParent !== null) {
+        log("Botão de email direto encontrado.");
         const botaoAlvo = iconeEmail.closest('material-button') || iconeEmail.closest('material-fab') || iconeEmail;
         simularCliqueReal(botaoAlvo);
-        log("Email aberto via speed dial da UI antiga.", 'success');
         return true;
-    } catch (erro) {
-        // Falha silenciosa: o caminho manual continua disponível pro usuário.
-        log(`Falha no speed dial antigo: ${erro.message}`, 'error');
-        return false;
     }
+
+    log("Botão direto não visível. Tentando Speed Dial (+)...", 'warn');
+    const speedDial = document.querySelector('material-fab-speed-dial');
+    if (speedDial) {
+        const triggerBtn = speedDial.querySelector('.trigger');
+        if (triggerBtn) {
+            simularCliqueReal(triggerBtn);
+            await esperar(800);
+            const iconesNovos = Array.from(document.querySelectorAll('i.material-icons-extended'));
+            const emailBtnNovo = iconesNovos.find(el => el.innerText.trim() === 'email');
+            if (emailBtnNovo) {
+                simularCliqueReal(emailBtnNovo);
+                log("Email aberto pelo fluxo antigo.", 'success');
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 // --- CORE: ABRIR E LIMPAR ---
 async function openAndClearEmail() {
     log("🚀 FASE 1: Tentando abrir a janela de email...");
 
-    // Três rotas em cadeia, cada uma checando o próprio markup antes de agir.
-    // As duas versões da interface do CRM convivem entre os agentes (a
-    // atualização chega em ondas), então nenhuma delas pode ser removida quando
-    // a próxima chegar - só acrescentada na frente. No CRM antigo a primeira
-    // falha sem clicar em nada, porque o seletor é por id e não casa.
+    // Duas versões da interface do CRM convivem entre os agentes, porque a
+    // atualização do Connect Cases chega em ondas. A UI nova é tentada primeiro;
+    // se o markup dela não estiver na tela, cai no fluxo antigo inteiro, na
+    // forma exata em que ele funcionava antes da migração.
+    //
+    // No CRM antigo a primeira tentativa custa ~0ms e não clica em nada: os
+    // seletores dela são por id/classe da UI nova e simplesmente não casam.
     let emailAberto = await openEmailComposer();
 
     if (!emailAberto) {
-        log("Speed dial novo indisponível. Tentando o botão de email direto...", 'warn');
-        emailAberto = clicarBotaoEmailDireto();
-    }
-
-    if (!emailAberto) {
-        log("Botão direto não visível. Tentando o speed dial da UI antiga...", 'warn');
-        emailAberto = await abrirPelaSpeedDialAntiga();
+        log("UI nova não reconhecida. Voltando ao fluxo da UI antiga...", 'warn');
+        emailAberto = await abrirPeloFluxoAntigo();
     }
 
     if (!emailAberto) {
