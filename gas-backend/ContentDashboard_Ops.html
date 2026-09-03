@@ -157,6 +157,55 @@
             document.getElementById('bc-title').focus();
         }
 
+        // Publicação direta declara o ALCANCE antes de acontecer.
+        //
+        // A fricção estava invertida na tela: a ação que muda a produção de todo
+        // mundo disparava num clique, enquanto rejeitar uma proposta — que é
+        // reversível — exigia modal e justificativa. Aqui o passo a mais existe
+        // para que ninguém publique para a operação inteira sem ler para quem.
+        function confirmarPublicacao(quem, oque, aoConfirmar) {
+            // A confirmação é uma CAMADA por cima do editor, não uma troca do
+            // conteúdo do modal. Trocar por innerHTML recriaria os campos: o
+            // texto digitado sobreviveria à ida e volta, mas os handlers ligados
+            // por JS e a referência do botão que disparou a ação apontariam para
+            // nós já descartados.
+            var camada = document.createElement('div');
+            camada.className = 'modal-backdrop';
+            camada.style.zIndex = '300';
+            camada.innerHTML =
+                '<div class="modal" style="max-width:460px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="pub-titulo">' +
+                '<h2 id="pub-titulo">Publicar agora?</h2>' +
+                '<p class="card-sub">Isto vai ao ar imediatamente para <strong>' + esc(quem) +
+                '</strong>. Não passa por revisão.</p>' +
+                '<div class="note warn" style="margin-top:16px">' + esc(oque) + '</div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" id="pub-nao">Voltar e revisar</button>' +
+                '<button class="btn btn-primary" id="pub-sim">Publicar agora</button>' +
+                '</div></div>';
+
+            document.getElementById('modal-root').appendChild(camada);
+
+            function fechar() {
+                if (camada.parentNode) camada.parentNode.removeChild(camada);
+            }
+
+            // Voltar devolve o editor intacto: confirmar não pode custar o
+            // trabalho de quem desistiu no último passo.
+            camada.querySelector('#pub-nao').onclick = fechar;
+            camada.querySelector('#pub-sim').onclick = function () {
+                fechar();
+                aoConfirmar();
+            };
+            camada.querySelector('#pub-sim').focus();
+        }
+
+        function alcanceDoSegmento(lang) {
+            if (lang === 'PT') return 'todos os agentes PT-BR';
+            if (lang === 'ES') return 'todos os agentes ES';
+            return 'todos os agentes, de todos os segmentos';
+        }
+
         function submitBroadcast(item, btn) {
             var title = document.getElementById('bc-title').value.trim();
             var text = document.getElementById('bc-text').value.trim();
@@ -164,6 +213,14 @@
             if (!title) return toast('Dê um título ao aviso.', true);
             if (!text) return toast('Escreva a mensagem do aviso.', true);
 
+            confirmarPublicacao(
+                alcanceDoSegmento(document.getElementById('bc-lang').value),
+                title,
+                function () { publicarBroadcast(item, btn, title, text); }
+            );
+        }
+
+        function publicarBroadcast(item, btn, title, text) {
             var rotulo = btn.textContent;
             btn.disabled = true;
             btn.textContent = 'Publicando…';
@@ -323,6 +380,17 @@
                 };
             });
 
+            // Disponibilidade é singleton: publicar SUBSTITUI a que está no ar.
+            // Dizer isso na confirmação importa mais que no aviso, porque aqui
+            // não há como "publicar sem querer" e desfazer depois.
+            confirmarPublicacao(
+                'todos os agentes, de todos os segmentos',
+                'Substitui a disponibilidade que está no ar agora.',
+                function () { publicarBau(btn, segments); }
+            );
+        }
+
+        function publicarBau(btn, segments) {
             btn.disabled = true;
             btn.textContent = 'Publicando…';
 

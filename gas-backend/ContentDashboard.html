@@ -43,6 +43,86 @@
         </div>
     </nav>
 
+    <div class="shell sem-trilho" id="shell">
+        <!-- O trilho só aparece depois de sabermos quem é a pessoa: antes disso
+             não há navegação a oferecer. Os grupos nomeiam o REGIME de cada
+             módulo, que é a informação que antes morava num parágrafo dentro do
+             painel (ADR-0007). -->
+        <nav class="rail hidden" id="rail" aria-label="Seções da Central">
+            <div class="rail-group">
+                <div class="rail-items">
+                    <button class="rail-item" id="tab-home" data-tab="home" onclick="switchTab('home')">
+                        <span class="material-symbols-rounded" aria-hidden="true">home</span> <span class="rail-label">Hoje</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="rail-lang">
+                <label for="lang-global">Idioma</label>
+                <select id="lang-global" onchange="aoTrocarIdioma()">
+                    <option value="PT">Português</option>
+                    <option value="ES">Español</option>
+                </select>
+            </div>
+
+            <div class="rail-group">
+                <div class="rail-group-title">
+                    Catálogo
+                    <small>passa por revisão</small>
+                </div>
+                <div class="rail-items">
+                    <button class="rail-item" id="tab-links" data-tab="links" onclick="switchTab('links')">
+                        <span class="material-symbols-rounded" aria-hidden="true">link</span> <span class="rail-label">Links</span>
+                    </button>
+                    <button class="rail-item" id="tab-callscript" data-tab="callscript" onclick="switchTab('callscript')">
+                        <span class="material-symbols-rounded" aria-hidden="true">support_agent</span> <span class="rail-label">Call Script</span>
+                    </button>
+                    <button class="rail-item" id="tab-notes" data-tab="notes" onclick="switchTab('notes')">
+                        <span class="material-symbols-rounded" aria-hidden="true">edit_note</span> <span class="rail-label">Case Notes</span>
+                    </button>
+                    <button class="rail-item" id="tab-emails" data-tab="emails" onclick="switchTab('emails')">
+                        <span class="material-symbols-rounded" aria-hidden="true">mail</span> <span class="rail-label">E-mails</span>
+                    </button>
+                    <button class="rail-item" id="tab-tips" data-tab="tips" onclick="switchTab('tips')">
+                        <span class="material-symbols-rounded" aria-hidden="true">lightbulb</span> <span class="rail-label">Dicas</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="rail-group">
+                <div class="rail-group-title">
+                    Operação
+                    <small>vai ao ar na hora</small>
+                </div>
+                <div class="rail-items">
+                    <button class="rail-item" id="tab-broadcast" data-tab="broadcast" onclick="switchTab('broadcast')">
+                        <span class="material-symbols-rounded" aria-hidden="true">campaign</span> <span class="rail-label">Avisos</span>
+                        <span class="ao-vivo" aria-hidden="true"></span>
+                    </button>
+                    <button class="rail-item" id="tab-bau" data-tab="bau" onclick="switchTab('bau')">
+                        <span class="material-symbols-rounded" aria-hidden="true">event_available</span> <span class="rail-label">Disponibilidade</span>
+                        <span class="ao-vivo" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="rail-group">
+                <div class="rail-group-title">Governança</div>
+                <div class="rail-items">
+                    <button class="rail-item" id="tab-approvals" data-tab="approvals" onclick="switchTab('approvals')">
+                        <span class="material-symbols-rounded" aria-hidden="true">rule</span> <span class="rail-label">Aprovações</span>
+                        <span class="rail-count hidden" id="pending-count">0</span>
+                    </button>
+                    <button class="rail-item hidden" id="tab-people" data-tab="people" onclick="switchTab('people')">
+                        <span class="material-symbols-rounded" aria-hidden="true">groups</span> <span class="rail-label">Pessoas</span>
+                    </button>
+                    <button class="rail-item hidden" id="tab-access" data-tab="access" onclick="switchTab('access')">
+                        <span class="material-symbols-rounded" aria-hidden="true">manage_accounts</span> <span class="rail-label">Acessos</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
     <div class="wrap">
         <!-- Estado de carregamento inicial -->
         <div id="boot-state" class="state">
@@ -61,55 +141,21 @@
         <!-- App -->
         <main id="app" class="hidden">
             <div class="page-head">
-                <h1>Gerenciar conteúdo</h1>
-                <p>
-                    Alterações de conteúdo viram rascunho e só chegam ao app depois de aprovadas.
-                    Avisos e disponibilidade BAU são a exceção: publicam na hora.
-                </p>
+                <h1 id="page-title">Hoje</h1>
+                <p id="page-sub">Carregando…</p>
             </div>
 
-            <div class="tab-section" role="tablist">
-                <button class="tab-btn active" role="tab" data-tab="links" onclick="switchTab('links')">
-                    <span class="material-symbols-rounded" style="font-size:19px">link</span> Links
-                </button>
-                <button class="tab-btn" role="tab" data-tab="callscript" onclick="switchTab('callscript')">
-                    <span class="material-symbols-rounded" style="font-size:19px">support_agent</span> Call Script
-                </button>
-                <button class="tab-btn" role="tab" data-tab="notes" onclick="switchTab('notes')">
-                    <span class="material-symbols-rounded" style="font-size:19px">edit_note</span> Case Notes
-                </button>
-                <button class="tab-btn" role="tab" data-tab="emails" onclick="switchTab('emails')">
-                    <span class="material-symbols-rounded" style="font-size:19px">mail</span> E-mails
-                </button>
-                <button class="tab-btn" role="tab" data-tab="tips" onclick="switchTab('tips')">
-                    <span class="material-symbols-rounded" style="font-size:19px">lightbulb</span> Dicas
-                </button>
-                <button class="tab-btn" role="tab" data-tab="broadcast" onclick="switchTab('broadcast')">
-                    <span class="material-symbols-rounded" style="font-size:19px">campaign</span> Avisos
-                </button>
-                <button class="tab-btn" role="tab" data-tab="bau" onclick="switchTab('bau')">
-                    <span class="material-symbols-rounded" style="font-size:19px">event_available</span> Disponibilidade
-                </button>
-                <button class="tab-btn hidden" role="tab" data-tab="people" onclick="switchTab('people')"
-                    id="tab-people">
-                    <span class="material-symbols-rounded" style="font-size:19px" aria-hidden="true">groups</span> Pessoas
-                </button>
-                <button class="tab-btn" role="tab" data-tab="approvals" onclick="switchTab('approvals')">
-                    <span class="material-symbols-rounded" style="font-size:19px">rule</span> Aprovações
-                    <span class="count-chip zero" id="pending-count">0</span>
-                </button>
-                <button class="tab-btn hidden" role="tab" data-tab="access" onclick="switchTab('access')" id="tab-access">
-                    <span class="material-symbols-rounded" style="font-size:19px">manage_accounts</span> Acessos
-                </button>
-
-            </div>
+            <!-- HOJE: o painel que responde "o que está acontecendo agora". -->
+            <section id="pane-home">
+                <div id="home-content">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
 
             <!-- TAB: Links -->
             <section id="pane-links">
-                <div class="note" id="links-note">
-                    Editar aqui não altera o app. A mudança entra como proposta e vai para a aba
-                    <strong>Aprovações</strong>.
-                </div>
+                <div class="note hidden" id="links-note"></div>
                 <div class="row-between" style="margin-bottom:8px">
                     <div>
                         <div class="card-title">Links no ar</div>
@@ -129,18 +175,10 @@
             <!-- TAB: Call Script -->
             <section id="pane-callscript" class="hidden">
                 <div class="note" id="cs-note">
-                    Cada passo é um item. Editar aqui não altera o app — vai para
-                    <strong>Aprovações</strong> primeiro.
+                    Cada passo do roteiro é um item, na ordem em que o agente lê.
                 </div>
                 <div class="row-between" style="margin-bottom:14px">
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-                        <div>
-                            <label class="fld" style="margin-top:0" for="cs-lang">Idioma</label>
-                            <select id="cs-lang" onchange="renderCallScript()">
-                                <option value="PT">PT</option>
-                                <option value="ES">ES</option>
-                            </select>
-                        </div>
                         <div>
                             <label class="fld" style="margin-top:0" for="cs-flow">Fluxo</label>
                             <select id="cs-flow" onchange="renderCallScript()">
@@ -173,13 +211,6 @@
                                 <option value="">Todos</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="fld" style="margin-top:0" for="nt-lang">Idioma</label>
-                            <select id="nt-lang" onchange="renderNoteTemplates()">
-                                <option value="PT">PT</option>
-                                <option value="ES">ES</option>
-                            </select>
-                        </div>
                     </div>
                     <button class="btn btn-primary" id="nt-new-btn" onclick="openTemplateEditor(null)">
                         <span class="material-symbols-rounded" style="font-size:19px">add</span> Nova nota
@@ -196,19 +227,6 @@
                 <div class="note" id="em-note">
                     Modelos do assistente do agente. Não inclui os e-mails de CR nem os
                     disparados pelo Dashboard de TL.
-                </div>
-                <div class="row-between" style="margin-bottom:14px">
-                    <div>
-                        <label class="fld" style="margin-top:0" for="em-lang">Idioma</label>
-                        <select id="em-lang" onchange="renderEmails()">
-                            <option value="PT">PT</option>
-                            <option value="ES">ES</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-primary hidden" id="em-new-btn" disabled
-                        title="Criar modelo novo ainda não é suportado — por ora, edite os existentes.">
-                        Novo modelo
-                    </button>
                 </div>
                 <div class="card" id="em-list">
                     <div class="skeleton"></div>
@@ -239,9 +257,8 @@
             <!-- TAB: Avisos -->
             <section id="pane-broadcast" class="hidden">
                 <div class="note" id="bc-note">
-                    Avisos publicam na hora, sem passar pela fila de aprovação — um alerta que
-                    espera revisor chega depois de já não importar. A publicação continua
-                    versionada e registrada no log.
+                    Não há fila aqui porque um alerta que espera revisor chega depois de já não
+                    importar. A publicação continua versionada e registrada no log.
                 </div>
                 <div class="row-between" style="margin-bottom:14px">
                     <div>
@@ -402,6 +419,8 @@
 
             <!-- TAB: Próximos módulos -->
         </main>
+    </div>
+
     </div>
 
     <div id="modal-root"></div>

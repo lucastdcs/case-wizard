@@ -133,7 +133,7 @@ const ITENS = {
 };
 
 // ------------------------------------------------------- montagem da página
-async function abrir({ sessao = 'admin', falharRascunhosDe = null } = {}) {
+async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '' } = {}) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
     page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
 
@@ -204,7 +204,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null } = {}) {
         });
     }, { sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe });
 
-    await page.goto('file://' + ARQUIVO, { waitUntil: 'domcontentloaded' });
+    await page.goto('file://' + ARQUIVO + hash, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(300);
     return page;
 }
@@ -261,17 +261,36 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         }
     });
 
-    await check('o regime de publicação está dito em cada módulo', async () => {
-        await page.evaluate(() => switchTab('broadcast'));
-        await page.waitForTimeout(120);
-        const aviso = (await page.locator('#bc-note').textContent()).toLowerCase();
-        verdade(/na hora|sem passar pela fila/.test(aviso),
-            'o módulo de publicação direta precisa dizer que vai ao ar na hora');
+    // O regime deixou de ser um parágrafo dentro do painel e passou a ser a
+    // estrutura da navegação. O teste segue a mudança: o que precisa continuar
+    // verdadeiro é que a pessoa consiga saber o regime SEM abrir o módulo.
+    await check('o regime de publicação é dito pela navegação', async () => {
+        const grupos = await page.evaluate(() => Array.from(
+            document.querySelectorAll('.rail-group')).map((g) => {
+                const t = g.querySelector('.rail-group-title');
+                return {
+                    titulo: t ? t.textContent.replace(/\s+/g, ' ').trim() : '',
+                    destinos: Array.from(g.querySelectorAll('.rail-item')).map(b => b.dataset.tab),
+                };
+            }).filter(g => g.titulo));
 
-        await page.evaluate(() => switchTab('links'));
-        await page.waitForTimeout(120);
-        const fila = (await page.locator('#links-note').textContent()).toLowerCase();
-        verdade(/aprova/.test(fila), 'o módulo de catálogo precisa dizer que passa por aprovação');
+        const catalogo = grupos.filter(g => /passa por revisão/i.test(g.titulo))[0];
+        const operacao = grupos.filter(g => /vai ao ar na hora/i.test(g.titulo))[0];
+
+        verdade(catalogo, 'faltou o grupo que diz que passa por revisão');
+        verdade(operacao, 'faltou o grupo que diz que vai ao ar na hora');
+
+        igual(operacao.destinos, ['broadcast', 'bau'], 'destinos que publicam direto');
+        verdade(catalogo.destinos.indexOf('links') !== -1, 'links deveria estar no catálogo');
+        verdade(catalogo.destinos.indexOf('broadcast') === -1,
+            'um módulo de publicação direta não pode aparecer no catálogo');
+    });
+
+    await check('cada destino de publicação direta é marcado no trilho', async () => {
+        const marcados = await page.evaluate(() => Array.from(
+            document.querySelectorAll('.rail-item')).filter(b => b.querySelector('.ao-vivo'))
+            .map(b => b.dataset.tab));
+        igual(marcados, ['broadcast', 'bau'], 'itens marcados como ao vivo');
     });
 
     await page.close();
@@ -286,8 +305,17 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
     });
 
     await check('QA: não recebe caminho de escrita em links', async () => {
+        // A Central abre no "Hoje", então é preciso ir até o módulo para julgar
+        // o que ele mostra.
+        await page.evaluate(() => switchTab('links'));
+        await page.waitForTimeout(150);
+
         verdade(!(await page.locator('#links-new-btn').isVisible()),
             'QA não propõe links — o botão não deveria aparecer');
+        // isVisible(), e não textContent(): texto num elemento escondido passa
+        // no teste e não chega em ninguém.
+        verdade(await page.locator('#links-note').isVisible(),
+            'a explicação precisa estar visível, não só presente no DOM');
         const nota = (await page.locator('#links-note').textContent()).toLowerCase();
         verdade(/não propõe/.test(nota), 'a tela precisa dizer por que não há botão');
     });
@@ -364,6 +392,120 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         // carregou normalmente e não pode sumir junto com os rascunhos.
         const texto = await page.locator('#links-list').textContent();
         verdade(/Fila de tarefas/.test(texto), 'o item publicado deveria continuar na lista');
+    });
+
+    await page.close();
+}
+
+// ------------------------------------------------------------- trilho novo
+{
+    const page = await abrir({ sessao: 'admin' });
+
+    await check('a Central abre no "Hoje", não numa lista de conteúdo', async () => {
+        verdade(await page.locator('#pane-home').isVisible(), 'o painel Hoje deveria abrir primeiro');
+        igual((await page.locator('#page-title').textContent()).trim(), 'Hoje', 'título');
+    });
+
+    await check('o destino atual é anunciado, não só pintado', async () => {
+        await page.evaluate(() => switchTab('tips'));
+        await page.waitForTimeout(150);
+        const marcados = await page.evaluate(() => Array.from(
+            document.querySelectorAll('.rail-item[aria-current="page"]')).map(b => b.dataset.tab));
+        igual(marcados, ['tips'], 'itens com aria-current');
+    });
+
+    await check('o endereço acompanha o destino', async () => {
+        await page.evaluate(() => switchTab('broadcast'));
+        await page.waitForTimeout(150);
+        igual(new URL(page.url()).hash, '#/broadcast', 'hash');
+    });
+
+    await check('um endereço colado abre direto no destino', async () => {
+        const outra = await abrir({ sessao: 'admin', hash: '#/approvals' });
+        verdade(await outra.locator('#pane-approvals').isVisible(), 'deveria abrir em Aprovações');
+        verdade(!(await outra.locator('#pane-home').isVisible()), 'Hoje não deveria estar visível');
+        await outra.close();
+    });
+
+    await check('endereço inválido cai no padrão em vez de tela vazia', async () => {
+        const outra = await abrir({ sessao: 'admin', hash: '#/inventado' });
+        verdade(await outra.locator('#pane-home').isVisible(), 'deveria cair no Hoje');
+        await outra.close();
+    });
+
+    await check('as setas andam pelo trilho', async () => {
+        await page.evaluate(() => document.getElementById('tab-home').focus());
+        await page.keyboard.press('ArrowDown');
+        const foco = await page.evaluate(() => document.activeElement.dataset.tab);
+        igual(foco, 'links', 'destino focado depois de ArrowDown');
+    });
+
+    await check('o teclado pula o que está escondido', async () => {
+        // Em ADMIN, Pessoas e Acessos aparecem; o que não pode acontecer é o
+        // foco parar num item que a pessoa não enxerga.
+        const alcancaveis = await page.evaluate(() => {
+            const itens = Array.from(document.querySelectorAll('.rail-item'))
+                .filter(b => !b.classList.contains('hidden'));
+            return itens.every(b => b.offsetParent !== null);
+        });
+        igual(alcancaveis, true, 'todo item navegável está visível');
+    });
+
+    await check('o idioma é escolhido uma vez só', async () => {
+        igual(await page.locator('#lang-global').count(), 1, 'seletores globais');
+        igual(await page.locator('#cs-lang, #nt-lang, #em-lang').count(), 0,
+            'seletores por painel que sobraram');
+    });
+
+    await page.close();
+}
+
+// --------------------------------------------------- fricção da publicação
+{
+    const page = await abrir({ sessao: 'admin' });
+
+    await check('publicar um aviso pede confirmação e diz para quem', async () => {
+        await page.evaluate(() => { switchTab('broadcast'); });
+        await page.waitForTimeout(200);
+        await page.evaluate(() => openBroadcastEditor(null));
+        await page.waitForTimeout(150);
+
+        await page.fill('#bc-title', 'Instabilidade no CRM');
+        await page.fill('#bc-text', 'O Connect Cases está lento.');
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('#bc-save');
+        await page.waitForTimeout(200);
+
+        // Nada foi publicado ainda: o clique abriu a confirmação.
+        const publicou = await page.evaluate(() => window.__chamadas
+            .some(c => c.metodo === 'publishContentDirect'));
+        igual(publicou, false, 'publicou sem confirmar');
+
+        const texto = await page.locator('#pub-titulo').isVisible();
+        verdade(texto, 'a confirmação deveria aparecer');
+
+        const alcance = await page.evaluate(() =>
+            document.querySelector('#pub-titulo').closest('.modal').textContent);
+        verdade(/todos os agentes/.test(alcance), 'a confirmação precisa dizer o alcance');
+    });
+
+    await check('voltar preserva o que foi digitado', async () => {
+        await page.click('#pub-nao');
+        await page.waitForTimeout(150);
+        igual(await page.inputValue('#bc-title'), 'Instabilidade no CRM', 'título preservado');
+        igual(await page.inputValue('#bc-text'), 'O Connect Cases está lento.', 'texto preservado');
+    });
+
+    await check('confirmar publica de verdade', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('#bc-save');
+        await page.waitForTimeout(150);
+        await page.click('#pub-sim');
+        await page.waitForTimeout(300);
+
+        const publicou = await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'publishContentDirect').length);
+        igual(publicou, 1, 'chamadas de publicação');
     });
 
     await page.close();
