@@ -53,8 +53,20 @@ function initApp() {
             console.warn("Áudio bloqueado:", audioErr);
         }
         
-        // B. Busca as Dicas
-        DataService.fetchTips();
+        // B. Busca o conteúdo gerenciável — os sete módulos numa execução só.
+        //
+        // Antes cada módulo pedia o seu quando era aberto, e o boot já disparava
+        // três (dicas, avisos, disponibilidade). Numa virada de turno isso são
+        // centenas de execuções simultâneas do Apps Script; em lote é uma por
+        // agente. Cada módulo segue chamando fetchContentModule() como antes —
+        // ele agora encontra o conteúdo já em cache e não vai à rede de novo.
+        //
+        // Sem await: o conteúdo tem fallback embutido e cache local, então o
+        // boot não espera a rede para desenhar a tela.
+        DataService.fetchContentModules([
+            'tips', 'broadcast', 'bau_availability',
+            'links', 'call_script', 'email_template', 'note_template'
+        ]);
 
         // C. Animação de Entrada (Aqui o 'Sherlock' começa a buscar o nome)
         // playStartupAnimation() já é async e só resolve depois que a splash

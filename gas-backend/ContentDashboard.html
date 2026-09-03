@@ -1553,9 +1553,10 @@
                     google.script.run
                         .withSuccessHandler(function (drafts) {
                             MY_DRAFTS = drafts || [];
+                            delete DRAFTS_OFFLINE.links;
                             renderLinks();
                         })
-                        .withFailureHandler(function () { MY_DRAFTS = []; renderLinks(); })
+                        .withFailureHandler(function () { MY_DRAFTS = []; DRAFTS_OFFLINE.links = true; renderLinks(); })
                         .listContentDrafts('links');
                 })
                 .withFailureHandler(function (err) {
@@ -1626,11 +1627,57 @@
                 });
             });
 
-            host.innerHTML = html;
+            host.innerHTML = avisoRascunhosOffline('links') + html;
         }
 
         function closeModal() {
             document.getElementById('modal-root').innerHTML = '';
+        }
+
+        // Salvar e enviar para revisão, numa viagem só ao servidor.
+        //
+        // Antes eram duas chamadas encadeadas (três nos e-mails e nas notas, que
+        // ainda validavam antes), cada uma com a latência do google.script.run —
+        // e um estado ruim no meio: falhar no envio deixava um rascunho salvo
+        // que a pessoa achava ter mandado. A validação não se perdeu: o servidor
+        // valida dentro de saveAndSubmitContentDraft(), antes de gravar.
+        // Quais módulos falharam ao carregar os rascunhos nesta sessão.
+        //
+        // Antes a falha virava lista vazia e a tela desenhava "nenhuma proposta
+        // em andamento" — indistinguível de realmente não haver nenhuma. Quem
+        // então editava um item com proposta pendente levava uma recusa do
+        // servidor sem ter como explicar. Erro que o usuário não vê é erro que
+        // ele paga depois.
+        var DRAFTS_OFFLINE = {};
+
+        function avisoRascunhosOffline(module) {
+            if (!DRAFTS_OFFLINE[module]) return '';
+            return '<div class="note warn" style="margin-bottom:12px">' +
+                'Não foi possível carregar as propostas em andamento deste módulo. ' +
+                'A lista abaixo mostra só o que está no ar — um item pode ter uma ' +
+                'proposta em revisão que não aparece aqui. ' +
+                '<button class="btn btn-ghost btn-sm" style="margin-left:8px" ' +
+                'onclick="switchTab(\'' + module + '\')">Tentar de novo</button></div>';
+        }
+
+        function enviarProposta(payload, btn, aoConcluir) {
+            var rotulo = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Enviando…';
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    closeModal();
+                    toast('Proposta enviada para revisão.');
+                    if (aoConcluir) aoConcluir();
+                    loadPendingCount();
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = rotulo;
+                    toast(err.message, true);
+                })
+                .saveAndSubmitContentDraft(payload);
         }
 
         function openLinkEditor(itemId) {
@@ -1704,31 +1751,7 @@
                 })
             };
 
-            btn.disabled = true;
-            btn.textContent = 'Enviando…';
-
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    google.script.run
-                        .withSuccessHandler(function () {
-                            closeModal();
-                            toast('Proposta enviada para revisão.');
-                            loadLinks();
-                            loadPendingCount();
-                        })
-                        .withFailureHandler(function (err) {
-                            btn.disabled = false;
-                            btn.textContent = 'Salvar e enviar para revisão';
-                            toast(err.message, true);
-                        })
-                        .submitContentDraft(res.draftId);
-                })
-                .withFailureHandler(function (err) {
-                    btn.disabled = false;
-                    btn.textContent = 'Salvar e enviar para revisão';
-                    toast(err.message, true);
-                })
-                .saveContentDraft(payload);
+            enviarProposta(payload, btn, loadLinks);
         }
 
         function askRemoval(itemId) {
@@ -1776,8 +1799,8 @@
                 .withSuccessHandler(function (items) {
                     CS_ITEMS = items || [];
                     google.script.run
-                        .withSuccessHandler(function (d) { CS_DRAFTS = d || []; renderCallScript(); })
-                        .withFailureHandler(function () { CS_DRAFTS = []; renderCallScript(); })
+                        .withSuccessHandler(function (d) { CS_DRAFTS = d || []; delete DRAFTS_OFFLINE.callscript; renderCallScript(); })
+                        .withFailureHandler(function () { CS_DRAFTS = []; DRAFTS_OFFLINE.callscript = true; renderCallScript(); })
                         .listContentDrafts('call_script');
                 })
                 .withFailureHandler(function (err) {
@@ -1852,7 +1875,7 @@
                 });
             });
 
-            host.innerHTML = html;
+            host.innerHTML = avisoRascunhosOffline('callscript') + html;
         }
 
         function openStepEditor(itemId) {
@@ -1918,41 +1941,17 @@
                 }, 0) + 1;
             }
 
-            btn.disabled = true;
-            btn.textContent = 'Enviando…';
-
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    google.script.run
-                        .withSuccessHandler(function () {
-                            closeModal();
-                            toast('Proposta enviada para revisão.');
-                            loadCallScript();
-                            loadPendingCount();
-                        })
-                        .withFailureHandler(function (err) {
-                            btn.disabled = false;
-                            btn.textContent = 'Salvar e enviar para revisão';
-                            toast(err.message, true);
-                        })
-                        .submitContentDraft(res.draftId);
-                })
-                .withFailureHandler(function (err) {
-                    btn.disabled = false;
-                    btn.textContent = 'Salvar e enviar para revisão';
-                    toast(err.message, true);
-                })
-                .saveContentDraft({
-                    draftId: draftId || '',
-                    itemId: itemId || '',
-                    module: 'call_script',
-                    key: flow,
-                    field: group,
-                    lang: lang,
-                    label: text,
-                    value: text,
-                    sortOrder: sortOrder
-                });
+            enviarProposta({
+                draftId: draftId || '',
+                itemId: itemId || '',
+                module: 'call_script',
+                key: flow,
+                field: group,
+                lang: lang,
+                label: text,
+                value: text,
+                sortOrder: sortOrder
+            }, btn, loadCallScript);
         }
 
         // --- Case Notes (modelos de nota inteira) ---
@@ -2000,8 +1999,8 @@
                     .withSuccessHandler(function (items) {
                         NT_ITEMS = items || [];
                         google.script.run
-                            .withSuccessHandler(function (d) { NT_DRAFTS = d || []; renderNoteTemplates(); })
-                            .withFailureHandler(function () { NT_DRAFTS = []; renderNoteTemplates(); })
+                            .withSuccessHandler(function (d) { NT_DRAFTS = d || []; delete DRAFTS_OFFLINE.notes; renderNoteTemplates(); })
+                            .withFailureHandler(function () { NT_DRAFTS = []; DRAFTS_OFFLINE.notes = true; renderNoteTemplates(); })
                             .listContentDrafts('note_template');
                     })
                     .withFailureHandler(function (err) {
@@ -2082,7 +2081,7 @@
                 });
             });
 
-            host.innerHTML = html;
+            host.innerHTML = avisoRascunhosOffline('notes') + html;
         }
 
         // Construtor da nota: escolhido o substatus, a tela oferece exatamente os
@@ -2215,56 +2214,16 @@
                 original && original.activeTasks ? { activeTasks: original.activeTasks } : {}
             ));
 
-            btn.disabled = true;
-            btn.textContent = 'Validando…';
-
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    if (!res.ok) {
-                        btn.disabled = false;
-                        btn.textContent = 'Salvar e enviar para revisão';
-                        return toast(res.error, true);
-                    }
-
-                    btn.textContent = 'Enviando…';
-                    google.script.run
-                        .withSuccessHandler(function (saved) {
-                            google.script.run
-                                .withSuccessHandler(function () {
-                                    closeModal();
-                                    toast('Proposta enviada para revisão.');
-                                    loadNoteTemplates();
-                                    loadPendingCount();
-                                })
-                                .withFailureHandler(function (err) {
-                                    btn.disabled = false;
-                                    btn.textContent = 'Salvar e enviar para revisão';
-                                    toast(err.message, true);
-                                })
-                                .submitContentDraft(saved.draftId);
-                        })
-                        .withFailureHandler(function (err) {
-                            btn.disabled = false;
-                            btn.textContent = 'Salvar e enviar para revisão';
-                            toast(err.message, true);
-                        })
-                        .saveContentDraft({
-                            draftId: draftId || '',
-                            itemId: itemId || '',
-                            module: 'note_template',
-                            key: sub,
-                            field: document.getElementById('nt-f-esc').value,
-                            lang: document.getElementById('nt-f-lang').value,
-                            label: nome,
-                            value: value
-                        });
-                })
-                .withFailureHandler(function (err) {
-                    btn.disabled = false;
-                    btn.textContent = 'Salvar e enviar para revisão';
-                    toast(err.message, true);
-                })
-                .checkNoteTemplate(value, sub);
+            enviarProposta({
+                draftId: draftId || '',
+                itemId: itemId || '',
+                module: 'note_template',
+                key: sub,
+                field: document.getElementById('nt-f-esc').value,
+                lang: document.getElementById('nt-f-lang').value,
+                label: nome,
+                value: value
+            }, btn, loadNoteTemplates);
         }
 
         // --- E-mails ---
@@ -2276,8 +2235,8 @@
                 .withSuccessHandler(function (items) {
                     EM_ITEMS = items || [];
                     google.script.run
-                        .withSuccessHandler(function (d) { EM_DRAFTS = d || []; renderEmails(); })
-                        .withFailureHandler(function () { EM_DRAFTS = []; renderEmails(); })
+                        .withSuccessHandler(function (d) { EM_DRAFTS = d || []; delete DRAFTS_OFFLINE.emails; renderEmails(); })
+                        .withFailureHandler(function () { EM_DRAFTS = []; DRAFTS_OFFLINE.emails = true; renderEmails(); })
                         .listContentDrafts('email_template');
                 })
                 .withFailureHandler(function (err) {
@@ -2349,7 +2308,7 @@
                 });
             });
 
-            host.innerHTML = html;
+            host.innerHTML = avisoRascunhosOffline('emails') + html;
         }
 
         function openEmailEditor(itemId) {
@@ -2433,59 +2392,17 @@
                 ? JSON.stringify({ subject: subject, template: template, labels: original.labels || {} })
                 : JSON.stringify({ subject: subject, template: template, placeholders: original.placeholders || [] });
 
-            btn.disabled = true;
-            btn.textContent = 'Validando…';
-
-            // Valida no servidor ANTES de gravar, pra mensagem de erro chegar
-            // enquanto o texto ainda está na tela.
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    if (!res.ok) {
-                        btn.disabled = false;
-                        btn.textContent = 'Salvar e enviar para revisão';
-                        return toast(res.error, true);
-                    }
-
-                    btn.textContent = 'Enviando…';
-                    google.script.run
-                        .withSuccessHandler(function (saved) {
-                            google.script.run
-                                .withSuccessHandler(function () {
-                                    closeModal();
-                                    toast('Proposta enviada para revisão.');
-                                    loadEmails();
-                                    loadPendingCount();
-                                })
-                                .withFailureHandler(function (err) {
-                                    btn.disabled = false;
-                                    btn.textContent = 'Salvar e enviar para revisão';
-                                    toast(err.message, true);
-                                })
-                                .submitContentDraft(saved.draftId);
-                        })
-                        .withFailureHandler(function (err) {
-                            btn.disabled = false;
-                            btn.textContent = 'Salvar e enviar para revisão';
-                            toast(err.message, true);
-                        })
-                        .saveContentDraft({
-                            draftId: draftId || '',
-                            itemId: item.id,
-                            module: 'email_template',
-                            key: item.key,
-                            field: item.field,
-                            lang: item.lang,
-                            label: item.label,
-                            value: value,
-                            sortOrder: item.sortOrder
-                        });
-                })
-                .withFailureHandler(function (err) {
-                    btn.disabled = false;
-                    btn.textContent = 'Salvar e enviar para revisão';
-                    toast(err.message, true);
-                })
-                .checkEmailTemplate(value, item.lang);
+            enviarProposta({
+                draftId: draftId || '',
+                itemId: item.id,
+                module: 'email_template',
+                key: item.key,
+                field: item.field,
+                lang: item.lang,
+                label: item.label,
+                value: value,
+                sortOrder: item.sortOrder
+            }, btn, loadEmails);
         }
 
         // --- Dicas ---
@@ -2497,8 +2414,8 @@
                 .withSuccessHandler(function (items) {
                     TP_ITEMS = items || [];
                     google.script.run
-                        .withSuccessHandler(function (d) { TP_DRAFTS = d || []; renderTips(); })
-                        .withFailureHandler(function () { TP_DRAFTS = []; renderTips(); })
+                        .withSuccessHandler(function (d) { TP_DRAFTS = d || []; delete DRAFTS_OFFLINE.tips; renderTips(); })
+                        .withFailureHandler(function () { TP_DRAFTS = []; DRAFTS_OFFLINE.tips = true; renderTips(); })
                         .listContentDrafts('tips');
                 })
                 .withFailureHandler(function (err) {
@@ -2533,7 +2450,7 @@
             summary.textContent = TP_ITEMS.length + ' dicas publicadas' +
                 (TP_DRAFTS.length ? ' · ' + TP_DRAFTS.length + ' com alteração em andamento' : '');
 
-            host.innerHTML = TP_ITEMS.map(function (it) {
+            host.innerHTML = avisoRascunhosOffline('tips') + TP_ITEMS.map(function (it) {
                 var d = tpDraftForItem(it.id);
                 var badge = d
                     ? (d.status === 'pending'
@@ -2594,41 +2511,17 @@
                 return Math.max(max, i.sortOrder);
             }, 0) + 1;
 
-            btn.disabled = true;
-            btn.textContent = 'Enviando…';
-
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    google.script.run
-                        .withSuccessHandler(function () {
-                            closeModal();
-                            toast('Proposta enviada para revisão.');
-                            loadTips();
-                            loadPendingCount();
-                        })
-                        .withFailureHandler(function (err) {
-                            btn.disabled = false;
-                            btn.textContent = 'Salvar e enviar para revisão';
-                            toast(err.message, true);
-                        })
-                        .submitContentDraft(res.draftId);
-                })
-                .withFailureHandler(function (err) {
-                    btn.disabled = false;
-                    btn.textContent = 'Salvar e enviar para revisão';
-                    toast(err.message, true);
-                })
-                .saveContentDraft({
-                    draftId: draftId || '',
-                    itemId: itemId || '',
-                    module: 'tips',
-                    key: 'geral',
-                    lang: 'ALL',
-                    // A dica é o próprio conteúdo: não há título separado.
-                    label: text,
-                    value: text,
-                    sortOrder: sortOrder
-                });
+            enviarProposta({
+                draftId: draftId || '',
+                itemId: itemId || '',
+                module: 'tips',
+                key: 'geral',
+                lang: 'ALL',
+                // A dica é o próprio conteúdo: não há título separado.
+                label: text,
+                value: text,
+                sortOrder: sortOrder
+            }, btn, loadTips);
         }
 
         // =====================================================

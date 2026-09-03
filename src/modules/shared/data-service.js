@@ -83,6 +83,11 @@ const CACHE_KEY_BROADCAST = "cw_data_broadcast";
 const CACHE_KEY_TIPS = "cw_data_tips";
 const CACHE_KEY_CONTENT_PREFIX = "cw_content_";
 
+// Módulos já trazidos NESTA sessão (pelo lote ou individualmente). Existe só em
+// memória de propósito: sobrevive à navegação dentro do CRM, e não à recarga da
+// página - que é exatamente quando faz sentido buscar de novo.
+const LOADED_IN_SESSION = new Set();
+
 const FALLBACK_TIPS = ["Processando...", "Mantenha o foco!", "Aguarde..."];
 
 // --- Helper JSONP Poderoso (Core do Sistema) ---
@@ -166,17 +171,57 @@ export const DataService = {
     // a API cai. Quem chama continua responsável por ter um fallback embutido
     // no código para o primeiro load offline, quando não há cache nenhum.
     fetchContentModule: async (module) => {
+        // Se o pré-carregamento em lote já trouxe este módulo nesta sessão, não
+        // há por que gastar outra execução do Apps Script com ele: o conteúdo
+        // não muda no meio da sessão de um agente.
+        if (LOADED_IN_SESSION.has(module)) {
+            const emCache = DataService.getCachedContent(module);
+            if (emCache) return emCache;
+        }
+
         const cacheKey = `${CACHE_KEY_CONTENT_PREFIX}${module}`;
         try {
             const data = await jsonpFetch('content_public', { module });
             if (data?.status === 'success' && Array.isArray(data.items)) {
                 localStorage.setItem(cacheKey, JSON.stringify(data.items));
+                LOADED_IN_SESSION.add(module);
                 return data.items;
             }
         } catch (err) {
             console.warn(`Conteúdo '${module}' offline`, err);
         }
         return DataService.getCachedContent(module);
+    },
+
+    // Busca VÁRIOS módulos numa execução só.
+    //
+    // O app pedia um módulo por chamada - até sete por sessão de agente. Com
+    // cem pessoas entrando no mesmo horário isso vira centenas de execuções
+    // numa janela curta, contra o teto de execuções simultâneas do Apps Script,
+    // e o sintoma não é lentidão: é o app caindo para o cache e servindo
+    // conteúdo velho sem avisar.
+    //
+    // Falha aqui não é fatal: cada módulo continua tendo o caminho individual e
+    // o cache do localStorage. O lote é otimização do caminho feliz.
+    fetchContentModules: async (modules) => {
+        const nomes = (modules || []).filter(Boolean);
+        if (!nomes.length) return {};
+
+        try {
+            const data = await jsonpFetch('content_public', { modules: nomes.join(',') });
+            if (data?.status === 'success' && data.modules) {
+                Object.keys(data.modules).forEach((nome) => {
+                    const items = data.modules[nome];
+                    if (!Array.isArray(items)) return;
+                    localStorage.setItem(`${CACHE_KEY_CONTENT_PREFIX}${nome}`, JSON.stringify(items));
+                    LOADED_IN_SESSION.add(nome);
+                });
+                return data.modules;
+            }
+        } catch (err) {
+            console.warn('Pré-carregamento de conteúdo indisponível', err);
+        }
+        return {};
     },
 
     getCachedContent: (module) => {

@@ -37,9 +37,16 @@ O teto de uma planilha Google é de 10 milhões de células: três meses de
 módulo e TTL de 5 minutos, **invalidado explicitamente** em toda escrita que
 muda o que está no ar (`approveContentDraft`, `publishContentDirect`,
 `unpublishContentDirect`, `rollbackContentItem`, `seedContentModule`). O boot do
-agente ganha um parâmetro `modules=a,b,c` para virar uma chamada em vez de sete,
-e uma rota de manifesto (módulo → versão) que permite ao cliente pular a busca
-quando seu `localStorage` já está em dia.
+agente ganha um parâmetro `modules=a,b,c` para virar uma chamada em vez de sete.
+
+**O manifesto foi descartado na implementação.** A ideia era uma rota
+módulo → versão para o cliente pular a busca quando o `localStorage` já
+estivesse em dia. Com a chamada em lote já no lugar, ela deixa de fazer sentido:
+o cliente continuaria fazendo uma execução por sessão — a do manifesto —, então
+a economia seria de *payload*, não de execução, que é o recurso escasso aqui.
+Duas fontes de verdade sobre "o que está atual" em troca de menos bytes não
+paga. Se o tamanho da resposta virar problema um dia, o caminho é paginar ou
+comprimir o lote, não voltar ao manifesto.
 
 **Retenção**, por aba, com regra própria para cada perfil:
 
