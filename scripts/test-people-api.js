@@ -25,22 +25,44 @@ const vm = require('node:vm');
 const GAS = path.join(__dirname, '..', 'gas-backend');
 
 // ---- Stub de planilha ----
+// O range real conhece a coluna de origem e sabe escrever um BLOCO:
+// getRange(linha, coluna, nLinhas, nColunas).setValues([[...]]) é como o
+// ContentAPI grava várias colunas numa ida só ao Sheets. Um dublê sem isso
+// falha com "setValues is not a function" — foi o que aconteceu quando as
+// escritas em lote entraram e só um harness foi atualizado.
 class FakeRange {
-  constructor(sheet, row, col) { this.sheet = sheet; this.row = row; this.col = col; }
+  constructor(sheet, row, col, numRows, numCols) {
+    this.sheet = sheet; this.row = row; this.col = col;
+    this.numRows = numRows; this.numCols = numCols;
+  }
   setValue(v) {
     while (this.sheet._data.length < this.row) this.sheet._data.push([]);
     this.sheet._data[this.row - 1][this.col - 1] = v;
     return this;
   }
+  setValues(rows) {
+    rows.forEach((r, i) => {
+      const alvo = this.row - 1 + i;
+      while (this.sheet._data.length <= alvo) this.sheet._data.push([]);
+      r.forEach((v, j) => { this.sheet._data[alvo][this.col - 1 + j] = v; });
+    });
+    return this;
+  }
   getValue() { return (this.sheet._data[this.row - 1] || [])[this.col - 1]; }
-  getValues() { return this.sheet._data.map((r) => r.slice()); }
+  getValues() {
+    // getDataRange() (coluna 1, sem limites) devolve a aba inteira.
+    if (this.col === 1 && !this.numCols) return this.sheet._data.map((r) => r.slice());
+    return this.sheet._data
+      .slice(this.row - 1, this.row - 1 + (this.numRows || 1))
+      .map((r) => r.slice(this.col - 1, this.col - 1 + (this.numCols || 1)));
+  }
 }
 
 class FakeSheet {
   constructor(name) { this.name = name; this._data = []; }
   appendRow(row) { this._data.push(row.slice()); }
   getDataRange() { return new FakeRange(this, 1, 1); }
-  getRange(row, col) { return new FakeRange(this, row, col); }
+  getRange(row, col, numRows, numCols) { return new FakeRange(this, row, col, numRows, numCols); }
   getLastRow() { return this._data.length; }
   // A baixa de uma pessoa apaga a linha - sem isto o teste da baixa passaria
   // por acidente, contra um stub que não faz nada.

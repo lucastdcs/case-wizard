@@ -27,6 +27,7 @@ import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { createContext, runInContext } from 'node:vm';
 import { randomUUID } from 'node:crypto';
+import { montarContentDashboardSync } from './content-dashboard-html.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const raiz = resolve(here, '..');
@@ -35,22 +36,44 @@ const GAS = join(raiz, 'gas-backend');
 // ---------------------------------------------------------------
 //  Backend de verdade sobre planilha falsa (mesmo stub do test:people)
 // ---------------------------------------------------------------
+// O range real conhece a coluna de origem e sabe escrever um BLOCO:
+// getRange(linha, coluna, nLinhas, nColunas).setValues([[...]]) é como o
+// ContentAPI grava várias colunas numa ida só ao Sheets. Sem isso no dublê, a
+// gravação estoura com "setValues is not a function" — e o erro chega à tela
+// como um toast, que nenhum teste de seletor percebe.
 class FakeRange {
-    constructor(sheet, row, col) { this.sheet = sheet; this.row = row; this.col = col; }
+    constructor(sheet, row, col, numRows, numCols) {
+        this.sheet = sheet; this.row = row; this.col = col;
+        this.numRows = numRows; this.numCols = numCols;
+    }
     setValue(v) {
         while (this.sheet._data.length < this.row) this.sheet._data.push([]);
         this.sheet._data[this.row - 1][this.col - 1] = v;
         return this;
     }
+    setValues(rows) {
+        rows.forEach((r, i) => {
+            const alvo = this.row - 1 + i;
+            while (this.sheet._data.length <= alvo) this.sheet._data.push([]);
+            r.forEach((v, j) => { this.sheet._data[alvo][this.col - 1 + j] = v; });
+        });
+        return this;
+    }
     getValue() { return (this.sheet._data[this.row - 1] || [])[this.col - 1]; }
-    getValues() { return this.sheet._data.map((r) => r.slice()); }
+    getValues() {
+        // getDataRange() (coluna 1, sem limites) devolve a aba inteira.
+        if (this.col === 1 && !this.numCols) return this.sheet._data.map((r) => r.slice());
+        return this.sheet._data
+            .slice(this.row - 1, this.row - 1 + (this.numRows || 1))
+            .map((r) => r.slice(this.col - 1, this.col - 1 + (this.numCols || 1)));
+    }
 }
 
 class FakeSheet {
     constructor(name) { this.name = name; this._data = []; }
     appendRow(row) { this._data.push(row.slice()); }
     getDataRange() { return new FakeRange(this, 1, 1); }
-    getRange(row, col) { return new FakeRange(this, row, col); }
+    getRange(row, col, numRows, numCols) { return new FakeRange(this, row, col, numRows, numCols); }
     getLastRow() { return this._data.length; }
     deleteRow(i) { this._data.splice(i - 1, 1); }
     setFrozenRows() { return this; }
@@ -116,11 +139,10 @@ function linhaDe(ldap) {
 // ---------------------------------------------------------------
 const htmlDir = mkdtempSync(join(tmpdir(), 'cw-people-'));
 const htmlPath = join(htmlDir, 'dashboard.html');
-writeFileSync(
-    htmlPath,
-    readFileSync(join(GAS, 'ContentDashboard.html'), 'utf8').replace('<?!= CW_ENV_BADGE ?>', ''),
-    'utf8'
-);
+// A tela é montada por include() (Código.gs), que só existe dentro do Apps
+// Script. A montagem mora em scripts/content-dashboard-html.mjs para que os
+// dois smokes que leem esta tela não possam divergir.
+writeFileSync(htmlPath, montarContentDashboardSync(raiz), 'utf8');
 
 // A ponte. `google.script.run` é encadeável e assíncrono; o Proxy reproduz a
 // forma exata (withSuccessHandler / withFailureHandler / método) para que o JS

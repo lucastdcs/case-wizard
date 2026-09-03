@@ -33,10 +33,11 @@
 // Uso: npm run smoke:content
 
 import { chromium } from 'playwright';
-import { readFile, writeFile, rm } from 'node:fs/promises';
+import { writeFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { montarContentDashboard } from './content-dashboard-html.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const raiz = resolve(here, '..');
@@ -47,33 +48,10 @@ const raiz = resolve(here, '..');
 const ARQUIVO = join(tmpdir(), 'cw-content-dashboard-smoke.html');
 
 async function prepararArquivo() {
-    let html = await readFile(resolve(raiz, 'gas-backend/ContentDashboard.html'), 'utf8');
-
-    // A tela é montada por include() (Código.gs), que só existe dentro do Apps
-    // Script. Aqui as partes são coladas do mesmo jeito, a partir do disco —
-    // é o que faz o smoke testar a tela REAL, e não uma cópia.
-    const incluidos = [];
-    html = html.replace(/<\?!=\s*include\('([^']+)'\)\s*\?>/g, (_, nome) => {
-        incluidos.push(nome);
-        return '\u0000' + nome + '\u0000';
-    });
-    for (const nome of incluidos) {
-        const parte = await readFile(resolve(raiz, 'gas-backend/' + nome + '.html'), 'utf8');
-        html = html.replace('\u0000' + nome + '\u0000', () => parte);
-    }
-
-    // Se sobrar qualquer include, a tela iria ao ar sem um pedaço e o smoke
-    // acusaria coisas estranhas em vez do problema real.
-    if (/<\?!=\s*include\(/.test(html)) throw new Error('sobrou include não resolvido');
-
-    // As duas tags restantes são preenchidas pelo renderDashboard() do
-    // Código.gs. Fora do Apps Script elas ficariam literais no DOM.
-    html = html.replace(/<\?!=\s*CW_ENV_BADGE\s*\?>/g, '')
-        .replace(/<\?!=\s*CW_CREDIT\s*\?>/g, '');
-
-    if (/<\?/.test(html)) throw new Error('sobrou tag de template não resolvida');
-
-    await writeFile(ARQUIVO, html, 'utf8');
+    // A montagem mora em content-dashboard-html.mjs: o smoke da aba Pessoas lê
+    // a mesma tela, e quando a divisão em partes entrou só este arquivo foi
+    // ajustado — o outro passou a carregar uma casca sem estilo nem script.
+    await writeFile(ARQUIVO, await montarContentDashboard(raiz), 'utf8');
 }
 
 let fail = 0;

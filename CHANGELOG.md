@@ -78,6 +78,15 @@ versions follow [Semantic Versioning](https://semver.org/).
   vão em bloco (`setValues`) em vez de uma chamada por coluna.
 
 ### Fixed
+- **Dois harnesses de teste ficaram para trás da fase 2 da Central.** As
+  escritas em bloco (`setValues`) quebraram `test:people` em 15 testes, porque
+  só o dublê de planilha do `test-content-api.js` tinha sido estendido; e a
+  divisão da tela em partes quebrou `smoke:people`, que lê o mesmo
+  `ContentDashboard.html` do disco e não resolvia os `include()`. A montagem da
+  tela virou um módulo compartilhado (`scripts/content-dashboard-html.mjs`) e
+  os dublês de planilha passaram todos a modelar
+  `getRange(l, c, nL, nC).setValues(...)`. Lição registrada em
+  `docs/LEARNINGS.md`.
 - **Duas aprovações simultâneas publicavam o mesmo item duas vezes.** Entre o
   `appendRow` da linha nova e a virada do status do rascunho havia uma janela em
   que a proposta ainda constava como pendente; uma segunda execução entrando ali
