@@ -12,6 +12,42 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Rode a suíte INTEIRA antes de abrir o PR, não a lista que você lembra
+
+**Why**: na fase 1 da Central (PR #372), as escritas de linha passaram de
+`setValue` célula a célula para `setValues` em bloco. Eu estendi o dublê de
+planilha do `test-content-api.js` — que era o harness em que eu estava
+trabalhando — e rodei uma lista de suítes escrita de cabeça. `test:people` não
+estava nessa lista. Ele quebrou com `sheet.getRange(...).setValues is not a
+function` em **15 testes**, e o PR foi aberto e mergeado afirmando que as
+suítes estavam verdes. Era verdade sobre o que eu rodei, e falso sobre o
+projeto.
+
+O mesmo descuido apareceu de outra forma no PR #374: dividir o
+`ContentDashboard.html` em partes com `include()` quebrou o `smoke:people`, que
+lê a mesma tela do disco e não sabia resolver os includes. Dois PRs, uma causa:
+mudei uma interface compartilhada e só ajustei o consumidor que estava na minha
+frente.
+
+O que fecha a classe inteira: antes do PR, `grep` por quem consome o que você
+mudou.
+
+```bash
+grep -ln "class FakeRange" scripts/*         # quem dubla a planilha
+grep -ln "ContentDashboard.html" scripts/*   # quem lê a tela do disco
+for f in $(node -e "console.log(Object.keys(require('./package.json').scripts).filter(s=>/^(test|smoke):/.test(s)).join(' '))"); do
+  npm run $f >/dev/null 2>&1 && echo "ok   $f" || echo "FALHA $f"
+done
+```
+
+**When to apply**: sempre que mudar (a) a forma como o código chama uma API do
+Apps Script que os harnesses dublam — `getRange`, `setValues`, `LockService`,
+`CacheService` —, ou (b) a estrutura de um arquivo que um teste lê do disco.
+Nos dois casos existe mais de um consumidor, e o segundo nunca é o que está
+aberto no editor. Vale também para a leitura do resultado: um laço que imprime
+"ok" ou um rótulo genérico esconde a diferença entre "falhou" e "não existe" —
+foi assim que eu li `test:people` como script inexistente por um instante.
+
 ## Automação de DOM do CRM: o caminho novo entra na frente, o antigo nunca sai
 
 **Why**: o Connect Cases escondeu o botão de e-mail atrás de um speed dial novo
