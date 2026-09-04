@@ -82,8 +82,11 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       mostrar o que aquele papel veria, de leitura, com a prévia intersectada no
       servidor (prévia que concede é escalação com outro nome) e dizendo na
       faixa o que deixou de mostrar.
-      **Falta:** prévia "como o agente vê"; busca global Ctrl+K; agendamento e
-      validade de aviso; cobrança diária de pendência parada — esta lendo
+      **Entregue também:** agendamento e validade de aviso — janela avaliada no
+      servidor, no fuso da planilha, e filtrada DEPOIS do cache (dentro dele a
+      janela teria a precisão do cache em vez da sua própria).
+      **Falta:** prévia "como o agente vê"; busca global Ctrl+K;
+      cobrança diária de pendência parada — esta lendo
       `CW_DEPLOYMENTS` e não a URL do serviço, porque em gatilho de tempo a
       derivação não é confiável (ver `Código.js`). **PR final:** aba de
       auditoria restrita, com filtros, paginação e exportação.

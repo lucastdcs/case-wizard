@@ -1037,6 +1037,68 @@ function checkEmailTemplate(rawValue, lang) {
 
 const BROADCAST_TYPES = ['info', 'critical', 'success'];
 
+// Janela de exibição: um aviso pode nascer agendado e morrer sozinho.
+//
+// Sem isto, "avisar a operação às 8h de segunda" é alguém acordar e clicar, e
+// "tirar quando acabar a instabilidade" é alguém lembrar — e o aviso que
+// ninguém lembra de tirar continua na tela do agente dizendo que um problema
+// resolvido há três dias está acontecendo agora. Aviso velho não é ruído
+// neutro: ele ensina o agente a ignorar avisos.
+const CONTENT_WINDOWED_MODULES = ['broadcast'];
+
+// `YYYY-MM-DDTHH:MM`, que é exatamente o que um <input type="datetime-local">
+// produz. Sem fuso na string de propósito — ver janelaAgora_().
+const CONTENT_WINDOW_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+/**
+ * O "agora" com que a janela é comparada.
+ *
+ * A janela é avaliada NO SERVIDOR, no fuso da planilha (America/São Paulo), e
+ * não no relógio de quem lê. A operação atende PT e ES em fusos diferentes: se
+ * cada navegador decidisse, "vai ao ar às 8h" seria um horário diferente para
+ * cada agente, e quem publicou não teria como saber qual. Um relógio só,
+ * declarado na tela, é mais honesto que três relógios implícitos.
+ *
+ * Comparação como TEXTO: as duas pontas estão no formato `YYYY-MM-DDTHH:MM`,
+ * onde a ordem alfabética é a ordem cronológica. Isso evita a armadilha de
+ * `new Date('2026-09-05T08:00')`, cujo fuso de interpretação muda conforme o
+ * ambiente.
+ */
+function janelaAgora_() {
+  return Utilities.formatDate(
+    new Date(),
+    Session.getScriptTimeZone ? Session.getScriptTimeZone() : 'America/Sao_Paulo',
+    "yyyy-MM-dd'T'HH:mm"
+  );
+}
+
+/** `{ startsAt, endsAt }` de um item, ou vazio quando o módulo não tem janela. */
+function janelaDoItem_(item) {
+  if (CONTENT_WINDOWED_MODULES.indexOf(String(item.module || "").trim()) === -1) return {};
+
+  let v;
+  try { v = JSON.parse(String(item.value || "{}")); } catch (e) { return {}; }
+
+  return {
+    startsAt: CONTENT_WINDOW_RE.test(String(v.startsAt || "")) ? String(v.startsAt) : "",
+    endsAt: CONTENT_WINDOW_RE.test(String(v.endsAt || "")) ? String(v.endsAt) : ""
+  };
+}
+
+/**
+ * O item está dentro da janela agora?
+ *
+ * Ausência de ponta é ausência de restrição: sem `startsAt` já vale, sem
+ * `endsAt` não expira. É o comportamento de todo aviso que existe hoje, e é o
+ * que garante que ligar esta feature não apague nada.
+ */
+function itemNaJanela_(item, agora) {
+  const j = janelaDoItem_(item);
+  if (j.startsAt && agora < j.startsAt) return false;
+  if (j.endsAt && agora >= j.endsAt) return false;
+  return true;
+}
+
 // Um aviso é um registro composto num `Value` só, no mesmo padrão já usado por
 // email_template e note_template. O que a validação garante é o que a tela do
 // agente assume sem checar: tipo conhecido, título e texto presentes.
@@ -1059,6 +1121,21 @@ function assertValidBroadcast_(rawValue) {
 
   if (!String(parsed.title || "").trim()) throw new Error("O aviso precisa de um título.");
   if (!String(parsed.text || "").trim()) throw new Error("O aviso precisa de uma mensagem.");
+
+  const inicio = String(parsed.startsAt || "").trim();
+  const fim = String(parsed.endsAt || "").trim();
+
+  if (inicio && !CONTENT_WINDOW_RE.test(inicio)) {
+    throw new Error("Data de início inválida. Use o formato AAAA-MM-DDTHH:MM.");
+  }
+  if (fim && !CONTENT_WINDOW_RE.test(fim)) {
+    throw new Error("Data de fim inválida. Use o formato AAAA-MM-DDTHH:MM.");
+  }
+  // Uma janela invertida não é um aviso "que ninguém vê": é um aviso que a
+  // pessoa acredita ter publicado. Recusar é a única forma de ela descobrir.
+  if (inicio && fim && fim <= inicio) {
+    throw new Error("O fim do aviso precisa vir depois do início.");
+  }
 
   return parsed;
 }
@@ -2663,7 +2740,16 @@ function readPublicModuleItems_(module) {
     throw new Error("Módulo '" + module + "' não tem leitura pública.");
   }
 
-  return readLiveItemsCached_(module);
+  const itens = readLiveItemsCached_(module);
+  if (CONTENT_WINDOWED_MODULES.indexOf(module) === -1) return itens;
+
+  // O filtro vem DEPOIS do cache, não dentro dele. Dentro, um aviso agendado
+  // para as 10h ficaria de fora da entrada gravada às 9h58 e só apareceria
+  // quando o TTL expirasse — a janela passaria a ter a precisão do cache em vez
+  // da sua própria. Assim o cache guarda "o que está publicado" e a janela
+  // decide "o que vale agora", que são perguntas diferentes.
+  const agora = janelaAgora_();
+  return itens.filter(function (it) { return itemNaJanela_(it, agora); });
 }
 
 // =========================================================

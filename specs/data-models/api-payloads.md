@@ -150,3 +150,45 @@ Além do que já devolvia (`ldap`, `role`, `hasAccess`, `canApprove`,
 
 `canApprove` continua existindo e agora significa **"aprova alguma coisa"** — a
 fila filtra item a item com `canReview`.
+
+---
+
+## Janela de exibição de um aviso (`broadcast`)
+
+O valor de um aviso aceita duas pontas opcionais, no mesmo JSON do tipo, título
+e texto:
+
+```json
+{ "type": "info", "title": "…", "text": "…",
+  "startsAt": "2026-09-08T08:00", "endsAt": "2026-09-08T18:00" }
+```
+
+| Campo | Formato | Ausente significa |
+| :--- | :--- | :--- |
+| `startsAt` | `AAAA-MM-DDTHH:MM` | já vale |
+| `endsAt` | `AAAA-MM-DDTHH:MM` | não expira |
+
+### Regras
+- **Um relógio só, e ele é o da planilha** (`America/Sao_Paulo`). A janela é
+  avaliada no servidor, nunca no navegador de quem lê: a operação atende PT e
+  ES em fusos diferentes, e se cada navegador decidisse, *"vai ao ar às 8h"*
+  seria um horário diferente para cada agente — e quem publicou não teria como
+  saber qual. A tela declara o fuso em vez de escondê-lo.
+- **A comparação é de TEXTO**, não de `Date`. As duas pontas estão em
+  `AAAA-MM-DDTHH:MM`, onde a ordem alfabética é a cronológica. Isso evita
+  `new Date('2026-09-05T08:00')`, cujo fuso de interpretação muda conforme o
+  ambiente.
+- **O filtro roda DEPOIS do cache**, em `readPublicModuleItems_()`. Dentro do
+  cache, um aviso agendado para as 10h ficaria de fora da entrada gravada às
+  9h58 e só apareceria quando o TTL expirasse — a janela passaria a ter a
+  precisão do cache em vez da sua própria. O cache guarda *o que está
+  publicado*; a janela decide *o que vale agora*.
+- **A Central não filtra.** `listContentItems('broadcast')` devolve tudo que
+  está publicado, e a tela marca cada linha com o estado (`agendado para…`,
+  `sai em…`, `saiu do ar em…`). Um aviso agendado que não aparecesse na lista
+  seria um aviso que ninguém consegue mais editar.
+- **Janela invertida é recusada**, na tela e no servidor. Um aviso que nunca
+  aparece não é "um aviso que ninguém viu": é um aviso que a pessoa acredita ter
+  publicado.
+- **Expirar não arquiva.** O item continua `live` na planilha, fora da janela.
+  É o que permite estender a validade editando, em vez de republicar.

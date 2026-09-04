@@ -22,11 +22,16 @@
                     type: p.type || 'info',
                     title: p.title || item.label || '',
                     text: p.text || '',
+                    startsAt: p.startsAt || '',
+                    endsAt: p.endsAt || '',
                     publishedAt: p.publishedAt || item.publishedAt || '',
                     author: p.author || item.publishedBy || ''
                 };
             } catch (e) {
-                return { type: 'info', title: item.label || '(ilegível)', text: '', publishedAt: '', author: '', broken: true };
+                return {
+                    type: 'info', title: item.label || '(ilegível)', text: '',
+                    startsAt: '', endsAt: '', publishedAt: '', author: '', broken: true
+                };
             }
         }
 
@@ -86,6 +91,12 @@
                     ? ' · ' + esc(BC_LANG_LABEL[it.lang] || it.lang)
                     : '';
 
+                // A Central mostra TODOS os avisos publicados, inclusive os que
+                // o agente ainda não vê ou já não vê mais. Sem o selo, um aviso
+                // agendado pareceria estar no ar e um vencido pareceria vigente
+                // — e a lista deixaria de responder "o que o agente está vendo".
+                var estado = estadoDaJanela(p);
+
                 // O texto vai truncado: a lista é para reconhecer o aviso, não
                 // para ler. O texto inteiro está a um clique, no editor.
                 var preview = p.text.replace(/\s+/g, ' ').slice(0, 120);
@@ -95,12 +106,41 @@
                     '<div class="item-main">' +
                     '<div class="item-name">' + esc(p.title) +
                     ' <span class="pill type-' + esc(p.type) + '">' +
-                    esc(BC_TYPE_LABEL[p.type] || p.type) + '</span></div>' +
+                    esc(BC_TYPE_LABEL[p.type] || p.type) + '</span>' + estado + '</div>' +
                     '<div class="item-meta">' + esc(preview) + '</div>' +
                     '<div class="item-meta">por ' + esc(p.author || it.publishedBy || '—') +
                     ' em ' + esc(bcFormatDate(p.publishedAt)) + segmento + '</div>' +
                     '</div>' + actions + '</div>';
             }).join('');
+        }
+
+        // Mesma conta do servidor (itemNaJanela_), e pelo mesmo motivo de sempre:
+        // aqui ela existe para APARECER, não para decidir. Quem decide o que o
+        // agente recebe é a leitura pública.
+        //
+        // Comparação como texto: as duas pontas estão em `YYYY-MM-DDTHH:MM`,
+        // onde a ordem alfabética é a ordem cronológica — e assim a tela não
+        // reinterpreta a data num fuso diferente do que o servidor usou.
+        function agoraLocalISO() {
+            var d = new Date();
+            var dois = function (n) { return String(n).padStart(2, '0'); };
+            return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate()) +
+                'T' + dois(d.getHours()) + ':' + dois(d.getMinutes());
+        }
+
+        function estadoDaJanela(p) {
+            var agora = agoraLocalISO();
+            if (p.startsAt && agora < p.startsAt) {
+                return ' <span class="estado estado-espera">agendado para ' +
+                    esc(bcFormatDate(p.startsAt)) + '</span>';
+            }
+            if (p.endsAt && agora >= p.endsAt) {
+                return ' <span class="estado">saiu do ar em ' + esc(bcFormatDate(p.endsAt)) + '</span>';
+            }
+            if (p.endsAt) {
+                return ' <span class="estado">sai em ' + esc(bcFormatDate(p.endsAt)) + '</span>';
+            }
+            return '';
         }
 
         function openBroadcastEditor(itemId) {
@@ -145,6 +185,22 @@
                 '<label class="fld" for="bc-text">Mensagem</label>' +
                 '<textarea id="bc-text" style="min-height:130px" ' +
                 'placeholder="O que aconteceu, o que o agente deve fazer e até quando.">' + esc(p.text) + '</textarea>' +
+                '<div class="grid-2" style="margin-top:6px">' +
+                '<div>' +
+                '<label class="fld" for="bc-inicio">Começa a aparecer (opcional)</label>' +
+                '<input type="datetime-local" id="bc-inicio" value="' + esc(p.startsAt || '') + '">' +
+                '</div>' +
+                '<div>' +
+                '<label class="fld" for="bc-fim">Sai do ar (opcional)</label>' +
+                '<input type="datetime-local" id="bc-fim" value="' + esc(p.endsAt || '') + '">' +
+                '</div>' +
+                '</div>' +
+                // Um relógio só, declarado. A operação atende PT e ES em fusos
+                // diferentes: se cada navegador decidisse, "às 8h" seria um
+                // horário diferente para cada agente e quem publicou não teria
+                // como saber qual.
+                '<p class="card-sub" style="margin-top:6px">Horário de Brasília. ' +
+                'Deixar em branco significa "já vale" e "não expira".</p>' +
                 '<div class="modal-actions">' +
                 '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
                 '<button class="btn btn-primary" id="bc-save">' +
@@ -163,21 +219,40 @@
             return 'todos os agentes, de todos os segmentos';
         }
 
+        // "Vai ao ar agora" e "vai ao ar segunda às 8h" são publicações
+        // diferentes, e a confirmação que declara o alcance também tem que
+        // declarar o quando — senão ela afirma uma coisa que pode não acontecer.
+        function descreverJanela(inicio, fim) {
+            if (!inicio && !fim) return 'Vai ao ar agora e fica até alguém tirar.';
+            if (inicio && fim) return 'Aparece em ' + bcFormatDate(inicio) + ' e sai em ' + bcFormatDate(fim) + '.';
+            if (inicio) return 'Só aparece a partir de ' + bcFormatDate(inicio) + '.';
+            return 'Vai ao ar agora e sai sozinho em ' + bcFormatDate(fim) + '.';
+        }
+
         function submitBroadcast(item, btn) {
             var title = document.getElementById('bc-title').value.trim();
             var text = document.getElementById('bc-text').value.trim();
+            var inicio = document.getElementById('bc-inicio').value;
+            var fim = document.getElementById('bc-fim').value;
 
             if (!title) return toast('Dê um título ao aviso.', true);
             if (!text) return toast('Escreva a mensagem do aviso.', true);
+            // Recusado no servidor de qualquer jeito; aqui é só para o erro
+            // aparecer com o texto ainda em tela.
+            if (inicio && fim && fim <= inicio) {
+                return toast('O fim do aviso precisa vir depois do início.', true);
+            }
+
+            var janela = { inicio: inicio, fim: fim };
 
             confirmarPublicacao(
                 alcanceDoSegmento(document.getElementById('bc-lang').value),
-                title,
-                function () { publicarBroadcast(item, btn, title, text); }
+                title + ' — ' + descreverJanela(inicio, fim),
+                function () { publicarBroadcast(item, btn, title, text, janela); }
             );
         }
 
-        function publicarBroadcast(item, btn, title, text) {
+        function publicarBroadcast(item, btn, title, text, janela) {
             var rotulo = btn.textContent;
             btn.disabled = true;
             btn.textContent = 'Publicando…';
@@ -204,6 +279,8 @@
                         type: document.getElementById('bc-type').value,
                         title: title,
                         text: text,
+                        startsAt: janela.inicio,
+                        endsAt: janela.fim,
                         publishedAt: new Date().toISOString(),
                         author: SESSION.ldap
                     })

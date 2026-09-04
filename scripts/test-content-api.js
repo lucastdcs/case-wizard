@@ -85,6 +85,19 @@ class FakeSpreadsheet {
 }
 
 // ---- Ambiente ----
+
+// `Utilities` do Apps Script, só o que o módulo usa. `formatDate` entrou com a
+// janela de exibição dos avisos: ela compara horários como TEXTO no fuso da
+// planilha, e o teste precisa de um relógio previsível.
+const UTILITIES_STUB = {
+  getUuid: () => require('node:crypto').randomUUID(),
+  formatDate: (d, tz, fmt) => {
+    const dois = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate()) +
+      'T' + dois(d.getHours()) + ':' + dois(d.getMinutes());
+  }
+};
+
 let CURRENT_USER = 'lucaste@google.com';
 const SS = new FakeSpreadsheet();
 const SENT_MAIL = [];
@@ -118,10 +131,10 @@ const sandbox = {
     })
   },
   SpreadsheetApp: { getActiveSpreadsheet: () => SS },
-  Session: { getActiveUser: () => ({ getEmail: () => CURRENT_USER }) },
+  Session: { getActiveUser: () => ({ getEmail: () => CURRENT_USER }), getScriptTimeZone: () => 'America/Sao_Paulo' },
   MailApp: { sendEmail: (o) => SENT_MAIL.push(o) },
   Logger: { log: (m) => LOGGER.push(m) },
-  Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+  Utilities: UTILITIES_STUB,
   handleLog: (p) => LOGGED.push(p),
   console,
 };
@@ -438,10 +451,10 @@ check('seedLinksNow() popula o módulo numa planilha zerada', () => {
   const freshSS = new FakeSpreadsheet();
   const freshCtx = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     console,
   });
@@ -478,10 +491,10 @@ check('seedCallScriptNow() popula o roteiro numa planilha zerada', () => {
   const freshSS = new FakeSpreadsheet();
   const freshCtx = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     console,
   });
@@ -541,10 +554,10 @@ function makeTipsEnv(linhas) {
 
   const ctx2 = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => ss },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     SHEET_TIPS: 'Tips',
     console,
@@ -728,10 +741,10 @@ check('seedEmailsNow() popula os modelos numa planilha zerada', () => {
   const freshSS = new FakeSpreadsheet();
   const freshCtx = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     console,
   });
@@ -866,10 +879,10 @@ check('seedNoteTemplatesNow() migra os cenários existentes', () => {
   const freshSS = new FakeSpreadsheet();
   const freshCtx = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     console,
   });
@@ -2015,6 +2028,109 @@ check('a prévia não é caminho de escrita: o servidor segue julgando quem clic
 
 check('papel inexistente na prévia é recusado', () => {
   throws(() => api.previewContentSession('NAOEXISTE'), /Papel desconhecido/);
+});
+
+console.log('\n--- Aviso com hora: agendamento e validade ---');
+
+// Um "agora" fixo para a janela, para o teste não depender do relógio da
+// máquina. O formato é o mesmo que janelaAgora_() produz.
+function comJanela(inicio, fim) {
+  return JSON.stringify({
+    type: 'info', title: 'Instabilidade', text: 'O CRM está lento.',
+    startsAt: inicio || '', endsAt: fim || ''
+  });
+}
+
+function publicoDeBroadcast() {
+  return api.handleContentPublicRead({ module: 'broadcast' }).items;
+}
+
+function limparBroadcasts() {
+  api.listContentItems('broadcast').forEach((it) => api.unpublishContentDirect(it.id));
+}
+
+check('aviso sem janela continua valendo sempre — ligar isto não apaga nada', () => {
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Sem janela',
+    value: JSON.stringify({ type: 'info', title: 'Sem janela', text: 'Vale sempre.' })
+  });
+  eq(publicoDeBroadcast().length, 1);
+});
+
+check('aviso agendado para o futuro NÃO chega ao agente', () => {
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Agendado', value: comJanela('2099-01-01T08:00', '')
+  });
+  eq(publicoDeBroadcast().length, 0, 'ainda não é hora:');
+  // Mas continua na Central, que é onde se administra.
+  eq(api.listContentItems('broadcast').length, 1, 'a Central mostra o agendado:');
+});
+
+check('aviso vencido para de chegar sozinho', () => {
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Vencido', value: comJanela('2020-01-01T08:00', '2020-01-02T08:00')
+  });
+  eq(publicoDeBroadcast().length, 0, 'a validade passou:');
+  eq(api.listContentItems('broadcast').length, 1, 'e ele continua auditável na Central:');
+});
+
+check('aviso dentro da janela chega normalmente', () => {
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Vigente', value: comJanela('2020-01-01T08:00', '2099-01-01T08:00')
+  });
+  eq(publicoDeBroadcast().length, 1);
+});
+
+check('a janela é do MÓDULO certo — não some conteúdo de outros', () => {
+  // O filtro roda só onde a janela existe. Um `startsAt` perdido no valor de um
+  // link não pode fazer o link sumir da tela do agente.
+  const antes = api.handleContentPublicRead({ module: 'links' }).items.length;
+  eq(antes > 0, true, 'precisa haver link para o teste valer:');
+  eq(api.handleContentPublicRead({ module: 'links' }).items.length, antes);
+});
+
+check('janela invertida é recusada na publicação', () => {
+  throws(() => api.publishContentDirect({
+    module: 'broadcast', label: 'Invertido', value: comJanela('2026-05-02T08:00', '2026-05-01T08:00')
+  }), /precisa vir depois do início/);
+});
+
+check('formato de data errado é recusado', () => {
+  throws(() => api.publishContentDirect({
+    module: 'broadcast', label: 'Ruim', value: comJanela('02/05/2026', '')
+  }), /Data de início inválida/);
+});
+
+check('a janela é avaliada DEPOIS do cache, não dentro dele', () => {
+  // O que o cache guarda é "o que está publicado"; o que a janela decide é "o
+  // que vale agora". Se o filtro morasse dentro do cache, um aviso agendado
+  // para daqui a um minuto ficaria de fora da entrada gravada agora e só
+  // apareceria quando o TTL expirasse.
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Vigente', value: comJanela('2020-01-01T08:00', '2099-01-01T08:00')
+  });
+  eq(publicoDeBroadcast().length, 1, 'aquece o cache:');
+
+  // Com o cache quente, um item VENCIDO entrando na aba não pode ser servido —
+  // o que só é verdade se o filtro rodar na leitura, não na gravação do cache.
+  const aba = SS.getSheetByName('Content_Items');
+  const cabecalho = aba._data[0];
+  const vigente = aba._data.find((r) => String(r[1]) === 'broadcast' && String(r[8]) === 'live');
+  const vencido = vigente.slice();
+  vencido[0] = 'itm_vencido';
+  vencido[6] = comJanela('2020-01-01T08:00', '2020-01-02T08:00');
+  vencido[12] = 'itm_vencido';
+  aba._data.push(vencido);
+  api.invalidateContentCache_('broadcast');
+
+  const servidos = publicoDeBroadcast();
+  eq(servidos.length, 1, 'o vencido não pode ser servido:');
+  eq(api.listContentItems('broadcast').length, 2, 'mas os dois estão publicados:');
 });
 
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);
