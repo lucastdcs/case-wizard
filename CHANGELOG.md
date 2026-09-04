@@ -9,6 +9,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Rascunho virou um estado alcançável na Central** (fase 3). Todo editor tinha
+  um botão só, que salvava e enviava para revisão no mesmo gesto: não havia como
+  guardar trabalho parcial, a pílula "rascunho" que as listas sabiam desenhar
+  nunca aparecia, e a trava de edição cooperativa nunca chegava a valer porque
+  nada ficava aberto. Agora são dois caminhos — **Salvar rascunho** e **Enviar
+  para revisão** —, a linha do item diz se há rascunho seu, se alguém está
+  editando (e quem), ou se já foi para a fila, e existe
+  `discardContentDraft` para desistir. Sem essa saída o rascunho viraria
+  armadilha: ficaria na lista, contaria na home e reabriria na próxima edição.
 - **Histórico e "voltar para esta versão" na Central** (fase 3). Cada item
   publicado passou a oferecer o seu histórico: quais versões existiram, quem
   publicou cada uma e quando. `listContentItemHistory` e `rollbackContentItem`

@@ -49,7 +49,8 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       lugar dos `select` independentes; rota por hash. **PR irmão:** changelog de
       versão na Central e no TL Dash, a partir de fonte única no repo.
 - [~] **Fase 3 — ciclo de vida do item** — em andamento. **Entregue:** histórico
-      e "voltar para esta versão" — `listContentItemHistory` e `rollbackContentItem` existem no
+      e "voltar para esta versão"; rascunho de verdade, separado do envio, com
+      a trava de edição visível e caminho para descartar — `listContentItemHistory` e `rollbackContentItem` existem no
       backend e nunca foram chamados, enquanto o modal de remoção promete que a
       versão "pode voltar"; rascunho de verdade, separado do envio; trava de
       edição visível; diff por palavra e prévia renderizada na revisão.
