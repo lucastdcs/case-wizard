@@ -1963,12 +1963,12 @@
                 <div class="history-row">
                     <div class="history-row-top">
                         <span class="status-badge ${isApproved ? 'badge-create' : 'badge-discard'}" style="margin-bottom: 0;">${label}</span>
-                        <div class="history-flow" title="${escapeHtml(agentLdap)} → ${escapeHtml(tlLdap)}">
-                            ${avatarImgHtml(agentLdapRaw, 20)}
-                            <span class="text-secondary">${escapeHtml(agentLdap)}</span>
-                            <span class="material-symbols-rounded flow-arrow">arrow_forward</span>
+                        <div class="history-flow" title="${escapeHtml(tlLdap)} → ${escapeHtml(agentLdap)}">
                             ${avatarImgHtml(tlLdapRaw, 20)}
                             <span class="text-secondary">${escapeHtml(tlLdap)}</span>
+                            <span class="material-symbols-rounded flow-arrow">arrow_forward</span>
+                            ${avatarImgHtml(agentLdapRaw, 20)}
+                            <span class="text-secondary">${escapeHtml(agentLdap)}</span>
                         </div>
                     </div>
                     <div class="text-primary" style="font-size: 14px; margin: 6px 0 2px;">${caseLinkHtml(c.caseId)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
