@@ -229,3 +229,34 @@ e texto:
   não limpar faria uma exportação menor herdar as linhas da anterior — dois
   filtros misturados, que é o pior desfecho possível para uma auditoria.
 - **Exportar é auditado.** A própria exportação vira uma linha em `Content_Log`.
+
+---
+
+## Cobrança de pendência parada (gatilho de tempo)
+
+| Função | Params | Quem pode | Resposta |
+| :--- | :--- | :--- | :--- |
+| `notifyStaleContentApprovals()` | — (para caber num gatilho) | o gatilho | `{ status, stale, notified }` |
+| `listStaleContentApprovals()` | — | `approve` em algum módulo | `{ days, stale, recipients: [{ ldap, items }] }` |
+
+### Regras
+- **Um e-mail por aprovador, com o que ELE pode resolver.** Mandar a fila
+  inteira para todo mundo é como a cobrança vira ruído: um QA que recebe
+  pendência de e-mail que ele não revisa aprende a apagar o e-mail sem ler.
+- **Quem propôs não é cobrado pela própria proposta**, a menos que possa
+  aprovar a si mesmo. Lembrete de algo que a pessoa não consegue resolver é
+  só barulho.
+- **O link vem do MAPA de implantações** (`buildProductionPageUrl`), nunca de
+  `ScriptApp.getService().getUrl()`. Num gatilho de tempo o serviço pode
+  devolver a URL de outra implantação do projeto, e a pessoa cairia no ambiente
+  errado. Um gatilho é do **projeto**, não da implantação: ele roda uma vez, e o
+  destino certo é sempre produção.
+- **Nunca lança.** Um gatilho que estoura some do radar exatamente como a
+  pendência que ele existe para lembrar; o que der errado vira linha em
+  `Content_Log` (`stale_digest_failed`).
+- **Dias corridos, não úteis.** Contar dias úteis exigiria um calendário de
+  feriados que o projeto não tem, e errar para MAIS avisos é o lado barato do
+  erro.
+- **O gatilho é criado à mão**, uma vez, pelo editor do Apps Script — mesma nota
+  que o `Backup.js` já carrega. Antes de ligar, `listStaleContentApprovals()`
+  mostra quem seria cobrado e por quantos itens.

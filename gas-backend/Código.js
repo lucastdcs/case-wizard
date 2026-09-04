@@ -101,7 +101,23 @@ function getDeploymentEnv() {
 function buildDeploymentPageUrl(page) {
   var info = getDeploymentEnv();
   var id = CW_DEPLOYMENTS[info.env] || CW_DEPLOYMENTS.production;
-  return 'https://script.google.com/a/macros/google.com/s/' + id +
+  return buildPageUrlFor_(id, page);
+}
+
+/**
+ * URL de uma página numa implantação ESPECÍFICA, sem perguntar ao serviço.
+ *
+ * É o que um gatilho de tempo precisa: ali `getUrl()` pode devolver a URL de
+ * outra implantação do projeto, e o link do e-mail levaria a pessoa para o
+ * ambiente errado. Um gatilho é do PROJETO, não da implantação — ele roda uma
+ * vez, e o destino certo é sempre produção.
+ */
+function buildProductionPageUrl(page) {
+  return buildPageUrlFor_(CW_DEPLOYMENTS.production, page);
+}
+
+function buildPageUrlFor_(deploymentId, page) {
+  return 'https://script.google.com/a/macros/google.com/s/' + deploymentId +
     '/exec?page=' + encodeURIComponent(page);
 }
 

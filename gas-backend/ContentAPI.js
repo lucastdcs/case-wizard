@@ -2571,6 +2571,145 @@ function listContentActivity(limite) {
 }
 
 // =========================================================
+//  COBRANÇA DE PENDÊNCIA PARADA
+//
+//  A fila avisa quem aprova UMA vez, no momento em que a proposta entra. Se
+//  ninguém abrir o e-mail naquele dia, a proposta some do radar: quem propôs
+//  acha que está em análise, quem aprova nunca soube, e o item fica parado por
+//  semanas sem que o sistema tenha errado em nada.
+//
+//  Roda por gatilho de tempo. Criar o gatilho é passo manual pelo editor do
+//  Apps Script, uma vez — mesma nota que o Backup.js já carrega.
+// =========================================================
+
+// Dias corridos, não úteis. Contar dias úteis exigiria um calendário de
+// feriados que este projeto não tem, e errar para MAIS avisos é o lado barato
+// do erro: uma cobrança a mais numa segunda incomoda, uma cobrança a menos
+// deixa a proposta parada.
+const CONTENT_STALE_DAYS = 2;
+
+// Teto de itens listados por e-mail. Acima disso o e-mail vira parede de texto
+// que ninguém lê — e a Central está a um clique.
+const CONTENT_STALE_MAX_LISTED = 10;
+
+function contentStaleCutoff_() {
+  const d = new Date();
+  d.setDate(d.getDate() - CONTENT_STALE_DAYS);
+  return d.toISOString();
+}
+
+/**
+ * As propostas paradas, agrupadas POR QUEM PODE RESOLVÊ-LAS.
+ *
+ * Agrupar por aprovador e não mandar a fila inteira para todo mundo é o que
+ * evita a cobrança virar ruído: um QA recebendo pendência de e-mail que ele não
+ * revisa aprende a apagar o e-mail sem ler.
+ */
+function staleContentApprovals_() {
+  const corte = contentStaleCutoff_();
+
+  const paradas = readContentRows_(SHEET_CONTENT_DRAFTS)
+    .filter(function (r) {
+      return String(r.Status).trim() === CONTENT_STATUS.PENDING &&
+        String(r.Proposed_At || "") < corte;
+    })
+    .map(mapDraftRow_);
+
+  if (!paradas.length) return { stale: [], porPessoa: {} };
+
+  const porPessoa = {};
+
+  readContentRows_(SHEET_CONTENT_ACCESS).forEach(function (r) {
+    const ativo = String(r.Active).toUpperCase().trim();
+    if (ativo !== 'TRUE' && ativo !== '1') return;
+
+    const ldap = String(r.LDAP || "").toLowerCase().trim();
+    const perms = getContentPermsForRole_(String(r.Role || "").toUpperCase().trim());
+    if (!ldap || !perms) return;
+
+    const minhas = paradas.filter(function (d) {
+      if (!podeAprovarModulo_(perms, d.module)) return false;
+      // Não cobrar alguém pela própria proposta: quem não pode se
+      // autoaprovar receberia um lembrete de algo que não consegue resolver.
+      if (d.proposedBy === ldap && !podeGlobal_(perms, 'selfApprove')) return false;
+      return true;
+    });
+
+    if (minhas.length) porPessoa[ldap] = minhas;
+  });
+
+  return { stale: paradas, porPessoa: porPessoa };
+}
+
+/** Leitura da cobrança, para conferir antes de deixar o gatilho rodar sozinho. */
+function listStaleContentApprovals() {
+  assertContentRole_('approve', null);
+
+  const r = staleContentApprovals_();
+  return {
+    days: CONTENT_STALE_DAYS,
+    stale: r.stale.length,
+    recipients: Object.keys(r.porPessoa).sort().map(function (ldap) {
+      return { ldap: ldap, items: r.porPessoa[ldap].length };
+    })
+  };
+}
+
+/**
+ * O disparo diário. Sem argumentos, para caber num gatilho de tempo.
+ *
+ * Nunca lança: um gatilho que falha some do radar do mesmo jeito que a
+ * pendência que ele existe para lembrar. O que der errado vai para o log.
+ */
+function notifyStaleContentApprovals() {
+  try {
+    const r = staleContentApprovals_();
+    const destinatarios = Object.keys(r.porPessoa);
+
+    if (!destinatarios.length) {
+      return { status: 'ok', stale: r.stale.length, notified: 0 };
+    }
+
+    // Link montado a partir do MAPA de implantações, não de getUrl(): num
+    // gatilho de tempo o serviço pode devolver a URL de outra implantação, e a
+    // pessoa cairia no ambiente errado. Ver buildProductionPageUrl().
+    const url = buildProductionPageUrl('content');
+
+    destinatarios.forEach(function (ldap) {
+      const itens = r.porPessoa[ldap];
+      const listados = itens.slice(0, CONTENT_STALE_MAX_LISTED);
+
+      const linhas = listados.map(function (d) {
+        return '<li><strong>' + d.label + '</strong> — ' + d.module +
+          ' · proposto por ' + d.proposedBy + '</li>';
+      }).join('');
+
+      const sobra = itens.length > listados.length
+        ? '<p>…e mais ' + (itens.length - listados.length) + '.</p>' : '';
+
+      MailApp.sendEmail({
+        to: ldap + '@google.com',
+        subject: '⏳ Central de Conteúdo: ' + itens.length +
+          (itens.length === 1 ? ' proposta parada' : ' propostas paradas'),
+        htmlBody:
+          '<p>Estas propostas estão esperando revisão há mais de ' +
+          CONTENT_STALE_DAYS + ' dias:</p><ul>' + linhas + '</ul>' + sobra +
+          '<p><a href="' + url + '">Abrir a Central de Conteúdo</a></p>',
+        name: 'Cases Wizard'
+      });
+    });
+
+    logContentEvent_('system', 'stale_digest', {},
+      r.stale.length + ' paradas · ' + destinatarios.length + ' avisados');
+
+    return { status: 'ok', stale: r.stale.length, notified: destinatarios.length };
+  } catch (e) {
+    logContentEvent_('system', 'stale_digest_failed', {}, String(e));
+    return { status: 'error', error: String(e) };
+  }
+}
+
+// =========================================================
 //  AUDITORIA COMPLETA (aba restrita)
 //
 //  A barra lateral responde "o que aconteceu agora"; esta responde "o que
