@@ -102,7 +102,7 @@
                 var preview = p.text.replace(/\s+/g, ' ').slice(0, 120);
                 if (p.text.length > 120) preview += '…';
 
-                return '<div class="item-row">' +
+                return '<div class="item-row" data-item="' + esc(it.id) + '">' +
                     '<div class="item-main">' +
                     '<div class="item-name">' + esc(p.title) +
                     ' <span class="pill type-' + esc(p.type) + '">' +

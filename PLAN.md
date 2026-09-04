@@ -91,7 +91,10 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       bloqueado com frequência e sem aviso).
       **Entregue também:** cobrança diária de pendência parada, lendo
       `CW_DEPLOYMENTS` e não a URL do serviço.
-      **Falta:** prévia "como o agente vê" e busca global Ctrl+K. **PR final:** aba de
+      **Entregue também:** busca global Ctrl+K — destino e conteúdo na mesma
+      lista, sem acento, filtrada pelo `ver` da matriz, com duas velocidades
+      (destino na tecla, conteúdo depois de 220 ms de silêncio).
+      **Falta:** prévia "como o agente vê". **PR final:** aba de
       auditoria restrita, com filtros, paginação e exportação.
 
 ## Ideas — to triage

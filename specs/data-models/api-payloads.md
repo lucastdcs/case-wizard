@@ -260,3 +260,31 @@ e texto:
 - **O gatilho é criado à mão**, uma vez, pelo editor do Apps Script — mesma nota
   que o `Backup.js` já carrega. Antes de ligar, `listStaleContentApprovals()`
   mostra quem seria cobrado e por quantos itens.
+
+---
+
+## Busca global (Ctrl+K)
+
+| Função | Params | Quem pode | Resposta |
+| :--- | :--- | :--- | :--- |
+| `searchContentItems(termo)` | termo com 2+ caracteres | qualquer papel ativo | Até 30 `{ id, module, key, label, lang, snippet }` |
+
+### Regras
+- **O filtro é o `ver` da matriz.** Uma busca que ignora permissão é a porta dos
+  fundos mais fácil de esquecer que existe: sem ela, um termo qualquer devolve
+  conteúdo de módulo que a pessoa nem consegue abrir na tela.
+- **Uma varredura, não uma por módulo.** A alternativa seria a tela pedir os
+  oito módulos e juntar — oito execuções do Apps Script por busca, exatamente o
+  padrão que o ADR-0008 existe para não repetir.
+- **Sem acento dos dois lados.** "anuncio" tem que achar "anúncio": quem busca
+  não digita acento, e uma busca que exige acento é uma busca que a pessoa
+  conclui estar quebrada.
+- **Teto de 30 resultados.** Uma busca que devolve tudo trava a tela em vez de
+  ajudar.
+- **Só `live`.** Rascunho e proposta pendente não são conteúdo no ar, e a busca
+  não é caminho para enxergá-los.
+- **Duas velocidades na tela.** Os destinos (as abas) são filtrados na tecla,
+  porque já estão na memória; só o conteúdo espera 220 ms de silêncio antes de
+  ir ao servidor. Sem o atraso, cada tecla vira uma execução; esperando a rede
+  para mostrar "Aprovações", a busca pareceria lenta por causa da parte que nem
+  precisava de rede.

@@ -301,6 +301,15 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
             listContentActivity: () => ATIVIDADE,
             listContentRoles: () => matriz,
             listContentRoleNames: () => ['ADMIN', 'QA'],
+            searchContentItems: (t) => {
+                const alvo = String(t || '').toLowerCase();
+                return (itens.links || []).filter((i) =>
+                    (i.label + ' ' + i.value).toLowerCase().indexOf(alvo) !== -1)
+                    .map((i) => ({
+                        id: i.id, module: 'links', key: i.key, label: i.label,
+                        lang: i.lang, snippet: 'Fila do dia — https://go/fila',
+                    }));
+            },
             listContentAudit: (f) => {
                 const filtro = f || {};
                 const casa = (l) => (!filtro.actor || l.actor === filtro.actor) &&
@@ -1551,6 +1560,97 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         igual(chamada.args[0].text, 'CID', 'o filtro precisa acompanhar a exportação');
         verdade(/Content_Audit_Export/.test(await page.locator('#toast').textContent()),
             'faltou dizer onde a exportação foi parar');
+    });
+
+    await page.close();
+}
+
+// -------------------------------------------------------- busca global
+{
+    const page = await abrir({ sessao: 'admin' });
+
+    await check('Ctrl+K abre a busca, Esc fecha', async () => {
+        await page.keyboard.press('Control+k');
+        await page.waitForTimeout(200);
+        verdade(await page.locator('#busca-input').isVisible(), 'a busca deveria abrir');
+
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(200);
+        igual(await page.locator('#busca-input').count(), 0, 'e fechar');
+    });
+
+    await check('o botão do header ensina o atalho', async () => {
+        // Atalho de teclado que ninguém sabe que existe não existe.
+        verdade(await page.locator('#btn-busca').isVisible(), 'o botão deveria aparecer');
+        verdade(/Ctrl/.test(await page.locator('#btn-busca').textContent()),
+            'o botão deveria mostrar o atalho');
+    });
+
+    await check('destino aparece na hora, sem esperar a rede', async () => {
+        await page.locator('#btn-busca').click();
+        await page.waitForTimeout(150);
+        await page.fill('#busca-input', 'aprova');
+        // Antes do debounce de 220ms terminar, o destino já tem que estar lá:
+        // esperar a rede para mostrar "Aprovações" faria a busca parecer lenta
+        // por causa da parte que nem precisava de rede.
+        await page.waitForTimeout(80);
+        verdade(/Aprovações/.test(await page.locator('#busca-lista').textContent()),
+            'o destino deveria aparecer imediatamente');
+    });
+
+    await check('o conteúdo chega depois, do servidor', async () => {
+        await page.fill('#busca-input', 'fila');
+        await page.waitForTimeout(500);
+        const texto = await page.locator('#busca-lista').textContent();
+        verdade(/Fila de tarefas/.test(texto), 'faltou o item vindo do servidor: ' + texto);
+        verdade(/Links/.test(texto), 'faltou dizer de que módulo é');
+    });
+
+    await check('digitar não vira uma execução por tecla', async () => {
+        // O teto de execuções simultâneas do Apps Script é o recurso escasso
+        // deste backend: uma chamada por tecla o consome à toa.
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.fill('#busca-input', '');
+        for (const c of 'fila') {
+            await page.type('#busca-input', c, { delay: 20 });
+        }
+        await page.waitForTimeout(500);
+        const buscas = await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'searchContentItems').length);
+        igual(buscas, 1, 'quatro teclas deveriam custar uma busca só');
+    });
+
+    await check('setas movem o foco e Enter escolhe', async () => {
+        await page.waitForTimeout(200);
+        await page.keyboard.press('ArrowDown');
+        await page.waitForTimeout(100);
+        const focado = await page.locator('.busca-item.focado').count();
+        igual(focado, 1, 'exatamente um item focado');
+
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(400);
+        igual(await page.locator('#busca-input').count(), 0, 'a busca deveria fechar');
+        verdade(await page.locator('#pane-links').isVisible(), 'e levar ao módulo do item');
+    });
+
+    await check('o item escolhido é apontado na lista', async () => {
+        // Levar ao módulo e deixar a pessoa procurar de novo seria devolver o
+        // problema que a busca acabou de resolver.
+        await page.waitForTimeout(400);
+        verdade(await page.locator('[data-item="itm_1"]').count() > 0,
+            'a linha precisa ser endereçável para poder ser apontada');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'qa' });
+
+    await check('a busca existe para todo mundo que tem acesso', async () => {
+        // Buscar é leitura: o que ela devolve já vem filtrado pelo `ver` do
+        // servidor, então não há por que esconder a porta.
+        verdade(await page.locator('#btn-busca').isVisible(), 'o QA também busca');
     });
 
     await page.close();

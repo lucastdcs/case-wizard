@@ -41,6 +41,13 @@
         <div class="topnav-fim">
             <!-- Nasce escondido: antes de saber quem é a pessoa não há
                  atividade que ela possa ver. -->
+            <!-- Atalho de teclado que ninguém sabe que existe não existe: o
+                 botão é o que ensina o Ctrl+K. -->
+            <button class="topnav-acao hidden" id="btn-busca" onclick="abrirBusca()">
+                <span class="material-symbols-rounded" aria-hidden="true">search</span>
+                <span class="topnav-acao-label">Buscar</span>
+                <kbd class="topnav-kbd">Ctrl K</kbd>
+            </button>
             <button class="topnav-acao hidden" id="btn-ver-como" onclick="abrirVerComo()">
                 <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
                 <span class="topnav-acao-label">Ver como</span>
@@ -568,6 +575,7 @@
 
     </div>
 
+    <div id="busca-root"></div>
     <div id="modal-root"></div>
     <div id="toast" role="status" aria-live="polite"></div>
 

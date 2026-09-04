@@ -9,6 +9,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Busca global na Central, por `Ctrl+K`** (fase 5). A tela tem dez destinos e
+  centenas de itens; achar *"aquele link do Ads"* custava lembrar em qual aba
+  ele mora e rolar a lista — e quem não lembra desiste e cria um item duplicado,
+  que é o pior desfecho. A busca acha destino **e** conteúdo, ignora acento
+  ("anuncio" acha "anúncio"), respeita o `ver` da matriz de papéis, e leva
+  direto ao item, apontando a linha na lista. Duas velocidades de propósito: os
+  destinos filtram na tecla, o conteúdo espera 220 ms de silêncio — sem o
+  atraso, cada tecla viraria uma execução do Apps Script. E há um botão no
+  header: atalho de teclado que ninguém sabe que existe não existe.
 - **Cobrança diária das propostas paradas** (fase 5). A fila avisava quem aprova
   **uma vez**, no momento em que a proposta entrava. Quem não abriu o e-mail
   naquele dia nunca mais soube: quem propôs achava que estava em análise, quem

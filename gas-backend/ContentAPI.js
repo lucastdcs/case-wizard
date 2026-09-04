@@ -2571,6 +2571,100 @@ function listContentActivity(limite) {
 }
 
 // =========================================================
+//  BUSCA GLOBAL (Ctrl+K)
+// =========================================================
+
+const CONTENT_SEARCH_MIN = 2;
+const CONTENT_SEARCH_MAX = 30;
+
+// Faixa dos diacríticos combináveis (U+0300–U+036F), montada por fromCharCode
+// em vez de literal `\u` — o mesmo cuidado que o bundle já toma com este
+// arquivo servido pelo Apps Script.
+const CONTENT_DIACRITICOS = new RegExp(
+  '[' + String.fromCharCode(768) + '-' + String.fromCharCode(879) + ']', 'g');
+
+// "anuncio" precisa achar "anúncio". Quem busca não digita acento, e uma busca
+// que exige acento é uma busca que a pessoa conclui estar quebrada.
+function semAcento_(texto) {
+  return String(texto == null ? "" : texto)
+    .normalize('NFD')
+    .replace(CONTENT_DIACRITICOS, '')
+    .toLowerCase();
+}
+
+/**
+ * Procura em tudo que a pessoa PODE VER, numa varredura só.
+ *
+ * Uma varredura e não uma por módulo: a alternativa seria a tela pedir os oito
+ * módulos e juntar, que é oito execuções do Apps Script por tecla digitada —
+ * exatamente o padrão que o ADR-0008 existe para não repetir.
+ *
+ * O filtro de leitura é o mesmo `view` da matriz. Uma busca que ignora
+ * permissão é a porta dos fundos mais fácil de esquecer que existe: o módulo
+ * `people` sairia inteiro num "a".
+ */
+function searchContentItems(termo) {
+  const ldap = getCallerLdap_();
+  const role = getContentRoleForLdap_(ldap);
+  if (!role) throw new Error("Acesso negado: você não tem permissão na Central de Conteúdo.");
+
+  const alvo = semAcento_(termo).trim();
+  if (alvo.length < CONTENT_SEARCH_MIN) return [];
+
+  const perms = getContentPermsForRole_(role);
+  const visiveis = {};
+  CONTENT_MODULES.forEach(function (m) {
+    if (podeNoModulo_(perms, m, 'view')) visiveis[m] = true;
+  });
+
+  const achados = [];
+
+  const linhas = readContentRows_(SHEET_CONTENT_ITEMS);
+  for (let i = 0; i < linhas.length && achados.length < CONTENT_SEARCH_MAX; i++) {
+    const r = linhas[i];
+    if (String(r.Status).trim() !== CONTENT_STATUS.LIVE) continue;
+
+    const module = String(r.Module).trim();
+    if (!visiveis[module]) continue;
+
+    const label = String(r.Label || "");
+    const key = String(r.Key || "");
+    const value = String(r.Value || "");
+
+    if (semAcento_(label + ' ' + key + ' ' + value).indexOf(alvo) === -1) continue;
+
+    achados.push({
+      id: String(r.ID || ""),
+      module: module,
+      key: key,
+      label: label,
+      lang: String(r.Lang || 'ALL'),
+      // Um pedaço do valor ao redor do que casou, para a lista distinguir dois
+      // itens de nome parecido sem obrigar a abrir os dois.
+      snippet: trechoDaBusca_(value, alvo)
+    });
+  }
+
+  return achados;
+}
+
+// O valor pode ser JSON, e um JSON cru no resultado atrapalha mais do que
+// ajuda. Corta ao redor do que casou e tira as marcas de estrutura.
+function trechoDaBusca_(value, alvo) {
+  const limpo = String(value || "")
+    .replace(/[{}"\[\]]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const onde = semAcento_(limpo).indexOf(alvo);
+  if (onde === -1) return limpo.slice(0, 90);
+
+  const inicio = Math.max(0, onde - 30);
+  return (inicio ? '…' : '') + limpo.slice(inicio, inicio + 90) +
+    (limpo.length > inicio + 90 ? '…' : '');
+}
+
+// =========================================================
 //  COBRANÇA DE PENDÊNCIA PARADA
 //
 //  A fila avisa quem aprova UMA vez, no momento em que a proposta entra. Se
