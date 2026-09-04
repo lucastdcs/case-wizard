@@ -162,7 +162,43 @@ const ITENS = {
         value: 'Confira o substatus antes de fechar.',
     }],
     call_script: [], email_template: [], note_template: [],
-    broadcast: [], bau_availability: [], people: [],
+    // Três avisos que cobrem os três estados da janela: um vigente para sempre,
+    // um agendado e um vencido. É o que faz a lista da Central ter o que dizer.
+    broadcast: [
+        {
+            id: 'itm_bc1', module: 'broadcast', key: 'bc1', field: '', lang: 'ALL',
+            label: 'Instabilidade no CRM', version: 1, status: 'live',
+            publishedBy: 'lucaste', publishedAt: '2026-09-01T10:00:00Z', sortOrder: 0,
+            lineage: 'itm_bc1',
+            value: JSON.stringify({
+                type: 'critical', title: 'Instabilidade no CRM', text: 'O CRM está lento.',
+                publishedAt: '2026-09-01T10:00:00Z', author: 'lucaste',
+            }),
+        },
+        {
+            id: 'itm_bc2', module: 'broadcast', key: 'bc2', field: '', lang: 'ALL',
+            label: 'Manutenção de segunda', version: 1, status: 'live',
+            publishedBy: 'lucaste', publishedAt: '2026-09-01T10:00:00Z', sortOrder: 1,
+            lineage: 'itm_bc2',
+            value: JSON.stringify({
+                type: 'info', title: 'Manutenção de segunda', text: 'Sistema fora das 2h às 4h.',
+                startsAt: '2099-01-05T08:00', endsAt: '2099-01-05T12:00',
+                publishedAt: '2026-09-01T10:00:00Z', author: 'lucaste',
+            }),
+        },
+        {
+            id: 'itm_bc3', module: 'broadcast', key: 'bc3', field: '', lang: 'ALL',
+            label: 'Fila priorizada', version: 1, status: 'live',
+            publishedBy: 'lucaste', publishedAt: '2026-09-01T10:00:00Z', sortOrder: 2,
+            lineage: 'itm_bc3',
+            value: JSON.stringify({
+                type: 'success', title: 'Fila priorizada', text: 'Criação priorizada até quinta.',
+                startsAt: '2020-01-01T08:00', endsAt: '2020-01-02T08:00',
+                publishedAt: '2026-09-01T10:00:00Z', author: 'lucaste',
+            }),
+        },
+    ],
+    bau_availability: [], people: [],
 };
 
 // Duas versões do mesmo link: é o mínimo para provar que a versão arquivada
@@ -1318,6 +1354,83 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         await page.waitForTimeout(250);
         verdade(await page.locator('#links-new-btn').isVisible(), 'o botão deveria voltar');
         verdade(await page.locator('#tab-roles').isVisible(), 'a aba Papéis deveria voltar');
+    });
+
+    await page.close();
+}
+
+// ---------------------------------------------- aviso com hora (janela)
+{
+    const page = await abrir({ sessao: 'admin', hash: '#/broadcast' });
+
+    await check('a lista distingue vigente, agendado e vencido', async () => {
+        await page.waitForTimeout(300);
+        const texto = await page.locator('#bc-list').textContent();
+        // Sem os selos, um aviso agendado pareceria estar no ar e um vencido
+        // pareceria vigente: a lista deixaria de responder "o que o agente vê".
+        verdade(/agendado para/.test(texto), 'faltou o selo do agendado: ' + texto.slice(0, 200));
+        verdade(/saiu do ar em/.test(texto), 'faltou o selo do vencido');
+    });
+
+    await check('o editor oferece começar e sair de cena', async () => {
+        await page.evaluate(() => openBroadcastEditor(null));
+        await page.waitForTimeout(250);
+        igual(await page.locator('#bc-inicio').getAttribute('type'), 'datetime-local');
+        igual(await page.locator('#bc-fim').getAttribute('type'), 'datetime-local');
+        // Um relógio só, declarado: a operação atende fusos diferentes.
+        verdade(/Brasília/.test(await page.locator('.modal').textContent()),
+            'faltou dizer de que relógio se está falando');
+    });
+
+    await check('o editor traz a janela que o aviso já tem', async () => {
+        await page.evaluate(() => openBroadcastEditor('itm_bc2'));
+        await page.waitForTimeout(250);
+        igual(await page.locator('#bc-inicio').inputValue(), '2099-01-05T08:00');
+        igual(await page.locator('#bc-fim').inputValue(), '2099-01-05T12:00');
+    });
+
+    await check('a confirmação declara o QUANDO, não só o alcance', async () => {
+        await page.evaluate(() => openBroadcastEditor(null));
+        await page.waitForTimeout(250);
+        await page.fill('#bc-title', 'Manutenção');
+        await page.fill('#bc-text', 'Sistema fora do ar.');
+        await page.fill('#bc-inicio', '2099-03-01T08:00');
+        await page.locator('#bc-save').click();
+        await page.waitForTimeout(300);
+
+        const texto = await page.locator('#pub-titulo').locator('..').textContent();
+        // "Vai ao ar agora" e "vai ao ar em março" são publicações diferentes:
+        // uma confirmação que só declara o alcance afirma o que pode não ocorrer.
+        verdade(/Só aparece a partir de/.test(texto),
+            'a confirmação deveria dizer quando: ' + texto.slice(0, 200));
+    });
+
+    await check('a janela viaja no valor publicado', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.locator('#pub-sim').click();
+        await page.waitForTimeout(400);
+
+        const chamada = await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'publishContentDirect')[0]);
+        const valor = JSON.parse(chamada.args[0].value);
+        igual(valor.startsAt, '2099-03-01T08:00');
+        igual(valor.endsAt, '', 'sem fim é "não expira", e vai vazio mesmo');
+    });
+
+    await check('janela invertida é barrada antes de sair da tela', async () => {
+        await page.evaluate(() => openBroadcastEditor(null));
+        await page.waitForTimeout(250);
+        await page.fill('#bc-title', 'Errado');
+        await page.fill('#bc-text', 'Texto.');
+        await page.fill('#bc-inicio', '2099-03-02T08:00');
+        await page.fill('#bc-fim', '2099-03-01T08:00');
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.locator('#bc-save').click();
+        await page.waitForTimeout(300);
+
+        igual(await page.locator('#pub-titulo').count(), 0, 'nem deveria chegar à confirmação');
+        verdade(/depois do início/.test(await page.locator('#toast').textContent()),
+            'faltou explicar por quê');
     });
 
     await page.close();

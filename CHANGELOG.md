@@ -9,6 +9,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Aviso com hora: agendamento e validade** (fase 5). Um aviso pode nascer
+  agendado e morrer sozinho. Sem isso, *"avisar a operação às 8h de segunda"*
+  era alguém acordar e clicar, e *"tirar quando a instabilidade acabar"* era
+  alguém lembrar — e o aviso que ninguém lembra de tirar continua na tela do
+  agente dizendo que um problema resolvido há três dias está acontecendo agora.
+  Aviso velho não é ruído neutro: ele ensina o agente a ignorar avisos. As duas
+  pontas são opcionais (sem início já vale, sem fim não expira), então ligar
+  isto não muda nenhum aviso existente. A janela é avaliada **no servidor, no
+  horário de Brasília**, e a tela diz isso — a operação atende fusos diferentes,
+  e três relógios implícitos são piores que um declarado. A lista da Central
+  marca cada aviso com o seu estado, e a confirmação de publicação passou a
+  declarar **quando**, não só para quem.
 - **"Ver como": conferir a Central pelos olhos de outro papel** (fase 5). Quem
   edita a matriz de permissões precisa poder verificar o que configurou — ler
   uma linha de checkboxes e imaginar a tela resultante é o tipo de tradução em
