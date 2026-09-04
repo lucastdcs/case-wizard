@@ -2,7 +2,10 @@
 
 ## Planilha Alvo
 - **Nome/Constante:** `SHEET_BAU_FORM`
-- **Total de Colunas:** 18 colunas. A função do Apps Script deve garantir o preenchimento/atualização exata deste índice (0 a 17).
+- **Total de Colunas:** 18 colunas do formulário (índices 0 a 17) + 3 de trilha
+  de auditoria (18 a 20, ver abaixo) + 1 de sinalização do agente (21). A
+  função do Apps Script deve garantir o preenchimento/atualização exata do
+  índice 0 a 17.
 
 ## Mapeamento de Índices (Array Google Sheets)
 | Índice | Nome da Coluna (Header) | Chave do Payload Esperada | Notas |
@@ -25,6 +28,14 @@
 | `15` | Task_BAU | `taskType` | Pode ser lista separada por vírgula |
 | `16` | Justificativa/Descrição | `description` ou `nonImplementationReason` | O Back-end deve mesclar estes dois campos se ambos existirem. |
 | `17` | Disponibilidade_Adv | `availability` | Formatado com pipe (`\|`) |
+
+## Colunas depois do formulário (escritas à parte, não pelo `appendRow` inicial)
+| Índice | Nome da Coluna (Header) | Chave do Payload | Notas |
+| :--- | :--- | :--- | :--- |
+| `18` | Processed_By | — (`Session.getActiveUser().getEmail()`) | Trilha de auditoria. Gravada por `updateBAUCaseStatus`, não no envio do agente. Colunas 18-20 garantidas por `ensureBAUHistoryColumns`. |
+| `19` | Processed_At | — (`new Date()`) | Idem acima. |
+| `20` | Processed_Action | — (derivado, ver `resolveProcessedAction`) | `APPROVED_CREATION` \| `REJECTED_CREATION` \| `CONFIRMED_DISCARD` \| `KEPT_ACTIVE`. |
+| `21` | Suggest_Discard | `suggestDiscard` | `"Sim"` \| `"Não"`. Só existe no fluxo BAU (Passo 3); isolada depois das colunas de auditoria de propósito, pra não deslocar os índices 18-20 em planilhas já em produção. Garantida por `ensureBAUSuggestDiscardColumn`. |
 
 ## Regra de Atualização (Update)
 - NUNCA reescrever dados de uma coluna com `""` se o valor recebido for `undefined`. 
