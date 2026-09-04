@@ -9,6 +9,27 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Papéis da Central viraram dado editável** (fase 4, ADR-0009). Eram uma
+  constante no código: dar links a um QA, ou criar um papel que publica
+  disponibilidade sem tocar no catálogo, custava um deploy. Agora a aba
+  `Content_Roles` guarda uma matriz **módulo × ação** — `ver`, `propor`,
+  `aprovar`, `publicar direto`, `reverter` — mais quatro permissões globais.
+  `propor` e `publicar direto` são colunas distintas, que é o que separa TL de
+  WFM e a lista única de antes não sabia dizer; `ver` também é coluna, e não um
+  implícito de quem tem acesso. **No dia 1 nada muda**: a aba nasce semeada com
+  os quatro papéis de hoje, e há teste comparando o preset contra a constante
+  antiga. Aba ausente ou ilegível cai no preset em vez de trancar todo mundo do
+  lado de fora.
+- **Quatro regras que um checkbox não abre** — no servidor, com teste, porque o
+  risco de tirar permissão do code review é que o erro não dá erro, só concede:
+  **anti-lockout** (nenhuma alteração deixa a Central sem quem gerencie papéis e
+  acessos — substitui a trava antiga de "o ADMIN não se remove", que bloqueava a
+  saída legítima de um entre dois admins e não cobria remover o outro);
+  **escalação declarada** (ganhar propor + aprovar + aprovar a si mesmo não
+  grava sem confirmação explícita); **revogação imediata** (o cache de permissão
+  cai no ato, nunca por TTL); e **aprovar autorização exige controlar
+  autorização** (aprovar `people` pede a permissão global de gerenciar acessos —
+  a regra deixou de ser sobre o *nome* do papel, que agora é editável).
 - **Atividade recente na Central, com foto de quem fez** (fase 3). A mesma barra
   lateral do TL Dashboard: quem publicou, aprovou, rejeitou ou reverteu o quê, e
   há quanto tempo — com a justificativa da rejeição na própria linha, que é onde

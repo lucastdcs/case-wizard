@@ -88,3 +88,49 @@ retenção e regras de filtro em `db-schema.md`.
   idempotente pelo `Log_ID` derivado da linha de origem, e reordena a aba pela
   data depois de escrever — as linhas trazidas são as mais antigas e entram no
   fim.
+
+---
+
+## Papéis da Central (aba `Content_Roles`)
+
+Por `google.script.run`. Esquema da aba e as quatro regras em `db-schema.md`;
+o porquê em `docs/decisions/0009-rbac-editavel-da-central.md`.
+
+| Função | Params | Quem pode | Resposta |
+| :--- | :--- | :--- | :--- |
+| `listContentRoles()` | — | `manageRoles` | `{ roles: [{ role, permissions, people, escalation }], modules, moduleActions, globalPerms, actionsByModule, approvalRequiresGlobal, fallback }` |
+| `saveContentRole(role, permissions, options)` | `options`: `{ active?, confirmEscalation?, confirmSelf? }` | `manageRoles` | `{ status: 'success', role, changes, reloadSession }` **ou** `{ status: 'confirm', reason, message, changes, modules? }` |
+
+### Regras
+- **`confirm` não é erro.** É o servidor pedindo uma declaração e **não tendo
+  escrito nada**. Dois motivos: `escalation` (a alteração introduz publicar sem
+  revisão) e `self` (o papel alterado é o de quem está alterando, e passa a
+  valer no ato). Reenviar com o `confirm*` correspondente grava.
+- **`changes` é o diff, não o estado final.** "Agora tem 14 permissões" não é
+  uma frase sobre a qual alguém decida; `links.approve: não → sim` é. É o
+  mesmo texto que vai para a auditoria.
+- **`reloadSession: true`** significa que quem salvou mexeu no próprio papel: a
+  tela precisa refazer `getContentSession()`, porque o que ela tem em memória
+  já não vale.
+- **`fallback: true`** em `listContentRoles()` significa que a aba não pôde ser
+  lida e a matriz mostrada é o preset do código. A tela precisa dizer isso —
+  editar em cima de um fallback é editar no escuro.
+- **`actionsByModule` manda na tela.** A matriz desenha as casas a partir dele,
+  em vez de repetir a regra de regime (catálogo tem `propose`/`approve`,
+  operação tem `publish`).
+
+### O que `getContentSession()` passou a devolver
+
+Além do que já devolvia (`ldap`, `role`, `hasAccess`, `canApprove`,
+`canManageAccess`, `canSelfApprove`, `proposableModules`, `modules`, `langs`):
+
+| Campo | Significa |
+| :--- | :--- |
+| `canManageRoles` | abre a aba de papéis |
+| `canViewAudit` | vê a auditoria completa, e as linhas de mudança de acesso na barra de atividade |
+| `readableModules` | módulos com `view` — o que a pessoa consegue abrir |
+| `permissions` | a matriz inteira do papel, para a tela explicar **por que** um botão não está lá |
+| `moduleActions` / `globalPerms` | os eixos da matriz |
+
+`canApprove` continua existindo e agora significa **"aprova alguma coisa"** — a
+fila filtra item a item com `canReview`.

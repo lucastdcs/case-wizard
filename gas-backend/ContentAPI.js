@@ -13,6 +13,13 @@ const SHEET_CONTENT_ITEMS = "Content_Items";
 const SHEET_CONTENT_DRAFTS = "Content_Drafts";
 const SHEET_CONTENT_ACCESS = "Content_Access";
 
+// Papéis como DADO, não como constante do código (ADR-0009). `Content_Access`
+// segue sendo LDAP -> papel; o que cada papel pode fazer mora aqui, e muda sem
+// deploy. `CONTENT_ROLES` continua no arquivo como semente e como rede: se a
+// aba não existir ou vier corrompida, o servidor cai nela em vez de trancar
+// todo mundo do lado de fora.
+const SHEET_CONTENT_ROLES = "Content_Roles";
+
 // Auditoria. Aba própria, e não mais linhas na aba `Logs` genérica: ali a ação
 // de conteúdo cabia em `Label`, uma string única onde módulo, chave e um
 // sufixo " (autoaprovação ADMIN)" viviam grudados. Dava para LER, não para
@@ -58,13 +65,21 @@ const CONTENT_DIRECT_PUBLISH_MODULES = ['broadcast', 'bau_availability'];
 // Central sem terem nada a ver com o cadastro do time.
 const CONTENT_RESTRICTED_READ_MODULES = ['people'];
 
-// Módulos que SÓ o ADMIN aprova, mesmo que outros papéis aprovem o resto.
+// Módulos cuja aprovação exige, ALÉM da permissão de aprovar o módulo, uma
+// permissão global — a de gerenciar acessos.
 //
 // TL aprova conteúdo porque conteúdo errado se corrige republicando. Um papel
 // errado na aba People não: ele abre o TL Dashboard para quem não devia, e a
 // própria pessoa que aprovou pode ser a beneficiada. Promoção aprovada por par
 // não é revisão - é combinação.
-const CONTENT_ADMIN_ONLY_APPROVAL_MODULES = ['people'];
+//
+// Com os papéis virando dado editável (ADR-0009), esta regra deixou de poder
+// ser um simples "só o ADMIN": o nome do papel passou a ser editável, e
+// amarrar segurança a uma string que alguém pode renomear é amarrar a nada. A
+// regra passou a ser ESTRUTURAL — quem aprova uma mudança de autorização
+// precisa já ser quem controla autorização —, e é a única casa da matriz que um
+// checkbox não consegue abrir sozinho.
+const CONTENT_APPROVAL_REQUIRES_GLOBAL = { people: 'manageAccess' };
 
 // Módulos que a leitura pública (JSONP, sem identidade) nunca serve, mesmo que
 // um dia passem a ter linha em Content_Items. Hoje people não tem - a barreira
@@ -98,9 +113,14 @@ const CONTENT_STATUS = {
   ARCHIVED: 'archived'
 };
 
-// Matriz de papéis. É o ponto de partida: quem entra em Content_Access recebe
-// um destes papéis, e o ADMIN ajusta a lista de pessoas pela aba "Acessos" da
-// tela sem precisar de deploy novo.
+// Os quatro papéis do dia 1, no formato antigo (uma lista `propose` e três
+// booleanos). Deixaram de ser a autoridade: agora são a SEMENTE da aba
+// `Content_Roles` e o FALLBACK para quando ela não puder ser lida.
+//
+// A conversão para a matriz módulo x ação está em `contentPresetMatrix_()`, e é
+// ela que garante a promessa do ADR-0009: no dia da migração ninguém percebe
+// nada, porque o preset reproduz exatamente o que estas quatro entradas já
+// diziam.
 const CONTENT_ROLES = {
   ADMIN: {
     propose: CONTENT_MODULES,
@@ -188,6 +208,21 @@ function getContentSheet_(name) {
     if (name === SHEET_CONTENT_ITEMS) sheet.appendRow(CONTENT_ITEMS_HEADERS);
     else if (name === SHEET_CONTENT_DRAFTS) sheet.appendRow(CONTENT_DRAFTS_HEADERS);
     else if (name === SHEET_CONTENT_LOG) sheet.appendRow(CONTENT_LOG_HEADERS);
+    else if (name === SHEET_CONTENT_ROLES) {
+      sheet.appendRow(CONTENT_ROLES_HEADERS);
+      // Semeada com os quatro papéis de hoje: é o que faz o dia da migração
+      // não mudar nada para ninguém (ADR-0009).
+      const preset = contentPresetMatrix_();
+      Object.keys(preset).forEach(function (nome) {
+        sheet.appendRow([
+          nome,
+          JSON.stringify({ modules: preset[nome].modules, global: preset[nome].global }),
+          true,
+          'system',
+          new Date().toISOString()
+        ]);
+      });
+    }
     else if (name === SHEET_CONTENT_ACCESS) {
       sheet.appendRow(CONTENT_ACCESS_HEADERS);
       // Semeia o ADMIN inicial junto com a aba, pra tela nunca nascer trancada.
@@ -380,6 +415,258 @@ function newContentId_(prefix) {
 }
 
 // =========================================================
+//  MATRIZ DE PERMISSÃO (ADR-0009)
+// =========================================================
+
+const CONTENT_ROLES_HEADERS = ["Role", "Permissions", "Active", "Updated_By", "Updated_At"];
+
+// As cinco ações por módulo. `propor` e `publicar direto` são colunas
+// diferentes de propósito: é exatamente essa diferença que hoje separa TL de
+// WFM, e que a lista única `propose` do formato antigo não sabia expressar.
+// `ver` também é coluna, e não um implícito de quem tem acesso — o módulo
+// `people` precisa esconder a leitura de quem não propõe.
+const CONTENT_MODULE_ACTIONS = ['view', 'propose', 'approve', 'publish', 'rollback'];
+
+// Permissões que não pertencem a módulo nenhum.
+const CONTENT_GLOBAL_PERMS = ['manageAccess', 'manageRoles', 'viewAudit', 'selfApprove'];
+
+/**
+ * Quais ações fazem sentido para um módulo.
+ *
+ * Um módulo tem um caminho de escrita só: catálogo passa pela fila (`propose` +
+ * `approve`), operação publica direto (`publish`). Marcar a casa impossível
+ * como inexistente — em vez de existente e falsa — é o que impede a tela de
+ * oferecer um checkbox que não faria nada, e o que impede a matriz de dizer
+ * "este papel não pode aprovar avisos" sobre um módulo onde aprovar não existe.
+ */
+function contentActionsForModule_(module) {
+  if (CONTENT_DIRECT_PUBLISH_MODULES.indexOf(module) !== -1) {
+    return ['view', 'publish', 'rollback'];
+  }
+  return ['view', 'propose', 'approve', 'rollback'];
+}
+
+function emptyModulePerms_() {
+  const o = {};
+  for (let i = 0; i < CONTENT_MODULE_ACTIONS.length; i++) o[CONTENT_MODULE_ACTIONS[i]] = false;
+  return o;
+}
+
+/**
+ * Converte os quatro papéis do formato antigo na matriz.
+ *
+ * É esta função que sustenta a promessa de "no dia 1 nada muda". Cada regra
+ * abaixo traduz uma que já existia:
+ *   - ler tudo, menos o que `CONTENT_RESTRICTED_READ_MODULES` escondia;
+ *   - `propose` valia para a fila NOS módulos de catálogo e para a publicação
+ *     direta nos de operação — vira `propose` num caso e `publish` no outro;
+ *   - reverter exigia aprovar, então herda `approve`;
+ *   - aprovar `people` exigia ser ADMIN, e ADMIN era quem gerenciava acesso.
+ */
+function contentPresetMatrix_() {
+  const matriz = {};
+
+  Object.keys(CONTENT_ROLES).forEach(function (nome) {
+    const antigo = CONTENT_ROLES[nome];
+    const modules = {};
+
+    CONTENT_MODULES.forEach(function (m) {
+      const perms = emptyModulePerms_();
+      const temModulo = antigo.propose.indexOf(m) !== -1;
+      const direto = CONTENT_DIRECT_PUBLISH_MODULES.indexOf(m) !== -1;
+
+      perms.view = (CONTENT_RESTRICTED_READ_MODULES.indexOf(m) === -1) || temModulo;
+      if (direto) perms.publish = temModulo;
+      else perms.propose = temModulo;
+
+      const exigeGlobal = CONTENT_APPROVAL_REQUIRES_GLOBAL[m];
+      perms.approve = !direto && antigo.approve && (!exigeGlobal || !!antigo[exigeGlobal]);
+      perms.rollback = antigo.approve;
+
+      modules[m] = perms;
+    });
+
+    matriz[nome] = {
+      modules: modules,
+      global: {
+        manageAccess: !!antigo.manageAccess,
+        // Quem gerenciava acesso é quem passa a gerenciar papéis e a ver a
+        // auditoria completa: era o único papel com poder sobre autorização.
+        manageRoles: !!antigo.manageAccess,
+        viewAudit: !!antigo.manageAccess,
+        selfApprove: !!antigo.selfApprove
+      },
+      active: true
+    };
+  });
+
+  return matriz;
+}
+
+// Normaliza o que veio da planilha: casa desconhecida é ignorada, casa que
+// falta vira `false`, e ação impossível para o módulo é apagada. Um JSON
+// editado à mão não pode inventar permissão nem derrubar a leitura.
+function normalizeRoleMatrix_(bruto) {
+  const entrada = bruto || {};
+  const modulesIn = entrada.modules || {};
+  const globalIn = entrada.global || {};
+  const modules = {};
+
+  CONTENT_MODULES.forEach(function (m) {
+    const perms = emptyModulePerms_();
+    const possiveis = contentActionsForModule_(m);
+    const doModulo = modulesIn[m] || {};
+
+    possiveis.forEach(function (acao) { perms[acao] = doModulo[acao] === true; });
+    modules[m] = perms;
+  });
+
+  const global = {};
+  CONTENT_GLOBAL_PERMS.forEach(function (nome) { global[nome] = globalIn[nome] === true; });
+
+  return { modules: modules, global: global, active: true };
+}
+
+/**
+ * Lê `Content_Roles`. Devolve `null` quando não há nada utilizável — e é o
+ * chamador que decide cair no preset.
+ *
+ * Uma linha com JSON quebrado é PULADA, não fatal: uma edição errada num papel
+ * não pode apagar os outros três. Mas se sobrar zero papel, aí sim é o preset
+ * inteiro que volta — mesma filosofia de `getSubstatusDef_()`, degradar em vez
+ * de trancar todo mundo do lado de fora.
+ */
+function readContentRolesMatrix_() {
+  let linhas;
+  try {
+    linhas = readContentRows_(SHEET_CONTENT_ROLES);
+  } catch (e) {
+    return null;
+  }
+
+  const matriz = {};
+
+  for (let i = 0; i < linhas.length; i++) {
+    const nome = String(linhas[i].Role || "").toUpperCase().trim();
+    if (!nome) continue;
+
+    const ativo = String(linhas[i].Active).toUpperCase().trim();
+    if (ativo !== 'TRUE' && ativo !== '1') continue;
+
+    let bruto;
+    try {
+      bruto = JSON.parse(String(linhas[i].Permissions || "{}"));
+    } catch (e) {
+      continue;
+    }
+
+    matriz[nome] = normalizeRoleMatrix_(bruto);
+  }
+
+  return Object.keys(matriz).length ? matriz : null;
+}
+
+// =========================================================
+//  CACHE DE PERMISSÃO
+//
+//  Toda ação da Central passa por aqui: sem cache, cada clique custa duas
+//  varreduras de planilha (quem é a pessoa, e o que o papel dela pode).
+//
+//  A invalidação é IMEDIATA e não por TTL — é a terceira invariante do
+//  ADR-0009. Cache de permissão que expira por tempo significa que revogar um
+//  acesso só vale daqui a cinco minutos, e é a única entrada do ADR-0008 onde
+//  atraso não é aceitável.
+// =========================================================
+
+const CONTENT_PERMS_CACHE_KEY = 'cw_content_perms_v1';
+const CONTENT_PERMS_CACHE_TTL_S = 300;
+
+function invalidateContentPermsCache_() {
+  const cache = contentCache_();
+  if (!cache) return;
+  try { cache.remove(CONTENT_PERMS_CACHE_KEY); } catch (e) { }
+}
+
+/**
+ * `{ roles, access, fallback }` — a matriz por papel, o mapa LDAP -> papel, e
+ * se a matriz veio do código em vez da planilha.
+ */
+function contentPermsSnapshot_() {
+  const cache = contentCache_();
+
+  if (cache) {
+    try {
+      const bruto = cache.get(CONTENT_PERMS_CACHE_KEY);
+      if (bruto) return JSON.parse(bruto);
+    } catch (e) {
+      // Cache ilegível não pode derrubar o login de ninguém: lê da planilha.
+    }
+  }
+
+  const daPlanilha = readContentRolesMatrix_();
+  const roles = daPlanilha || contentPresetMatrix_();
+
+  const access = {};
+  readContentRows_(SHEET_CONTENT_ACCESS).forEach(function (r) {
+    const ldap = String(r.LDAP || "").toLowerCase().trim();
+    const ativo = String(r.Active).toUpperCase().trim();
+    const papel = String(r.Role || "").toUpperCase().trim();
+    if (ldap && (ativo === 'TRUE' || ativo === '1') && roles[papel]) access[ldap] = papel;
+  });
+
+  const snapshot = { roles: roles, access: access, fallback: !daPlanilha };
+
+  if (cache) {
+    try {
+      cache.put(CONTENT_PERMS_CACHE_KEY, JSON.stringify(snapshot), CONTENT_PERMS_CACHE_TTL_S);
+    } catch (e) { }
+  }
+
+  return snapshot;
+}
+
+function getContentPermsForRole_(role) {
+  const snap = contentPermsSnapshot_();
+  return snap.roles[String(role || "").toUpperCase().trim()] || null;
+}
+
+// Uma casa da matriz. Ação impossível para o módulo devolve `false` sempre —
+// não existe "aprovar um aviso", que não passa por fila nenhuma.
+function podeNoModulo_(perms, module, acao) {
+  if (!perms || !module) return false;
+  if (contentActionsForModule_(module).indexOf(acao) === -1) return false;
+
+  const doModulo = perms.modules[module];
+  return !!(doModulo && doModulo[acao]);
+}
+
+function podeGlobal_(perms, nome) {
+  return !!(perms && perms.global && perms.global[nome]);
+}
+
+// Aprovar exige a casa da matriz E, em `people`, a permissão global. Ver
+// CONTENT_APPROVAL_REQUIRES_GLOBAL.
+function podeAprovarModulo_(perms, module) {
+  if (!podeNoModulo_(perms, module, 'approve')) return false;
+
+  const exigeGlobal = CONTENT_APPROVAL_REQUIRES_GLOBAL[module];
+  return !exigeGlobal || podeGlobal_(perms, exigeGlobal);
+}
+
+// Módulos que o papel escreve, por qualquer caminho. É o que a tela usa para
+// decidir se mostra o botão de editar — a fila e a publicação direta são
+// caminhos diferentes, mas "posso mexer nisto?" é uma pergunta só.
+function modulosEscrevivies_(perms) {
+  return CONTENT_MODULES.filter(function (m) {
+    return podeNoModulo_(perms, m, 'propose') || podeNoModulo_(perms, m, 'publish');
+  });
+}
+
+function modulosVisiveis_(perms) {
+  return CONTENT_MODULES.filter(function (m) { return podeNoModulo_(perms, m, 'view'); });
+}
+
+// =========================================================
 //  IDENTIDADE E PERMISSÃO
 // =========================================================
 
@@ -394,20 +681,9 @@ function getCallerLdap_() {
 }
 
 function getContentRoleForLdap_(ldap) {
-  const rows = readContentRows_(SHEET_CONTENT_ACCESS);
-  const target = String(ldap || "").toLowerCase().trim();
-
-  for (let i = 0; i < rows.length; i++) {
-    const rowLdap = String(rows[i].LDAP || "").toLowerCase().trim();
-    const active = String(rows[i].Active).toUpperCase().trim();
-
-    if (rowLdap === target && (active === 'TRUE' || active === '1')) {
-      const role = String(rows[i].Role || "").toUpperCase().trim();
-      if (CONTENT_ROLES[role]) return role;
-    }
-  }
-
-  return null; // Sem linha ativa = sem acesso. Não há papel padrão.
+  const snap = contentPermsSnapshot_();
+  // Sem linha ativa = sem acesso. Não há papel padrão.
+  return snap.access[String(ldap || "").toLowerCase().trim()] || null;
 }
 
 // Sessão da tela: papel + o que ele pode fazer. O front usa isso pra decidir o
@@ -421,15 +697,27 @@ function getContentSession() {
     return { ldap: ldap, role: null, hasAccess: false };
   }
 
-  const perms = CONTENT_ROLES[role];
+  const perms = getContentPermsForRole_(role);
+
   return {
     ldap: ldap,
     role: role,
     hasAccess: true,
-    canApprove: perms.approve,
-    canManageAccess: perms.manageAccess,
-    canSelfApprove: perms.selfApprove,
-    proposableModules: perms.propose,
+    // `canApprove` segue existindo porque a tela pergunta "esta pessoa é
+    // revisora?" para decidir se mostra a fila. Com a matriz, a resposta é
+    // "aprova ALGUMA coisa" — quais módulos, quem pergunta é a fila.
+    canApprove: CONTENT_MODULES.some(function (m) { return podeAprovarModulo_(perms, m); }),
+    canManageAccess: podeGlobal_(perms, 'manageAccess'),
+    canManageRoles: podeGlobal_(perms, 'manageRoles'),
+    canViewAudit: podeGlobal_(perms, 'viewAudit'),
+    canSelfApprove: podeGlobal_(perms, 'selfApprove'),
+    proposableModules: modulosEscrevivies_(perms),
+    readableModules: modulosVisiveis_(perms),
+    // A matriz inteira vai junto: é o que a aba "Papéis" edita, e o que
+    // permite a tela explicar POR QUE um botão não está lá.
+    permissions: perms,
+    moduleActions: CONTENT_MODULE_ACTIONS,
+    globalPerms: CONTENT_GLOBAL_PERMS,
     modules: CONTENT_MODULES,
     langs: CONTENT_LANGS
   };
@@ -443,29 +731,56 @@ function assertContentRole_(action, module) {
 
   if (!role) throw new Error("Acesso negado: você não tem permissão na Central de Conteúdo.");
 
-  const perms = CONTENT_ROLES[role];
+  const perms = getContentPermsForRole_(role);
+  if (!perms) throw new Error("Acesso negado: o papel '" + role + "' não existe mais.");
 
-  // Restrição de módulo que vale para QUALQUER ação, leitura inclusive. Vem
-  // antes do switch de propósito: um `read` em 'people' precisa cair aqui, e
-  // o switch abaixo não olha para leitura.
-  if (module && CONTENT_RESTRICTED_READ_MODULES.indexOf(module) !== -1 &&
-    perms.propose.indexOf(module) === -1) {
-    throw new Error("Acesso negado: seu papel (" + role + ") não tem acesso ao módulo '" + module + "'.");
+  // "Este módulo não existe" e "você não pode ver este módulo" são respostas
+  // diferentes, e trocar uma pela outra transforma um erro de digitação num
+  // falso problema de acesso. A validação vem primeiro por isso.
+  if (module) assertValidModule_(module);
+
+  const negado = "Acesso negado: seu papel (" + role + ") ";
+
+  // Ler é uma casa da matriz como qualquer outra, e é checada ANTES do resto:
+  // um `propose` num módulo que a pessoa não enxerga não deve vazar sequer a
+  // mensagem de erro específica de escrita.
+  if (module && !podeNoModulo_(perms, module, 'view')) {
+    throw new Error(negado + "não tem acesso ao módulo '" + module + "'.");
   }
 
   if (action === 'propose') {
-    if (perms.propose.indexOf(module) === -1) {
-      throw new Error("Acesso negado: seu papel (" + role + ") não edita o módulo '" + module + "'.");
+    if (!podeNoModulo_(perms, module, 'propose')) {
+      throw new Error(negado + "não edita o módulo '" + module + "'.");
+    }
+  } else if (action === 'publish') {
+    if (!podeNoModulo_(perms, module, 'publish')) {
+      throw new Error(negado + "não publica no módulo '" + module + "'.");
+    }
+  } else if (action === 'rollback') {
+    if (!podeNoModulo_(perms, module, 'rollback')) {
+      throw new Error(negado + "não republica versão anterior do módulo '" + module + "'.");
     }
   } else if (action === 'approve') {
-    if (!perms.approve) throw new Error("Acesso negado: seu papel (" + role + ") não aprova mudanças.");
-    if (module && CONTENT_ADMIN_ONLY_APPROVAL_MODULES.indexOf(module) !== -1 && role !== 'ADMIN') {
-      throw new Error(
-        "Acesso negado: alterações no módulo '" + module + "' só o ADMIN aprova."
-      );
+    // Sem módulo, a pergunta é "é revisor de alguma coisa?" — é o que abre a
+    // fila, que depois filtra item a item.
+    const podeAlgum = module
+      ? podeAprovarModulo_(perms, module)
+      : CONTENT_MODULES.some(function (m) { return podeAprovarModulo_(perms, m); });
+
+    if (!podeAlgum) {
+      if (module && CONTENT_APPROVAL_REQUIRES_GLOBAL[module] &&
+        podeNoModulo_(perms, module, 'approve')) {
+        throw new Error(
+          negado + "aprova o módulo '" + module + "', mas alterações de autorização " +
+          "só quem gerencia acessos aprova."
+        );
+      }
+      throw new Error(negado + "não aprova mudanças" + (module ? " no módulo '" + module + "'." : "."));
     }
-  } else if (action === 'manageAccess') {
-    if (!perms.manageAccess) throw new Error("Acesso negado: apenas o ADMIN gerencia acessos.");
+  } else if (CONTENT_GLOBAL_PERMS.indexOf(action) !== -1) {
+    if (!podeGlobal_(perms, action)) {
+      throw new Error(negado + "não tem a permissão '" + action + "'.");
+    }
   }
 
   return { ldap: ldap, role: role, perms: perms };
@@ -895,8 +1210,9 @@ function listContentDrafts(module) {
     .map(mapDraftRow_);
 
   // Quem não aprova só enxerga os próprios rascunhos; pendências alheias não
-  // são assunto seu e poluiriam a fila.
-  if (!session.perms.approve) {
+  // são assunto seu e poluiriam a fila. A pergunta é por MÓDULO: com a matriz,
+  // alguém pode revisar call script e não revisar e-mail.
+  if (!podeAprovarModulo_(session.perms, module)) {
     return drafts.filter(function (d) { return d.proposedBy === session.ldap; });
   }
 
@@ -928,8 +1244,8 @@ function listPendingApprovals() {
         d.isNew = !d.itemId;
       }
       d.isSelfProposed = (d.proposedBy === session.ldap);
-      d.canReview = (session.perms.selfApprove || !d.isSelfProposed) &&
-        (CONTENT_ADMIN_ONLY_APPROVAL_MODULES.indexOf(d.module) === -1 || session.role === 'ADMIN');
+      d.canReview = podeAprovarModulo_(session.perms, d.module) &&
+        (podeGlobal_(session.perms, 'selfApprove') || !d.isSelfProposed);
       return d;
     })
     .sort(function (a, b) { return String(a.proposedAt).localeCompare(String(b.proposedAt)); });
@@ -957,17 +1273,25 @@ function isLockHeldByOther_(draftRow, ldap) {
  */
 function saveContentDraft(payload) {
   const p = payload || {};
-  const session = assertContentRole_('propose', p.module);
   assertValidModule_(p.module);
 
   // Um módulo tem um caminho de escrita só. Deixar avisos entrarem também pela
   // fila criaria duas fontes de verdade para "o que está no ar", e a tela teria
   // de reconciliar as duas.
+  //
+  // Vem ANTES da permissão de propósito: com `propor` e `publicar` virando
+  // casas diferentes da matriz (ADR-0009), quem publica aviso deixou de ter
+  // `propor` em aviso — e sem esta ordem a resposta a "por que não consigo
+  // salvar um rascunho de aviso?" viraria "você não tem acesso", escondendo a
+  // resposta verdadeira, que é "aqui não existe rascunho". O regime do módulo é
+  // informação pública: a própria navegação da tela o anuncia.
   if (CONTENT_DIRECT_PUBLISH_MODULES.indexOf(p.module) !== -1) {
     throw new Error(
       "O módulo '" + p.module + "' publica direto, sem rascunho. Use publishContentDirect()."
     );
   }
+
+  const session = assertContentRole_('propose', p.module);
 
   if (CONTENT_LANGS.indexOf(p.lang || 'ALL') === -1) {
     throw new Error("Idioma inválido: " + p.lang);
@@ -995,7 +1319,7 @@ function saveContentDraft(payload) {
     if (String(existing.Status).trim() === CONTENT_STATUS.PENDING) {
       throw new Error("Este item já está em revisão. Cancele o envio antes de editar.");
     }
-    if (existing.Proposed_By !== session.ldap && !session.perms.approve) {
+    if (existing.Proposed_By !== session.ldap && !podeAprovarModulo_(session.perms, p.module)) {
       throw new Error("Este rascunho é de outra pessoa.");
     }
     if (isLockHeldByOther_(existing, session.ldap)) {
@@ -1065,7 +1389,8 @@ function submitContentDraftLocked_(draftId) {
 
   const session = assertContentRole_('propose', String(existing.Module).trim());
 
-  if (existing.Proposed_By !== session.ldap && !session.perms.approve) {
+  if (existing.Proposed_By !== session.ldap &&
+    !podeAprovarModulo_(session.perms, String(existing.Module).trim())) {
     throw new Error("Este rascunho é de outra pessoa.");
   }
   if (String(existing.Status).trim() !== CONTENT_STATUS.DRAFT) {
@@ -1125,7 +1450,8 @@ function discardContentDraftLocked_(draftId) {
       "Só um rascunho pode ser descartado. Uma proposta em revisão se resolve aprovando ou rejeitando."
     );
   }
-  if (String(draft.Proposed_By).trim() !== session.ldap && !session.perms.approve) {
+  if (String(draft.Proposed_By).trim() !== session.ldap &&
+    !podeAprovarModulo_(session.perms, String(draft.Module).trim())) {
     throw new Error("Este rascunho é de outra pessoa.");
   }
 
@@ -1168,11 +1494,15 @@ function saveAndSubmitContentDraft(payload) {
 // sem ninguém perceber - o fluxo de aprovação vira um limbo em vez de um portão.
 function notifyApprovers_(draftRow, proposedBy) {
   try {
+    const module = String(draftRow.Module || "").trim();
     const approvers = readContentRows_(SHEET_CONTENT_ACCESS)
       .filter(function (r) {
         const role = String(r.Role || "").toUpperCase().trim();
         const active = String(r.Active).toUpperCase().trim();
-        return CONTENT_ROLES[role] && CONTENT_ROLES[role].approve && (active === 'TRUE' || active === '1');
+        if (active !== 'TRUE' && active !== '1') return false;
+        // Avisa quem aprova ESTE módulo, não quem aprova alguma coisa: com a
+        // matriz, mandar a fila inteira para todo revisor seria ruído.
+        return podeAprovarModulo_(getContentPermsForRole_(role), module);
       })
       .map(function (r) { return String(r.LDAP).trim() + "@google.com"; })
       .filter(function (mail) { return mail.indexOf(proposedBy + "@") !== 0; });
@@ -1282,7 +1612,7 @@ function approveContentDraftLocked_(draftId, note) {
   }
 
   // A regra de não-autoaprovação, com a exceção explícita do ADMIN.
-  if (String(draft.Proposed_By).trim() === session.ldap && !session.perms.selfApprove) {
+  if (String(draft.Proposed_By).trim() === session.ldap && !podeGlobal_(session.perms, 'selfApprove')) {
     throw new Error("Você não pode aprovar a própria proposta. Peça a revisão de outra pessoa.");
   }
 
@@ -1419,7 +1749,7 @@ function rollbackContentItemLocked_(archivedItemId) {
   const archived = findContentRow_(SHEET_CONTENT_ITEMS, 'ID', archivedItemId);
   if (!archived) throw new Error("Versão não encontrada.");
 
-  const session = assertContentRole_('approve', String(archived.Module).trim());
+  const session = assertContentRole_('rollback', String(archived.Module).trim());
   const sheet = getContentSheet_(SHEET_CONTENT_ITEMS);
   const now = contentNow_();
   const lineage = String(archived.Lineage || archived.ID);
@@ -1582,7 +1912,7 @@ function publishContentDirectLocked_(payload) {
   const module = String(data.module || "").trim();
 
   assertDirectPublishModule_(module);
-  const session = assertContentRole_('propose', module);
+  const session = assertContentRole_('publish', module);
 
   const isSingleton = CONTENT_SINGLETON_MODULES.indexOf(module) !== -1;
   const key = isSingleton
@@ -1656,7 +1986,7 @@ function unpublishContentDirectLocked_(itemId) {
 
   const module = String(item.Module).trim();
   assertDirectPublishModule_(module);
-  const session = assertContentRole_('propose', module);
+  const session = assertContentRole_('publish', module);
 
   if (String(item.Status).trim() !== CONTENT_STATUS.LIVE) {
     throw new Error("Este item já não está no ar.");
@@ -1683,6 +2013,270 @@ function unpublishContentDirectLocked_(itemId) {
 }
 
 // =========================================================
+//  GERENCIAR PAPÉIS (matriz editável — ADR-0009)
+//
+//  As invariantes deste bloco vivem no SERVIDOR e não na tela, por um motivo
+//  que o próprio ADR nomeia como o risco central: com a permissão fora do code
+//  review, um checkbox errado não dá erro, não aparece em teste e não avisa
+//  ninguém — só concede. Validar na tela protegeria contra o engano, não contra
+//  a chamada direta.
+// =========================================================
+
+/**
+ * PRIMEIRA INVARIANTE — anti-lockout.
+ *
+ * É impossível salvar um estado em que nenhuma pessoa ATIVA tenha, ao mesmo
+ * tempo, `manageRoles` e `manageAccess`. Sem as duas juntas não há caminho de
+ * volta: quem só gerencia acesso não conserta um papel quebrado, e quem só
+ * gerencia papéis não consegue se dar acesso.
+ *
+ * `mudancaAcesso` é `{ ldap, role, active }`; `mudancaPapel` é
+ * `{ role, perms, active }`. Os dois são opcionais — a checagem roda sobre o
+ * estado que EXISTIRIA depois, não sobre o atual.
+ */
+function assertGovernancaSobrevive_(mudancaAcesso, mudancaPapel) {
+  const snap = contentPermsSnapshot_();
+
+  const roles = {};
+  Object.keys(snap.roles).forEach(function (n) { roles[n] = snap.roles[n]; });
+
+  if (mudancaPapel) {
+    if (mudancaPapel.active === false) delete roles[mudancaPapel.role];
+    else roles[mudancaPapel.role] = mudancaPapel.perms;
+  }
+
+  // Lido da planilha e não do snapshot: o snapshot já descarta quem aponta para
+  // um papel inexistente, e reativar um papel precisa recuperar essa gente.
+  const access = {};
+  readContentRows_(SHEET_CONTENT_ACCESS).forEach(function (r) {
+    const ativo = String(r.Active).toUpperCase().trim();
+    if (ativo !== 'TRUE' && ativo !== '1') return;
+    access[String(r.LDAP || "").toLowerCase().trim()] = String(r.Role || "").toUpperCase().trim();
+  });
+
+  if (mudancaAcesso) {
+    if (mudancaAcesso.active === false) delete access[mudancaAcesso.ldap];
+    else access[mudancaAcesso.ldap] = mudancaAcesso.role;
+  }
+
+  const sobram = Object.keys(access).filter(function (l) {
+    const p = roles[access[l]];
+    return p && podeGlobal_(p, 'manageRoles') && podeGlobal_(p, 'manageAccess');
+  });
+
+  if (!sobram.length) {
+    throw new Error(
+      "Esta alteração deixaria a Central sem ninguém capaz de gerenciar papéis e acessos — " +
+      "e não haveria caminho de volta. Dê essas duas permissões a outra pessoa antes."
+    );
+  }
+}
+
+/**
+ * SEGUNDA INVARIANTE — escalação declarada.
+ *
+ * `propor` + `aprovar` no mesmo papel, com `aprovar a própria proposta` ligado,
+ * é publicação unilateral: a pessoa escreve e publica sem que ninguém veja.
+ * Continua possível — o ADMIN depende disso —, mas nunca por acidente.
+ *
+ * Devolve os módulos em que o papel publica sozinho.
+ */
+function modulosComEscalada_(perms) {
+  if (!podeGlobal_(perms, 'selfApprove')) return [];
+
+  return CONTENT_MODULES.filter(function (m) {
+    return podeNoModulo_(perms, m, 'propose') && podeAprovarModulo_(perms, m);
+  });
+}
+
+// O que MUDOU, em texto — é o que vai para a auditoria e para o diálogo de
+// confirmação. O ADR pede o diff e não o estado final: "agora tem 14 permissões"
+// não é uma frase sobre a qual alguém consiga decidir.
+function diffDePermissoes_(antes, depois) {
+  const linhas = [];
+  const de = function (v) { return v ? 'sim' : 'não'; };
+
+  CONTENT_MODULES.forEach(function (m) {
+    contentActionsForModule_(m).forEach(function (acao) {
+      const a = !!(antes && antes.modules[m] && antes.modules[m][acao]);
+      const b = !!(depois.modules[m] && depois.modules[m][acao]);
+      if (a !== b) linhas.push(m + '.' + acao + ': ' + de(a) + ' → ' + de(b));
+    });
+  });
+
+  CONTENT_GLOBAL_PERMS.forEach(function (nome) {
+    const a = !!(antes && antes.global[nome]);
+    const b = !!depois.global[nome];
+    if (a !== b) linhas.push(nome + ': ' + de(a) + ' → ' + de(b));
+  });
+
+  return linhas;
+}
+
+function contentActionsByModule_() {
+  const mapa = {};
+  CONTENT_MODULES.forEach(function (m) { mapa[m] = contentActionsForModule_(m); });
+  return mapa;
+}
+
+/** A matriz inteira, para a tela desenhar. */
+function listContentRoles() {
+  assertContentRole_('manageRoles', null);
+
+  const snap = contentPermsSnapshot_();
+  const pessoas = {};
+  Object.keys(snap.access).forEach(function (l) {
+    pessoas[snap.access[l]] = (pessoas[snap.access[l]] || 0) + 1;
+  });
+
+  return {
+    roles: Object.keys(snap.roles).sort().map(function (nome) {
+      return {
+        role: nome,
+        permissions: snap.roles[nome],
+        people: pessoas[nome] || 0,
+        escalation: modulosComEscalada_(snap.roles[nome])
+      };
+    }),
+    modules: CONTENT_MODULES,
+    moduleActions: CONTENT_MODULE_ACTIONS,
+    globalPerms: CONTENT_GLOBAL_PERMS,
+    // A tela desenha as casas a partir daqui em vez de repetir a regra de
+    // regime: catálogo tem `propor`/`aprovar`, operação tem `publicar`.
+    actionsByModule: contentActionsByModule_(),
+    approvalRequiresGlobal: CONTENT_APPROVAL_REQUIRES_GLOBAL,
+    // `true` = a aba não pôde ser lida e isto é o preset do código. A tela
+    // precisa dizer isso: editar em cima de um fallback é editar no escuro.
+    fallback: snap.fallback
+  };
+}
+
+/**
+ * Cria ou altera um papel.
+ *
+ * Não escreve e devolve `{ status: 'confirm' }` em dois casos, que são pedidos
+ * de declaração e não erros:
+ *   - a alteração INTRODUZ publicação unilateral num módulo (invariante 2);
+ *   - o papel alterado é o de quem está alterando — passa a valer no ato, e a
+ *     sessão precisa ser recarregada.
+ *
+ * Reenviar com `confirmEscalation` / `confirmSelf` grava.
+ */
+function saveContentRole(role, permissions, options) {
+  const session = assertContentRole_('manageRoles', null);
+  const o = options || {};
+  const nome = String(role || "").toUpperCase().trim();
+
+  // Nome vira chave em `Content_Access` e cabeçalho de coluna na tela.
+  if (!/^[A-Z][A-Z0-9_]{1,23}$/.test(nome)) {
+    throw new Error(
+      "Nome de papel inválido: use de 2 a 24 letras maiúsculas, números ou '_', começando por letra."
+    );
+  }
+
+  const ativo = o.active !== false;
+
+  let bruto = permissions;
+  if (typeof bruto === 'string') {
+    try { bruto = JSON.parse(bruto); }
+    catch (e) { throw new Error("Permissões inválidas (JSON malformado)."); }
+  }
+  const novo = normalizeRoleMatrix_(bruto);
+
+  // QUARTA REGRA — a única casa da matriz que um checkbox não abre sozinho.
+  //
+  // Marcar "aprova people" num papel que não gerencia acessos não daria erro
+  // nenhum em tempo de execução: a aprovação simplesmente seria recusada
+  // depois, e a matriz ficaria mentindo na tela. Recusar aqui é o que mantém
+  // "o que a matriz diz" e "o que acontece" sendo a mesma coisa.
+  Object.keys(CONTENT_APPROVAL_REQUIRES_GLOBAL).forEach(function (m) {
+    const exigida = CONTENT_APPROVAL_REQUIRES_GLOBAL[m];
+    if (novo.modules[m] && novo.modules[m].approve && !novo.global[exigida]) {
+      throw new Error(
+        "Aprovar o módulo '" + m + "' exige também a permissão '" + exigida + "': " +
+        "quem decide uma mudança de autorização precisa já controlar autorização."
+      );
+    }
+  });
+
+  const snap = contentPermsSnapshot_();
+  const antes = snap.roles[nome] || null;
+
+  // Desativar um papel que alguém ainda usa tiraria o acesso dessas pessoas
+  // sem que ninguém tenha decidido isso sobre elas.
+  if (!ativo) {
+    const usando = Object.keys(snap.access).filter(function (l) { return snap.access[l] === nome; });
+    if (usando.length) {
+      throw new Error(
+        "O papel " + nome + " ainda é de " + usando.length +
+        (usando.length === 1 ? " pessoa" : " pessoas") +
+        ". Mova essas pessoas para outro papel antes de desativá-lo."
+      );
+    }
+  }
+
+  assertGovernancaSobrevive_(null, { role: nome, perms: novo, active: ativo });
+
+  const escaladaNova = (ativo ? modulosComEscalada_(novo) : []).filter(function (m) {
+    return !antes || modulosComEscalada_(antes).indexOf(m) === -1;
+  });
+
+  const mudancas = diffDePermissoes_(antes, novo);
+
+  if (escaladaNova.length && o.confirmEscalation !== true) {
+    return {
+      status: 'confirm',
+      reason: 'escalation',
+      modules: escaladaNova,
+      changes: mudancas,
+      message: "Com isto, quem tem o papel " + nome + " passa a propor E aprovar a própria " +
+        "proposta em " + escaladaNova.join(', ') + " — publica sozinho, sem ninguém revisar."
+    };
+  }
+
+  if (nome === session.role && o.confirmSelf !== true) {
+    return {
+      status: 'confirm',
+      reason: 'self',
+      changes: mudancas,
+      message: "Este é o seu próprio papel. A alteração vale no ato, inclusive para você."
+    };
+  }
+
+  const sheet = getContentSheet_(SHEET_CONTENT_ROLES);
+  const existente = findContentRow_(SHEET_CONTENT_ROLES, 'Role', nome);
+  const linha = [
+    nome,
+    JSON.stringify({ modules: novo.modules, global: novo.global }),
+    ativo,
+    session.ldap,
+    contentNow_()
+  ];
+
+  if (existente) setContentRowBlock_(sheet, existente._row, 1, linha);
+  else sheet.appendRow(linha);
+
+  invalidateContentPermsCache_();
+
+  logContentEvent_(
+    session.ldap,
+    antes ? 'role_update' : 'role_create',
+    { label: nome },
+    (mudancas.length ? mudancas.join(' · ') : 'sem mudança de permissão') +
+    (ativo ? '' : ' · papel desativado')
+  );
+
+  return {
+    status: 'success',
+    role: nome,
+    changes: mudancas,
+    // A sessão de quem alterou o próprio papel está desatualizada a partir
+    // daqui. A tela recarrega.
+    reloadSession: nome === session.role
+  };
+}
+
+// =========================================================
 //  GERENCIAR ACESSOS (só ADMIN)
 // =========================================================
 
@@ -1706,13 +2300,13 @@ function saveContentAccess(ldap, role, active) {
   const targetRole = String(role || "").toUpperCase().trim();
 
   if (!targetLdap) throw new Error("Informe o LDAP da pessoa.");
-  if (!CONTENT_ROLES[targetRole]) throw new Error("Papel inválido: " + role);
+  if (!getContentPermsForRole_(targetRole)) throw new Error("Papel inválido: " + role);
 
-  // Trava de pé-na-porta: o ADMIN não pode remover a si mesmo e deixar a
-  // Central sem ninguém que consiga conceder acesso de volta.
-  if (targetLdap === session.ldap && active === false) {
-    throw new Error("Você não pode remover o próprio acesso de ADMIN.");
-  }
+  // Trava de pé-na-porta, agora generalizada (primeira invariante do ADR-0009):
+  // antes era "o ADMIN não remove a si mesmo", o que bloqueava a saída legítima
+  // de um entre dois admins e não cobria remover o OUTRO. A pergunta certa é se
+  // sobra alguém capaz de devolver o acesso.
+  assertGovernancaSobrevive_({ ldap: targetLdap, role: targetRole, active: active !== false }, null);
 
   const sheet = getContentSheet_(SHEET_CONTENT_ACCESS);
   const existing = findContentRow_(SHEET_CONTENT_ACCESS, 'LDAP', targetLdap);
@@ -1735,6 +2329,10 @@ function saveContentAccess(ldap, role, active) {
     { label: targetLdap },
     targetRole + (isActive ? ' ativo' : ' inativo')
   );
+
+  // Terceira invariante: revogação vale AGORA, não quando o TTL expirar.
+  invalidateContentPermsCache_();
+
   return { status: 'success' };
 }
 
@@ -1784,7 +2382,7 @@ function listContentActivity(limite) {
   const role = getContentRoleForLdap_(ldap);
   if (!role) throw new Error("Acesso negado: você não tem permissão na Central de Conteúdo.");
 
-  const perms = CONTENT_ROLES[role];
+  const perms = getContentPermsForRole_(role);
   const quantos = Math.min(
     Math.max(Number(limite) || CONTENT_ACTIVITY_DEFAULT, 1),
     CONTENT_ACTIVITY_MAX
@@ -1806,9 +2404,9 @@ function listContentActivity(limite) {
     const action = String(linha[3] || "").trim();
     const module = String(linha[4] || "").trim();
 
-    if (CONTENT_ACTIVITY_PRIVATE_ACTIONS.indexOf(action) !== -1 && !perms.manageAccess) continue;
-    if (module && CONTENT_RESTRICTED_READ_MODULES.indexOf(module) !== -1 &&
-      perms.propose.indexOf(module) === -1) continue;
+    if (CONTENT_ACTIVITY_PRIVATE_ACTIONS.indexOf(action) !== -1 &&
+      !podeGlobal_(perms, 'viewAudit')) continue;
+    if (module && !podeNoModulo_(perms, module, 'view')) continue;
 
     saida.push({
       id: String(linha[0] || ""),
@@ -1878,7 +2476,7 @@ function parseLegacyContentTarget_(action, label) {
  * novo depois de novas linhas antigas aparecerem traz só as que faltam.
  */
 function backfillContentLog(aplicar) {
-  assertContentRole_('manageAccess', null);
+  assertContentRole_('viewAudit', null);
 
   return withContentWriteLock_(function () {
     const origem = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_LOGS);
@@ -2016,7 +2614,12 @@ function seedContentModule(payloadJson) {
   const module = String(payload.module || "").trim();
 
   assertValidModule_(module);
-  assertContentRole_('propose', module);
+  // Semear escreve direto em Content_Items, então a permissão pedida é a do
+  // caminho de escrita do módulo — `publicar` na operação, `propor` no catálogo.
+  assertContentRole_(
+    CONTENT_DIRECT_PUBLISH_MODULES.indexOf(module) !== -1 ? 'publish' : 'propose',
+    module
+  );
 
   const existing = readContentRows_(SHEET_CONTENT_ITEMS).filter(function (r) {
     return String(r.Module).trim() === module && String(r.Status).trim() === CONTENT_STATUS.LIVE;

@@ -246,8 +246,12 @@ check('QA não aprova nada', () => {
   });
 });
 
-check('ADMIN não pode remover o próprio acesso', () => {
-  throws(() => api.saveContentAccess('lucaste', 'ADMIN', false), /não pode remover o próprio/);
+check('o último que governa a Central não consegue se remover', () => {
+  // Antes a regra era "o ADMIN não remove a si mesmo". Agora a pergunta é se
+  // SOBRA alguém capaz de devolver o acesso — a mesma trava, generalizada
+  // (primeira invariante do ADR-0009).
+  throws(() => api.saveContentAccess('lucaste', 'ADMIN', false),
+    /sem ninguém capaz de gerenciar papéis e acessos/);
 });
 
 console.log('\n--- Rascunho não vaza para produção ---');
@@ -970,15 +974,15 @@ check('WFM NÃO publica aviso geral', () => {
   as('wfm1', () => {
     throws(
       () => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast() }),
-      /não edita o módulo 'broadcast'/
+      /não publica no módulo 'broadcast'/
     );
   });
 });
 
 check('QA não publica aviso nem disponibilidade', () => {
   as('quality1', () => {
-    throws(() => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast() }), /não edita o módulo/);
-    throws(() => api.publishContentDirect({ module: 'bau_availability', label: 'X', value: bau({}) }), /não edita o módulo/);
+    throws(() => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast() }), /não publica no módulo/);
+    throws(() => api.publishContentDirect({ module: 'bau_availability', label: 'X', value: bau({}) }), /não publica no módulo/);
   });
 });
 
@@ -1678,6 +1682,286 @@ check('depois do backfill, a atividade recente segue sendo a recente', () => {
 
 check('só quem gerencia acesso roda o backfill', () => {
   as('quality1', () => throws(() => api.backfillContentLog(), /Acesso negado/));
+});
+
+console.log('\n--- RBAC editável: o dia 1 não muda nada ---');
+
+// Cópia profunda para montar variações sem contaminar o preset.
+const clonar = (o) => JSON.parse(JSON.stringify(o));
+
+// `const` no topo de um script do vm NÃO vira propriedade do objeto global —
+// só `function` e `var` viram. Por isso as constantes do módulo se leem
+// avaliando o nome dentro do contexto, e não por `api.NOME`.
+const constante = (nome) => vm.runInContext(nome, ctx);
+
+function presetDe(papel) {
+  return clonar(api.contentPresetMatrix_()[papel]);
+}
+
+// Devolve a matriz de um papel como ela está VALENDO agora (planilha ou preset).
+function matrizAtual(papel) {
+  return clonar(api.contentPermsSnapshot_().roles[papel]);
+}
+
+check('a aba Content_Roles nasce semeada com os quatro papéis de hoje', () => {
+  const aba = SS.getSheetByName('Content_Roles');
+  eq(aba._data[0], ['Role', 'Permissions', 'Active', 'Updated_By', 'Updated_At']);
+  eq(aba._data.slice(1).map(r => r[0]).sort(), ['ADMIN', 'QA', 'TL', 'WFM']);
+});
+
+check('o preset reproduz EXATAMENTE o que a constante antiga dizia', () => {
+  // Esta é a promessa do ADR-0009: no dia da migração ninguém percebe nada.
+  // Comparar contra a constante, e não contra um literal escrito à mão, é o que
+  // faz o teste continuar valendo se a constante mudar.
+  const antigos = constante('CONTENT_ROLES');
+  Object.keys(antigos).forEach((papel) => {
+    const antigo = antigos[papel];
+    const novo = api.contentPresetMatrix_()[papel];
+
+    eq(api.modulosEscrevivies_(novo), antigo.propose.slice(),
+      papel + ': módulos que escreve —');
+    eq(api.podeGlobal_(novo, 'manageAccess'), antigo.manageAccess, papel + ': gerencia acesso —');
+    eq(api.podeGlobal_(novo, 'selfApprove'), antigo.selfApprove, papel + ': aprova a si —');
+    eq(constante('CONTENT_MODULES').some((m) => api.podeAprovarModulo_(novo, m)), antigo.approve,
+      papel + ': aprova algo —');
+  });
+});
+
+check('propor e publicar direto viraram casas diferentes', () => {
+  const wfm = matrizAtual('WFM');
+  // WFM tem os dois módulos, mas por caminhos diferentes: links passa pela
+  // fila, disponibilidade vai ao ar na hora. A lista `propose` antiga não
+  // sabia dizer isso.
+  eq(api.podeNoModulo_(wfm, 'links', 'propose'), true);
+  eq(api.podeNoModulo_(wfm, 'links', 'publish'), false, 'não existe publicar direto no catálogo:');
+  eq(api.podeNoModulo_(wfm, 'bau_availability', 'publish'), true);
+  eq(api.podeNoModulo_(wfm, 'bau_availability', 'propose'), false, 'não existe fila na operação:');
+});
+
+check('ver virou coluna: QA enxerga links, não enxerga people', () => {
+  const qa = matrizAtual('QA');
+  eq(api.podeNoModulo_(qa, 'links', 'view'), true);
+  eq(api.podeNoModulo_(qa, 'people', 'view'), false);
+});
+
+console.log('\n--- RBAC editável: mudar sem deploy ---');
+
+check('só quem gerencia papéis lê a matriz', () => {
+  as('quality1', () => throws(() => api.listContentRoles(), /Acesso negado/));
+  const r = api.listContentRoles();
+  eq(r.roles.map(x => x.role), ['ADMIN', 'QA', 'TL', 'WFM']);
+  eq(r.fallback, false, 'está lendo da planilha, não do preset:');
+});
+
+check('dar links ao QA passa a valer na hora, sem deploy', () => {
+  as('quality1', () => throws(
+    () => api.saveContentDraft({ module: 'links', key: 'tech', label: 'X', value: '{}' }),
+    /não edita o módulo/));
+
+  const qa = presetDe('QA');
+  qa.modules.links.propose = true;
+  eq(api.saveContentRole('QA', qa, {}).status, 'success');
+
+  // Terceira invariante: vale AGORA. Sem invalidar o cache, este mesmo teste
+  // passaria só depois de cinco minutos.
+  as('quality1', () => {
+    const d = api.saveContentDraft({
+      module: 'links', key: 'tech', lang: 'ALL', label: 'Link do QA',
+      value: JSON.stringify({ name: 'QA', url: 'https://go/qa', desc: 'x' })
+    });
+    eq(!!d.draftId, true);
+  });
+});
+
+check('e tirar também vale na hora', () => {
+  const qa = presetDe('QA');
+  eq(api.saveContentRole('QA', qa, {}).status, 'success');
+  as('quality1', () => throws(
+    () => api.saveContentDraft({ module: 'links', key: 'tech', label: 'X', value: '{}' }),
+    /não edita o módulo/));
+});
+
+check('um papel novo que publica disponibilidade e nada mais', () => {
+  // É o exemplo que o ADR-0009 dá para justificar separar propor de publicar.
+  const so = api.normalizeRoleMatrix_({ modules: {}, global: {} });
+  so.modules.bau_availability.publish = true;
+  so.modules.bau_availability.view = true;
+
+  eq(api.saveContentRole('PLANNER', so, {}).status, 'success');
+  api.saveContentAccess('plan1', 'PLANNER', true);
+
+  as('plan1', () => {
+    const s = api.getContentSession();
+    eq(s.proposableModules, ['bau_availability']);
+    eq(s.canApprove, false);
+    // Não enxerga nem os links, porque `ver` é casa própria e ninguém marcou.
+    throws(() => api.listContentItems('links'), /não tem acesso ao módulo/);
+    const r = api.publishContentDirect({
+      module: 'bau_availability', label: 'Disponibilidade',
+      value: JSON.stringify({ segments: { PT: { attention: '2026-10-01' }, ES: {} } })
+    });
+    eq(r.status, 'success');
+  });
+});
+
+console.log('\n--- RBAC editável: as invariantes ---');
+
+check('1. não dá para deixar a Central sem quem governe (pelo papel)', () => {
+  const admin = presetDe('ADMIN');
+  admin.global.manageRoles = false;
+  throws(() => api.saveContentRole('ADMIN', admin, { confirmSelf: true }),
+    /sem ninguém capaz de gerenciar papéis e acessos/);
+});
+
+check('1. nem pelo acesso — e a checagem é sobre quem SOBRA', () => {
+  throws(() => api.saveContentAccess('lucaste', 'ADMIN', false),
+    /sem ninguém capaz de gerenciar papéis e acessos/);
+
+  // Com um segundo governante, sair passa a ser permitido: a trava é sobre
+  // ficar sem ninguém, não sobre a pessoa.
+  api.saveContentAccess('admin2', 'ADMIN', true);
+  eq(api.saveContentAccess('lucaste', 'ADMIN', false).status, 'success');
+
+  as('admin2', () => { eq(api.saveContentAccess('lucaste', 'ADMIN', true).status, 'success'); });
+});
+
+check('2. escalação nova exige declaração — e não escreve enquanto não vier', () => {
+  const tl = presetDe('TL');
+  tl.global.selfApprove = true;
+
+  const r = api.saveContentRole('TL', tl, {});
+  eq(r.status, 'confirm');
+  eq(r.reason, 'escalation');
+  eq(r.modules.indexOf('links') !== -1, true, 'nomeia os módulos afetados:');
+  // O importante: nada foi gravado.
+  eq(api.podeGlobal_(matrizAtual('TL'), 'selfApprove'), false, 'nada foi gravado:');
+
+  const ok = api.saveContentRole('TL', tl, { confirmEscalation: true });
+  eq(ok.status, 'success');
+  eq(api.podeGlobal_(matrizAtual('TL'), 'selfApprove'), true);
+
+  api.saveContentRole('TL', presetDe('TL'), {});
+});
+
+check('2. o que já era escalada não pede declaração de novo', () => {
+  // O ADMIN já publica sozinho por desenho. Pedir confirmação a cada ajuste
+  // de outra coisa transformaria o aviso em ruído — e aviso que vira ruído
+  // deixa de ser lido justamente quando importa.
+  const admin = presetDe('ADMIN');
+  admin.global.viewAudit = false;
+  const r = api.saveContentRole('ADMIN', admin, { confirmSelf: true });
+  eq(r.status, 'success');
+  api.saveContentRole('ADMIN', presetDe('ADMIN'), { confirmSelf: true });
+});
+
+check('3. revogação é imediata, não por TTL', () => {
+  api.saveContentAccess('temp1', 'TL', true);
+  as('temp1', () => eq(api.getContentSession().hasAccess, true));
+
+  api.saveContentAccess('temp1', 'TL', false);
+  as('temp1', () => eq(api.getContentSession().hasAccess, false, 'ainda tinha acesso:'));
+});
+
+check('4. aprovar people exige gerenciar acessos, e isso é recusado ao salvar', () => {
+  const tl = presetDe('TL');
+  tl.modules.people.approve = true;
+  throws(() => api.saveContentRole('TL', tl, {}),
+    /exige também a permissão 'manageAccess'/);
+});
+
+console.log('\n--- RBAC editável: bordas ---');
+
+check('editar o próprio papel pede confirmação à parte', () => {
+  const admin = presetDe('ADMIN');
+  admin.global.viewAudit = false;
+
+  const r = api.saveContentRole('ADMIN', admin, {});
+  eq(r.status, 'confirm');
+  eq(r.reason, 'self');
+  eq(api.podeGlobal_(matrizAtual('ADMIN'), 'viewAudit'), true, 'nada foi gravado:');
+
+  const ok = api.saveContentRole('ADMIN', admin, { confirmSelf: true });
+  eq(ok.reloadSession, true, 'a tela precisa recarregar a sessão:');
+  api.saveContentRole('ADMIN', presetDe('ADMIN'), { confirmSelf: true });
+});
+
+check('papel em uso não pode ser desativado', () => {
+  throws(() => api.saveContentRole('PLANNER', matrizAtual('PLANNER'), { active: false }),
+    /ainda é de 1 pessoa/);
+});
+
+check('nome de papel inválido é recusado', () => {
+  throws(() => api.saveContentRole('mi nusculo', presetDe('QA'), {}), /Nome de papel inválido/);
+  throws(() => api.saveContentRole('X', presetDe('QA'), {}), /Nome de papel inválido/);
+});
+
+check('permissão desconhecida não entra pela porta dos fundos', () => {
+  const inventada = api.normalizeRoleMatrix_({
+    modules: { links: { view: true, propose: true, voar: true }, naoexiste: { view: true } },
+    global: { manageAccess: false, virarDeus: true }
+  });
+  eq(inventada.modules.links.voar, undefined, 'ação inventada não vira casa:');
+  eq(inventada.modules.naoexiste, undefined, 'módulo inventado não vira linha:');
+  eq(inventada.global.virarDeus, undefined, 'permissão global inventada não entra:');
+});
+
+check('aprovar não existe em módulo que publica direto, nem marcado à mão', () => {
+  const m = api.normalizeRoleMatrix_({
+    modules: { broadcast: { view: true, publish: true, approve: true } }, global: {}
+  });
+  eq(m.modules.broadcast.approve, false, 'não existe aprovar um aviso:');
+});
+
+check('a alteração de papel vai para a auditoria com o que MUDOU', () => {
+  const qa = presetDe('QA');
+  qa.modules.tips.propose = true;
+  api.saveContentRole('QA', qa, {});
+
+  const linha = logDaCentral().filter(l => l.Action === 'role_update').pop();
+  eq(linha.Label, 'QA');
+  eq(/tips\.propose: não → sim/.test(String(linha.Detail)), true,
+    'o log precisa dizer o que mudou, não o estado final: ' + linha.Detail);
+
+  api.saveContentRole('QA', presetDe('QA'), {});
+});
+
+check('planilha ilegível cai no preset em vez de trancar todo mundo', () => {
+  const aba = SS.getSheetByName('Content_Roles');
+  const guardado = aba._data.map(r => r.slice());
+
+  // JSON quebrado em TODAS as linhas: nenhum papel utilizável sobra.
+  for (let i = 1; i < aba._data.length; i++) aba._data[i][1] = '{quebrado';
+  api.invalidateContentPermsCache_();
+
+  const snap = api.contentPermsSnapshot_();
+  eq(snap.fallback, true, 'deveria estar no preset:');
+  eq(api.getContentSession().role, 'ADMIN', 'e o ADMIN continua entrando:');
+
+  aba._data.length = 0;
+  guardado.forEach(r => aba._data.push(r));
+  api.invalidateContentPermsCache_();
+  eq(api.contentPermsSnapshot_().fallback, false);
+});
+
+check('uma linha quebrada não derruba os outros papéis', () => {
+  const aba = SS.getSheetByName('Content_Roles');
+  const alvo = aba._data.findIndex(r => r[0] === 'QA');
+  const guardado = aba._data[alvo][1];
+
+  aba._data[alvo][1] = '{quebrado';
+  api.invalidateContentPermsCache_();
+
+  const snap = api.contentPermsSnapshot_();
+  eq(snap.fallback, false, 'não é caso de fallback geral:');
+  eq(!!snap.roles.ADMIN, true, 'ADMIN sobreviveu:');
+  eq(!!snap.roles.QA, false, 'e o papel quebrado simplesmente não existe:');
+
+  // Quem tinha o papel quebrado perde o acesso, em vez de herdar um papel
+  // qualquer — desconhecido é sem privilégio, como no resto do produto.
+  as('quality1', () => eq(api.getContentSession().hasAccess, false));
+
+  aba._data[alvo][1] = guardado;
+  api.invalidateContentPermsCache_();
 });
 
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);

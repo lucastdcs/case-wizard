@@ -63,11 +63,20 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
          foto, filtrada **no servidor** pelo papel de quem pergunta.
       **Fora da fase:** o job de arquivamento dos 24 meses (ADR-0008), que
       pertence à rotação do `Backup.js`.
-- [ ] **Fase 4 — RBAC editável** (ADR-0009). Aba `Content_Roles`, matriz módulo
-      × ação, permissões globais à parte, papéis atuais como presets para o dia 1
-      não mudar nada. As três invariantes (anti-lockout, escalação declarada,
-      revogação imediata) nascem como teste no servidor, não como validação de
-      tela.
+- [~] **Fase 4 — RBAC editável** (ADR-0009) — **servidor entregue**, tela
+      pendente.
+      **Entregue:** aba `Content_Roles`, matriz módulo × ação, permissões globais
+      à parte, papéis atuais como preset (com teste comparando preset contra a
+      constante antiga — é a prova de que o dia 1 não muda nada), cache de
+      permissão com invalidação imediata, `listContentRoles`/`saveContentRole`, e
+      as invariantes como teste no servidor. Viraram **quatro**: a de aprovar
+      autorização entrou porque "só o ADMIN" deixou de ser uma regra defensável
+      quando o nome do papel virou editável — ver a correção de rota no ADR-0009.
+      **Falta:** a aba "Papéis" na tela — a matriz de checkboxes, o diálogo de
+      confirmação mostrando o que MUDA (não o estado final), o aviso de escalação
+      e o recarregamento da sessão ao editar o próprio papel. O `<select>` de
+      papel da aba Acessos também segue com os quatro papéis fixos no HTML e
+      precisa passar a ler `listContentRoles()`.
 - [ ] **Fase 5 — diferenciais e auditoria.** Prévia "como o agente vê"; busca
       global Ctrl+K; agendamento e validade de aviso; "ver como" por papel e
       segmento; cobrança diária de pendência parada — esta lendo `CW_DEPLOYMENTS`
