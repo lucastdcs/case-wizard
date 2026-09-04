@@ -32,6 +32,7 @@
 
     <div class="ambient-glow"></div>
 
+
     <nav class="topnav">
         <div class="brand-main">
             <span class="material-symbols-rounded">tune</span>
@@ -40,6 +41,10 @@
         <div class="topnav-fim">
             <!-- Nasce escondido: antes de saber quem é a pessoa não há
                  atividade que ela possa ver. -->
+            <button class="topnav-acao hidden" id="btn-ver-como" onclick="abrirVerComo()">
+                <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
+                <span class="topnav-acao-label">Ver como</span>
+            </button>
             <button class="topnav-acao hidden" id="btn-lateral" onclick="alternarLateral()"
                 aria-expanded="true" aria-controls="lateral">
                 <span class="material-symbols-rounded" aria-hidden="true">history</span>
@@ -51,6 +56,12 @@
             </div>
         </div>
     </nav>
+
+    <!-- Faixa da prévia. Logo abaixo do header e fora da área de conteúdo, de
+         propósito: enquanto ela estiver na tela, NADA do que se vê abaixo é a
+         sua própria visão. Vir DEPOIS do header também é o que a mantém
+         clicável — o header é sticky com z-index maior. -->
+    <div class="faixa-previa hidden" id="faixa-previa" role="status" aria-live="polite"></div>
 
     <div class="shell sem-trilho" id="shell">
         <!-- O trilho só aparece depois de sabermos quem é a pessoa: antes disso
@@ -446,7 +457,7 @@
                     Quem entra aqui passa a ver e propor conteúdo, conforme o papel.
                     O que cada papel pode fazer se edita na aba <strong>Papéis</strong>.
                 </div>
-                <div class="card">
+                <div class="card" id="acc-editor">
                     <div class="card-title">Conceder ou alterar acesso</div>
                     <div class="grid-2">
                         <div>

@@ -697,8 +697,13 @@ function getContentSession() {
     return { ldap: ldap, role: null, hasAccess: false };
   }
 
-  const perms = getContentPermsForRole_(role);
+  return sessionParaPapel_(ldap, role, getContentPermsForRole_(role));
+}
 
+// O formato que a tela consome. Extraído porque a prévia "ver como" devolve
+// exatamente a mesma coisa — se as duas divergirem, a prévia deixa de ser
+// prévia.
+function sessionParaPapel_(ldap, role, perms) {
   return {
     ldap: ldap,
     role: role,
@@ -721,6 +726,58 @@ function getContentSession() {
     modules: CONTENT_MODULES,
     langs: CONTENT_LANGS
   };
+}
+
+/**
+ * "Ver como": o que a Central mostraria para quem tem o papel `role`.
+ *
+ * NUNCA devolve mais poder do que quem pergunta já tem — a matriz do papel é
+ * INTERSECTADA com a de quem chama. Prévia que concede é escalada com outro
+ * nome: o servidor continua julgando pela identidade real, então uma tela
+ * otimista ou ofereceria botões que falham, ou — pior — botões que funcionam
+ * enquanto a pessoa acredita estar "só olhando".
+ *
+ * O que ficou de fora vem em `beyond`, para a tela poder dizer o que ela NÃO
+ * está mostrando. Prévia silenciosamente incompleta é pior que prévia nenhuma:
+ * a pessoa conclui que o papel não pode algo que ele pode.
+ */
+function previewContentSession(role) {
+  const session = assertContentRole_('manageRoles', null);
+  const nome = String(role || "").toUpperCase().trim();
+  const alvo = getContentPermsForRole_(nome);
+  if (!alvo) throw new Error("Papel desconhecido: " + role);
+
+  const meu = session.perms;
+  const modules = {};
+  const alem = [];
+
+  CONTENT_MODULES.forEach(function (m) {
+    modules[m] = {};
+    contentActionsForModule_(m).forEach(function (acao) {
+      const noAlvo = podeNoModulo_(alvo, m, acao);
+      const emMim = podeNoModulo_(meu, m, acao);
+      modules[m][acao] = noAlvo && emMim;
+      if (noAlvo && !emMim) alem.push(m + '.' + acao);
+    });
+  });
+
+  const global = {};
+  CONTENT_GLOBAL_PERMS.forEach(function (g) {
+    const noAlvo = podeGlobal_(alvo, g);
+    const emMim = podeGlobal_(meu, g);
+    global[g] = noAlvo && emMim;
+    if (noAlvo && !emMim) alem.push(g);
+  });
+
+  const previa = sessionParaPapel_(session.ldap, nome, normalizeRoleMatrix_({
+    modules: modules, global: global
+  }));
+
+  previa.preview = true;
+  previa.realRole = session.role;
+  previa.beyond = alem;
+
+  return previa;
 }
 
 // Porta única de todas as ações de escrita. Devolve { ldap, role, perms } pra

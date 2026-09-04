@@ -70,7 +70,7 @@
 
             summary.textContent = ordered.length + (ordered.length === 1 ? ' aviso publicado' : ' avisos publicados');
 
-            var podeEditar = canPropose('broadcast');
+            var podeEditar = podeEscrever('broadcast');
 
             host.innerHTML = ordered.map(function (it) {
                 var p = bcParse(it);

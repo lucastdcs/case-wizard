@@ -290,7 +290,7 @@
 
             // Reverter republica sem passar pela fila: é a mesma natureza da
             // publicação direta, e quem pode fazer é quem aprova.
-            var podeReverter = !!(SESSION && SESSION.canApprove);
+            var podeReverter = !MODO_PREVIA && !!(SESSION && SESSION.canApprove);
 
             host.innerHTML = versoes.map(function (v) {
                 var noAr = v.status === 'live';
@@ -572,11 +572,175 @@
             if (!document.getElementById('pane-emails').classList.contains('hidden')) renderEmails();
         }
 
+        // --- Ver como ---
+        //
+        // Quem edita a matriz de papéis precisa poder CONFERIR o que configurou.
+        // Ler uma linha de checkboxes e imaginar a tela resultante é exatamente
+        // o tipo de tradução em que se erra sem perceber — e o erro só aparece
+        // quando alguém reclama que não consegue trabalhar.
+        //
+        // A prévia é do SERVIDOR e nunca concede: `previewContentSession()`
+        // intersecta o papel escolhido com o de quem pergunta. Prévia que
+        // concede é escalada com outro nome.
+        var SESSION_REAL = null;
+        var MODO_PREVIA = false;
+
+        // Em prévia a tela fica de leitura. Quem está "vendo como" não está
+        // decidindo — e um clique que publica no meio de uma conferência é a
+        // pior surpresa possível.
+        function podeEscrever(module) {
+            return !MODO_PREVIA && canPropose(module);
+        }
+
+        function aplicarPermissoes(s) {
+            document.getElementById('user-ldap').textContent = s.ldap || '';
+
+            var badge = document.getElementById('user-role');
+            badge.textContent = s.role;
+            badge.classList.remove('hidden');
+
+            document.getElementById('tab-access').classList.toggle('hidden', !s.canManageAccess);
+            // A aba de papéis some na prévia: editar permissão enquanto se
+            // finge ser outra pessoa é como se perde a noção de quem fez o quê.
+            document.getElementById('tab-roles').classList.toggle('hidden',
+                !s.canManageRoles || MODO_PREVIA);
+            // Pessoas nem aparece para QA/WFM: no servidor, a leitura do
+            // diretório é tão restrita quanto a escrita.
+            document.getElementById('tab-people').classList.toggle('hidden', !canPropose('people'));
+
+            // A caixa de aviso de alguns módulos nasce escondida: o regime agora
+            // é dito pelo trilho, e prosa repetida é ruído. A exceção é
+            // justamente esta — "você não pode editar isto" é informação que só
+            // existe aqui, então tem que aparecer.
+            function explicarSemPermissao(idNota, texto, escondido) {
+                var nota = document.getElementById(idNota);
+                if (escondido) { nota.classList.add('hidden'); return; }
+                nota.textContent = texto;
+                nota.classList.remove('hidden');
+            }
+
+            function gate(module, idBotao, idNota, texto) {
+                if (idBotao) {
+                    document.getElementById(idBotao).classList.toggle('hidden', !podeEscrever(module));
+                }
+                explicarSemPermissao(idNota,
+                    'Seu papel (' + s.role + ') ' + texto, canPropose(module));
+            }
+
+            gate('links', 'links-new-btn', 'links-note',
+                'vê os links, mas não propõe alterações neste módulo.');
+            gate('call_script', 'cs-new-btn', 'cs-note',
+                'vê o roteiro, mas não propõe alterações neste módulo.');
+            gate('tips', 'tp-new-btn', 'tp-note',
+                'vê as dicas, mas não propõe alterações neste módulo.');
+            gate('email_template', null, 'em-note',
+                'vê os modelos, mas não propõe alterações neste módulo.');
+            gate('note_template', 'nt-new-btn', 'nt-note',
+                'vê os modelos de nota, mas não propõe alterações neste módulo.');
+            // Avisos e disponibilidade seguem a mesma regra do resto da tela:
+            // quem tem acesso enxerga o que está no ar, e só quem tem o papel vê
+            // o caminho de publicar. É o WFM que separa os dois na prática —
+            // publica disponibilidade, não avisos.
+            gate('broadcast', 'bc-new-btn', 'bc-note',
+                'vê os avisos no ar, mas não publica neste módulo.');
+            gate('bau_availability', null, 'bau-note',
+                'vê a disponibilidade no ar, mas não publica neste módulo.');
+            document.getElementById('bau-editor').classList
+                .toggle('hidden', !podeEscrever('bau_availability'));
+        }
+
+        function abrirVerComo() {
+            google.script.run
+                .withSuccessHandler(function (r) { renderVerComo(r.roles || []); })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .listContentRoles();
+        }
+
+        function renderVerComo(papeis) {
+            var opcoes = papeis.map(function (p) {
+                return '<option value="' + esc(p.role) + '">' + esc(p.role) + '</option>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:440px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="vc-titulo">' +
+                '<h2 id="vc-titulo">Ver a Central como</h2>' +
+                '<p class="card-sub">A tela passa a mostrar o que esse papel mostraria. ' +
+                'Fica só de leitura — conferir não é decidir.</p>' +
+                '<label class="fld" for="vc-papel">Papel</label>' +
+                '<select id="vc-papel">' + opcoes + '</select>' +
+                '<label class="fld" for="vc-idioma">Idioma do conteúdo</label>' +
+                '<select id="vc-idioma">' +
+                '<option value="PT">Português</option><option value="ES">Español</option>' +
+                '</select>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="vc-go">Ver assim</button>' +
+                '</div></div></div>';
+
+            document.getElementById('vc-idioma').value = idiomaAtual();
+            document.getElementById('vc-go').onclick = function () {
+                var papel = document.getElementById('vc-papel').value;
+                var idioma = document.getElementById('vc-idioma').value;
+                closeModal();
+                entrarNaPrevia(papel, idioma);
+            };
+        }
+
+        function entrarNaPrevia(papel, idioma) {
+            google.script.run
+                .withSuccessHandler(function (s) {
+                    SESSION = s;
+                    MODO_PREVIA = true;
+                    document.getElementById('lang-global').value = idioma;
+                    aplicarPermissoes(s);
+                    renderFaixaDePrevia(s);
+                    switchTab(DESTINOS[destinoDaURL()] ? destinoDaURL() : 'home');
+                    refreshContentLists();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .previewContentSession(papel);
+        }
+
+        function sairDaPrevia() {
+            SESSION = SESSION_REAL;
+            MODO_PREVIA = false;
+            aplicarPermissoes(SESSION);
+            renderFaixaDePrevia(null);
+            switchTab(destinoDaURL());
+            refreshContentLists();
+        }
+
+        function renderFaixaDePrevia(s) {
+            var faixa = document.getElementById('faixa-previa');
+            faixa.classList.toggle('hidden', !s);
+            document.body.classList.toggle('em-previa', !!s);
+            if (!s) return;
+
+            // O que o papel pode e você não fica DITO. Uma prévia calada sobre o
+            // que omitiu faz concluir que o papel não pode algo que ele pode.
+            var alem = (s.beyond || []).length
+                ? ' <span class="faixa-nota">' + s.beyond.length +
+                  (s.beyond.length === 1 ? ' permissão desse papel não aparece' :
+                                           ' permissões desse papel não aparecem') +
+                  ' porque você mesmo não a tem.</span>'
+                : '';
+
+            faixa.innerHTML =
+                '<span class="material-symbols-rounded" aria-hidden="true">visibility</span>' +
+                '<span>Vendo a Central como <strong>' + esc(s.role) + '</strong>. ' +
+                'Somente leitura.' + alem + '</span>' +
+                '<button class="btn btn-ghost btn-sm" onclick="sairDaPrevia()">Voltar a ser ' +
+                esc(s.realRole) + '</button>';
+        }
+
         // --- Boot ---
         function boot() {
             google.script.run
                 .withSuccessHandler(function (s) {
                     SESSION = s;
+                    SESSION_REAL = s;
                     document.getElementById('boot-state').classList.add('hidden');
                     document.getElementById('user-ldap').textContent = s.ldap || '';
 
@@ -585,66 +749,11 @@
                         return;
                     }
 
-                    var badge = document.getElementById('user-role');
-                    badge.textContent = s.role;
-                    badge.classList.remove('hidden');
-
                     document.getElementById('app').classList.remove('hidden');
-                    if (s.canManageAccess) document.getElementById('tab-access').classList.remove('hidden');
-                    if (s.canManageRoles) document.getElementById('tab-roles').classList.remove('hidden');
-                    // Pessoas nem aparece para QA/WFM: no servidor, a leitura do
-                    // diretório é tão restrita quanto a escrita.
-                    if (canPropose('people')) {
-                        document.getElementById('tab-people').classList.remove('hidden');
-                    }
+                    aplicarPermissoes(s);
 
-                    // A caixa de aviso de alguns módulos nasce escondida: o
-                    // regime agora é dito pelo trilho, e prosa repetida é ruído.
-                    // A exceção é justamente esta — "você não pode editar isto"
-                    // é informação que só existe aqui, então tem que aparecer.
-                    function explicarSemPermissao(idNota, texto) {
-                        var nota = document.getElementById(idNota);
-                        nota.textContent = texto;
-                        nota.classList.remove('hidden');
-                    }
-
-                    if (!canPropose('links')) {
-                        document.getElementById('links-new-btn').classList.add('hidden');
-                        explicarSemPermissao('links-note',
-                            'Seu papel (' + s.role + ') vê os links, mas não propõe alterações neste módulo.');
-                    }
-                    if (!canPropose('call_script')) {
-                        document.getElementById('cs-new-btn').classList.add('hidden');
-                        explicarSemPermissao('cs-note',
-                            'Seu papel (' + s.role + ') vê o roteiro, mas não propõe alterações neste módulo.');
-                    }
-                    if (!canPropose('tips')) {
-                        document.getElementById('tp-new-btn').classList.add('hidden');
-                        explicarSemPermissao('tp-note',
-                            'Seu papel (' + s.role + ') vê as dicas, mas não propõe alterações neste módulo.');
-                    }
-                    if (!canPropose('email_template')) {
-                        explicarSemPermissao('em-note',
-                            'Seu papel (' + s.role + ') vê os modelos, mas não propõe alterações neste módulo.');
-                    }
-                    if (!canPropose('note_template')) {
-                        document.getElementById('nt-new-btn').classList.add('hidden');
-                        explicarSemPermissao('nt-note',
-                            'Seu papel (' + s.role + ') vê os modelos de nota, mas não propõe alterações neste módulo.');
-                    }
-                    // Avisos e disponibilidade seguem a mesma regra do resto da
-                    // tela: quem tem acesso enxerga o que está no ar, e só quem
-                    // tem o papel vê o caminho de publicar. É o WFM que separa
-                    // os dois na prática — publica disponibilidade, não avisos.
-                    if (!canPropose('broadcast')) {
-                        document.getElementById('bc-new-btn').classList.add('hidden');
-                        explicarSemPermissao('bc-note',
-                            'Seu papel (' + s.role + ') vê os avisos no ar, mas não publica neste módulo.');
-                    }
-                    if (!canPropose('bau_availability')) {
-                        document.getElementById('bau-editor').classList.add('hidden');
-                        explicarSemPermissao('bau-note',
-                            'Seu papel (' + s.role + ') vê a disponibilidade no ar, mas não publica neste módulo.');
+                    if (s.canManageRoles) {
+                        document.getElementById('btn-ver-como').classList.remove('hidden');
                     }
 
                     document.getElementById('rail').classList.remove('hidden');
