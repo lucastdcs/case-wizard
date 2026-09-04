@@ -319,6 +319,7 @@
 
         .badge-create { background: var(--gemini-blue-light); color: var(--gemini-blue); border: 1px solid rgba(26, 115, 232, 0.2); }
         .badge-discard { background: var(--danger-light); color: var(--danger); border: 1px solid rgba(217, 48, 37, 0.2); }
+        .badge-warn { background: var(--warning-light); color: var(--warning-text); border: 1px solid rgba(249, 171, 0, 0.3); }
 
         .action-group { display: flex; gap: 12px; justify-content: flex-end; position: relative; z-index: 2; }
 
@@ -913,6 +914,8 @@
                 rowAdvertiser: "Anunciante",
                 rowTask: "Task",
                 rowAdvEmail: "Email do Anunciante",
+                rowSuggestDiscard: "Sugestão do Agente",
+                suggestDiscardBadge: "Agente sugere descarte",
                 rowLanguage: "Idioma",
                 rowAm: "AM Responsável",
                 rowSalesProgram: "Programa de Vendas",
@@ -995,6 +998,8 @@
                 rowAdvertiser: "Anunciante",
                 rowTask: "Task",
                 rowAdvEmail: "Email del Anunciante",
+                rowSuggestDiscard: "Sugerencia del Agente",
+                suggestDiscardBadge: "Agente sugiere descarte",
                 rowLanguage: "Idioma",
                 rowAm: "AM Responsable",
                 rowSalesProgram: "Programa de Ventas",
@@ -1547,6 +1552,11 @@
                             <span class="material-symbols-rounded" style="font-size: 14px;">${isDiscardFlow ? 'delete' : 'add_circle'}</span>
                             ${isDiscardFlow ? tt('flowDiscard') : tt('flowCreation')}
                         </div>
+                        ${c.suggestDiscard === 'Sim' ? `
+                        <div class="status-badge badge-warn">
+                            <span class="material-symbols-rounded" style="font-size: 14px;">flag</span>
+                            ${tt('suggestDiscardBadge')}
+                        </div>` : ''}
                         <div class="text-primary">${escapeHtml(c.advName)}</div>
                         <div class="text-secondary">CID: <span class="text-mono">${escapeHtml(c.cid)}</span></div>
                     </div>
@@ -1652,6 +1662,7 @@
             </div>
             ${createRow(tt('rowSite'), c.site)}
             ${createRow(tt('rowSchedule'), formatAvailability(c.availability))}
+            ${c.suggestDiscard === 'Sim' ? createRow(tt('rowSuggestDiscard'), tt('suggestDiscardBadge')) : ''}
             ${createRow(tt('rowAgent'), c.agentEmail)}
             ${createBlockRow(tt('rowWhatToDo'), c.reason)}
             ${createBlockRow(tt('rowJustification'), c.description)}

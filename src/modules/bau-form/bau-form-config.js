@@ -151,6 +151,17 @@ export const FORM_CONFIG = {
                         { name: 'availability_2', label: 'Opção 2 (Opcional)', required: false },
                         { name: 'availability_3', label: 'Opção 3 (Opcional)', required: false }
                     ]
+                },
+                {
+                    id: 'suggestDiscard',
+                    name: 'suggestDiscard',
+                    label: 'O caso deve ser descartado pelo TL?',
+                    type: 'select',
+                    required: false,
+                    options: [
+                        { value: "Não", text: "Não" },
+                        { value: "Sim", text: "Sim" }
+                    ]
                 }
             ]
         },

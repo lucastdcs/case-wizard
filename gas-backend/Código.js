@@ -652,6 +652,23 @@ function ensureBAUHistoryColumns(sheet) {
   if (missing) headerRange.setValues([BAU_HISTORY_HEADERS]);
 }
 
+// Coluna à parte (depois das 3 de auditoria) pra sinalização do agente
+// "esse caso deve ser descartado pelo TL?" - fica isolada da trilha de
+// auditoria (colunas 19-21) de propósito, pra não deslocar os índices que
+// updateBAUCaseStatus já grava em planilhas antigas em produção.
+const BAU_SUGGEST_DISCARD_HEADER = "Suggest_Discard";
+const BAU_SUGGEST_DISCARD_COL = 22;
+
+function ensureBAUSuggestDiscardColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_SUGGEST_DISCARD_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_SUGGEST_DISCARD_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_SUGGEST_DISCARD_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_SUGGEST_DISCARD_HEADER);
+}
+
 function findRowIndexById(sheet, id) {
   if (!sheet) return -1;
   const data = sheet.getDataRange().getValues();

@@ -43,7 +43,8 @@ function getPendingBAUCases() {
         reason: String(row[14] || ""),
         task: String(row[15] || ""),
         description: String(row[16] || ""),
-        availability: row[17] instanceof Date ? row[17].toISOString() : String(row[17] || "")
+        availability: row[17] instanceof Date ? row[17].toISOString() : String(row[17] || ""),
+        suggestDiscard: String(row[21] || "")
       });
     }
   }

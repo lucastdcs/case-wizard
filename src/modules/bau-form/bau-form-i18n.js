@@ -28,6 +28,7 @@ const FIELD_ES = {
     availability_1: { label: 'Opción 1 (Prioridad)' },
     availability_2: { label: 'Opción 2 (Opcional)' },
     availability_3: { label: 'Opción 3 (Opcional)' },
+    suggestDiscard: { label: '¿El caso debe ser descartado por el TL?' },
     caseId: { label: 'Case ID', placeholder: 'Case ID' },
     language: { label: 'Idioma', placeholder: 'Idioma' },
     description_descarte: { label: 'Descripción', placeholder: 'Describe el motivo del descarte...' },
@@ -51,6 +52,8 @@ const OPTION_TEXT_ES = {
     "Apenas o AM presente": "Solo el AM presente",
     "Estouro de tempo para conclusão": "Tiempo excedido para la conclusión",
     "Geração de caso BAU (Reagendamento)": "Generación de caso BAU (Reprogramación)",
+    "Sim": "Sí",
+    "Não": "No",
 };
 
 function fieldKey(fieldConfig) {

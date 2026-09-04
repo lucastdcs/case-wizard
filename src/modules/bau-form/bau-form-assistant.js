@@ -99,6 +99,7 @@ const BAU_DICT = {
         bauJustification: "Justificativa BAU",
         description: "Descrição",
         availabilityPriority: "Disponibilidade (Prioridade)",
+        suggestDiscardQuestion: "O caso deve ser descartado pelo TL?",
         editingCaseHash: (id) => `Você está editando o caso #${id}`,
         editingDiscardHash: (id) => `Você está editando o descarte do caso #${id}`,
         discardReason: "Motivo do Descarte",
@@ -193,6 +194,7 @@ const BAU_DICT = {
         bauJustification: "Justificación BAU",
         description: "Descripción",
         availabilityPriority: "Disponibilidad (Prioridad)",
+        suggestDiscardQuestion: "¿El caso debe ser descartado por el TL?",
         editingCaseHash: (id) => `Estás editando el caso #${id}`,
         editingDiscardHash: (id) => `Estás editando el descarte del caso #${id}`,
         discardReason: "Motivo del Descarte",
@@ -1332,6 +1334,13 @@ export function initBAUForm() {
                     <div class="bau-confirm-row full-width">
                         <span class="bau-confirm-label">${bt('availabilityPriority')}</span>
                         <input type="datetime-local" class="bau-confirm-value-input" data-field="availability_1" data-step="3" value="${data.availability_1 || ''}">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">${bt('suggestDiscardQuestion')}</span>
+                        <select class="bau-confirm-value-input" data-field="suggestDiscard" data-step="3">
+                            <option value="Não" ${data.suggestDiscard === 'Não' ? 'selected' : ''}>${bfOptionText('Não')}</option>
+                            <option value="Sim" ${data.suggestDiscard === 'Sim' ? 'selected' : ''}>${bfOptionText('Sim')}</option>
+                        </select>
                     </div>
                 </div>
             `;
