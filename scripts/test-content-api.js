@@ -2277,5 +2277,111 @@ check('quem não vê a auditoria também não exporta', () => {
   as('quality1', () => throws(() => api.exportContentAudit({}), /Acesso negado/));
 });
 
+console.log('\n--- Cobrança de pendência parada ---');
+
+// Envelhece um rascunho mexendo na coluna Proposed_At: o que se testa é a
+// regra de "parado há mais de N dias", não a passagem do tempo.
+function envelhecerProposta(draftId, dias) {
+  const aba = SS.getSheetByName('Content_Drafts');
+  const linha = aba._data.find((l) => String(l[0]) === draftId);
+  const d = new Date();
+  d.setDate(d.getDate() - dias);
+  linha[10] = d.toISOString();
+}
+
+check('proposta recente não vira cobrança', () => {
+  api.saveContentAccess('rev1', 'TL', true);
+  const d = as('rev1', () => api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica nova',
+    value: 'Confira o idioma antes de encerrar.'
+  }));
+
+  const r = api.listStaleContentApprovals();
+  eq(r.stale, 0, 'nada parado ainda:');
+  return d;
+});
+
+let draftParado;
+check('passados os dias, ela aparece — e para quem PODE resolvê-la', () => {
+  const d = as('rev1', () => api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica esquecida',
+    value: 'Confira o substatus antes de encerrar.'
+  }));
+  draftParado = d.draftId;
+  envelhecerProposta(draftParado, 5);
+
+  const r = api.listStaleContentApprovals();
+  eq(r.stale, 1);
+  const quem = r.recipients.map(x => x.ldap);
+  eq(quem.indexOf('lucaste') !== -1, true, 'o ADMIN aprova dicas:');
+  // O QA não revisa dicas. Mandar a fila inteira para todo mundo é como a
+  // cobrança vira ruído e passa a ser apagada sem ler.
+  eq(quem.indexOf('quality1'), -1, 'o QA não deveria ser cobrado:');
+});
+
+check('quem propôs não é cobrado pela própria proposta', () => {
+  // rev1 é TL: aprova dicas, mas não aprova a si mesmo. Um lembrete de algo
+  // que a pessoa não consegue resolver é só barulho.
+  const quem = api.listStaleContentApprovals().recipients.map(x => x.ldap);
+  eq(quem.indexOf('rev1'), -1, 'o autor não deveria ser cobrado:');
+});
+
+check('o disparo manda um e-mail por pessoa, com o link de PRODUÇÃO', () => {
+  const antes = SENT_MAIL.length;
+  const r = api.notifyStaleContentApprovals();
+
+  eq(r.status, 'ok');
+  eq(r.notified > 0, true, 'alguém precisa ser avisado:');
+
+  const enviados = SENT_MAIL.slice(antes);
+  eq(enviados.length, r.notified, 'um e-mail por pessoa:');
+  eq(/Dica esquecida/.test(enviados[0].htmlBody), true, 'o item precisa estar no corpo:');
+
+  // Num gatilho de tempo getUrl() pode devolver a URL de OUTRA implantação: o
+  // link tem que vir do mapa, e apontar para produção.
+  const producao = vm.runInContext('CW_DEPLOYMENTS.production', ctx);
+  eq(enviados[0].htmlBody.indexOf(producao) !== -1, true,
+    'o link deveria apontar para a implantação de produção');
+  eq(/page=content/.test(enviados[0].htmlBody), true);
+});
+
+check('o disparo vai para a auditoria', () => {
+  const linha = logDaCentral().filter(l => l.Action === 'stale_digest').pop();
+  eq(linha.Actor, 'system');
+  eq(/paradas/.test(String(linha.Detail)), true);
+});
+
+check('sem nada parado, o disparo não manda e-mail nenhum', () => {
+  api.approveContentDraft(draftParado, '');
+  const antes = SENT_MAIL.length;
+  const r = api.notifyStaleContentApprovals();
+  eq(r.notified, 0);
+  eq(SENT_MAIL.length, antes, 'nenhum e-mail:');
+});
+
+check('o gatilho nunca lança — falha vira log, não exceção', () => {
+  // Um gatilho que estoura some do radar do mesmo jeito que a pendência que
+  // ele existe para lembrar.
+  const original = sandbox.MailApp.sendEmail;
+  sandbox.MailApp.sendEmail = () => { throw new Error('quota estourada'); };
+
+  const d = as('rev1', () => api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Outra parada',
+    value: 'Confira o fluxo antes de encerrar.'
+  }));
+  envelhecerProposta(d.draftId, 5);
+
+  const r = api.notifyStaleContentApprovals();
+  sandbox.MailApp.sendEmail = original;
+
+  eq(r.status, 'error', 'devolve o erro em vez de estourar:');
+  const linha = logDaCentral().filter(l => l.Action === 'stale_digest_failed').pop();
+  eq(/quota estourada/.test(String(linha.Detail)), true, 'e o motivo fica registrado:');
+});
+
+check('quem não aprova nada não consulta a cobrança', () => {
+  as('quality1', () => throws(() => api.listStaleContentApprovals(), /Acesso negado/));
+});
+
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);
 process.exit(fail ? 1 : 0);

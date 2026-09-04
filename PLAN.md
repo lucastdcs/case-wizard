@@ -89,10 +89,9 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       paginação por número de linha e exportação para uma aba da planilha
       (arquivo não serve: download iniciado dentro do iframe do Apps Script é
       bloqueado com frequência e sem aviso).
-      **Falta:** prévia "como o agente vê"; busca global Ctrl+K;
-      cobrança diária de pendência parada — esta lendo
-      `CW_DEPLOYMENTS` e não a URL do serviço, porque em gatilho de tempo a
-      derivação não é confiável (ver `Código.js`). **PR final:** aba de
+      **Entregue também:** cobrança diária de pendência parada, lendo
+      `CW_DEPLOYMENTS` e não a URL do serviço.
+      **Falta:** prévia "como o agente vê" e busca global Ctrl+K. **PR final:** aba de
       auditoria restrita, com filtros, paginação e exportação.
 
 ## Ideas — to triage
@@ -103,6 +102,11 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
+- [ ] **Criar o gatilho diário de `notifyStaleContentApprovals()`** pelo editor
+      do Apps Script (o projeto não cria gatilho por código — mesma nota do
+      `Backup.js`). Antes de ligar, rode `listStaleContentApprovals()` e confira
+      quem seria cobrado e por quantos itens: é a leitura que existe justamente
+      para o primeiro disparo não surpreender ninguém.
 - [ ] **Rodar o `backfillContentLog()` na planilha de verdade.** Só quem tem
       `manageAccess` roda, e o passo 1 é `backfillContentLog()` **sem argumento**:
       ele apenas relata quantas linhas traria. Confira o número contra a aba

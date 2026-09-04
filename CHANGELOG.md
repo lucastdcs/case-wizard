@@ -9,6 +9,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Cobrança diária das propostas paradas** (fase 5). A fila avisava quem aprova
+  **uma vez**, no momento em que a proposta entrava. Quem não abriu o e-mail
+  naquele dia nunca mais soube: quem propôs achava que estava em análise, quem
+  aprova nunca viu, e o item ficava parado por semanas sem que o sistema tivesse
+  errado em nada. Agora um gatilho diário manda **um e-mail por aprovador, só
+  com o que ele pode resolver** — mandar a fila inteira para todo mundo é como a
+  cobrança vira ruído e passa a ser apagada sem ler —, e não cobra ninguém pela
+  própria proposta. O link vem do mapa de implantações e não de
+  `getUrl()`: num gatilho de tempo o serviço pode devolver a URL de outra
+  implantação, e a pessoa cairia no ambiente errado. O gatilho precisa ser
+  criado à mão uma vez, como o do `Backup.js`; `listStaleContentApprovals()`
+  mostra quem seria cobrado antes de ligá-lo.
 - **Aba de auditoria, restrita a quem tem `ver auditoria completa`** (fase 5).
   A barra lateral responde *"o que está acontecendo"*; esta responde *"o que
   aconteceu"* — com busca por texto, filtro de quem/ação/módulo, período e
