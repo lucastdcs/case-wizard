@@ -587,6 +587,26 @@
             color: var(--danger);
         }
 
+        /* O estado se diz em texto normal, com um ponto na cor semântica —
+           não em pílula maiúscula (specs/ui-ux/design-system.md). As pílulas
+           antigas seguem no resto da tela; superfície nova nasce certa. */
+        .estado {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12.5px;
+            font-weight: 400;
+            color: var(--text-secondary);
+        }
+
+        .estado::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
         /* --- Diff --- */
         .diff {
             display: grid;

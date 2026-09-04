@@ -9,6 +9,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Histórico e "voltar para esta versão" na Central** (fase 3). Cada item
+  publicado passou a oferecer o seu histórico: quais versões existiram, quem
+  publicou cada uma e quando. `listContentItemHistory` e `rollbackContentItem`
+  existiam no backend desde o começo e nunca tinham sido chamados pela tela —
+  enquanto isso o modal de remoção prometia que "a versão fica arquivada e pode
+  voltar", sem oferecer caminho para fazê-la voltar. Ver o histórico é leitura,
+  e aparece para quem enxerga o item; republicar uma versão anterior vai ao ar
+  sem passar pela fila, então exige o papel de quem aprova e o mesmo passo de
+  confirmação da publicação direta.
 - **Smoke da Central de Conteúdo** (`npm run smoke:content`). A maior tela do
   projeto era a única sem teste nenhum, e a reorganização da navegação
   (ADR-0007) toca todos os seus renderizadores de uma vez. O smoke carrega o
@@ -78,6 +87,15 @@ versions follow [Semantic Versioning](https://semver.org/).
   vão em bloco (`setValues`) em vez de uma chamada por coluna.
 
 ### Fixed
+- **Dois harnesses de teste ficaram para trás da fase 2 da Central.** As
+  escritas em bloco (`setValues`) quebraram `test:people` em 15 testes, porque
+  só o dublê de planilha do `test-content-api.js` tinha sido estendido; e a
+  divisão da tela em partes quebrou `smoke:people`, que lê o mesmo
+  `ContentDashboard.html` do disco e não resolvia os `include()`. A montagem da
+  tela virou um módulo compartilhado (`scripts/content-dashboard-html.mjs`) e
+  os dublês de planilha passaram todos a modelar
+  `getRange(l, c, nL, nC).setValues(...)`. Lição registrada em
+  `docs/LEARNINGS.md`.
 - **Duas aprovações simultâneas publicavam o mesmo item duas vezes.** Entre o
   `appendRow` da linha nova e a virada do status do rascunho havia uma janela em
   que a proposta ainda constava como pendente; uma segunda execução entrando ali

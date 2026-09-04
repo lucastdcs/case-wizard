@@ -22,25 +22,45 @@ const vm = require('node:vm');
 const SRC = path.join(__dirname, '..', 'gas-backend', 'Código.js');
 
 // ---- Stub de planilha ----
+// Mesma forma do range real dos outros harnesses: escrita em BLOCO por
+// getRange(linha, coluna, nLinhas, nColunas).setValues([[...]]). O código que
+// este arquivo exercita ainda não escreve assim; o dublê acompanha mesmo assim
+// para que a próxima escrita em lote não quebre aqui como quebrou em people.
 class FakeRange {
-  constructor(sheet, row, col) { this.sheet = sheet; this.row = row; this.col = col; }
+  constructor(sheet, row, col, numRows, numCols) {
+    this.sheet = sheet; this.row = row; this.col = col;
+    this.numRows = numRows; this.numCols = numCols;
+  }
   setValue(v) {
     while (this.sheet._data.length < this.row) this.sheet._data.push([]);
     this.sheet._data[this.row - 1][this.col - 1] = v;
+    return this;
+  }
+  setValues(rows) {
+    rows.forEach((r, i) => {
+      const alvo = this.row - 1 + i;
+      while (this.sheet._data.length <= alvo) this.sheet._data.push([]);
+      r.forEach((v, j) => { this.sheet._data[alvo][this.col - 1 + j] = v; });
+    });
     return this;
   }
   getValue() {
     const linha = this.sheet._data[this.row - 1] || [];
     return linha[this.col - 1];
   }
-  getValues() { return this.sheet._data.map((r) => r.slice()); }
+  getValues() {
+    if (this.col === 1 && !this.numCols) return this.sheet._data.map((r) => r.slice());
+    return this.sheet._data
+      .slice(this.row - 1, this.row - 1 + (this.numRows || 1))
+      .map((r) => r.slice(this.col - 1, this.col - 1 + (this.numCols || 1)));
+  }
 }
 
 class FakeSheet {
   constructor(name) { this.name = name; this._data = []; }
   appendRow(row) { this._data.push(row.slice()); }
   getDataRange() { return new FakeRange(this, 1, 1); }
-  getRange(row, col) { return new FakeRange(this, row, col); }
+  getRange(row, col, numRows, numCols) { return new FakeRange(this, row, col, numRows, numCols); }
   getLastRow() { return this._data.length; }
   deleteRow(i) { this._data.splice(i - 1, 1); }
 }
