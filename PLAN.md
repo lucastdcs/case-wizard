@@ -102,6 +102,28 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Recently done
 
+- [~] **TL Dashboard — três correções + 1 campo novo no formulário BAU:**
+      1. fluxo do histórico mostrava `Agente → TL` (invertido); agora `TL → Agente`;
+      2. "Tempo médio de aprovação" investigado e **não é bug** — só não há
+         aprovações na janela de 7 dias ainda (confirmado com o usuário: 0
+         aprovados, 2 descartados). Fica para reconfirmar depois de uma
+         aprovação real passar pelo fluxo;
+      3. email do anunciante chegava sempre vazio na planilha — o campo
+         `advEmail` nunca existia no `FORM_CONFIG` do formulário BAU (Passo 1),
+         então dependia 100% da raspagem silenciosa do DOM do CRM
+         (`captureClientEmail`), sem visibilidade nem correção manual quando
+         ela falhava. Campo adicionado, visível/editável/confirmável como
+         `advName`/`cid`/`website`;
+      4. nova pergunta opcional no fim do Passo 3 (depois da disponibilidade):
+         "O caso deve ser descartado pelo TL?" (Sim/Não). Não muda o roteamento
+         do caso (continua `PENDING_TL_CREATION`) — só sinaliza pro TL via selo
+         na fila e nos detalhes. Persistido em coluna nova (`Suggest_Discard`,
+         col. 22) isolada depois da trilha de auditoria, pra não deslocar
+         índices de planilhas já em produção.
+      **Falta o `clasp deploy` manual de produção** (`RELEASE.md`) — sem isso
+      os agentes continuam vendo o bundle antigo (sem o campo de email nem a
+      pergunta nova) e o TL Dashboard antigo (sem os selos/fluxo corrigido).
+      (2026-09-04)
 - [x] **Fila do TL Dashboard em FIFO** — `getPendingBAUCases` estava devolvendo
       `cases.reverse()` (mais novo primeiro), contrariando a regra de ordenação
       de `specs/workflow/bau-lifecycle.md`. Agora ordena pela data de envio,

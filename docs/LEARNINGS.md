@@ -12,6 +12,34 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Campo referenciado em todo lugar menos no `FORM_CONFIG`: procure pelo nome antes de assumir bug de transporte
+
+**Why**: o email do anunciante chegava sempre vazio no `BAU_form_data`. A
+suspeita óbvia era transporte (JSONP perdendo o campo) ou raspagem do CRM
+falhando sem fallback. Só que `advEmail` já aparecia em **quatro** lugares do
+`bau-form-assistant.js` — o `keyMap` do fluxo de edição, o card de detalhes, e
+duas linhas de fallback no submit (`if (data.advEmail) ... else if
+(context.email) ...`) — só que **nenhum deles era a declaração do campo**.
+O `FORM_CONFIG` (`bau-form-config.js`) nunca tinha um field com
+`id: 'advEmail'`. Sem input visível, o valor dependia 100% da raspagem
+silenciosa do DOM (`captureClientEmail`), sem chance de o agente ver ou
+corrigir quando ela falhava.
+
+O sinal que devia ter apontado direto pro problema: várias referências
+"órfãs" ao mesmo nome de campo em código de leitura/edição/fallback, sem
+nenhuma no lado que declara o campo de origem. Isso é o padrão de "alguém
+começou a integrar o campo e esqueceu de terminar", não de bug de
+transporte.
+
+**When to apply**: antes de investigar uma pipeline de dados (payload → rede →
+backend → planilha) atrás de um campo que "sempre chega vazio", `grep` o nome
+do campo no módulo do formulário inteiro. Se ele aparece em `keyMap`, em
+telas de detalhe ou em fallbacks de submit mas não em `FORM_CONFIG` (ou
+equivalente — a lista de campos que de fato vira `<input>`), o campo nunca
+teve UI; não é bug de transporte, é campo que falta declarar.
+
+---
+
 ## `<img onerror>` faz asserção de `src` mentir: atenda o endpoint no teste
 
 **Why**: a barra "Atividade recente" monta a foto de perfil com
