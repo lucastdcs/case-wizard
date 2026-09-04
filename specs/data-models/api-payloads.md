@@ -100,6 +100,7 @@ o porquê em `docs/decisions/0009-rbac-editavel-da-central.md`.
 | :--- | :--- | :--- | :--- |
 | `listContentRoleNames()` | — | `manageAccess` | `["ADMIN", "QA", …]` — só os nomes, para o seletor da aba Acessos |
 | `listContentRoles()` | — | `manageRoles` | `{ roles: [{ role, permissions, people, escalation }], modules, moduleActions, globalPerms, actionsByModule, approvalRequiresGlobal, fallback }` |
+| `previewContentSession(role)` | — | `manageRoles` | A mesma forma de `getContentSession()`, mais `preview: true`, `realRole` e `beyond` |
 | `saveContentRole(role, permissions, options)` | `options`: `{ active?, confirmEscalation?, confirmSelf? }` | `manageRoles` | `{ status: 'success', role, changes, reloadSession }` **ou** `{ status: 'confirm', reason, message, changes, modules? }` |
 
 ### Regras
@@ -116,6 +117,17 @@ o porquê em `docs/decisions/0009-rbac-editavel-da-central.md`.
 - **`fallback: true`** em `listContentRoles()` significa que a aba não pôde ser
   lida e a matriz mostrada é o preset do código. A tela precisa dizer isso —
   editar em cima de um fallback é editar no escuro.
+- **A prévia nunca concede.** `previewContentSession()` devolve a matriz do
+  papel escolhido **intersectada com a de quem pergunta**. Prévia que amplia é
+  escalação com outro nome: o servidor continua julgando pela identidade real,
+  então uma tela otimista ofereceria botões que falham — ou, pior, botões que
+  funcionam enquanto a pessoa acredita estar "só olhando". `beyond` lista o que
+  o papel tem e quem pergunta não, para a tela poder dizer o que não mostrou;
+  prévia calada sobre a própria omissão faz concluir que o papel não pode algo
+  que ele pode.
+- **A prévia é de leitura, e isso é decisão da tela.** O servidor não tem como
+  saber que um clique veio "de dentro de uma prévia" — a identidade é a mesma.
+  Por isso a Central esconde toda ação de escrita enquanto a faixa está na tela.
 - **Conceder acesso não exige editar papéis.** `listContentRoleNames()` existe
   separado por isso: preencher um `<select>` não pode obrigar a dar a permissão
   maior para fazer a tarefa menor.

@@ -177,6 +177,7 @@ function eq(a, b, m) {
   const A = JSON.stringify(a), B = JSON.stringify(b);
   if (A !== B) throw new Error((m || '') + ' esperado ' + B + ', veio ' + A);
 }
+function verdadeiro(cond, m) { if (!cond) throw new Error(m || 'esperado verdadeiro'); }
 function throws(fn, re, m) {
   try { fn(); } catch (e) {
     if (re && !re.test(e.message)) throw new Error((m || '') + ' erro inesperado: ' + e.message);
@@ -1962,6 +1963,58 @@ check('uma linha quebrada não derruba os outros papéis', () => {
 
   aba._data[alvo][1] = guardado;
   api.invalidateContentPermsCache_();
+});
+
+console.log('\n--- Ver como: a prévia nunca concede ---');
+
+check('só quem gerencia papéis pode ver como outro', () => {
+  as('quality1', () => throws(() => api.previewContentSession('ADMIN'), /Acesso negado/));
+});
+
+check('a prévia devolve a sessão do papel escolhido', () => {
+  const p = api.previewContentSession('QA');
+  eq(p.role, 'QA');
+  eq(p.preview, true);
+  eq(p.realRole, 'ADMIN', 'a prévia diz de quem ela é:');
+  eq(p.ldap, 'lucaste', 'a identidade real não muda:');
+  eq(p.proposableModules, ['call_script', 'note_template']);
+  eq(p.canManageAccess, false);
+});
+
+check('a prévia é INTERSECTADA com quem pergunta — nunca amplia', () => {
+  // Um papel que governa mas não toca no catálogo. É o caso que importa:
+  // ver como ADMIN, sendo ele, não pode virar um caminho para agir como ADMIN.
+  const gov = api.normalizeRoleMatrix_({ modules: {}, global: {} });
+  gov.global.manageRoles = true;
+  gov.global.manageAccess = true;
+  gov.modules.links.view = true;
+  eq(api.saveContentRole('GOV', gov, {}).status, 'success');
+  api.saveContentAccess('gov1', 'GOV', true);
+
+  as('gov1', () => {
+    const p = api.previewContentSession('ADMIN');
+    eq(p.role, 'ADMIN', 'o rótulo é o do papel previsto:');
+    // ...mas nada do poder que gov1 não tem atravessa.
+    eq(p.proposableModules, [], 'a prévia não deu escrita nenhuma:');
+    eq(p.canSelfApprove, false, 'nem aprovar a si mesmo:');
+    eq(p.canApprove, false);
+    verdadeiro(p.beyond.length > 0, 'o que ficou de fora precisa ser dito');
+    verdadeiro(p.beyond.indexOf('links.propose') !== -1,
+      'links.propose deveria estar no que ficou de fora: ' + p.beyond.join(','));
+  });
+});
+
+check('a prévia não é caminho de escrita: o servidor segue julgando quem clicou', () => {
+  as('gov1', () => {
+    api.previewContentSession('ADMIN');
+    // Mesmo "sendo ADMIN" na tela, escrever continua sendo recusado.
+    throws(() => api.saveContentDraft({ module: 'links', key: 'tech', label: 'X', value: '{}' }),
+      /não edita o módulo/);
+  });
+});
+
+check('papel inexistente na prévia é recusado', () => {
+  throws(() => api.previewContentSession('NAOEXISTE'), /Papel desconhecido/);
 });
 
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);

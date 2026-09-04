@@ -173,11 +173,16 @@
                             '<div class="diff-side new"><div class="diff-label">Proposto</div>' +
                             '<div class="diff-body">' + ladoDepois + '</div></div>' +
                             '</div>' + previa +
-                            '<div class="modal-actions" style="margin-top:8px">' +
-                            '<button class="btn btn-danger btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',false)">Rejeitar</button>' +
-                            '<button class="btn btn-success btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',true)"' +
-                            (d.canReview ? '' : ' disabled') + '>Aprovar e publicar</button>' +
-                            '</div></div>';
+                            // Em prévia a fila é para OLHAR. Quem está vendo como
+                            // outra pessoa não está decidindo, e a decisão sairia
+                            // no nome de quem clicou, não no do papel previsto.
+                            (MODO_PREVIA ? '' :
+                                '<div class="modal-actions" style="margin-top:8px">' +
+                                '<button class="btn btn-danger btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',false)">Rejeitar</button>' +
+                                '<button class="btn btn-success btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',true)"' +
+                                (d.canReview ? '' : ' disabled') + '>Aprovar e publicar</button>' +
+                                '</div>') +
+                            '</div>';
                     }).join('');
                 })
                 .withFailureHandler(function (err) {
@@ -758,7 +763,7 @@
         };
 
         function loadRoles() {
-            if (!SESSION.canManageRoles) return;
+            if (!SESSION.canManageRoles || MODO_PREVIA) return;
 
             google.script.run
                 .withSuccessHandler(function (r) {
@@ -1058,6 +1063,9 @@
         function loadAccess() {
             if (!SESSION.canManageAccess) return;
 
+            // Conceder acesso é decisão; em prévia a aba é só a lista.
+            document.getElementById('acc-editor').classList.toggle('hidden', MODO_PREVIA);
+
             // Os papéis viraram dado: o seletor tem que perguntar quais existem
             // em vez de repetir uma lista que envelhece no primeiro papel novo.
             google.script.run
@@ -1089,9 +1097,10 @@
                             // fique sem ninguém que governe" (ADR-0009). Quem for
                             // o último a governar recebe o erro do servidor, que
                             // explica exatamente isso.
-                            '<button class="btn btn-ghost btn-sm" onclick="toggleAccess(\'' +
-                            esc(a.ldap) + '\',\'' + esc(a.role) + '\',' + (!a.active) + ')">' +
-                            (a.active ? 'Desativar' : 'Reativar') + '</button>' +
+                            (MODO_PREVIA ? '' :
+                                '<button class="btn btn-ghost btn-sm" onclick="toggleAccess(\'' +
+                                esc(a.ldap) + '\',\'' + esc(a.role) + '\',' + (!a.active) + ')">' +
+                                (a.active ? 'Desativar' : 'Reativar') + '</button>') +
                             '</div></div>';
                     }).join('');
                 })

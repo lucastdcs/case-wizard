@@ -9,6 +9,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **"Ver como": conferir a Central pelos olhos de outro papel** (fase 5). Quem
+  edita a matriz de permissões precisa poder verificar o que configurou — ler
+  uma linha de checkboxes e imaginar a tela resultante é o tipo de tradução em
+  que se erra sem perceber, e o erro só aparece quando alguém reclama que não
+  consegue trabalhar. Escolhe-se um papel e um idioma, e a tela inteira passa a
+  mostrar o que aquela pessoa veria: o trilho, os botões, as caixas de "seu
+  papel não edita isto". Uma faixa fica na tela o tempo todo dizendo de quem é a
+  visão. A prévia **nunca concede**: o servidor intersecta o papel escolhido com
+  o de quem pediu, e diz na própria faixa quantas permissões daquele papel não
+  estão sendo mostradas porque quem pediu também não as tem. E fica só de
+  leitura — conferir não é decidir, e uma decisão tomada "de dentro" da prévia
+  sairia no nome de quem clicou, não no do papel previsto.
 - **Aba "Papéis" na Central: a matriz de permissões virou tela** (fase 4). Uma
   linha por módulo, uma coluna por ação, e um traço onde a ação não existe
   naquele regime — não existe "aprovar um aviso", e um checkbox desligado ali

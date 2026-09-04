@@ -77,12 +77,16 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       e o `<select>` da aba Acessos lendo `listContentRoleNames()`.
       **Falta validar na planilha real:** que a aba `Content_Roles` nasce
       semeada e que os quatro papéis continuam se comportando igual.
-- [ ] **Fase 5 — diferenciais e auditoria.** Prévia "como o agente vê"; busca
-      global Ctrl+K; agendamento e validade de aviso; "ver como" por papel e
-      segmento; cobrança diária de pendência parada — esta lendo `CW_DEPLOYMENTS`
-      e não a URL do serviço, porque em gatilho de tempo a derivação não é
-      confiável (ver `Código.js`). **PR final:** aba de auditoria restrita ao
-      ADMIN, com filtros, paginação e exportação.
+- [~] **Fase 5 — diferenciais e auditoria** — em andamento.
+      **Entregue:** "ver como" por papel e idioma — a tela inteira passa a
+      mostrar o que aquele papel veria, de leitura, com a prévia intersectada no
+      servidor (prévia que concede é escalação com outro nome) e dizendo na
+      faixa o que deixou de mostrar.
+      **Falta:** prévia "como o agente vê"; busca global Ctrl+K; agendamento e
+      validade de aviso; cobrança diária de pendência parada — esta lendo
+      `CW_DEPLOYMENTS` e não a URL do serviço, porque em gatilho de tempo a
+      derivação não é confiável (ver `Código.js`). **PR final:** aba de
+      auditoria restrita, com filtros, paginação e exportação.
 
 ## Ideas — to triage
 

@@ -76,7 +76,7 @@
                     var historico = '<button class="btn btn-ghost btn-sm" '
                         + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'links\')">Histórico</button>';
 
-                    var actions = canPropose('links')
+                    var actions = podeEscrever('links')
                         ? '<div style="display:flex;gap:8px">' + historico + descarte +
                         '<button class="btn btn-ghost btn-sm" onclick="openLinkEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Tirar do ar</button>' +
@@ -419,7 +419,7 @@
                     var historico = '<button class="btn btn-ghost btn-sm" '
                         + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'call_script\')">Histórico</button>';
 
-                    var actions = canPropose('call_script')
+                    var actions = podeEscrever('call_script')
                         ? '<div style="display:flex;gap:8px">' + historico + descarte +
                         '<button class="btn btn-ghost btn-sm" onclick="openStepEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
@@ -636,7 +636,7 @@
                     var historico = '<button class="btn btn-ghost btn-sm" '
                         + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'note_template\')">Histórico</button>';
 
-                    var actions = canPropose('note_template')
+                    var actions = podeEscrever('note_template')
                         ? '<div style="display:flex;gap:8px">' + historico + descarte +
                         '<button class="btn btn-ghost btn-sm" onclick="openTemplateEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
@@ -877,7 +877,7 @@
                     var historico = '<button class="btn btn-ghost btn-sm" '
                         + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'email_template\')">Histórico</button>';
 
-                    var actions = canPropose('email_template')
+                    var actions = podeEscrever('email_template')
                         ? '<div style="display:flex;gap:8px">' + historico + descarte +
                         '<button class="btn btn-ghost btn-sm" onclick="openEmailEditor(\'' + it.id + '\')">Editar</button>' +
                         '</div>'
@@ -1054,7 +1054,7 @@
                 var historico = '<button class="btn btn-ghost btn-sm" '
                     + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'tips\')">Histórico</button>';
 
-                var actions = canPropose('tips')
+                var actions = podeEscrever('tips')
                     ? '<div style="display:flex;gap:8px">' + historico + descarte +
                     '<button class="btn btn-ghost btn-sm" onclick="openTipEditor(\'' + it.id + '\')">Editar</button>' +
                     '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +

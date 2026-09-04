@@ -254,6 +254,36 @@
             overflow-wrap: anywhere;
         }
 
+        /* --- Faixa da prévia "ver como" --- */
+        .faixa-previa {
+            position: sticky;
+            top: 72px;
+            z-index: 90;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 24px;
+            background: var(--warning-light);
+            border-bottom: 1px solid var(--warning);
+            color: var(--warning-text);
+            font-size: 13px;
+        }
+
+        .faixa-previa .material-symbols-rounded { font-size: 20px; }
+        .faixa-previa > span:nth-of-type(2) { flex: 1; }
+        .faixa-previa .faixa-nota { opacity: 0.85; }
+
+        .faixa-previa .btn {
+            border-color: var(--warning);
+            color: var(--warning-text);
+        }
+
+        /* Com a faixa na tela, o trilho e a barra lateral começam mais abaixo:
+           são os dois elementos grudados no topo. */
+        body.em-previa .rail,
+        body.em-previa .lateral { top: 116px; }
+        body.em-previa .rail { height: calc(100vh - 116px); }
+
         /* --- Matriz de papéis --- */
         .rol-toolbar {
             display: flex;

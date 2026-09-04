@@ -249,6 +249,21 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
             listContentActivity: () => ATIVIDADE,
             listContentRoles: () => matriz,
             listContentRoleNames: () => ['ADMIN', 'QA'],
+            previewContentSession: (papel) => {
+                // O servidor devolve a sessão do papel INTERSECTADA com a de
+                // quem pergunta, mais o que ficou de fora.
+                const base = papel === 'QA'
+                    ? {
+                        ldap: sessao.ldap, role: 'QA', hasAccess: true,
+                        canApprove: false, canManageAccess: false, canManageRoles: false,
+                        canViewAudit: false, canSelfApprove: false,
+                        proposableModules: ['call_script', 'note_template'],
+                    }
+                    : Object.assign({}, sessao, { role: papel });
+                return Object.assign(base, {
+                    preview: true, realRole: sessao.role, beyond: ['links.propose'],
+                });
+            },
             saveContentRole: (nome, permsJson, opcoes) => {
                 // O servidor devolve `confirm` até vir a declaração. O dublê
                 // repete esse contrato para o teste poder exercitar o diálogo.
@@ -1190,6 +1205,119 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         const opcoes = await page.locator('#acc-role option').evaluateAll(
             (os) => os.map(o => o.value));
         igual(opcoes, ['ADMIN', 'QA'], 'papéis no seletor');
+    });
+
+    await page.close();
+}
+
+// ------------------------------------------------------------- ver como
+{
+    const page = await abrir({ sessao: 'qa' });
+
+    await check('quem não gerencia papéis não tem "ver como"', async () => {
+        igual(await page.locator('#btn-ver-como').isVisible(), false, 'botão para o QA');
+    });
+
+    await page.close();
+}
+
+{
+    const fila = [{
+        draftId: 'drf_9', module: 'tips', key: 'geral', label: 'Dica revisada',
+        proposedBy: 'anaflor', isSelfProposed: false, canReview: true,
+        currentValue: 'Confira o substatus antes de fechar.',
+        value: 'Confira o substatus antes de encerrar.',
+    }];
+    const page = await abrir({ sessao: 'admin', fila });
+
+    await check('o ADMIN tem "ver como", e ele abre a escolha de papel', async () => {
+        verdade(await page.locator('#btn-ver-como').isVisible(), 'o botão deveria aparecer');
+        await page.locator('#btn-ver-como').click();
+        await page.waitForTimeout(250);
+        verdade(await page.locator('#vc-papel').isVisible(), 'faltou o seletor de papel');
+    });
+
+    await check('entrar na prévia troca o papel mostrado e avisa em faixa', async () => {
+        await page.selectOption('#vc-papel', 'QA');
+        await page.locator('#vc-go').click();
+        await page.waitForTimeout(400);
+
+        verdade(await page.locator('#faixa-previa').isVisible(), 'a faixa deveria aparecer');
+        igual((await page.locator('#user-role').textContent()).trim(), 'QA', 'selo de papel');
+
+        const texto = await page.locator('#faixa-previa').textContent();
+        verdade(/Somente leitura/i.test(texto), 'faltou dizer que é só leitura');
+        // Prévia calada sobre o que omitiu faz concluir que o papel não pode
+        // algo que ele pode.
+        verdade(/não a tem|não aparecem/.test(texto),
+            'faltou dizer o que ficou de fora: ' + texto);
+    });
+
+    await check('vendo como QA, os botões que o QA não tem somem', async () => {
+        await page.evaluate(() => switchTab('links'));
+        await page.waitForTimeout(250);
+        igual(await page.locator('#links-new-btn').isVisible(), false, 'botão de novo link');
+    });
+
+    await check('e a fila de aprovação não oferece decidir', async () => {
+        await page.evaluate(() => switchTab('approvals'));
+        await page.waitForTimeout(300);
+        const texto = await page.locator('#approvals-list').textContent();
+        // O QA nem revisa: o painel explica isso em vez de mostrar a fila.
+        verdade(/não revisa/i.test(texto), 'o painel deveria explicar que o papel não revisa');
+        igual(await page.locator('#approvals-list .btn-success').count(), 0, 'botões de aprovar');
+    });
+
+    await check('nem mesmo vendo como um papel que revisa', async () => {
+        // O caso que importa: prever um papel que APROVA. A fila aparece
+        // inteira — é para isso que se está olhando —, mas decidir não. A
+        // decisão sairia no nome de quem clicou, não no do papel previsto.
+        await page.locator('#faixa-previa .btn').click();
+        await page.waitForTimeout(300);
+        await page.locator('#btn-ver-como').click();
+        await page.waitForTimeout(250);
+        await page.selectOption('#vc-papel', 'ADMIN');
+        await page.locator('#vc-go').click();
+        await page.waitForTimeout(400);
+
+        await page.evaluate(() => switchTab('approvals'));
+        await page.waitForTimeout(350);
+
+        verdade(/Dica revisada/.test(await page.locator('#approvals-list').textContent()),
+            'a fila deveria aparecer para um papel que revisa');
+        igual(await page.locator('#approvals-list .btn-success').count(), 0,
+            'aprovar não pode existir em prévia');
+        igual(await page.locator('#approvals-list .btn-danger').count(), 0,
+            'rejeitar não pode existir em prévia');
+    });
+
+    await check('e escrever também não, mesmo no papel que escreve tudo', async () => {
+        // Este é o caso que a prévia como QA não pega: o papel previsto PODE
+        // tudo, e é só o modo prévia que segura a mão.
+        await page.evaluate(() => switchTab('links'));
+        await page.waitForTimeout(300);
+        igual(await page.locator('#links-new-btn').isVisible(), false,
+            'novo link não pode aparecer em prévia');
+        const lista = await page.locator('#links-list').textContent();
+        igual(/Editar|Tirar do ar/.test(lista), false, 'nem Editar nem Tirar do ar');
+        // Histórico continua: olhar o passado de um item é leitura, e é
+        // justamente o tipo de coisa que se quer poder fazer numa conferência.
+        verdade(/Histórico/.test(lista), 'Histórico deveria continuar disponível');
+        // Editar permissão fingindo ser outra pessoa é como se perde a noção de
+        // quem fez o quê.
+        igual(await page.locator('#tab-roles').isVisible(), false, 'aba Papéis em prévia');
+    });
+
+    await check('sair da prévia devolve a tela de quem você é', async () => {
+        await page.locator('#faixa-previa .btn').click();
+        await page.waitForTimeout(400);
+
+        igual(await page.locator('#faixa-previa').isVisible(), false, 'a faixa deveria sumir');
+        igual((await page.locator('#user-role').textContent()).trim(), 'ADMIN');
+        await page.evaluate(() => switchTab('links'));
+        await page.waitForTimeout(250);
+        verdade(await page.locator('#links-new-btn').isVisible(), 'o botão deveria voltar');
+        verdade(await page.locator('#tab-roles').isVisible(), 'a aba Papéis deveria voltar');
     });
 
     await page.close();
