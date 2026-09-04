@@ -244,6 +244,21 @@ const ATIVIDADE = [
     },
 ];
 
+// Cinco registros: o bastante para a paginação de duas em duas ter três levas,
+// e com uma "agulha" para o filtro de texto ter o que achar.
+const AUDITORIA = [
+    { id: 'l5', at: agoraMenos(5), actor: 'lucaste', action: 'approve', module: 'links',
+      key: 'tasks', itemId: 'itm_1', label: 'Fila de tarefas', detail: 'v3 por anaflor' },
+    { id: 'l4', at: agoraMenos(60), actor: 'anaflor', action: 'reject', module: 'email_template',
+      key: 'boas_vindas', itemId: '', label: 'E-mail de boas-vindas', detail: 'Falta citar o CID.' },
+    { id: 'l3', at: agoraMenos(600), actor: 'brunocs', action: 'publish_direct', module: 'broadcast',
+      key: 'bc1', itemId: 'itm_bc1', label: 'Instabilidade no CRM', detail: 'v1' },
+    { id: 'l2', at: agoraMenos(2000), actor: 'lucaste', action: 'access_change', module: '',
+      key: '', itemId: '', label: 'brunocs', detail: 'TL ativo' },
+    { id: 'l1', at: agoraMenos(5000), actor: 'lucaste', action: 'role_update', module: '',
+      key: '', itemId: '', label: 'QA', detail: 'links.propose: não → sim' },
+];
+
 // ------------------------------------------------------- montagem da página
 async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null,
     fila = [], atividade = [], matriz = MATRIZ, confirmarSalvar = null } = {}) {
@@ -268,9 +283,10 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
     // O dublê precisa existir ANTES do script da página rodar: o boot dispara
     // no DOMContentLoaded.
     await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos, pendentes, atividade,
-        matriz, respostaDoSalvar }) => {
+        matriz, respostaDoSalvar, auditoria }) => {
         const PENDENTES = pendentes || [];
         const ATIVIDADE = atividade || [];
+        const AUDITORIA = auditoria || [];
         const HISTORICO = historico;
         window.__chamadas = [];
 
@@ -285,6 +301,28 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
             listContentActivity: () => ATIVIDADE,
             listContentRoles: () => matriz,
             listContentRoleNames: () => ['ADMIN', 'QA'],
+            listContentAudit: (f) => {
+                const filtro = f || {};
+                const casa = (l) => (!filtro.actor || l.actor === filtro.actor) &&
+                    (!filtro.action || l.action === filtro.action) &&
+                    (!filtro.text || (l.label + ' ' + l.detail).toLowerCase()
+                        .indexOf(filtro.text.toLowerCase()) !== -1);
+                // O cursor é o índice de onde continuar: o mesmo contrato do
+                // servidor, que pagina por posição e não por "pule N".
+                const inicio = Number(filtro.cursor) || 0;
+                const todas = AUDITORIA.filter(casa);
+                const pagina = todas.slice(inicio, inicio + 2);
+                const fim = inicio + pagina.length;
+                return {
+                    rows: pagina,
+                    nextCursor: fim < todas.length ? fim : 0,
+                    scanned: pagina.length,
+                    done: fim >= todas.length,
+                };
+            },
+            exportContentAudit: () => ({
+                sheet: 'Content_Audit_Export', rows: 3, truncated: false, url: '',
+            }),
             previewContentSession: (papel) => {
                 // O servidor devolve a sessão do papel INTERSECTADA com a de
                 // quem pergunta, mais o que ficou de fora.
@@ -369,7 +407,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
     }, {
         sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe,
         historico: HISTORICO, rascunhos: draftsDe, pendentes: fila, atividade,
-        matriz, respostaDoSalvar: confirmarSalvar,
+        matriz, respostaDoSalvar: confirmarSalvar, auditoria: AUDITORIA,
     });
 
     await page.goto('file://' + ARQUIVO + hash, { waitUntil: 'domcontentloaded' });
@@ -1431,6 +1469,88 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         igual(await page.locator('#pub-titulo').count(), 0, 'nem deveria chegar à confirmação');
         verdade(/depois do início/.test(await page.locator('#toast').textContent()),
             'faltou explicar por quê');
+    });
+
+    await page.close();
+}
+
+// ------------------------------------------------------------- auditoria
+{
+    const page = await abrir({ sessao: 'qa' });
+
+    await check('quem não vê a auditoria não tem a aba', async () => {
+        igual(await page.locator('#tab-audit').isVisible(), false, 'aba Auditoria para o QA');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin', hash: '#/audit' });
+
+    await check('a auditoria abre já com os registros mais recentes', async () => {
+        await page.waitForTimeout(400);
+        verdade(await page.locator('#tab-audit').isVisible(), 'a aba deveria aparecer');
+        igual(await page.locator('.aud-tabela tbody tr').count(), 2, 'linhas da primeira leva');
+        const texto = await page.locator('#aud-lista').textContent();
+        verdade(/aprovou/.test(texto), 'a ação precisa aparecer em português');
+        verdade(/Fila de tarefas/.test(texto), 'faltou o alvo da ação');
+    });
+
+    await check('"carregar mais" continua de onde parou, sem repetir', async () => {
+        await page.locator('#aud-mais').click();
+        await page.waitForTimeout(350);
+        igual(await page.locator('.aud-tabela tbody tr').count(), 4, 'linhas depois da 2ª leva');
+
+        const ids = await page.evaluate(() => AUD_LINHAS.map(l => l.id));
+        igual(ids.length, new Set(ids).size, 'nenhum registro repetido');
+    });
+
+    await check('chegando ao fim, o botão some e a tela diz que acabou', async () => {
+        await page.locator('#aud-mais').click();
+        await page.waitForTimeout(350);
+        igual(await page.locator('#aud-mais').isVisible(), false, 'botão de carregar mais');
+        verdade(/fim do histórico/.test(await page.locator('#aud-resumo').textContent()),
+            'faltou dizer que acabou');
+    });
+
+    await check('filtrar por quem fez recomeça a busca, não soma', async () => {
+        await page.fill('#aud-quem', 'anaflor');
+        await page.locator('#aud-buscar').click();
+        await page.waitForTimeout(350);
+
+        const linhas = await page.evaluate(() => AUD_LINHAS.map(l => l.actor));
+        igual(linhas, ['anaflor'], 'só o que casa com o filtro');
+    });
+
+    await check('filtro sem resultado explica em vez de mostrar tabela vazia', async () => {
+        await page.fill('#aud-quem', 'ninguem');
+        await page.locator('#aud-buscar').click();
+        await page.waitForTimeout(350);
+        verdade(/Nada com esses filtros/.test(await page.locator('#aud-lista').textContent()),
+            'faltou o estado vazio');
+        igual(await page.locator('#aud-mais').isVisible(), false, 'nem carregar mais');
+    });
+
+    await check('limpar devolve o histórico inteiro', async () => {
+        await page.locator('#aud-limpar').click();
+        await page.waitForTimeout(350);
+        igual(await page.locator('#aud-tabela').count() >= 0, true);
+        igual(await page.evaluate(() => AUD_LINHAS.length), 2, 'volta à primeira leva');
+        igual(await page.inputValue('#aud-quem'), '', 'o campo também limpa');
+    });
+
+    await check('exportar leva o MESMO filtro da tela', async () => {
+        await page.fill('#aud-texto', 'CID');
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.locator('#aud-exportar').click();
+        await page.waitForTimeout(400);
+
+        const chamada = await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'exportContentAudit')[0]);
+        igual(chamada.args[0].text, 'CID', 'o filtro precisa acompanhar a exportação');
+        verdade(/Content_Audit_Export/.test(await page.locator('#toast').textContent()),
+            'faltou dizer onde a exportação foi parar');
     });
 
     await page.close();

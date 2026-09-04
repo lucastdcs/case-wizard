@@ -113,6 +113,10 @@
                 titulo: 'Pessoas', carregar: function () { loadPeople(); },
                 sub: 'O diretório que decide quem é liderança e em que idioma o app abre.'
             },
+            audit: {
+                titulo: 'Auditoria', carregar: function () { loadAudit(); },
+                sub: 'Tudo que aconteceu na Central, com filtro e período.'
+            },
             roles: {
                 titulo: 'Papéis', carregar: function () { loadRoles(); },
                 sub: 'O que cada papel pode fazer. Vale no ato, sem passar por fila.'
@@ -600,6 +604,9 @@
             badge.classList.remove('hidden');
 
             document.getElementById('tab-access').classList.toggle('hidden', !s.canManageAccess);
+            // A auditoria segue a prévia: quem "vê como" um papel que audita
+            // está conferindo a tela dele, e olhar o histórico é leitura.
+            document.getElementById('tab-audit').classList.toggle('hidden', !s.canViewAudit);
             // A aba de papéis some na prévia: editar permissão enquanto se
             // finge ser outra pessoa é como se perde a noção de quem fez o quê.
             document.getElementById('tab-roles').classList.toggle('hidden',

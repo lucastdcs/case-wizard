@@ -136,6 +136,9 @@
                     <button class="rail-item hidden" id="tab-people" data-tab="people" onclick="switchTab('people')">
                         <span class="material-symbols-rounded" aria-hidden="true">groups</span> <span class="rail-label">Pessoas</span>
                     </button>
+                    <button class="rail-item hidden" id="tab-audit" data-tab="audit" onclick="switchTab('audit')">
+                        <span class="material-symbols-rounded" aria-hidden="true">manage_search</span> <span class="rail-label">Auditoria</span>
+                    </button>
                     <button class="rail-item hidden" id="tab-roles" data-tab="roles" onclick="switchTab('roles')">
                         <span class="material-symbols-rounded" aria-hidden="true">shield_person</span> <span class="rail-label">Papéis</span>
                     </button>
@@ -404,6 +407,69 @@
                 <div id="approvals-list">
                     <div class="skeleton"></div>
                     <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Auditoria (restrita a quem tem viewAudit) -->
+            <section id="pane-audit" class="hidden">
+                <div class="note" id="aud-note">
+                    Tudo que aconteceu na Central, com quem fez e quando. A barra
+                    <strong>Atividade recente</strong> responde “o que está acontecendo”; esta
+                    responde “o que aconteceu”.
+                </div>
+
+                <div class="card">
+                    <div class="aud-filtros">
+                        <div>
+                            <label class="fld" style="margin-top:0" for="aud-texto">Buscar</label>
+                            <input type="text" id="aud-texto" autocomplete="off"
+                                placeholder="rótulo, chave ou detalhe">
+                        </div>
+                        <div>
+                            <label class="fld" style="margin-top:0" for="aud-quem">Quem</label>
+                            <input type="text" id="aud-quem" autocomplete="off" placeholder="LDAP">
+                        </div>
+                        <div>
+                            <label class="fld" style="margin-top:0" for="aud-acao">Ação</label>
+                            <select id="aud-acao"></select>
+                        </div>
+                        <div>
+                            <label class="fld" style="margin-top:0" for="aud-modulo">Módulo</label>
+                            <select id="aud-modulo"></select>
+                        </div>
+                        <div>
+                            <label class="fld" style="margin-top:0" for="aud-de">De</label>
+                            <input type="date" id="aud-de">
+                        </div>
+                        <div>
+                            <label class="fld" style="margin-top:0" for="aud-ate">Até</label>
+                            <input type="date" id="aud-ate">
+                        </div>
+                    </div>
+                    <div class="aud-acoes">
+                        <button class="btn btn-primary" id="aud-buscar" onclick="buscarAuditoria()">
+                            Buscar
+                        </button>
+                        <button class="btn btn-ghost" id="aud-limpar" onclick="limparAuditoria()">
+                            Limpar filtros
+                        </button>
+                        <button class="btn btn-ghost" id="aud-exportar" onclick="exportarAuditoria(this)">
+                            <span class="material-symbols-rounded" style="font-size:19px"
+                                aria-hidden="true">table_view</span> Exportar para a planilha
+                        </button>
+                        <span class="card-sub" id="aud-resumo" role="status" aria-live="polite"></span>
+                    </div>
+                </div>
+
+                <div class="card" id="aud-lista">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+
+                <div style="margin-top:14px">
+                    <button class="btn btn-ghost hidden" id="aud-mais" onclick="maisAuditoria(this)">
+                        Carregar mais
+                    </button>
                 </div>
             </section>
 

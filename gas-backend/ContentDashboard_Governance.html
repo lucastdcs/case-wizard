@@ -726,6 +726,164 @@
             renderPeople();
         });
 
+        // --- Auditoria completa ---
+        //
+        // A barra lateral responde "o que está acontecendo"; esta responde "o
+        // que aconteceu". São perguntas diferentes, e é por isso que são duas
+        // telas: a barra tem janela fixa e nenhum filtro, esta tem filtro,
+        // período e paginação.
+        //
+        // O cursor é o número da LINHA da planilha onde a varredura parou. É o
+        // que faz "carregar mais" custar sempre o mesmo: paginar por "pule N
+        // resultados" obrigaria o servidor a refiltrar tudo que já foi mostrado.
+        var AUD_CURSOR = 0;
+        var AUD_LINHAS = [];
+        var AUD_MONTADO = false;
+
+        function filtroDaAuditoria() {
+            return {
+                text: document.getElementById('aud-texto').value.trim(),
+                actor: document.getElementById('aud-quem').value.trim(),
+                action: document.getElementById('aud-acao').value,
+                module: document.getElementById('aud-modulo').value,
+                from: document.getElementById('aud-de').value,
+                to: document.getElementById('aud-ate').value
+            };
+        }
+
+        function montarFiltrosDaAuditoria() {
+            if (AUD_MONTADO) return;
+            AUD_MONTADO = true;
+
+            var acao = document.getElementById('aud-acao');
+            acao.innerHTML = '<option value="">Todas</option>' +
+                Object.keys(ATIVIDADE_VERBO).sort().map(function (a) {
+                    return '<option value="' + esc(a) + '">' + esc(ATIVIDADE_VERBO[a]) + '</option>';
+                }).join('');
+
+            var mod = document.getElementById('aud-modulo');
+            mod.innerHTML = '<option value="">Todos</option>' +
+                (SESSION.modules || []).map(function (m) {
+                    return '<option value="' + esc(m) + '">' +
+                        esc(ATIVIDADE_MODULO[m] || m) + '</option>';
+                }).join('');
+        }
+
+        function loadAudit() {
+            if (!SESSION.canViewAudit) return;
+            montarFiltrosDaAuditoria();
+            buscarAuditoria();
+        }
+
+        function buscarAuditoria() {
+            AUD_CURSOR = 0;
+            AUD_LINHAS = [];
+            document.getElementById('aud-lista').innerHTML =
+                '<div class="skeleton"></div><div class="skeleton"></div>';
+            pedirAuditoria(null);
+        }
+
+        function maisAuditoria(btn) {
+            pedirAuditoria(btn);
+        }
+
+        function limparAuditoria() {
+            ['aud-texto', 'aud-quem', 'aud-de', 'aud-ate'].forEach(function (id) {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('aud-acao').value = '';
+            document.getElementById('aud-modulo').value = '';
+            buscarAuditoria();
+        }
+
+        function pedirAuditoria(btn) {
+            if (btn) { btn.disabled = true; btn.textContent = 'Carregando…'; }
+
+            google.script.run
+                .withSuccessHandler(function (r) {
+                    if (btn) { btn.disabled = false; btn.textContent = 'Carregar mais'; }
+                    AUD_LINHAS = AUD_LINHAS.concat(r.rows || []);
+                    AUD_CURSOR = r.nextCursor || 0;
+                    renderAuditoria(r);
+                })
+                .withFailureHandler(function (err) {
+                    if (btn) { btn.disabled = false; btn.textContent = 'Carregar mais'; }
+                    document.getElementById('aud-lista').innerHTML =
+                        '<div class="note warn">' + esc(err.message) + '</div>';
+                })
+                .listContentAudit(Object.assign(filtroDaAuditoria(), { cursor: AUD_CURSOR }));
+        }
+
+        function renderAuditoria(r) {
+            var host = document.getElementById('aud-lista');
+            var mais = document.getElementById('aud-mais');
+
+            if (!AUD_LINHAS.length) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded" ' +
+                    'aria-hidden="true">manage_search</span><h2>Nada com esses filtros</h2>' +
+                    '<p>Tente um período maior ou tire um filtro.</p></div>';
+                mais.classList.add('hidden');
+                document.getElementById('aud-resumo').textContent = '';
+                return;
+            }
+
+            host.innerHTML =
+                '<div class="aud-scroll"><table class="aud-tabela">' +
+                '<thead><tr>' +
+                '<th scope="col">Quando</th><th scope="col">Quem</th>' +
+                '<th scope="col">O quê</th><th scope="col">Onde</th>' +
+                '<th scope="col">Detalhe</th></tr></thead><tbody>' +
+                AUD_LINHAS.map(function (l) {
+                    var alvo = l.label || l.key || '';
+                    return '<tr>' +
+                        '<td class="aud-quando">' + esc(dataCurta(l.at)) + '</td>' +
+                        '<td>' + fotoDoLdap(l.actor) + ' ' + esc(l.actor) + '</td>' +
+                        '<td>' + esc(ATIVIDADE_VERBO[l.action] || l.action) +
+                        (alvo ? ' <strong>' + esc(alvo) + '</strong>' : '') + '</td>' +
+                        '<td>' + esc(ATIVIDADE_MODULO[l.module] || l.module || '—') + '</td>' +
+                        '<td class="aud-detalhe">' + esc(l.detail) + '</td>' +
+                        '</tr>';
+                }).join('') +
+                '</tbody></table></div>';
+
+            // `done` é sobre a ABA ter acabado, não sobre a página ter enchido:
+            // uma página curta porque o teto de varredura foi atingido ainda tem
+            // continuação, e esconder o botão ali faria parecer que acabou.
+            mais.classList.toggle('hidden', !!r.done || !r.nextCursor);
+
+            document.getElementById('aud-resumo').textContent =
+                AUD_LINHAS.length + (AUD_LINHAS.length === 1 ? ' registro' : ' registros') +
+                (r.done ? ' — fim do histórico.' : ' até aqui.');
+        }
+
+        function exportarAuditoria(btn) {
+            var rotulo = btn.innerHTML;
+            btn.disabled = true;
+            btn.textContent = 'Exportando…';
+
+            google.script.run
+                .withSuccessHandler(function (r) {
+                    btn.disabled = false;
+                    btn.innerHTML = rotulo;
+                    toast('Aba "' + r.sheet + '" gerada com ' + r.rows +
+                        (r.rows === 1 ? ' registro' : ' registros') +
+                        (r.truncated ? ' (cortado no teto de exportação).' : '.'));
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.innerHTML = rotulo;
+                    toast(err.message, true);
+                })
+                .exportContentAudit(filtroDaAuditoria());
+        }
+
+        // Enter em qualquer campo de texto busca — é o gesto que se faz sem
+        // pensar num formulário de filtro.
+        document.getElementById('pane-audit').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && e.target.tagName === 'INPUT') buscarAuditoria();
+        });
+
         // --- Papéis (matriz editável — ADR-0009) ---
         //
         // A tela NÃO é a fronteira: cada regra deste arquivo existe também no

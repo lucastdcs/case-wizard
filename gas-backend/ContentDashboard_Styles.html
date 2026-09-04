@@ -284,6 +284,64 @@
         body.em-previa .lateral { top: 116px; }
         body.em-previa .rail { height: calc(100vh - 116px); }
 
+        /* --- Auditoria --- */
+        .aud-filtros {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .aud-acoes {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .aud-scroll { overflow-x: auto; }
+
+        .aud-tabela {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 720px;
+            font-size: 13px;
+        }
+
+        .aud-tabela th,
+        .aud-tabela td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .aud-tabela thead th {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .aud-tabela tbody tr:last-child td { border-bottom: none; }
+        .aud-tabela .aud-quando { white-space: nowrap; color: var(--text-secondary); }
+
+        .aud-tabela img.atividade-foto {
+            width: 20px;
+            height: 20px;
+            vertical-align: middle;
+        }
+
+        /* O detalhe é o campo que pode ser longo — uma justificativa de rejeição
+           ou um diff de permissões. Quebra em vez de esticar a tabela. */
+        .aud-tabela .aud-detalhe {
+            color: var(--text-secondary);
+            overflow-wrap: anywhere;
+            max-width: 380px;
+        }
+
         /* --- Matriz de papéis --- */
         .rol-toolbar {
             display: flex;

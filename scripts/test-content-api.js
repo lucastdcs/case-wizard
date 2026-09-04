@@ -75,6 +75,7 @@ class FakeSheet {
   // Os outros dublês do projeto já modelavam isto; este ficou para trás até
   // discardContentDraft() precisar remover uma linha de verdade.
   deleteRow(i) { this._data.splice(i - 1, 1); }
+  clear() { this._data.length = 0; return this; }
   setFrozenRows() { return this; }
 }
 
@@ -2131,6 +2132,149 @@ check('a janela é avaliada DEPOIS do cache, não dentro dele', () => {
   const servidos = publicoDeBroadcast();
   eq(servidos.length, 1, 'o vencido não pode ser servido:');
   eq(api.listContentItems('broadcast').length, 2, 'mas os dois estão publicados:');
+});
+
+console.log('\n--- Auditoria completa ---');
+
+// Um histórico grande o bastante para a paginação ter o que paginar. Escrito
+// direto na aba: o que se testa aqui é a LEITURA, e produzir 120 ações reais
+// custaria minutos sem provar nada a mais.
+function semearAuditoria(quantas) {
+  const aba = SS.getSheetByName('Content_Log');
+  const modulos = ['links', 'tips', 'call_script'];
+  const acoes = ['approve', 'reject', 'publish_direct'];
+  const gente = ['lucaste', 'anaflor', 'brunocs'];
+
+  // Datas CRESCENTES, como em produção: a aba é só anexada, e o backfill
+  // reordena o que trouxe. É essa garantia que permite a leitura ir de trás
+  // para a frente por número de linha em vez de ordenar 15 mil linhas.
+  for (let i = 0; i < quantas; i++) {
+    const mes = String(Math.floor(i / 28) + 1).padStart(2, '0');
+    const dia = String((i % 28) + 1).padStart(2, '0');
+    aba.appendRow([
+      'log_seed_' + i,
+      '2026-' + mes + '-' + dia + 'T10:00:00.000Z',
+      gente[i % 3],
+      acoes[i % 3],
+      modulos[i % 3],
+      'chave' + i,
+      '',
+      'Item ' + i,
+      i === 7 ? 'agulha no palheiro' : 'detalhe comum'
+    ]);
+  }
+}
+
+check('só quem vê a auditoria completa abre a lista', () => {
+  as('quality1', () => throws(() => api.listContentAudit({}), /Acesso negado/));
+});
+
+check('a auditoria vem da mais recente para a mais antiga', () => {
+  semearAuditoria(120);
+  const r = api.listContentAudit({ limit: 10 });
+  eq(r.rows.length, 10);
+  const datas = r.rows.map(l => l.at);
+  eq(datas.slice().sort().reverse(), datas, 'ordem decrescente:');
+});
+
+check('filtra por quem fez', () => {
+  const r = api.listContentAudit({ actor: 'anaflor', limit: 20 });
+  eq(r.rows.every(l => l.actor === 'anaflor'), true);
+  eq(r.rows.length > 0, true, 'precisa achar alguma coisa:');
+});
+
+check('filtra por ação e por módulo', () => {
+  const r = api.listContentAudit({ action: 'reject', module: 'tips', limit: 20 });
+  eq(r.rows.every(l => l.action === 'reject' && l.module === 'tips'), true);
+  eq(r.rows.length > 0, true);
+});
+
+check('filtra por texto livre, no rótulo e no detalhe', () => {
+  const r = api.listContentAudit({ text: 'agulha', limit: 20 });
+  eq(r.rows.length, 1, 'a agulha é uma só:');
+  eq(/agulha/.test(r.rows[0].detail), true);
+});
+
+check('filtra por período, com o dia final inteiro', () => {
+  // O carimbo é ISO e o filtro é data: sem o cuidado com o fim do dia, uma
+  // linha das 10h do dia `to` ficaria de fora do próprio dia pedido.
+  const r = api.listContentAudit({ from: '2026-02-01', to: '2026-02-28', limit: 200 });
+  eq(r.rows.length > 0, true, 'precisa achar alguma coisa:');
+  eq(r.rows.every(l => l.at >= '2026-02-01' && l.at <= '2026-02-28Z'), true);
+
+  // O que de fato pega o erro: uma linha das 10h do DIA FINAL tem que entrar.
+  // Comparando `at > to` cru, ela ficaria de fora do próprio dia pedido.
+  eq(r.rows.some(l => l.at.indexOf('2026-02-28') === 0), true,
+    'o último dia do período precisa entrar inteiro');
+  // E o dia seguinte, não.
+  eq(r.rows.some(l => l.at.indexOf('2026-03-') === 0), false, 'não pode vazar para março');
+});
+
+check('a paginação não repete nem pula linha', () => {
+  const p1 = api.listContentAudit({ limit: 25 });
+  const p2 = api.listContentAudit({ limit: 25, cursor: p1.nextCursor });
+
+  eq(p1.rows.length, 25);
+  eq(p2.rows.length, 25);
+
+  const ids1 = p1.rows.map(l => l.id);
+  const ids2 = p2.rows.map(l => l.id);
+  eq(ids1.filter(id => ids2.indexOf(id) !== -1), [], 'nenhum id nas duas páginas:');
+
+  // E a segunda continua exatamente onde a primeira parou.
+  eq(p2.rows[0].at <= p1.rows[24].at, true, 'a página 2 começa antes do fim da 1:');
+});
+
+check('paginar até o fim termina, e diz que terminou', () => {
+  let cursor = 0;
+  let total = 0;
+  let voltas = 0;
+  let fim = false;
+
+  while (voltas < 40) {
+    const p = api.listContentAudit({ limit: 200, cursor: cursor });
+    total += p.rows.length;
+    voltas++;
+    if (p.done) { fim = true; break; }
+    if (!p.nextCursor) break;
+    cursor = p.nextCursor;
+  }
+
+  eq(fim, true, 'a varredura precisa terminar sozinha:');
+  eq(total >= 120, true, 'trouxe pelo menos as 120 semeadas, veio ' + total);
+});
+
+check('exportar escreve uma aba com o MESMO filtro da tela', () => {
+  const r = api.exportContentAudit({ actor: 'anaflor' });
+  eq(r.sheet, 'Content_Audit_Export');
+  eq(r.rows > 0, true);
+
+  const aba = SS.getSheetByName('Content_Audit_Export');
+  eq(aba._data[0], ['Quando', 'Quem', 'Ação', 'Módulo', 'Chave', 'Item', 'Rótulo', 'Detalhe']);
+  eq(aba._data.length - 1, r.rows, 'cabeçalho + as linhas:');
+  eq(aba._data.slice(1).every(l => l[1] === 'anaflor'), true, 'o filtro valeu na exportação:');
+});
+
+check('exportar de novo substitui, não empilha', () => {
+  const grande = SS.getSheetByName('Content_Audit_Export')._data.length;
+  eq(grande > 3, true, 'a primeira exportação precisa ser grande para o teste valer:');
+
+  // Uma exportação MENOR depois de uma grande: sem limpar a aba, as linhas
+  // antigas sobreviveriam embaixo e a exportação passaria a misturar dois
+  // filtros diferentes — que é o pior desfecho possível para uma auditoria.
+  const r = api.exportContentAudit({ text: 'agulha' });
+  eq(r.rows, 1);
+  eq(SS.getSheetByName('Content_Audit_Export')._data.length, 2, 'cabeçalho + uma linha:');
+});
+
+check('a própria exportação vai para a auditoria', () => {
+  const linha = logDaCentral().filter(l => l.Action === 'audit_export').pop();
+  eq(linha.Actor, 'lucaste');
+  eq(/linhas/.test(String(linha.Detail)), true);
+});
+
+check('quem não vê a auditoria também não exporta', () => {
+  as('quality1', () => throws(() => api.exportContentAudit({}), /Acesso negado/));
 });
 
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);
