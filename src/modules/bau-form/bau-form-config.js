@@ -17,7 +17,20 @@ export const FORM_CONFIG = {
                     type: 'text',
                     placeholder: 'Nome do Anunciante',
                     required: true,
-                    isSmart: true 
+                    isSmart: true
+                },
+                {
+                    id: 'advEmail',
+                    name: 'advEmail',
+                    label: 'Email do Anunciante',
+                    type: 'text',
+                    placeholder: 'email@exemplo.com',
+                    required: true,
+                    isSmart: true,
+                    validation: {
+                        regex: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$',
+                        error: 'Formato de email inválido'
+                    }
                 },
                 {
                     id: 'cid',

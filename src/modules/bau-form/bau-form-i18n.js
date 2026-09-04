@@ -14,6 +14,7 @@ import { getLanguage } from "../shared/i18n.js";
 
 const FIELD_ES = {
     advName: { label: 'Nombre del Anunciante', placeholder: 'Nombre del Anunciante' },
+    advEmail: { label: 'Email del Anunciante', placeholder: 'email@ejemplo.com', error: 'Formato de correo inválido' },
     cid: { label: 'CID', placeholder: '000-000-0000', tooltip: 'Usa el formato 000-000-0000 o 10 dígitos', error: 'Formato de CID incorrecto' },
     amName: { label: 'Account Manager (AM)', placeholder: 'Nombre del AM' },
     website: { label: 'Website', placeholder: 'https://www.ejemplo.com' },

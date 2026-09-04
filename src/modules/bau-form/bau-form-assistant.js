@@ -1278,6 +1278,10 @@ export function initBAUForm() {
                         <input class="bau-confirm-value-input" data-field="advName" data-step="1" value="${data.advName || ''}" placeholder="---">
                     </div>
                     <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">${bt('advertiserEmail')}</span>
+                        <input class="bau-confirm-value-input" data-field="advEmail" data-step="1" value="${data.advEmail || ''}" placeholder="---">
+                    </div>
+                    <div class="bau-confirm-row">
                         <span class="bau-confirm-label">CID</span>
                         <input class="bau-confirm-value-input" data-field="cid" data-step="1" value="${data.cid || ''}" placeholder="---">
                     </div>
