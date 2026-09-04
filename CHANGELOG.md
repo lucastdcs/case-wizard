@@ -229,6 +229,14 @@ versions follow [Semantic Versioning](https://semver.org/).
   vão em bloco (`setValues`) em vez de uma chamada por coluna.
 
 ### Fixed
+- **A auditoria mostrava o nome interno de metade das ações.** `role_update`,
+  `audit_export`, `people_updated` e as outras que nasceram depois da barra
+  lateral não tinham tradução, e apareciam como jargão de código exatamente na
+  tela onde quem lê não sabe o que é `role_update`. Só apareceu ao **olhar a
+  tela renderizada** — os testes de estrutura passavam felizes com o slug na
+  cara de quem audita. Agora um teste percorre a lista inteira de ações que o
+  servidor registra e exige tradução para cada uma, então a próxima ação nova
+  que alguém esquecer de traduzir cai no smoke.
 - **Dois harnesses de teste ficaram para trás da fase 2 da Central.** As
   escritas em bloco (`setValues`) quebraram `test:people` em 15 testes, porque
   só o dublê de planilha do `test-content-api.js` tinha sido estendido; e a

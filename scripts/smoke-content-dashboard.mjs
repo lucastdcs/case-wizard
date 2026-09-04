@@ -1509,6 +1509,27 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
 {
     const page = await abrir({ sessao: 'admin', hash: '#/audit' });
 
+    await check('nenhuma ação registrada aparece com o nome interno', async () => {
+        // A auditoria é justamente a tela onde o jargão de código não pode
+        // vazar: quem audita não sabe o que é `role_update`. Este teste percorre
+        // TODAS as ações que o servidor registra, e não só as da amostra —
+        // ele é o que pega a ação nova que alguém esquecer de traduzir.
+        const REGISTRADAS = [
+            'draft_create', 'draft_update', 'draft_submit', 'draft_discard',
+            'removal_request', 'approve', 'approve_removal', 'reject', 'rollback',
+            'publish_direct', 'publish_direct_update', 'unpublish_direct',
+            'access_change', 'seed', 'notify_failed',
+            'role_create', 'role_update', 'audit_export',
+            'stale_digest', 'stale_digest_failed',
+            'people_created', 'people_updated', 'people_removed', 'people_removal_request',
+        ];
+
+        const semVerbo = await page.evaluate((acoes) =>
+            acoes.filter((a) => !ATIVIDADE_VERBO[a]), REGISTRADAS);
+
+        igual(semVerbo, [], 'ações sem tradução');
+    });
+
     await check('a auditoria abre já com os registros mais recentes', async () => {
         await page.waitForTimeout(400);
         verdade(await page.locator('#tab-audit').isVisible(), 'a aba deveria aparecer');
