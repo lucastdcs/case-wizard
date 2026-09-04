@@ -113,6 +113,10 @@
                 titulo: 'Pessoas', carregar: function () { loadPeople(); },
                 sub: 'O diretório que decide quem é liderança e em que idioma o app abre.'
             },
+            roles: {
+                titulo: 'Papéis', carregar: function () { loadRoles(); },
+                sub: 'O que cada papel pode fazer. Vale no ato, sem passar por fila.'
+            },
             access: {
                 titulo: 'Acessos', carregar: function () { loadAccess(); },
                 sub: 'Quem entra na Central e com qual papel.'
@@ -587,6 +591,7 @@
 
                     document.getElementById('app').classList.remove('hidden');
                     if (s.canManageAccess) document.getElementById('tab-access').classList.remove('hidden');
+                    if (s.canManageRoles) document.getElementById('tab-roles').classList.remove('hidden');
                     // Pessoas nem aparece para QA/WFM: no servidor, a leitura do
                     // diretório é tão restrita quanto a escrita.
                     if (canPropose('people')) {

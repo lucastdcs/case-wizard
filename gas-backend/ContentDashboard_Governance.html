@@ -721,9 +721,356 @@
             renderPeople();
         });
 
+        // --- Papéis (matriz editável — ADR-0009) ---
+        //
+        // A tela NÃO é a fronteira: cada regra deste arquivo existe também no
+        // servidor, e é lá que ela vale. O que a tela faz é dizer em voz alta o
+        // que está prestes a acontecer — que é a parte que o servidor sozinho
+        // não consegue fazer.
+
+        var ROL = null;          // resposta de listContentRoles()
+        var ROL_ATUAL = null;    // nome do papel em edição, ou ROL_NOVO
+        var ROL_NOVO = '__novo__';
+
+        var ROL_ACAO_NOME = {
+            view: 'Ver', propose: 'Propor', approve: 'Aprovar',
+            publish: 'Publicar direto', rollback: 'Reverter'
+        };
+
+        var ROL_GLOBAL_NOME = {
+            manageAccess: 'Gerenciar acessos',
+            manageRoles: 'Gerenciar papéis',
+            viewAudit: 'Ver a auditoria completa',
+            selfApprove: 'Aprovar a própria proposta'
+        };
+
+        var ROL_GLOBAL_AJUDA = {
+            manageAccess: 'Conceder e tirar o acesso de outras pessoas.',
+            manageRoles: 'Editar esta matriz — inclusive a de quem já a edita.',
+            viewAudit: 'Ver quem mudou o quê, incluindo mudanças de acesso.',
+            selfApprove: 'Publicar a própria proposta sem que ninguém revise.'
+        };
+
+        var ROL_MODULO_NOME = {
+            links: 'Links', call_script: 'Call Script', note_template: 'Case Notes',
+            email_template: 'E-mails', tips: 'Dicas', broadcast: 'Avisos',
+            bau_availability: 'Disponibilidade', people: 'Pessoas'
+        };
+
+        function loadRoles() {
+            if (!SESSION.canManageRoles) return;
+
+            google.script.run
+                .withSuccessHandler(function (r) {
+                    ROL = r;
+                    if (!ROL_ATUAL || (ROL_ATUAL !== ROL_NOVO && !acharPapel(ROL_ATUAL))) {
+                        ROL_ATUAL = r.roles.length ? r.roles[0].role : ROL_NOVO;
+                    }
+                    renderRoles();
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('rol-matriz').innerHTML =
+                        '<div class="note warn">' + esc(err.message) + '</div>';
+                })
+                .listContentRoles();
+        }
+
+        function acharPapel(nome) {
+            if (!ROL) return null;
+            for (var i = 0; i < ROL.roles.length; i++) {
+                if (ROL.roles[i].role === nome) return ROL.roles[i];
+            }
+            return null;
+        }
+
+        // A matriz que a tela está mostrando AGORA — lida dos checkboxes, não
+        // do que veio do servidor. É ela que vai no salvar e a que alimenta o
+        // aviso de escalada em tempo real.
+        function matrizDaTela() {
+            var modules = {};
+
+            ROL.modules.forEach(function (m) {
+                modules[m] = {};
+                ROL.actionsByModule[m].forEach(function (acao) {
+                    var cx = document.getElementById('rol-cx-' + m + '-' + acao);
+                    modules[m][acao] = !!(cx && cx.checked);
+                });
+            });
+
+            var global = {};
+            ROL.globalPerms.forEach(function (nome) {
+                var cx = document.getElementById('rol-gl-' + nome);
+                global[nome] = !!(cx && cx.checked);
+            });
+
+            return { modules: modules, global: global };
+        }
+
+        // Publicação unilateral: propõe, aprova e pode aprovar a si mesmo.
+        // Mesma conta do servidor — aqui ela existe para APARECER, não para
+        // decidir.
+        function escaladaDaTela(m) {
+            if (!m.global.selfApprove) return [];
+            return ROL.modules.filter(function (mod) {
+                var c = m.modules[mod] || {};
+                if (!c.propose || !c.approve) return false;
+                var exige = ROL.approvalRequiresGlobal[mod];
+                return !exige || m.global[exige];
+            });
+        }
+
+        function renderRoles() {
+            if (!ROL) return;
+
+            var sel = document.getElementById('rol-papel');
+            sel.innerHTML = ROL.roles.map(function (r) {
+                return '<option value="' + esc(r.role) + '"' +
+                    (r.role === ROL_ATUAL ? ' selected' : '') + '>' + esc(r.role) +
+                    ' · ' + r.people + (r.people === 1 ? ' pessoa' : ' pessoas') + '</option>';
+            }).join('') +
+                '<option value="' + ROL_NOVO + '"' +
+                (ROL_ATUAL === ROL_NOVO ? ' selected' : '') + '>— novo papel —</option>';
+
+            document.getElementById('rol-nome-nova').classList.toggle('hidden', ROL_ATUAL !== ROL_NOVO);
+
+            var atual = acharPapel(ROL_ATUAL);
+            var resumo = document.getElementById('rol-resumo');
+
+            if (ROL.fallback) {
+                // Editar em cima de um fallback é editar no escuro: o que está
+                // na tela não é o que está gravado.
+                resumo.textContent =
+                    'A aba Content_Roles não pôde ser lida. Isto é o preset do código — ' +
+                    'salvar aqui vai GRAVAR o que você vir.';
+            } else if (ROL_ATUAL === ROL_NOVO) {
+                resumo.textContent = 'Papel novo. Ninguém o tem ainda.';
+            } else {
+                resumo.textContent = atual.people
+                    ? 'Vale para ' + atual.people + (atual.people === 1 ? ' pessoa' : ' pessoas') +
+                      ', no ato em que você salvar.'
+                    : 'Ninguém tem este papel no momento.';
+            }
+
+            renderMatriz(atual ? atual.permissions : null);
+            renderGlobais(atual ? atual.permissions : null);
+            aoMexerNaMatriz();
+        }
+
+        function renderMatriz(perms) {
+            var acoes = ROL.moduleActions;
+
+            var cabecalho = '<tr><th scope="col">Módulo</th>' + acoes.map(function (a) {
+                return '<th scope="col">' + esc(ROL_ACAO_NOME[a] || a) + '</th>';
+            }).join('') + '</tr>';
+
+            var linhas = ROL.modules.map(function (m) {
+                var possiveis = ROL.actionsByModule[m];
+
+                var celulas = acoes.map(function (acao) {
+                    // Casa que não existe neste regime não vira checkbox
+                    // desligado: vira traço. Um checkbox que não faz nada é uma
+                    // promessa falsa, e a matriz passaria a afirmar coisas sobre
+                    // operações que não existem.
+                    if (possiveis.indexOf(acao) === -1) {
+                        return '<td class="rol-na" aria-label="não se aplica">—</td>';
+                    }
+
+                    var id = 'rol-cx-' + m + '-' + acao;
+                    var marcado = !!(perms && perms.modules[m] && perms.modules[m][acao]);
+                    return '<td><input type="checkbox" id="' + id + '"' +
+                        (marcado ? ' checked' : '') +
+                        ' aria-label="' + esc((ROL_ACAO_NOME[acao] || acao) + ' — ' +
+                            (ROL_MODULO_NOME[m] || m)) + '"></td>';
+                }).join('');
+
+                return '<tr><th scope="row">' + esc(ROL_MODULO_NOME[m] || m) + '</th>' + celulas + '</tr>';
+            }).join('');
+
+            document.getElementById('rol-matriz').innerHTML =
+                '<div class="card-title" style="margin-bottom:4px">O que este papel faz em cada módulo</div>' +
+                '<p class="card-sub" style="margin-bottom:14px">' +
+                'O traço marca o que não existe naquele módulo: catálogo passa pela fila, ' +
+                'operação publica direto.</p>' +
+                '<div class="rol-scroll"><table class="rol-matriz">' +
+                '<thead>' + cabecalho + '</thead><tbody>' + linhas + '</tbody></table></div>';
+        }
+
+        function renderGlobais(perms) {
+            var itens = ROL.globalPerms.map(function (nome) {
+                var marcado = !!(perms && perms.global[nome]);
+                return '<label class="rol-global">' +
+                    '<input type="checkbox" id="rol-gl-' + nome + '"' + (marcado ? ' checked' : '') + '>' +
+                    '<span><strong>' + esc(ROL_GLOBAL_NOME[nome] || nome) + '</strong>' +
+                    '<span class="rol-global-ajuda">' + esc(ROL_GLOBAL_AJUDA[nome] || '') + '</span>' +
+                    '</span></label>';
+            }).join('');
+
+            document.getElementById('rol-globais').innerHTML =
+                '<div class="card-title" style="margin-bottom:14px">Permissões que não são de módulo</div>' +
+                itens;
+        }
+
+        // Um listener só, na aba inteira: a matriz é repintada a cada troca de
+        // papel, e religar handler por checkbox é como se perde evento em lista
+        // que muda.
+        document.getElementById('pane-roles').addEventListener('change', function (e) {
+            if (e.target.type === 'checkbox') aoMexerNaMatriz();
+        });
+
+        function aoMexerNaMatriz() {
+            if (!ROL) return;
+
+            var atual = acharPapel(ROL_ATUAL);
+            var agora = matrizDaTela();
+            var escalada = escaladaDaTela(agora);
+            var aviso = document.getElementById('rol-escalada');
+
+            aviso.classList.toggle('hidden', !escalada.length);
+            if (escalada.length) {
+                aviso.innerHTML = '<strong>Publicação sem revisão.</strong> Quem tem este papel ' +
+                    'propõe e aprova a si mesmo em ' +
+                    esc(escalada.map(function (m) { return ROL_MODULO_NOME[m] || m; }).join(', ')) +
+                    ' — vai ao ar sem ninguém olhar.';
+            }
+
+            // O diff ao vivo, e não só na confirmação: quem está mexendo precisa
+            // saber o que já mudou antes de decidir salvar.
+            var mudancas = diffDaMatriz(atual ? atual.permissions : null, agora);
+            document.getElementById('rol-mudancas').textContent = mudancas.length
+                ? mudancas.length + (mudancas.length === 1 ? ' alteração' : ' alterações')
+                : 'Nada alterado.';
+        }
+
+        function diffDaMatriz(antes, depois) {
+            var linhas = [];
+            var texto = function (v) { return v ? 'sim' : 'não'; };
+
+            ROL.modules.forEach(function (m) {
+                ROL.actionsByModule[m].forEach(function (acao) {
+                    var a = !!(antes && antes.modules[m] && antes.modules[m][acao]);
+                    var b = !!(depois.modules[m] && depois.modules[m][acao]);
+                    if (a !== b) {
+                        linhas.push((ROL_MODULO_NOME[m] || m) + ' · ' +
+                            (ROL_ACAO_NOME[acao] || acao) + ': ' + texto(a) + ' → ' + texto(b));
+                    }
+                });
+            });
+
+            ROL.globalPerms.forEach(function (nome) {
+                var a = !!(antes && antes.global[nome]);
+                var b = !!depois.global[nome];
+                if (a !== b) {
+                    linhas.push((ROL_GLOBAL_NOME[nome] || nome) + ': ' + texto(a) + ' → ' + texto(b));
+                }
+            });
+
+            return linhas;
+        }
+
+        function aoTrocarPapel() {
+            ROL_ATUAL = document.getElementById('rol-papel').value;
+            renderRoles();
+        }
+
+        function novoPapel() {
+            ROL_ATUAL = ROL_NOVO;
+            renderRoles();
+            var campo = document.getElementById('rol-nome');
+            if (campo) { campo.value = ''; campo.focus(); }
+        }
+
+        function salvarPapel(btn, opcoes) {
+            if (!ROL) return;
+
+            var nome = ROL_ATUAL === ROL_NOVO
+                ? String(document.getElementById('rol-nome').value || '').toUpperCase().trim()
+                : ROL_ATUAL;
+
+            if (!nome) return toast('Dê um nome ao papel.', true);
+
+            var perms = matrizDaTela();
+            if (btn) btn.disabled = true;
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    if (btn) btn.disabled = false;
+
+                    // `confirm` não é erro: é o servidor pedindo uma declaração,
+                    // e ele NÃO gravou nada. O diálogo mostra o que MUDA, não o
+                    // estado final — "agora tem 14 permissões" não é uma frase
+                    // sobre a qual alguém decida.
+                    if (res.status === 'confirm') {
+                        pedirConfirmacaoDePapel(nome, res, opcoes || {});
+                        return;
+                    }
+
+                    toast('Papel ' + nome + ' salvo. Vale a partir de agora.');
+                    ROL_ATUAL = nome;
+
+                    // Mexeu no próprio papel: o que a tela tem em memória já não
+                    // vale, inclusive as abas que ela decidiu mostrar.
+                    if (res.reloadSession) location.reload();
+                    else loadRoles();
+                })
+                .withFailureHandler(function (err) {
+                    if (btn) btn.disabled = false;
+                    toast(err.message, true);
+                })
+                .saveContentRole(nome, JSON.stringify(perms), opcoes || {});
+        }
+
+        function pedirConfirmacaoDePapel(nome, res, opcoes) {
+            var lista = (res.changes || []).map(function (l) {
+                return '<li>' + esc(l) + '</li>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:520px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="rol-cf-titulo">' +
+                '<h2 id="rol-cf-titulo">' +
+                (res.reason === 'self' ? 'É o seu próprio papel' : 'Isto publica sem revisão') +
+                '</h2>' +
+                '<div class="note warn">' + esc(res.message) + '</div>' +
+                (lista ? '<p class="card-sub" style="margin-top:16px">O que muda:</p>' +
+                    '<ul class="rol-diff">' + lista + '</ul>' : '') +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Voltar e revisar</button>' +
+                '<button class="btn btn-primary" id="rol-cf-go">Salvar assim mesmo</button>' +
+                '</div></div></div>';
+
+            document.getElementById('rol-cf-go').onclick = function () {
+                closeModal();
+                // Os dois motivos podem aparecer em sequência: acumular a
+                // declaração e reenviar é o que faz a segunda pergunta chegar em
+                // vez de o salvamento voltar à estaca zero.
+                var novas = {};
+                Object.keys(opcoes).forEach(function (k) { novas[k] = opcoes[k]; });
+                if (res.reason === 'escalation') novas.confirmEscalation = true;
+                if (res.reason === 'self') novas.confirmSelf = true;
+                salvarPapel(document.getElementById('rol-salvar'), novas);
+            };
+
+            document.getElementById('rol-cf-go').focus();
+        }
+
         // --- Acessos ---
         function loadAccess() {
             if (!SESSION.canManageAccess) return;
+
+            // Os papéis viraram dado: o seletor tem que perguntar quais existem
+            // em vez de repetir uma lista que envelhece no primeiro papel novo.
+            google.script.run
+                .withSuccessHandler(function (nomes) {
+                    var sel = document.getElementById('acc-role');
+                    var escolhido = sel.value;
+                    sel.innerHTML = (nomes || []).map(function (n) {
+                        return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+                    }).join('');
+                    if (escolhido) sel.value = escolhido;
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .listContentRoleNames();
 
             google.script.run
                 .withSuccessHandler(function (list) {
@@ -737,10 +1084,14 @@
                             '<div style="display:flex;gap:8px;align-items:center">' +
                             '<span class="pill ' + (a.active ? 'live' : 'archived') + '">' +
                             esc(a.role) + (a.active ? '' : ' · inativo') + '</span>' +
-                            (a.ldap === SESSION.ldap ? '' :
-                                '<button class="btn btn-ghost btn-sm" onclick="toggleAccess(\'' +
-                                esc(a.ldap) + '\',\'' + esc(a.role) + '\',' + (!a.active) + ')">' +
-                                (a.active ? 'Desativar' : 'Reativar') + '</button>') +
+                            // O botão aparece inclusive para si mesmo: a trava
+                            // deixou de ser "não se remova" e passou a ser "não
+                            // fique sem ninguém que governe" (ADR-0009). Quem for
+                            // o último a governar recebe o erro do servidor, que
+                            // explica exatamente isso.
+                            '<button class="btn btn-ghost btn-sm" onclick="toggleAccess(\'' +
+                            esc(a.ldap) + '\',\'' + esc(a.role) + '\',' + (!a.active) + ')">' +
+                            (a.active ? 'Desativar' : 'Reativar') + '</button>' +
                             '</div></div>';
                     }).join('');
                 })

@@ -254,6 +254,98 @@
             overflow-wrap: anywhere;
         }
 
+        /* --- Matriz de papéis --- */
+        .rol-toolbar {
+            display: flex;
+            gap: 16px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .rol-toolbar #rol-resumo {
+            flex: 1 1 240px;
+            margin: 0 0 8px;
+        }
+
+        /* A matriz é larga por natureza: rola dentro do cartão em vez de
+           empurrar a página inteira para o lado. */
+        .rol-scroll { overflow-x: auto; }
+
+        .rol-matriz {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 560px;
+        }
+
+        .rol-matriz th,
+        .rol-matriz td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            text-align: center;
+        }
+
+        .rol-matriz thead th {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .rol-matriz tbody th {
+            text-align: left;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .rol-matriz tbody tr:last-child th,
+        .rol-matriz tbody tr:last-child td { border-bottom: none; }
+
+        .rol-matriz input[type="checkbox"] {
+            width: 17px;
+            height: 17px;
+            accent-color: var(--gemini-blue);
+            cursor: pointer;
+        }
+
+        /* Casa que não existe naquele regime. Cinza e sem controle: um checkbox
+           desligado aqui prometeria uma operação que o módulo não tem. */
+        .rol-na { color: var(--text-tertiary); opacity: 0.45; }
+
+        .rol-global {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+        }
+
+        .rol-global:last-child { border-bottom: none; }
+
+        .rol-global input[type="checkbox"] {
+            width: 17px;
+            height: 17px;
+            margin-top: 2px;
+            accent-color: var(--gemini-blue);
+            flex: 0 0 auto;
+        }
+
+        .rol-global-ajuda {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .rol-diff {
+            margin: 8px 0 0;
+            padding-left: 20px;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
         /* Abaixo desta largura, trilho (248px) mais barra (304px) deixariam o
            editor com menos da metade da tela. A barra sai do grid e passa a
            flutuar sobre o conteúdo, fechável pelo mesmo botão.

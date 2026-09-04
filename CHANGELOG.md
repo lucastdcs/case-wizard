@@ -9,6 +9,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Aba "Papéis" na Central: a matriz de permissões virou tela** (fase 4). Uma
+  linha por módulo, uma coluna por ação, e um traço onde a ação não existe
+  naquele regime — não existe "aprovar um aviso", e um checkbox desligado ali
+  prometeria uma operação que o módulo não tem. O aviso de **publicação sem
+  revisão** aparece enquanto se clica, não só ao salvar, e nomeia os módulos
+  afetados; a confirmação mostra **o que muda**, não o estado final. Editar o
+  próprio papel recarrega a sessão, porque o que a tela tinha em memória deixou
+  de valer. O seletor de papel da aba Acessos passou a ler os papéis do
+  servidor, em vez dos quatro fixos no HTML.
 - **Papéis da Central viraram dado editável** (fase 4, ADR-0009). Eram uma
   constante no código: dar links a um QA, ou criar um papel que publica
   disponibilidade sem tocar no catálogo, custava um deploy. Agora a aba
@@ -122,6 +131,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   a mesma coisa é como um deles fica para trás.
 
 ### Changed
+- **O botão de desativar acesso passou a aparecer também para si mesmo.** A
+  trava deixou de ser "não se remova" e passou a ser "não fique sem ninguém que
+  governe" — quem for o último a governar recebe um erro do servidor que explica
+  exatamente isso, e quem tem um colega admin pode simplesmente sair.
 - **A Central de Conteúdo trocou as dez abas por um trilho agrupado pelo regime
   de publicação** (ADR-0007). Catálogo (passa por revisão), Operação (vai ao ar
   na hora) e Governança: o grupo passa a carregar a informação que antes morava
