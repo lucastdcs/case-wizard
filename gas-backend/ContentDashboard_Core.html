@@ -576,6 +576,112 @@
             if (!document.getElementById('pane-emails').classList.contains('hidden')) renderEmails();
         }
 
+        // --- Como o agente vê ---
+        //
+        // O editor mostra CAMPOS; o agente lê TEXTO. Entre os dois cabe o erro
+        // que ninguém pega revisando o formulário: a descrição em espanhol que
+        // ficou em português, o passo do roteiro que só faz sentido com o
+        // anterior na frente, o placeholder que sobrou literal.
+        //
+        // O que esta prévia promete é CONTEÚDO, não pixel: é o texto que o
+        // agente recebe, no idioma dele. Copiar o visual do bundle aqui criaria
+        // uma segunda cópia da aparência, que envelhece sozinha — e uma prévia
+        // desatualizada mente com mais convicção que prévia nenhuma.
+        // Conferir é leitura: aparece para quem enxerga o item, e continua
+        // aparecendo em prévia "ver como" — é justamente lá que se quer olhar.
+        function botaoComoAgente(itemId) {
+            return '<button class="btn btn-ghost btn-sm" onclick="verComoAgente(\'' +
+                esc(itemId) + '\')">Como o agente vê</button>';
+        }
+
+        function verComoAgente(itemId) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:620px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="ag-titulo">' +
+                '<h2 id="ag-titulo">Como o agente vê</h2>' +
+                '<div id="ag-corpo"><div class="skeleton"></div><div class="skeleton"></div></div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>' +
+                '</div></div></div>';
+
+            google.script.run
+                .withSuccessHandler(renderComoAgente)
+                .withFailureHandler(function (err) {
+                    var host = document.getElementById('ag-corpo');
+                    if (host) host.innerHTML = '<div class="note warn">' + esc(err.message) + '</div>';
+                })
+                .getContentItemForPreview(itemId);
+        }
+
+        function renderComoAgente(item) {
+            var host = document.getElementById('ag-corpo');
+            if (!host || !item) return;
+
+            var idioma = idiomaAtual();
+            var v = {};
+            try { v = JSON.parse(item.value || '{}'); } catch (e) { v = {}; }
+
+            var corpo = '';
+
+            if (item.module === 'links') {
+                // O agente lê a descrição no SEU idioma. É o campo que mais
+                // silenciosamente fica em português dentro do bloco ES.
+                var desc = idioma === 'ES' ? (v.desc_es || '') : (v.desc || '');
+                corpo =
+                    '<div class="ag-cartao">' +
+                    '<div class="ag-titulo">' + esc(v.name || item.label) + '</div>' +
+                    '<div class="ag-texto">' + (desc
+                        ? esc(desc)
+                        : '<em class="ag-falta">sem descrição em ' + esc(idioma) +
+                          ' — o agente vê o cartão sem explicação</em>') + '</div>' +
+                    '<div class="ag-meta">abre ' + esc(v.url || '') + '</div>' +
+                    '</div>';
+            } else if (item.module === 'tips') {
+                corpo = '<div class="ag-cartao ag-dica">' +
+                    '<span class="material-symbols-rounded" aria-hidden="true">lightbulb</span> ' +
+                    esc(item.value) + '</div>';
+            } else if (item.module === 'broadcast') {
+                corpo =
+                    '<div class="ag-cartao ag-aviso ag-aviso-' + esc(v.type || 'info') + '">' +
+                    '<div class="ag-titulo">' + esc(v.title || item.label) + '</div>' +
+                    '<div class="ag-texto">' + esc(v.text || '') + '</div>' +
+                    '</div>' + avisoDaJanelaNaPrevia(v);
+            } else if (item.module === 'email_template') {
+                corpo =
+                    '<div class="ag-cartao">' +
+                    '<div class="ag-meta">Assunto</div>' +
+                    '<div class="ag-titulo">' + esc(v.subject || '') + '</div>' +
+                    '</div>' + previaIsolada(v.template || '', 260);
+            } else if (item.module === 'call_script' || item.module === 'note_template') {
+                corpo = '<div class="ag-cartao"><pre class="ag-pre">' +
+                    esc(prettyValue(item.value)) + '</pre></div>';
+            } else {
+                corpo = '<div class="ag-cartao"><pre class="ag-pre">' +
+                    esc(prettyValue(item.value)) + '</pre></div>';
+            }
+
+            host.innerHTML =
+                '<p class="card-sub">Conteúdo que o agente recebe, no idioma <strong>' +
+                esc(idioma) + '</strong>. O visual é o desta tela, não o do app — ' +
+                'o que se confere aqui é o texto.</p>' + corpo;
+        }
+
+        // Um aviso agendado ou vencido não chega ao agente hoje. A prévia tem
+        // que dizer isso, senão ela mostra um cartão que ninguém está vendo.
+        function avisoDaJanelaNaPrevia(v) {
+            var agora = agoraLocalISO();
+            if (v.startsAt && agora < v.startsAt) {
+                return '<div class="note warn">Ainda não. Este aviso só aparece a partir de ' +
+                    esc(bcFormatDate(v.startsAt)) + '.</div>';
+            }
+            if (v.endsAt && agora >= v.endsAt) {
+                return '<div class="note warn">Já saiu do ar em ' +
+                    esc(bcFormatDate(v.endsAt)) + '. Nenhum agente vê isto agora.</div>';
+            }
+            return '';
+        }
+
         // --- Busca global (Ctrl+K) ---
         //
         // A Central tem dez destinos e centenas de itens. Achar "aquele link do

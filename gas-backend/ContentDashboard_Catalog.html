@@ -74,7 +74,8 @@
                     // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
                     // passou. Só reverter é que depende de aprovar.
                     var historico = '<button class="btn btn-ghost btn-sm" '
-                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'links\')">Histórico</button>';
+                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'links\')">Histórico</button>'
+                        + botaoComoAgente(it.id);
 
                     var actions = podeEscrever('links')
                         ? '<div style="display:flex;gap:8px">' + historico + descarte +
@@ -417,7 +418,8 @@
                     // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
                     // passou. Só reverter é que depende de aprovar.
                     var historico = '<button class="btn btn-ghost btn-sm" '
-                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'call_script\')">Histórico</button>';
+                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'call_script\')">Histórico</button>'
+                        + botaoComoAgente(it.id);
 
                     var actions = podeEscrever('call_script')
                         ? '<div style="display:flex;gap:8px">' + historico + descarte +
@@ -634,7 +636,8 @@
                     // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
                     // passou. Só reverter é que depende de aprovar.
                     var historico = '<button class="btn btn-ghost btn-sm" '
-                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'note_template\')">Histórico</button>';
+                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'note_template\')">Histórico</button>'
+                        + botaoComoAgente(it.id);
 
                     var actions = podeEscrever('note_template')
                         ? '<div style="display:flex;gap:8px">' + historico + descarte +
@@ -875,7 +878,8 @@
                     // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
                     // passou. Só reverter é que depende de aprovar.
                     var historico = '<button class="btn btn-ghost btn-sm" '
-                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'email_template\')">Histórico</button>';
+                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'email_template\')">Histórico</button>'
+                        + botaoComoAgente(it.id);
 
                     var actions = podeEscrever('email_template')
                         ? '<div style="display:flex;gap:8px">' + historico + descarte +
@@ -1052,7 +1056,8 @@
                 // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
                 // passou. Só reverter é que depende de aprovar.
                 var historico = '<button class="btn btn-ghost btn-sm" '
-                    + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'tips\')">Histórico</button>';
+                    + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'tips\')">Histórico</button>'
+                    + botaoComoAgente(it.id);
 
                 var actions = podeEscrever('tips')
                     ? '<div style="display:flex;gap:8px">' + historico + descarte +

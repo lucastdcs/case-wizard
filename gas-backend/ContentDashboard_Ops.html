@@ -80,12 +80,13 @@
             host.innerHTML = ordered.map(function (it) {
                 var p = bcParse(it);
 
-                var actions = podeEditar
-                    ? '<div style="display:flex;gap:8px">' +
-                    '<button class="btn btn-ghost btn-sm" onclick="openBroadcastEditor(\'' + it.id + '\')">Editar</button>' +
-                    '<button class="btn btn-danger btn-sm" onclick="askUnpublish(\'' + it.id + '\')">Tirar do ar</button>' +
-                    '</div>'
-                    : '';
+                var actions = '<div style="display:flex;gap:8px">' +
+                    botaoComoAgente(it.id) +
+                    (podeEditar
+                        ? '<button class="btn btn-ghost btn-sm" onclick="openBroadcastEditor(\'' + it.id + '\')">Editar</button>' +
+                          '<button class="btn btn-danger btn-sm" onclick="askUnpublish(\'' + it.id + '\')">Tirar do ar</button>'
+                        : '') +
+                    '</div>';
 
                 var segmento = it.lang && it.lang !== 'ALL'
                     ? ' · ' + esc(BC_LANG_LABEL[it.lang] || it.lang)

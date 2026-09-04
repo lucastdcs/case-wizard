@@ -301,6 +301,18 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
             listContentActivity: () => ATIVIDADE,
             listContentRoles: () => matriz,
             listContentRoleNames: () => ['ADMIN', 'QA'],
+            getContentItemForPreview: (id) => {
+                for (const m of Object.keys(itens)) {
+                    const achado = (itens[m] || []).filter((i) => i.id === id)[0];
+                    if (achado) {
+                        return {
+                            id: achado.id, module: m, key: achado.key, lang: achado.lang,
+                            label: achado.label, value: achado.value, version: achado.version,
+                        };
+                    }
+                }
+                throw new Error('Item não encontrado.');
+            },
             searchContentItems: (t) => {
                 const alvo = String(t || '').toLowerCase();
                 return (itens.links || []).filter((i) =>
@@ -1651,6 +1663,75 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         // Buscar é leitura: o que ela devolve já vem filtrado pelo `ver` do
         // servidor, então não há por que esconder a porta.
         verdade(await page.locator('#btn-busca').isVisible(), 'o QA também busca');
+    });
+
+    await page.close();
+}
+
+// ------------------------------------------------- como o agente vê
+{
+    const page = await abrir({ sessao: 'admin', hash: '#/links' });
+
+    await check('todo item publicado oferece a prévia do agente', async () => {
+        await page.waitForTimeout(300);
+        verdade(/Como o agente vê/.test(await page.locator('#links-list').textContent()),
+            'faltou o botão na lista de links');
+    });
+
+    await check('a prévia mostra o texto no idioma escolhido', async () => {
+        await page.evaluate(() => verComoAgente('itm_1'));
+        await page.waitForTimeout(400);
+        const texto = await page.locator('#ag-corpo').textContent();
+        verdade(/Fila do dia/.test(texto), 'faltou a descrição em PT: ' + texto);
+        verdade(/go\/fila/.test(texto), 'faltou dizer o que o link abre');
+        // A prévia promete conteúdo, não pixel — e diz isso, para ninguém
+        // concluir que o app mudou de cara.
+        verdade(/o visual é o desta tela/i.test(texto), 'faltou a ressalva sobre o visual');
+    });
+
+    await check('trocar o idioma troca o que a prévia mostra', async () => {
+        // É o campo que mais silenciosamente fica em português dentro do
+        // bloco ES — e o editor, que mostra os dois lado a lado, esconde isso.
+        await page.evaluate(() => { document.getElementById('lang-global').value = 'ES'; });
+        await page.evaluate(() => verComoAgente('itm_1'));
+        await page.waitForTimeout(400);
+        const texto = await page.locator('#ag-corpo').textContent();
+        verdade(/Cola del día/.test(texto), 'faltou a descrição em ES: ' + texto);
+        igual(/Fila do dia/.test(texto), false, 'a descrição PT não pode vazar na prévia ES');
+    });
+
+    await check('descrição faltando no idioma é DITA, não escondida', async () => {
+        await page.evaluate(() => {
+            LIVE_LINKS.push({
+                id: 'itm_sem_es', module: 'links', key: 'tech', lang: 'ALL',
+                label: 'Sem espanhol', version: 1, status: 'live', lineage: 'itm_sem_es',
+                value: JSON.stringify({ name: 'Sem espanhol', url: 'https://go/x', desc: 'Só em PT' }),
+            });
+        });
+        // O dublê procura nos ITENS do fixture, então a prévia deste item vem
+        // do servidor dublado: basta o modal saber renderizar a falta.
+        await page.evaluate(() => renderComoAgente({
+            id: 'x', module: 'links', lang: 'ALL', label: 'Sem espanhol',
+            value: JSON.stringify({ name: 'Sem espanhol', url: 'https://go/x', desc: 'Só em PT' }),
+        }));
+        await page.waitForTimeout(150);
+        verdade(/sem descrição em ES/.test(await page.locator('#ag-corpo').textContent()),
+            'a falta precisa aparecer, não sumir');
+    });
+
+    await check('aviso fora da janela avisa que ninguém está vendo', async () => {
+        await page.evaluate(() => renderComoAgente({
+            id: 'x', module: 'broadcast', lang: 'ALL', label: 'Vencido',
+            value: JSON.stringify({
+                type: 'critical', title: 'Instabilidade', text: 'CRM lento.',
+                startsAt: '2020-01-01T08:00', endsAt: '2020-01-02T08:00',
+            }),
+        }));
+        await page.waitForTimeout(150);
+        const texto = await page.locator('#ag-corpo').textContent();
+        // Uma prévia que mostra o cartão sem dizer que ele já saiu do ar é uma
+        // prévia que afirma o contrário do que está acontecendo.
+        verdade(/Nenhum agente vê isto agora/.test(texto), 'faltou o aviso da janela: ' + texto);
     });
 
     await page.close();

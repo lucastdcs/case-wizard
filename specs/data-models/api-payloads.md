@@ -268,6 +268,7 @@ e texto:
 | Função | Params | Quem pode | Resposta |
 | :--- | :--- | :--- | :--- |
 | `searchContentItems(termo)` | termo com 2+ caracteres | qualquer papel ativo | Até 30 `{ id, module, key, label, lang, snippet }` |
+| `getContentItemForPreview(itemId)` | ID do item | `view` do módulo | `{ id, module, key, lang, label, value, version }` — o item cru, para a prévia "como o agente vê" |
 
 ### Regras
 - **O filtro é o `ver` da matriz.** Uma busca que ignora permissão é a porta dos
@@ -288,3 +289,17 @@ e texto:
   ir ao servidor. Sem o atraso, cada tecla vira uma execução; esperando a rede
   para mostrar "Aprovações", a busca pareceria lenta por causa da parte que nem
   precisava de rede.
+
+### Sobre a prévia "como o agente vê"
+- **Uma chamada por clique, não uma busca na memória.** As seis listas da tela
+  são seis variáveis diferentes; a prévia teria de saber em qual procurar — um
+  `if` por módulo que envelhece no próximo módulo novo.
+- **Ela promete CONTEÚDO, não pixel**, e diz isso na própria tela. Copiar o
+  visual do bundle criaria uma segunda cópia da aparência, que envelhece
+  sozinha — e uma prévia desatualizada mente com mais convicção que prévia
+  nenhuma.
+- **O idioma vem do seletor da Central.** É onde a tradução ES que ninguém
+  confere aparece: o editor mostra PT e ES lado a lado e por isso esconde a
+  falta; a prévia mostra um de cada vez e **nomeia o que está faltando**.
+- **Aviso fora da janela é anunciado.** Mostrar o cartão sem dizer que ele já
+  saiu do ar seria afirmar o contrário do que está acontecendo.
