@@ -9,6 +9,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Prévia "como o agente vê"** (fase 5). O editor mostra **campos**; o agente lê
+  **texto**. Entre os dois cabe o erro que ninguém pega revisando o formulário: a
+  descrição em espanhol que ficou em português, o passo do roteiro que só faz
+  sentido com o anterior na frente, o placeholder que sobrou literal. A prévia
+  resolve o item no idioma escolhido e **nomeia o que está faltando** em vez de
+  mostrar um cartão vazio — o editor, que exibe PT e ES lado a lado, é
+  justamente o lugar onde essa falta passa despercebida. Aviso agendado ou
+  vencido vem com o aviso de que nenhum agente está vendo aquilo agora.
 - **Busca global na Central, por `Ctrl+K`** (fase 5). A tela tem dez destinos e
   centenas de itens; achar *"aquele link do Ads"* custava lembrar em qual aba
   ele mora e rolar a lista — e quem não lembra desiste e cria um item duplicado,

@@ -77,7 +77,7 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       e o `<select>` da aba Acessos lendo `listContentRoleNames()`.
       **Falta validar na planilha real:** que a aba `Content_Roles` nasce
       semeada e que os quatro papéis continuam se comportando igual.
-- [~] **Fase 5 — diferenciais e auditoria** — em andamento.
+- [x] **Fase 5 — diferenciais e auditoria** — completa, em seis PRs.
       **Entregue:** "ver como" por papel e idioma — a tela inteira passa a
       mostrar o que aquele papel veria, de leitura, com a prévia intersectada no
       servidor (prévia que concede é escalação com outro nome) e dizendo na
@@ -93,8 +93,9 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       `CW_DEPLOYMENTS` e não a URL do serviço.
       **Entregue também:** busca global Ctrl+K — destino e conteúdo na mesma
       lista, sem acento, filtrada pelo `ver` da matriz, com duas velocidades
-      (destino na tecla, conteúdo depois de 220 ms de silêncio).
-      **Falta:** prévia "como o agente vê". **PR final:** aba de
+      (destino na tecla, conteúdo depois de 220 ms de silêncio) — e a prévia
+      "como o agente vê", que resolve o item no idioma escolhido e nomeia o que
+      falta em vez de mostrar cartão vazio. **PR final:** aba de
       auditoria restrita, com filtros, paginação e exportação.
 
 ## Ideas — to triage

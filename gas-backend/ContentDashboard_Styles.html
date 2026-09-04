@@ -284,6 +284,64 @@
         body.em-previa .lateral { top: 116px; }
         body.em-previa .rail { height: calc(100vh - 116px); }
 
+        /* --- Prévia "como o agente vê" ---
+           O visual é o DESTA tela, não o do bundle: copiar a aparência do app
+           aqui criaria uma segunda cópia que envelhece sozinha, e uma prévia
+           desatualizada mente com mais convicção que prévia nenhuma. */
+        .ag-cartao {
+            background: var(--surface-level-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            margin-top: 12px;
+        }
+
+        .ag-titulo {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .ag-texto {
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-top: 4px;
+            white-space: pre-wrap;
+        }
+
+        .ag-meta {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* O que FALTA é a informação mais útil de uma prévia de tradução. */
+        .ag-falta { color: var(--danger); }
+
+        .ag-dica {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .ag-aviso { border-left: 4px solid var(--gemini-blue); }
+        .ag-aviso-critical { border-left-color: var(--danger); }
+        .ag-aviso-success { border-left-color: var(--success); }
+
+        .ag-pre {
+            margin: 0;
+            font-family: 'Roboto Mono', ui-monospace, monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            color: var(--text-primary);
+        }
+
         /* --- Busca global (Ctrl+K) --- */
         .topnav-kbd,
         .busca-campo kbd {

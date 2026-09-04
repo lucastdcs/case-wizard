@@ -2570,6 +2570,34 @@ function listContentActivity(limite) {
   return saida;
 }
 
+/**
+ * Um item publicado, cru, para a tela montar a prévia "como o agente vê".
+ *
+ * Existe em vez de a tela procurar na lista que já tem em memória porque as
+ * seis listas são seis variáveis diferentes, e a prévia teria de saber em qual
+ * procurar — um `if` por módulo que envelhece no próximo módulo novo. Uma
+ * chamada por clique é barata; a busca é que não podia ser.
+ */
+function getContentItemForPreview(itemId) {
+  const item = findContentRow_(SHEET_CONTENT_ITEMS, 'ID', itemId);
+  if (!item) throw new Error("Item não encontrado.");
+
+  const module = String(item.Module).trim();
+  // Mesma porta de leitura do resto: `view` do módulo, nada de exceção só
+  // porque a prévia "é só olhar".
+  assertContentRole_('read', module);
+
+  return {
+    id: String(item.ID),
+    module: module,
+    key: String(item.Key || ""),
+    lang: String(item.Lang || 'ALL'),
+    label: String(item.Label || ""),
+    value: String(item.Value || ""),
+    version: Number(item.Version) || 1
+  };
+}
+
 // =========================================================
 //  BUSCA GLOBAL (Ctrl+K)
 // =========================================================
