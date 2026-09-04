@@ -125,6 +125,9 @@
                     <button class="rail-item hidden" id="tab-people" data-tab="people" onclick="switchTab('people')">
                         <span class="material-symbols-rounded" aria-hidden="true">groups</span> <span class="rail-label">Pessoas</span>
                     </button>
+                    <button class="rail-item hidden" id="tab-roles" data-tab="roles" onclick="switchTab('roles')">
+                        <span class="material-symbols-rounded" aria-hidden="true">shield_person</span> <span class="rail-label">Papéis</span>
+                    </button>
                     <button class="rail-item hidden" id="tab-access" data-tab="access" onclick="switchTab('access')">
                         <span class="material-symbols-rounded" aria-hidden="true">manage_accounts</span> <span class="rail-label">Acessos</span>
                     </button>
@@ -393,11 +396,55 @@
                 </div>
             </section>
 
+            <!-- TAB: Papéis (matriz editável — ADR-0009) -->
+            <section id="pane-roles" class="hidden">
+                <div class="note warn" id="rol-note">
+                    O que um papel pode fazer vale <strong>no ato</strong> para todas as pessoas
+                    que o têm. Não passa por revisão e não tem fila.
+                </div>
+
+                <div class="card">
+                    <div class="rol-toolbar">
+                        <div>
+                            <label class="fld" style="margin-top:0" for="rol-papel">Papel</label>
+                            <select id="rol-papel" onchange="aoTrocarPapel()"></select>
+                        </div>
+                        <p class="card-sub" id="rol-resumo" role="status" aria-live="polite">Carregando…</p>
+                        <button class="btn btn-ghost" id="rol-novo-btn" onclick="novoPapel()">
+                            <span class="material-symbols-rounded" style="font-size:19px"
+                                aria-hidden="true">add</span> Novo papel
+                        </button>
+                    </div>
+
+                    <div id="rol-nome-nova" class="hidden" style="margin-top:14px">
+                        <label class="fld" for="rol-nome">Nome do novo papel</label>
+                        <input type="text" id="rol-nome" autocomplete="off"
+                            placeholder="ex.: EDITOR" maxlength="24">
+                    </div>
+                </div>
+
+                <div class="note warn hidden" id="rol-escalada"></div>
+
+                <div class="card" id="rol-matriz">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+
+                <div class="card" id="rol-globais"></div>
+
+                <div style="margin-top:18px;display:flex;gap:10px;align-items:center">
+                    <button class="btn btn-primary" id="rol-salvar" onclick="salvarPapel(this)">
+                        Salvar papel
+                    </button>
+                    <span class="card-sub" id="rol-mudancas"></span>
+                </div>
+            </section>
+
             <!-- TAB: Acessos -->
             <section id="pane-access" class="hidden">
                 <div class="note warn">
-                    Quem entra aqui passa a ver e propor conteúdo. Papéis <strong>ADMIN</strong> e
-                    <strong>TL</strong> também aprovam.
+                    Quem entra aqui passa a ver e propor conteúdo, conforme o papel.
+                    O que cada papel pode fazer se edita na aba <strong>Papéis</strong>.
                 </div>
                 <div class="card">
                     <div class="card-title">Conceder ou alterar acesso</div>
@@ -408,12 +455,10 @@
                         </div>
                         <div>
                             <label class="fld" for="acc-role">Papel</label>
-                            <select id="acc-role">
-                                <option value="ADMIN">ADMIN — edita tudo, aprova, gerencia acessos</option>
-                                <option value="TL">TL — edita tudo, aprova e publica avisos</option>
-                                <option value="QA">QA — propõe call script e case notes</option>
-                                <option value="WFM">WFM — propõe links e publica a disponibilidade BAU</option>
-                            </select>
+                            <!-- Vazio de propósito: os papéis viraram dado (ADR-0009), e uma
+                                 lista fixa aqui ficaria mentindo no dia em que alguém criar
+                                 um papel novo. `loadAccess()` preenche. -->
+                            <select id="acc-role"></select>
                         </div>
                     </div>
                     <div style="margin-top:18px">

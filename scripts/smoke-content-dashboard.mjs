@@ -75,7 +75,8 @@ function verdade(cond, oque) {
 const SESSOES = {
     admin: {
         ldap: 'lucaste', role: 'ADMIN', hasAccess: true,
-        canApprove: true, canManageAccess: true, canSelfApprove: true,
+        canApprove: true, canManageAccess: true, canManageRoles: true,
+        canViewAudit: true, canSelfApprove: true,
         proposableModules: ['links', 'call_script', 'email_template', 'note_template',
             'tips', 'broadcast', 'bau_availability', 'people'],
     },
@@ -90,6 +91,60 @@ const SESSOES = {
         proposableModules: ['links', 'bau_availability'],
     },
     semAcesso: { ldap: 'estranho', role: null, hasAccess: false },
+};
+
+// A matriz como o servidor a devolve. Os eixos vêm de lá de propósito: a tela
+// desenha as casas a partir de `actionsByModule`, em vez de repetir a regra de
+// regime de cada módulo.
+const ACOES = ['view', 'propose', 'approve', 'publish', 'rollback'];
+const MODULOS_MATRIZ = ['links', 'call_script', 'note_template', 'email_template',
+    'tips', 'broadcast', 'bau_availability', 'people'];
+const DIRETOS = ['broadcast', 'bau_availability'];
+
+const ACOES_POR_MODULO = MODULOS_MATRIZ.reduce((acc, m) => {
+    acc[m] = DIRETOS.includes(m)
+        ? ['view', 'publish', 'rollback']
+        : ['view', 'propose', 'approve', 'rollback'];
+    return acc;
+}, {});
+
+function permsDe(marcadas, global) {
+    const modules = {};
+    MODULOS_MATRIZ.forEach((m) => {
+        modules[m] = {};
+        ACOES.forEach((a) => { modules[m][a] = !!(marcadas[m] || []).includes(a); });
+    });
+    return { modules, global: Object.assign(
+        { manageAccess: false, manageRoles: false, viewAudit: false, selfApprove: false },
+        global || {}) };
+}
+
+const MATRIZ = {
+    roles: [
+        {
+            role: 'ADMIN', people: 1, escalation: ['links'],
+            permissions: permsDe(
+                MODULOS_MATRIZ.reduce((a, m) => {
+                    a[m] = ACOES_POR_MODULO[m];
+                    return a;
+                }, {}),
+                { manageAccess: true, manageRoles: true, viewAudit: true, selfApprove: true }),
+        },
+        {
+            role: 'QA', people: 3, escalation: [],
+            permissions: permsDe({
+                links: ['view'], call_script: ['view', 'propose'],
+                note_template: ['view', 'propose'], email_template: ['view'],
+                tips: ['view'], broadcast: ['view'], bau_availability: ['view'],
+            }, {}),
+        },
+    ],
+    modules: MODULOS_MATRIZ,
+    moduleActions: ACOES,
+    globalPerms: ['manageAccess', 'manageRoles', 'viewAudit', 'selfApprove'],
+    actionsByModule: ACOES_POR_MODULO,
+    approvalRequiresGlobal: { people: 'manageAccess' },
+    fallback: false,
 };
 
 const ITENS = {
@@ -154,7 +209,8 @@ const ATIVIDADE = [
 ];
 
 // ------------------------------------------------------- montagem da página
-async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null, fila = [], atividade = [] } = {}) {
+async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null,
+    fila = [], atividade = [], matriz = MATRIZ, confirmarSalvar = null } = {}) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
     page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
 
@@ -175,7 +231,8 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
 
     // O dublê precisa existir ANTES do script da página rodar: o boot dispara
     // no DOMContentLoaded.
-    await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos, pendentes, atividade }) => {
+    await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos, pendentes, atividade,
+        matriz, respostaDoSalvar }) => {
         const PENDENTES = pendentes || [];
         const ATIVIDADE = atividade || [];
         const HISTORICO = historico;
@@ -190,6 +247,22 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
             },
             listPendingApprovals: () => PENDENTES,
             listContentActivity: () => ATIVIDADE,
+            listContentRoles: () => matriz,
+            listContentRoleNames: () => ['ADMIN', 'QA'],
+            saveContentRole: (nome, permsJson, opcoes) => {
+                // O servidor devolve `confirm` até vir a declaração. O dublê
+                // repete esse contrato para o teste poder exercitar o diálogo.
+                if (respostaDoSalvar && !(opcoes || {})[respostaDoSalvar.flag]) {
+                    return {
+                        status: 'confirm',
+                        reason: respostaDoSalvar.reason,
+                        message: respostaDoSalvar.message,
+                        changes: respostaDoSalvar.changes,
+                        modules: respostaDoSalvar.modules || [],
+                    };
+                }
+                return { status: 'success', role: nome, changes: [], reloadSession: false };
+            },
             listContentItemHistory: (lineage) => (HISTORICO[lineage] || []),
             rollbackContentItem: () => ({ status: 'success', itemId: 'itm_revivido' }),
             saveContentDraft: () => ({ status: 'success', draftId: 'drf_rascunho' }),
@@ -245,6 +318,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
     }, {
         sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe,
         historico: HISTORICO, rascunhos: draftsDe, pendentes: fila, atividade,
+        matriz, respostaDoSalvar: confirmarSalvar,
     });
 
     await page.goto('file://' + ARQUIVO + hash, { waitUntil: 'domcontentloaded' });
@@ -971,6 +1045,151 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         igual(await page.evaluate(() => window.__chamadas
             .filter(c => c.metodo === 'listContentActivity').length), 0,
             'pediu atividade sem ter acesso');
+    });
+
+    await page.close();
+}
+
+// -------------------------------------------------------- matriz de papéis
+{
+    const page = await abrir({ sessao: 'qa' });
+
+    await check('quem não gerencia papéis não vê a aba', async () => {
+        igual(await page.locator('#tab-roles').isVisible(), false, 'aba Papéis para o QA');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin', hash: '#/roles' });
+
+    await check('a matriz desenha um módulo por linha e uma ação por coluna', async () => {
+        verdade(await page.locator('#tab-roles').isVisible(), 'a aba deveria aparecer para o ADMIN');
+        igual(await page.locator('.rol-matriz tbody tr').count(), 8, 'linhas (módulos)');
+        igual(await page.locator('.rol-matriz thead th').count(), 6, 'colunas (módulo + 5 ações)');
+    });
+
+    await check('casa que não existe naquele regime é traço, não checkbox', async () => {
+        // Não existe "aprovar um aviso": avisos não passam por fila nenhuma.
+        // Um checkbox desligado ali prometeria uma operação que o módulo não tem.
+        igual(await page.locator('#rol-cx-broadcast-approve').count(), 0,
+            'aprovar aviso não pode ser um checkbox');
+        igual(await page.locator('#rol-cx-broadcast-publish').count(), 1,
+            'publicar aviso tem que ser um checkbox');
+        igual(await page.locator('#rol-cx-links-publish').count(), 0,
+            'não existe publicar direto no catálogo');
+        verdade(await page.locator('.rol-na').count() >= 8, 'faltaram os traços das casas inexistentes');
+    });
+
+    await check('a matriz abre marcada com o que o papel já pode', async () => {
+        igual(await page.locator('#rol-cx-links-propose').isChecked(), true);
+        await page.selectOption('#rol-papel', 'QA');
+        await page.waitForTimeout(150);
+        igual(await page.locator('#rol-cx-links-propose').isChecked(), false, 'QA não propõe links');
+        igual(await page.locator('#rol-cx-call_script-propose').isChecked(), true, 'QA propõe call script');
+    });
+
+    await check('o contador de alterações acompanha o clique', async () => {
+        igual((await page.locator('#rol-mudancas').textContent()).trim(), 'Nada alterado.');
+        await page.locator('#rol-cx-links-propose').check();
+        await page.waitForTimeout(120);
+        igual((await page.locator('#rol-mudancas').textContent()).trim(), '1 alteração');
+    });
+
+    await check('o aviso de publicação sem revisão aparece ANTES de salvar', async () => {
+        // É a parte que o servidor sozinho não faz: dizer em voz alta o que
+        // está prestes a acontecer.
+        igual(await page.locator('#rol-escalada').isVisible(), false, 'ainda não é escalada');
+
+        await page.locator('#rol-cx-links-approve').check();
+        await page.locator('#rol-gl-selfApprove').check();
+        await page.waitForTimeout(150);
+
+        verdade(await page.locator('#rol-escalada').isVisible(), 'o aviso deveria aparecer');
+        const texto = await page.locator('#rol-escalada').textContent();
+        verdade(/sem revisão/i.test(texto), 'faltou dizer que publica sem revisão');
+        verdade(/Links/.test(texto), 'faltou nomear o módulo afetado: ' + texto);
+    });
+
+    await check('o que vai para o servidor é o que está NA TELA', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.locator('#rol-salvar').click();
+        await page.waitForTimeout(200);
+
+        const chamada = await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'saveContentRole')[0]);
+        igual(chamada.args[0], 'QA', 'papel enviado');
+
+        const perms = JSON.parse(chamada.args[1]);
+        igual(perms.modules.links.propose, true, 'a marcação da tela chegou ao servidor');
+        igual(perms.global.selfApprove, true);
+        // A casa inexistente nem viaja: o payload não diz nada sobre "aprovar
+        // aviso", em vez de dizer que é falso. Dizer que é falso seria afirmar
+        // que a operação existe.
+        igual('approve' in perms.modules.broadcast, false, 'a casa inexistente não deveria viajar');
+        igual('publish' in perms.modules.broadcast, true, 'a casa que existe precisa viajar');
+    });
+
+    await page.close();
+}
+
+{
+    // O servidor devolve `confirm` e NÃO grava. A tela precisa mostrar o que
+    // muda — não o estado final — e só então reenviar com a declaração.
+    const page = await abrir({
+        sessao: 'admin', hash: '#/roles',
+        confirmarSalvar: {
+            reason: 'escalation', flag: 'confirmEscalation',
+            message: 'Com isto, quem tem o papel QA publica sozinho em links.',
+            changes: ['links.approve: não → sim'], modules: ['links'],
+        },
+    });
+
+    await check('confirmação mostra o que MUDA, não o estado final', async () => {
+        await page.locator('#rol-salvar').click();
+        await page.waitForTimeout(250);
+
+        const modal = page.locator('.modal-backdrop .modal');
+        verdade(await modal.isVisible(), 'o diálogo deveria abrir');
+        const texto = await modal.textContent();
+        verdade(/publica sozinho/.test(texto), 'faltou a mensagem do servidor');
+        verdade(/links\.approve: não → sim/.test(texto), 'faltou o diff: ' + texto);
+    });
+
+    await check('voltar não grava nada', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.locator('.modal-actions .btn-ghost').click();
+        await page.waitForTimeout(150);
+        igual(await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'saveContentRole').length), 0, 'chamadas depois de voltar');
+    });
+
+    await check('confirmar reenvia COM a declaração', async () => {
+        await page.locator('#rol-salvar').click();
+        await page.waitForTimeout(250);
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.locator('#rol-cf-go').click();
+        await page.waitForTimeout(250);
+
+        const opcoes = await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'saveContentRole')[0].args[2]);
+        igual(opcoes.confirmEscalation, true, 'a declaração precisa acompanhar o reenvio');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin', hash: '#/access' });
+
+    await check('o seletor de papel vem do servidor, não do HTML', async () => {
+        // Uma lista fixa aqui passaria a mentir no primeiro papel novo criado
+        // pela aba Papéis.
+        await page.waitForTimeout(250);
+        const opcoes = await page.locator('#acc-role option').evaluateAll(
+            (os) => os.map(o => o.value));
+        igual(opcoes, ['ADMIN', 'QA'], 'papéis no seletor');
     });
 
     await page.close();

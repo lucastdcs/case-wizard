@@ -2119,6 +2119,18 @@ function contentActionsByModule_() {
   return mapa;
 }
 
+/**
+ * Só os nomes, para o seletor de papel da aba Acessos.
+ *
+ * Existe separado de `listContentRoles()` porque quem concede acesso não
+ * necessariamente edita papéis — e precisar da matriz inteira para preencher um
+ * `<select>` obrigaria a dar a permissão maior para fazer a tarefa menor.
+ */
+function listContentRoleNames() {
+  assertContentRole_('manageAccess', null);
+  return Object.keys(contentPermsSnapshot_().roles).sort();
+}
+
 /** A matriz inteira, para a tela desenhar. */
 function listContentRoles() {
   assertContentRole_('manageRoles', null);

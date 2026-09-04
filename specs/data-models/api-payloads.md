@@ -98,6 +98,7 @@ o porquê em `docs/decisions/0009-rbac-editavel-da-central.md`.
 
 | Função | Params | Quem pode | Resposta |
 | :--- | :--- | :--- | :--- |
+| `listContentRoleNames()` | — | `manageAccess` | `["ADMIN", "QA", …]` — só os nomes, para o seletor da aba Acessos |
 | `listContentRoles()` | — | `manageRoles` | `{ roles: [{ role, permissions, people, escalation }], modules, moduleActions, globalPerms, actionsByModule, approvalRequiresGlobal, fallback }` |
 | `saveContentRole(role, permissions, options)` | `options`: `{ active?, confirmEscalation?, confirmSelf? }` | `manageRoles` | `{ status: 'success', role, changes, reloadSession }` **ou** `{ status: 'confirm', reason, message, changes, modules? }` |
 
@@ -115,6 +116,9 @@ o porquê em `docs/decisions/0009-rbac-editavel-da-central.md`.
 - **`fallback: true`** em `listContentRoles()` significa que a aba não pôde ser
   lida e a matriz mostrada é o preset do código. A tela precisa dizer isso —
   editar em cima de um fallback é editar no escuro.
+- **Conceder acesso não exige editar papéis.** `listContentRoleNames()` existe
+  separado por isso: preencher um `<select>` não pode obrigar a dar a permissão
+  maior para fazer a tarefa menor.
 - **`actionsByModule` manda na tela.** A matriz desenha as casas a partir dele,
   em vez de repetir a regra de regime (catálogo tem `propose`/`approve`,
   operação tem `publish`).

@@ -63,8 +63,7 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
          foto, filtrada **no servidor** pelo papel de quem pergunta.
       **Fora da fase:** o job de arquivamento dos 24 meses (ADR-0008), que
       pertence à rotação do `Backup.js`.
-- [~] **Fase 4 — RBAC editável** (ADR-0009) — **servidor entregue**, tela
-      pendente.
+- [x] **Fase 4 — RBAC editável** (ADR-0009) — completa, em dois PRs.
       **Entregue:** aba `Content_Roles`, matriz módulo × ação, permissões globais
       à parte, papéis atuais como preset (com teste comparando preset contra a
       constante antiga — é a prova de que o dia 1 não muda nada), cache de
@@ -72,11 +71,12 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       as invariantes como teste no servidor. Viraram **quatro**: a de aprovar
       autorização entrou porque "só o ADMIN" deixou de ser uma regra defensável
       quando o nome do papel virou editável — ver a correção de rota no ADR-0009.
-      **Falta:** a aba "Papéis" na tela — a matriz de checkboxes, o diálogo de
-      confirmação mostrando o que MUDA (não o estado final), o aviso de escalação
-      e o recarregamento da sessão ao editar o próprio papel. O `<select>` de
-      papel da aba Acessos também segue com os quatro papéis fixos no HTML e
-      precisa passar a ler `listContentRoles()`.
+      **Entregue também (2º PR):** a aba "Papéis" — matriz de checkboxes com
+      traço onde a ação não existe, aviso de escalação ao vivo, confirmação
+      mostrando o que MUDA, recarregamento da sessão ao editar o próprio papel,
+      e o `<select>` da aba Acessos lendo `listContentRoleNames()`.
+      **Falta validar na planilha real:** que a aba `Content_Roles` nasce
+      semeada e que os quatro papéis continuam se comportando igual.
 - [ ] **Fase 5 — diferenciais e auditoria.** Prévia "como o agente vê"; busca
       global Ctrl+K; agendamento e validade de aviso; "ver como" por papel e
       segmento; cobrança diária de pendência parada — esta lendo `CW_DEPLOYMENTS`
