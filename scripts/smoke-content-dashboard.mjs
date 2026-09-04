@@ -130,7 +130,7 @@ const HISTORICO = {
 };
 
 // ------------------------------------------------------- montagem da página
-async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null } = {}) {
+async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null, fila = [] } = {}) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
     page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
 
@@ -140,7 +140,8 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
 
     // O dublê precisa existir ANTES do script da página rodar: o boot dispara
     // no DOMContentLoaded.
-    await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos }) => {
+    await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos, pendentes }) => {
+        const PENDENTES = pendentes || [];
         const HISTORICO = historico;
         window.__chamadas = [];
 
@@ -151,7 +152,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
                 if (falhar && m === falhar) throw new Error('rede caiu');
                 return (rascunhos && rascunhos[m]) || [];
             },
-            listPendingApprovals: () => [],
+            listPendingApprovals: () => PENDENTES,
             listContentItemHistory: (lineage) => (HISTORICO[lineage] || []),
             rollbackContentItem: () => ({ status: 'success', itemId: 'itm_revivido' }),
             saveContentDraft: () => ({ status: 'success', draftId: 'drf_rascunho' }),
@@ -204,7 +205,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
             value: { script: { get run() { return construir(); } } },
             writable: true,
         });
-    }, { sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe, historico: HISTORICO, rascunhos: draftsDe });
+    }, { sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe, historico: HISTORICO, rascunhos: draftsDe, pendentes: fila });
 
     await page.goto('file://' + ARQUIVO + hash, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(300);
@@ -725,6 +726,117 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
     await check('trava expirada não é anunciada', async () => {
         const texto = await page.locator('#links-list').textContent();
         igual(/está editando/.test(texto), false, 'anunciou trava vencida');
+    });
+
+    await page.close();
+}
+
+// --------------------------------------------------- revisão: diff e prévia
+{
+    // O algoritmo é lógica pura: vale prová-lo direto, sem passar pela tela.
+    const page = await abrir({ sessao: 'admin' });
+
+    await check('o diff marca só o que mudou', async () => {
+        const r = await page.evaluate(() => {
+            const p = diffDePalavras('o gato subiu no telhado', 'o gato desceu no telhado');
+            return p.map(x => [x.tipo, x.texto.trim()]).filter(x => x[1]);
+        });
+        igual(r, [['igual', 'o gato'], ['saiu', 'subiu'], ['entrou', 'desceu'], ['igual', 'no telhado']],
+            'pedaços do diff');
+    });
+
+    await check('texto idêntico não produz marcação nenhuma', async () => {
+        const tipos = await page.evaluate(() => {
+            const p = diffDePalavras('mesma frase exata', 'mesma frase exata');
+            return Array.from(new Set(p.map(x => x.tipo)));
+        });
+        igual(tipos, ['igual'], 'tipos encontrados');
+    });
+
+    await check('o diff remonta o texto dos dois lados sem perder nada', async () => {
+        // A garantia que impede o realce de comer conteúdo: juntando os pedaços
+        // de cada lado, tem que sair exatamente o texto original.
+        const r = await page.evaluate(() => {
+            const a = 'linha um\nlinha dois\nlinha três';
+            const b = 'linha um\nlinha DOIS\nlinha três';
+            const p = diffDePalavras(a, b);
+            const antes = p.filter(x => x.tipo !== 'entrou').map(x => x.texto).join('');
+            const depois = p.filter(x => x.tipo !== 'saiu').map(x => x.texto).join('');
+            return { okAntes: antes === a, okDepois: depois === b };
+        });
+        igual(r, { okAntes: true, okDepois: true }, 'remontagem');
+    });
+
+    await check('texto gigante degrada para os dois lados inteiros, sem travar', async () => {
+        const r = await page.evaluate(() => {
+            const enorme = new Array(1200).fill('palavra').join(' ');
+            return diffDePalavras(enorme, enorme + ' extra');
+        });
+        igual(r, null, 'devolveu diff em vez de recusar');
+    });
+
+    await page.close();
+}
+
+{
+    const fila = [
+        {
+            draftId: 'drf_1', module: 'tips', key: 'geral', label: 'Dica revisada',
+            proposedBy: 'anaflor', isSelfProposed: false, canReview: true,
+            currentValue: 'Confira o substatus antes de fechar.',
+            value: 'Confira o substatus antes de encerrar.',
+        },
+        {
+            draftId: 'drf_2', module: 'email_template', key: 'boas_vindas', label: 'E-mail de boas-vindas',
+            proposedBy: 'brunocs', isSelfProposed: false, canReview: true,
+            currentValue: JSON.stringify({ subject: 'Olá', template: '<p>Antigo</p>' }),
+            value: JSON.stringify({ subject: 'Olá!', template: '<p>Bem-vindo à <b>TechSol</b></p>' }),
+        },
+    ];
+    const page = await abrir({ sessao: 'admin', fila });
+    await page.evaluate(() => switchTab('approvals'));
+    await page.waitForTimeout(400);
+
+    await check('a fila realça a palavra trocada nos dois lados', async () => {
+        const saiu = await page.locator('mark.dif-saiu').first().textContent();
+        const entrou = await page.locator('mark.dif-entrou').first().textContent();
+        igual(saiu.trim(), 'fechar.', 'palavra que saiu');
+        igual(entrou.trim(), 'encerrar.', 'palavra que entrou');
+    });
+
+    await check('e diz que só o que mudou está marcado', async () => {
+        verdade(/Só o que mudou está marcado/.test(await page.locator('#approvals-list').textContent()),
+            'faltou a legenda do diff');
+    });
+
+    await check('quem aprova ganha a prévia do e-mail', async () => {
+        verdade(await page.locator('.previa').first().isVisible(), 'faltou a prévia');
+        verdade(/Ver como o anunciante recebe/.test(await page.locator('.previa').first().textContent()),
+            'rótulo da prévia');
+    });
+
+    await check('a prévia roda isolada, sem script e sem mesma origem', async () => {
+        // É HTML escrito por OUTRA pessoa numa tela que fala com o backend na
+        // autoridade de quem revisa. O sandbox vazio é o que impede isso de ser
+        // XSS armazenado entre usuários.
+        await page.locator('.previa summary').first().click();
+        await page.waitForTimeout(200);
+        const frame = page.locator('iframe.previa-frame').first();
+        igual(await frame.getAttribute('sandbox'), '', 'atributo sandbox');
+        verdade(/TechSol/.test(await frame.getAttribute('srcdoc')), 'o conteúdo chegou ao iframe');
+    });
+
+    await check('o e-mail é comparado como conteúdo, não como JSON', async () => {
+        // Sem isto o diff marcava aspas e chaves, e a mudança real sumia no meio
+        // do objeto serializado.
+        const texto = await page.locator('#approvals-list').textContent();
+        verdade(/Assunto:/.test(texto), 'faltou o assunto legível');
+        igual(/\{"subject"/.test(texto), false, 'o JSON cru vazou para a revisão');
+    });
+
+    await check('a prévia aparece só onde faz sentido', async () => {
+        // Uma dica não é HTML: prévia ali seria enfeite.
+        igual(await page.locator('.previa').count(), 1, 'prévias na fila');
     });
 
     await page.close();

@@ -660,6 +660,63 @@
             font-family: 'Roboto Mono', ui-monospace, monospace;
         }
 
+        /* --- Diff por palavra ---
+           Fundo, e não cor de texto: o que mudou tem que saltar numa varredura
+           rápida, e texto colorido some no meio do parágrafo. Os dois lados
+           usam a mesma paleta semântica do resto da tela. */
+        mark.dif-saiu {
+            background: var(--danger-light);
+            color: var(--danger);
+            text-decoration: line-through;
+            border-radius: 3px;
+        }
+
+        mark.dif-entrou {
+            background: var(--success-light);
+            color: var(--success);
+            border-radius: 3px;
+        }
+
+        .dif-legenda {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        /* --- Prévia --- */
+        .previa {
+            margin-top: 14px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            background: var(--surface-level-2);
+        }
+
+        .previa summary {
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gemini-blue);
+        }
+
+        .previa-corpo {
+            margin-top: 12px;
+        }
+
+        .previa-assunto {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .previa-frame {
+            width: 100%;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: #fff;
+        }
+
         /* --- Item list --- */
         .item-row {
             display: flex;
