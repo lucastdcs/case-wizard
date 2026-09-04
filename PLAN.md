@@ -85,6 +85,10 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       **Entregue também:** agendamento e validade de aviso — janela avaliada no
       servidor, no fuso da planilha, e filtrada DEPOIS do cache (dentro dele a
       janela teria a precisão do cache em vez da sua própria).
+      **Entregue também:** a aba de auditoria restrita — filtro, período,
+      paginação por número de linha e exportação para uma aba da planilha
+      (arquivo não serve: download iniciado dentro do iframe do Apps Script é
+      bloqueado com frequência e sem aviso).
       **Falta:** prévia "como o agente vê"; busca global Ctrl+K;
       cobrança diária de pendência parada — esta lendo
       `CW_DEPLOYMENTS` e não a URL do serviço, porque em gatilho de tempo a

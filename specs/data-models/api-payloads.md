@@ -192,3 +192,40 @@ e texto:
   publicado.
 - **Expirar não arquiva.** O item continua `live` na planilha, fora da janela.
   É o que permite estender a validade editando, em vez de republicar.
+
+---
+
+## Auditoria completa (aba restrita)
+
+| Função | Params | Quem pode | Resposta |
+| :--- | :--- | :--- | :--- |
+| `listContentAudit(filtro)` | `{ text?, actor?, action?, module?, from?, to?, limit?, cursor? }` | `viewAudit` | `{ rows, nextCursor, scanned, done }` |
+| `exportContentAudit(filtro)` | o mesmo filtro | `viewAudit` | `{ sheet, rows, truncated, url }` |
+
+### Regras
+- **Duas portas para duas perguntas.** `listContentActivity()` responde *"o que
+  está acontecendo"* — janela fixa, sem filtro, para a barra lateral.
+  `listContentAudit()` responde *"o que aconteceu"* — filtro, período e
+  paginação. Fundir as duas faria a barra pagar o preço da auditoria.
+- **`cursor` é o número da LINHA da planilha** onde a varredura parou, não um
+  "pule N resultados". É o que mantém o custo de cada página igual: pular
+  resultados obrigaria a refiltrar tudo que já foi mostrado.
+- **A ordem por linha É a ordem cronológica**, e isso não é sorte: `Content_Log`
+  só é anexada, e o backfill reordena o que traz. Ordenar 15 mil linhas por
+  consulta para chegar ao mesmo resultado seria pagar duas vezes.
+- **`done` é sobre a ABA ter acabado, não sobre a página ter enchido.** Cada
+  chamada varre no máximo `CONTENT_AUDIT_SCAN_MAX` linhas (o Apps Script tem 6
+  minutos e a aba guarda 24 meses); uma página curta por causa do teto ainda tem
+  continuação, e esconder "carregar mais" ali faria parecer que acabou.
+- **`to` inclui o dia inteiro.** O carimbo é ISO e o filtro é data: sem o
+  cuidado com o fim do dia, uma linha das 10h do dia final ficaria de fora do
+  próprio dia pedido.
+- **A exportação vai para uma ABA da própria planilha**, não para um arquivo. A
+  Central roda dentro de um iframe do Apps Script, onde download iniciado pela
+  página é bloqueado com frequência e sem aviso; uma aba é o formato que esta
+  operação já sabe abrir, filtrar e baixar, e não pede permissão nenhuma nova.
+- **A exportação sobrescreve sempre a mesma aba** (`Content_Audit_Export`), e
+  limpa antes de escrever. Uma aba por exportação encheria a planilha de lixo;
+  não limpar faria uma exportação menor herdar as linhas da anterior — dois
+  filtros misturados, que é o pior desfecho possível para uma auditoria.
+- **Exportar é auditado.** A própria exportação vira uma linha em `Content_Log`.

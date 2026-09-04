@@ -2570,6 +2570,192 @@ function listContentActivity(limite) {
   return saida;
 }
 
+// =========================================================
+//  AUDITORIA COMPLETA (aba restrita)
+//
+//  A barra lateral responde "o que aconteceu agora"; esta responde "o que
+//  aconteceu". São perguntas diferentes e por isso duas portas diferentes: a
+//  barra tem janela fixa e nenhum filtro, esta tem filtro, paginação e teto de
+//  varredura por chamada.
+// =========================================================
+
+// Quantas linhas uma chamada pode VARRER (não devolver). O Apps Script tem 6
+// minutos de execução e a aba guarda 24 meses: sem teto, um filtro que casa com
+// pouca coisa faria a chamada percorrer a aba inteira e estourar. Com teto, ela
+// devolve o que achou mais um cursor, e a tela pede a próxima leva.
+const CONTENT_AUDIT_SCAN_MAX = 3000;
+const CONTENT_AUDIT_PAGE = 50;
+const CONTENT_AUDIT_PAGE_MAX = 200;
+const CONTENT_AUDIT_EXPORT_MAX = 5000;
+const SHEET_CONTENT_AUDIT_EXPORT = "Content_Audit_Export";
+
+function textoDoFiltro_(f, chave) {
+  return String((f && f[chave]) || "").trim();
+}
+
+// `from`/`to` são datas (AAAA-MM-DD) e o carimbo é ISO. Comparar como texto
+// funciona porque o ISO começa exatamente pela data — e `to` vira `to + 'Z'`
+// para o dia final entrar inteiro em vez de parar à meia-noite.
+function linhaCasaFiltro_(linha, f) {
+  const at = contentIsoDate_(linha[1]);
+  const actor = String(linha[2] || "");
+  const action = String(linha[3] || "");
+  const module = String(linha[4] || "");
+
+  if (f.actor && actor.toLowerCase() !== f.actor.toLowerCase()) return false;
+  if (f.action && action !== f.action) return false;
+  if (f.module && module !== f.module) return false;
+  if (f.from && at < f.from) return false;
+  if (f.to && at > f.to + 'Z') return false;
+
+  if (f.text) {
+    const alvo = (String(linha[5] || "") + ' ' + String(linha[7] || "") + ' ' +
+      String(linha[8] || "")).toLowerCase();
+    if (alvo.indexOf(f.text.toLowerCase()) === -1) return false;
+  }
+
+  return true;
+}
+
+function linhaDeAuditoria_(linha) {
+  return {
+    id: String(linha[0] || ""),
+    at: contentIsoDate_(linha[1]),
+    actor: String(linha[2] || ""),
+    action: String(linha[3] || ""),
+    module: String(linha[4] || ""),
+    key: String(linha[5] || ""),
+    itemId: String(linha[6] || ""),
+    label: String(linha[7] || ""),
+    detail: String(linha[8] || "")
+  };
+}
+
+/**
+ * A auditoria, da mais recente para a mais antiga, filtrada e paginada.
+ *
+ * `cursor` é o número da linha da planilha em que a varredura anterior parou.
+ * Paginar por número de linha, e não por "pule N resultados", é o que mantém o
+ * custo de cada página igual: pular resultados obrigaria a refiltrar tudo que
+ * já foi mostrado.
+ *
+ * A ordem por linha É a ordem cronológica, e isso não é sorte: a aba só é
+ * ANEXADA, e o backfill reordena pela data o que traz da aba `Logs`. Ordenar
+ * 15 mil linhas a cada consulta para chegar ao mesmo resultado seria pagar
+ * duas vezes.
+ */
+function listContentAudit(filtro) {
+  assertContentRole_('viewAudit', null);
+
+  const f = filtro || {};
+  const filtros = {
+    actor: textoDoFiltro_(f, 'actor'),
+    action: textoDoFiltro_(f, 'action'),
+    module: textoDoFiltro_(f, 'module'),
+    from: textoDoFiltro_(f, 'from'),
+    to: textoDoFiltro_(f, 'to'),
+    text: textoDoFiltro_(f, 'text')
+  };
+
+  const limite = Math.min(
+    Math.max(Number(f.limit) || CONTENT_AUDIT_PAGE, 1), CONTENT_AUDIT_PAGE_MAX);
+
+  const sheet = getContentSheet_(SHEET_CONTENT_LOG);
+  const ultima = sheet.getLastRow();
+  if (ultima < 2) return { rows: [], nextCursor: 0, scanned: 0, done: true };
+
+  // Sem cursor, começa do fim. Com cursor, continua de onde parou.
+  let fim = Number(f.cursor) > 0 ? Number(f.cursor) : ultima;
+  if (fim < 2) return { rows: [], nextCursor: 0, scanned: 0, done: true };
+
+  const rows = [];
+  let varridas = 0;
+  const BLOCO = 200;
+
+  while (fim >= 2 && rows.length < limite && varridas < CONTENT_AUDIT_SCAN_MAX) {
+    const inicio = Math.max(2, fim - BLOCO + 1);
+    const valores = sheet
+      .getRange(inicio, 1, fim - inicio + 1, CONTENT_LOG_HEADERS.length)
+      .getValues();
+
+    for (let i = valores.length - 1; i >= 0 && rows.length < limite; i--) {
+      varridas++;
+      if (linhaCasaFiltro_(valores[i], filtros)) rows.push(linhaDeAuditoria_(valores[i]));
+      // A próxima chamada retoma UMA linha acima da última examinada.
+      fim = inicio + i - 1;
+    }
+
+    if (rows.length < limite) fim = inicio - 1;
+  }
+
+  return {
+    rows: rows,
+    nextCursor: fim >= 2 ? fim : 0,
+    scanned: varridas,
+    // `done` é sobre a ABA ter acabado, não sobre a página ter enchido: uma
+    // página curta porque o teto de varredura foi atingido não significa que
+    // não há mais nada.
+    done: fim < 2
+  };
+}
+
+/**
+ * Exporta o resultado do filtro para uma aba da própria planilha.
+ *
+ * Sheets em vez de arquivo: a Central roda dentro de um iframe do Apps Script,
+ * onde download iniciado pela página é bloqueado com frequência e sem aviso.
+ * Uma aba é o formato que esta operação já sabe abrir, filtrar e baixar — e não
+ * pede permissão nenhuma que o projeto ainda não tenha.
+ *
+ * Sobrescreve sempre a mesma aba, de propósito: uma aba por exportação encheria
+ * a planilha de lixo que ninguém apaga.
+ */
+function exportContentAudit(filtro) {
+  const session = assertContentRole_('viewAudit', null);
+
+  const linhas = [];
+  let cursor = 0;
+
+  // Pagina pela própria listContentAudit: um caminho de filtro só, para o que
+  // se exporta ser exatamente o que se viu na tela.
+  while (linhas.length < CONTENT_AUDIT_EXPORT_MAX) {
+    const pagina = listContentAudit(Object.assign({}, filtro, {
+      cursor: cursor, limit: CONTENT_AUDIT_PAGE_MAX
+    }));
+
+    pagina.rows.forEach(function (r) {
+      if (linhas.length < CONTENT_AUDIT_EXPORT_MAX) {
+        linhas.push([r.at, r.actor, r.action, r.module, r.key, r.itemId, r.label, r.detail]);
+      }
+    });
+
+    if (pagina.done || !pagina.nextCursor || !pagina.rows.length) break;
+    cursor = pagina.nextCursor;
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let aba = ss.getSheetByName(SHEET_CONTENT_AUDIT_EXPORT);
+  if (aba) aba.clear();
+  else aba = ss.insertSheet(SHEET_CONTENT_AUDIT_EXPORT);
+
+  const cabecalho = ["Quando", "Quem", "Ação", "Módulo", "Chave", "Item", "Rótulo", "Detalhe"];
+  aba.getRange(1, 1, 1, cabecalho.length).setValues([cabecalho]);
+  if (linhas.length) {
+    aba.getRange(2, 1, linhas.length, cabecalho.length).setValues(linhas);
+  }
+  aba.setFrozenRows(1);
+
+  logContentEvent_(session.ldap, 'audit_export', { label: SHEET_CONTENT_AUDIT_EXPORT },
+    linhas.length + ' linhas');
+
+  return {
+    sheet: SHEET_CONTENT_AUDIT_EXPORT,
+    rows: linhas.length,
+    truncated: linhas.length >= CONTENT_AUDIT_EXPORT_MAX,
+    url: ss.getUrl ? ss.getUrl() : ''
+  };
+}
+
 // Prefixo do ID das linhas trazidas da aba Logs. É o que torna o backfill
 // idempotente: o ID deriva do NÚMERO DA LINHA de origem, então rodar de novo
 // reconhece o que já veio em vez de duplicar.

@@ -9,6 +9,16 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Aba de auditoria, restrita a quem tem `ver auditoria completa`** (fase 5).
+  A barra lateral responde *"o que está acontecendo"*; esta responde *"o que
+  aconteceu"* — com busca por texto, filtro de quem/ação/módulo, período e
+  paginação, mais exportação do resultado para uma aba da própria planilha. A
+  paginação é por **número de linha**, não por "pule N resultados": é o que
+  mantém o custo de cada página igual em vez de refiltrar tudo que já foi
+  mostrado. Cada chamada tem teto de varredura, porque o Apps Script tem 6
+  minutos e a aba guarda 24 meses — e a tela distingue "acabou o histórico" de
+  "acabou o orçamento desta chamada", que é a diferença entre um "carregar mais"
+  honesto e um que mente.
 - **Aviso com hora: agendamento e validade** (fase 5). Um aviso pode nascer
   agendado e morrer sozinho. Sem isso, *"avisar a operação às 8h de segunda"*
   era alguém acordar e clicar, e *"tirar quando a instabilidade acabar"* era
