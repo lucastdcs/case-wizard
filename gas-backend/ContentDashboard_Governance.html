@@ -22,6 +22,94 @@
                 .listPendingApprovals();
         }
 
+        // --- Diff por palavra ---
+        //
+        // A revisão mostrava dois blocos de texto integral lado a lado, sem
+        // realce nenhum. Num corpo de e-mail de quarenta linhas, achar a vírgula
+        // que mudou era trabalho manual — e a fila de aprovação existe
+        // justamente para evitar o "confie no texto novo".
+        //
+        // LCS clássico sobre PALAVRAS, não caracteres: a unidade que quem revisa
+        // lê é a palavra, e o diff por caractere transforma uma troca de acento
+        // num confete ilegível. Vanilla puro, sem biblioteca — o rulebook do
+        // projeto proíbe dependência de front sem autorização, e são 30 linhas.
+        function separarEmPalavras(texto) {
+            // Mantém os separadores como pedaços próprios: assim uma quebra de
+            // linha que mudou aparece como mudança, e o texto remonta idêntico.
+            return String(texto == null ? '' : texto).split(/(\s+)/).filter(function (p) { return p !== ''; });
+        }
+
+        function diffDePalavras(antes, depois) {
+            var a = separarEmPalavras(antes);
+            var b = separarEmPalavras(depois);
+
+            // Texto muito grande não ganha diff: a matriz do LCS é O(n*m), e
+            // travar a fila de revisão é pior que mostrar os dois lados inteiros.
+            if (a.length * b.length > 400000) return null;
+
+            var m = a.length, n = b.length;
+            var tabela = [];
+            for (var i = 0; i <= m; i++) tabela.push(new Array(n + 1).fill(0));
+
+            for (var i = m - 1; i >= 0; i--) {
+                for (var j = n - 1; j >= 0; j--) {
+                    tabela[i][j] = (a[i] === b[j])
+                        ? tabela[i + 1][j + 1] + 1
+                        : Math.max(tabela[i + 1][j], tabela[i][j + 1]);
+                }
+            }
+
+            var pedacos = [];
+            var x = 0, y = 0;
+            function empurrar(tipo, texto) {
+                var ultimo = pedacos[pedacos.length - 1];
+                if (ultimo && ultimo.tipo === tipo) ultimo.texto += texto;
+                else pedacos.push({ tipo: tipo, texto: texto });
+            }
+
+            while (x < m && y < n) {
+                if (a[x] === b[y]) { empurrar('igual', a[x]); x++; y++; }
+                else if (tabela[x + 1][y] >= tabela[x][y + 1]) { empurrar('saiu', a[x]); x++; }
+                else { empurrar('entrou', b[y]); y++; }
+            }
+            while (x < m) { empurrar('saiu', a[x]); x++; }
+            while (y < n) { empurrar('entrou', b[y]); y++; }
+
+            return pedacos;
+        }
+
+        // Um lado do diff. `lado` escolhe o que este painel mostra: o texto de
+        // antes (o que saiu, marcado) ou o de depois (o que entrou).
+        function pintarLado(pedacos, lado) {
+            return pedacos.map(function (p) {
+                if (p.tipo === 'igual') return esc(p.texto);
+                if (lado === 'antes' && p.tipo === 'saiu') {
+                    return '<mark class="dif-saiu">' + esc(p.texto) + '</mark>';
+                }
+                if (lado === 'depois' && p.tipo === 'entrou') {
+                    return '<mark class="dif-entrou">' + esc(p.texto) + '</mark>';
+                }
+                return '';
+            }).join('');
+        }
+
+        // Modelos de e-mail são HTML. Quem edita já tinha prévia; quem APROVA,
+        // que é justamente quem precisa ver o que o anunciante vai receber,
+        // revisava o código-fonte em fonte monoespaçada.
+        function previaDeEmail(raw) {
+            try {
+                var v = JSON.parse(raw);
+                if (!v || !v.template) return '';
+                return '<details class="previa"><summary>Ver como o anunciante recebe</summary>' +
+                    '<div class="previa-corpo">' +
+                    '<div class="previa-assunto">' + esc(v.subject || '(sem assunto)') + '</div>' +
+                    previaIsolada(v.template) +
+                    '</div></details>';
+            } catch (e) {
+                return '';
+            }
+        }
+
         function loadApprovals() {
             var host = document.getElementById('approvals-list');
 
@@ -47,6 +135,25 @@
                     host.innerHTML = list.map(function (d) {
                         var cur = d.currentValue ? prettyValue(d.currentValue) : '(item novo)';
                         var neu = d.value ? prettyValue(d.value) : '(remoção — item sai do ar)';
+
+                        // Item novo e remoção não têm o que comparar: não existe
+                        // "antes" num, nem "depois" no outro. Nesses dois casos o
+                        // texto integral é a informação, e o diff só atrapalharia.
+                        var pedacos = (d.currentValue && d.value) ? diffDePalavras(cur, neu) : null;
+                        var ladoAntes = pedacos ? pintarLado(pedacos, 'antes') : esc(cur);
+                        var ladoDepois = pedacos ? pintarLado(pedacos, 'depois') : esc(neu);
+
+                        var mudou = pedacos && pedacos.some(function (p) { return p.tipo !== 'igual'; });
+                        var legenda = pedacos
+                            ? (mudou
+                                ? '<div class="dif-legenda">Só o que mudou está marcado.</div>'
+                                : '<div class="dif-legenda">O texto é idêntico ao que está no ar.</div>')
+                            : '';
+
+                        // A prévia é para quem APROVA: quem edita já tinha a dele,
+                        // e é o revisor que precisa ver o que o anunciante recebe.
+                        var previa = (d.module === 'email_template' && d.value)
+                            ? previaDeEmail(d.value) : '';
                         var selfNote = d.isSelfProposed
                             ? (d.canReview
                                 ? '<div class="note warn">Proposta sua. Como ADMIN, você pode aprovar mesmo assim — fica registrado como autoaprovação.</div>'
@@ -58,14 +165,14 @@
                             '<div><div class="card-title">' + esc(d.label) + '</div>' +
                             '<p class="card-sub">' + esc(d.module) + ' · ' + esc(d.key) +
                             ' · proposto por <strong>' + esc(d.proposedBy) + '</strong></p></div>' +
-                            '<span class="pill pending">pendente</span>' +
-                            '</div>' + selfNote +
+                            '<span class="estado estado-espera">pendente</span>' +
+                            '</div>' + selfNote + legenda +
                             '<div class="diff">' +
                             '<div class="diff-side"><div class="diff-label">Hoje no ar</div>' +
-                            '<div class="diff-body">' + esc(cur) + '</div></div>' +
+                            '<div class="diff-body">' + ladoAntes + '</div></div>' +
                             '<div class="diff-side new"><div class="diff-label">Proposto</div>' +
-                            '<div class="diff-body">' + esc(neu) + '</div></div>' +
-                            '</div>' +
+                            '<div class="diff-body">' + ladoDepois + '</div></div>' +
+                            '</div>' + previa +
                             '<div class="modal-actions" style="margin-top:8px">' +
                             '<button class="btn btn-danger btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',false)">Rejeitar</button>' +
                             '<button class="btn btn-success btn-sm" onclick="reviewDraft(\'' + d.draftId + '\',true)"' +
@@ -100,6 +207,24 @@
                     return 'Nome: ' + v.name + '\nURL: ' + v.url +
                         '\nDescrição (PT): ' + (v.desc || '—') +
                         '\nDescrição (ES): ' + (v.desc_es || '—');
+                }
+                // Modelo de e-mail: o revisor compara ASSUNTO e CORPO, não um
+                // objeto JSON. Sem isto o diff marcava aspas e chaves como se
+                // fossem conteúdo, e a mudança real sumia no meio.
+                if (v && typeof v.template === 'string') {
+                    return 'Assunto: ' + (v.subject || '—') + '\n\n' + v.template;
+                }
+                // Aviso: tipo, título e texto — a mesma leitura que o agente faz.
+                if (v && v.text && v.type) {
+                    return 'Tipo: ' + v.type + '\nTítulo: ' + (v.title || '—') + '\n\n' + v.text;
+                }
+                // Modelo de nota: um campo por linha, na ordem em que a nota os
+                // usa. O objeto cru esconde justamente qual campo mudou.
+                if (v && v.fields && typeof v.fields === 'object') {
+                    var campos = Object.keys(v.fields).map(function (k) {
+                        return k.replace(/^field-/, '') + ': ' + v.fields[k];
+                    });
+                    return campos.length ? campos.join('\n') : raw;
                 }
                 return raw;
             } catch (e) {

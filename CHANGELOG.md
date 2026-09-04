@@ -9,6 +9,22 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **A revisão passou a mostrar o que mudou** (fase 3). Eram dois blocos de texto
+  integral lado a lado, sem realce: num corpo de e-mail de quarenta linhas,
+  achar a vírgula alterada era trabalho manual. Agora um diff por palavra marca
+  só a diferença nos dois lados, e o valor é lido como conteúdo — assunto e
+  corpo do e-mail, tipo/título/texto do aviso, um campo por linha no modelo de
+  nota — em vez do JSON cru que escondia a mudança real no meio de aspas e
+  chaves. Quem aprova também ganhou a **prévia renderizada** do e-mail, que
+  antes só existia para quem editava.
+
+### Security
+- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
+  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
+  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
+  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
+  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
+  a mesma coisa é como um deles fica para trás.
 - **Rascunho virou um estado alcançável na Central** (fase 3). Todo editor tinha
   um botão só, que salvava e enviava para revisão no mesmo gesto: não havia como
   guardar trabalho parcial, a pílula "rascunho" que as listas sabiam desenhar

@@ -326,6 +326,22 @@
             );
         }
 
+        // Renderiza HTML de conteúdo dentro de um iframe fechado.
+        //
+        // Um modelo de e-mail é HTML escrito por uma pessoa e lido por OUTRA —
+        // e a tela de quem lê roda google.script.run com a autoridade dela.
+        // Injetar esse HTML direto no documento é XSS armazenado entre usuários,
+        // exatamente a classe que docs/LEARNINGS.md registrou no Ctrl+K.
+        //
+        // O sandbox vazio nega tudo: nada de script, nada de mesma origem, nada
+        // de navegação. O que sobra é o que a prévia precisa — ver o texto e a
+        // formatação como o anunciante vai receber.
+        function previaIsolada(html, altura) {
+            return '<iframe class="previa-frame" sandbox="" ' +
+                'style="height:' + (altura || 220) + 'px" ' +
+                'title="Prévia do e-mail" srcdoc="' + esc(String(html || '')) + '"></iframe>';
+        }
+
         // --- Hoje ---
         //
         // Responde "o que está acontecendo no conteúdo agora", que é a pergunta
