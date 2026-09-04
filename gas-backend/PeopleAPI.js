@@ -435,7 +435,12 @@ function requestPeopleRemoval(ldap, reason) {
     CONTENT_ACTIONS.REMOVE
   ]);
 
-  logContentEvent_(session.ldap, 'people_removal_request', target, String(reason).trim());
+  logContentEvent_(
+    session.ldap,
+    'people_removal_request',
+    { module: PEOPLE_MODULE, key: target, label: target },
+    String(reason).trim()
+  );
 
   if (session.perms.selfApprove) {
     const applied = approveContentDraft(draftId, 'Aplicado direto pelo ADMIN.');
@@ -493,12 +498,15 @@ function applyApprovedPeopleDraft_(draft, session, note) {
   draftsSheet.getRange(draft._row, 13).setValue(now);
   if (note) draftsSheet.getRange(draft._row, 14).setValue(note);
 
+  // Como no resto da Central: a marca de "aplicado pelo próprio ADMIN" é
+  // DETALHE, não parte da chave — senão o LDAP alvo vira dois valores
+  // diferentes para quem filtrar a auditoria por pessoa.
   const selfFlag = (String(draft.Proposed_By).trim() === session.ldap) ? ' (aplicado pelo próprio ADMIN)' : '';
   logContentEvent_(
     session.ldap,
     'people_' + outcome,
-    PEOPLE_MODULE + '/' + targetLdap + selfFlag,
-    'proposto por ' + String(draft.Proposed_By)
+    { module: PEOPLE_MODULE, key: targetLdap, label: targetLdap },
+    'proposto por ' + String(draft.Proposed_By) + selfFlag
   );
 
   return { status: 'success', action: action, outcome: outcome, ldap: targetLdap };

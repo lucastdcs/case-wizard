@@ -109,6 +109,8 @@ function reset(people) {
   ['Código.js', 'ContentAPI.js', 'PeopleAPI.js'].forEach((f) => {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx);
   });
+  // A auditoria da Central escreve em `Content_Log`, não aqui. handleLog()
+  // segue neutralizado porque é o log de SESSÃO do agente.
   sandbox.__captureLog = (p) => LOGGED.push(p);
   vm.runInContext('handleLog = __captureLog;', ctx);
 
@@ -153,6 +155,19 @@ function throws(fn, re, m) {
   }
   throw new Error((m || '') + ' deveria ter lançado erro');
 }
+// A auditoria da Central mora na aba `Content_Log`, uma coluna por informação.
+// `SS` é recriada a cada reset(), então isto lê a planilha do bloco atual.
+function logDaCentral() {
+  const aba = SS.getSheetByName('Content_Log');
+  if (!aba || aba._data.length < 2) return [];
+  const cab = aba._data[0];
+  return aba._data.slice(1).map((linha) => {
+    const o = {};
+    cab.forEach((h, i) => { o[h] = linha[i]; });
+    return o;
+  });
+}
+
 function as(ldap, fn) {
   const old = CURRENT_USER;
   CURRENT_USER = ldap + '@google.com';
@@ -377,10 +392,16 @@ check('a aplicação direta do ADMIN vai para o log, marcada como tal', () => {
     ldap: 'brunocs', role: 'Senior Agent', roleCategory: 'Agent', segment: 'PT'
   }));
 
-  const evento = LOGGED.find((l) => String(l.action).indexOf('people_') === 0);
-  eq(evento.action, 'people_updated');
-  if (!/próprio ADMIN/.test(evento.label)) {
-    throw new Error('o log não registra que foi o próprio ADMIN: ' + evento.label);
+  // A auditoria deixou de ser linha na aba `Logs` genérica e virou a aba
+  // `Content_Log`, com uma coluna por informação.
+  const evento = logDaCentral().find((l) => String(l.Action).indexOf('people_') === 0);
+  eq(evento.Action, 'people_updated');
+  eq(evento.Module, 'people', 'o módulo tem coluna própria:');
+  // O LDAP alvo fica limpo na chave: com o sufixo colado ali, a mesma pessoa
+  // viraria dois valores para quem filtrar a auditoria por ela.
+  eq(evento.Key, 'brunocs', 'a chave é só o LDAP alvo:');
+  if (!/próprio ADMIN/.test(String(evento.Detail))) {
+    throw new Error('o log não registra que foi o próprio ADMIN: ' + evento.Detail);
   }
 });
 

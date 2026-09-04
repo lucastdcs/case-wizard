@@ -44,6 +44,10 @@
         // a do item mexido.
         function refreshContentLists() {
             loadLinks();
+            // A barra registra exatamente o tipo de ação que leva alguém a
+            // chamar isto aqui — deixá-la parada mostraria o passado do que
+            // acabou de mudar na tela ao lado.
+            if (LATERAL_ABERTA) carregarAtividade();
             if (!document.getElementById('pane-callscript').classList.contains('hidden')) {
                 loadCallScript();
             }
@@ -342,6 +346,155 @@
                 'title="Prévia do e-mail" srcdoc="' + esc(String(html || '')) + '"></iframe>';
         }
 
+        // --- Atividade recente ---
+        //
+        // A mesma barra do TL Dashboard, com a mesma foto de perfil, pelo mesmo
+        // motivo: "quem fez isso?" é a primeira pergunta de quem chega numa
+        // mudança, e um LDAP em texto não responde tão rápido quanto um rosto.
+        //
+        // O que chega aqui JÁ VEM FILTRADO do servidor. A tela não tem lista de
+        // exceções para aplicar: se uma linha apareceu, é porque esta pessoa
+        // pode vê-la. Esconder no cliente deixaria o dado viajar até o navegador
+        // de quem não devia recebê-lo.
+        var LATERAL_ABERTA = false;
+        var LATERAL_PREF = 'cw_central_lateral';
+
+        var ATIVIDADE_VERBO = {
+            draft_create: 'começou um rascunho em',
+            draft_update: 'editou o rascunho de',
+            draft_submit: 'enviou para revisão',
+            draft_discard: 'descartou o rascunho de',
+            removal_request: 'pediu a remoção de',
+            approve: 'aprovou',
+            approve_removal: 'aprovou a remoção de',
+            reject: 'rejeitou',
+            rollback: 'reverteu',
+            publish_direct: 'publicou',
+            publish_direct_update: 'republicou',
+            unpublish_direct: 'tirou do ar',
+            access_change: 'mudou o acesso de',
+            seed: 'semeou',
+            notify_failed: 'não conseguiu avisar sobre'
+        };
+
+        var ATIVIDADE_MODULO = {
+            links: 'Links', call_script: 'Call Script', note_template: 'Case Notes',
+            email_template: 'E-mails', tips: 'Dicas', broadcast: 'Avisos',
+            bau_availability: 'Disponibilidade', people: 'Pessoas'
+        };
+
+        var FOTO_PADRAO = 'https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg';
+
+        // Mesma função do TLDashboard, com os dois cuidados que ela carrega:
+        // nunca montar src="" (alguns navegadores reinterpretam como pedido à
+        // própria página) e sempre mandar referrerpolicy="no-referrer", porque
+        // o endpoint da foto corporativa é chamado de dentro do iframe do
+        // Apps Script.
+        function fotoDoLdap(ldap) {
+            var url = ldap
+                ? 'https://moma-teams-photos.corp.google.com/photos/' +
+                  encodeURIComponent(ldap) + '?sz=600'
+                : FOTO_PADRAO;
+            return '<img class="atividade-foto" src="' + esc(url) + '" alt="" ' +
+                'referrerpolicy="no-referrer" onerror="this.src=\'' + FOTO_PADRAO + '\'">';
+        }
+
+        function tempoRelativo(iso) {
+            var t = new Date(iso).getTime();
+            if (isNaN(t)) return '';
+
+            var seg = Math.floor((Date.now() - t) / 1000);
+            if (seg < 60) return 'agora mesmo';
+            if (seg < 3600) return 'há ' + Math.floor(seg / 60) + ' min';
+            if (seg < 86400) return 'há ' + Math.floor(seg / 3600) + ' h';
+            if (seg < 604800) return 'há ' + Math.floor(seg / 86400) + ' d';
+            return dataCurta(iso);
+        }
+
+        // O detalhe vale a linha quando é texto de gente: a justificativa da
+        // rejeição, a versão publicada, quantos itens a semeadura criou. Quando
+        // é um ID interno — o rascunho que o `draft_submit` registrou — não diz
+        // nada a ninguém que esteja olhando a barra.
+        function detalheLegivel(detalhe) {
+            var t = String(detalhe == null ? '' : detalhe).trim();
+            if (!t || /^(drf|itm|log|ntc)_/.test(t)) return '';
+            return t;
+        }
+
+        function renderAtividade(linhas) {
+            var host = document.getElementById('atividade-lista');
+            if (!host) return;
+
+            if (!linhas || !linhas.length) {
+                host.innerHTML = '<p class="card-sub">Nada aconteceu por aqui ainda.</p>';
+                return;
+            }
+
+            host.innerHTML = linhas.map(function (a) {
+                var verbo = ATIVIDADE_VERBO[a.action] || a.action;
+                var alvo = a.label || a.key || ATIVIDADE_MODULO[a.module] || a.module || '';
+                var modulo = ATIVIDADE_MODULO[a.module] || '';
+                var detalhe = detalheLegivel(a.detail);
+
+                return '<div class="atividade-linha">' +
+                    fotoDoLdap(a.actor) +
+                    '<div class="atividade-texto">' +
+                    '<span class="atividade-quem">' + esc(a.actor) + '</span> ' +
+                    esc(verbo) +
+                    (alvo ? ' <strong>' + esc(alvo) + '</strong>' : '') +
+                    (detalhe ? '<div class="atividade-detalhe">' + esc(detalhe) + '</div>' : '') +
+                    '<div class="atividade-meta">' +
+                    (modulo ? esc(modulo) + ' · ' : '') + esc(tempoRelativo(a.at)) +
+                    '</div></div></div>';
+            }).join('');
+        }
+
+        function carregarAtividade() {
+            var host = document.getElementById('atividade-lista');
+            if (!host || !SESSION || !SESSION.hasAccess) return;
+
+            google.script.run
+                .withSuccessHandler(renderAtividade)
+                .withFailureHandler(function (err) {
+                    host.innerHTML = '<div class="note warn">' +
+                        esc(err.message || 'Falha ao carregar a atividade.') + '</div>';
+                })
+                .listContentActivity(20);
+        }
+
+        // A barra fechada não custa execução nenhuma: quem não a quer não paga
+        // por ela. Por isso a carga é no ABRIR, e não no boot.
+        function aplicarLateral(aberta) {
+            LATERAL_ABERTA = !!aberta;
+
+            document.getElementById('lateral').classList.toggle('hidden', !LATERAL_ABERTA);
+            document.getElementById('shell').classList.toggle('com-lateral', LATERAL_ABERTA);
+            document.getElementById('btn-lateral')
+                .setAttribute('aria-expanded', LATERAL_ABERTA ? 'true' : 'false');
+
+            if (LATERAL_ABERTA) carregarAtividade();
+        }
+
+        function alternarLateral() {
+            aplicarLateral(!LATERAL_ABERTA);
+            // A escolha sobrevive ao recarregamento. Falha de storage não pode
+            // derrubar a tela: no iframe do Apps Script ele nem sempre existe.
+            try {
+                localStorage.setItem(LATERAL_PREF, LATERAL_ABERTA ? '1' : '0');
+            } catch (e) { }
+        }
+
+        // Aberta por padrão em tela larga: é o estado em que ela ensina que
+        // existe. Em tela estreita ela flutua SOBRE o conteúdo, e abrir sozinha
+        // por cima do trabalho de quem chegou seria atrapalhar, não ajudar.
+        // A escolha explícita, uma vez feita, vale nos dois tamanhos.
+        function lateralPreferida() {
+            var salvo = null;
+            try { salvo = localStorage.getItem(LATERAL_PREF); } catch (e) { }
+            if (salvo !== null) return salvo !== '0';
+            return window.innerWidth > 1180;
+        }
+
         // --- Hoje ---
         //
         // Responde "o que está acontecendo no conteúdo agora", que é a pergunta
@@ -492,6 +645,9 @@
                     document.getElementById('rail').classList.remove('hidden');
                     document.getElementById('shell').classList.remove('sem-trilho');
                     ligarTecladoDoTrilho();
+
+                    document.getElementById('btn-lateral').classList.remove('hidden');
+                    aplicarLateral(lateralPreferida());
 
                     // Links continua sendo carregado no boot porque a home e a
                     // reconciliação de propostas dependem dele.

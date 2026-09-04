@@ -145,4 +145,62 @@ dar baixa apagando a linha é seguro.
 - **Uma proposta pendente por pessoa.** A segunda é recusada, para que uma
   aprovação não sobrescreva em silêncio a decisão da outra.
 - **Baixa apaga a linha.** O histórico fica em `Content_Drafts` (com o motivo) e
-  na aba `Logs`, não na aba People.
+  na aba `Content_Log`, não na aba People.
+
+---
+
+# Aba `Content_Log` (Auditoria da Central de Conteúdo)
+
+- **Nome/Constante:** `SHEET_CONTENT_LOG` (`"Content_Log"`)
+- **Cardinalidade:** **uma linha por ação**, só anexada — nada aqui é editado
+  nem apagado pela aplicação.
+- **Papel no sistema:** responde *quem fez o quê, quando* na Central. Alimenta a
+  barra "Atividade recente" da tela e, no futuro, a aba de auditoria.
+
+| Índice | Nome da Coluna (Header) | Notas |
+| :--- | :--- | :--- |
+| `0` | Log_ID | `log_<uuid>`. Linhas trazidas da aba `Logs` usam `log_bf_<linha de origem>` — é o que torna o backfill idempotente. |
+| `1` | Timestamp | ISO 8601 em **texto**. Ordem alfabética = ordem cronológica, e é assim que a aba é reordenada. |
+| `2` | Actor | LDAP de quem agiu, vindo de `Session.getActiveUser()` — nunca de parâmetro do cliente. |
+| `3` | Action | `approve`, `reject`, `rollback`, `publish_direct`, `access_change`, `people_updated`… |
+| `4` | Module | Módulo da Central. **Vazio** quando o alvo não é conteúdo (`access_change` aponta para uma pessoa). |
+| `5` | Key | Chave do item. Vazio em ações de módulo inteiro (`seed`). |
+| `6` | Item_ID | Linha de `Content_Items` que a ação produziu, quando produziu alguma. |
+| `7` | Label | Rótulo legível do alvo — o que a barra lateral mostra em negrito. |
+| `8` | Detail | Texto de gente: a justificativa da rejeição, a versão publicada, a marca de autoaprovação. |
+
+## Por que módulo e chave têm colunas próprias
+
+O formato anterior era uma linha na aba `Logs` genérica, com `módulo/chave` e um
+sufixo `" (autoaprovação ADMIN)"` concatenados num campo `Label` só. Dava para
+**ler**, não para **filtrar** — e a barra lateral precisa saber de que módulo é
+cada linha para esconder de um QA o que ele não vê na aba Pessoas. Com tudo em
+texto livre, a alternativa seria adivinhar por prefixo, e adivinhar errado ali
+vaza o diretório de autorização.
+
+O sufixo de autoaprovação, pela mesma razão, virou **detalhe**: colado na chave,
+ele fazia a mesma chave contar como duas.
+
+## Quem lê, e com que filtro
+
+`listContentActivity(limite)` devolve as ações mais recentes **já filtradas pelo
+papel de quem pergunta** — o filtro é do servidor, para que a linha proibida nem
+viaje até o navegador:
+
+- ações sobre pessoas (`access_change`) só para quem gerencia acesso;
+- linhas do módulo `people` só para quem propõe nesse módulo
+  (`CONTENT_RESTRICTED_READ_MODULES`).
+
+A varredura é limitada às **últimas 200 linhas** da aba: a barra responde "o que
+aconteceu agora", e o custo dela não pode crescer com o histórico.
+
+## Retenção e backfill
+
+- Retenção de **24 meses**, com arquivamento por limiar de linhas — ver
+  `docs/decisions/0008-cache-e-retencao-do-conteudo.md`.
+- `backfillContentLog()` traz o histórico que ficou na aba `Logs`
+  (`Category = 'ContentCentral'`). **Simula por padrão**; só `backfillContentLog(true)`
+  escreve. **Copia, não move**: a aba `Logs` fica intacta. Depois de escrever,
+  reordena a aba pela data — as linhas trazidas são as mais antigas e entram no
+  fim, e sem reordenar a barra lateral mostraria 2024 como "agora".
+- Só quem tem `manageAccess` roda o backfill.

@@ -40,6 +40,23 @@ class FakeRange {
     });
     return this;
   }
+  // Só o suficiente para o backfill: ordenar um bloco por uma coluna. Existe
+  // porque o backfill ANEXA linhas antigas no fim da aba e precisa reordenar -
+  // sem isso o teste não veria o bug que a ordenação conserta.
+  sort(spec) {
+    const col = (typeof spec === 'object' ? spec.column : spec) - 1;
+    const asc = (typeof spec === 'object') ? spec.ascending !== false : true;
+    const inicio = this.row - 1;
+    const quantas = this.numRows || (this.sheet._data.length - inicio);
+    const bloco = this.sheet._data.splice(inicio, quantas);
+    bloco.sort((a, b) => {
+      const x = String(a[col] == null ? '' : a[col]);
+      const y = String(b[col] == null ? '' : b[col]);
+      return (x < y ? -1 : x > y ? 1 : 0) * (asc ? 1 : -1);
+    });
+    this.sheet._data.splice(inicio, 0, ...bloco);
+    return this;
+  }
   getValues() {
     // getDataRange() (col 1, sem limites) segue devolvendo a aba inteira.
     if (this.col === 1 && !this.numCols) return this.sheet._data.map(r => r.slice());
@@ -131,6 +148,10 @@ vm.runInContext(fs.readFileSync(PEOPLE_SRC, 'utf8'), ctx);
 
 // Devolve o handleLog ao stub que o teste inspeciona (o do Código.gs escreveria
 // numa aba Logs de verdade).
+// A auditoria da Central não passa mais por aqui — ela escreve na aba
+// `Content_Log`. handleLog() continua neutralizado porque ele é o log de SESSÃO
+// do agente: deixá-lo escrever criaria uma aba `Logs` de verdade por baixo dos
+// testes, justamente a aba de onde o backfill lê seu fixture.
 sandbox.__captureLog = (p) => LOGGED.push(p);
 vm.runInContext('handleLog = __captureLog;', ctx);
 
@@ -164,6 +185,20 @@ function throws(fn, re, m) {
   throw new Error((m || '') + ' deveria ter lançado erro');
 }
 function as(ldap, fn) { const old = CURRENT_USER; CURRENT_USER = ldap + '@google.com'; try { return fn(); } finally { CURRENT_USER = old; } }
+
+// A auditoria deixou de ser linha na aba `Logs` genérica e virou a aba
+// `Content_Log`, com uma coluna por informação. Lê-la aqui como objeto é o
+// mesmo que a tela faz.
+function logDaCentral() {
+  const aba = SS.getSheetByName('Content_Log');
+  if (!aba || aba._data.length < 2) return [];
+  const cab = aba._data[0];
+  return aba._data.slice(1).map(linha => {
+    const o = {};
+    cab.forEach((h, i) => { o[h] = linha[i]; });
+    return o;
+  });
+}
 
 console.log('\n--- Acesso e papéis ---');
 
@@ -262,10 +297,14 @@ check('só agora o item está no ar', () => {
 });
 
 check('autoaprovação fica registrada no log', () => {
-  const entry = LOGGED.filter(l => l.action === 'approve').pop();
-  if (!/autoaprovação ADMIN/.test(entry.label)) {
-    throw new Error('log não marcou autoaprovação: ' + entry.label);
+  const entry = logDaCentral().filter(l => l.Action === 'approve').pop();
+  // O sufixo mudou de coluna: era colado na chave, o que fazia a MESMA chave
+  // virar duas para quem filtrasse por ela. Agora é detalhe, que é o que ele é.
+  if (!/autoaprovação ADMIN/.test(String(entry.Detail))) {
+    throw new Error('log não marcou autoaprovação: ' + entry.Detail);
   }
+  eq(entry.Module, 'links', 'o módulo tem coluna própria:');
+  eq(entry.Key, 'tech', 'a chave não carrega o sufixo:');
 });
 
 check('TL NÃO pode aprovar a própria proposta', () => {
@@ -1509,6 +1548,136 @@ check('autoaprovação do ADMIN não manda e-mail para si mesmo', () => {
   const antes = SENT_MAIL.length;
   api.approveContentDraft(d.draftId, '');
   eq(SENT_MAIL.length, antes, 'nenhum e-mail:');
+});
+
+console.log('\n--- Atividade e auditoria estruturada ---');
+
+check('toda ação vira uma linha com módulo e chave em colunas próprias', () => {
+  const linha = logDaCentral().filter(l => l.Action === 'publish_direct').pop();
+  eq(linha.Module, 'broadcast');
+  // Cai aqui se alguém voltar a concatenar: o `Key` de um aviso é o ID do item,
+  // e ele NÃO pode vir com o módulo grudado na frente.
+  eq(/\//.test(String(linha.Key)), false, 'a chave não é "módulo/chave":');
+  eq(String(linha.Item_ID).slice(0, 4), 'itm_', 'a linha aponta para o item publicado:');
+});
+
+check('a atividade chega da mais recente para a mais antiga', () => {
+  const a = api.listContentActivity(10);
+  const datas = a.map(l => l.at);
+  eq(datas.slice().sort().reverse(), datas, 'ordem decrescente por data:');
+});
+
+check('o limite é respeitado, e tem teto', () => {
+  eq(api.listContentActivity(3).length, 3);
+  // 999 não vira 999 leituras: o servidor corta no teto.
+  if (api.listContentActivity(999).length > 60) throw new Error('teto ignorado');
+});
+
+check('quem não tem papel não lê a atividade', () => {
+  as('estranho', () => throws(() => api.listContentActivity(5), /Acesso negado/));
+});
+
+check('QA não vê no log o que não vê na tela de Pessoas', () => {
+  // A linha existe: foi o ADMIN quem a criou.
+  api.saveContentAccess('ana_ppl', 'TL', true);
+  const doAdmin = api.listContentActivity(60);
+  if (!doAdmin.some(l => l.action === 'access_change')) {
+    throw new Error('o ADMIN deveria ver a mudança de acesso');
+  }
+
+  as('quality1', () => {
+    const doQa = api.listContentActivity(60);
+    eq(doQa.some(l => l.action === 'access_change'), false, 'QA não vê mudança de acesso:');
+    eq(doQa.some(l => l.module === 'people'), false, 'QA não vê o módulo people:');
+  });
+});
+
+check('o filtro é do SERVIDOR: a linha proibida nem viaja', () => {
+  // Prova que não é a tela que esconde - o que sai daqui é o que chega no
+  // navegador de quem perguntou.
+  as('quality1', () => {
+    const bruto = JSON.stringify(api.listContentActivity(60));
+    eq(/access_change/.test(bruto), false);
+  });
+});
+
+console.log('\n--- Backfill da aba Logs ---');
+
+function semearLogsAntigos() {
+  const logs = SS.insertSheet('Logs');
+  logs.appendRow(['Timestamp', 'User', 'Version', 'Category', 'Action', 'Label', 'Value']);
+  logs.appendRow(['2024-01-02T10:00:00.000Z', 'lucaste', 'content-central', 'ContentCentral',
+    'approve', 'links/tech (autoaprovação ADMIN)', 'v1 por lucaste']);
+  logs.appendRow(['2024-01-03T10:00:00.000Z', 'anaflor', 'content-central', 'ContentCentral',
+    'access_change', 'brunocs', 'TL ativo']);
+  logs.appendRow(['2024-01-04T10:00:00.000Z', 'lucaste', 'content-central', 'ContentCentral',
+    'seed', 'tips', '12 itens']);
+  // Ruído de outra categoria: a aba Logs é compartilhada com a sessão do agente.
+  logs.appendRow(['2024-01-05T10:00:00.000Z', 'agente1', '6.1.0', 'Geral', 'session', '', '']);
+  return logs;
+}
+
+check('sem `true`, o backfill só simula — não escreve nada', () => {
+  semearLogsAntigos();
+  const antes = logDaCentral().length;
+  const r = api.backfillContentLog();
+  eq(r.novas, 3, 'contou as três linhas de conteúdo:');
+  eq(r.aplicado, false);
+  eq(logDaCentral().length, antes, 'nada foi escrito:');
+});
+
+check('o backfill ignora o que não é da Central', () => {
+  const r = api.backfillContentLog();
+  eq(r.candidatas, 3, 'a linha de sessão do agente ficou de fora:');
+});
+
+let totalAposBackfill = 0;
+check('aplicado, traz as linhas e reparte o Label em colunas', () => {
+  const r = api.backfillContentLog(true);
+  eq(r.aplicado, true);
+  totalAposBackfill = logDaCentral().length;
+
+  const linhas = logDaCentral();
+  const aprov = linhas.find(l => String(l.Log_ID).indexOf('log_bf_') === 0 && l.Action === 'approve');
+  eq(aprov.Module, 'links');
+  eq(aprov.Key, 'tech', 'o sufixo saiu da chave:');
+  eq(/autoaprovação ADMIN/.test(String(aprov.Detail)), true, 'e virou detalhe:');
+
+  // `access_change` guardava um LDAP, não `módulo/chave`. Forçar um módulo aí
+  // seria inventar dado.
+  const acesso = linhas.find(l => String(l.Log_ID).indexOf('log_bf_') === 0 && l.Action === 'access_change');
+  eq(acesso.Module, '');
+  eq(acesso.Label, 'brunocs');
+
+  // `seed` guardava só o módulo, sem barra.
+  const seed = linhas.find(l => String(l.Log_ID).indexOf('log_bf_') === 0 && l.Action === 'seed');
+  eq(seed.Module, 'tips');
+  eq(seed.Key, '');
+});
+
+check('rodar de novo não duplica nada', () => {
+  const r = api.backfillContentLog(true);
+  eq(r.novas, 0);
+  eq(r.jaImportadas, 3);
+  eq(logDaCentral().length, totalAposBackfill, 'a aba não cresceu:');
+});
+
+check('a aba Logs continua intacta — o backfill COPIA', () => {
+  eq(SS.getSheetByName('Logs')._data.length, 5, 'cabeçalho + 4 linhas:');
+});
+
+check('depois do backfill, a atividade recente segue sendo a recente', () => {
+  // Este é o bug que a ordenação conserta: as linhas trazidas são as MAIS
+  // ANTIGAS e entram no FIM da aba. Sem reordenar, a barra lateral - que lê o
+  // fim - mostraria 2024 como "agora".
+  const a = api.listContentActivity(5);
+  eq(a.some(l => String(l.at).indexOf('2024-') === 0), false, 'nada de 2024 no topo:');
+  const datas = a.map(l => l.at);
+  eq(datas.slice().sort().reverse(), datas, 'e a ordem continua decrescente:');
+});
+
+check('só quem gerencia acesso roda o backfill', () => {
+  as('quality1', () => throws(() => api.backfillContentLog(), /Acesso negado/));
 });
 
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);

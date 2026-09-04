@@ -9,6 +9,25 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Atividade recente na Central, com foto de quem fez** (fase 3). A mesma barra
+  lateral do TL Dashboard: quem publicou, aprovou, rejeitou ou reverteu o quê, e
+  há quanto tempo — com a justificativa da rejeição na própria linha, que é onde
+  ela é útil. O que cada pessoa vê é decidido **no servidor**: mudança de acesso
+  só para quem gerencia acesso, e linha do módulo `people` só para quem propõe
+  nele. A barra abre por padrão em tela larga, flutua sobre o conteúdo em tela
+  estreita, e fechada não custa execução nenhuma do Apps Script.
+- **Aba `Content_Log`: a auditoria da Central virou dado, não texto** (fase 3).
+  Cada ação tem agora coluna própria para módulo, chave, item e detalhe, no
+  lugar da linha na aba `Logs` genérica onde tudo isso vivia concatenado num
+  campo só — inclusive um sufixo `" (autoaprovação ADMIN)"` grudado na chave,
+  que fazia a mesma chave contar como duas. Sem essas colunas não há como
+  filtrar por módulo, e sem filtrar por módulo não há como esconder de um QA o
+  que ele já não vê na aba Pessoas. Esquema em
+  `specs/data-models/db-schema.md`; retenção de 24 meses pelo ADR-0008.
+- **`backfillContentLog()`** traz para a aba nova o histórico que ficou na
+  `Logs` (`Category = 'ContentCentral'`), repartindo o campo antigo nas colunas.
+  **Simula por padrão** — só `backfillContentLog(true)` escreve — e **copia sem
+  apagar** a origem. Restrito a quem gerencia acesso.
 - **A revisão passou a mostrar o que mudou** (fase 3). Eram dois blocos de texto
   integral lado a lado, sem realce: num corpo de e-mail de quarenta linhas,
   achar a vírgula alterada era trabalho manual. Agora um diff por palavra marca
@@ -18,13 +37,6 @@ versions follow [Semantic Versioning](https://semver.org/).
   chaves. Quem aprova também ganhou a **prévia renderizada** do e-mail, que
   antes só existia para quem editava.
 
-### Security
-- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
-  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
-  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
-  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
-  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
-  a mesma coisa é como um deles fica para trás.
 - **Rascunho virou um estado alcançável na Central** (fase 3). Todo editor tinha
   um botão só, que salvava e enviava para revisão no mesmo gesto: não havia como
   guardar trabalho parcial, a pílula "rascunho" que as listas sabiam desenhar
@@ -79,6 +91,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Traço de autoria no alerta de volume BAU.** `BAU_Alerts.js` montava o rodapé
   só com o motivo do disparo; agora fecha com "Cases Wizard · automatizado por
   @lucaste", como os demais e-mails do fluxo.
+
+### Security
+- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
+  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
+  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
+  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
+  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
+  a mesma coisa é como um deles fica para trás.
 
 ### Changed
 - **A Central de Conteúdo trocou as dez abas por um trilho agrupado pelo regime
