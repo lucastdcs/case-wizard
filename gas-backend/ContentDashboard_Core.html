@@ -576,6 +576,220 @@
             if (!document.getElementById('pane-emails').classList.contains('hidden')) renderEmails();
         }
 
+        // --- Busca global (Ctrl+K) ---
+        //
+        // A Central tem dez destinos e centenas de itens. Achar "aquele link do
+        // Ads" custava lembrar em qual aba ele mora e rolar a lista — e quem
+        // não lembra desiste e cria um item duplicado, que é o pior desfecho.
+        //
+        // TUDO que entra aqui passa por esc(): o resultado mistura texto
+        // escrito por outras pessoas com marcação da tela, e é exatamente a
+        // classe de falha que docs/LEARNINGS.md registrou no Ctrl+K do bundle.
+        var BUSCA_ABERTA = false;
+        var BUSCA_TIMER = null;
+        var BUSCA_RESULTADOS = [];
+        var BUSCA_FOCO = 0;
+
+        // Um destino é resultado como qualquer outro: "aprovações" é o que
+        // muita gente vai digitar, e mandar procurar no trilho seria mandar
+        // fazer à mão o que a busca acabou de oferecer.
+        function destinosQueCasam(termo) {
+            var t = semAcentoNaTela(termo);
+            if (!t) return [];
+
+            return Object.keys(DESTINOS).filter(function (d) {
+                var botao = document.getElementById('tab-' + d);
+                // Só o que a pessoa realmente enxerga no trilho.
+                if (botao && botao.classList.contains('hidden')) return false;
+                return semAcentoNaTela(DESTINOS[d].titulo).indexOf(t) !== -1;
+            }).map(function (d) {
+                return { tipo: 'destino', destino: d, label: DESTINOS[d].titulo,
+                         snippet: DESTINOS[d].sub };
+            });
+        }
+
+        var DIACRITICOS_NA_TELA = new RegExp(
+            '[' + String.fromCharCode(768) + '-' + String.fromCharCode(879) + ']', 'g');
+
+        function semAcentoNaTela(texto) {
+            return String(texto == null ? '' : texto)
+                .normalize('NFD').replace(DIACRITICOS_NA_TELA, '').toLowerCase().trim();
+        }
+
+        function abrirBusca() {
+            if (BUSCA_ABERTA) return;
+            BUSCA_ABERTA = true;
+            BUSCA_RESULTADOS = [];
+            BUSCA_FOCO = 0;
+
+            document.getElementById('busca-root').innerHTML =
+                '<div class="busca-backdrop" onclick="if(event.target===this)fecharBusca()">' +
+                '<div class="busca-caixa" role="dialog" aria-modal="true" aria-label="Buscar na Central">' +
+                '<div class="busca-campo">' +
+                '<span class="material-symbols-rounded" aria-hidden="true">search</span>' +
+                '<input type="text" id="busca-input" autocomplete="off" ' +
+                'placeholder="Buscar item, módulo ou destino…" ' +
+                'aria-controls="busca-lista" aria-autocomplete="list">' +
+                '<kbd>Esc</kbd>' +
+                '</div>' +
+                '<div class="busca-lista" id="busca-lista" role="listbox"></div>' +
+                '</div></div>';
+
+            var campo = document.getElementById('busca-input');
+            campo.addEventListener('input', function () { agendarBusca(campo.value); });
+            campo.addEventListener('keydown', teclaNaBusca);
+            campo.focus();
+
+            renderBusca([], '');
+        }
+
+        function fecharBusca() {
+            BUSCA_ABERTA = false;
+            clearTimeout(BUSCA_TIMER);
+            document.getElementById('busca-root').innerHTML = '';
+        }
+
+        /**
+         * Duas velocidades, de propósito.
+         *
+         * Os destinos são calculados na TECLA: eles já estão na memória da
+         * tela, e esperar a rede para mostrar "Aprovações" faria a busca
+         * parecer lenta por causa da parte que nem precisava de rede.
+         *
+         * O conteúdo espera a pessoa parar de digitar. Sem o atraso, cada tecla
+         * vira uma execução do Apps Script — e o teto de execuções simultâneas é
+         * o recurso escasso deste backend (ADR-0008).
+         */
+        function agendarBusca(termo) {
+            var t = String(termo || '').trim();
+
+            BUSCA_RESULTADOS = destinosQueCasam(t);
+            BUSCA_FOCO = 0;
+            renderBusca(BUSCA_RESULTADOS, t, t.length >= 2);
+
+            clearTimeout(BUSCA_TIMER);
+            if (t.length < 2) return;
+            BUSCA_TIMER = setTimeout(function () { buscarAgora(t); }, 220);
+        }
+
+        function buscarAgora(termo) {
+            var t = String(termo || '').trim();
+            var locais = destinosQueCasam(t);
+
+            google.script.run
+                .withSuccessHandler(function (itens) {
+                    if (!BUSCA_ABERTA) return;
+                    var doServidor = (itens || []).map(function (it) {
+                        return { tipo: 'item', destino: destinoDoModulo(it.module),
+                                 module: it.module, id: it.id, label: it.label,
+                                 snippet: it.snippet };
+                    });
+                    BUSCA_RESULTADOS = locais.concat(doServidor);
+                    BUSCA_FOCO = 0;
+                    renderBusca(BUSCA_RESULTADOS, t);
+                })
+                .withFailureHandler(function (err) {
+                    if (BUSCA_ABERTA) renderBuscaErro(err.message);
+                })
+                .searchContentItems(t);
+        }
+
+        // Módulo do servidor -> destino do trilho. São nomes diferentes porque
+        // o trilho fala com quem usa e o módulo fala com o banco.
+        var DESTINO_DO_MODULO = {
+            links: 'links', call_script: 'callscript', note_template: 'notes',
+            email_template: 'emails', tips: 'tips', broadcast: 'broadcast',
+            bau_availability: 'bau', people: 'people'
+        };
+
+        function destinoDoModulo(module) {
+            return DESTINO_DO_MODULO[module] || 'home';
+        }
+
+        function renderBusca(lista, termo, carregando) {
+            var host = document.getElementById('busca-lista');
+            if (!host) return;
+
+            if (!lista.length) {
+                host.innerHTML = '<p class="busca-vazio">' +
+                    (termo.length < 2
+                        ? 'Digite ao menos duas letras.'
+                        : (carregando ? 'Procurando…' : 'Nada encontrado para “' + esc(termo) + '”.')) +
+                    '</p>';
+                return;
+            }
+
+            host.innerHTML = lista.map(function (r, i) {
+                var onde = r.tipo === 'destino'
+                    ? 'Ir para'
+                    : (ATIVIDADE_MODULO[r.module] || r.module);
+
+                return '<button class="busca-item' + (i === BUSCA_FOCO ? ' focado' : '') + '" ' +
+                    'role="option" aria-selected="' + (i === BUSCA_FOCO) + '" ' +
+                    'data-indice="' + i + '" onclick="escolherBusca(' + i + ')">' +
+                    '<span class="busca-onde">' + esc(onde) + '</span>' +
+                    '<span class="busca-nome">' + esc(r.label) + '</span>' +
+                    (r.snippet ? '<span class="busca-trecho">' + esc(r.snippet) + '</span>' : '') +
+                    '</button>';
+            }).join('') + (carregando ? '<p class="busca-vazio">Procurando no conteúdo…</p>' : '');
+        }
+
+        function renderBuscaErro(msg) {
+            var host = document.getElementById('busca-lista');
+            if (host) host.innerHTML = '<p class="busca-vazio">' + esc(msg) + '</p>';
+        }
+
+        function moverFoco(delta) {
+            if (!BUSCA_RESULTADOS.length) return;
+            BUSCA_FOCO = (BUSCA_FOCO + delta + BUSCA_RESULTADOS.length) % BUSCA_RESULTADOS.length;
+
+            var itens = document.querySelectorAll('.busca-item');
+            for (var i = 0; i < itens.length; i++) {
+                itens[i].classList.toggle('focado', i === BUSCA_FOCO);
+                itens[i].setAttribute('aria-selected', i === BUSCA_FOCO ? 'true' : 'false');
+            }
+            if (itens[BUSCA_FOCO]) itens[BUSCA_FOCO].scrollIntoView({ block: 'nearest' });
+        }
+
+        function teclaNaBusca(e) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); moverFoco(1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); moverFoco(-1); }
+            else if (e.key === 'Enter') { e.preventDefault(); escolherBusca(BUSCA_FOCO); }
+        }
+
+        function escolherBusca(indice) {
+            var r = BUSCA_RESULTADOS[indice];
+            if (!r) return;
+            fecharBusca();
+            switchTab(r.destino);
+            if (r.tipo === 'item') piscarItem(r.id);
+        }
+
+        // O destino abre e a lista carrega em seguida: o pisca espera o item
+        // existir no DOM em vez de procurar por um nó que ainda não chegou.
+        function piscarItem(itemId, tentativas) {
+            var restantes = (tentativas === undefined) ? 12 : tentativas;
+            var alvo = document.querySelector('[data-item="' + itemId + '"]');
+
+            if (!alvo) {
+                if (restantes > 0) setTimeout(function () { piscarItem(itemId, restantes - 1); }, 150);
+                return;
+            }
+
+            alvo.classList.add('flash-applied');
+            alvo.scrollIntoView({ block: 'center' });
+            setTimeout(function () { alvo.classList.remove('flash-applied'); }, 1200);
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+                e.preventDefault();
+                if (BUSCA_ABERTA) fecharBusca(); else abrirBusca();
+            } else if (e.key === 'Escape' && BUSCA_ABERTA) {
+                fecharBusca();
+            }
+        });
+
         // --- Ver como ---
         //
         // Quem edita a matriz de papéis precisa poder CONFERIR o que configurou.
@@ -767,6 +981,7 @@
                     document.getElementById('shell').classList.remove('sem-trilho');
                     ligarTecladoDoTrilho();
 
+                    document.getElementById('btn-busca').classList.remove('hidden');
                     document.getElementById('btn-lateral').classList.remove('hidden');
                     aplicarLateral(lateralPreferida());
 

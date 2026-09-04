@@ -2383,5 +2383,85 @@ check('quem não aprova nada não consulta a cobrança', () => {
   as('quality1', () => throws(() => api.listStaleContentApprovals(), /Acesso negado/));
 });
 
+console.log('\n--- Busca global ---');
+
+const contentAgora = () => new Date().toISOString();
+
+check('a busca ignora acento — quem procura não digita acento', () => {
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Anúncio de manutenção',
+    value: JSON.stringify({ type: 'info', title: 'Anúncio de manutenção', text: 'Sistema fora.' })
+  });
+
+  const r = api.searchContentItems('anuncio');
+  eq(r.length > 0, true, 'deveria achar mesmo sem acento:');
+  eq(r.some(x => /Anúncio/.test(x.label)), true);
+});
+
+check('termo curto demais não vira varredura', () => {
+  eq(api.searchContentItems('a'), []);
+  eq(api.searchContentItems(''), []);
+});
+
+check('a busca respeita o `ver` da matriz', () => {
+  // A busca é a porta dos fundos mais fácil de esquecer: sem o filtro, ela
+  // devolve conteúdo de módulo que a pessoa nem consegue abrir na tela.
+  const cego = api.normalizeRoleMatrix_({ modules: {}, global: {} });
+  cego.modules.tips.view = true;   // enxerga dicas, e SÓ dicas
+  eq(api.saveContentRole('SOTIPS', cego, {}).status, 'success');
+  api.saveContentAccess('sotips1', 'SOTIPS', true);
+
+  SS.getSheetByName('Content_Items').appendRow([
+    'itm_busca_link', 'links', 'tech', '', 'ALL', 'LinkDeTesteDaBusca',
+    JSON.stringify({ name: 'LinkDeTesteDaBusca', url: 'https://go/busca', desc: 'x' }),
+    1, 'live', 'lucaste', contentAgora(), 0, 'itm_busca_link'
+  ]);
+  api.invalidateContentCache_('links');
+
+  // O ADMIN acha o link; quem só vê dicas, não.
+  eq(api.searchContentItems('LinkDeTesteDaBusca').some(x => x.module === 'links'), true,
+    'o ADMIN precisa achar o link para o teste valer:');
+
+  as('sotips1', () => {
+    const r = api.searchContentItems('LinkDeTesteDaBusca');
+    eq(r.some(x => x.module === 'links'), false, 'não pode achar o que não pode ver:');
+  });
+});
+
+check('quem não tem papel não busca nada', () => {
+  as('estranho', () => throws(() => api.searchContentItems('link'), /Acesso negado/));
+});
+
+check('só o que está no ar aparece', () => {
+  const d = api.saveContentDraft({
+    module: 'links', key: 'tech', lang: 'ALL', label: 'RascunhoSecretoXYZ',
+    value: JSON.stringify({ name: 'RascunhoSecretoXYZ', url: 'https://go/x', desc: 'x' })
+  });
+  eq(api.searchContentItems('RascunhoSecretoXYZ'), [], 'rascunho não é conteúdo no ar:');
+  api.discardContentDraft(d.draftId);
+});
+
+check('o trecho mostra o contexto, sem JSON cru na cara', () => {
+  const r = api.searchContentItems('manutencao');
+  eq(r.length > 0, true);
+  eq(/[{}"]/.test(r[0].snippet), false, 'o trecho não pode ter marca de JSON: ' + r[0].snippet);
+});
+
+check('a busca tem teto de resultados', () => {
+  // Uma busca que devolve tudo é uma busca que trava a tela em vez de ajudar.
+  // Precisa de mais itens que o teto para o teto ter o que cortar.
+  const aba = SS.getSheetByName('Content_Items');
+  for (let i = 0; i < 45; i++) {
+    aba.appendRow([
+      'itm_massa_' + i, 'tips', 'geral', '', 'PT', 'Dica massiva ' + i,
+      'Texto padronizado para a busca massiva.', 1, 'live', 'lucaste',
+      contentAgora(), i, 'itm_massa_' + i
+    ]);
+  }
+
+  const r = api.searchContentItems('massiva');
+  eq(r.length, 30, 'o teto precisa cortar, veio ' + r.length);
+});
+
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);
 process.exit(fail ? 1 : 0);

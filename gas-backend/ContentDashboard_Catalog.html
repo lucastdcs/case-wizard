@@ -83,7 +83,7 @@
                         '</div>'
                         : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
-                    html += '<div class="item-row">' +
+                    html += '<div class="item-row" data-item="' + esc(it.id) + '">' +
                         '<div class="item-main">' +
                         '<div class="item-name">' + esc(v.name) + ' ' + badge + '</div>' +
                         '<div class="item-meta">' + esc(v.desc) + ' — ' + esc(v.url) + '</div>' +
@@ -426,7 +426,7 @@
                         '</div>'
                         : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
-                    html += '<div class="item-row">' +
+                    html += '<div class="item-row" data-item="' + esc(it.id) + '">' +
                         '<div class="item-main">' +
                         '<div class="item-name">' + (idx + 1) + '. ' + badge + '</div>' +
                         '<div class="item-meta">' + esc(it.value) + '</div>' +
@@ -643,7 +643,7 @@
                         '</div>'
                         : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
-                    html += '<div class="item-row">' +
+                    html += '<div class="item-row" data-item="' + esc(it.id) + '">' +
                         '<div class="item-main">' +
                         '<div class="item-name">' + esc(it.label) + ' ' + badge + ' ' + escopo + '</div>' +
                         '<div class="item-meta">' + nCampos + ' campo' + (nCampos === 1 ? '' : 's') +
@@ -883,7 +883,7 @@
                         '</div>'
                         : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
-                    html += '<div class="item-row">' +
+                    html += '<div class="item-row" data-item="' + esc(it.id) + '">' +
                         '<div class="item-main">' +
                         '<div class="item-name">' + esc(it.label) + ' ' + badge + '</div>' +
                         '<div class="item-meta">' + esc(v.subject || '') + ' · ' + esc(phInfo) + '</div>' +
@@ -1061,7 +1061,7 @@
                     '</div>'
                     : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
-                return '<div class="item-row">' +
+                return '<div class="item-row" data-item="' + esc(it.id) + '">' +
                     '<div class="item-main">' +
                     '<div class="item-meta" style="font-size:14px;color:var(--text-primary)">' +
                     esc(it.value) + ' ' + badge + '</div>' +

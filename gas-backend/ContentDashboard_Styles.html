@@ -284,6 +284,124 @@
         body.em-previa .lateral { top: 116px; }
         body.em-previa .rail { height: calc(100vh - 116px); }
 
+        /* --- Busca global (Ctrl+K) --- */
+        .topnav-kbd,
+        .busca-campo kbd {
+            font-family: inherit;
+            font-size: 11px;
+            letter-spacing: 0.4px;
+            padding: 2px 6px;
+            border-radius: 5px;
+            border: 1px solid var(--nav-border);
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0.8;
+        }
+
+        .busca-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 400;
+            background: rgba(32, 33, 36, 0.45);
+            backdrop-filter: blur(2px);
+            /* Alto na tela e não centralizado: a lista cresce para baixo, e uma
+               caixa centralizada saltaria a cada resultado a mais. */
+            padding: 12vh 20px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .busca-caixa {
+            width: 100%;
+            max-width: 620px;
+            background: var(--surface-level-1);
+            border-radius: var(--radius-md);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+            overflow: hidden;
+        }
+
+        .busca-campo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .busca-campo .material-symbols-rounded { color: var(--text-secondary); }
+
+        .busca-campo kbd {
+            border-color: var(--border-subtle);
+            background: var(--surface-level-2);
+            color: var(--text-secondary);
+        }
+
+        .busca-campo input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: 16px;
+            color: var(--text-primary);
+            background: transparent;
+        }
+
+        .busca-lista {
+            max-height: 52vh;
+            overflow-y: auto;
+        }
+
+        .busca-item {
+            display: grid;
+            grid-template-columns: 96px minmax(0, 1fr);
+            grid-template-areas: "onde nome" "onde trecho";
+            gap: 2px 14px;
+            width: 100%;
+            padding: 10px 18px;
+            border: none;
+            background: transparent;
+            text-align: left;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .busca-item.focado { background: var(--gemini-blue-light); }
+
+        .busca-onde {
+            grid-area: onde;
+            align-self: center;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .busca-nome {
+            grid-area: nome;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .busca-trecho {
+            grid-area: trecho;
+            font-size: 12px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .busca-vazio {
+            margin: 0;
+            padding: 18px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
         /* --- Auditoria --- */
         .aud-filtros {
             display: grid;
@@ -1587,7 +1705,10 @@
             100% { background: var(--warning-light); transform: none; }
         }
 
-        .ppl-row.flash-applied {
+        .ppl-row.flash-applied,
+        /* A busca reusa o mesmo pisca: "onde houve" é a mesma pergunta,
+           venha a resposta de uma edição ou de um resultado escolhido. */
+        .item-row.flash-applied {
             animation: ppl-flash-applied .9s var(--spring-functional);
         }
 
