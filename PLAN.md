@@ -48,15 +48,21 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       três grupos; home "Hoje" moldada pelo papel; idioma único e persistente no
       lugar dos `select` independentes; rota por hash. **PR irmão:** changelog de
       versão na Central e no TL Dash, a partir de fonte única no repo.
-- [~] **Fase 3 — ciclo de vida do item** — em andamento. **Entregue:** histórico
-      e "voltar para esta versão"; rascunho de verdade, separado do envio, com
-      a trava de edição visível e caminho para descartar; diff por palavra e prévia
-      renderizada na revisão — `listContentItemHistory` e `rollbackContentItem` existem no
-      backend e nunca foram chamados, enquanto o modal de remoção promete que a
-      versão "pode voltar"; rascunho de verdade, separado do envio; trava de
-      edição visível; diff por palavra e prévia renderizada na revisão.
-      **PR irmão:** aba `Content_Log` estruturada + backfill, e a barra lateral
-      "Atividade recente" com foto, reusando o `avatarImgHtml()` do TL Dash.
+- [x] **Fase 3 — ciclo de vida do item** — completa, em quatro PRs:
+      1. **histórico e "voltar para esta versão"** — `listContentItemHistory` e
+         `rollbackContentItem` existiam no backend e nunca tinham sido chamados
+         pela tela, enquanto o modal de remoção prometia que a versão "pode
+         voltar" sem oferecer caminho nenhum;
+      2. **rascunho de verdade**, separado do envio, com a trava de edição
+         visível e caminho para descartar;
+      3. **diff por palavra e prévia renderizada** na revisão;
+      4. **aba `Content_Log` + "Atividade recente"** — a auditoria ganhou uma
+         coluna por informação no lugar do `módulo/chave` concatenado na aba
+         `Logs`, `backfillContentLog()` traz o histórico antigo (simula por
+         padrão, copia sem apagar), e a barra lateral mostra quem fez o quê com
+         foto, filtrada **no servidor** pelo papel de quem pergunta.
+      **Fora da fase:** o job de arquivamento dos 24 meses (ADR-0008), que
+      pertence à rotação do `Backup.js`.
 - [ ] **Fase 4 — RBAC editável** (ADR-0009). Aba `Content_Roles`, matriz módulo
       × ação, permissões globais à parte, papéis atuais como presets para o dia 1
       não mudar nada. As três invariantes (anti-lockout, escalação declarada,
@@ -77,6 +83,13 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
+- [ ] **Rodar o `backfillContentLog()` na planilha de verdade.** Só quem tem
+      `manageAccess` roda, e o passo 1 é `backfillContentLog()` **sem argumento**:
+      ele apenas relata quantas linhas traria. Confira o número contra a aba
+      `Logs` (filtro `Category = ContentCentral`) antes de chamar
+      `backfillContentLog(true)`. É idempotente e não apaga a origem, então
+      repetir é seguro — mas a simulação existe para o número ser conferido por
+      alguém, não pelo código.
 - [ ] **Call Script — seção `meio` (Implementação/Tag Support) em ES.** Os blocos
       `ES BAU`/`ES LT` de `call-script-data.js` seguem sem essa seção. Não é
       esquecimento da tradução: o próprio arquivo registra que o conteúdo real

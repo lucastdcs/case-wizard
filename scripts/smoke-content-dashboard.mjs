@@ -129,8 +129,32 @@ const HISTORICO = {
     ],
 };
 
+// A barra lateral. Três linhas escolhidas de propósito: uma com justificativa
+// (texto de gente, tem que aparecer), uma cujo detalhe é ID interno (não tem) e
+// uma de publicação direta. As datas são relativas ao agora para o "há X min"
+// ser exercitado de verdade.
+const agoraMenos = (min) => new Date(Date.now() - min * 60000).toISOString();
+
+const ATIVIDADE = [
+    {
+        id: 'log_3', at: agoraMenos(4), actor: 'lucaste', action: 'reject',
+        module: 'email_template', key: 'boas_vindas', itemId: '',
+        label: 'E-mail de boas-vindas', detail: 'Falta citar o CID.',
+    },
+    {
+        id: 'log_2', at: agoraMenos(30), actor: 'anaflor', action: 'draft_submit',
+        module: 'call_script', key: 'BAU', itemId: '',
+        label: 'Passo de abertura', detail: 'drf_abc123',
+    },
+    {
+        id: 'log_1', at: agoraMenos(180), actor: 'brunocs', action: 'publish_direct',
+        module: 'broadcast', key: 'itm_9', itemId: 'itm_9',
+        label: 'Instabilidade no CRM', detail: 'v1',
+    },
+];
+
 // ------------------------------------------------------- montagem da página
-async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null, fila = [] } = {}) {
+async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null, fila = [], atividade = [] } = {}) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
     page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
 
@@ -138,10 +162,22 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
     await page.route('**fonts.googleapis.com/**', (r) => r.abort());
     await page.route('**fonts.gstatic.com/**', (r) => r.abort());
 
+    // O endpoint da foto corporativa também não responde daqui, e a imagem tem
+    // `onerror` que troca o src pelo ícone genérico. Sem atender ao pedido, o
+    // teste da foto olharia sempre para o fallback e nunca veria a URL montada.
+    await page.route('**moma-teams-photos.corp.google.com/**', (r) => r.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        body: Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            'base64'),
+    }));
+
     // O dublê precisa existir ANTES do script da página rodar: o boot dispara
     // no DOMContentLoaded.
-    await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos, pendentes }) => {
+    await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos, pendentes, atividade }) => {
         const PENDENTES = pendentes || [];
+        const ATIVIDADE = atividade || [];
         const HISTORICO = historico;
         window.__chamadas = [];
 
@@ -153,6 +189,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
                 return (rascunhos && rascunhos[m]) || [];
             },
             listPendingApprovals: () => PENDENTES,
+            listContentActivity: () => ATIVIDADE,
             listContentItemHistory: (lineage) => (HISTORICO[lineage] || []),
             rollbackContentItem: () => ({ status: 'success', itemId: 'itm_revivido' }),
             saveContentDraft: () => ({ status: 'success', draftId: 'drf_rascunho' }),
@@ -205,7 +242,10 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
             value: { script: { get run() { return construir(); } } },
             writable: true,
         });
-    }, { sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe, historico: HISTORICO, rascunhos: draftsDe, pendentes: fila });
+    }, {
+        sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe,
+        historico: HISTORICO, rascunhos: draftsDe, pendentes: fila, atividade,
+    });
 
     await page.goto('file://' + ARQUIVO + hash, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(300);
@@ -837,6 +877,100 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
     await check('a prévia aparece só onde faz sentido', async () => {
         // Uma dica não é HTML: prévia ali seria enfeite.
         igual(await page.locator('.previa').count(), 1, 'prévias na fila');
+    });
+
+    await page.close();
+}
+
+// ------------------------------------------------------ atividade recente
+{
+    const page = await abrir({ sessao: 'admin', atividade: ATIVIDADE });
+
+    await check('a barra de atividade abre junto com a tela', async () => {
+        verdade(await page.locator('#lateral').isVisible(), 'a barra deveria estar visível');
+        igual(await page.locator('.atividade-linha').count(), 3, 'linhas na barra');
+    });
+
+    await check('cada linha diz QUEM fez, com foto', async () => {
+        const fotos = await page.locator('.atividade-linha img.atividade-foto').evaluateAll(
+            (imgs) => imgs.map(i => i.getAttribute('src')));
+        igual(fotos.length, 3, 'fotos');
+        verdade(fotos[0].indexOf('lucaste') !== -1, 'a foto é a de quem fez a ação: ' + fotos[0]);
+        // O endpoint da foto corporativa é chamado de dentro do iframe do Apps
+        // Script — sem isto ele responde 403 e todo mundo vira ícone genérico.
+        const primeira = page.locator('.atividade-linha img.atividade-foto').first();
+        igual(await primeira.getAttribute('referrerpolicy'), 'no-referrer', 'referrerpolicy');
+        // Quem não tem foto no diretório não vira imagem quebrada.
+        verdade(await primeira.getAttribute('onerror'), 'faltou o fallback da foto');
+    });
+
+    await check('a ação aparece em português, não com o nome interno', async () => {
+        const texto = await page.locator('#atividade-lista').textContent();
+        verdade(/rejeitou/.test(texto), 'faltou o verbo em português');
+        verdade(/E-mail de boas-vindas/.test(texto), 'faltou o alvo da ação');
+        igual(/draft_submit|publish_direct/.test(texto), false,
+            'o nome interno da ação vazou para a tela');
+    });
+
+    await check('a justificativa da rejeição aparece; o ID interno, não', async () => {
+        const texto = await page.locator('#atividade-lista').textContent();
+        // É a informação mais útil da linha: sem ela, "rejeitou" manda a pessoa
+        // procurar o motivo em outro lugar.
+        verdade(/Falta citar o CID/.test(texto), 'faltou a justificativa');
+        igual(/drf_abc123/.test(texto), false, 'um ID interno virou ruído na barra');
+    });
+
+    await check('a barra pede a atividade UMA vez, não a cada troca de aba', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.evaluate(() => switchTab('tips'));
+        await page.waitForTimeout(150);
+        await page.evaluate(() => switchTab('links'));
+        await page.waitForTimeout(150);
+
+        const pedidos = await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'listContentActivity').length);
+        igual(pedidos, 0, 'trocar de aba não pode custar uma execução do Apps Script');
+    });
+
+    await check('fechar a barra devolve a largura e para de buscar', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.locator('#btn-lateral').click();
+        await page.waitForTimeout(150);
+
+        igual(await page.locator('#lateral').isVisible(), false, 'a barra deveria sumir');
+        igual(await page.locator('#btn-lateral').getAttribute('aria-expanded'), 'false', 'aria-expanded');
+        igual(await page.evaluate(() =>
+            document.getElementById('shell').classList.contains('com-lateral')), false,
+            'a terceira coluna deveria sair do grid');
+        igual(await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'listContentActivity').length), 0,
+            'barra fechada não pode custar execução');
+    });
+
+    await check('reabrir busca de novo — o que ela mostra é o de agora', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.locator('#btn-lateral').click();
+        await page.waitForTimeout(150);
+
+        verdade(await page.locator('#lateral').isVisible(), 'a barra deveria voltar');
+        igual(await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'listContentActivity').length), 1, 'buscas ao reabrir');
+    });
+
+    await page.close();
+}
+
+{
+    // Sessão sem papel: a barra é conteúdo, e conteúdo nenhum aparece antes de
+    // saber quem é a pessoa.
+    const page = await abrir({ sessao: 'semAcesso', atividade: ATIVIDADE });
+
+    await check('sem papel: nem a barra nem o botão dela existem na tela', async () => {
+        igual(await page.locator('#lateral').isVisible(), false, 'a barra não deveria aparecer');
+        igual(await page.locator('#btn-lateral').isVisible(), false, 'o botão não deveria aparecer');
+        igual(await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'listContentActivity').length), 0,
+            'pediu atividade sem ter acesso');
     });
 
     await page.close();

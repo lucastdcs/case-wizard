@@ -59,3 +59,32 @@ o porquê em `docs/decisions/0006-aba-people-editavel-na-central.md`.
   proposta espera na fila, e a aba pode ter mudado nesse meio-tempo.
 - **`people` nunca é servido por `handleContentPublicRead`** (está em
   `CONTENT_PRIVATE_MODULES`), nem mesmo se um dia tiver linha em `Content_Items`.
+
+---
+
+## Auditoria e atividade (aba `Content_Log`)
+
+Também por `google.script.run`, nunca pelo roteador JSONP. Esquema da aba,
+retenção e regras de filtro em `db-schema.md`.
+
+| Função | Params | Quem pode | Resposta |
+| :--- | :--- | :--- | :--- |
+| `listContentActivity(limite)` | `limite` opcional (padrão 20, teto 60) | qualquer papel ativo | Lista, **da mais recente para a mais antiga**, de `{ id, at, actor, action, module, key, itemId, label, detail }` |
+| `backfillContentLog(aplicar)` | `aplicar === true` escreve; qualquer outra coisa simula | **só quem tem `manageAccess`** | `{ lidas, candidatas, jaImportadas, novas, aplicado }` |
+
+### Regras
+- **O filtro de visibilidade é do servidor.** `listContentActivity` já remove o
+  que quem pergunta não pode ver — `access_change` para quem não gerencia
+  acesso, e o módulo `people` para quem não propõe nele. A tela não tem lista de
+  exceções para aplicar: se a linha chegou, é porque pode ser mostrada.
+  Filtrar no cliente deixaria o dado viajar até o navegador de quem não devia.
+- **A janela é limitada às últimas 200 linhas da aba.** A barra responde "o que
+  aconteceu agora", e o custo dela não pode crescer com o histórico. Quem não
+  pode ver nada do que caiu nessa janela recebe lista vazia — é o comportamento
+  certo para "recente", e o motivo de a janela ser bem maior que o teto.
+- **`at` é sempre ISO 8601 em texto**, mesmo para as linhas trazidas da aba
+  `Logs`, onde a data era um `Date` da planilha.
+- **`backfillContentLog` simula por padrão e nunca apaga a origem.** É
+  idempotente pelo `Log_ID` derivado da linha de origem, e reordena a aba pela
+  data depois de escrever — as linhas trazidas são as mais antigas e entram no
+  fim.

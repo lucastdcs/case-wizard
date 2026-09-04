@@ -12,6 +12,56 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## `<img onerror>` faz asserção de `src` mentir: atenda o endpoint no teste
+
+**Why**: a barra "Atividade recente" monta a foto de perfil com
+`onerror="this.src='<ícone genérico>'"`, o mesmo padrão do TL Dashboard. O smoke
+afirmava que o `src` da imagem contém o LDAP de quem fez a ação — e recebeu a URL
+do ícone genérico. O endpoint da foto corporativa não responde do container, o
+`onerror` disparou, e o atributo que o teste leu já não era o que o código
+escreveu. A asserção não estava errada; ela estava olhando para depois do
+fallback. Se o valor esperado por acaso batesse com o do fallback, o teste
+passaria sem nunca ter exercitado a montagem da URL.
+
+O conserto é atender o pedido em vez de deixá-lo falhar:
+
+```js
+await page.route('**moma-teams-photos.corp.google.com/**', (r) => r.fulfill({
+    status: 200, contentType: 'image/png', body: pngDe1x1,
+}));
+```
+
+**When to apply**: sempre que um teste de navegador ler um atributo que o próprio
+elemento reescreve em caso de falha — `img[onerror]`, `<source>` com fallback,
+`<video>` com poster. Se a rede do ambiente de teste não serve aquele host,
+`route().fulfill()` antes de asserir; `route().abort()` só quando o que se quer
+provar é justamente o fallback.
+
+---
+
+## Classe composta dentro de media query: repita a classe, senão o breakpoint perde
+
+**Why**: a Central ganhou `.shell.com-lateral` para abrir a terceira coluna. O
+breakpoint de celular já existia e mexia em `.shell` — e passou a não valer mais:
+`.shell.com-lateral` tem especificidade 0,2,0 contra 0,1,0 de `.shell`, então
+ganha mesmo estando numa media query anterior no arquivo (media query não soma
+especificidade). O sintoma seria o trilho voltando a ser uma coluna fixa de 248px
+no celular, com o conteúdo espremido — e sem erro nenhum, porque CSS não reclama.
+
+```css
+@media (max-width: 900px) {
+    .shell,
+    .shell.com-lateral { grid-template-columns: minmax(0, 1fr); }
+}
+```
+
+**When to apply**: ao acrescentar uma classe MODIFICADORA a um elemento que já
+tem regras dentro de media query. Antes de commitar, procure o seletor base nos
+breakpoints (`grep -n "\.shell" no arquivo de estilo`) e repita o modificador em
+cada um que precisa continuar vencendo.
+
+---
+
 ## Ao restaurar um caminho que funcionava, transplante o texto original — não reescreva
 
 **Why**: depois que a migração para a UI nova do Connect Cases apagou o fluxo da

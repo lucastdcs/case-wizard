@@ -13,6 +13,13 @@ const SHEET_CONTENT_ITEMS = "Content_Items";
 const SHEET_CONTENT_DRAFTS = "Content_Drafts";
 const SHEET_CONTENT_ACCESS = "Content_Access";
 
+// Auditoria. Aba própria, e não mais linhas na aba `Logs` genérica: ali a ação
+// de conteúdo cabia em `Label`, uma string única onde módulo, chave e um
+// sufixo " (autoaprovação ADMIN)" viviam grudados. Dava para LER, não para
+// FILTRAR - e a barra "Atividade recente" precisa saber de que módulo é cada
+// linha para decidir quem pode vê-la. Ver ADR-0008 para a retenção.
+const SHEET_CONTENT_LOG = "Content_Log";
+
 // Módulos gerenciáveis. Adicionar um módulo novo é acrescentar uma string
 // aqui - não uma aba nova, que é justamente a dívida que Tips/Broadcast/
 // Database_Snippets acumularam ao ganhar cada um seu próprio schema.
@@ -161,6 +168,13 @@ const CONTENT_ACTIONS = {
 
 const CONTENT_ACCESS_HEADERS = ["LDAP", "Role", "Active", "Granted_By", "Granted_At"];
 
+// `Item_ID` e `Key` ficam vazios em ações que não têm alvo de conteúdo
+// (`access_change` aponta para uma pessoa, `seed` para um módulo inteiro).
+// Coluna vazia é mais honesto do que enfiar outra coisa no campo.
+const CONTENT_LOG_HEADERS = [
+  "Log_ID", "Timestamp", "Actor", "Action", "Module", "Key", "Item_ID", "Label", "Detail"
+];
+
 // =========================================================
 //  INFRAESTRUTURA (abas)
 // =========================================================
@@ -173,6 +187,7 @@ function getContentSheet_(name) {
     sheet = ss.insertSheet(name);
     if (name === SHEET_CONTENT_ITEMS) sheet.appendRow(CONTENT_ITEMS_HEADERS);
     else if (name === SHEET_CONTENT_DRAFTS) sheet.appendRow(CONTENT_DRAFTS_HEADERS);
+    else if (name === SHEET_CONTENT_LOG) sheet.appendRow(CONTENT_LOG_HEADERS);
     else if (name === SHEET_CONTENT_ACCESS) {
       sheet.appendRow(CONTENT_ACCESS_HEADERS);
       // Semeia o ADMIN inicial junto com a aba, pra tela nunca nascer trancada.
@@ -540,18 +555,32 @@ function checkNoteTemplate(rawValue, substatus) {
   }
 }
 
-// Auditoria reaproveita a aba Logs que já existe (mesma de logEvent()), em vez
-// de criar um log paralelo só deste módulo.
-function logContentEvent_(ldap, action, label, value) {
+/**
+ * Registra uma ação da Central em `Content_Log`.
+ *
+ * `alvo` é um objeto e não uma string por um motivo prático: a linha do log
+ * precisa ser LIDA POR MÁQUINA depois. A barra "Atividade recente" só pode
+ * esconder de um QA as linhas do módulo `people` se souber que a linha é de
+ * `people` — com módulo e chave concatenados em texto livre, a alternativa
+ * seria adivinhar por prefixo, e adivinhar errado ali vaza o diretório.
+ *
+ * Nunca derruba a operação principal: um log que falha não pode desfazer uma
+ * publicação que já aconteceu.
+ */
+function logContentEvent_(ldap, action, alvo, detalhe) {
   try {
-    handleLog({
-      user: ldap,
-      version: 'content-central',
-      category: 'ContentCentral',
-      action: action,
-      label: label,
-      value: value
-    });
+    const a = alvo || {};
+    getContentSheet_(SHEET_CONTENT_LOG).appendRow([
+      newContentId_('log'),
+      contentNow_(),
+      ldap || 'anon',
+      action || '-',
+      a.module || '',
+      a.key || '',
+      a.itemId || '',
+      a.label || '',
+      detalhe == null ? '' : String(detalhe)
+    ]);
   } catch (e) {
     // Log nunca derruba a operação principal.
   }
@@ -983,7 +1012,12 @@ function saveContentDraft(payload) {
     ]);
     setContentRowBlock_(sheet, row, 15, [session.ldap, now]);
 
-    logContentEvent_(session.ldap, 'draft_update', p.module + '/' + p.key, p.draftId);
+    logContentEvent_(
+      session.ldap,
+      'draft_update',
+      { module: p.module, key: p.key, itemId: p.itemId || "", label: p.label || "" },
+      p.draftId
+    );
     return { status: 'success', draftId: p.draftId };
   }
 
@@ -1007,7 +1041,12 @@ function saveContentDraft(payload) {
     CONTENT_ACTIONS.UPSERT
   ]);
 
-  logContentEvent_(session.ldap, 'draft_create', p.module + '/' + (p.key || 'novo'), draftId);
+  logContentEvent_(
+    session.ldap,
+    'draft_create',
+    { module: p.module, key: p.key || "", itemId: p.itemId || "", label: p.label || "" },
+    draftId
+  );
   return { status: 'success', draftId: draftId };
 }
 
@@ -1039,7 +1078,17 @@ function submitContentDraftLocked_(draftId) {
   // Solta a trava de edição: em revisão ninguém mais edita mesmo.
   setContentRowBlock_(sheet, existing._row, 15, ["", ""]);
 
-  logContentEvent_(session.ldap, 'draft_submit', String(existing.Module) + '/' + String(existing.Key), draftId);
+  logContentEvent_(
+    session.ldap,
+    'draft_submit',
+    {
+      module: String(existing.Module),
+      key: String(existing.Key),
+      itemId: String(existing.Item_ID || ""),
+      label: String(existing.Label || "")
+    },
+    draftId
+  );
   notifyApprovers_(existing, session.ldap);
 
   return { status: 'success' };
@@ -1085,8 +1134,13 @@ function discardContentDraftLocked_(draftId) {
   logContentEvent_(
     session.ldap,
     'draft_discard',
-    String(draft.Module) + '/' + String(draft.Key),
-    String(draft.Label || "")
+    {
+      module: String(draft.Module),
+      key: String(draft.Key),
+      itemId: String(draft.Item_ID || ""),
+      label: String(draft.Label || "")
+    },
+    draftId
   );
 
   return { status: 'success' };
@@ -1195,7 +1249,12 @@ function notifyProposerDecision_(draftRow, session, approved, note) {
     // A decisão já aconteceu e não pode ser desfeita por falha de e-mail. Mas,
     // diferente do notifyApprovers_, aqui o silêncio total esconderia que a
     // pessoa nunca foi avisada - então fica no log.
-    logContentEvent_(session.ldap, 'notify_failed', module + '/' + String(draftRow.Key || ""), String(e));
+    logContentEvent_(
+      session.ldap,
+      'notify_failed',
+      { module: module, key: String(draftRow.Key || ""), label: String(draftRow.Label || "") },
+      String(e)
+    );
   }
 }
 
@@ -1285,12 +1344,19 @@ function approveContentDraftLocked_(draftId, note) {
   // cinco minutos.
   invalidateContentCache_(String(draft.Module).trim());
 
+  // A autoaprovação continua marcada, mas agora no DETALHE - antes era um
+  // sufixo colado na chave, o que fazia a mesma chave virar duas.
   const selfFlag = (String(draft.Proposed_By).trim() === session.ldap) ? ' (autoaprovação ADMIN)' : '';
   logContentEvent_(
     session.ldap,
     action === CONTENT_ACTIONS.REMOVE ? 'approve_removal' : 'approve',
-    String(draft.Module) + '/' + String(draft.Key) + selfFlag,
-    'v' + version + ' por ' + String(draft.Proposed_By)
+    {
+      module: String(draft.Module),
+      key: String(draft.Key),
+      itemId: newItemId,
+      label: String(draft.Label || "")
+    },
+    'v' + version + ' por ' + String(draft.Proposed_By) + selfFlag
   );
 
   notifyProposerDecision_(draft, session, true, note);
@@ -1322,7 +1388,17 @@ function rejectContentDraftLocked_(draftId, note) {
   sheet.getRange(draft._row, 9).setValue(CONTENT_STATUS.DRAFT);
   setContentRowBlock_(sheet, draft._row, 12, [session.ldap, contentNow_(), note]);
 
-  logContentEvent_(session.ldap, 'reject', String(draft.Module) + '/' + String(draft.Key), note);
+  logContentEvent_(
+    session.ldap,
+    'reject',
+    {
+      module: String(draft.Module),
+      key: String(draft.Key),
+      itemId: String(draft.Item_ID || ""),
+      label: String(draft.Label || "")
+    },
+    note
+  );
   notifyProposerDecision_(draft, session, false, note);
 
   return { status: 'success' };
@@ -1382,7 +1458,12 @@ function rollbackContentItemLocked_(archivedItemId) {
   logContentEvent_(
     session.ldap,
     'rollback',
-    String(archived.Module) + '/' + String(archived.Key),
+    {
+      module: String(archived.Module),
+      key: String(archived.Key),
+      itemId: newItemId,
+      label: String(archived.Label || "")
+    },
     'restaurou v' + (Number(archived.Version) || 1)
   );
 
@@ -1427,7 +1508,17 @@ function requestContentRemoval(itemId, reason) {
     CONTENT_ACTIONS.REMOVE
   ]);
 
-  logContentEvent_(session.ldap, 'removal_request', String(item.Module) + '/' + String(item.Key), reason || "");
+  logContentEvent_(
+    session.ldap,
+    'removal_request',
+    {
+      module: String(item.Module),
+      key: String(item.Key),
+      itemId: String(item.ID),
+      label: String(item.Label || "")
+    },
+    reason || ""
+  );
   return { status: 'success', draftId: draftId };
 }
 
@@ -1542,7 +1633,7 @@ function publishContentDirectLocked_(payload) {
   logContentEvent_(
     session.ldap,
     previous ? 'publish_direct_update' : 'publish_direct',
-    module + '/' + key,
+    { module: module, key: key, itemId: newItemId, label: String(data.label || "") },
     'v' + version
   );
 
@@ -1577,7 +1668,17 @@ function unpublishContentDirectLocked_(itemId) {
 
   invalidateContentCache_(module);
 
-  logContentEvent_(session.ldap, 'unpublish_direct', module + '/' + String(item.Key), String(item.Label || ""));
+  logContentEvent_(
+    session.ldap,
+    'unpublish_direct',
+    {
+      module: module,
+      key: String(item.Key),
+      itemId: itemId,
+      label: String(item.Label || "")
+    },
+    ""
+  );
   return { status: 'success', itemId: itemId };
 }
 
@@ -1626,8 +1727,227 @@ function saveContentAccess(ldap, role, active) {
     sheet.appendRow([targetLdap, targetRole, isActive, session.ldap, contentNow_()]);
   }
 
-  logContentEvent_(session.ldap, 'access_change', targetLdap, targetRole + (isActive ? ' ativo' : ' inativo'));
+  // Sem módulo: o alvo é uma pessoa, não conteúdo. É por isso que a barra
+  // lateral filtra esta ação pelo NOME dela, e não pelo módulo.
+  logContentEvent_(
+    session.ldap,
+    'access_change',
+    { label: targetLdap },
+    targetRole + (isActive ? ' ativo' : ' inativo')
+  );
   return { status: 'success' };
+}
+
+// =========================================================
+//  ATIVIDADE (barra lateral) E BACKFILL DO LOG
+// =========================================================
+
+// Quantas linhas do fim da aba a barra lateral varre.
+//
+// A barra responde "o que aconteceu agora", não "o que já aconteceu" — a aba
+// de auditoria com filtro, paginação e exportação é outra tela. Varrer a aba
+// inteira para mostrar vinte linhas faria o custo desta leitura crescer todo
+// dia, com a retenção de 24 meses do ADR-0008, para uma resposta que tem
+// sempre o mesmo tamanho.
+//
+// O preço: quem não pode ver nada do que caiu nesta janela vê a barra vazia,
+// mesmo havendo algo visível mais atrás. É o comportamento certo para uma
+// barra de "recente" — e é o motivo de a janela ser bem maior que o limite.
+const CONTENT_ACTIVITY_WINDOW = 200;
+const CONTENT_ACTIVITY_DEFAULT = 20;
+const CONTENT_ACTIVITY_MAX = 60;
+
+// Ações cujo alvo é uma PESSOA, não conteúdo. Só quem gerencia acesso as vê.
+//
+// É a mesma informação que CONTENT_RESTRICTED_READ_MODULES protege na aba
+// Pessoas, registrada em outro lugar: "fulano virou TL ontem" responde de
+// graça a pergunta de quem procura a quem se passar. Filtrar aqui por AÇÃO, e
+// não por módulo, porque esta linha não tem módulo — o alvo dela é um LDAP.
+const CONTENT_ACTIVITY_PRIVATE_ACTIONS = ['access_change'];
+
+// A coluna de data pode chegar como texto (o que appendRow grava) ou como Date
+// (o que a aba Logs guardava, e o backfill traz). O cliente recebe sempre ISO.
+function contentIsoDate_(valor) {
+  if (valor instanceof Date) return valor.toISOString();
+  return String(valor || "");
+}
+
+/**
+ * Últimas ações da Central, mais recente primeiro, já filtradas pelo que
+ * QUEM PERGUNTA pode ver.
+ *
+ * O filtro é aqui e não na tela: esconder linha no cliente deixaria o dado
+ * viajar até o navegador de quem não devia recebê-lo.
+ */
+function listContentActivity(limite) {
+  const ldap = getCallerLdap_();
+  const role = getContentRoleForLdap_(ldap);
+  if (!role) throw new Error("Acesso negado: você não tem permissão na Central de Conteúdo.");
+
+  const perms = CONTENT_ROLES[role];
+  const quantos = Math.min(
+    Math.max(Number(limite) || CONTENT_ACTIVITY_DEFAULT, 1),
+    CONTENT_ACTIVITY_MAX
+  );
+
+  const sheet = getContentSheet_(SHEET_CONTENT_LOG);
+  const ultima = sheet.getLastRow();
+  if (ultima < 2) return [];
+
+  const primeira = Math.max(2, ultima - CONTENT_ACTIVITY_WINDOW + 1);
+  const values = sheet
+    .getRange(primeira, 1, ultima - primeira + 1, CONTENT_LOG_HEADERS.length)
+    .getValues();
+
+  const saida = [];
+
+  for (let i = values.length - 1; i >= 0 && saida.length < quantos; i--) {
+    const linha = values[i];
+    const action = String(linha[3] || "").trim();
+    const module = String(linha[4] || "").trim();
+
+    if (CONTENT_ACTIVITY_PRIVATE_ACTIONS.indexOf(action) !== -1 && !perms.manageAccess) continue;
+    if (module && CONTENT_RESTRICTED_READ_MODULES.indexOf(module) !== -1 &&
+      perms.propose.indexOf(module) === -1) continue;
+
+    saida.push({
+      id: String(linha[0] || ""),
+      at: contentIsoDate_(linha[1]),
+      actor: String(linha[2] || ""),
+      action: action,
+      module: module,
+      key: String(linha[5] || ""),
+      itemId: String(linha[6] || ""),
+      label: String(linha[7] || ""),
+      detail: String(linha[8] || "")
+    });
+  }
+
+  return saida;
+}
+
+// Prefixo do ID das linhas trazidas da aba Logs. É o que torna o backfill
+// idempotente: o ID deriva do NÚMERO DA LINHA de origem, então rodar de novo
+// reconhece o que já veio em vez de duplicar.
+const CONTENT_LOG_BACKFILL_PREFIX = 'log_bf_';
+
+// O sufixo que a autoaprovação colava na chave no formato antigo.
+const CONTENT_LEGACY_SELF_APPROVE = ' (autoaprovação ADMIN)';
+
+/**
+ * Reparte o `Label` do formato antigo nas colunas novas.
+ *
+ * O formato era `módulo/chave`, com duas exceções que precisam ser
+ * reconhecidas em vez de forçadas: `access_change` guardava um LDAP, e `seed`
+ * guardava só o módulo. Um `Label` cujo prefixo não é um módulo conhecido vira
+ * rótulo — o log de dois anos atrás não tem obrigação de caber no esquema de
+ * hoje, e inventar um módulo para ele seria pior do que deixá-lo sem.
+ */
+function parseLegacyContentTarget_(action, label) {
+  const texto = String(label || "").trim();
+
+  if (action === 'access_change') return { label: texto, autoAprovacao: false };
+  if (!texto) return { autoAprovacao: false };
+
+  const auto = texto.slice(-CONTENT_LEGACY_SELF_APPROVE.length) === CONTENT_LEGACY_SELF_APPROVE;
+  const limpo = auto ? texto.slice(0, -CONTENT_LEGACY_SELF_APPROVE.length) : texto;
+
+  const corte = limpo.indexOf('/');
+  const module = corte === -1 ? limpo : limpo.slice(0, corte);
+
+  if (CONTENT_MODULES.indexOf(module) === -1) {
+    return { label: limpo, autoAprovacao: auto };
+  }
+
+  return {
+    module: module,
+    key: corte === -1 ? "" : limpo.slice(corte + 1),
+    autoAprovacao: auto
+  };
+}
+
+/**
+ * Traz para `Content_Log` o histórico que ficou na aba `Logs`.
+ *
+ * COPIA, não move: a aba `Logs` continua intacta. Um backfill que apaga a
+ * origem só pode ser conferido depois de já não haver com o que comparar.
+ *
+ * SIMULA por padrão, como manda o ADR-0008 para todo job que mexe em volume:
+ * `backfillContentLog()` só conta o que traria; `backfillContentLog(true)`
+ * escreve. É idempotente pelo ID derivado da linha de origem, então rodar de
+ * novo depois de novas linhas antigas aparecerem traz só as que faltam.
+ */
+function backfillContentLog(aplicar) {
+  assertContentRole_('manageAccess', null);
+
+  return withContentWriteLock_(function () {
+    const origem = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_LOGS);
+    if (!origem) {
+      return { lidas: 0, candidatas: 0, jaImportadas: 0, novas: 0, aplicado: false };
+    }
+
+    const values = origem.getDataRange().getValues();
+    const destino = getContentSheet_(SHEET_CONTENT_LOG);
+
+    const jaTem = {};
+    const existentes = readContentRows_(SHEET_CONTENT_LOG);
+    for (let i = 0; i < existentes.length; i++) {
+      jaTem[String(existentes[i].Log_ID || "").trim()] = true;
+    }
+
+    let candidatas = 0;
+    let jaImportadas = 0;
+    const novas = [];
+
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][3] || "").trim() !== 'ContentCentral') continue;
+      candidatas++;
+
+      const id = CONTENT_LOG_BACKFILL_PREFIX + (i + 1);
+      if (jaTem[id]) { jaImportadas++; continue; }
+
+      const action = String(values[i][4] || "").trim();
+      const alvo = parseLegacyContentTarget_(action, values[i][5]);
+      const detalhe = String(values[i][6] == null ? "" : values[i][6]) +
+        (alvo.autoAprovacao ? CONTENT_LEGACY_SELF_APPROVE : "");
+
+      novas.push([
+        id,
+        contentIsoDate_(values[i][0]),
+        String(values[i][1] || 'anon'),
+        action || '-',
+        alvo.module || "",
+        alvo.key || "",
+        "",
+        alvo.label || "",
+        detalhe
+      ]);
+    }
+
+    if (aplicar === true && novas.length) {
+      destino
+        .getRange(destino.getLastRow() + 1, 1, novas.length, CONTENT_LOG_HEADERS.length)
+        .setValues(novas);
+
+      // As linhas trazidas entram no FIM da aba, mas são as mais ANTIGAS.
+      // Sem reordenar, a barra lateral — que lê justamente as últimas linhas —
+      // mostraria o histórico de dois anos atrás como se fosse o de agora.
+      //
+      // Ordenar pela coluna de data funciona porque ela é ISO 8601 em texto,
+      // onde a ordem alfabética É a ordem cronológica.
+      destino
+        .getRange(2, 1, destino.getLastRow() - 1, CONTENT_LOG_HEADERS.length)
+        .sort({ column: 2, ascending: true });
+    }
+
+    return {
+      lidas: Math.max(values.length - 1, 0),
+      candidatas: candidatas,
+      jaImportadas: jaImportadas,
+      novas: novas.length,
+      aplicado: aplicar === true && novas.length > 0
+    };
+  });
 }
 
 // =========================================================
@@ -1732,6 +2052,6 @@ function seedContentModule(payloadJson) {
     invalidateContentCache_(module);
   }
 
-  logContentEvent_(session.ldap, 'seed', module, rows.length + ' itens');
+  logContentEvent_(session.ldap, 'seed', { module: module }, rows.length + ' itens');
   return { status: 'success', seeded: rows.length };
 }

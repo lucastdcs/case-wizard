@@ -37,9 +37,18 @@
             <span class="material-symbols-rounded">tune</span>
             Central de Conteúdo
         </div>
-        <div class="user-chip">
-            <span id="user-ldap"></span>
-            <span class="role-badge hidden" id="user-role"></span>
+        <div class="topnav-fim">
+            <!-- Nasce escondido: antes de saber quem é a pessoa não há
+                 atividade que ela possa ver. -->
+            <button class="topnav-acao hidden" id="btn-lateral" onclick="alternarLateral()"
+                aria-expanded="true" aria-controls="lateral">
+                <span class="material-symbols-rounded" aria-hidden="true">history</span>
+                <span class="topnav-acao-label">Atividade</span>
+            </button>
+            <div class="user-chip">
+                <span id="user-ldap"></span>
+                <span class="role-badge hidden" id="user-role"></span>
+            </div>
         </div>
     </nav>
 
@@ -420,6 +429,20 @@
             <!-- TAB: Próximos módulos -->
         </main>
     </div>
+
+        <!-- Atividade recente: a mesma barra lateral do TL Dashboard, com a
+             mesma foto de perfil. O que ela mostra já é filtrado no servidor
+             pelo que a pessoa pode ver — a tela não recebe o que esconderia. -->
+        <aside class="lateral hidden" id="lateral" aria-label="Atividade recente">
+            <section class="lateral-bloco">
+                <div class="lateral-titulo">Atividade recente</div>
+                <div id="atividade-lista">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+        </aside>
 
     </div>
 
