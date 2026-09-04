@@ -1,7 +1,7 @@
 # 0009 — Papéis da Central como dado editável, não como constante do código
 
 **Date**: 2026-09-02
-**Status**: Proposed
+**Status**: Accepted — implementado no servidor em 2026-09-04
 
 ## Context
 
@@ -115,4 +115,33 @@ constante `CONTENT_ROLES` do código — mesma filosofia já usada em
   cache e da casca nova — é dependência técnica, não prioridade: precisa do
   cache do ADR-0008 para poder invalidá-lo e da casca do ADR-0007 para a matriz
   caber na tela.
-- Esquema da aba nova em `specs/data-models/db-schema.md` quando implementado.
+- Esquema da aba nova em `specs/data-models/db-schema.md`; contrato das funções
+  em `specs/data-models/api-payloads.md`.
+
+## Correção de rota durante a implementação
+
+**"Só o ADMIN aprova `people`" não podia continuar sendo sobre o nome do
+papel.** O ADR previa `CONTENT_ADMIN_ONLY_APPROVAL_MODULES` deixando de ser
+necessário, com a matriz expressando a regra. Só que a regra de ADR-0006 não é
+"quem se chama ADMIN decide": é "quem decide uma mudança de autorização precisa
+já controlar autorização" — e amarrar isso a uma string que a própria matriz
+torna editável é amarrar a nada.
+
+A constante virou `CONTENT_APPROVAL_REQUIRES_GLOBAL = { people: 'manageAccess' }`
+e ganhou o papel de **quarta regra estrutural**: aprovar `people` exige a casa da
+matriz *e* a permissão global de gerenciar acessos. É a única casa que um
+checkbox não abre sozinho, e ela é recusada duas vezes — ao salvar o papel (para
+a matriz nunca mentir na tela) e de novo na aprovação (para uma edição à mão na
+planilha não valer).
+
+**A trava de pé-na-porta foi substituída, não somada.** Antes: "o ADMIN não
+remove o próprio acesso". Isso bloqueava a saída legítima de um entre dois
+admins e não cobria remover o *outro*. A invariante 1 responde a pergunta certa
+— *sobra alguém capaz de devolver o acesso?* — e vale igual para uma mudança de
+acesso e para uma mudança de papel.
+
+**`propor` num módulo de publicação direta não existe**, e vice-versa: um módulo
+tem um caminho de escrita só. Marcar a casa impossível como inexistente (e não
+como existente e falsa) é o que impede a tela de oferecer um checkbox inócuo e o
+que impede a matriz de afirmar "este papel não aprova avisos" sobre um módulo em
+que aprovar não é uma operação.

@@ -204,3 +204,69 @@ aconteceu agora", e o custo dela não pode crescer com o histórico.
   reordena a aba pela data — as linhas trazidas são as mais antigas e entram no
   fim, e sem reordenar a barra lateral mostraria 2024 como "agora".
 - Só quem tem `manageAccess` roda o backfill.
+
+---
+
+# Aba `Content_Roles` (Papéis da Central)
+
+- **Nome/Constante:** `SHEET_CONTENT_ROLES` (`"Content_Roles"`)
+- **Cardinalidade:** **uma linha por papel**, chaveada pelo nome em maiúsculas.
+- **Papel no sistema:** é a resposta a *"o que este papel pode fazer"*.
+  `Content_Access` continua sendo LDAP → papel; o que o papel significa mora
+  aqui. Ver `docs/decisions/0009-rbac-editavel-da-central.md`.
+
+| Índice | Nome da Coluna (Header) | Notas |
+| :--- | :--- | :--- |
+| `0` | Role | 2 a 24 caracteres `[A-Z0-9_]`, começando por letra. É o valor que aparece em `Content_Access.Role`. |
+| `1` | Permissions | JSON: `{ "modules": { "<módulo>": { "<ação>": bool } }, "global": { "<permissão>": bool } }` |
+| `2` | Active | `FALSE` esconde o papel. Um papel que alguém ainda usa **não pode** ser desativado. |
+| `3` | Updated_By | LDAP de quem salvou por último. |
+| `4` | Updated_At | ISO 8601. |
+
+## A matriz
+
+**Ações por módulo** (`CONTENT_MODULE_ACTIONS`): `view`, `propose`, `approve`,
+`publish`, `rollback`.
+
+Nem toda ação existe em todo módulo, porque **um módulo tem um caminho de
+escrita só**:
+
+| Regime | Ações que existem |
+| :--- | :--- |
+| Catálogo (passa pela fila) | `view`, `propose`, `approve`, `rollback` |
+| Operação (`CONTENT_DIRECT_PUBLISH_MODULES`) | `view`, `publish`, `rollback` |
+
+Casa que não existe é **apagada na normalização**, não guardada como `false`:
+marcar "aprovar aviso" à mão na planilha não vira permissão nenhuma, e a tela
+não desenha um checkbox inócuo.
+
+**Permissões globais** (`CONTENT_GLOBAL_PERMS`), que não pertencem a módulo:
+`manageAccess`, `manageRoles`, `viewAudit`, `selfApprove`.
+
+## As quatro regras que a planilha não consegue quebrar
+
+Vivem no servidor, com teste, porque o risco central do ADR-0009 é que um
+checkbox errado **não dá erro, não aparece em teste e não avisa ninguém — só
+concede**:
+
+1. **Anti-lockout.** Nenhuma alteração — de papel ou de acesso — pode deixar a
+   Central sem uma pessoa ativa que tenha `manageRoles` **e** `manageAccess` ao
+   mesmo tempo. Sem as duas juntas não há caminho de volta.
+2. **Escalação declarada.** `propose` + `approve` + `selfApprove` num mesmo
+   papel é publicar sem revisão. Continua possível, mas `saveContentRole()`
+   devolve `{ status: 'confirm' }` e **não escreve** até vir
+   `confirmEscalation: true`.
+3. **Revogação imediata.** O cache de permissão é invalidado no ato de qualquer
+   escrita em `Content_Roles` ou `Content_Access` — nunca esperando o TTL.
+4. **Aprovação de autorização** (`CONTENT_APPROVAL_REQUIRES_GLOBAL`). Aprovar o
+   módulo `people` exige, além da casa da matriz, a permissão global
+   `manageAccess`: quem decide uma mudança de autorização precisa já controlar
+   autorização. Recusado ao salvar o papel **e** de novo na aprovação.
+
+## Degradação
+
+Aba ausente, ilegível ou com **todas** as linhas corrompidas → o servidor cai
+para a constante `CONTENT_ROLES` do código, que é a mesma semente. Uma linha
+só corrompida é **pulada**: uma edição errada num papel não pode apagar os
+outros. Quem tinha o papel pulado perde o acesso, em vez de herdar um papel
+qualquer — desconhecido é sem privilégio, como no resto do produto.

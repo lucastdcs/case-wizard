@@ -272,7 +272,12 @@ check('TL não aprova a proposta de outra pessoa em people', () => {
   }));
 
   const draftId = pendingFor('anaflor')[0].draftId;
-  throws(() => as('tlaine', () => api.approveContentDraft(draftId, '')), /só o ADMIN aprova/i);
+  // A regra deixou de ser "só o ADMIN" e passou a ser estrutural: aprovar uma
+  // mudança de autorização exige já ser quem controla autorização
+  // (CONTENT_APPROVAL_REQUIRES_GLOBAL). Amarrar segurança ao NOME de um papel
+  // deixou de servir quando o nome virou editável (ADR-0009).
+  throws(() => as('tlaine', () => api.approveContentDraft(draftId, '')),
+    /não aprova mudanças no módulo 'people'/);
 });
 
 check('TL também não REJEITA proposta de gente', () => {
@@ -281,7 +286,8 @@ check('TL também não REJEITA proposta de gente', () => {
     ldap: 'anaflor', role: 'Support Agent', roleCategory: 'Agent', segment: 'ES'
   }));
   const draftId = pendingFor('anaflor')[0].draftId;
-  throws(() => as('tlaine', () => api.rejectContentDraft(draftId, 'não')), /só o ADMIN aprova/i);
+  throws(() => as('tlaine', () => api.rejectContentDraft(draftId, 'não')),
+    /não aprova mudanças no módulo 'people'/);
 });
 
 check('a fila mostra ao TL que aquela linha não é dele para revisar', () => {
