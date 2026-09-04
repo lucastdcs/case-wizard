@@ -607,6 +607,12 @@
             background: var(--success);
         }
 
+        /* Âmbar para "ainda não está no ar": rascunho, em revisão, alguém
+           editando. Verde continua sendo só o que o agente já vê. */
+        .estado.estado-espera::before {
+            background: var(--warning);
+        }
+
         /* --- Diff --- */
         .diff {
             display: grid;

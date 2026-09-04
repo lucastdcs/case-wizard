@@ -55,6 +55,9 @@ class FakeSheet {
   getDataRange() { return new FakeRange(this, 1, 1); }
   getRange(row, col, numRows, numCols) { return new FakeRange(this, row, col, numRows, numCols); }
   getLastRow() { return this._data.length; }
+  // Os outros dublês do projeto já modelavam isto; este ficou para trás até
+  // discardContentDraft() precisar remover uma linha de verdade.
+  deleteRow(i) { this._data.splice(i - 1, 1); }
   setFrozenRows() { return this; }
 }
 
@@ -1208,6 +1211,73 @@ check('seedBroadcastNow() migra a aba numa planilha zerada, sem argumentos', () 
   const legado = freshCtx.getBroadcastForLegacyEndpoint(freshSS);
   eq(legado.map(m => m.id), ['msg_2', 'msg_1'], 'mais novo primeiro:');
   eq(legado[0].active, true);
+});
+
+console.log('\n--- Rascunho de verdade ---');
+
+check('salvar sem enviar deixa o rascunho fora da fila', () => {
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica em rascunho',
+    value: 'Ainda pensando na frase.'
+  });
+
+  const meus = api.listContentDrafts('tips').filter(x => x.draftId === d.draftId);
+  eq(meus.length, 1, 'o rascunho existe:');
+  eq(meus[0].status, 'draft');
+
+  // O que separa rascunho de proposta: um não chega a quem revisa.
+  eq(api.listPendingApprovals().filter(x => x.draftId === d.draftId).length, 0,
+    'não apareceu na fila de revisão:');
+});
+
+check('descartar um rascunho o remove de vez', () => {
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica descartável',
+    value: 'Melhor não.'
+  });
+  eq(api.discardContentDraft(d.draftId).status, 'success');
+  eq(api.listContentDrafts('tips').filter(x => x.draftId === d.draftId).length, 0,
+    'sumiu da lista:');
+});
+
+check('proposta JÁ enviada não some por descarte', () => {
+  // Quem ia revisar não pode ver o item desaparecer por baixo. Uma proposta em
+  // revisão se resolve aprovando ou rejeitando.
+  const d = api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica enviada',
+    value: 'Já foi para a fila.'
+  });
+  throws(() => api.discardContentDraft(d.draftId), /Só um rascunho pode ser descartado/);
+  eq(api.listPendingApprovals().filter(x => x.draftId === d.draftId).length, 1,
+    'continua na fila:');
+});
+
+check('o rascunho é de quem escreveu', () => {
+  api.saveContentAccess('qa_rascunho', 'QA', true);
+  const d = as('qa_rascunho', () => api.saveContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo do QA', value: 'Rascunho alheio.'
+  }));
+
+  api.saveContentAccess('qa_outro', 'QA', true);
+  throws(() => as('qa_outro', () => api.discardContentDraft(d.draftId)),
+    /de outra pessoa/, 'outro QA descartando:');
+
+  // Quem aprova pode: é quem destrava a fila quando alguém sai de férias.
+  eq(api.discardContentDraft(d.draftId).status, 'success');
+});
+
+check('salvar registra quem está editando, para a tela poder avisar', () => {
+  const d = as('qa_rascunho', () => api.saveContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo travado', value: 'Editando agora.'
+  }));
+
+  const meu = api.listContentDrafts('call_script').filter(x => x.draftId === d.draftId)[0];
+  eq(meu.lockedBy, 'qa_rascunho', 'a trava diz quem:');
+  eq(!!meu.lockedAt, true, 'e desde quando:');
+
+  api.discardContentDraft(d.draftId);
 });
 
 console.log('\n--- Trava de escrita (concorrência) ---');

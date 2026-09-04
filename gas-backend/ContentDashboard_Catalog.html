@@ -62,12 +62,14 @@
                 byCat[cat].forEach(function (it) {
                     var v = parseLinkValue(it.value);
                     var d = draftForItem(it.id);
-                    var badge = '';
-                    if (d) {
-                        badge = d.status === 'pending'
-                            ? '<span class="pill pending">em revisão</span>'
-                            : '<span class="pill draft">rascunho</span>';
-                    }
+                    var badge = selosDoRascunho(d);
+
+                    // Descartar só aparece quando existe rascunho não enviado e
+                    // ele é seu: proposta em revisão se resolve pela fila.
+                    var descarte = (d && d.status === 'draft' && !travadoPorOutro(d))
+                        ? '<button class="btn btn-danger btn-sm" onclick="descartarRascunho(\'' +
+                          d.draftId + '\', loadLinks)">Descartar rascunho</button>'
+                        : '';
 
                     // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
                     // passou. Só reverter é que depende de aprovar.
@@ -75,11 +77,11 @@
                         + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'links\')">Histórico</button>';
 
                     var actions = canPropose('links')
-                        ? '<div style="display:flex;gap:8px">' + historico +
+                        ? '<div style="display:flex;gap:8px">' + historico + descarte +
                         '<button class="btn btn-ghost btn-sm" onclick="openLinkEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Tirar do ar</button>' +
                         '</div>'
-                        : '<div style="display:flex;gap:8px">' + historico + '</div>';
+                        : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
                     html += '<div class="item-row">' +
                         '<div class="item-main">' +
@@ -120,6 +122,89 @@
                 'proposta em revisão que não aparece aqui. ' +
                 '<button class="btn btn-ghost btn-sm" style="margin-left:8px" ' +
                 'onclick="switchTab(\'' + module + '\')">Tentar de novo</button></div>';
+        }
+
+        // Salvar SEM enviar. O rascunho existia no modelo de dados desde o
+        // começo e era inalcançável: todo editor tinha um botão só, que salvava
+        // e submetia no mesmo gesto. Sem isto não havia como guardar trabalho
+        // parcial — fechar o editor descartava tudo — e a trava de edição
+        // cooperativa nunca chegava a valer, porque nada ficava aberto.
+        function salvarRascunho(payload, btn, aoConcluir) {
+            var rotulo = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Salvando…';
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    closeModal();
+                    toast('Rascunho salvo. Ninguém vê até você enviar.');
+                    if (aoConcluir) aoConcluir();
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = rotulo;
+                    toast(err.message, true);
+                })
+                .saveContentDraft(payload);
+        }
+
+        // Descartar o que foi guardado e não vai virar proposta. Sem esta saída
+        // o rascunho vira armadilha: fica na lista, conta na home e a próxima
+        // edição do item reabre o texto abandonado.
+        function descartarRascunho(draftId, aoConcluir) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:440px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="desc-titulo">' +
+                '<h2 id="desc-titulo">Descartar este rascunho?</h2>' +
+                '<p class="card-sub">O texto guardado some. O que está no ar não muda.</p>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Manter</button>' +
+                '<button class="btn btn-danger" id="desc-go">Descartar</button>' +
+                '</div></div></div>';
+
+            document.getElementById('desc-go').onclick = function () {
+                this.disabled = true;
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Rascunho descartado.');
+                        if (aoConcluir) aoConcluir();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .discardContentDraft(draftId);
+            };
+        }
+
+        // Quem está com o item aberto AGORA, se for outra pessoa. A trava é
+        // cooperativa e expira sozinha (CONTENT_LOCK_TTL_MS no servidor); aqui
+        // a janela é a mesma, para a tela não anunciar uma trava que o servidor
+        // já não respeita.
+        var TRAVA_TTL_MS = 10 * 60 * 1000;
+
+        function travadoPorOutro(rascunho) {
+            if (!rascunho || !rascunho.lockedBy || !SESSION) return '';
+            if (rascunho.lockedBy === SESSION.ldap) return '';
+
+            var quando = new Date(rascunho.lockedAt).getTime();
+            if (isNaN(quando) || (Date.now() - quando) > TRAVA_TTL_MS) return '';
+
+            return rascunho.lockedBy;
+        }
+
+        // Rótulo do rascunho na linha do item: o que ele é, e de quem.
+        function selosDoRascunho(rascunho) {
+            if (!rascunho) return '';
+
+            if (rascunho.status === 'pending') {
+                return ' <span class="estado estado-espera">em revisão</span>';
+            }
+
+            var quem = travadoPorOutro(rascunho);
+            if (quem) {
+                return ' <span class="estado estado-espera">' + esc(quem) + ' está editando</span>';
+            }
+            return ' <span class="estado estado-espera">rascunho seu</span>';
         }
 
         function enviarProposta(payload, btn, aoConcluir) {
@@ -180,16 +265,20 @@
                 '<select id="lnk-cat">' + catOptions + '</select>' +
                 '<div class="modal-actions">' +
                 '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
-                '<button class="btn btn-primary" id="lnk-save">Salvar e enviar para revisão</button>' +
+                '<button class="btn btn-ghost" id="lnk-draft">Salvar rascunho</button>' +
+                '<button class="btn btn-primary" id="lnk-save">Enviar para revisão</button>' +
                 '</div></div></div>';
 
             document.getElementById('lnk-save').onclick = function () {
                 submitLink(itemId, existingDraft ? existingDraft.draftId : null, this);
             };
+            document.getElementById('lnk-draft').onclick = function () {
+                submitLink(itemId, existingDraft ? existingDraft.draftId : null, this, true);
+            };
             document.getElementById('lnk-name').focus();
         }
 
-        function submitLink(itemId, draftId, btn) {
+        function submitLink(itemId, draftId, btn, apenasRascunho) {
             var name = document.getElementById('lnk-name').value.trim();
             var url = document.getElementById('lnk-url').value.trim();
 
@@ -213,7 +302,7 @@
                 })
             };
 
-            enviarProposta(payload, btn, loadLinks);
+            (apenasRascunho ? salvarRascunho : enviarProposta)(payload, btn, loadLinks);
         }
 
         function askRemoval(itemId) {
@@ -316,10 +405,13 @@
 
                 steps.forEach(function (it, idx) {
                     var d = csDraftForItem(it.id);
-                    var badge = d
-                        ? (d.status === 'pending'
-                            ? '<span class="pill pending">em revisão</span>'
-                            : '<span class="pill draft">rascunho</span>')
+                    var badge = selosDoRascunho(d);
+
+                    // Descartar só aparece quando existe rascunho não enviado e
+                    // ele é seu: proposta em revisão se resolve pela fila.
+                    var descarte = (d && d.status === 'draft' && !travadoPorOutro(d))
+                        ? '<button class="btn btn-danger btn-sm" onclick="descartarRascunho(\'' +
+                          d.draftId + '\', loadCallScript)">Descartar rascunho</button>'
                         : '';
 
                     // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
@@ -328,11 +420,11 @@
                         + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'call_script\')">Histórico</button>';
 
                     var actions = canPropose('call_script')
-                        ? '<div style="display:flex;gap:8px">' + historico +
+                        ? '<div style="display:flex;gap:8px">' + historico + descarte +
                         '<button class="btn btn-ghost btn-sm" onclick="openStepEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
                         '</div>'
-                        : '<div style="display:flex;gap:8px">' + historico + '</div>';
+                        : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
                     html += '<div class="item-row">' +
                         '<div class="item-main">' +
@@ -378,16 +470,20 @@
                 '<textarea id="cs-text" placeholder="o que o agente deve dizer ou fazer">' + esc(text) + '</textarea>' +
                 '<div class="modal-actions">' +
                 '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
-                '<button class="btn btn-primary" id="cs-save">Salvar e enviar para revisão</button>' +
+                '<button class="btn btn-ghost" id="cs-draft">Salvar rascunho</button>' +
+                '<button class="btn btn-primary" id="cs-save">Enviar para revisão</button>' +
                 '</div></div></div>';
 
             document.getElementById('cs-save').onclick = function () {
                 submitStep(itemId, existingDraft ? existingDraft.draftId : null, src, this);
             };
+            document.getElementById('cs-draft').onclick = function () {
+                submitStep(itemId, existingDraft ? existingDraft.draftId : null, src, this, true);
+            };
             document.getElementById('cs-text').focus();
         }
 
-        function submitStep(itemId, draftId, src, btn) {
+        function submitStep(itemId, draftId, src, btn, apenasRascunho) {
             var text = document.getElementById('cs-text').value.trim();
             if (!text) return toast('Escreva o texto do passo.', true);
 
@@ -408,7 +504,7 @@
                 }, 0) + 1;
             }
 
-            enviarProposta({
+            (apenasRascunho ? salvarRascunho : enviarProposta)({
                 draftId: draftId || '',
                 itemId: itemId || '',
                 module: 'call_script',
@@ -523,13 +619,16 @@
                     var v = parseTpl(it.value);
                     var nCampos = Object.keys(v.fields || {}).length;
                     var d = ntDraftForItem(it.id);
-                    var badge = d
-                        ? (d.status === 'pending'
-                            ? '<span class="pill pending">em revisão</span>'
-                            : '<span class="pill draft">rascunho</span>')
-                        : '';
+                    var badge = selosDoRascunho(d);
                     var escopo = (it.field && it.field !== 'all')
                         ? '<span class="pill draft">' + esc(String(it.field).toUpperCase()) + '</span>'
+                        : '';
+
+                    // Descartar só aparece quando existe rascunho não enviado e
+                    // ele é seu: proposta em revisão se resolve pela fila.
+                    var descarte = (d && d.status === 'draft' && !travadoPorOutro(d))
+                        ? '<button class="btn btn-danger btn-sm" onclick="descartarRascunho(\'' +
+                          d.draftId + '\', loadNoteTemplates)">Descartar rascunho</button>'
                         : '';
 
                     // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
@@ -538,11 +637,11 @@
                         + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'note_template\')">Histórico</button>';
 
                     var actions = canPropose('note_template')
-                        ? '<div style="display:flex;gap:8px">' + historico +
+                        ? '<div style="display:flex;gap:8px">' + historico + descarte +
                         '<button class="btn btn-ghost btn-sm" onclick="openTemplateEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
                         '</div>'
-                        : '<div style="display:flex;gap:8px">' + historico + '</div>';
+                        : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
                     html += '<div class="item-row">' +
                         '<div class="item-main">' +
@@ -610,13 +709,17 @@
                 '<div id="nt-fields" style="margin-top:8px"></div>' +
                 '<div class="modal-actions">' +
                 '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
-                '<button class="btn btn-primary" id="nt-save">Salvar e enviar para revisão</button>' +
+                '<button class="btn btn-ghost" id="nt-draft">Salvar rascunho</button>' +
+                '<button class="btn btn-primary" id="nt-save">Enviar para revisão</button>' +
                 '</div></div></div>';
 
             renderTemplateFields(v.fields || {});
 
             document.getElementById('nt-save').onclick = function () {
                 submitTemplate(itemId, existingDraft ? existingDraft.draftId : null, v, this);
+            };
+            document.getElementById('nt-draft').onclick = function () {
+                submitTemplate(itemId, existingDraft ? existingDraft.draftId : null, v, this, true);
             };
             document.getElementById('nt-f-name').focus();
         }
@@ -664,7 +767,7 @@
                 }).join('');
         }
 
-        function submitTemplate(itemId, draftId, original, btn) {
+        function submitTemplate(itemId, draftId, original, btn, apenasRascunho) {
             var nome = document.getElementById('nt-f-name').value.trim();
             if (!nome) return toast('Dê um nome ao modelo.', true);
 
@@ -686,7 +789,7 @@
                 original && original.activeTasks ? { activeTasks: original.activeTasks } : {}
             ));
 
-            enviarProposta({
+            (apenasRascunho ? salvarRascunho : enviarProposta)({
                 draftId: draftId || '',
                 itemId: itemId || '',
                 module: 'note_template',
@@ -755,16 +858,19 @@
                 byCat[cat].forEach(function (it) {
                     var v = parseEmail(it.value);
                     var d = emDraftForItem(it.id);
-                    var badge = d
-                        ? (d.status === 'pending'
-                            ? '<span class="pill pending">em revisão</span>'
-                            : '<span class="pill draft">rascunho</span>')
-                        : '';
+                    var badge = selosDoRascunho(d);
 
                     var nPh = (v.placeholders || []).length;
                     var phInfo = lang === 'PT'
                         ? nPh + ' campo' + (nPh === 1 ? '' : 's')
                         : Object.keys(v.labels || {}).length + ' rótulos';
+
+                    // Descartar só aparece quando existe rascunho não enviado e
+                    // ele é seu: proposta em revisão se resolve pela fila.
+                    var descarte = (d && d.status === 'draft' && !travadoPorOutro(d))
+                        ? '<button class="btn btn-danger btn-sm" onclick="descartarRascunho(\'' +
+                          d.draftId + '\', loadEmails)">Descartar rascunho</button>'
+                        : '';
 
                     // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
                     // passou. Só reverter é que depende de aprovar.
@@ -772,10 +878,10 @@
                         + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'email_template\')">Histórico</button>';
 
                     var actions = canPropose('email_template')
-                        ? '<div style="display:flex;gap:8px">' + historico +
+                        ? '<div style="display:flex;gap:8px">' + historico + descarte +
                         '<button class="btn btn-ghost btn-sm" onclick="openEmailEditor(\'' + it.id + '\')">Editar</button>' +
                         '</div>'
-                        : '<div style="display:flex;gap:8px">' + historico + '</div>';
+                        : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
                     html += '<div class="item-row">' +
                         '<div class="item-main">' +
@@ -833,7 +939,8 @@
                 'padding:16px;margin-top:8px;background:#fff;color:#202124;max-height:280px;overflow:auto"></div>' +
                 '<div class="modal-actions">' +
                 '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
-                '<button class="btn btn-primary" id="em-save">Salvar e enviar para revisão</button>' +
+                '<button class="btn btn-ghost" id="em-draft">Salvar rascunho</button>' +
+                '<button class="btn btn-primary" id="em-save">Enviar para revisão</button>' +
                 '</div></div></div>';
 
             refreshEmailPreview();
@@ -841,6 +948,9 @@
 
             document.getElementById('em-save').onclick = function () {
                 submitEmail(item, existingDraft ? existingDraft.draftId : null, v, this);
+            };
+            document.getElementById('em-draft').onclick = function () {
+                submitEmail(item, existingDraft ? existingDraft.draftId : null, v, this, true);
             };
         }
 
@@ -854,7 +964,7 @@
             host.innerHTML = body.value;
         }
 
-        function submitEmail(item, draftId, original, btn) {
+        function submitEmail(item, draftId, original, btn, apenasRascunho) {
             var subject = document.getElementById('em-subject').value.trim();
             var template = document.getElementById('em-body').value.trim();
 
@@ -869,7 +979,7 @@
                 ? JSON.stringify({ subject: subject, template: template, labels: original.labels || {} })
                 : JSON.stringify({ subject: subject, template: template, placeholders: original.placeholders || [] });
 
-            enviarProposta({
+            (apenasRascunho ? salvarRascunho : enviarProposta)({
                 draftId: draftId || '',
                 itemId: item.id,
                 module: 'email_template',
@@ -929,10 +1039,11 @@
 
             host.innerHTML = avisoRascunhosOffline('tips') + TP_ITEMS.map(function (it) {
                 var d = tpDraftForItem(it.id);
-                var badge = d
-                    ? (d.status === 'pending'
-                        ? '<span class="pill pending">em revisão</span>'
-                        : '<span class="pill draft">rascunho</span>')
+                var badge = selosDoRascunho(d);
+
+                var descarte = (d && d.status === 'draft' && !travadoPorOutro(d))
+                    ? '<button class="btn btn-danger btn-sm" onclick="descartarRascunho(\'' +
+                      d.draftId + '\', loadTips)">Descartar rascunho</button>'
                     : '';
 
                 // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
@@ -941,11 +1052,11 @@
                     + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'tips\')">Histórico</button>';
 
                 var actions = canPropose('tips')
-                    ? '<div style="display:flex;gap:8px">' + historico +
+                    ? '<div style="display:flex;gap:8px">' + historico + descarte +
                     '<button class="btn btn-ghost btn-sm" onclick="openTipEditor(\'' + it.id + '\')">Editar</button>' +
                     '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Remover</button>' +
                     '</div>'
-                    : '<div style="display:flex;gap:8px">' + historico + '</div>';
+                    : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
 
                 return '<div class="item-row">' +
                     '<div class="item-main">' +
@@ -976,16 +1087,20 @@
                 '<textarea id="tp-text" style="min-height:70px">' + esc(src ? src.value : '') + '</textarea>' +
                 '<div class="modal-actions">' +
                 '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
-                '<button class="btn btn-primary" id="tp-save">Salvar e enviar para revisão</button>' +
+                '<button class="btn btn-ghost" id="tp-draft">Salvar rascunho</button>' +
+                '<button class="btn btn-primary" id="tp-save">Enviar para revisão</button>' +
                 '</div></div></div>';
 
             document.getElementById('tp-save').onclick = function () {
                 submitTip(itemId, existingDraft ? existingDraft.draftId : null, src, this);
             };
+            document.getElementById('tp-draft').onclick = function () {
+                submitTip(itemId, existingDraft ? existingDraft.draftId : null, src, this, true);
+            };
             document.getElementById('tp-text').focus();
         }
 
-        function submitTip(itemId, draftId, src, btn) {
+        function submitTip(itemId, draftId, src, btn, apenasRascunho) {
             var text = document.getElementById('tp-text').value.trim();
             if (!text) return toast('Escreva o texto da dica.', true);
 
@@ -993,7 +1108,7 @@
                 return Math.max(max, i.sortOrder);
             }, 0) + 1;
 
-            enviarProposta({
+            (apenasRascunho ? salvarRascunho : enviarProposta)({
                 draftId: draftId || '',
                 itemId: itemId || '',
                 module: 'tips',

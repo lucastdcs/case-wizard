@@ -130,7 +130,7 @@ const HISTORICO = {
 };
 
 // ------------------------------------------------------- montagem da página
-async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '' } = {}) {
+async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null } = {}) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
     page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
 
@@ -140,7 +140,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '' } =
 
     // O dublê precisa existir ANTES do script da página rodar: o boot dispara
     // no DOMContentLoaded.
-    await page.addInitScript(({ sessao, itens, falhar, historico }) => {
+    await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos }) => {
         const HISTORICO = historico;
         window.__chamadas = [];
 
@@ -149,11 +149,13 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '' } =
             listContentItems: (m) => itens[m] || [],
             listContentDrafts: (m) => {
                 if (falhar && m === falhar) throw new Error('rede caiu');
-                return [];
+                return (rascunhos && rascunhos[m]) || [];
             },
             listPendingApprovals: () => [],
             listContentItemHistory: (lineage) => (HISTORICO[lineage] || []),
             rollbackContentItem: () => ({ status: 'success', itemId: 'itm_revivido' }),
+            saveContentDraft: () => ({ status: 'success', draftId: 'drf_rascunho' }),
+            discardContentDraft: () => ({ status: 'success' }),
             listContentAccess: () => [{ ldap: 'lucaste', role: 'ADMIN', active: true, grantedBy: 'system' }],
             listPeople: () => [],
             getNoteFieldCatalog: () => ({ fields: {}, substatus: [] }),
@@ -202,7 +204,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '' } =
             value: { script: { get run() { return construir(); } } },
             writable: true,
         });
-    }, { sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe, historico: HISTORICO });
+    }, { sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe, historico: HISTORICO, rascunhos: draftsDe });
 
     await page.goto('file://' + ARQUIVO + hash, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(300);
@@ -581,6 +583,148 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
             'botões de reverter');
         verdade(/não republica/.test(await page.locator('#hist-corpo').textContent()),
             'a tela precisa dizer por que não há o botão');
+    });
+
+    await page.close();
+}
+
+// -------------------------------------------------------- rascunho de verdade
+{
+    const page = await abrir({ sessao: 'admin' });
+    await page.evaluate(() => switchTab('links'));
+    await page.waitForTimeout(200);
+
+    await check('o editor oferece guardar E enviar, não só enviar', async () => {
+        await page.evaluate(() => openLinkEditor(null));
+        await page.waitForTimeout(200);
+        verdade(await page.locator('#lnk-draft').isVisible(), 'faltou "Salvar rascunho"');
+        verdade(await page.locator('#lnk-save').isVisible(), 'faltou "Enviar para revisão"');
+        igual((await page.locator('#lnk-save').textContent()).trim(), 'Enviar para revisão',
+            'rótulo do botão de enviar');
+    });
+
+    await check('guardar rascunho NÃO manda para a fila', async () => {
+        await page.fill('#lnk-name', 'Link guardado');
+        await page.fill('#lnk-url', 'https://go/guardado');
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('#lnk-draft');
+        await page.waitForTimeout(300);
+
+        // Lista explícita de ESCRITAS: filtrar por padrão pegaria também a
+        // releitura de rascunhos, que é leitura. Mesmo tropeço de antes.
+        const ESCRITAS = ['saveContentDraft', 'submitContentDraft', 'saveAndSubmitContentDraft'];
+        const escritas = await page.evaluate((nomes) => window.__chamadas
+            .filter(c => nomes.includes(c.metodo)).map(c => c.metodo), ESCRITAS);
+        igual(escritas, ['saveContentDraft'], 'chamadas de escrita');
+    });
+
+    await check('a validação vale para os dois caminhos', async () => {
+        // Guardar um rascunho inválido seria guardar algo que o servidor
+        // recusaria na hora de enviar.
+        await page.evaluate(() => openLinkEditor(null));
+        await page.waitForTimeout(200);
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('#lnk-draft');
+        await page.waitForTimeout(200);
+
+        const escreveu = await page.evaluate(() => window.__chamadas
+            .some(c => ['saveContentDraft', 'saveAndSubmitContentDraft'].includes(c.metodo)));
+        igual(escreveu, false, 'guardou sem nome nem URL');
+        await page.evaluate(() => closeModal());
+    });
+
+    await page.close();
+}
+
+{
+    // Um rascunho meu, não enviado.
+    const meu = {
+        links: [{
+            draftId: 'drf_meu', itemId: 'itm_1', module: 'links', key: 'tasks', lang: 'ALL',
+            label: 'Fila de tarefas', value: '{}', status: 'draft',
+            proposedBy: 'lucaste', lockedBy: 'lucaste', lockedAt: new Date().toISOString(),
+        }],
+    };
+    const page = await abrir({ sessao: 'admin', draftsDe: meu });
+    await page.evaluate(() => switchTab('links'));
+    await page.waitForTimeout(300);
+
+    await check('o item diz que existe um rascunho seu', async () => {
+        const texto = await page.locator('#links-list').textContent();
+        verdade(/rascunho seu/.test(texto), 'a linha precisa dizer que há rascunho seu');
+    });
+
+    await check('e oferece descartá-lo', async () => {
+        verdade(await page.locator('button:has-text("Descartar rascunho")').isVisible(),
+            'faltou o botão de descartar');
+    });
+
+    await check('descartar pede confirmação antes', async () => {
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('button:has-text("Descartar rascunho")');
+        await page.waitForTimeout(200);
+
+        const descartou = await page.evaluate(() => window.__chamadas
+            .some(c => c.metodo === 'discardContentDraft'));
+        igual(descartou, false, 'descartou sem confirmar');
+        verdade(await page.locator('#desc-titulo').isVisible(), 'faltou a confirmação');
+
+        await page.click('#desc-go');
+        await page.waitForTimeout(300);
+        const chamadas = await page.evaluate(() => window.__chamadas
+            .filter(c => c.metodo === 'discardContentDraft'));
+        igual(chamadas.length, 1, 'chamadas de descarte');
+        igual(chamadas[0].args[0], 'drf_meu', 'descartou o rascunho certo');
+    });
+
+    await page.close();
+}
+
+{
+    // Rascunho de OUTRA pessoa, com a trava ainda viva.
+    const alheio = {
+        links: [{
+            draftId: 'drf_ana', itemId: 'itm_1', module: 'links', key: 'tasks', lang: 'ALL',
+            label: 'Fila de tarefas', value: '{}', status: 'draft',
+            proposedBy: 'anaflor', lockedBy: 'anaflor', lockedAt: new Date().toISOString(),
+        }],
+    };
+    const page = await abrir({ sessao: 'admin', draftsDe: alheio });
+    await page.evaluate(() => switchTab('links'));
+    await page.waitForTimeout(300);
+
+    await check('a tela diz QUEM está editando agora', async () => {
+        const texto = await page.locator('#links-list').textContent();
+        verdade(/anaflor está editando/.test(texto),
+            'a trava precisa dizer de quem é, não só que existe');
+    });
+
+    await check('e não oferece descartar o rascunho de outra pessoa', async () => {
+        igual(await page.locator('button:has-text("Descartar rascunho")').count(), 0,
+            'botões de descarte');
+    });
+
+    await page.close();
+}
+
+{
+    // A mesma trava, expirada: o servidor já não a respeita, e a tela não pode
+    // anunciar uma trava que não existe mais.
+    const velho = {
+        links: [{
+            draftId: 'drf_ana', itemId: 'itm_1', module: 'links', key: 'tasks', lang: 'ALL',
+            label: 'Fila de tarefas', value: '{}', status: 'draft',
+            proposedBy: 'anaflor', lockedBy: 'anaflor',
+            lockedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        }],
+    };
+    const page = await abrir({ sessao: 'admin', draftsDe: velho });
+    await page.evaluate(() => switchTab('links'));
+    await page.waitForTimeout(300);
+
+    await check('trava expirada não é anunciada', async () => {
+        const texto = await page.locator('#links-list').textContent();
+        igual(/está editando/.test(texto), false, 'anunciou trava vencida');
     });
 
     await page.close();

@@ -1046,6 +1046,53 @@ function submitContentDraftLocked_(draftId) {
 }
 
 /**
+ * Descarta um rascunho que ainda não foi enviado.
+ *
+ * Existe porque o rascunho passou a ser um estado de verdade na tela: quem
+ * começa uma alteração e muda de ideia precisa de saída. Sem isto o rascunho
+ * fica para sempre — aparece na lista como "rascunho", conta na home de quem o
+ * criou, e a próxima edição daquele item continua abrindo o texto abandonado.
+ *
+ * Só rascunho: uma proposta que JÁ foi enviada se resolve pela revisão
+ * (aprovar ou rejeitar), não sumindo por baixo de quem ia revisar.
+ *
+ * Só quem propôs, ou quem aprova. A regra é a mesma de saveContentDraft(): o
+ * rascunho é de quem o escreveu.
+ */
+function discardContentDraft(draftId) {
+  return withContentWriteLock_(function () {
+    return discardContentDraftLocked_(draftId);
+  });
+}
+
+function discardContentDraftLocked_(draftId) {
+  const draft = findContentRow_(SHEET_CONTENT_DRAFTS, 'Draft_ID', draftId);
+  if (!draft) throw new Error("Rascunho não encontrado.");
+
+  const session = assertContentRole_('propose', String(draft.Module).trim());
+
+  if (String(draft.Status).trim() !== CONTENT_STATUS.DRAFT) {
+    throw new Error(
+      "Só um rascunho pode ser descartado. Uma proposta em revisão se resolve aprovando ou rejeitando."
+    );
+  }
+  if (String(draft.Proposed_By).trim() !== session.ldap && !session.perms.approve) {
+    throw new Error("Este rascunho é de outra pessoa.");
+  }
+
+  getContentSheet_(SHEET_CONTENT_DRAFTS).deleteRow(draft._row);
+
+  logContentEvent_(
+    session.ldap,
+    'draft_discard',
+    String(draft.Module) + '/' + String(draft.Key),
+    String(draft.Label || "")
+  );
+
+  return { status: 'success' };
+}
+
+/**
  * Salva e envia para revisão numa execução só.
  *
  * A tela fazia isso em duas chamadas encadeadas (três nos e-mails, que ainda
