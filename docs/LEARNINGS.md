@@ -12,6 +12,33 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Ao restaurar um caminho que funcionava, transplante o texto original — não reescreva
+
+**Why**: depois que a migração para a UI nova do Connect Cases apagou o fluxo da
+UI antiga, a restauração foi feita **reescrevendo** o que aquele fluxo fazia:
+`esperarPor()` no lugar dos `esperar(800)` fixos, `estaVisivel()` no ícone,
+clique no `.closest('material-button')` em vez do próprio `<i>`, `textContent` no
+lugar de `innerText`. Cada uma dessas trocas era defensável isoladamente — e o
+conjunto continuou falhando na UI antiga, custando um segundo ciclo inteiro de
+correção, PR e report do agente. O erro de raciocínio foi tratar "código antigo"
+como rascunho a ser melhorado, quando ele era a **única versão com prova de
+funcionamento** naquela tela: rodou meses em produção sem reclamação. Sem acesso
+à UI antiga para testar, cada "melhoria" é uma hipótese não testada disfarçada de
+boa prática, e todas entram de uma vez.
+
+A forma correta é `git show <commit-anterior>:<arquivo>`, copiar o bloco como
+está, adaptar só o mínimo mecânico para ele virar função (`emailAberto = true`
+→ `return true`), e deixar um comentário no código dizendo para não "melhorá-lo".
+Dá para provar o transplante comparando as linhas de lógica com as do commit
+original antes de commitar.
+
+**When to apply**: sempre que a correção for "voltar a fazer o que fazíamos
+antes" — regressão, rollback parcial, restauração de fallback. Vale especialmente
+quando o ambiente onde aquele código roda **não é testável aqui** (a UI antiga do
+CRM, um cliente de e-mail específico, uma versão de navegador). Se você não
+consegue rodar, não consegue validar a melhoria — então não faça a melhoria.
+
+---
 ## Rode a suíte INTEIRA antes de abrir o PR, não a lista que você lembra
 
 **Why**: na fase 1 da Central (PR #372), as escritas de linha passaram de
