@@ -24,6 +24,7 @@
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",
     "smoke:broadcast": "node scripts/smoke-broadcast.mjs",
+    "smoke:content": "node scripts/smoke-content-dashboard.mjs",
     "smoke:people": "node scripts/smoke-people.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },

@@ -508,6 +508,7 @@ export async function getPageData() {
         site: websiteUrl,
         website: websiteUrl, // bau-form-config.js's campo 'website' lê pageData.website, não .site
         email: clientEmail,
+        advEmail: clientEmail, // bau-form-config.js's campo 'advEmail' lê pageData.advEmail
         salesProgram: salesProgram,
         language: language,
         seId: seId

@@ -9,6 +9,163 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Prévia "como o agente vê"** (fase 5). O editor mostra **campos**; o agente lê
+  **texto**. Entre os dois cabe o erro que ninguém pega revisando o formulário: a
+  descrição em espanhol que ficou em português, o passo do roteiro que só faz
+  sentido com o anterior na frente, o placeholder que sobrou literal. A prévia
+  resolve o item no idioma escolhido e **nomeia o que está faltando** em vez de
+  mostrar um cartão vazio — o editor, que exibe PT e ES lado a lado, é
+  justamente o lugar onde essa falta passa despercebida. Aviso agendado ou
+  vencido vem com o aviso de que nenhum agente está vendo aquilo agora.
+- **Busca global na Central, por `Ctrl+K`** (fase 5). A tela tem dez destinos e
+  centenas de itens; achar *"aquele link do Ads"* custava lembrar em qual aba
+  ele mora e rolar a lista — e quem não lembra desiste e cria um item duplicado,
+  que é o pior desfecho. A busca acha destino **e** conteúdo, ignora acento
+  ("anuncio" acha "anúncio"), respeita o `ver` da matriz de papéis, e leva
+  direto ao item, apontando a linha na lista. Duas velocidades de propósito: os
+  destinos filtram na tecla, o conteúdo espera 220 ms de silêncio — sem o
+  atraso, cada tecla viraria uma execução do Apps Script. E há um botão no
+  header: atalho de teclado que ninguém sabe que existe não existe.
+- **Cobrança diária das propostas paradas** (fase 5). A fila avisava quem aprova
+  **uma vez**, no momento em que a proposta entrava. Quem não abriu o e-mail
+  naquele dia nunca mais soube: quem propôs achava que estava em análise, quem
+  aprova nunca viu, e o item ficava parado por semanas sem que o sistema tivesse
+  errado em nada. Agora um gatilho diário manda **um e-mail por aprovador, só
+  com o que ele pode resolver** — mandar a fila inteira para todo mundo é como a
+  cobrança vira ruído e passa a ser apagada sem ler —, e não cobra ninguém pela
+  própria proposta. O link vem do mapa de implantações e não de
+  `getUrl()`: num gatilho de tempo o serviço pode devolver a URL de outra
+  implantação, e a pessoa cairia no ambiente errado. O gatilho precisa ser
+  criado à mão uma vez, como o do `Backup.js`; `listStaleContentApprovals()`
+  mostra quem seria cobrado antes de ligá-lo.
+- **Aba de auditoria, restrita a quem tem `ver auditoria completa`** (fase 5).
+  A barra lateral responde *"o que está acontecendo"*; esta responde *"o que
+  aconteceu"* — com busca por texto, filtro de quem/ação/módulo, período e
+  paginação, mais exportação do resultado para uma aba da própria planilha. A
+  paginação é por **número de linha**, não por "pule N resultados": é o que
+  mantém o custo de cada página igual em vez de refiltrar tudo que já foi
+  mostrado. Cada chamada tem teto de varredura, porque o Apps Script tem 6
+  minutos e a aba guarda 24 meses — e a tela distingue "acabou o histórico" de
+  "acabou o orçamento desta chamada", que é a diferença entre um "carregar mais"
+  honesto e um que mente.
+- **Aviso com hora: agendamento e validade** (fase 5). Um aviso pode nascer
+  agendado e morrer sozinho. Sem isso, *"avisar a operação às 8h de segunda"*
+  era alguém acordar e clicar, e *"tirar quando a instabilidade acabar"* era
+  alguém lembrar — e o aviso que ninguém lembra de tirar continua na tela do
+  agente dizendo que um problema resolvido há três dias está acontecendo agora.
+  Aviso velho não é ruído neutro: ele ensina o agente a ignorar avisos. As duas
+  pontas são opcionais (sem início já vale, sem fim não expira), então ligar
+  isto não muda nenhum aviso existente. A janela é avaliada **no servidor, no
+  horário de Brasília**, e a tela diz isso — a operação atende fusos diferentes,
+  e três relógios implícitos são piores que um declarado. A lista da Central
+  marca cada aviso com o seu estado, e a confirmação de publicação passou a
+  declarar **quando**, não só para quem.
+- **"Ver como": conferir a Central pelos olhos de outro papel** (fase 5). Quem
+  edita a matriz de permissões precisa poder verificar o que configurou — ler
+  uma linha de checkboxes e imaginar a tela resultante é o tipo de tradução em
+  que se erra sem perceber, e o erro só aparece quando alguém reclama que não
+  consegue trabalhar. Escolhe-se um papel e um idioma, e a tela inteira passa a
+  mostrar o que aquela pessoa veria: o trilho, os botões, as caixas de "seu
+  papel não edita isto". Uma faixa fica na tela o tempo todo dizendo de quem é a
+  visão. A prévia **nunca concede**: o servidor intersecta o papel escolhido com
+  o de quem pediu, e diz na própria faixa quantas permissões daquele papel não
+  estão sendo mostradas porque quem pediu também não as tem. E fica só de
+  leitura — conferir não é decidir, e uma decisão tomada "de dentro" da prévia
+  sairia no nome de quem clicou, não no do papel previsto.
+- **Aba "Papéis" na Central: a matriz de permissões virou tela** (fase 4). Uma
+  linha por módulo, uma coluna por ação, e um traço onde a ação não existe
+  naquele regime — não existe "aprovar um aviso", e um checkbox desligado ali
+  prometeria uma operação que o módulo não tem. O aviso de **publicação sem
+  revisão** aparece enquanto se clica, não só ao salvar, e nomeia os módulos
+  afetados; a confirmação mostra **o que muda**, não o estado final. Editar o
+  próprio papel recarrega a sessão, porque o que a tela tinha em memória deixou
+  de valer. O seletor de papel da aba Acessos passou a ler os papéis do
+  servidor, em vez dos quatro fixos no HTML.
+- **Papéis da Central viraram dado editável** (fase 4, ADR-0009). Eram uma
+  constante no código: dar links a um QA, ou criar um papel que publica
+  disponibilidade sem tocar no catálogo, custava um deploy. Agora a aba
+  `Content_Roles` guarda uma matriz **módulo × ação** — `ver`, `propor`,
+  `aprovar`, `publicar direto`, `reverter` — mais quatro permissões globais.
+  `propor` e `publicar direto` são colunas distintas, que é o que separa TL de
+  WFM e a lista única de antes não sabia dizer; `ver` também é coluna, e não um
+  implícito de quem tem acesso. **No dia 1 nada muda**: a aba nasce semeada com
+  os quatro papéis de hoje, e há teste comparando o preset contra a constante
+  antiga. Aba ausente ou ilegível cai no preset em vez de trancar todo mundo do
+  lado de fora.
+- **Quatro regras que um checkbox não abre** — no servidor, com teste, porque o
+  risco de tirar permissão do code review é que o erro não dá erro, só concede:
+  **anti-lockout** (nenhuma alteração deixa a Central sem quem gerencie papéis e
+  acessos — substitui a trava antiga de "o ADMIN não se remove", que bloqueava a
+  saída legítima de um entre dois admins e não cobria remover o outro);
+  **escalação declarada** (ganhar propor + aprovar + aprovar a si mesmo não
+  grava sem confirmação explícita); **revogação imediata** (o cache de permissão
+  cai no ato, nunca por TTL); e **aprovar autorização exige controlar
+  autorização** (aprovar `people` pede a permissão global de gerenciar acessos —
+  a regra deixou de ser sobre o *nome* do papel, que agora é editável).
+- **Atividade recente na Central, com foto de quem fez** (fase 3). A mesma barra
+  lateral do TL Dashboard: quem publicou, aprovou, rejeitou ou reverteu o quê, e
+  há quanto tempo — com a justificativa da rejeição na própria linha, que é onde
+  ela é útil. O que cada pessoa vê é decidido **no servidor**: mudança de acesso
+  só para quem gerencia acesso, e linha do módulo `people` só para quem propõe
+  nele. A barra abre por padrão em tela larga, flutua sobre o conteúdo em tela
+  estreita, e fechada não custa execução nenhuma do Apps Script.
+- **Aba `Content_Log`: a auditoria da Central virou dado, não texto** (fase 3).
+  Cada ação tem agora coluna própria para módulo, chave, item e detalhe, no
+  lugar da linha na aba `Logs` genérica onde tudo isso vivia concatenado num
+  campo só — inclusive um sufixo `" (autoaprovação ADMIN)"` grudado na chave,
+  que fazia a mesma chave contar como duas. Sem essas colunas não há como
+  filtrar por módulo, e sem filtrar por módulo não há como esconder de um QA o
+  que ele já não vê na aba Pessoas. Esquema em
+  `specs/data-models/db-schema.md`; retenção de 24 meses pelo ADR-0008.
+- **`backfillContentLog()`** traz para a aba nova o histórico que ficou na
+  `Logs` (`Category = 'ContentCentral'`), repartindo o campo antigo nas colunas.
+  **Simula por padrão** — só `backfillContentLog(true)` escreve — e **copia sem
+  apagar** a origem. Restrito a quem gerencia acesso.
+- **A revisão passou a mostrar o que mudou** (fase 3). Eram dois blocos de texto
+  integral lado a lado, sem realce: num corpo de e-mail de quarenta linhas,
+  achar a vírgula alterada era trabalho manual. Agora um diff por palavra marca
+  só a diferença nos dois lados, e o valor é lido como conteúdo — assunto e
+  corpo do e-mail, tipo/título/texto do aviso, um campo por linha no modelo de
+  nota — em vez do JSON cru que escondia a mudança real no meio de aspas e
+  chaves. Quem aprova também ganhou a **prévia renderizada** do e-mail, que
+  antes só existia para quem editava.
+
+- **Rascunho virou um estado alcançável na Central** (fase 3). Todo editor tinha
+  um botão só, que salvava e enviava para revisão no mesmo gesto: não havia como
+  guardar trabalho parcial, a pílula "rascunho" que as listas sabiam desenhar
+  nunca aparecia, e a trava de edição cooperativa nunca chegava a valer porque
+  nada ficava aberto. Agora são dois caminhos — **Salvar rascunho** e **Enviar
+  para revisão** —, a linha do item diz se há rascunho seu, se alguém está
+  editando (e quem), ou se já foi para a fila, e existe
+  `discardContentDraft` para desistir. Sem essa saída o rascunho viraria
+  armadilha: ficaria na lista, contaria na home e reabriria na próxima edição.
+- **Histórico e "voltar para esta versão" na Central** (fase 3). Cada item
+  publicado passou a oferecer o seu histórico: quais versões existiram, quem
+  publicou cada uma e quando. `listContentItemHistory` e `rollbackContentItem`
+  existiam no backend desde o começo e nunca tinham sido chamados pela tela —
+  enquanto isso o modal de remoção prometia que "a versão fica arquivada e pode
+  voltar", sem oferecer caminho para fazê-la voltar. Ver o histórico é leitura,
+  e aparece para quem enxerga o item; republicar uma versão anterior vai ao ar
+  sem passar pela fila, então exige o papel de quem aprova e o mesmo passo de
+  confirmação da publicação direta.
+- **Smoke da Central de Conteúdo** (`npm run smoke:content`). A maior tela do
+  projeto era a única sem teste nenhum, e a reorganização da navegação
+  (ADR-0007) toca todos os seus renderizadores de uma vez. O smoke carrega o
+  `ContentDashboard.html` num navegador de verdade com o `google.script.run`
+  dublado, e trava o que precisa continuar valendo depois do redesenho: acesso,
+  régua de papéis, um painel visível por vez, o regime de publicação dito em
+  cada módulo, uma chamada por proposta salva e falha de rede aparente.
+- **Três ADRs propondo a próxima fase da Central de Conteúdo** (`docs/decisions/`):
+  [0007](docs/decisions/0007-arquitetura-da-central-de-conteudo.md) troca as dez
+  abas por um trilho agrupado pelo regime de publicação;
+  [0008](docs/decisions/0008-cache-e-retencao-do-conteudo.md) define cache da
+  leitura pública e retenção por aba (por linhagem em `Content_Items`, 24 meses
+  em `Content_Log`, trimestral em `Logs`);
+  [0009](docs/decisions/0009-rbac-editavel-da-central.md) tira os papéis do
+  código e os move para uma matriz editável. Nenhum código de produção mudou —
+  são decisões aguardando validação.
+- O índice de `docs/decisions/README.md` voltou a listar todos os ADRs: o 0006
+  (aba People) tinha ficado de fora.
 - **Crédito de autoria nos dashboards do Apps Script.** A Central de Conteúdo e
   o TL Dashboard eram as únicas telas do projeto sem crédito e sem caminho para
   reportar um bug — não passam pelo `header-factory` do front. Agora recebem um
@@ -28,7 +185,84 @@ versions follow [Semantic Versioning](https://semver.org/).
   só com o motivo do disparo; agora fecha com "Cases Wizard · automatizado por
   @lucaste", como os demais e-mails do fluxo.
 
+### Security
+- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
+  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
+  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
+  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
+  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
+  a mesma coisa é como um deles fica para trás.
+
 ### Changed
+- **O botão de desativar acesso passou a aparecer também para si mesmo.** A
+  trava deixou de ser "não se remova" e passou a ser "não fique sem ninguém que
+  governe" — quem for o último a governar recebe um erro do servidor que explica
+  exatamente isso, e quem tem um colega admin pode simplesmente sair.
+- **A Central de Conteúdo trocou as dez abas por um trilho agrupado pelo regime
+  de publicação** (ADR-0007). Catálogo (passa por revisão), Operação (vai ao ar
+  na hora) e Governança: o grupo passa a carregar a informação que antes morava
+  num parágrafo dentro de cada painel. A tela abre num **Hoje** — fila de
+  revisão, propostas em andamento e o que o seu papel publica sem fila — em vez
+  de numa lista de links sem contexto. Cada destino tem endereço próprio
+  (`#/aprovacoes`), então uma pendência cabe num chat.
+- **O idioma é escolhido uma vez, no trilho.** Eram três seletores independentes
+  (call script, notas, e-mails), posicionados de um jeito em cada painel e sem
+  nada sincronizando — dava para revisar ES num e PT no outro sem perceber.
+- **Publicar um aviso ou uma disponibilidade agora declara o alcance antes.** A
+  fricção estava invertida: a ação que muda a produção de todo mundo disparava
+  num clique, enquanto rejeitar uma proposta — reversível — exigia modal e
+  justificativa. A confirmação é uma camada por cima do editor, então voltar não
+  custa o que foi digitado.
+- **`ContentDashboard.html` dividido em partes** (`include()` do `HtmlService`).
+  Eram ~3.500 linhas com estilo, marcação e dez renderizadores no mesmo arquivo;
+  agora a casca tem 413 e o resto está em quatro partes cortadas pelo **regime**
+  de cada módulo — catálogo (passa pela fila), operação (publica direto) e
+  governança —, o mesmo corte que a navegação vai passar a mostrar. Sem mudança
+  de comportamento: o HTML remontado é idêntico ao anterior, exceto pelos dois
+  `addEventListener` finais, que foram para junto do `boot`.
+- **Central de Conteúdo, fase 1 — correção e carga** (ADR-0008). A leitura
+  pública passou a ser servida por `CacheService` (TTL de 5 min, invalidado na
+  hora por toda escrita que muda o que está no ar) e aceita `modules=a,b,c`,
+  então o boot do agente pede os sete módulos numa execução em vez de sete.
+  Salvar uma proposta virou uma viagem ao servidor (`saveAndSubmitContentDraft`)
+  no lugar de duas — três nos e-mails e nas notas. As escritas de linha agora
+  vão em bloco (`setValues`) em vez de uma chamada por coluna.
+
+### Fixed
+- **A auditoria mostrava o nome interno de metade das ações.** `role_update`,
+  `audit_export`, `people_updated` e as outras que nasceram depois da barra
+  lateral não tinham tradução, e apareciam como jargão de código exatamente na
+  tela onde quem lê não sabe o que é `role_update`. Só apareceu ao **olhar a
+  tela renderizada** — os testes de estrutura passavam felizes com o slug na
+  cara de quem audita. Agora um teste percorre a lista inteira de ações que o
+  servidor registra e exige tradução para cada uma, então a próxima ação nova
+  que alguém esquecer de traduzir cai no smoke.
+- **Dois harnesses de teste ficaram para trás da fase 2 da Central.** As
+  escritas em bloco (`setValues`) quebraram `test:people` em 15 testes, porque
+  só o dublê de planilha do `test-content-api.js` tinha sido estendido; e a
+  divisão da tela em partes quebrou `smoke:people`, que lê o mesmo
+  `ContentDashboard.html` do disco e não resolvia os `include()`. A montagem da
+  tela virou um módulo compartilhado (`scripts/content-dashboard-html.mjs`) e
+  os dublês de planilha passaram todos a modelar
+  `getRange(l, c, nL, nC).setValues(...)`. Lição registrada em
+  `docs/LEARNINGS.md`.
+- **Duas aprovações simultâneas publicavam o mesmo item duas vezes.** Entre o
+  `appendRow` da linha nova e a virada do status do rascunho havia uma janela em
+  que a proposta ainda constava como pendente; uma segunda execução entrando ali
+  passava pela mesma checagem e publicava de novo, deixando duas linhas `live`
+  na mesma linhagem — item duplicado na tela do agente, sem erro em log nenhum.
+  O caminho de publicação passou a rodar sob `LockService`.
+- **Falha ao carregar as propostas em andamento virava "não há nenhuma".** A
+  tela desenhava a lista como se o módulo não tivesse pendência, e quem então
+  editava um item com proposta em revisão levava uma recusa do servidor sem ter
+  como explicar. Agora a falha aparece, com botão de tentar de novo.
+
+### Added
+- **E-mail de decisão para quem propôs.** Aprovação e rejeição avisam o autor da
+  proposta, com a justificativa do revisor no corpo e um botão para a Central —
+  a URL derivada da implantação em execução, não fixa. Antes a rejeição era
+  invisível: o rascunho voltava para "draft" e o motivo ficava numa coluna que
+  ninguém abre.
 - **Form de bugs e sugestões unificado em uma variável só.** Havia três URLs
   diferentes em produção (overlay de ajuda, Configurações → Suporte e rodapé dos
   e-mails). Agora existe um ponto de verdade por runtime — `FEEDBACK_FORM_URL`
@@ -42,6 +276,21 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Removed
 
 ### Fixed
+- **O atalho de e-mail voltou a funcionar na interface antiga do Connect
+  Cases.** A migração para o speed dial da UI nova (`#action-bar-speed-dial-container`
+  → `material-button.compose`) removeu o fluxo da UI antiga
+  (`material-fab-speed-dial` → `.trigger`) em vez de mantê-lo como alternativa.
+  O clique no envelope solto, que ficou como único plano B, exige o ícone já
+  visível — e na UI antiga ele está escondido atrás do menu fechado, então o
+  agente ficava sem nenhuma rota e via só o toast de erro. As duas interfaces
+  convivem enquanto a atualização do CRM chega em ondas, então a FASE 1 tenta a
+  UI nova primeiro e, quando o markup dela não está na tela, cai no fluxo antigo
+  **transplantado literalmente** do commit anterior à migração (`269127d`), sem
+  uma linha de lógica alterada. Uma primeira tentativa de restaurá-lo reescrito
+  (polling no lugar dos 800 ms fixos, checagem de visibilidade, clique no
+  `<material-button>` em vez do `<i>`) continuou falhando — o texto original é a
+  única versão com prova de funcionamento na UI antiga. O log diz qual dos dois
+  fluxos abriu o compositor.
 
 ### Security
 

@@ -35,3 +35,7 @@ No ADR needed for trivial choices or implementation details.
 | [0003](0003-rename-repo-to-case-wizard.md) | Rename the repository to `case-wizard` | Accepted | 2026-08-20 |
 | [0004](0004-implantacoes-apps-script-por-branch.md) | Uma implantação do Apps Script por branch, promovida pelo CI | Accepted | 2026-08-21 |
 | [0005](0005-hospedagem-e-integridade-do-bundle.md) | Hospedagem e integridade do bundle | **Proposed** | 2026-08-24 |
+| [0006](0006-aba-people-editavel-na-central.md) | Aba People editável pela Central, com aprovação exclusiva do ADMIN | Accepted | 2026-09-01 |
+| [0007](0007-arquitetura-da-central-de-conteudo.md) | Arquitetura da Central de Conteúdo: trilho por regime, no lugar de abas | **Proposed** | 2026-09-02 |
+| [0008](0008-cache-e-retencao-do-conteudo.md) | Cache da leitura pública e retenção das abas de conteúdo | **Proposed** | 2026-09-02 |
+| [0009](0009-rbac-editavel-da-central.md) | Papéis da Central como dado editável, não como constante do código | **Proposed** | 2026-09-02 |

@@ -87,6 +87,41 @@ function getDeploymentEnv() {
 }
 
 /**
+ * URL desta implantação para uma página do dashboard (`tl`, `content`).
+ *
+ * Vale a MESMA ressalva de getDeploymentEnv(): só use em contexto de
+ * requisição web. Num gatilho de tempo, getUrl() pode devolver a URL de outra
+ * implantação do projeto - por isso o e-mail de BAU, que também sai por
+ * gatilho, usa a constante fixa TL_DASHBOARD_URL de EmailEngine.gs em vez
+ * desta função. Não troque uma pela outra sem olhar de onde o e-mail sai.
+ *
+ * Implantação desconhecida cai em produção: um link que abre a Central certa
+ * na maioria dos casos é melhor que um link quebrado.
+ */
+function buildDeploymentPageUrl(page) {
+  var info = getDeploymentEnv();
+  var id = CW_DEPLOYMENTS[info.env] || CW_DEPLOYMENTS.production;
+  return buildPageUrlFor_(id, page);
+}
+
+/**
+ * URL de uma página numa implantação ESPECÍFICA, sem perguntar ao serviço.
+ *
+ * É o que um gatilho de tempo precisa: ali `getUrl()` pode devolver a URL de
+ * outra implantação do projeto, e o link do e-mail levaria a pessoa para o
+ * ambiente errado. Um gatilho é do PROJETO, não da implantação — ele roda uma
+ * vez, e o destino certo é sempre produção.
+ */
+function buildProductionPageUrl(page) {
+  return buildPageUrlFor_(CW_DEPLOYMENTS.production, page);
+}
+
+function buildPageUrlFor_(deploymentId, page) {
+  return 'https://script.google.com/a/macros/google.com/s/' + deploymentId +
+    '/exec?page=' + encodeURIComponent(page);
+}
+
+/**
  * HTML do selo de ambiente, ou string vazia em produção.
  *
  * Fica montado aqui, e não repetido dentro de cada dashboard, para que os dois
@@ -155,12 +190,31 @@ function buildCreditHtml() {
 }
 
 /**
+ * Cola o conteúdo de outro arquivo HTML do projeto.
+ *
+ * O Apps Script não tem pastas nem imports: um dashboard grande ou vira um
+ * arquivo único de milhares de linhas, ou é montado por chamadas destas dentro
+ * de um template. A Central de Conteúdo usa o segundo caminho — as partes
+ * entram todas no MESMO documento e, portanto, no mesmo escopo global.
+ *
+ * Usa createHtmlOutputFromFile (e não createTemplateFromFile) porque as partes
+ * não contêm `<?`: elas são coladas como texto, sem passar de novo pelo
+ * avaliador de template. Uma parte que precise de template tem que ser
+ * incluída de outro jeito, e este é o comentário que vai avisar disso.
+ */
+function include(fileName) {
+  return HtmlService.createHtmlOutputFromFile(fileName).getContent();
+}
+
+/**
  * Serve um dashboard já com o selo de ambiente injetado.
  *
- * Usa createTemplateFromFile (e não createHtmlOutputFromFile) só por causa
- * dessa injeção. Os dois HTML não contêm nenhuma sequência `<?`, então passar
- * pelo avaliador de template é seguro - se um dia passarem a conter, é aqui
- * que vai quebrar.
+ * Usa createTemplateFromFile (e não createHtmlOutputFromFile) porque as duas
+ * telas dependem do avaliador de template: para a injeção do selo/crédito nas
+ * duas, e para os `include()` que montam a Central a partir de suas partes.
+ *
+ * As partes incluídas, essas sim, não podem conter `<?`: elas entram por
+ * createHtmlOutputFromFile (ver include() acima) e não passam pelo avaliador.
  */
 function renderDashboard(fileName, title) {
   var info = getDeploymentEnv();
@@ -612,6 +666,23 @@ function ensureBAUHistoryColumns(sheet) {
   const existing = headerRange.getValues()[0];
   const missing = existing.some(v => !v);
   if (missing) headerRange.setValues([BAU_HISTORY_HEADERS]);
+}
+
+// Coluna à parte (depois das 3 de auditoria) pra sinalização do agente
+// "esse caso deve ser descartado pelo TL?" - fica isolada da trilha de
+// auditoria (colunas 19-21) de propósito, pra não deslocar os índices que
+// updateBAUCaseStatus já grava em planilhas antigas em produção.
+const BAU_SUGGEST_DISCARD_HEADER = "Suggest_Discard";
+const BAU_SUGGEST_DISCARD_COL = 22;
+
+function ensureBAUSuggestDiscardColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_SUGGEST_DISCARD_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_SUGGEST_DISCARD_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_SUGGEST_DISCARD_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_SUGGEST_DISCARD_HEADER);
 }
 
 function findRowIndexById(sheet, id) {

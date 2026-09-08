@@ -1,0 +1,1139 @@
+<!-- Parte de gas-backend/ContentDashboard.html. Ver o cabeçalho de lá. -->
+<!-- Estado da sessão, helpers, navegação e boot. É o que todo o resto usa. -->
+<script>
+        var SESSION = null;
+        var LIVE_LINKS = [];
+        var MY_DRAFTS = [];
+
+        // Quantas propostas esperam revisão. Fica no estado, e não só no DOM,
+        // porque a home também precisa do número.
+        var PENDING_TOTAL = 0;
+
+        var CATEGORY_LABELS = {
+            tasks: 'Tarefas', ads: 'Ads', analytics: 'GA4', shopping: 'Shop',
+            tech: 'Tech', hr: 'RH', lm: 'Forms', qa: 'QA', suporte: 'Ajuda'
+        };
+
+        function toast(msg, isErr) {
+            var t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = isErr ? 'show err' : 'show';
+            setTimeout(function () { t.className = ''; }, isErr ? 5200 : 3200);
+        }
+
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // O valor de um link é JSON no campo `value`: assim name/url/desc/desc_es
+        // viajam como um item só e o par PT/ES fica junto do link que descreve,
+        // em vez de num mapa paralelo como o LINK_DESC_ES de hoje.
+        function parseLinkValue(raw) {
+            try {
+                var v = JSON.parse(raw || '{}');
+                return { name: v.name || '', url: v.url || '', desc: v.desc || '', desc_es: v.desc_es || '' };
+            } catch (e) {
+                return { name: '', url: '', desc: '', desc_es: '' };
+            }
+        }
+
+        // Recarrega as listas de conteúdo. Genérico de propósito: aprovar ou
+        // remover algo pode afetar qualquer módulo, e a aba visível nem sempre é
+        // a do item mexido.
+        function refreshContentLists() {
+            loadLinks();
+            // A barra registra exatamente o tipo de ação que leva alguém a
+            // chamar isto aqui — deixá-la parada mostraria o passado do que
+            // acabou de mudar na tela ao lado.
+            if (LATERAL_ABERTA) carregarAtividade();
+            if (!document.getElementById('pane-callscript').classList.contains('hidden')) {
+                loadCallScript();
+            }
+            if (!document.getElementById('pane-notes').classList.contains('hidden')) {
+                loadNoteTemplates();
+            }
+            if (!document.getElementById('pane-emails').classList.contains('hidden')) {
+                loadEmails();
+            }
+            if (!document.getElementById('pane-tips').classList.contains('hidden')) {
+                loadTips();
+            }
+            if (!document.getElementById('pane-people').classList.contains('hidden')) {
+                loadPeople();
+            }
+        }
+
+        // A UI é conveniência, não a fronteira: o servidor recusa a ação de
+        // qualquer jeito. Esconder o botão evita oferecer algo que vai falhar.
+        function canPropose(module) {
+            return !!(SESSION && SESSION.proposableModules &&
+                SESSION.proposableModules.indexOf(module) !== -1);
+        }
+
+        // Um destino por linha: rótulo do cabeçalho, subtítulo e o que carregar.
+        // Ter isso numa tabela em vez de espalhado em ifs é o que permite a rota
+        // por hash, o teclado e o título da página lerem a MESMA fonte.
+        var DESTINOS = {
+            home: { titulo: 'Hoje', sub: 'O que está acontecendo no conteúdo agora.' },
+            links: {
+                titulo: 'Links', carregar: null,
+                sub: 'Atalhos que o agente abre pela pílula. Editar cria uma proposta.'
+            },
+            callscript: {
+                titulo: 'Call Script', carregar: function () { loadCallScript(); },
+                sub: 'O roteiro da ligação, passo a passo. Editar cria uma proposta.'
+            },
+            notes: {
+                titulo: 'Case Notes', carregar: function () { loadNoteTemplates(); },
+                sub: 'Notas prontas por substatus. Editar cria uma proposta.'
+            },
+            emails: {
+                titulo: 'E-mails', carregar: function () { loadEmails(); },
+                sub: 'Modelos que o agente envia ao anunciante. Editar cria uma proposta.'
+            },
+            tips: {
+                titulo: 'Dicas', carregar: function () { loadTips(); },
+                sub: 'Frases curtas exibidas durante os carregamentos do app.'
+            },
+            broadcast: {
+                titulo: 'Avisos', carregar: function () { loadBroadcast(); }, aoVivo: true,
+                sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.'
+            },
+            bau: {
+                titulo: 'Disponibilidade', carregar: function () { loadBau(); }, aoVivo: true,
+                sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.'
+            },
+            approvals: {
+                titulo: 'Aprovações', carregar: function () { loadApprovals(); },
+                sub: 'Propostas esperando revisão, de todos os módulos.'
+            },
+            people: {
+                titulo: 'Pessoas', carregar: function () { loadPeople(); },
+                sub: 'O diretório que decide quem é liderança e em que idioma o app abre.'
+            },
+            audit: {
+                titulo: 'Auditoria', carregar: function () { loadAudit(); },
+                sub: 'Tudo que aconteceu na Central, com filtro e período.'
+            },
+            roles: {
+                titulo: 'Papéis', carregar: function () { loadRoles(); },
+                sub: 'O que cada papel pode fazer. Vale no ato, sem passar por fila.'
+            },
+            access: {
+                titulo: 'Acessos', carregar: function () { loadAccess(); },
+                sub: 'Quem entra na Central e com qual papel.'
+            }
+        };
+
+        var DESTINO_PADRAO = 'home';
+
+        function switchTab(tab) {
+            var destino = DESTINOS[tab] ? tab : DESTINO_PADRAO;
+
+            Object.keys(DESTINOS).forEach(function (t) {
+                var pane = document.getElementById('pane-' + t);
+                if (pane) pane.classList.toggle('hidden', t !== destino);
+            });
+
+            // aria-current é o que um leitor de tela anuncia como "página atual".
+            // A classe sozinha só pintava o item.
+            document.querySelectorAll('.rail-item').forEach(function (b) {
+                if (b.dataset.tab === destino) b.setAttribute('aria-current', 'page');
+                else b.removeAttribute('aria-current');
+            });
+
+            var def = DESTINOS[destino];
+            document.getElementById('page-title').textContent = def.titulo;
+            document.getElementById('page-sub').textContent = def.sub;
+
+            // O endereço acompanha o destino: uma pendência passa a caber num
+            // chat, que antes era "abre a Central, vai em Aprovações, procura".
+            if (location.hash !== '#/' + destino) {
+                history.replaceState(null, '', '#/' + destino);
+            }
+
+            if (destino === 'home') renderHome();
+            else if (def.carregar) def.carregar();
+        }
+
+        // O destino inicial vem do endereço, e cai no padrão quando ele não
+        // aponta para lugar nenhum.
+        function destinoDaURL() {
+            var m = String(location.hash || '').match(/^#\/([a-z]+)/);
+            return (m && DESTINOS[m[1]]) ? m[1] : DESTINO_PADRAO;
+        }
+
+        // Setas navegam entre os destinos VISÍVEIS - incluir os escondidos faria
+        // o foco sumir em itens que a pessoa não pode usar.
+        function itensVisiveisDoTrilho() {
+            return Array.prototype.filter.call(
+                document.querySelectorAll('.rail-item'),
+                function (b) { return !b.classList.contains('hidden'); }
+            );
+        }
+
+        function ligarTecladoDoTrilho() {
+            var rail = document.getElementById('rail');
+            if (!rail) return;
+
+            rail.addEventListener('keydown', function (e) {
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' &&
+                    e.key !== 'Home' && e.key !== 'End') return;
+
+                var itens = itensVisiveisDoTrilho();
+                var atual = itens.indexOf(document.activeElement);
+                if (atual === -1) return;
+
+                e.preventDefault();
+                var proximo = atual;
+                if (e.key === 'ArrowDown') proximo = (atual + 1) % itens.length;
+                if (e.key === 'ArrowUp') proximo = (atual - 1 + itens.length) % itens.length;
+                if (e.key === 'Home') proximo = 0;
+                if (e.key === 'End') proximo = itens.length - 1;
+                itens[proximo].focus();
+            });
+        }
+
+        // Publicação direta declara o ALCANCE antes de acontecer.
+        //
+        // A fricção estava invertida na tela: a ação que muda a produção de todo
+        // mundo disparava num clique, enquanto rejeitar uma proposta — que é
+        // reversível — exigia modal e justificativa. Aqui o passo a mais existe
+        // para que ninguém publique para a operação inteira sem ler para quem.
+        function confirmarPublicacao(quem, oque, aoConfirmar) {
+            // A confirmação é uma CAMADA por cima do editor, não uma troca do
+            // conteúdo do modal. Trocar por innerHTML recriaria os campos: o
+            // texto digitado sobreviveria à ida e volta, mas os handlers ligados
+            // por JS e a referência do botão que disparou a ação apontariam para
+            // nós já descartados.
+            var camada = document.createElement('div');
+            camada.className = 'modal-backdrop';
+            camada.style.zIndex = '300';
+            camada.innerHTML =
+                '<div class="modal" style="max-width:460px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="pub-titulo">' +
+                '<h2 id="pub-titulo">Publicar agora?</h2>' +
+                '<p class="card-sub">Isto vai ao ar imediatamente para <strong>' + esc(quem) +
+                '</strong>. Não passa por revisão.</p>' +
+                '<div class="note warn" style="margin-top:16px">' + esc(oque) + '</div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" id="pub-nao">Voltar e revisar</button>' +
+                '<button class="btn btn-primary" id="pub-sim">Publicar agora</button>' +
+                '</div></div>';
+
+            document.getElementById('modal-root').appendChild(camada);
+
+            function fechar() {
+                if (camada.parentNode) camada.parentNode.removeChild(camada);
+            }
+
+            // Voltar devolve o editor intacto: confirmar não pode custar o
+            // trabalho de quem desistiu no último passo.
+            camada.querySelector('#pub-nao').onclick = fechar;
+            camada.querySelector('#pub-sim').onclick = function () {
+                fechar();
+                aoConfirmar();
+            };
+            camada.querySelector('#pub-sim').focus();
+        }
+
+        // --- Histórico do item ---
+        //
+        // `listContentItemHistory` e `rollbackContentItem` existem no backend
+        // desde o começo e NUNCA foram chamados pela tela. Enquanto isso, o
+        // modal de remoção promete que "nada é apagado — a versão fica
+        // arquivada e pode voltar", sem oferecer caminho nenhum para fazê-la
+        // voltar. Isto é a porta que faltava.
+        function abrirHistorico(itemId, lineage, module) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:680px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="hist-titulo">' +
+                '<h2 id="hist-titulo">Histórico</h2>' +
+                '<div id="hist-corpo"><div class="skeleton"></div><div class="skeleton"></div></div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>' +
+                '</div></div></div>';
+
+            google.script.run
+                .withSuccessHandler(function (versoes) {
+                    renderHistorico(versoes || [], itemId, module);
+                })
+                .withFailureHandler(function (err) {
+                    var host = document.getElementById('hist-corpo');
+                    if (host) host.innerHTML = '<div class="note warn">' + esc(err.message) + '</div>';
+                })
+                .listContentItemHistory(lineage, module);
+        }
+
+        function dataCurta(iso) {
+            if (!iso) return '';
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return String(iso);
+            // Intl no idioma da interface, não formato fixo — mesma regra do
+            // resto do produto (specs/ui-ux/design-system.md).
+            return d.toLocaleString(idiomaAtual() === 'ES' ? 'es' : 'pt-BR',
+                { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderHistorico(versoes, itemId, module) {
+            var host = document.getElementById('hist-corpo');
+            if (!host) return;
+
+            if (!versoes.length) {
+                host.innerHTML = '<div class="state"><span class="material-symbols-rounded" ' +
+                    'aria-hidden="true">history</span><h2>Sem histórico</h2>' +
+                    '<p>Este item ainda está na primeira versão.</p></div>';
+                return;
+            }
+
+            var titulo = document.getElementById('hist-titulo');
+            if (titulo) titulo.textContent = 'Histórico de ' + (versoes[0].label || 'item');
+
+            // Reverter republica sem passar pela fila: é a mesma natureza da
+            // publicação direta, e quem pode fazer é quem aprova.
+            var podeReverter = !MODO_PREVIA && !!(SESSION && SESSION.canApprove);
+
+            host.innerHTML = versoes.map(function (v) {
+                var noAr = v.status === 'live';
+                var acao = (!noAr && podeReverter)
+                    ? '<button class="btn btn-ghost btn-sm" ' +
+                      'onclick="pedirRollback(\'' + v.id + '\',' + v.version + ',\'' + module + '\')">' +
+                      'Voltar para esta versão</button>'
+                    : '';
+
+                return '<div class="item-row">' +
+                    '<div class="item-main">' +
+                    '<div class="item-name">Versão ' + v.version +
+                    (noAr ? ' <span class="estado">no ar</span>' : '') + '</div>' +
+                    '<div class="item-meta">por ' + esc(v.publishedBy) + ' · ' +
+                    esc(dataCurta(v.publishedAt)) + '</div>' +
+                    '<div class="diff-body" style="margin-top:8px;max-height:120px;overflow:auto">' +
+                    esc(prettyValue(v.value)) + '</div>' +
+                    '</div>' + acao + '</div>';
+            }).join('');
+
+            if (!podeReverter) {
+                host.innerHTML = '<div class="note">Seu papel vê o histórico, mas não republica ' +
+                    'uma versão anterior — isso vai ao ar sem passar por revisão.</div>' + host.innerHTML;
+            }
+        }
+
+        function pedirRollback(archivedItemId, versao, module) {
+            confirmarPublicacao(
+                'todos os agentes',
+                'Republica a versão ' + versao + '. A que está no ar agora vai para o histórico.',
+                function () {
+                    google.script.run
+                        .withSuccessHandler(function () {
+                            closeModal();
+                            toast('Versão ' + versao + ' republicada.');
+                            refreshContentLists();
+                        })
+                        .withFailureHandler(function (err) { toast(err.message, true); })
+                        .rollbackContentItem(archivedItemId);
+                }
+            );
+        }
+
+        // Renderiza HTML de conteúdo dentro de um iframe fechado.
+        //
+        // Um modelo de e-mail é HTML escrito por uma pessoa e lido por OUTRA —
+        // e a tela de quem lê roda google.script.run com a autoridade dela.
+        // Injetar esse HTML direto no documento é XSS armazenado entre usuários,
+        // exatamente a classe que docs/LEARNINGS.md registrou no Ctrl+K.
+        //
+        // O sandbox vazio nega tudo: nada de script, nada de mesma origem, nada
+        // de navegação. O que sobra é o que a prévia precisa — ver o texto e a
+        // formatação como o anunciante vai receber.
+        function previaIsolada(html, altura) {
+            return '<iframe class="previa-frame" sandbox="" ' +
+                'style="height:' + (altura || 220) + 'px" ' +
+                'title="Prévia do e-mail" srcdoc="' + esc(String(html || '')) + '"></iframe>';
+        }
+
+        // --- Atividade recente ---
+        //
+        // A mesma barra do TL Dashboard, com a mesma foto de perfil, pelo mesmo
+        // motivo: "quem fez isso?" é a primeira pergunta de quem chega numa
+        // mudança, e um LDAP em texto não responde tão rápido quanto um rosto.
+        //
+        // O que chega aqui JÁ VEM FILTRADO do servidor. A tela não tem lista de
+        // exceções para aplicar: se uma linha apareceu, é porque esta pessoa
+        // pode vê-la. Esconder no cliente deixaria o dado viajar até o navegador
+        // de quem não devia recebê-lo.
+        var LATERAL_ABERTA = false;
+        var LATERAL_PREF = 'cw_central_lateral';
+
+        var ATIVIDADE_VERBO = {
+            draft_create: 'começou um rascunho em',
+            draft_update: 'editou o rascunho de',
+            draft_submit: 'enviou para revisão',
+            draft_discard: 'descartou o rascunho de',
+            removal_request: 'pediu a remoção de',
+            approve: 'aprovou',
+            approve_removal: 'aprovou a remoção de',
+            reject: 'rejeitou',
+            rollback: 'reverteu',
+            publish_direct: 'publicou',
+            publish_direct_update: 'republicou',
+            unpublish_direct: 'tirou do ar',
+            access_change: 'mudou o acesso de',
+            seed: 'semeou',
+            notify_failed: 'não conseguiu avisar sobre',
+            // As ações que nasceram depois da barra lateral. Sem verbo aqui, a
+            // aba de auditoria mostra o nome interno (`role_update`) na cara de
+            // quem está auditando — e a auditoria é justamente a tela onde o
+            // jargão de código não pode aparecer.
+            role_create: 'criou o papel',
+            role_update: 'mudou o papel',
+            audit_export: 'exportou a auditoria para',
+            stale_digest: 'cobrou as propostas paradas',
+            stale_digest_failed: 'falhou ao cobrar as propostas paradas',
+            people_created: 'admitiu',
+            people_updated: 'alterou o cadastro de',
+            people_removed: 'deu baixa em',
+            people_removal_request: 'pediu a baixa de'
+        };
+
+        var ATIVIDADE_MODULO = {
+            links: 'Links', call_script: 'Call Script', note_template: 'Case Notes',
+            email_template: 'E-mails', tips: 'Dicas', broadcast: 'Avisos',
+            bau_availability: 'Disponibilidade', people: 'Pessoas'
+        };
+
+        var FOTO_PADRAO = 'https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg';
+
+        // Mesma função do TLDashboard, com os dois cuidados que ela carrega:
+        // nunca montar src="" (alguns navegadores reinterpretam como pedido à
+        // própria página) e sempre mandar referrerpolicy="no-referrer", porque
+        // o endpoint da foto corporativa é chamado de dentro do iframe do
+        // Apps Script.
+        function fotoDoLdap(ldap) {
+            var url = ldap
+                ? 'https://moma-teams-photos.corp.google.com/photos/' +
+                  encodeURIComponent(ldap) + '?sz=600'
+                : FOTO_PADRAO;
+            return '<img class="atividade-foto" src="' + esc(url) + '" alt="" ' +
+                'referrerpolicy="no-referrer" onerror="this.src=\'' + FOTO_PADRAO + '\'">';
+        }
+
+        function tempoRelativo(iso) {
+            var t = new Date(iso).getTime();
+            if (isNaN(t)) return '';
+
+            var seg = Math.floor((Date.now() - t) / 1000);
+            if (seg < 60) return 'agora mesmo';
+            if (seg < 3600) return 'há ' + Math.floor(seg / 60) + ' min';
+            if (seg < 86400) return 'há ' + Math.floor(seg / 3600) + ' h';
+            if (seg < 604800) return 'há ' + Math.floor(seg / 86400) + ' d';
+            return dataCurta(iso);
+        }
+
+        // O detalhe vale a linha quando é texto de gente: a justificativa da
+        // rejeição, a versão publicada, quantos itens a semeadura criou. Quando
+        // é um ID interno — o rascunho que o `draft_submit` registrou — não diz
+        // nada a ninguém que esteja olhando a barra.
+        function detalheLegivel(detalhe) {
+            var t = String(detalhe == null ? '' : detalhe).trim();
+            if (!t || /^(drf|itm|log|ntc)_/.test(t)) return '';
+            return t;
+        }
+
+        function renderAtividade(linhas) {
+            var host = document.getElementById('atividade-lista');
+            if (!host) return;
+
+            if (!linhas || !linhas.length) {
+                host.innerHTML = '<p class="card-sub">Nada aconteceu por aqui ainda.</p>';
+                return;
+            }
+
+            host.innerHTML = linhas.map(function (a) {
+                var verbo = ATIVIDADE_VERBO[a.action] || a.action;
+                var alvo = a.label || a.key || ATIVIDADE_MODULO[a.module] || a.module || '';
+                var modulo = ATIVIDADE_MODULO[a.module] || '';
+                var detalhe = detalheLegivel(a.detail);
+
+                return '<div class="atividade-linha">' +
+                    fotoDoLdap(a.actor) +
+                    '<div class="atividade-texto">' +
+                    '<span class="atividade-quem">' + esc(a.actor) + '</span> ' +
+                    esc(verbo) +
+                    (alvo ? ' <strong>' + esc(alvo) + '</strong>' : '') +
+                    (detalhe ? '<div class="atividade-detalhe">' + esc(detalhe) + '</div>' : '') +
+                    '<div class="atividade-meta">' +
+                    (modulo ? esc(modulo) + ' · ' : '') + esc(tempoRelativo(a.at)) +
+                    '</div></div></div>';
+            }).join('');
+        }
+
+        function carregarAtividade() {
+            var host = document.getElementById('atividade-lista');
+            if (!host || !SESSION || !SESSION.hasAccess) return;
+
+            google.script.run
+                .withSuccessHandler(renderAtividade)
+                .withFailureHandler(function (err) {
+                    host.innerHTML = '<div class="note warn">' +
+                        esc(err.message || 'Falha ao carregar a atividade.') + '</div>';
+                })
+                .listContentActivity(20);
+        }
+
+        // A barra fechada não custa execução nenhuma: quem não a quer não paga
+        // por ela. Por isso a carga é no ABRIR, e não no boot.
+        function aplicarLateral(aberta) {
+            LATERAL_ABERTA = !!aberta;
+
+            document.getElementById('lateral').classList.toggle('hidden', !LATERAL_ABERTA);
+            document.getElementById('shell').classList.toggle('com-lateral', LATERAL_ABERTA);
+            document.getElementById('btn-lateral')
+                .setAttribute('aria-expanded', LATERAL_ABERTA ? 'true' : 'false');
+
+            if (LATERAL_ABERTA) carregarAtividade();
+        }
+
+        function alternarLateral() {
+            aplicarLateral(!LATERAL_ABERTA);
+            // A escolha sobrevive ao recarregamento. Falha de storage não pode
+            // derrubar a tela: no iframe do Apps Script ele nem sempre existe.
+            try {
+                localStorage.setItem(LATERAL_PREF, LATERAL_ABERTA ? '1' : '0');
+            } catch (e) { }
+        }
+
+        // Aberta por padrão em tela larga: é o estado em que ela ensina que
+        // existe. Em tela estreita ela flutua SOBRE o conteúdo, e abrir sozinha
+        // por cima do trabalho de quem chegou seria atrapalhar, não ajudar.
+        // A escolha explícita, uma vez feita, vale nos dois tamanhos.
+        function lateralPreferida() {
+            var salvo = null;
+            try { salvo = localStorage.getItem(LATERAL_PREF); } catch (e) { }
+            if (salvo !== null) return salvo !== '0';
+            return window.innerWidth > 1180;
+        }
+
+        // --- Hoje ---
+        //
+        // Responde "o que está acontecendo no conteúdo agora", que é a pergunta
+        // que a tela não respondia em lugar nenhum: ela abria numa lista de
+        // links, sem contexto.
+        function renderHome() {
+            var host = document.getElementById('home-content');
+            if (!host || !SESSION) return;
+
+            var cartoes = [];
+
+            if (SESSION.canApprove) {
+                var n = PENDING_TOTAL;
+                cartoes.push(
+                    '<div class="card">' +
+                    '<div class="card-title">Esperando sua revisão</div>' +
+                    '<p class="card-sub">' +
+                    (n ? n + (n === 1 ? ' proposta pendente.' : ' propostas pendentes.')
+                       : 'Nada na fila.') +
+                    '</p>' +
+                    (n ? '<div style="margin-top:14px">' +
+                         '<button class="btn btn-primary btn-sm" onclick="switchTab(\'approvals\')">' +
+                         'Abrir a fila</button></div>' : '') +
+                    '</div>');
+            }
+
+            var meus = MY_DRAFTS.length;
+            cartoes.push(
+                '<div class="card">' +
+                '<div class="card-title">Suas propostas em andamento</div>' +
+                '<p class="card-sub">' +
+                (meus ? meus + (meus === 1 ? ' proposta sua ainda não publicada.'
+                                           : ' propostas suas ainda não publicadas.')
+                      : 'Nenhuma proposta sua em andamento.') +
+                '</p></div>');
+
+            // O que a pessoa pode publicar SEM fila é a informação mais
+            // consequente da tela: é o único caminho que muda a vida do agente
+            // no mesmo instante.
+            var direto = [];
+            if (canPropose('broadcast')) direto.push('avisos');
+            if (canPropose('bau_availability')) direto.push('disponibilidade BAU');
+
+            cartoes.push(
+                '<div class="card">' +
+                '<div class="card-title">Seu papel: ' + esc(SESSION.role) + '</div>' +
+                '<p class="card-sub">' +
+                (direto.length
+                    ? 'Você publica <strong>' + direto.join(' e ') + '</strong> direto, sem revisão. ' +
+                      'O resto do que você edita vira proposta.'
+                    : 'Tudo que você edita vira proposta e passa por revisão.') +
+                '</p></div>');
+
+            host.innerHTML = cartoes.join('');
+        }
+
+        // --- Idioma ---
+        //
+        // Um seletor só, no trilho. Antes eram três selects independentes (call
+        // script, notas, e-mails), posicionados de um jeito em cada painel e sem
+        // nada sincronizando: dava para estar revisando ES num e PT no outro sem
+        // perceber, num produto cuja tradução ES ainda espera revisão nativa.
+        function idiomaAtual() {
+            var sel = document.getElementById('lang-global');
+            return sel ? sel.value : 'PT';
+        }
+
+        function aoTrocarIdioma() {
+            if (!document.getElementById('pane-callscript').classList.contains('hidden')) renderCallScript();
+            if (!document.getElementById('pane-notes').classList.contains('hidden')) renderNoteTemplates();
+            if (!document.getElementById('pane-emails').classList.contains('hidden')) renderEmails();
+        }
+
+        // --- Como o agente vê ---
+        //
+        // O editor mostra CAMPOS; o agente lê TEXTO. Entre os dois cabe o erro
+        // que ninguém pega revisando o formulário: a descrição em espanhol que
+        // ficou em português, o passo do roteiro que só faz sentido com o
+        // anterior na frente, o placeholder que sobrou literal.
+        //
+        // O que esta prévia promete é CONTEÚDO, não pixel: é o texto que o
+        // agente recebe, no idioma dele. Copiar o visual do bundle aqui criaria
+        // uma segunda cópia da aparência, que envelhece sozinha — e uma prévia
+        // desatualizada mente com mais convicção que prévia nenhuma.
+        // Conferir é leitura: aparece para quem enxerga o item, e continua
+        // aparecendo em prévia "ver como" — é justamente lá que se quer olhar.
+        function botaoComoAgente(itemId) {
+            return '<button class="btn btn-ghost btn-sm" onclick="verComoAgente(\'' +
+                esc(itemId) + '\')">Como o agente vê</button>';
+        }
+
+        function verComoAgente(itemId) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:620px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="ag-titulo">' +
+                '<h2 id="ag-titulo">Como o agente vê</h2>' +
+                '<div id="ag-corpo"><div class="skeleton"></div><div class="skeleton"></div></div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>' +
+                '</div></div></div>';
+
+            google.script.run
+                .withSuccessHandler(renderComoAgente)
+                .withFailureHandler(function (err) {
+                    var host = document.getElementById('ag-corpo');
+                    if (host) host.innerHTML = '<div class="note warn">' + esc(err.message) + '</div>';
+                })
+                .getContentItemForPreview(itemId);
+        }
+
+        function renderComoAgente(item) {
+            var host = document.getElementById('ag-corpo');
+            if (!host || !item) return;
+
+            var idioma = idiomaAtual();
+            var v = {};
+            try { v = JSON.parse(item.value || '{}'); } catch (e) { v = {}; }
+
+            var corpo = '';
+
+            if (item.module === 'links') {
+                // O agente lê a descrição no SEU idioma. É o campo que mais
+                // silenciosamente fica em português dentro do bloco ES.
+                var desc = idioma === 'ES' ? (v.desc_es || '') : (v.desc || '');
+                corpo =
+                    '<div class="ag-cartao">' +
+                    '<div class="ag-titulo">' + esc(v.name || item.label) + '</div>' +
+                    '<div class="ag-texto">' + (desc
+                        ? esc(desc)
+                        : '<em class="ag-falta">sem descrição em ' + esc(idioma) +
+                          ' — o agente vê o cartão sem explicação</em>') + '</div>' +
+                    '<div class="ag-meta">abre ' + esc(v.url || '') + '</div>' +
+                    '</div>';
+            } else if (item.module === 'tips') {
+                corpo = '<div class="ag-cartao ag-dica">' +
+                    '<span class="material-symbols-rounded" aria-hidden="true">lightbulb</span> ' +
+                    esc(item.value) + '</div>';
+            } else if (item.module === 'broadcast') {
+                corpo =
+                    '<div class="ag-cartao ag-aviso ag-aviso-' + esc(v.type || 'info') + '">' +
+                    '<div class="ag-titulo">' + esc(v.title || item.label) + '</div>' +
+                    '<div class="ag-texto">' + esc(v.text || '') + '</div>' +
+                    '</div>' + avisoDaJanelaNaPrevia(v);
+            } else if (item.module === 'email_template') {
+                corpo =
+                    '<div class="ag-cartao">' +
+                    '<div class="ag-meta">Assunto</div>' +
+                    '<div class="ag-titulo">' + esc(v.subject || '') + '</div>' +
+                    '</div>' + previaIsolada(v.template || '', 260);
+            } else if (item.module === 'call_script' || item.module === 'note_template') {
+                corpo = '<div class="ag-cartao"><pre class="ag-pre">' +
+                    esc(prettyValue(item.value)) + '</pre></div>';
+            } else {
+                corpo = '<div class="ag-cartao"><pre class="ag-pre">' +
+                    esc(prettyValue(item.value)) + '</pre></div>';
+            }
+
+            host.innerHTML =
+                '<p class="card-sub">Conteúdo que o agente recebe, no idioma <strong>' +
+                esc(idioma) + '</strong>. O visual é o desta tela, não o do app — ' +
+                'o que se confere aqui é o texto.</p>' + corpo;
+        }
+
+        // Um aviso agendado ou vencido não chega ao agente hoje. A prévia tem
+        // que dizer isso, senão ela mostra um cartão que ninguém está vendo.
+        function avisoDaJanelaNaPrevia(v) {
+            var agora = agoraLocalISO();
+            if (v.startsAt && agora < v.startsAt) {
+                return '<div class="note warn">Ainda não. Este aviso só aparece a partir de ' +
+                    esc(bcFormatDate(v.startsAt)) + '.</div>';
+            }
+            if (v.endsAt && agora >= v.endsAt) {
+                return '<div class="note warn">Já saiu do ar em ' +
+                    esc(bcFormatDate(v.endsAt)) + '. Nenhum agente vê isto agora.</div>';
+            }
+            return '';
+        }
+
+        // --- Busca global (Ctrl+K) ---
+        //
+        // A Central tem dez destinos e centenas de itens. Achar "aquele link do
+        // Ads" custava lembrar em qual aba ele mora e rolar a lista — e quem
+        // não lembra desiste e cria um item duplicado, que é o pior desfecho.
+        //
+        // TUDO que entra aqui passa por esc(): o resultado mistura texto
+        // escrito por outras pessoas com marcação da tela, e é exatamente a
+        // classe de falha que docs/LEARNINGS.md registrou no Ctrl+K do bundle.
+        var BUSCA_ABERTA = false;
+        var BUSCA_TIMER = null;
+        var BUSCA_RESULTADOS = [];
+        var BUSCA_FOCO = 0;
+
+        // Um destino é resultado como qualquer outro: "aprovações" é o que
+        // muita gente vai digitar, e mandar procurar no trilho seria mandar
+        // fazer à mão o que a busca acabou de oferecer.
+        function destinosQueCasam(termo) {
+            var t = semAcentoNaTela(termo);
+            if (!t) return [];
+
+            return Object.keys(DESTINOS).filter(function (d) {
+                var botao = document.getElementById('tab-' + d);
+                // Só o que a pessoa realmente enxerga no trilho.
+                if (botao && botao.classList.contains('hidden')) return false;
+                return semAcentoNaTela(DESTINOS[d].titulo).indexOf(t) !== -1;
+            }).map(function (d) {
+                return { tipo: 'destino', destino: d, label: DESTINOS[d].titulo,
+                         snippet: DESTINOS[d].sub };
+            });
+        }
+
+        var DIACRITICOS_NA_TELA = new RegExp(
+            '[' + String.fromCharCode(768) + '-' + String.fromCharCode(879) + ']', 'g');
+
+        function semAcentoNaTela(texto) {
+            return String(texto == null ? '' : texto)
+                .normalize('NFD').replace(DIACRITICOS_NA_TELA, '').toLowerCase().trim();
+        }
+
+        function abrirBusca() {
+            if (BUSCA_ABERTA) return;
+            BUSCA_ABERTA = true;
+            BUSCA_RESULTADOS = [];
+            BUSCA_FOCO = 0;
+
+            document.getElementById('busca-root').innerHTML =
+                '<div class="busca-backdrop" onclick="if(event.target===this)fecharBusca()">' +
+                '<div class="busca-caixa" role="dialog" aria-modal="true" aria-label="Buscar na Central">' +
+                '<div class="busca-campo">' +
+                '<span class="material-symbols-rounded" aria-hidden="true">search</span>' +
+                '<input type="text" id="busca-input" autocomplete="off" ' +
+                'placeholder="Buscar item, módulo ou destino…" ' +
+                'aria-controls="busca-lista" aria-autocomplete="list">' +
+                '<kbd>Esc</kbd>' +
+                '</div>' +
+                '<div class="busca-lista" id="busca-lista" role="listbox"></div>' +
+                '</div></div>';
+
+            var campo = document.getElementById('busca-input');
+            campo.addEventListener('input', function () { agendarBusca(campo.value); });
+            campo.addEventListener('keydown', teclaNaBusca);
+            campo.focus();
+
+            renderBusca([], '');
+        }
+
+        function fecharBusca() {
+            BUSCA_ABERTA = false;
+            clearTimeout(BUSCA_TIMER);
+            document.getElementById('busca-root').innerHTML = '';
+        }
+
+        /**
+         * Duas velocidades, de propósito.
+         *
+         * Os destinos são calculados na TECLA: eles já estão na memória da
+         * tela, e esperar a rede para mostrar "Aprovações" faria a busca
+         * parecer lenta por causa da parte que nem precisava de rede.
+         *
+         * O conteúdo espera a pessoa parar de digitar. Sem o atraso, cada tecla
+         * vira uma execução do Apps Script — e o teto de execuções simultâneas é
+         * o recurso escasso deste backend (ADR-0008).
+         */
+        function agendarBusca(termo) {
+            var t = String(termo || '').trim();
+
+            BUSCA_RESULTADOS = destinosQueCasam(t);
+            BUSCA_FOCO = 0;
+            renderBusca(BUSCA_RESULTADOS, t, t.length >= 2);
+
+            clearTimeout(BUSCA_TIMER);
+            if (t.length < 2) return;
+            BUSCA_TIMER = setTimeout(function () { buscarAgora(t); }, 220);
+        }
+
+        function buscarAgora(termo) {
+            var t = String(termo || '').trim();
+            var locais = destinosQueCasam(t);
+
+            google.script.run
+                .withSuccessHandler(function (itens) {
+                    if (!BUSCA_ABERTA) return;
+                    var doServidor = (itens || []).map(function (it) {
+                        return { tipo: 'item', destino: destinoDoModulo(it.module),
+                                 module: it.module, id: it.id, label: it.label,
+                                 snippet: it.snippet };
+                    });
+                    BUSCA_RESULTADOS = locais.concat(doServidor);
+                    BUSCA_FOCO = 0;
+                    renderBusca(BUSCA_RESULTADOS, t);
+                })
+                .withFailureHandler(function (err) {
+                    if (BUSCA_ABERTA) renderBuscaErro(err.message);
+                })
+                .searchContentItems(t);
+        }
+
+        // Módulo do servidor -> destino do trilho. São nomes diferentes porque
+        // o trilho fala com quem usa e o módulo fala com o banco.
+        var DESTINO_DO_MODULO = {
+            links: 'links', call_script: 'callscript', note_template: 'notes',
+            email_template: 'emails', tips: 'tips', broadcast: 'broadcast',
+            bau_availability: 'bau', people: 'people'
+        };
+
+        function destinoDoModulo(module) {
+            return DESTINO_DO_MODULO[module] || 'home';
+        }
+
+        function renderBusca(lista, termo, carregando) {
+            var host = document.getElementById('busca-lista');
+            if (!host) return;
+
+            if (!lista.length) {
+                host.innerHTML = '<p class="busca-vazio">' +
+                    (termo.length < 2
+                        ? 'Digite ao menos duas letras.'
+                        : (carregando ? 'Procurando…' : 'Nada encontrado para “' + esc(termo) + '”.')) +
+                    '</p>';
+                return;
+            }
+
+            host.innerHTML = lista.map(function (r, i) {
+                var onde = r.tipo === 'destino'
+                    ? 'Ir para'
+                    : (ATIVIDADE_MODULO[r.module] || r.module);
+
+                return '<button class="busca-item' + (i === BUSCA_FOCO ? ' focado' : '') + '" ' +
+                    'role="option" aria-selected="' + (i === BUSCA_FOCO) + '" ' +
+                    'data-indice="' + i + '" onclick="escolherBusca(' + i + ')">' +
+                    '<span class="busca-onde">' + esc(onde) + '</span>' +
+                    '<span class="busca-nome">' + esc(r.label) + '</span>' +
+                    (r.snippet ? '<span class="busca-trecho">' + esc(r.snippet) + '</span>' : '') +
+                    '</button>';
+            }).join('') + (carregando ? '<p class="busca-vazio">Procurando no conteúdo…</p>' : '');
+        }
+
+        function renderBuscaErro(msg) {
+            var host = document.getElementById('busca-lista');
+            if (host) host.innerHTML = '<p class="busca-vazio">' + esc(msg) + '</p>';
+        }
+
+        function moverFoco(delta) {
+            if (!BUSCA_RESULTADOS.length) return;
+            BUSCA_FOCO = (BUSCA_FOCO + delta + BUSCA_RESULTADOS.length) % BUSCA_RESULTADOS.length;
+
+            var itens = document.querySelectorAll('.busca-item');
+            for (var i = 0; i < itens.length; i++) {
+                itens[i].classList.toggle('focado', i === BUSCA_FOCO);
+                itens[i].setAttribute('aria-selected', i === BUSCA_FOCO ? 'true' : 'false');
+            }
+            if (itens[BUSCA_FOCO]) itens[BUSCA_FOCO].scrollIntoView({ block: 'nearest' });
+        }
+
+        function teclaNaBusca(e) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); moverFoco(1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); moverFoco(-1); }
+            else if (e.key === 'Enter') { e.preventDefault(); escolherBusca(BUSCA_FOCO); }
+        }
+
+        function escolherBusca(indice) {
+            var r = BUSCA_RESULTADOS[indice];
+            if (!r) return;
+            fecharBusca();
+            switchTab(r.destino);
+            if (r.tipo === 'item') piscarItem(r.id);
+        }
+
+        // O destino abre e a lista carrega em seguida: o pisca espera o item
+        // existir no DOM em vez de procurar por um nó que ainda não chegou.
+        function piscarItem(itemId, tentativas) {
+            var restantes = (tentativas === undefined) ? 12 : tentativas;
+            var alvo = document.querySelector('[data-item="' + itemId + '"]');
+
+            if (!alvo) {
+                if (restantes > 0) setTimeout(function () { piscarItem(itemId, restantes - 1); }, 150);
+                return;
+            }
+
+            alvo.classList.add('flash-applied');
+            alvo.scrollIntoView({ block: 'center' });
+            setTimeout(function () { alvo.classList.remove('flash-applied'); }, 1200);
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+                e.preventDefault();
+                if (BUSCA_ABERTA) fecharBusca(); else abrirBusca();
+            } else if (e.key === 'Escape' && BUSCA_ABERTA) {
+                fecharBusca();
+            }
+        });
+
+        // --- Ver como ---
+        //
+        // Quem edita a matriz de papéis precisa poder CONFERIR o que configurou.
+        // Ler uma linha de checkboxes e imaginar a tela resultante é exatamente
+        // o tipo de tradução em que se erra sem perceber — e o erro só aparece
+        // quando alguém reclama que não consegue trabalhar.
+        //
+        // A prévia é do SERVIDOR e nunca concede: `previewContentSession()`
+        // intersecta o papel escolhido com o de quem pergunta. Prévia que
+        // concede é escalada com outro nome.
+        var SESSION_REAL = null;
+        var MODO_PREVIA = false;
+
+        // Em prévia a tela fica de leitura. Quem está "vendo como" não está
+        // decidindo — e um clique que publica no meio de uma conferência é a
+        // pior surpresa possível.
+        function podeEscrever(module) {
+            return !MODO_PREVIA && canPropose(module);
+        }
+
+        function aplicarPermissoes(s) {
+            document.getElementById('user-ldap').textContent = s.ldap || '';
+
+            var badge = document.getElementById('user-role');
+            badge.textContent = s.role;
+            badge.classList.remove('hidden');
+
+            document.getElementById('tab-access').classList.toggle('hidden', !s.canManageAccess);
+            // A auditoria segue a prévia: quem "vê como" um papel que audita
+            // está conferindo a tela dele, e olhar o histórico é leitura.
+            document.getElementById('tab-audit').classList.toggle('hidden', !s.canViewAudit);
+            // A aba de papéis some na prévia: editar permissão enquanto se
+            // finge ser outra pessoa é como se perde a noção de quem fez o quê.
+            document.getElementById('tab-roles').classList.toggle('hidden',
+                !s.canManageRoles || MODO_PREVIA);
+            // Pessoas nem aparece para QA/WFM: no servidor, a leitura do
+            // diretório é tão restrita quanto a escrita.
+            document.getElementById('tab-people').classList.toggle('hidden', !canPropose('people'));
+
+            // A caixa de aviso de alguns módulos nasce escondida: o regime agora
+            // é dito pelo trilho, e prosa repetida é ruído. A exceção é
+            // justamente esta — "você não pode editar isto" é informação que só
+            // existe aqui, então tem que aparecer.
+            function explicarSemPermissao(idNota, texto, escondido) {
+                var nota = document.getElementById(idNota);
+                if (escondido) { nota.classList.add('hidden'); return; }
+                nota.textContent = texto;
+                nota.classList.remove('hidden');
+            }
+
+            function gate(module, idBotao, idNota, texto) {
+                if (idBotao) {
+                    document.getElementById(idBotao).classList.toggle('hidden', !podeEscrever(module));
+                }
+                explicarSemPermissao(idNota,
+                    'Seu papel (' + s.role + ') ' + texto, canPropose(module));
+            }
+
+            gate('links', 'links-new-btn', 'links-note',
+                'vê os links, mas não propõe alterações neste módulo.');
+            gate('call_script', 'cs-new-btn', 'cs-note',
+                'vê o roteiro, mas não propõe alterações neste módulo.');
+            gate('tips', 'tp-new-btn', 'tp-note',
+                'vê as dicas, mas não propõe alterações neste módulo.');
+            gate('email_template', null, 'em-note',
+                'vê os modelos, mas não propõe alterações neste módulo.');
+            gate('note_template', 'nt-new-btn', 'nt-note',
+                'vê os modelos de nota, mas não propõe alterações neste módulo.');
+            // Avisos e disponibilidade seguem a mesma regra do resto da tela:
+            // quem tem acesso enxerga o que está no ar, e só quem tem o papel vê
+            // o caminho de publicar. É o WFM que separa os dois na prática —
+            // publica disponibilidade, não avisos.
+            gate('broadcast', 'bc-new-btn', 'bc-note',
+                'vê os avisos no ar, mas não publica neste módulo.');
+            gate('bau_availability', null, 'bau-note',
+                'vê a disponibilidade no ar, mas não publica neste módulo.');
+            document.getElementById('bau-editor').classList
+                .toggle('hidden', !podeEscrever('bau_availability'));
+        }
+
+        function abrirVerComo() {
+            google.script.run
+                .withSuccessHandler(function (r) { renderVerComo(r.roles || []); })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .listContentRoles();
+        }
+
+        function renderVerComo(papeis) {
+            var opcoes = papeis.map(function (p) {
+                return '<option value="' + esc(p.role) + '">' + esc(p.role) + '</option>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:440px" role="dialog" aria-modal="true"' +
+                ' aria-labelledby="vc-titulo">' +
+                '<h2 id="vc-titulo">Ver a Central como</h2>' +
+                '<p class="card-sub">A tela passa a mostrar o que esse papel mostraria. ' +
+                'Fica só de leitura — conferir não é decidir.</p>' +
+                '<label class="fld" for="vc-papel">Papel</label>' +
+                '<select id="vc-papel">' + opcoes + '</select>' +
+                '<label class="fld" for="vc-idioma">Idioma do conteúdo</label>' +
+                '<select id="vc-idioma">' +
+                '<option value="PT">Português</option><option value="ES">Español</option>' +
+                '</select>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="vc-go">Ver assim</button>' +
+                '</div></div></div>';
+
+            document.getElementById('vc-idioma').value = idiomaAtual();
+            document.getElementById('vc-go').onclick = function () {
+                var papel = document.getElementById('vc-papel').value;
+                var idioma = document.getElementById('vc-idioma').value;
+                closeModal();
+                entrarNaPrevia(papel, idioma);
+            };
+        }
+
+        function entrarNaPrevia(papel, idioma) {
+            google.script.run
+                .withSuccessHandler(function (s) {
+                    SESSION = s;
+                    MODO_PREVIA = true;
+                    document.getElementById('lang-global').value = idioma;
+                    aplicarPermissoes(s);
+                    renderFaixaDePrevia(s);
+                    switchTab(DESTINOS[destinoDaURL()] ? destinoDaURL() : 'home');
+                    refreshContentLists();
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .previewContentSession(papel);
+        }
+
+        function sairDaPrevia() {
+            SESSION = SESSION_REAL;
+            MODO_PREVIA = false;
+            aplicarPermissoes(SESSION);
+            renderFaixaDePrevia(null);
+            switchTab(destinoDaURL());
+            refreshContentLists();
+        }
+
+        function renderFaixaDePrevia(s) {
+            var faixa = document.getElementById('faixa-previa');
+            faixa.classList.toggle('hidden', !s);
+            document.body.classList.toggle('em-previa', !!s);
+            if (!s) return;
+
+            // O que o papel pode e você não fica DITO. Uma prévia calada sobre o
+            // que omitiu faz concluir que o papel não pode algo que ele pode.
+            var alem = (s.beyond || []).length
+                ? ' <span class="faixa-nota">' + s.beyond.length +
+                  (s.beyond.length === 1 ? ' permissão desse papel não aparece' :
+                                           ' permissões desse papel não aparecem') +
+                  ' porque você mesmo não a tem.</span>'
+                : '';
+
+            faixa.innerHTML =
+                '<span class="material-symbols-rounded" aria-hidden="true">visibility</span>' +
+                '<span>Vendo a Central como <strong>' + esc(s.role) + '</strong>. ' +
+                'Somente leitura.' + alem + '</span>' +
+                '<button class="btn btn-ghost btn-sm" onclick="sairDaPrevia()">Voltar a ser ' +
+                esc(s.realRole) + '</button>';
+        }
+
+        // --- Boot ---
+        function boot() {
+            google.script.run
+                .withSuccessHandler(function (s) {
+                    SESSION = s;
+                    SESSION_REAL = s;
+                    document.getElementById('boot-state').classList.add('hidden');
+                    document.getElementById('user-ldap').textContent = s.ldap || '';
+
+                    if (!s.hasAccess) {
+                        document.getElementById('denied-state').classList.remove('hidden');
+                        return;
+                    }
+
+                    document.getElementById('app').classList.remove('hidden');
+                    aplicarPermissoes(s);
+
+                    if (s.canManageRoles) {
+                        document.getElementById('btn-ver-como').classList.remove('hidden');
+                    }
+
+                    document.getElementById('rail').classList.remove('hidden');
+                    document.getElementById('shell').classList.remove('sem-trilho');
+                    ligarTecladoDoTrilho();
+
+                    document.getElementById('btn-busca').classList.remove('hidden');
+                    document.getElementById('btn-lateral').classList.remove('hidden');
+                    aplicarLateral(lateralPreferida());
+
+                    // Links continua sendo carregado no boot porque a home e a
+                    // reconciliação de propostas dependem dele.
+                    loadLinks();
+                    if (s.canApprove) loadPendingCount();
+
+                    switchTab(destinoDaURL());
+
+                    // Voltar/avançar do navegador passam a funcionar.
+                    window.addEventListener('hashchange', function () {
+                        switchTab(destinoDaURL());
+                    });
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('boot-state').classList.add('hidden');
+                    document.getElementById('denied-state').classList.remove('hidden');
+                    toast(err.message || 'Falha ao verificar acesso.', true);
+                })
+                .getContentSession();
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // O bridge do google.script.run nem sempre está pronto no window.onload -
+        // mesma lição que o TLDashboard aprendeu ao vivo com a primeira chamada.
+        //
+        // Registrar aqui e não no fim da última parte é a ÚNICA coisa que mudou
+        // de lugar nesta divisão: as duas linhas pertencem ao boot, que mora
+        // neste arquivo. É seguro porque ambas são só registro de listener, e
+        // todo script embutido roda antes do DOMContentLoaded disparar.
+        document.addEventListener('DOMContentLoaded', boot);
+</script>

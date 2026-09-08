@@ -14,6 +14,7 @@ import { getLanguage } from "../shared/i18n.js";
 
 const FIELD_ES = {
     advName: { label: 'Nombre del Anunciante', placeholder: 'Nombre del Anunciante' },
+    advEmail: { label: 'Email del Anunciante', placeholder: 'email@ejemplo.com', error: 'Formato de correo inválido' },
     cid: { label: 'CID', placeholder: '000-000-0000', tooltip: 'Usa el formato 000-000-0000 o 10 dígitos', error: 'Formato de CID incorrecto' },
     amName: { label: 'Account Manager (AM)', placeholder: 'Nombre del AM' },
     website: { label: 'Website', placeholder: 'https://www.ejemplo.com' },
@@ -27,6 +28,7 @@ const FIELD_ES = {
     availability_1: { label: 'Opción 1 (Prioridad)' },
     availability_2: { label: 'Opción 2 (Opcional)' },
     availability_3: { label: 'Opción 3 (Opcional)' },
+    suggestDiscard: { label: '¿El caso debe ser descartado por el TL?' },
     caseId: { label: 'Case ID', placeholder: 'Case ID' },
     language: { label: 'Idioma', placeholder: 'Idioma' },
     description_descarte: { label: 'Descripción', placeholder: 'Describe el motivo del descarte...' },
@@ -50,6 +52,8 @@ const OPTION_TEXT_ES = {
     "Apenas o AM presente": "Solo el AM presente",
     "Estouro de tempo para conclusão": "Tiempo excedido para la conclusión",
     "Geração de caso BAU (Reagendamento)": "Generación de caso BAU (Reprogramación)",
+    "Sim": "Sí",
+    "Não": "No",
 };
 
 function fieldKey(fieldConfig) {

@@ -12,6 +12,179 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Campo referenciado em todo lugar menos no `FORM_CONFIG`: procure pelo nome antes de assumir bug de transporte
+
+**Why**: o email do anunciante chegava sempre vazio no `BAU_form_data`. A
+suspeita óbvia era transporte (JSONP perdendo o campo) ou raspagem do CRM
+falhando sem fallback. Só que `advEmail` já aparecia em **quatro** lugares do
+`bau-form-assistant.js` — o `keyMap` do fluxo de edição, o card de detalhes, e
+duas linhas de fallback no submit (`if (data.advEmail) ... else if
+(context.email) ...`) — só que **nenhum deles era a declaração do campo**.
+O `FORM_CONFIG` (`bau-form-config.js`) nunca tinha um field com
+`id: 'advEmail'`. Sem input visível, o valor dependia 100% da raspagem
+silenciosa do DOM (`captureClientEmail`), sem chance de o agente ver ou
+corrigir quando ela falhava.
+
+O sinal que devia ter apontado direto pro problema: várias referências
+"órfãs" ao mesmo nome de campo em código de leitura/edição/fallback, sem
+nenhuma no lado que declara o campo de origem. Isso é o padrão de "alguém
+começou a integrar o campo e esqueceu de terminar", não de bug de
+transporte.
+
+**When to apply**: antes de investigar uma pipeline de dados (payload → rede →
+backend → planilha) atrás de um campo que "sempre chega vazio", `grep` o nome
+do campo no módulo do formulário inteiro. Se ele aparece em `keyMap`, em
+telas de detalhe ou em fallbacks de submit mas não em `FORM_CONFIG` (ou
+equivalente — a lista de campos que de fato vira `<input>`), o campo nunca
+teve UI; não é bug de transporte, é campo que falta declarar.
+
+---
+
+## `<img onerror>` faz asserção de `src` mentir: atenda o endpoint no teste
+
+**Why**: a barra "Atividade recente" monta a foto de perfil com
+`onerror="this.src='<ícone genérico>'"`, o mesmo padrão do TL Dashboard. O smoke
+afirmava que o `src` da imagem contém o LDAP de quem fez a ação — e recebeu a URL
+do ícone genérico. O endpoint da foto corporativa não responde do container, o
+`onerror` disparou, e o atributo que o teste leu já não era o que o código
+escreveu. A asserção não estava errada; ela estava olhando para depois do
+fallback. Se o valor esperado por acaso batesse com o do fallback, o teste
+passaria sem nunca ter exercitado a montagem da URL.
+
+O conserto é atender o pedido em vez de deixá-lo falhar:
+
+```js
+await page.route('**moma-teams-photos.corp.google.com/**', (r) => r.fulfill({
+    status: 200, contentType: 'image/png', body: pngDe1x1,
+}));
+```
+
+**When to apply**: sempre que um teste de navegador ler um atributo que o próprio
+elemento reescreve em caso de falha — `img[onerror]`, `<source>` com fallback,
+`<video>` com poster. Se a rede do ambiente de teste não serve aquele host,
+`route().fulfill()` antes de asserir; `route().abort()` só quando o que se quer
+provar é justamente o fallback.
+
+---
+
+## Classe composta dentro de media query: repita a classe, senão o breakpoint perde
+
+**Why**: a Central ganhou `.shell.com-lateral` para abrir a terceira coluna. O
+breakpoint de celular já existia e mexia em `.shell` — e passou a não valer mais:
+`.shell.com-lateral` tem especificidade 0,2,0 contra 0,1,0 de `.shell`, então
+ganha mesmo estando numa media query anterior no arquivo (media query não soma
+especificidade). O sintoma seria o trilho voltando a ser uma coluna fixa de 248px
+no celular, com o conteúdo espremido — e sem erro nenhum, porque CSS não reclama.
+
+```css
+@media (max-width: 900px) {
+    .shell,
+    .shell.com-lateral { grid-template-columns: minmax(0, 1fr); }
+}
+```
+
+**When to apply**: ao acrescentar uma classe MODIFICADORA a um elemento que já
+tem regras dentro de media query. Antes de commitar, procure o seletor base nos
+breakpoints (`grep -n "\.shell" no arquivo de estilo`) e repita o modificador em
+cada um que precisa continuar vencendo.
+
+---
+
+## Ao restaurar um caminho que funcionava, transplante o texto original — não reescreva
+
+**Why**: depois que a migração para a UI nova do Connect Cases apagou o fluxo da
+UI antiga, a restauração foi feita **reescrevendo** o que aquele fluxo fazia:
+`esperarPor()` no lugar dos `esperar(800)` fixos, `estaVisivel()` no ícone,
+clique no `.closest('material-button')` em vez do próprio `<i>`, `textContent` no
+lugar de `innerText`. Cada uma dessas trocas era defensável isoladamente — e o
+conjunto continuou falhando na UI antiga, custando um segundo ciclo inteiro de
+correção, PR e report do agente. O erro de raciocínio foi tratar "código antigo"
+como rascunho a ser melhorado, quando ele era a **única versão com prova de
+funcionamento** naquela tela: rodou meses em produção sem reclamação. Sem acesso
+à UI antiga para testar, cada "melhoria" é uma hipótese não testada disfarçada de
+boa prática, e todas entram de uma vez.
+
+A forma correta é `git show <commit-anterior>:<arquivo>`, copiar o bloco como
+está, adaptar só o mínimo mecânico para ele virar função (`emailAberto = true`
+→ `return true`), e deixar um comentário no código dizendo para não "melhorá-lo".
+Dá para provar o transplante comparando as linhas de lógica com as do commit
+original antes de commitar.
+
+**When to apply**: sempre que a correção for "voltar a fazer o que fazíamos
+antes" — regressão, rollback parcial, restauração de fallback. Vale especialmente
+quando o ambiente onde aquele código roda **não é testável aqui** (a UI antiga do
+CRM, um cliente de e-mail específico, uma versão de navegador). Se você não
+consegue rodar, não consegue validar a melhoria — então não faça a melhoria.
+
+---
+## Rode a suíte INTEIRA antes de abrir o PR, não a lista que você lembra
+
+**Why**: na fase 1 da Central (PR #372), as escritas de linha passaram de
+`setValue` célula a célula para `setValues` em bloco. Eu estendi o dublê de
+planilha do `test-content-api.js` — que era o harness em que eu estava
+trabalhando — e rodei uma lista de suítes escrita de cabeça. `test:people` não
+estava nessa lista. Ele quebrou com `sheet.getRange(...).setValues is not a
+function` em **15 testes**, e o PR foi aberto e mergeado afirmando que as
+suítes estavam verdes. Era verdade sobre o que eu rodei, e falso sobre o
+projeto.
+
+O mesmo descuido apareceu de outra forma no PR #374: dividir o
+`ContentDashboard.html` em partes com `include()` quebrou o `smoke:people`, que
+lê a mesma tela do disco e não sabia resolver os includes. Dois PRs, uma causa:
+mudei uma interface compartilhada e só ajustei o consumidor que estava na minha
+frente.
+
+O que fecha a classe inteira: antes do PR, `grep` por quem consome o que você
+mudou.
+
+```bash
+grep -ln "class FakeRange" scripts/*         # quem dubla a planilha
+grep -ln "ContentDashboard.html" scripts/*   # quem lê a tela do disco
+for f in $(node -e "console.log(Object.keys(require('./package.json').scripts).filter(s=>/^(test|smoke):/.test(s)).join(' '))"); do
+  npm run $f >/dev/null 2>&1 && echo "ok   $f" || echo "FALHA $f"
+done
+```
+
+**When to apply**: sempre que mudar (a) a forma como o código chama uma API do
+Apps Script que os harnesses dublam — `getRange`, `setValues`, `LockService`,
+`CacheService` —, ou (b) a estrutura de um arquivo que um teste lê do disco.
+Nos dois casos existe mais de um consumidor, e o segundo nunca é o que está
+aberto no editor. Vale também para a leitura do resultado: um laço que imprime
+"ok" ou um rótulo genérico esconde a diferença entre "falhou" e "não existe" —
+foi assim que eu li `test:people` como script inexistente por um instante.
+
+## Automação de DOM do CRM: o caminho novo entra na frente, o antigo nunca sai
+
+**Why**: o Connect Cases escondeu o botão de e-mail atrás de um speed dial novo
+(`#action-bar-speed-dial-container` → `material-button.compose`) e a FASE 1 do
+`openAndClearEmail` foi reescrita para segui-lo. Só que a reescrita **removeu** o
+caminho da UI antiga (`material-fab-speed-dial` → `.trigger`) em vez de mantê-lo
+atrás do novo. Parecia seguro porque sobrou um plano B — o clique no envelope
+solto na action bar —, mas esse plano B exige o ícone já visível
+(`offsetParent !== null`), e na UI antiga ele está escondido dentro do menu
+fechado. Resultado: agente na UI antiga sem nenhuma rota, com o toast genérico de
+"botão não encontrado" como única pista. O custo foi alto porque a atualização do
+CRM chega **em ondas**: no dia do merge parte da operação já estava na UI nova e
+parte não, o bug foi para produção via `main`, e o modal de novidades da v6.0.1
+tinha acabado de anunciar que o módulo de e-mails estava corrigido — para quem
+estava na UI antiga, a mensagem era o oposto do que a tela fazia.
+
+A forma correta é uma cadeia: cada rota checa o próprio markup antes de agir e
+devolve `false` sem clicar em nada quando não reconhece a tela, e a rota nova só
+entra **na frente** das que já existiam. No CRM antigo a rota nova custa ~0ms
+(seletor por id não casa), então não há preço em mantê-las todas de pé. O log
+deve dizer qual rota abriu — é o que transforma o próximo report de "quebrou" em
+"quebrou na rota X".
+
+**When to apply**: sempre que uma atualização do CRM mudar o markup que o
+Case Wizard clica ou raspa. Antes de apagar um seletor antigo, pergunte "existe
+hoje um agente vendo a tela que este seletor atende?" — enquanto a resposta não
+for um "não" comprovado, o caminho antigo continua como elo da cadeia. Vale
+também para a leitura do `specs/workflow/scraping-rules.md`: a regra da falha
+silenciosa só protege quem tem outra rota para tentar.
+
+---
+
 ## Antes de mexer no TL Dashboard, confira o código contra `specs/`
 
 **Why**: a fila do TL saía do caso mais novo pro mais antigo porque
