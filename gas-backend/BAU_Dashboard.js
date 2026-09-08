@@ -84,7 +84,12 @@ function resolveProcessedAction(previousStatus, newStatus) {
   return newStatus;
 }
 
-function updateBAUCaseStatus(id, newStatus) {
+// `childCaseId` é o número do caso BAU que o TL acabou de gerar no CRM. Só faz
+// sentido — e só é exigido — quando a decisão é aprovar uma criação; as outras
+// três (rejeitar criação, confirmar descarte, manter ativo) não geram caso.
+//
+// A exigência é validada AQUI, e não só no modal: a tela nunca é a fronteira.
+function updateBAUCaseStatus(id, newStatus, childCaseId) {
   assertCallerIsOverhead();
 
   const lock = LockService.getScriptLock();
@@ -100,11 +105,26 @@ function updateBAUCaseStatus(id, newStatus) {
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]) === String(id)) {
         const previousStatus = String(data[i][3] || "");
+        const processedAction = resolveProcessedAction(previousStatus, newStatus);
+        const childId = String(childCaseId || "").trim();
+
+        // Antes de gravar qualquer coisa: aprovação sem o ID do caso gerado é
+        // recusada. Deixar passar produziria exatamente o buraco que esta
+        // funcionalidade existe pra fechar - um caso aprovado que ninguém sabe
+        // onde foi parar.
+        if (processedAction === "APPROVED_CREATION" && !childId) {
+          throw new Error("Informe o ID do caso BAU gerado para aprovar esta criação.");
+        }
+
         sheet.getRange(i + 1, 4).setValue(newStatus);
 
         const tlEmail = Session.getActiveUser().getEmail();
-        const processedAction = resolveProcessedAction(previousStatus, newStatus);
         sheet.getRange(i + 1, 19, 1, 3).setValues([[tlEmail, new Date(), processedAction]]);
+
+        if (childId) {
+          ensureBAUChildCaseColumn(sheet);
+          sheet.getRange(i + 1, BAU_CHILD_CASE_COL).setValue(childId);
+        }
 
         const rowData = data[i];
         const emailData = {
@@ -114,7 +134,8 @@ function updateBAUCaseStatus(id, newStatus) {
           availability: rowData[17] instanceof Date ? rowData[17].toISOString() : String(rowData[17] || ""),
           cid: rowData[5],
           taskType: rowData[15],
-          reason: rowData[14]
+          reason: rowData[14],
+          childCaseId: childId
         };
         const agentEmail = rowData[2];
 
@@ -152,7 +173,7 @@ function updateBAUCaseStatus(id, newStatus) {
           console.warn("Aviso: Falha ao enviar email de confirmação de status", e);
         }
 
-        return { success: true, newStatus: newStatus, emailSent: emailSent };
+        return { success: true, newStatus: newStatus, emailSent: emailSent, childCaseId: childId };
       }
     }
     throw new Error("Caso não encontrado.");
@@ -246,6 +267,7 @@ function getWeeklyHistory(days) {
     cases.push({
       id: String(row[0] || ""),
       caseId: String(row[4] || ""),
+      childCaseId: String(row[23] || ""),
       agentEmail: agentEmail,
       task: String(row[15] || ""),
       action: action,

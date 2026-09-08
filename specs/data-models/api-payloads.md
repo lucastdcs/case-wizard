@@ -51,6 +51,25 @@ Ctrl+K). Esquema da aba em `db-schema.md`.
 - Sem `user`, ambas as ops falham. Sem e-mail capturado, o cliente opera só com
   o cache local e avisa que salvou apenas no navegador.
 
+## Decisão do TL (`updateBAUCaseStatus`)
+
+Por `google.script.run`, a partir do `TLDashboard.html`.
+
+`updateBAUCaseStatus(id, newStatus, childCaseId)`
+
+| Param | Obrigatório | Notas |
+| :--- | :--- | :--- |
+| `id` | sim | `ID_Escalacao` da linha |
+| `newStatus` | sim | `CREATED` ou `DISCARDED` — o front recicla os dois valores para as **quatro** decisões; `resolveProcessedAction` desfaz a ambiguidade |
+| `childCaseId` | **só em `APPROVED_CREATION`** | ID do caso BAU gerado no CRM. Recusado com erro se ausente nessa transição; ignorado nas outras |
+
+### Regras
+- **A validação do `childCaseId` roda no servidor**, não só no modal. Deixar
+  passar produziria exatamente o buraco que o campo existe para fechar: um caso
+  aprovado que ninguém sabe onde foi parar.
+- **Nada é gravado antes da validação.** A recusa acontece antes do `setValue` do
+  status, para uma aprovação incompleta não deixar a linha meio processada.
+
 ## Construção do Payload (Edição)
 - **Bloqueio de Data Wiping:** Ao editar, o `bau-form.js` **NÃO DEVE** injetar fallbacks de string vazia (`|| ""`) para campos que o usuário não interagiu ou que não existem na tela atual.
 - Se o campo não foi modificado ou não faz parte do fluxo, não o envie no payload ou envie estritamente como `undefined`. Isso permite que o Back-end saiba que deve manter o dado original da planilha.

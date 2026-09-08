@@ -704,6 +704,23 @@ function ensureBAUAdvLastNameColumn(sheet) {
   if (!headerCell.getValue()) headerCell.setValue(BAU_ADV_LASTNAME_HEADER);
 }
 
+// ID do caso BAU que a liderança gerou no CRM ao aprovar uma abertura — o
+// "caso filho" daquele pedido. Escrita por updateBAUCaseStatus, junto da trilha
+// de auditoria, e só na aprovação de criação: as outras três decisões do TL não
+// geram caso nenhum.
+const BAU_CHILD_CASE_HEADER = "Child_Case_ID";
+const BAU_CHILD_CASE_COL = 24;
+
+function ensureBAUChildCaseColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_CHILD_CASE_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_CHILD_CASE_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_CHILD_CASE_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_CHILD_CASE_HEADER);
+}
+
 function findRowIndexById(sheet, id) {
   if (!sheet) return -1;
   const data = sheet.getDataRange().getValues();

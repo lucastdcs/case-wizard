@@ -427,6 +427,40 @@
             outline-offset: 2px;
         }
 
+        .child-case-label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .child-case-input {
+            width: 100%;
+            box-sizing: border-box;
+            font-family: 'Google Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+
+        .child-case-input:focus {
+            outline: none;
+            border-color: var(--gemini-blue);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12);
+        }
+
+        .child-case-input.invalid { border-color: var(--danger); }
+
+        .child-case-error {
+            font-size: 12px;
+            color: var(--danger);
+            margin-top: 6px;
+        }
+
         .history-horizon {
             font-size: 12px;
             color: var(--text-secondary);
@@ -782,6 +816,13 @@
                     <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;" data-i18n="caseSummary">Resumo do Caso</div>
                     <div id="confirm-case-info" style="font-size: 14px; color: var(--text-primary); font-weight: 500;"></div>
                 </div>
+
+                <div id="confirm-child-case" style="margin-top: 16px; text-align: left;" hidden>
+                    <label for="confirm-child-case-input" class="child-case-label" data-i18n="childCaseLabel">ID do caso BAU gerado</label>
+                    <input id="confirm-child-case-input" class="child-case-input" type="text"
+                           autocomplete="off" data-i18n-ph="childCasePlaceholder" placeholder="0-0000000000000">
+                    <div id="confirm-child-case-error" class="child-case-error" data-i18n="childCaseRequired" hidden>Informe o ID do caso gerado para aprovar.</div>
+                </div>
             </div>
             <div class="confirm-footer">
                 <button class="btn btn-danger-outline" id="confirm-cancel-btn" onclick="closeModal('confirmModal')" style="flex: 1;" data-i18n="cancel">Cancelar</button>
@@ -994,6 +1035,10 @@
                 historyPeriodOption: function (d) { return "Últimos " + d + " dias"; },
                 historyHorizon: "Casos finalizados saem desta lista quando o backup semanal os arquiva.",
                 clientTimeSuffix: "(cliente)",
+                childCaseLabel: "ID do caso BAU gerado",
+                childCasePlaceholder: "0-0000000000000",
+                childCaseRequired: "Informe o ID do caso gerado para aprovar.",
+                childCaseHistory: "Caso gerado:",
                 activeNow: "Ativos agora",
                 recentActivity: "Atividade recente",
                 nothingFoundFor: function (q) { return 'Nada encontrado para "' + q + '"'; },
@@ -1082,6 +1127,10 @@
                 historyPeriodOption: function (d) { return "Últimos " + d + " días"; },
                 historyHorizon: "Los casos finalizados salen de esta lista cuando el respaldo semanal los archiva.",
                 clientTimeSuffix: "(cliente)",
+                childCaseLabel: "ID del caso BAU generado",
+                childCasePlaceholder: "0-0000000000000",
+                childCaseRequired: "Informa el ID del caso generado para aprobar.",
+                childCaseHistory: "Caso generado:",
                 activeNow: "Activos ahora",
                 recentActivity: "Actividad reciente",
                 nothingFoundFor: function (q) { return 'No se encontró nada para "' + q + '"'; },
@@ -1150,6 +1199,12 @@
             // fora por esquecimento.
             applyStaticTexts();
 
+            document.getElementById('confirm-child-case-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('confirm-submit-btn').click();
+                }
+            });
             document.getElementById('history-period').addEventListener('change', () => {
                 SoundKit.click();
                 loadHistory(true);
@@ -1800,21 +1855,49 @@
 
             caseInfo.textContent = `${nomeCompleto(c)} | ${c.task}`;
 
+            // O ID do caso filho só é pedido na APROVAÇÃO DE CRIAÇÃO — é a única
+            // das quatro decisões do TL que gera um caso novo no CRM. Rejeitar
+            // criação, confirmar descarte e manter ativo não geram nada, e um
+            // campo pedindo "o caso gerado" nelas seria pergunta sem resposta.
+            const pedeCasoFilho = !isDiscardFlow && isPositive;
+            const blocoFilho = document.getElementById('confirm-child-case');
+            const inputFilho = document.getElementById('confirm-child-case-input');
+            const erroFilho = document.getElementById('confirm-child-case-error');
+
+            blocoFilho.hidden = !pedeCasoFilho;
+            inputFilho.value = '';
+            inputFilho.classList.remove('invalid');
+            erroFilho.hidden = true;
+            if (pedeCasoFilho) setTimeout(() => inputFilho.focus(), 50);
+
             submitBtn.className = 'btn btn-primary';
             submitBtn.style.background = isPositive ? '' : 'var(--danger)';
 
             submitBtn.onclick = () => {
+                const childCaseId = pedeCasoFilho ? inputFilho.value.trim() : '';
+
+                // Obrigatório na aprovação. O servidor recusa igual — a tela não
+                // é a fronteira —, mas barrar aqui evita a viagem e devolve o
+                // foco pro campo em vez de um toast genérico.
+                if (pedeCasoFilho && !childCaseId) {
+                    SoundKit.error();
+                    inputFilho.classList.add('invalid');
+                    erroFilho.hidden = false;
+                    inputFilho.focus();
+                    return;
+                }
+
                 SoundKit.click();
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Processando...';
                 document.getElementById('confirm-cancel-btn').disabled = true;
-                processAction(id, action);
+                processAction(id, action, childCaseId);
             };
 
             modal.classList.add('active');
         }
 
-        function processAction(id, newStatus) {
+        function processAction(id, newStatus, childCaseId) {
             const c = allCases.find(item => item.id === id);
             const wasDiscardFlow = c && c.status === 'PENDING_TL_DISCARD';
 
@@ -1849,7 +1932,7 @@
                     submitBtn.textContent = tt('confirm');
                     document.getElementById('confirm-cancel-btn').disabled = false;
                 })
-                .updateBAUCaseStatus(id, newStatus);
+                .updateBAUCaseStatus(id, newStatus, childCaseId || '');
         }
 
         // Tira a linha da tela na hora (animação já existia no CSS, nunca era usada -
@@ -2062,7 +2145,7 @@
             const list = document.getElementById('history-list');
             const allHistoryCases = (lastHistoryData && lastHistoryData.cases) || [];
             const windowDays = (lastHistoryData && lastHistoryData.windowDays) || 7;
-            const filtered = allHistoryCases.filter(c => matchesSearch([c.caseId, c.task, c.processedBy, c.agentEmail]));
+            const filtered = allHistoryCases.filter(c => matchesSearch([c.caseId, c.childCaseId, c.task, c.processedBy, c.agentEmail]));
 
             if (allHistoryCases.length === 0) {
                 list.innerHTML = `
@@ -2099,6 +2182,7 @@
                         </div>
                     </div>
                     <div class="text-primary" style="font-size: 14px; margin: 6px 0 2px;">${caseLinkHtml(c.caseId)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
+                    ${c.childCaseId ? `<div class="text-secondary" style="font-size: 13px; margin-bottom: 2px;">${tt('childCaseHistory')} ${caseLinkHtml(c.childCaseId)}</div>` : ''}
                     <div class="text-secondary" style="font-size: 12px;">${when}</div>
                 </div>`;
             }).join('');

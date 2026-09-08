@@ -29,9 +29,11 @@ This file differs from the long-term roadmap: it describes what is happening **n
          lugar, data + `select` de 24h + fuso. Catálogo único de fusos em
          `shared/timezones.js`, agora com os EUA — Arizona à parte, porque é
          Mountain sem horário de verão.
-      4. [ ] **#396 ID do caso filho na aprovação** — **bloqueado por decisão**:
-         campo obrigatório ou com escape? E coluna vs. aba dedicada, que depende
-         da #397 (o backup apaga a linha uma semana depois).
+      4. [x] **#396 ID do caso filho na aprovação** — decidido **obrigatório**, sem
+         escape, e gravado em coluna (`Child_Case_ID`) e não em aba à parte.
+         Validado nos dois lados. **Fica um fio solto conhecido:** o backup semanal
+         apaga a linha, e com ela o ID, uma semana depois da aprovação — quem
+         resolve isso é o item 6.
       5. [ ] **#395 telefone do anunciante** — **bloqueado por decisão**: é PII
          nova numa base já apontada pela #353. E só valida no CRM real: o valor é
          mascarado, não existe no DOM antes do clique no unmask.

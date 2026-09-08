@@ -38,6 +38,15 @@ versions follow [Semantic Versioning](https://semver.org/).
   `Customer time zone` do CRM e um eco ao vivo mostrando o equivalente em Brasília.
 
 ### Added
+- **O ID do caso BAU gerado passa a ser registrado na aprovação** (#396). O TL
+  aprovava a abertura, criava o caso no CRM, e esse número não voltava para lugar
+  nenhum — nem para o histórico, nem para o agente. Agora aprovar pede o ID
+  (**obrigatório**, validado no modal e de novo no servidor, porque a tela nunca é
+  a fronteira), ele fica na coluna `Child_Case_ID`, aparece no histórico como link
+  clicável e entra na busca. As outras três decisões do TL não pedem nada: só a
+  aprovação de criação gera caso novo.
+  De brinde, o e-mail `AGENT_BAU_CREATED` deixa de dizer só "seu caso foi criado"
+  e passa a dizer **qual** — antes o agente tinha que ir procurar.
 - **Fusos dos Estados Unidos** (#394) — Eastern, Central, Mountain, Pacific,
   Alasca, Havaí e **Arizona** à parte, que é Mountain sem horário de verão: sem
   ela, meio ano de agendamento no Arizona sai uma hora errado, e é o tipo de erro
