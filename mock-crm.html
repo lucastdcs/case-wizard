@@ -143,6 +143,22 @@
                 <div class="data-pair-content">Acme Corp</div>
             </div>
 
+            <!-- Sobrenome e idioma reproduzem a forma REAL do Contact Us form do
+                 CRM (rótulo .form-label + irmão contendo <sanitized-content>), e
+                 não a forma .data-pair-content dos campos acima. É de propósito:
+                 é exatamente essa forma que fazia captureLanguage() devolver
+                 "N/A" pra todo caso aberto. Um mock que só reproduzisse a forma
+                 fácil nunca teria pegado o bug. -->
+            <div id="advertiser-lastname-container">
+                <div class="form-label">Family name</div>
+                <div><sanitized-content>Corporation</sanitized-content></div>
+            </div>
+
+            <div id="business-language-container">
+                <div class="form-label">Business language</div>
+                <div><sanitized-content>portuguese</sanitized-content></div>
+            </div>
+
             <div class="data-pair" id="website-container">
                 <div class="form-label">Website</div>
                 <div class="data-pair-content">https://www.acme.com</div>

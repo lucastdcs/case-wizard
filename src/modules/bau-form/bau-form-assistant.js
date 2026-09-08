@@ -38,6 +38,7 @@ const BAU_DICT = {
         notCaptured: "Não capturado",
         none: "Nenhuma",
         language: "Idioma",
+        lastName: "Sobrenome",
         editPageWarning: "Atenção: Para editar as informações, você deve estar com a página deste Caso específico aberta no sistema. Caso contrário, os dados capturados estarão incorretos.",
         onCorrectPage: "Estou na página correta",
         sending: "Enviando...",
@@ -133,6 +134,7 @@ const BAU_DICT = {
         notCaptured: "No capturado",
         none: "Ninguna",
         language: "Idioma",
+        lastName: "Apellido",
         editPageWarning: "Atención: Para editar la información, debes tener abierta en el sistema la página de este Caso específico. De lo contrario, los datos capturados estarán incorrectos.",
         onCorrectPage: "Estoy en la página correcta",
         sending: "Enviando...",
@@ -690,7 +692,7 @@ export function initBAUForm() {
                     <div class="bau-details-card">
                         <div class="bau-details-row">
                             <span class="bau-details-label">${bt('advertiser')}</span>
-                            <span class="bau-details-value">${c.advName || '---'}</span>
+                            <span class="bau-details-value">${[c.advName, c.advLastName].filter(Boolean).join(' ') || '---'}</span>
                             <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
                         </div>
                         <div class="bau-details-row">
@@ -1187,39 +1189,42 @@ export function initBAUForm() {
             if(step.fields) {
                 step.fields.forEach(field => {
                     if (field.isSmart) {
-                        let value = pageData[field.id];
-
-                        // Smart Binding for Language: priority to profile data over scraping
-                        if (field.id === 'language' && pageData.userProfile?.defaultLanguage) {
-                            value = pageData.userProfile.defaultLanguage;
-                        }
+                        const value = pageData[field.id];
 
                         const input = form.querySelector(`#bau-step-${step.id} [name="${field.name}"]`);
                         const wrapper = form.querySelector(`#bau-step-${step.id} #wrapper-${field.id}`);
 
                         if (input) {
                             input.value = (value && value !== "N/A") ? value : "";
-                            // Special case: Language/Idioma should be read-only if valid
-                            if (field.id === 'language' && value && value !== "N/A") {
-                                input.readOnly = true;
-                                input.style.background = '#F1F3F4';
-                                input.style.cursor = 'not-allowed';
-                            }
                         }
 
                         if (wrapper) {
                             const isValid = value && value !== "" && value !== "N/A" && value !== "undefined" && value !== "null";
-                            // Smart Rendering: Hide editable input if data is present, except for fields we want to keep visible but read-only
-                            if (field.id === 'language') {
-                                wrapper.style.display = 'block';
-                            } else {
-                                wrapper.style.display = isValid ? 'none' : 'block';
-                            }
+                            // Smart Rendering: esconde o input quando a raspagem trouxe o dado;
+                            // mostra editável quando ela falhou.
+                            wrapper.style.display = isValid ? 'none' : 'block';
                         }
                     }
                 });
             }
         });
+
+        // Idioma fica FORA do Smart Rendering de propósito. O que a coluna 11 da
+        // planilha espera é o segmento que o AGENTE atende
+        // (profile.defaultLanguage — specs/data-models/db-schema.md), não o
+        // "Business language" do anunciante que a página do CRM exibe. Ou seja,
+        // não é "dado capturado que some quando a raspagem acerta": é uma escolha
+        // com padrão, sempre visível e sempre editável, porque existe caso que
+        // foge do segmento de quem está atendendo.
+        //
+        // Antes disto o campo só existia no passo 5 (Descarte); a abertura de caso
+        // não tinha input nenhum e mandava o "N/A" da raspagem direto pra planilha.
+        const agentLanguage = pageData.userProfile?.defaultLanguage;
+        if (agentLanguage) {
+            form.querySelectorAll('select[name="language"]').forEach(select => {
+                select.value = agentLanguage;
+            });
+        }
 
         // Context Badges Grid (Read-only visible even if hidden in inputs)
         const allDataContainers = form.querySelectorAll('.bau-all-data');
@@ -1262,6 +1267,19 @@ export function initBAUForm() {
         cidInput.addEventListener('input', () => validateStep(1));
     }
 
+    // Opções do select de idioma da prévia, lidas do próprio FORM_CONFIG: uma
+    // segunda lista escrita à mão aqui viraria a fonte divergente na primeira vez
+    // que alguém acrescentasse um idioma no config e esquecesse desta tela.
+    function languageOptionsHtml(selected) {
+        const field = FORM_CONFIG.steps
+            .flatMap(step => step.fields || [])
+            .find(f => f.id === 'language');
+
+        return (field?.options || [])
+            .map(opt => `<option value="${opt.value}" ${opt.value === selected ? 'selected' : ''}>${bfOptionText(opt.text)}</option>`)
+            .join('');
+    }
+
     function renderConfirmation() {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
@@ -1278,6 +1296,10 @@ export function initBAUForm() {
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">Anunciante</span>
                         <input class="bau-confirm-value-input" data-field="advName" data-step="1" value="${data.advName || ''}" placeholder="---">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">${bt('lastName')}</span>
+                        <input class="bau-confirm-value-input" data-field="advLastName" data-step="1" value="${data.advLastName || ''}" placeholder="${bt('notInformedPlaceholder')}">
                     </div>
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">${bt('advertiserEmail')}</span>
@@ -1298,6 +1320,12 @@ export function initBAUForm() {
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">Speakeasy ID</span>
                         <input class="bau-confirm-value-input" data-field="seId" data-step="1" value="${data.seId || ''}" placeholder="${bt('notInformedPlaceholder')}">
+                    </div>
+                    <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">${bt('language')}</span>
+                        <select class="bau-confirm-value-input" data-field="language" data-step="1">
+                            ${languageOptionsHtml(data.language)}
+                        </select>
                     </div>
 
                     <div class="bau-confirm-divider"></div>
@@ -1353,8 +1381,10 @@ export function initBAUForm() {
                         <input class="bau-confirm-value-input" data-field="caseId" data-step="5" value="${data.caseId || ''}" placeholder="---">
                     </div>
                     <div class="bau-confirm-row">
-                        <span class="bau-confirm-label">Idioma</span>
-                        <input class="bau-confirm-value-input" data-field="language" data-step="5" value="${data.language || ''}" placeholder="---" readonly style="opacity: 0.7;">
+                        <span class="bau-confirm-label">${bt('language')}</span>
+                        <select class="bau-confirm-value-input" data-field="language" data-step="5">
+                            ${languageOptionsHtml(data.language)}
+                        </select>
                     </div>
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">Speakeasy ID</span>
@@ -1416,6 +1446,7 @@ export function initBAUForm() {
         currentContextData = {
             ...currentContextData,
             advName: c.advName || currentContextData.advName,
+            advLastName: c.advLastName || currentContextData.advLastName,
             cid: c.cid || currentContextData.cid,
             caseId: c.caseId || currentContextData.caseId,
             seId: c.seId || currentContextData.seId,
@@ -1460,6 +1491,14 @@ export function initBAUForm() {
                         }
                     } catch(e) {}
                 }
+            } else if (fieldName === 'language') {
+                // Casos gravados antes do select carregam texto livre na coluna 11
+                // ("N/A", "portuguese", vazio). Atribuir isso a um <select> não dá
+                // erro: ele silenciosamente cai na primeira opção, e o agente
+                // reenviaria PT-BR sem ter escolhido. Só sobrescrevemos o padrão
+                // vindo do perfil quando o valor gravado é uma opção de verdade.
+                const temOpcao = Array.from(input.options).some(o => o.value === c.language);
+                if (temOpcao) input.value = c.language;
             } else if (c[dataKey] !== undefined) {
                 input.value = c[dataKey];
             } else if (fieldName === 'reason') {
@@ -1607,14 +1646,6 @@ export function initBAUForm() {
         editingCaseId = null;
         updateWizardState();
         form.querySelectorAll('.bau-task-item.active').forEach(item => item.classList.remove('active'));
-
-        // Ensure language input is reset from readOnly
-        const langInput = form.querySelector('[name="language"]');
-        if (langInput) {
-            langInput.readOnly = false;
-            langInput.style.background = '';
-            langInput.style.cursor = '';
-        }
     }
 
     popup.querySelector('#bau-new-case-btn').addEventListener('click',() => {

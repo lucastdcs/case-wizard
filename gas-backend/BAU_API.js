@@ -39,6 +39,9 @@ function handleBAUEscalation(ss, p) {
     ensureBAUSuggestDiscardColumn(sheet);
     sheet.getRange(sheet.getLastRow(), BAU_SUGGEST_DISCARD_COL).setValue(p.suggestDiscard === 'Sim' ? 'Sim' : 'Não');
 
+    ensureBAUAdvLastNameColumn(sheet);
+    sheet.getRange(sheet.getLastRow(), BAU_ADV_LASTNAME_COL).setValue(p.advLastName || '');
+
     let emailSent = false;
     try {
       if (typeof sendDynamicTechSolEmail === "function") {
@@ -60,6 +63,8 @@ function getAgentCases(ss, userEmail) {
   if (!userEmail) throw new Error("Email do agente é obrigatório.");
   
   const sheet = getOrCreateSheet(ss, SHEET_BAU_FORM);
+  // Leitura não cria coluna — ver a nota em getPendingBAUCases (BAU_Dashboard.js).
+  // Numa planilha sem a coluna 23, row[22] é undefined e vira "".
   const data = sheet.getDataRange().getValues();
   const myCases = [];
   
@@ -94,6 +99,7 @@ function getAgentCases(ss, userEmail) {
         cid: String(row[5] || ""),
         seId: String(row[6] || ""),
         advName: String(row[7] || ""),
+        advLastName: String(row[22] || ""),
         advEmail: String(row[8] || ""),
         site: String(row[9] || ""),
         timezone: String(row[10] || ""),
@@ -204,6 +210,15 @@ function update_bau_case(ss, p) {
         ];
 
         sheet.getRange(i + 1, 4, 1, rowUpdate.length).setValues([rowUpdate]);
+
+        // Sobrenome mora na coluna 23, fora do bloco contíguo acima — escrita
+        // separada, e só quando veio no payload: a regra de não-sobrescrita do
+        // api-payloads.md vale igual pra ele.
+        if (p.advLastName !== undefined) {
+          ensureBAUAdvLastNameColumn(sheet);
+          sheet.getRange(i + 1, BAU_ADV_LASTNAME_COL).setValue(p.advLastName);
+        }
+
         console.log("Caso atualizado com sucesso. ID:", p.id, "Row:", i+1);
 
         // Confirmação de pedido de descarte: só dispara na transição de entrada

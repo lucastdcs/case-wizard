@@ -3,9 +3,9 @@
 ## Planilha Alvo
 - **Nome/Constante:** `SHEET_BAU_FORM`
 - **Total de Colunas:** 18 colunas do formulário (índices 0 a 17) + 3 de trilha
-  de auditoria (18 a 20, ver abaixo) + 1 de sinalização do agente (21). A
-  função do Apps Script deve garantir o preenchimento/atualização exata do
-  índice 0 a 17.
+  de auditoria (18 a 20, ver abaixo) + 1 de sinalização do agente (21) + 1 de
+  dado do anunciante acrescentado depois (22). A função do Apps Script deve
+  garantir o preenchimento/atualização exata do índice 0 a 17.
 
 ## Mapeamento de Índices (Array Google Sheets)
 | Índice | Nome da Coluna (Header) | Chave do Payload Esperada | Notas |
@@ -21,7 +21,7 @@
 | `8` | Adv_Email | `advEmail` | Prioriza input editado, fallback pro scraping |
 | `9` | Adv_Site | `website` | **CRÍTICO:** Unificar chave (não usar `site`) |
 | `10` | Fuso_Horario | `timezone` | |
-| `11` | Idioma | `language` | Deve vir de `profile.defaultLanguage` |
+| `11` | Idioma | `language` | Deve vir de `profile.defaultLanguage` (`PT-BR` \| `ES` \| `EN`), **não** do "Business language" do anunciante que a página do CRM exibe. O formulário mostra um `select` já na opção do segmento de quem atende, e permite trocar — existe caso que foge da regra. |
 | `12` | AM_Nome | `amName` | |
 | `13` | Sales_Program | `salesProgram` | |
 | `14` | Motivo_Abertura | `reason` | Campo principal de categorização |
@@ -36,6 +36,7 @@
 | `19` | Processed_At | — (`new Date()`) | Idem acima. |
 | `20` | Processed_Action | — (derivado, ver `resolveProcessedAction`) | `APPROVED_CREATION` \| `REJECTED_CREATION` \| `CONFIRMED_DISCARD` \| `KEPT_ACTIVE`. |
 | `21` | Suggest_Discard | `suggestDiscard` | `"Sim"` \| `"Não"`. Só existe no fluxo BAU (Passo 3); isolada depois das colunas de auditoria de propósito, pra não deslocar os índices 18-20 em planilhas já em produção. Garantida por `ensureBAUSuggestDiscardColumn`. |
+| `22` | Adv_LastName | `advLastName` | Sobrenome do anunciante (`Family name` no CRM). Mesma razão de estar no fim: acrescentar coluna nunca desloca índice já gravado. Fora do `appendRow` das 18, escrita à parte depois de `ensureBAUAdvLastNameColumn`; na edição, escrita própria porque cai fora do bloco contíguo 4-18 do `setValues`. |
 
 ## Regra de Atualização (Update)
 - NUNCA reescrever dados de uma coluna com `""` se o valor recebido for `undefined`. 

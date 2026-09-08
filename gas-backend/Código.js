@@ -685,6 +685,25 @@ function ensureBAUSuggestDiscardColumn(sheet) {
   if (!headerCell.getValue()) headerCell.setValue(BAU_SUGGEST_DISCARD_HEADER);
 }
 
+// Sobrenome do anunciante ("Family name" no CRM). Entra DEPOIS da coluna de
+// sinalização pelo mesmo motivo que aquela entrou depois da trilha de auditoria:
+// acrescentar no fim nunca desloca índice que já está gravado em produção.
+//
+// Não faz parte do appendRow das 18 colunas do formulário porque planilhas
+// antigas não a têm — é escrita à parte, depois do ensure, como a 22.
+const BAU_ADV_LASTNAME_HEADER = "Adv_LastName";
+const BAU_ADV_LASTNAME_COL = 23;
+
+function ensureBAUAdvLastNameColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_ADV_LASTNAME_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_ADV_LASTNAME_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_ADV_LASTNAME_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_ADV_LASTNAME_HEADER);
+}
+
 function findRowIndexById(sheet, id) {
   if (!sheet) return -1;
   const data = sheet.getDataRange().getValues();

@@ -344,18 +344,58 @@ export async function getCaseId() {
     return "";
 }
 
+// Sobrenome do anunciante ("Family name" no Contact Us form). Mesmo formato do
+// "Given name" raspado em getPageData(): texto puro no irmão seguinte do rótulo,
+// sem máscara de PII — diferente do e-mail e do telefone, que exigem clique no
+// unmask antes de o valor sequer existir no DOM.
+//
+// Devolve "" (e não "N/A") quando não acha: quem consome trata string vazia como
+// "campo aparece editável no formulário", que é o comportamento certo aqui.
+export function captureAdvertiserLastName() {
+    try {
+        const xpath = "//div[contains(text(), 'Family name')]";
+        const labelNode = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        if (labelNode && labelNode.nextElementSibling) {
+            return labelNode.nextElementSibling.innerText.trim();
+        }
+    } catch (e) { console.warn("Falha Sobrenome:", e); }
+    return "";
+}
+
 // --- 8.5 CAPTURA DE IDIOMA E SPEAKEASY ID ---
+// Idioma do NEGÓCIO do anunciante, raspado do CRM. Não é o que vai para a
+// coluna Idioma do BAU_form_data — lá vai o segmento que o AGENTE atende
+// (profile.defaultLanguage, ver db-schema.md índice 11). Esta captura é só
+// fallback para quando não há perfil carregado.
+//
+// Duas correções de uma vez, porque a função nunca devolveu nada útil:
+//   1. o rótulo no Contact Us form é "Business language", com l minúsculo — o
+//      includes('Language') sensível a caixa jamais casava;
+//   2. mesmo casando, o valor mora num <sanitized-content> DENTRO do container
+//      do rótulo, não num irmão seguinte. É o mesmo formato que captureTimezone()
+//      logo acima já trata — e é por isso que aquela funciona e esta não.
 export function captureLanguage() {
     try {
         const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
-        const langLabel = labels.find(el =>
-            el.textContent.includes('Language') ||
-            el.textContent.includes('Idioma')
-        );
+        const langLabel = labels.find(el => {
+            const text = el.textContent.toLowerCase();
+            return text.includes('language') || text.includes('idioma');
+        });
+
         if (langLabel) {
             const parent = langLabel.closest('.data-pair') || langLabel.parentElement;
-            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
-            if (content) return content.textContent.trim();
+            if (parent) {
+                const sanitizedNode = parent.querySelector('sanitized-content');
+                if (sanitizedNode && sanitizedNode.textContent.trim()) {
+                    return sanitizedNode.textContent.trim();
+                }
+
+                const content = parent.querySelector('.data-pair-content') || langLabel.nextElementSibling;
+                if (content && content.textContent.trim()) {
+                    return content.textContent.trim();
+                }
+            }
         }
     } catch (e) { console.warn("Erro ao capturar Idioma:", e); }
     return "N/A";
@@ -477,6 +517,7 @@ export async function getPageData() {
     const salesProgram = captureSalesProgram();
     const language = captureLanguage();
     const seId = captureSpeakeasyID();
+    const advLastName = captureAdvertiserLastName();
 
     // Novo: Captura de Perfil de Usuário
     const agentEmail = getAgentEmail();
@@ -511,7 +552,8 @@ export async function getPageData() {
         advEmail: clientEmail, // bau-form-config.js's campo 'advEmail' lê pageData.advEmail
         salesProgram: salesProgram,
         language: language,
-        seId: seId
+        seId: seId,
+        advLastName: advLastName
     };
 }
 

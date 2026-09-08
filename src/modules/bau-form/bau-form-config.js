@@ -1,4 +1,15 @@
 
+// Valores idênticos aos que defaultLanguageForSegment() produz no backend
+// (gas-backend/Código.js) — é o que o perfil do agente devolve em
+// profile.defaultLanguage, e é o que precisa casar para o select já abrir
+// na opção certa. Trocar um valor aqui sem trocar lá quebra o pré-preenchimento
+// em silêncio: o select simplesmente não seleciona nada.
+const LANGUAGE_OPTIONS = [
+    { value: "PT-BR", text: "Português (PT-BR)" },
+    { value: "ES", text: "Espanhol (ES)" },
+    { value: "EN", text: "Inglês (EN)" }
+];
+
 export const FORM_CONFIG = {
     steps: [
         {
@@ -17,6 +28,15 @@ export const FORM_CONFIG = {
                     type: 'text',
                     placeholder: 'Nome do Anunciante',
                     required: true,
+                    isSmart: true
+                },
+                {
+                    id: 'advLastName',
+                    name: 'advLastName',
+                    label: 'Sobrenome do Anunciante',
+                    type: 'text',
+                    placeholder: 'Sobrenome do Anunciante',
+                    required: false,
                     isSmart: true
                 },
                 {
@@ -77,6 +97,15 @@ export const FORM_CONFIG = {
                         icon: 'wand',
                         title: 'Buscar ID automaticamente'
                     }
+                },
+                {
+                    id: 'language',
+                    name: 'language',
+                    label: 'Idioma do Atendimento',
+                    type: 'select',
+                    required: true,
+                    tooltip: 'Vem do seu segmento na planilha People. Troque só quando este caso fugir da regra.',
+                    options: LANGUAGE_OPTIONS
                 }
             ]
         },
@@ -185,12 +214,12 @@ export const FORM_CONFIG = {
                 },
                 {
                     id: 'language',
+                    i18nKey: 'language_descarte',
                     name: 'language',
-                    label: 'Idioma',
-                    type: 'text',
-                    placeholder: 'Idioma',
+                    label: 'Idioma do Atendimento',
+                    type: 'select',
                     required: true,
-                    isSmart: true
+                    options: LANGUAGE_OPTIONS
                 },
                 {
                     id: 'seId',

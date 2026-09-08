@@ -239,11 +239,26 @@ There's no `.env` file — this project has no local runtime configuration in th
 
 ## Testing
 
-There is no automated test suite in this repository today. Verification is manual:
+There is no test *runner* — each script is a plain Node program that exits
+non-zero on failure, so you run the ones that cover what you touched.
+
+- **Node harnesses** (`npm run test:*`) stub the browser and Apps Script globals:
+  `test:content`, `test:call-script`, `test:emails`, `test:note-templates`,
+  `test:shortcuts`, `test:prefs`, `test:people`, `test:deployment-env`.
+- **Browser smokes** (`npm run smoke:*`) drive real UI with Playwright.
+  `smoke:shortcuts`, `smoke:wizards`, `smoke:env-badge`, `smoke:broadcast` and
+  `smoke:bau-scraping` run the agent overlay against `mock-crm.html`;
+  `smoke:content` and `smoke:people` load the Apps Script dashboards from disk
+  with `google.script.run` doubled.
+
+Everything else is still verified by hand:
 
 - **Frontend**: build with `npm run dev`, load it via the Dev bookmarklet on the real CRM, and exercise the module you changed. Watch the browser console for `✅ TechSol DEV carregado!` and any errors.
 - **Backend**: after `clasp push`, use the Apps Script editor's built-in execution log/debugger, or call the deployed `/dev` URL directly with the relevant `op=` query params.
 - **Visual regressions / demo assets**: `npm run portfolio` re-renders `mock-crm.html` through Playwright — useful to sanity-check UI changes without touching the real CRM, but it is not a substitute for testing against production.
+
+> The TL Dashboard (`gas-backend/TLDashboard.html`) still has **no** smoke of its
+> own — changes there are verified by hand against the dev deployment.
 
 ---
 

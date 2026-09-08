@@ -8,6 +8,29 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **O idioma parava de chegar como `N/A` na planilha BAU.** Dois defeitos somados
+  (#392): `captureLanguage()` comparava com `includes('Language')`, sensível a
+  caixa, e o rótulo do CRM é `Business language` com `l` minúsculo — nunca casava;
+  e mesmo casando, o valor mora num `<sanitized-content>` dentro do container do
+  rótulo, não num irmão seguinte. Além disso o fluxo de abertura **não tinha campo
+  de idioma nenhum**, então o `N/A` da raspagem ia direto pro payload. Agora a
+  coluna 11 recebe o segmento que o agente atende (`profile.defaultLanguage`),
+  como `specs/data-models/db-schema.md` já mandava, num `select` que abre na
+  opção certa e continua editável — porque existe caso que foge do segmento de
+  quem está atendendo.
+
+### Added
+- **Sobrenome do anunciante** (#393). O caso levava só o primeiro nome; quem
+  pegasse depois não tinha o nome completo. O `Family name` do CRM é raspado
+  junto com o resto, aparece editável quando a raspagem falha, e a fila do TL
+  passa a mostrar "Nome Sobrenome" — na linha, no card e na busca.
+- **`npm run smoke:bau-scraping`** — o módulo BAU não tinha teste nenhum, e foi
+  exatamente aí que os dois campos acima ficaram errados sem ninguém ver. O smoke
+  roda a raspagem contra o `mock-crm.html`, que agora reproduz a forma real do
+  Contact Us form (`<sanitized-content>`) além da forma antiga (`.data-pair-content`)
+  — um mock que só tivesse a forma fácil nunca teria pegado o bug do idioma.
+
 ## [6.2.0] - 2026-09-08
 
 ### Added

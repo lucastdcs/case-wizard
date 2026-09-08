@@ -16,6 +16,12 @@ function getPendingBAUCases() {
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = getOrCreateSheet(ss, SHEET_BAU_FORM); 
+  // Sem ensureBAUAdvLastNameColumn() aqui de propósito: esta é leitura, e o
+  // ensure custa um getMaxColumns() + um getValue() por chamada. getPendingBAUCases
+  // roda a cada 60s pra cada TL com o painel aberto (ver #334 sobre o peso dos
+  // dashboards), e a coluna nem precisa existir pra leitura funcionar — numa
+  // planilha antiga row[22] é undefined e vira "". Quem cria a coluna é o caminho
+  // de ESCRITA, em BAU_API.js.
   const data = sheet.getDataRange().getValues();
   
   const cases = [];
@@ -34,6 +40,7 @@ function getPendingBAUCases() {
         cid: String(row[5] || ""),
         speakeasyId: String(row[6] || ""),
         advName: String(row[7] || ""),
+        advLastName: String(row[22] || ""),
         advEmail: String(row[8] || ""),
         site: String(row[9] || ""),
         timezone: String(row[10] || ""),

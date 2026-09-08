@@ -12,6 +12,44 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Raspagem do CRM: compare rótulo sem caixa e leia o valor pelo `<sanitized-content>`
+
+**Why**: o idioma chegava `N/A` em toda escalação BAU, por meses. `captureLanguage()`
+procurava o rótulo com `el.textContent.includes('Language')` — e o campo no
+Contact Us form se chama **`Business language`**, com `l` minúsculo. A
+comparação sensível a caixa nunca casava. E o segundo defeito estava escondido
+atrás do primeiro: mesmo casando, a função lia o valor por
+`parent.nextElementSibling`, e nesse DOM o valor mora num `<sanitized-content>`
+**dentro** do container do rótulo, não num irmão. Ou seja: consertar só a caixa
+teria devolvido `N/A` do mesmo jeito, e a conclusão fácil seria "o rótulo mudou
+de novo".
+
+O detalhe que fecha o caso: `captureTimezone()`, **vinte linhas acima no mesmo
+arquivo**, já lia certo — porque busca `parent.querySelector('sanitized-content')`.
+A resposta estava do lado, e a comparação entre uma captura que funciona e uma que
+não funciona vale mais que qualquer leitura do DOM do CRM.
+
+```js
+// certo, e é o que captureTimezone() já fazia
+const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
+const alvo = labels.find(el => el.textContent.toLowerCase().includes('language'));
+const parent = alvo.closest('.data-pair') || alvo.parentElement;
+const valor = parent.querySelector('sanitized-content')?.textContent.trim();
+```
+
+**When to apply**: ao escrever ou depurar qualquer captura em
+`shared/page-data.js`. Antes de suspeitar que o CRM mudou, (1) compare o rótulo
+**em minúsculas** — os rótulos do CRM misturam `Given name`, `Business language`
+e `Customer time zone`, sem padrão de capitalização; (2) leia o valor pelo
+`sanitized-content` dentro do container antes de tentar irmão/`.data-pair-content`;
+e (3) rode a captura que **funciona** ao lado da que falha — se as duas usam
+seletores diferentes para o mesmo formato de par rótulo/valor, a diferença é a
+resposta. E acrescente o campo ao `mock-crm.html` **na forma real** do CRM: o
+mock só tinha a forma `.data-pair-content`, então nenhum teste possível teria
+pego este bug.
+
+---
+
 ## Campo referenciado em todo lugar menos no `FORM_CONFIG`: procure pelo nome antes de assumir bug de transporte
 
 **Why**: o email do anunciante chegava sempre vazio no `BAU_form_data`. A
