@@ -185,7 +185,12 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
       (o `release.yml` não faz deploy). O link `[6.1.0]` do `CHANGELOG.md` aponta
       para uma tag que ainda não existe até isso ser feito.
       `git tag -a v6.1.0 dbc6eb5 -m "v6.1.0" && git push origin v6.1.0`
-      `git tag -a v6.2.0 <commit do merge> -m "v6.2.0" && git push origin v6.2.0`
+      `git tag -a v6.2.0 315b13d -m "v6.2.0" && git push origin v6.2.0`
+      **Confirmado nesta sessão:** o bloqueio não é do proxy nem novidade — o
+      push de tag responde 403 enquanto o push de branch para o MESMO host passa.
+      É a credencial do GitHub da sessão que não escreve refs de tag. As duas
+      tags precisam sair de uma máquina com credencial normal; nenhuma delas faz
+      deploy (o `release.yml` só publica notas).
 - [~] **Atalhos do Ctrl+K por agente** — captura no Case Notes + construtor em
       Configurações, persistência em `User_Prefs` (nuvem, cache-first), grupos e
       ranking por uso no palette. ADR em

@@ -40,6 +40,52 @@ teve UI; não é bug de transporte, é campo que falta declarar.
 
 ---
 
+## Feche o `[Unreleased]` do CHANGELOG na release, não a cada PR
+
+**Why**: depois de dezoito PRs contra a mesma branch, a seção `[Unreleased]`
+tinha **dois `### Added`, dois `### Fixed` e dois `### Security`**. Nenhum PR
+errou: cada um inseriu seu item no topo do primeiro cabeçalho que encontrou, e
+o cabeçalho que ele encontrava dependia de onde o PR anterior tinha inserido o
+dele. O resultado só aparece quando alguém lê a seção inteira de uma vez — que é
+exatamente o que acontece na release, quando ela vira as notas publicadas.
+
+O conserto é de dez minutos e pertence ao commit de release: agrupar por
+subseção na ordem do Keep a Changelog (Added, Changed, Deprecated, Removed,
+Fixed, Security), sem tocar em nenhum texto. Um script curto faz isso melhor que
+a mão, porque preserva os bullets literalmente:
+
+```python
+# agrupa por '### ', concatena os blocos de mesmo nome, descarta os vazios
+```
+
+**When to apply**: no passo 1 do `RELEASE.md`, antes de mover o `[Unreleased]`
+para `## [X.Y.Z]`. E sempre que uma branch de trabalho acumular mais de meia
+dúzia de PRs — vale conferir a seção mesmo sem release à vista, porque o
+cabeçalho duplicado também confunde quem só vai adicionar mais um item.
+
+---
+
+## Documento de processo também mente: confira o `RELEASE.md` contra o código
+
+**Why**: o `RELEASE.md` afirmava que `APP_VERSION` e `RELEASE_NOTES.version`
+usam a forma curta `vX.Y`. O código está em `vX.Y.Z` desde a v6.0 — a frase
+descrevia um estado que deixou de existir três releases atrás e ninguém releu,
+porque runbook é lido para *executar*, não para *conferir*. Seguir a frase ao pé
+da letra teria produzido `v6.2` no código e uma divergência com o
+`package.json`, que é a fonte SemVer.
+
+A regra que o código de fato aplica é outra e mais simples: as duas constantes
+têm que ser **idênticas entre si**, porque `checkAndShowChangelog` as compara
+como string. Foi essa que passou a estar escrita.
+
+**When to apply**: ao executar um runbook, confira cada afirmação verificável
+contra o código no momento em que for usá-la — `grep` no valor que ele descreve
+custa segundos. E quando encontrar divergência, corrija o documento no mesmo
+commit: um runbook que já mentiu uma vez é lido com desconfiança para sempre, o
+que é pior do que não existir.
+
+---
+
 ## `<img onerror>` faz asserção de `src` mentir: atenda o endpoint no teste
 
 **Why**: a barra "Atividade recente" monta a foto de perfil com
