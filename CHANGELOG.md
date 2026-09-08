@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.2.0] - 2026-09-08
+
 ### Added
 - **Prévia "como o agente vê"** (fase 5). O editor mostra **campos**; o agente lê
   **texto**. Entre os dois cabe o erro que ninguém pega revisando o formulário: a
@@ -185,13 +187,18 @@ versions follow [Semantic Versioning](https://semver.org/).
   só com o motivo do disparo; agora fecha com "Cases Wizard · automatizado por
   @lucaste", como os demais e-mails do fluxo.
 
-### Security
-- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
-  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
-  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
-  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
-  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
-  a mesma coisa é como um deles fica para trás.
+- **E-mail de decisão para quem propôs.** Aprovação e rejeição avisam o autor da
+  proposta, com a justificativa do revisor no corpo e um botão para a Central —
+  a URL derivada da implantação em execução, não fixa. Antes a rejeição era
+  invisível: o rascunho voltava para "draft" e o motivo ficava numa coluna que
+  ninguém abre.
+- **Form de bugs e sugestões unificado em uma variável só.** Havia três URLs
+  diferentes em produção (overlay de ajuda, Configurações → Suporte e rodapé dos
+  e-mails). Agora existe um ponto de verdade por runtime — `FEEDBACK_FORM_URL`
+  em `src/modules/shared/config.js` e `CW_FEEDBACK_FORM_URL` em
+  `gas-backend/Código.js` — apontando para o form novo.
+- **Crédito de autoria em formato único.** Convivia `@lucaste`, `lucaste@` e
+  `by lucaste@`. Passou a sair de `AUTHOR_CREDIT` / `CW_AUTHOR_CREDIT`.
 
 ### Changed
 - **O botão de desativar acesso passou a aparecer também para si mesmo.** A
@@ -257,25 +264,6 @@ versions follow [Semantic Versioning](https://semver.org/).
   editava um item com proposta em revisão levava uma recusa do servidor sem ter
   como explicar. Agora a falha aparece, com botão de tentar de novo.
 
-### Added
-- **E-mail de decisão para quem propôs.** Aprovação e rejeição avisam o autor da
-  proposta, com a justificativa do revisor no corpo e um botão para a Central —
-  a URL derivada da implantação em execução, não fixa. Antes a rejeição era
-  invisível: o rascunho voltava para "draft" e o motivo ficava numa coluna que
-  ninguém abre.
-- **Form de bugs e sugestões unificado em uma variável só.** Havia três URLs
-  diferentes em produção (overlay de ajuda, Configurações → Suporte e rodapé dos
-  e-mails). Agora existe um ponto de verdade por runtime — `FEEDBACK_FORM_URL`
-  em `src/modules/shared/config.js` e `CW_FEEDBACK_FORM_URL` em
-  `gas-backend/Código.js` — apontando para o form novo.
-- **Crédito de autoria em formato único.** Convivia `@lucaste`, `lucaste@` e
-  `by lucaste@`. Passou a sair de `AUTHOR_CREDIT` / `CW_AUTHOR_CREDIT`.
-
-### Deprecated
-
-### Removed
-
-### Fixed
 - **O atalho de e-mail voltou a funcionar na interface antiga do Connect
   Cases.** A migração para o speed dial da UI nova (`#action-bar-speed-dial-container`
   → `material-button.compose`) removeu o fluxo da UI antiga
@@ -293,6 +281,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   fluxos abriu o compositor.
 
 ### Security
+- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
+  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
+  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
+  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
+  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
+  a mesma coisa é como um deles fica para trás.
 
 ## [6.1.0] - 2026-09-01
 
@@ -497,6 +491,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.2.0...HEAD
+[6.2.0]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...v6.2.0
 [6.1.0]: https://github.com/lucastdcs/case-wizard/compare/v6.0.0...v6.1.0
 [6.0.0]: https://github.com/lucastdcs/case-wizard/releases/tag/v6.0.0

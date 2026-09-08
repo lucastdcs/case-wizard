@@ -7,21 +7,29 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
-- [~] **Fase 0 da Central de Conteúdo — decidir antes de codar.** Três ADRs
-      escritos e aguardando validação: `0007` (trilho por regime no lugar das dez
-      abas), `0008` (cache da leitura pública + retenção por aba) e `0009`
-      (matriz RBAC editável). Falta a **maquete estática** do "Hoje" + trilho
-      para validação visual antes de propagar — `docs/LEARNINGS.md` já cobrou
-      esse preço uma vez com a paleta. Revisão de UX que originou o plano feita
-      em 2026-09-02, revalidada contra a `refactor-structure` depois da entrada
-      da aba Pessoas.
+_Nada em andamento. O plano da Central fechou na v6.2.0; o próximo trabalho
+começa por um item de *Waiting / blocked* ou por uma ideia triada._
 
 ## Up next
 
 Plano em seis fases da Central de Conteúdo, em ordem de dependência (não de
 prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
 
-- [~] **Fase 1 — correção e carga** — entregue, aguardando revisão do PR.
+**Todas as seis fases fecharam e foram para produção na v6.2.0** (2026-09-08).
+O que sobrou delas está em *Waiting / blocked* abaixo: são passos que só rodam
+com a planilha de produção na frente.
+
+- [x] **Fase 0 da Central de Conteúdo — decidir antes de codar.** Os três ADRs
+      foram escritos, validados e implementados: `0007` (trilho por regime no
+      lugar das dez abas), `0008` (cache da leitura pública + retenção por aba) e
+      `0009` (matriz RBAC editável, com a correção de rota registrada no próprio
+      ADR). A maquete estática do "Hoje" não chegou a ser feita: a validação
+      visual acabou acontecendo a cada PR, pelas capturas do smoke em navegador
+      real — que é a mesma proteção que `docs/LEARNINGS.md` cobrou na paleta, por
+      um caminho mais barato. Revisão de UX que originou o plano feita em
+      2026-09-02, revalidada contra a `refactor-structure` depois da entrada da
+      aba Pessoas.
+- [x] **Fase 1 — correção e carga** — entregue e em produção na v6.2.0.
       `LockService` em aprovar/publicar/reverter — hoje duas aprovações
       simultâneas do mesmo rascunho publicam o item duas vezes, sem erro em log
       nenhum; `CacheService` na leitura pública com invalidação explícita;
@@ -41,7 +49,7 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       web. **Fora do PR:** o manifesto (módulo → versão) foi descartado — com a
       chamada em lote ele não reduz execução nenhuma, só payload, e não paga a
       complexidade. Ver a nota no ADR-0008.
-- [~] **Fase 2 — casca e arquitetura** — entregue em três PRs, aguardando revisão.
+- [x] **Fase 2 — casca e arquitetura** — entregue em três PRs, em produção na v6.2.0.
       Smoke Playwright da tela **antes** de qualquer mudança — hoje o
       `ContentDashboard.html` não tem teste nenhum; quebra do arquivo em includes
       do `HtmlService` como primeiro commit, mecânico; trilho escuro/glass com os
@@ -95,8 +103,10 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       lista, sem acento, filtrada pelo `ver` da matriz, com duas velocidades
       (destino na tecla, conteúdo depois de 220 ms de silêncio) — e a prévia
       "como o agente vê", que resolve o item no idioma escolhido e nomeia o que
-      falta em vez de mostrar cartão vazio. **PR final:** aba de
-      auditoria restrita, com filtros, paginação e exportação.
+      falta em vez de mostrar cartão vazio.
+      **Correção logo depois:** metade das ações apareciam na auditoria com o
+      nome interno (`role_update`) porque nasceram depois da barra lateral e
+      ninguém traduziu. Só apareceu olhando a tela renderizada.
 
 ## Ideas — to triage
 
@@ -170,11 +180,12 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
       aba People batem com o cabeçalho que a Central cria quando a aba não
       existe, e passar os olhos na lista de segmentos reais para ver se alguma
       cor de chip ficou ruim. (2026-09-01)
-- [ ] **Publicar a tag `v6.1.0`** — passo 4 do `RELEASE.md`. Produção já está no
-      ar; a tag só publica as notas do GitHub Release (o `release.yml` não faz
-      deploy). Não subiu da sessão que fez o merge porque o proxy de lá bloqueia
-      escrita de tag, tanto no push quanto na API:
+- [ ] **Publicar as tags `v6.1.0` e `v6.2.0`** — passo 4 do `RELEASE.md`. Nos dois
+      casos produção já está no ar; a tag só publica as notas do GitHub Release
+      (o `release.yml` não faz deploy). O link `[6.1.0]` do `CHANGELOG.md` aponta
+      para uma tag que ainda não existe até isso ser feito.
       `git tag -a v6.1.0 dbc6eb5 -m "v6.1.0" && git push origin v6.1.0`
+      `git tag -a v6.2.0 <commit do merge> -m "v6.2.0" && git push origin v6.2.0`
 - [~] **Atalhos do Ctrl+K por agente** — captura no Case Notes + construtor em
       Configurações, persistência em `User_Prefs` (nuvem, cache-first), grupos e
       ranking por uso no palette. ADR em

@@ -127,9 +127,12 @@ a red workflow, because the red one tells you, and the empty one just sits there
 looking deliberate.
 
 **Versioning.** `package.json` is the SemVer source of truth and the number the
-tag must match. `APP_VERSION` and `RELEASE_NOTES.version` use the shorter `vX.Y`
-form because they drive the in-app "what's new" modal, not the release — but
-they must still describe the same release.
+tag must match. `APP_VERSION` and `RELEASE_NOTES.version` carry the same number
+prefixed with `v` (`v6.2.0`), and the only hard rule between those two is that
+they must be **byte-identical to each other** — `checkAndShowChangelog` compares
+them as strings and suppresses the modal when they differ. (Up to v5.2 they used
+a shorter `vX.Y` form; the full form has been in use since, and this line was
+still describing the old one.)
 
 ## Rollback
 

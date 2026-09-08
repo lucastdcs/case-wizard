@@ -15,25 +15,25 @@
 // contar uma release por vez (o localStorage guarda uma única versão vista).
 
 export const RELEASE_NOTES = {
-    version: "v6.1.0",
+    version: "v6.2.0",
 
-    title: "Case Wizard v6.1.0",
+    title: "Case Wizard v6.2.0",
 
     slides: [
         {
-            icon: "🐞",
-            title: "Achou um bug? Agora dá pra contar",
-            text: "Tem um formulário de bugs e sugestões dentro do app. Se algo travar, sair errado ou só te irritar, manda por ali — chega direto para quem cuida do Case Wizard, sem precisar caçar ninguém no chat."
-        },
-        {
             icon: "📢",
-            title: "Avisos mais fáceis de ler",
-            text: "O painel de avisos foi redesenhado em duas colunas, com o contraste corrigido e um espaço próprio para o estado de cada aviso. Menos rolagem para achar o que importa hoje."
+            title: "Aviso velho não fica mais na sua tela",
+            text: "Quem publica um aviso agora pode dizer quando ele começa a aparecer e quando sai do ar. Na prática: o aviso da manutenção de segunda aparece na segunda, e o da instabilidade de ontem some sozinho — em vez de continuar dizendo que um problema já resolvido está acontecendo agora."
         },
         {
-            icon: "🗂️",
-            title: "Para a liderança: o time se atualiza pela Central",
-            text: "A Central de Conteúdo ganhou a aba Pessoas. Entrada, saída, troca de fluxo e troca de idioma de um agente passam a ser feitas por ali, em vez de na planilha. TL propõe, ADMIN aprova — e o idioma em que o app abre para a pessoa acompanha a mudança."
+            icon: "🔎",
+            title: "Para a liderança: Ctrl+K acha qualquer coisa na Central",
+            text: "A Central ganhou busca global. Ctrl+K, digita, e ela acha o destino e o conteúdo — sem acento, sem lembrar em qual aba o item mora. E cada item publicado agora tem uma prévia \"como o agente vê\", que mostra o texto no idioma do agente e avisa quando falta a tradução."
+        },
+        {
+            icon: "🛡️",
+            title: "Para a liderança: acessos e histórico agora se resolvem na tela",
+            text: "O que cada papel pode fazer virou uma matriz editável — dá para criar um papel que publica disponibilidade sem tocar no catálogo, sem esperar deploy. E entrou uma aba de auditoria com filtro, período e exportação, mais uma barra de atividade recente com a foto de quem fez cada coisa."
         }
     ]
 };
