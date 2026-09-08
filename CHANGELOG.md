@@ -25,6 +25,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   pegasse depois não tinha o nome completo. O `Family name` do CRM é raspado
   junto com o resto, aparece editável quando a raspagem falha, e a fila do TL
   passa a mostrar "Nome Sobrenome" — na linha, no card e na busca.
+- **Período no histórico do TL Dashboard** (#397, primeira camada). `getWeeklyHistory(days)`
+  sempre aceitou o parâmetro; só o cliente é que nunca oferecia nada além de 7.
+  Agora há um seletor de 7 / 30 / 90 dias, e os rótulos ("Aprovados (7d)") seguem
+  a escolha em vez de mentir. Abaixo dele, uma linha diz em voz alta o que o
+  seletor **não** alcança: o backup semanal arquiva os casos finalizados em outra
+  planilha, e ler aquilo é outro problema.
 - **`npm run smoke:bau-scraping`** — o módulo BAU não tinha teste nenhum, e foi
   exatamente aí que os dois campos acima ficaram errados sem ninguém ver. O smoke
   roda a raspagem contra o `mock-crm.html`, que agora reproduz a forma real do

@@ -9,7 +9,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 - [~] **Feedback dos TLs sobre o form BAU + Dash TL (2026-09-08).** Sete pedidos,
       investigados e abertos como #392–#397. A ordem abaixo é de ataque, não de
-      pedido: o primeiro é bug e raspagem trivial, os do meio dependem de decisão,
+      pedido: os dois primeiros já saíram, os do meio dependem de decisão,
       e o último é projeto.
       1. [x] **#392 idioma + #393 sobrenome** — entregues juntos (mesmo módulo,
          mesma migração de coluna). O idioma tinha DOIS defeitos: rótulo comparado
@@ -19,21 +19,24 @@ This file differs from the long-term roadmap: it describes what is happening **n
          `profile.defaultLanguage` num `select` editável, como o db-schema já
          mandava. Junto: coluna 23 `Adv_LastName` e `npm run smoke:bau-scraping`,
          o primeiro teste que o módulo BAU já teve.
-      2. [ ] **#394 agendamento (24h + fuso na escolha + fusos dos EUA)** —
+      2. [x] **#397, primeira camada** — seletor de 7/30/90 dias no histórico do
+         TL. O backend já aceitava o parâmetro; só a tela é que pedia 7 fixo, e a
+         tela agora diz que o backup semanal é o teto do que ela alcança.
+      3. [ ] **#394 agendamento (24h + fuso na escolha + fusos dos EUA)** —
          **bloqueado por decisão**: `datetime-local` não tem como forçar 24h
          (é o locale do navegador), então o controle nativo tem que sair. E o
          `availability` é gravado sem fuso nenhum hoje, o que é a causa real do
          "o timezone vai errado". Precisa da decisão sobre gravar com offset
          (`2026-09-10T14:30-04:00`) antes de codar — provavelmente um ADR.
-      3. [ ] **#396 ID do caso filho na aprovação** — **bloqueado por decisão**:
+      4. [ ] **#396 ID do caso filho na aprovação** — **bloqueado por decisão**:
          campo obrigatório ou com escape? E coluna vs. aba dedicada, que depende
          da #397 (o backup apaga a linha uma semana depois).
-      4. [ ] **#395 telefone do anunciante** — **bloqueado por decisão**: é PII
+      5. [ ] **#395 telefone do anunciante** — **bloqueado por decisão**: é PII
          nova numa base já apontada pela #353. E só valida no CRM real: o valor é
          mascarado, não existe no DOM antes do clique no unmask.
-      5. [ ] **#397 histórico além do backup** — ler o `Archive_BAU`. Não antes de
-         #333/#334: o TL Dashboard já travou ao vivo, e isso soma uma planilha
-         inteira por chamada.
+      6. [ ] **#397, segunda camada** — histórico além do que o backup arquivou:
+         ler o `Archive_BAU`. Não antes de #333/#334 — o TL Dashboard já travou
+         ao vivo, e isso soma uma planilha inteira por chamada.
 
 ## Up next
 

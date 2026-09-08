@@ -402,6 +402,37 @@
 
         .search-input::placeholder { color: var(--text-secondary); }
 
+        .history-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .history-period-select {
+            font-family: 'Google Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .history-period-select:focus-visible {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: 2px;
+        }
+
+        .history-horizon {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
         .search-clear {
             background: none;
             border: none;
@@ -827,6 +858,15 @@
             <div id="cases-container"></div>
 
             <div id="history-panel" class="history-panel" style="display: none;">
+                <div class="history-toolbar">
+                    <select id="history-period" class="history-period-select" data-i18n-aria="historyPeriodAria">
+                        <option value="7">7</option>
+                        <option value="30">30</option>
+                        <option value="90">90</option>
+                    </select>
+                    <div class="history-horizon" id="history-horizon"></div>
+                </div>
+
                 <div class="history-stats">
                     <div class="stat-card">
                         <div class="stat-value" id="stat-approved">0</div>
@@ -946,10 +986,13 @@
                 tabHistory: "Histórico",
                 searchPlaceholder: "Buscar por anunciante, CID, caso ou agente...",
                 clearSearch: "Limpar busca",
-                statApproved: "Aprovados (7d)",
-                statDiscarded: "Descartados (7d)",
+                statApproved: function (d) { return "Aprovados (" + d + "d)"; },
+                statDiscarded: function (d) { return "Descartados (" + d + "d)"; },
                 statAvgTime: "Tempo médio de aprovação",
-                topAgents: "Quem mais abriu casos (7d)",
+                topAgents: function (d) { return "Quem mais abriu casos (" + d + "d)"; },
+                historyPeriodAria: "Período do histórico",
+                historyPeriodOption: function (d) { return "Últimos " + d + " dias"; },
+                historyHorizon: "Casos finalizados saem desta lista quando o backup semanal os arquiva.",
                 activeNow: "Ativos agora",
                 recentActivity: "Atividade recente",
                 nothingFoundFor: function (q) { return 'Nada encontrado para "' + q + '"'; },
@@ -1030,10 +1073,13 @@
                 tabHistory: "Historial",
                 searchPlaceholder: "Buscar por anunciante, CID, caso o agente...",
                 clearSearch: "Limpiar búsqueda",
-                statApproved: "Aprobados (7d)",
-                statDiscarded: "Descartados (7d)",
+                statApproved: function (d) { return "Aprobados (" + d + "d)"; },
+                statDiscarded: function (d) { return "Descartados (" + d + "d)"; },
                 statAvgTime: "Tiempo promedio de aprobación",
-                topAgents: "Quién abrió más casos (7d)",
+                topAgents: function (d) { return "Quién abrió más casos (" + d + "d)"; },
+                historyPeriodAria: "Período del historial",
+                historyPeriodOption: function (d) { return "Últimos " + d + " días"; },
+                historyHorizon: "Los casos finalizados salen de esta lista cuando el respaldo semanal los archiva.",
                 activeNow: "Activos ahora",
                 recentActivity: "Actividad reciente",
                 nothingFoundFor: function (q) { return 'No se encontró nada para "' + q + '"'; },
@@ -1073,6 +1119,13 @@
                 const v = tt(el.getAttribute('data-i18n-aria'));
                 if (typeof v === 'string') el.setAttribute('aria-label', v);
             });
+
+            // As <option> do período são texto gerado a partir do próprio value
+            // ("Últimos 30 dias"), então não cabem no laço de data-i18n acima —
+            // ficariam três chaves de dicionário dizendo a mesma frase.
+            document.querySelectorAll('#history-period option').forEach(opt => {
+                opt.textContent = tt('historyPeriodOption')(opt.value);
+            });
         }
         // DOMContentLoaded, não window.onload: confirmado ao vivo (DevTools) que o
         // loader ficava preso mesmo depois de 18s+, sem o watchdog de loadCases()
@@ -1094,6 +1147,12 @@
             // ES — assim um texto novo marcado com data-i18n nunca fica de
             // fora por esquecimento.
             applyStaticTexts();
+
+            document.getElementById('history-period').addEventListener('change', () => {
+                SoundKit.click();
+                loadHistory(true);
+            });
+
             // Pequeno atraso antes da primeiríssima chamada: em alguns carregamentos
             // "frios", o bridge do google.script.run ainda não estava pronto bem no
             // instante do DOMContentLoaded dentro do iframe sandboxado do Apps Script,
@@ -1901,6 +1960,17 @@
         let historyLoaded = false;
         let lastHistoryData = null;
 
+        // getWeeklyHistory(days) sempre aceitou o parâmetro e sempre devolveu
+        // windowDays de volta - só o cliente é que nunca oferecia outra opção
+        // que não 7. O seletor é a única mudança necessária pro TL alcançar
+        // além da semana; o que ele NÃO alcança é o que o backup já arquivou,
+        // e é isso que a linha de horizonte abaixo do seletor diz em voz alta
+        // (ver #397: ler o Archive_BAU é outro problema, bem maior).
+        function periodoSelecionado() {
+            const select = document.getElementById('history-period');
+            return Number(select && select.value) || 7;
+        }
+
         function loadHistory(force) {
             if (historyLoaded && !force) return;
             const list = document.getElementById('history-list');
@@ -1912,7 +1982,7 @@
                     console.warn("Erro ao carregar histórico:", err);
                     list.innerHTML = '<div class="empty-state" style="padding: 40px 20px;">' + tt('historyLoadError') + '</div>';
                 })
-                .getWeeklyHistory(7);
+                .getWeeklyHistory(periodoSelecionado());
         }
 
         function formatHours(h) {
@@ -1931,6 +2001,15 @@
             historyLoaded = true;
             lastHistoryData = data;
             const stats = data.stats || {};
+            const dias = data.windowDays || 7;
+
+            // Os três rótulos abaixo diziam "(7d)" fixo no HTML. Agora são funções
+            // no dicionário - o applyStaticTexts() já ignora valores que não são
+            // string, então eles chegam aqui sem terem sido sobrescritos no boot.
+            document.querySelector('[data-i18n="statApproved"]').textContent = tt('statApproved')(dias);
+            document.querySelector('[data-i18n="statDiscarded"]').textContent = tt('statDiscarded')(dias);
+            document.querySelector('[data-i18n="topAgents"]').textContent = tt('topAgents')(dias);
+            document.getElementById('history-horizon').textContent = tt('historyHorizon');
 
             document.getElementById('stat-approved').textContent = stats.approved || 0;
             document.getElementById('stat-discarded').textContent = stats.discarded || 0;
