@@ -22,12 +22,13 @@ This file differs from the long-term roadmap: it describes what is happening **n
       2. [x] **#397, primeira camada** — seletor de 7/30/90 dias no histórico do
          TL. O backend já aceitava o parâmetro; só a tela é que pedia 7 fixo, e a
          tela agora diz que o backup semanal é o teto do que ela alcança.
-      3. [ ] **#394 agendamento (24h + fuso na escolha + fusos dos EUA)** —
-         **bloqueado por decisão**: `datetime-local` não tem como forçar 24h
-         (é o locale do navegador), então o controle nativo tem que sair. E o
-         `availability` é gravado sem fuso nenhum hoje, o que é a causa real do
-         "o timezone vai errado". Precisa da decisão sobre gravar com offset
-         (`2026-09-10T14:30-04:00`) antes de codar — provavelmente um ADR.
+      3. [x] **#394 agendamento (24h + fuso na escolha + fusos dos EUA)** —
+         decidido e entregue. Formato aprovado e registrado no **ADR-0010**: grava
+         com deslocamento resolvido pela data do agendamento. O `datetime-local`
+         saiu (o locale do navegador decide 12h/24h, e não há como forçar); no
+         lugar, data + `select` de 24h + fuso. Catálogo único de fusos em
+         `shared/timezones.js`, agora com os EUA — Arizona à parte, porque é
+         Mountain sem horário de verão.
       4. [ ] **#396 ID do caso filho na aprovação** — **bloqueado por decisão**:
          campo obrigatório ou com escape? E coluna vs. aba dedicada, que depende
          da #397 (o backup apaga a linha uma semana depois).

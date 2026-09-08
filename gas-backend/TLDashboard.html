@@ -993,6 +993,7 @@
                 historyPeriodAria: "Período do histórico",
                 historyPeriodOption: function (d) { return "Últimos " + d + " dias"; },
                 historyHorizon: "Casos finalizados saem desta lista quando o backup semanal os arquiva.",
+                clientTimeSuffix: "(cliente)",
                 activeNow: "Ativos agora",
                 recentActivity: "Atividade recente",
                 nothingFoundFor: function (q) { return 'Nada encontrado para "' + q + '"'; },
@@ -1080,6 +1081,7 @@
                 historyPeriodAria: "Período del historial",
                 historyPeriodOption: function (d) { return "Últimos " + d + " días"; },
                 historyHorizon: "Los casos finalizados salen de esta lista cuando el respaldo semanal los archiva.",
+                clientTimeSuffix: "(cliente)",
                 activeNow: "Activos ahora",
                 recentActivity: "Actividad reciente",
                 nothingFoundFor: function (q) { return 'No se encontró nada para "' + q + '"'; },
@@ -1344,16 +1346,44 @@
         // gas-backend/appsscript.json e o mesmo fuso que EmailEngine.js já usa
         // pros emails) - sem isso, o texto cru mostrava milissegundos e "Z" no
         // final (ex: "14:00:00.000Z") direto do ISO string, sem formatação.
+        // Desde o ADR-0010 a disponibilidade é gravada com deslocamento
+        // ("2026-09-10T14:30-04:00"), então o horário do CLIENTE está no próprio
+        // texto e o instante é absoluto. Mostramos os dois: o que foi combinado
+        // com o anunciante, e o equivalente em Brasília, que é o que o TL usa
+        // pra saber se cabe na agenda do time.
+        //
+        // Linhas antigas não têm deslocamento. Ali `new Date()` interpreta como
+        // hora local de quem lê, que é o comportamento que sempre existiu — só
+        // não dá pra afirmar de que fuso elas são, e por isso não ganham o "· BRT".
         function formatAvailability(raw) {
             if (!raw) return tt('notInformed');
             if (String(raw).includes(' | ')) {
                 return String(raw).split(' | ').map(formatAvailability).join(' | ');
             }
-            const d = new Date(raw);
+
+            const texto = String(raw).trim();
+            const d = new Date(texto);
             if (isNaN(d.getTime())) return tt('notInformed');
-            const datePart = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
-            const timePart = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
-            return `${datePart}${tt('dateAt')}${timePart}`;
+
+            const temFuso = /[+-]\d{2}:\d{2}$|Z$/.test(texto);
+            if (!temFuso) {
+                const dataLocal = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+                const horaLocal = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+                return `${dataLocal}${tt('dateAt')}${horaLocal}`;
+            }
+
+            // Horário do cliente: lido do próprio texto, sem conversão — é o que
+            // foi combinado com ele, e converter só pra reexibir seria arriscar
+            // um erro de arredondamento em cima de um dado que já está pronto.
+            const [dia, resto] = texto.split('T');
+            const [ano, mes, diaDoMes] = dia.split('-');
+            const horaCliente = resto.slice(0, 5);
+
+            const horaBr = new Intl.DateTimeFormat('pt-BR', {
+                timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false,
+            }).format(d);
+
+            return `${diaDoMes}/${mes}/${ano}${tt('dateAt')}${horaCliente} ${tt('clientTimeSuffix')} · ${horaBr} BRT`;
         }
 
         // Nome completo do anunciante. O sobrenome é coluna nova: casos gravados

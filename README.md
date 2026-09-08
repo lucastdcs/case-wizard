@@ -244,7 +244,8 @@ non-zero on failure, so you run the ones that cover what you touched.
 
 - **Node harnesses** (`npm run test:*`) stub the browser and Apps Script globals:
   `test:content`, `test:call-script`, `test:emails`, `test:note-templates`,
-  `test:shortcuts`, `test:prefs`, `test:people`, `test:deployment-env`.
+  `test:shortcuts`, `test:prefs`, `test:people`, `test:deployment-env`,
+  `test:timezones`.
 - **Browser smokes** (`npm run smoke:*`) drive real UI with Playwright.
   `smoke:shortcuts`, `smoke:wizards`, `smoke:env-badge`, `smoke:broadcast` and
   `smoke:bau-scraping` run the agent overlay against `mock-crm.html`;

@@ -20,7 +20,30 @@ versions follow [Semantic Versioning](https://semver.org/).
   opção certa e continua editável — porque existe caso que foge do segmento de
   quem está atendendo.
 
+### Changed
+- **O agendamento do BAU passa a carregar fuso, e a hora vira 24h** (#394, ADR-0010).
+  A disponibilidade era gravada como `2026-09-10T14:30` — **sem fuso nenhum**. O
+  agente digitava o horário local do cliente (é o que o disclaimer manda) e o TL
+  Dashboard exibia aquilo em Brasília; o número só sobrevivia porque o TL também
+  está em BRT. Essa é a causa real do "o timezone vai errado": não era o campo
+  `Timezone`, era o horário nunca ter estado amarrado a ele.
+  Agora grava `2026-09-10T14:30-04:00`, com o deslocamento resolvido para a
+  **data do agendamento** (o horário de verão do anunciante entra na conta, e
+  duas janelas da mesma zona em meses diferentes saem com deslocamentos
+  diferentes). O TL passa a ver as duas leituras: `14:30 (cliente) · 15:30 BRT`.
+  Linhas antigas continuam legíveis — nada foi migrado.
+  O `<input type="datetime-local">` saiu: o formato dele (12h ou 24h) vem do
+  locale do navegador e **não há atributo que force 24h**. No lugar, data +
+  `<select>` de 24h + fuso, com o fuso já pré-selecionado a partir do
+  `Customer time zone` do CRM e um eco ao vivo mostrando o equivalente em Brasília.
+
 ### Added
+- **Fusos dos Estados Unidos** (#394) — Eastern, Central, Mountain, Pacific,
+  Alasca, Havaí e **Arizona** à parte, que é Mountain sem horário de verão: sem
+  ela, meio ano de agendamento no Arizona sai uma hora errado, e é o tipo de erro
+  que ninguém atribui ao formulário. A lista virou catálogo único em
+  `shared/timezones.js`, usado pelo consultor de Time Zone **e** pelo formulário —
+  duas cópias divergiriam no primeiro país acrescentado num lugar só.
 - **Sobrenome do anunciante** (#393). O caso levava só o primeiro nome; quem
   pegasse depois não tinha o nome completo. O `Family name` do CRM é raspado
   junto com o resto, aparece editável quando a raspagem falha, e a fila do TL
@@ -31,6 +54,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   a escolha em vez de mentir. Abaixo dele, uma linha diz em voz alta o que o
   seletor **não** alcança: o backup semanal arquiva os casos finalizados em outra
   planilha, e ler aquilo é outro problema.
+- **`npm run test:timezones`** — o deslocamento gravado no agendamento é
+  calculado, e erra em silêncio: uma hora fora não derruba nada, vira uma ligação
+  perdida dias depois. Cobre horário de verão dos dois hemisférios, Arizona, e a
+  regressão que mais importa — duas janelas da mesma zona em meses diferentes
+  precisam sair com deslocamentos diferentes, que é o que um cálculo baseado em
+  "agora" erraria.
 - **`npm run smoke:bau-scraping`** — o módulo BAU não tinha teste nenhum, e foi
   exatamente aí que os dois campos acima ficaram errados sem ninguém ver. O smoke
   roda a raspagem contra o `mock-crm.html`, que agora reproduz a forma real do

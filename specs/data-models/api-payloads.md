@@ -9,6 +9,26 @@ O objeto `fullPayload` deve conter:
 - As chaves mapeadas no `db-schema.md`.
 - Campos irrelevantes no fluxo de Descarte (ex: `availability`, `taskType`) devem ser forçados para `""` (string vazia).
 
+### `availability` viaja com fuso (ADR-0010)
+
+O formulário monta cada janela a partir de três controles — data, hora em 24h e
+o fuso do anunciante — e **carimba o deslocamento da zona escolhida na data
+escolhida** antes de enviar:
+
+```
+2026-09-10T14:30-04:00 | 2027-01-15T09:00-05:00
+```
+
+Os dois deslocamentos acima são da mesma zona (`America/New_York`): o horário de
+verão é resolvido pela data do agendamento, não pela data do envio.
+
+**Regras:**
+- O horário é sempre o **local do anunciante** — nunca converta para BRT antes
+  de gravar. Quem exibe converte; quem grava preserva o que foi combinado.
+- **Um fuso por caso**, não por janela: o anunciante é uma pessoa, num lugar só.
+- Quem lê deve aceitar as duas formas. Sem deslocamento = linha anterior ao ADR,
+  cuja premissa de fuso não é recuperável; não invente uma.
+
 ## Preferências do agente (`get_user_prefs` / `save_user_prefs`)
 
 Contrato das duas ops que servem as preferências por pessoa (hoje: os atalhos do

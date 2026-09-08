@@ -27,7 +27,7 @@
 | `14` | Motivo_Abertura | `reason` | Campo principal de categorização |
 | `15` | Task_BAU | `taskType` | Pode ser lista separada por vírgula |
 | `16` | Justificativa/Descrição | `description` ou `nonImplementationReason` | O Back-end deve mesclar estes dois campos se ambos existirem. |
-| `17` | Disponibilidade_Adv | `availability` | Formatado com pipe (`\|`) |
+| `17` | Disponibilidade_Adv | `availability` | Janelas separadas por pipe (`\|`). Cada uma é ISO 8601 **com deslocamento resolvido** para a data escolhida: `2026-09-10T14:30-04:00` (ADR-0010). O horário é o **local do anunciante**; o deslocamento diz qual fuso é esse. Linhas anteriores ao ADR não têm deslocamento e continuam legíveis — `new Date()` as interpreta como hora local de quem lê. |
 
 ## Colunas depois do formulário (escritas à parte, não pelo `appendRow` inicial)
 | Índice | Nome da Coluna (Header) | Chave do Payload | Notas |

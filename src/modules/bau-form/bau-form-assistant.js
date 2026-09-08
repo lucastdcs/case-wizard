@@ -11,6 +11,18 @@ import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.
 import { FORM_CONFIG } from './bau-form-config.js';
 import { bft, bfOptionText } from './bau-form-i18n.js';
 import { getLanguage, onLanguageChange } from '../shared/i18n.js';
+import { TIMEZONE_HUBS, DEFAULT_TIMEZONE, withZoneOffset, offsetMinutesForWallTime, formatOffset, zoneFromCrmValue } from '../shared/timezones.js';
+
+// Grade de horários do agendamento, em 24h. Faixa e passo são decisão de
+// produto (o atendimento acontece em horário comercial estendido do cliente),
+// não de arquitetura — mexer aqui não muda o formato gravado (ADR-0010).
+const HORARIOS = (() => {
+    const lista = [];
+    for (let minutos = 7 * 60; minutos <= 21 * 60; minutos += 30) {
+        lista.push(String(Math.floor(minutos / 60)).padStart(2, '0') + ':' + String(minutos % 60).padStart(2, '0'));
+    }
+    return lista;
+})();
 
 const BAU_DICT = {
     pt: {
@@ -39,6 +51,9 @@ const BAU_DICT = {
         none: "Nenhuma",
         language: "Idioma",
         lastName: "Sobrenome",
+        clientTimezone: "Fuso horário do cliente",
+        echoEquivalence: (hora, lugar, horaBr) => `<strong>${hora}</strong> em ${lugar} equivale a <strong>${horaBr}</strong> em Brasília.`,
+        echoSameZone: "O cliente está no mesmo fuso que você.",
         editPageWarning: "Atenção: Para editar as informações, você deve estar com a página deste Caso específico aberta no sistema. Caso contrário, os dados capturados estarão incorretos.",
         onCorrectPage: "Estou na página correta",
         sending: "Enviando...",
@@ -97,6 +112,7 @@ const BAU_DICT = {
         fieldRequiredSingle: (label) => `Erro: O campo '${label}' é obrigatório.`,
         whatMustBeDone: "O que deve ser feito",
         editTasksHint: "Para editar as tasks, volte ao Passo 2",
+        editScheduleHint: "Para editar o agendamento, volte ao Passo 3",
         bauJustification: "Justificativa BAU",
         description: "Descrição",
         availabilityPriority: "Disponibilidade (Prioridade)",
@@ -135,6 +151,9 @@ const BAU_DICT = {
         none: "Ninguna",
         language: "Idioma",
         lastName: "Apellido",
+        clientTimezone: "Huso horario del cliente",
+        echoEquivalence: (hora, lugar, horaBr) => `<strong>${hora}</strong> en ${lugar} equivale a <strong>${horaBr}</strong> en Brasilia.`,
+        echoSameZone: "El cliente está en el mismo huso que tú.",
         editPageWarning: "Atención: Para editar la información, debes tener abierta en el sistema la página de este Caso específico. De lo contrario, los datos capturados estarán incorrectos.",
         onCorrectPage: "Estoy en la página correcta",
         sending: "Enviando...",
@@ -193,6 +212,7 @@ const BAU_DICT = {
         fieldRequiredSingle: (label) => `Error: El campo '${label}' es obligatorio.`,
         whatMustBeDone: "Qué debe hacerse",
         editTasksHint: "Para editar las tareas, vuelve al Paso 2",
+        editScheduleHint: "Para editar la programación, vuelve al Paso 3",
         bauJustification: "Justificación BAU",
         description: "Descripción",
         availabilityPriority: "Disponibilidad (Prioridad)",
@@ -304,15 +324,45 @@ function createField(fieldConfig) {
         case 'datetime-group':
             input = document.createElement('div');
             input.className = 'bau-availability-container';
+
+            // Um fuso para as três janelas: o anunciante é uma pessoa, num lugar
+            // só. Fica no topo do bloco porque é a premissa das opções abaixo —
+            // escolher o fuso depois de digitar os horários é o que produzia o
+            // engano que os TLs relataram.
+            const tzRow = document.createElement('div');
+            tzRow.className = 'bau-timezone-row';
+            tzRow.innerHTML = `
+                <span class="bau-field-hint">${bt('clientTimezone')}</span>
+                <select name="availabilityTimezone" class="bau-select">
+                    ${TIMEZONE_HUBS.map(h => `<option value="${h.zone}">${h.flag} ${h.name} — ${h.label}</option>`).join('')}
+                </select>
+            `;
+            input.appendChild(tzRow);
+
             fieldConfig.fields.forEach(f => {
                 const fieldWrapper = document.createElement('div');
                 fieldWrapper.className = 'bau-availability-field';
+                // Data + hora em 24h separados. O <input type="datetime-local">
+                // saiu daqui porque o formato dele (12h com AM/PM ou 24h) é
+                // decidido pelo locale do navegador, sem atributo que force —
+                // ver ADR-0010. O select também elimina a digitação errada.
                 fieldWrapper.innerHTML = `
                     <span class="bau-field-hint">${bft(f, 'label')}</span>
-                    <input type="datetime-local" name="${f.name}" class="bau-input" ${f.required ? 'required' : ''}>
+                    <div class="bau-slot-row">
+                        <input type="date" name="${f.name}_date" class="bau-input" ${f.required ? 'required' : ''}>
+                        <select name="${f.name}_time" class="bau-select">
+                            <option value="">--:--</option>
+                            ${HORARIOS.map(h => `<option value="${h}">${h}</option>`).join('')}
+                        </select>
+                    </div>
                 `;
                 input.appendChild(fieldWrapper);
             });
+
+            const echo = document.createElement('div');
+            echo.className = 'bau-timezone-echo';
+            echo.id = 'bau-availability-echo';
+            input.appendChild(echo);
 
             const disclaimer = document.createElement('div');
             disclaimer.className = 'bau-availability-disclaimer';
@@ -1088,10 +1138,15 @@ export function initBAUForm() {
                         isFieldValid = false;
                     }
                 } else if (fieldConfig.type === 'datetime-group') {
-                    const firstInput = form.querySelector(`#bau-step-${step} input[name="${fieldConfig.fields[0].name}"]`);
-                    if (!firstInput || firstInput.offsetParent === null) continue; // Skip if input itself is hidden
+                    // A opção 1 exige data E hora: só a data marcada não é um
+                    // agendamento, e antes do split em dois campos a validação
+                    // de um datetime-local cobria os dois de uma vez.
+                    const primeiro = fieldConfig.fields[0].name;
+                    const dataInput = form.querySelector(`#bau-step-${step} input[name="${primeiro}_date"]`);
+                    const horaInput = form.querySelector(`#bau-step-${step} select[name="${primeiro}_time"]`);
+                    if (!dataInput || dataInput.offsetParent === null) continue; // Skip if input itself is hidden
 
-                    if (!firstInput.value.trim()) {
+                    if (!dataInput.value.trim() || !horaInput || !horaInput.value.trim()) {
                         failureReason = "Datetime group first field is empty";
                         SoundManager.playError();
                         showToast(bt('fieldRequiredDouble')(bft(fieldConfig.fields[0], 'label')), { error: true });
@@ -1219,6 +1274,17 @@ export function initBAUForm() {
         //
         // Antes disto o campo só existia no passo 5 (Descarte); a abertura de caso
         // não tinha input nenhum e mandava o "N/A" da raspagem direto pra planilha.
+        // O CRM entrega "Customer time zone" como "Brazil/East", "US/Eastern" ou
+        // já como zona IANA. Quando dá pra reconhecer, o select abre no fuso do
+        // anunciante; quando não dá, fica no padrão e o agente escolhe — abrir na
+        // opção errada é pior do que admitir que não sabe.
+        const zonaDoCrm = zoneFromCrmValue(pageData.timezone) || DEFAULT_TIMEZONE;
+        const tzSelect = form.querySelector('select[name="availabilityTimezone"]');
+        if (tzSelect) {
+            tzSelect.value = zonaDoCrm;
+            atualizarEchoDisponibilidade();
+        }
+
         const agentLanguage = pageData.userProfile?.defaultLanguage;
         if (agentLanguage) {
             form.querySelectorAll('select[name="language"]').forEach(select => {
@@ -1265,6 +1331,75 @@ export function initBAUForm() {
     const cidInput = popup.querySelector('#bau-form-cid');
     if (cidInput) {
         cidInput.addEventListener('input', () => validateStep(1));
+    }
+
+    form.addEventListener('change', (e) => {
+        const nome = e.target?.name || '';
+        if (nome === 'availabilityTimezone' || nome.startsWith('availability_')) {
+            atualizarEchoDisponibilidade();
+        }
+    });
+
+    // Junta os pares data+hora de cada janela e carimba o fuso escolhido.
+    // Devolve lista (não string) pra prévia poder mostrar item a item.
+    function montarDisponibilidade(data) {
+        const zone = data.availabilityTimezone || DEFAULT_TIMEZONE;
+        return ['availability_1', 'availability_2', 'availability_3']
+            .map(nome => {
+                const dia = data[`${nome}_date`];
+                const hora = data[`${nome}_time`];
+                if (!dia || !hora) return '';
+                return withZoneOffset(`${dia}T${hora}`, zone);
+            })
+            .filter(Boolean);
+    }
+
+    // Texto das janelas na prévia. Só leitura: um <input type="date"> e um
+    // <select> por janela, replicados aqui, seriam seis controles espelhando
+    // outros seis — e o passo 3 fica a um clique de distância. O mesmo caminho
+    // já usado pelas Tasks, que também não são editáveis na prévia.
+    function resumoDisponibilidade(data) {
+        const zone = data.availabilityTimezone || DEFAULT_TIMEZONE;
+        const hub = TIMEZONE_HUBS.find(h => h.zone === zone);
+        const janelas = montarDisponibilidade(data);
+        if (janelas.length === 0) return bt('notInformedPlaceholder');
+
+        const texto = janelas.map(j => {
+            const [dia, resto] = j.split('T');
+            const [a, m, d] = dia.split('-');
+            return `${d}/${m} ${resto.slice(0, 5)}`;
+        }).join('  ·  ');
+
+        return `${texto} — ${hub ? hub.label : zone}`;
+    }
+
+    // Eco da opção 1 em Brasília. O agente digita no fuso do CLIENTE, e a
+    // conversão de cabeça é justamente onde ele erra — mostrar as duas leituras
+    // lado a lado é mais barato que confiar na aritmética de quem está com
+    // pressa.
+    function atualizarEchoDisponibilidade() {
+        const echo = form.querySelector('#bau-availability-echo');
+        if (!echo) return;
+
+        const dados = Object.fromEntries(new FormData(form).entries());
+        const zone = dados.availabilityTimezone || DEFAULT_TIMEZONE;
+        const dia = dados.availability_1_date;
+        const hora = dados.availability_1_time;
+
+        if (!dia || !hora) { echo.innerHTML = ''; return; }
+        if (zone === DEFAULT_TIMEZONE) { echo.textContent = bt('echoSameZone'); return; }
+
+        const carimbado = withZoneOffset(`${dia}T${hora}`, zone);
+        const instante = new Date(carimbado);
+        if (isNaN(instante.getTime())) { echo.innerHTML = ''; return; }
+
+        const emBrasilia = new Intl.DateTimeFormat('pt-BR', {
+            timeZone: DEFAULT_TIMEZONE, day: '2-digit', month: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false,
+        }).format(instante);
+
+        const hub = TIMEZONE_HUBS.find(h => h.zone === zone);
+        echo.innerHTML = bt('echoEquivalence')(hora, hub ? hub.label : zone, emBrasilia);
     }
 
     // Opções do select de idioma da prévia, lidas do próprio FORM_CONFIG: uma
@@ -1361,7 +1496,7 @@ export function initBAUForm() {
 
                     <div class="bau-confirm-row full-width">
                         <span class="bau-confirm-label">${bt('availabilityPriority')}</span>
-                        <input type="datetime-local" class="bau-confirm-value-input" data-field="availability_1" data-step="3" value="${data.availability_1 || ''}">
+                        <span class="bau-confirm-value-input" style="cursor: default; opacity: 0.8;" title="${bt('editScheduleHint')}">${resumoDisponibilidade(data)}</span>
                     </div>
                     <div class="bau-confirm-row">
                         <span class="bau-confirm-label">${bt('suggestDiscardQuestion')}</span>
@@ -1479,17 +1614,32 @@ export function initBAUForm() {
                     input.checked = tasks.includes(input.value);
                     input.closest('.bau-task-item')?.classList.toggle('active', input.checked);
                 }
+            } else if (fieldName === 'availabilityTimezone') {
+                // O fuso não é reconstruível a partir do deslocamento gravado
+                // (-03:00 serve a vários países), então vem da coluna Timezone do
+                // caso, que é o Customer time zone do CRM. Sem ela, o padrão.
+                const zona = zoneFromCrmValue(c.timezone) || DEFAULT_TIMEZONE;
+                if (Array.from(input.options).some(o => o.value === zona)) input.value = zona;
             } else if (fieldName.startsWith('availability_')) {
-                const index = parseInt(fieldName.split('_')[1]) - 1;
+                // "availability_2_date" → índice 1, sufixo "date". O valor
+                // gravado pode ou não ter deslocamento (casos anteriores ao
+                // ADR-0010 não têm); em ambos os casos o que interessa aqui é o
+                // horário de parede, que é o que o agente combinou com o cliente.
+                const partes = fieldName.split('_');
+                const index = parseInt(partes[1], 10) - 1;
+                const sufixo = partes[2];
                 const slot = availabilitySlots[index];
-                if (slot && input.type === 'datetime-local') {
-                    try {
-                        const date = new Date(slot);
-                        if (!isNaN(date.getTime())) {
-                            const localISO = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-                            input.value = localISO;
-                        }
-                    } catch(e) {}
+                const m = String(slot || '').match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+                if (!m) return;
+
+                if (sufixo === 'date') input.value = m[1];
+                if (sufixo === 'time') {
+                    // Um horário fora da grade (caso antigo, digitado à mão)
+                    // ganha sua própria opção em vez de sumir no select.
+                    if (!Array.from(input.options).some(o => o.value === m[2])) {
+                        input.add(new Option(m[2], m[2]));
+                    }
+                    input.value = m[2];
                 }
             } else if (fieldName === 'language') {
                 // Casos gravados antes do select carregam texto livre na coluna 11
@@ -1557,9 +1707,10 @@ export function initBAUForm() {
 
         if (requestType === 'BAU') {
             const tasks = formData.getAll('taskType');
-            const disponibilidadeUnificada = [data.availability_1, data.availability_2, data.availability_3]
-                .filter(d => d && d.trim() !== '')
-                .join(' | ');
+            // Cada janela vira ISO com deslocamento resolvido para a data
+            // escolhida (ADR-0010): "2026-09-10T14:30-04:00". Sem isso o horário
+            // é um número sem fuso, e todo consumidor adivinha o dele.
+            const disponibilidadeUnificada = montarDisponibilidade(data).join(' | ');
 
             payload.taskType = tasks.join(', ');
             payload.availability = disponibilidadeUnificada;
