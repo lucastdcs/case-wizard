@@ -40,6 +40,15 @@ export const FORM_CONFIG = {
                     isSmart: true
                 },
                 {
+                    id: 'advPhone',
+                    name: 'advPhone',
+                    label: 'Telefone do Anunciante',
+                    type: 'text',
+                    placeholder: '+55 11 90000-0000',
+                    required: false,
+                    isSmart: true
+                },
+                {
                     id: 'advEmail',
                     name: 'advEmail',
                     label: 'Email do Anunciante',

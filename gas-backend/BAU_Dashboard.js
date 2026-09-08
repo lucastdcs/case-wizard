@@ -41,6 +41,7 @@ function getPendingBAUCases() {
         speakeasyId: String(row[6] || ""),
         advName: String(row[7] || ""),
         advLastName: String(row[22] || ""),
+        advPhone: String(row[24] || ""),
         advEmail: String(row[8] || ""),
         site: String(row[9] || ""),
         timezone: String(row[10] || ""),

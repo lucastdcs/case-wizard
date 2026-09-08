@@ -38,6 +38,13 @@ versions follow [Semantic Versioning](https://semver.org/).
   `Customer time zone` do CRM e um eco ao vivo mostrando o equivalente em Brasília.
 
 ### Added
+- **Telefone do anunciante** (#395). É PII mascarada: o valor não existe no DOM
+  até o clique no unmask, e não tem marca óbvia como o `@` do e-mail — o
+  reconhecimento é por dígitos, descartando explicitamente o rótulo `Phone` que o
+  botão mascarado exibe, que é o engano fácil. Os dois unmasks (e-mail e
+  telefone) disparam **em paralelo**: em série custariam 1 s aos sete pontos que
+  chamam `getPageData()`; juntos custam os mesmos ~500 ms de antes.
+  Aparece no card do caso e na fila do TL, e é editável quando a raspagem falha.
 - **O ID do caso BAU gerado passa a ser registrado na aprovação** (#396). O TL
   aprovava a abertura, criava o caso no CRM, e esse número não voltava para lugar
   nenhum — nem para o histórico, nem para o agente. Agora aprovar pede o ID

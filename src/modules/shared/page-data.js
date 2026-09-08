@@ -184,6 +184,59 @@ export async function captureClientEmail() {
     }
 }
 
+// --- 4.5 CAPTURA DE TELEFONE DO CLIENTE (PII mascarada) ---
+//
+// Mesmo padrão do e-mail acima: o valor NÃO existe no DOM até alguém clicar no
+// unmask. A diferença que custa trabalho é o reconhecimento — e-mail se acha
+// pelo "@", telefone não tem marca dessas, então a heurística é por dígitos.
+//
+// Devolve null (e não "") quando não acha, pra quem consome distinguir "não tem
+// telefone" de "não consegui ler".
+function pareceTelefone(texto) {
+    const t = String(texto || "").trim();
+    if (!t || t.length > 30) return false;
+
+    // "Phone" é o rótulo que o próprio botão de unmask mostra enquanto o valor
+    // está escondido — sem esta linha, o estado mascarado seria lido como se
+    // fosse o dado.
+    if (/^phone$/i.test(t)) return false;
+    if (t.includes("Is this:")) return false;
+
+    // Só dígitos e pontuação de telefone. É o que descarta "Click to view",
+    // datas e IDs que por acaso morem no mesmo container.
+    if (!/^[\d\s()+\-.]+$/.test(t)) return false;
+
+    const digitos = t.replace(/\D/g, "");
+    return digitos.length >= 8 && digitos.length <= 15;
+}
+
+export async function captureClientPhone() {
+    try {
+        const xpath = "//div[contains(@class, 'form-label') and contains(text(), 'Phone number')]";
+        const labelNode = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (!labelNode) return null;
+
+        const container = labelNode.parentElement;
+        if (!container) return null;
+
+        const unmaskBtn = container.querySelector('.unmask-button') ||
+            container.querySelector('[aria-label="Click to view"]');
+
+        if (unmaskBtn) {
+            unmaskBtn.click();
+            await esperar(500); // Espera o Angular renderizar o valor real
+        }
+
+        const candidatos = Array.from(container.querySelectorAll('a, span, div, pii-value'));
+        const alvo = candidatos.find(el => pareceTelefone(el.innerText));
+        return alvo ? alvo.innerText.trim() : null;
+
+    } catch (e) {
+        console.warn("Erro ao capturar telefone do cliente:", e);
+        return null;
+    }
+}
+
 // --- 5. CAPTURA DE EMAIL INTERNO (Rastreabilidade) ---
 export function captureInternalEmail() {
     try {
@@ -502,8 +555,15 @@ export async function getPageData() {
     } catch (e) { console.warn("Falha URL:", e); }
 
 
-    // Captura EMAILS
-    const clientEmail = await captureClientEmail();
+    // Captura EMAILS e TELEFONE
+    // Em paralelo de propósito: os dois clicam no próprio unmask e esperam 500ms
+    // pelo Angular. Em série isso custaria 1s no caminho que TODO módulo chama
+    // (sete pontos de chamada de getPageData); juntos, custa os mesmos 500ms de
+    // antes do telefone existir.
+    const [clientEmail, clientPhone] = await Promise.all([
+        captureClientEmail(),
+        captureClientPhone(),
+    ]);
     const internalEmail = captureInternalEmail();
 
     // Captura CID
@@ -553,7 +613,8 @@ export async function getPageData() {
         salesProgram: salesProgram,
         language: language,
         seId: seId,
-        advLastName: advLastName
+        advLastName: advLastName,
+        advPhone: clientPhone
     };
 }
 

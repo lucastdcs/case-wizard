@@ -32,11 +32,12 @@ const bundle = await build({
             import {
                 captureLanguage,
                 captureAdvertiserLastName,
+                captureClientPhone,
                 captureTimezone,
                 captureAMName,
             } from "./src/modules/shared/page-data.js";
 
-            window.__cw = { captureLanguage, captureAdvertiserLastName, captureTimezone, captureAMName };
+            window.__cw = { captureLanguage, captureAdvertiserLastName, captureClientPhone, captureTimezone, captureAMName };
         `,
         resolveDir: raiz,
         loader: 'js',
@@ -95,6 +96,43 @@ await check('sobrenome ausente devolve string vazia', async () => {
         return r;
     });
     igual(v, '', 'captureAdvertiserLastName sem o campo');
+});
+
+// Telefone é PII mascarada: o valor não existe no DOM antes do clique. Se esta
+// asserção passar sem o clique acontecer, a captura está lendo outra coisa.
+await check('telefone só aparece depois do unmask', async () => {
+    const antes = await page.evaluate(() => {
+        const el = document.querySelector('#client-phone-container .real');
+        return getComputedStyle(el).display;
+    });
+    igual(antes, 'none', 'telefone antes do clique');
+
+    const v = await page.evaluate(() => window.__cw.captureClientPhone());
+    igual(v, '+55 11 98888-7777', 'captureClientPhone');
+});
+
+// O rótulo "Phone" que o botão mascarado exibe é o candidato mais provável de
+// ser lido por engano — foi exatamente esse tipo de engano que o filtro do
+// captureClientEmail já precisou tratar para "Is this:" e "email".
+await check('o rótulo "Phone" do estado mascarado não é confundido com o número', async () => {
+    const v = await page.evaluate(() => {
+        const c = document.getElementById('client-phone-container');
+        const real = c.querySelector('.real');
+        const texto = real.textContent;
+        real.textContent = 'Phone';           // finge que o unmask não materializou nada
+        return window.__cw.captureClientPhone().then(r => { real.textContent = texto; return r; });
+    });
+    igual(v, null, 'captureClientPhone sem número de verdade');
+});
+
+await check('telefone ausente devolve null', async () => {
+    const v = await page.evaluate(() => {
+        const el = document.getElementById('client-phone-container');
+        const pai = el.parentElement;
+        el.remove();
+        return window.__cw.captureClientPhone().then(r => { pai.appendChild(el); return r; });
+    });
+    igual(v, null, 'captureClientPhone sem o campo');
 });
 
 // Guarda de não-regressão: o timezone já usava o caminho do <sanitized-content>

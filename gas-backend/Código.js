@@ -721,6 +721,22 @@ function ensureBAUChildCaseColumn(sheet) {
   if (!headerCell.getValue()) headerCell.setValue(BAU_CHILD_CASE_HEADER);
 }
 
+// Telefone do anunciante. É PII: entra na planilha pela mesma porta que o
+// Adv_Email já usa, e sai no backup junto com a linha — ver #353 sobre o
+// inventário de PII desta base.
+const BAU_ADV_PHONE_HEADER = "Adv_Phone";
+const BAU_ADV_PHONE_COL = 25;
+
+function ensureBAUAdvPhoneColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_ADV_PHONE_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_ADV_PHONE_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_ADV_PHONE_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_ADV_PHONE_HEADER);
+}
+
 function findRowIndexById(sheet, id) {
   if (!sheet) return -1;
   const data = sheet.getDataRange().getValues();

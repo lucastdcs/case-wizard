@@ -34,9 +34,12 @@ This file differs from the long-term roadmap: it describes what is happening **n
          Validado nos dois lados. **Fica um fio solto conhecido:** o backup semanal
          apaga a linha, e com ela o ID, uma semana depois da aprovação — quem
          resolve isso é o item 6.
-      5. [ ] **#395 telefone do anunciante** — **bloqueado por decisão**: é PII
-         nova numa base já apontada pela #353. E só valida no CRM real: o valor é
-         mascarado, não existe no DOM antes do clique no unmask.
+      5. [x] **#395 telefone do anunciante** — autorizado a gravar. Coluna 25
+         (`Adv_Phone`), captura com unmask em paralelo com a do e-mail, e a regra
+         de PII mascarada foi para `specs/workflow/scraping-rules.md`.
+         **Falta confirmar no CRM real:** o mock reproduz o unmask, mas só a
+         página de verdade diz qual é a marcação DEPOIS do clique — se a
+         heurística por dígitos não achar o número lá, é aqui que se ajusta.
       6. [ ] **#397, segunda camada** — histórico além do que o backup arquivou:
          ler o `Archive_BAU`. Não antes de #333/#334 — o TL Dashboard já travou
          ao vivo, e isso soma uma planilha inteira por chamada.

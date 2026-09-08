@@ -159,6 +159,17 @@
                 <div><sanitized-content>portuguese</sanitized-content></div>
             </div>
 
+            <!-- Telefone é PII MASCARADA: o valor não está no DOM até o clique no
+                 unmask, igual ao "Login email" do CRM. O <span class="real"> só
+                 aparece depois do clique — é o que o smoke exercita. -->
+            <div id="client-phone-container">
+                <div class="form-label">Phone number</div>
+                <div><sanitized-content><pii-value>
+                    <span class="unmask-button" aria-label="Click to view">Phone</span>
+                    <span class="real" style="display:none">+55 11 98888-7777</span>
+                </pii-value></sanitized-content></div>
+            </div>
+
             <div class="data-pair" id="website-container">
                 <div class="form-label">Website</div>
                 <div class="data-pair-content">https://www.acme.com</div>
@@ -190,6 +201,12 @@
     </main>
 
     <script>
+        // Unmask do telefone: o CRM só materializa o valor depois do clique.
+        document.querySelector('#client-phone-container .unmask-button').addEventListener('click', (e) => {
+            e.target.style.display = 'none';
+            document.querySelector('#client-phone-container .real').style.display = '';
+        });
+
         // Simple interaction for profile menu
         const profileBtn = document.querySelector('profile-icon material-button');
         const profileDetails = document.querySelector('profile-details');

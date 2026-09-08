@@ -3,8 +3,8 @@
 ## Planilha Alvo
 - **Nome/Constante:** `SHEET_BAU_FORM`
 - **Total de Colunas:** 18 colunas do formulário (índices 0 a 17) + 3 de trilha
-  de auditoria (18 a 20, ver abaixo) + 1 de sinalização do agente (21) + 2 acrescentadas
-  depois (22 e 23). A função do Apps Script deve
+  de auditoria (18 a 20, ver abaixo) + 1 de sinalização do agente (21) + 3 acrescentadas
+  depois (22 a 24). A função do Apps Script deve
   garantir o preenchimento/atualização exata do índice 0 a 17.
 
 ## Mapeamento de Índices (Array Google Sheets)
@@ -36,6 +36,7 @@
 | `19` | Processed_At | — (`new Date()`) | Idem acima. |
 | `20` | Processed_Action | — (derivado, ver `resolveProcessedAction`) | `APPROVED_CREATION` \| `REJECTED_CREATION` \| `CONFIRMED_DISCARD` \| `KEPT_ACTIVE`. |
 | `21` | Suggest_Discard | `suggestDiscard` | `"Sim"` \| `"Não"`. Só existe no fluxo BAU (Passo 3); isolada depois das colunas de auditoria de propósito, pra não deslocar os índices 18-20 em planilhas já em produção. Garantida por `ensureBAUSuggestDiscardColumn`. |
+| `24` | Adv_Phone | `advPhone` | Telefone do anunciante. **PII** — raspado do CRM só depois do clique no unmask, e sai no backup junto com a linha (ver #353). Garantida por `ensureBAUAdvPhoneColumn`. |
 | `23` | Child_Case_ID | `childCaseId` | ID do caso BAU que a liderança gerou no CRM ao aprovar a abertura — o "caso filho" daquele pedido. Escrita por `updateBAUCaseStatus`, junto da trilha de auditoria, e **só** em `APPROVED_CREATION`. Garantida por `ensureBAUChildCaseColumn`. |
 | `22` | Adv_LastName | `advLastName` | Sobrenome do anunciante (`Family name` no CRM). Mesma razão de estar no fim: acrescentar coluna nunca desloca índice já gravado. Fora do `appendRow` das 18, escrita à parte depois de `ensureBAUAdvLastNameColumn`; na edição, escrita própria porque cai fora do bloco contíguo 4-18 do `setValues`. |
 

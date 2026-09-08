@@ -1039,6 +1039,7 @@
                 childCasePlaceholder: "0-0000000000000",
                 childCaseRequired: "Informe o ID do caso gerado para aprovar.",
                 childCaseHistory: "Caso gerado:",
+                rowAdvPhone: "Telefone",
                 activeNow: "Ativos agora",
                 recentActivity: "Atividade recente",
                 nothingFoundFor: function (q) { return 'Nada encontrado para "' + q + '"'; },
@@ -1131,6 +1132,7 @@
                 childCasePlaceholder: "0-0000000000000",
                 childCaseRequired: "Informa el ID del caso generado para aprobar.",
                 childCaseHistory: "Caso generado:",
+                rowAdvPhone: "Teléfono",
                 activeNow: "Activos ahora",
                 recentActivity: "Actividad reciente",
                 nothingFoundFor: function (q) { return 'No se encontró nada para "' + q + '"'; },
@@ -1802,6 +1804,9 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 ${createRow('Speakeasy ID', c.speakeasyId)}
                 ${createRow(tt('rowAdvEmail'), c.advEmail)}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                ${createRow(tt('rowAdvPhone'), c.advPhone)}
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 ${createRow('Timezone', c.timezone)}

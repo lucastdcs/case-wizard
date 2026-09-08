@@ -42,6 +42,9 @@ function handleBAUEscalation(ss, p) {
     ensureBAUAdvLastNameColumn(sheet);
     sheet.getRange(sheet.getLastRow(), BAU_ADV_LASTNAME_COL).setValue(p.advLastName || '');
 
+    ensureBAUAdvPhoneColumn(sheet);
+    sheet.getRange(sheet.getLastRow(), BAU_ADV_PHONE_COL).setValue(p.advPhone || '');
+
     let emailSent = false;
     try {
       if (typeof sendDynamicTechSolEmail === "function") {
@@ -100,6 +103,7 @@ function getAgentCases(ss, userEmail) {
         seId: String(row[6] || ""),
         advName: String(row[7] || ""),
         advLastName: String(row[22] || ""),
+        advPhone: String(row[24] || ""),
         advEmail: String(row[8] || ""),
         site: String(row[9] || ""),
         timezone: String(row[10] || ""),
@@ -217,6 +221,11 @@ function update_bau_case(ss, p) {
         if (p.advLastName !== undefined) {
           ensureBAUAdvLastNameColumn(sheet);
           sheet.getRange(i + 1, BAU_ADV_LASTNAME_COL).setValue(p.advLastName);
+        }
+
+        if (p.advPhone !== undefined) {
+          ensureBAUAdvPhoneColumn(sheet);
+          sheet.getRange(i + 1, BAU_ADV_PHONE_COL).setValue(p.advPhone);
         }
 
         console.log("Caso atualizado com sucesso. ID:", p.id, "Row:", i+1);

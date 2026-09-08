@@ -51,6 +51,7 @@ const BAU_DICT = {
         none: "Nenhuma",
         language: "Idioma",
         lastName: "Sobrenome",
+        phone: "Telefone",
         clientTimezone: "Fuso horário do cliente",
         echoEquivalence: (hora, lugar, horaBr) => `<strong>${hora}</strong> em ${lugar} equivale a <strong>${horaBr}</strong> em Brasília.`,
         echoSameZone: "O cliente está no mesmo fuso que você.",
@@ -151,6 +152,7 @@ const BAU_DICT = {
         none: "Ninguna",
         language: "Idioma",
         lastName: "Apellido",
+        phone: "Teléfono",
         clientTimezone: "Huso horario del cliente",
         echoEquivalence: (hora, lugar, horaBr) => `<strong>${hora}</strong> en ${lugar} equivale a <strong>${horaBr}</strong> en Brasilia.`,
         echoSameZone: "El cliente está en el mismo huso que tú.",
@@ -772,6 +774,11 @@ export function initBAUForm() {
                         <div class="bau-details-row">
                             <span class="bau-details-label">${bt('advertiserEmail')}</span>
                             <span class="bau-details-value">${c.advEmail || '---'}</span>
+                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
+                        </div>
+                        <div class="bau-details-row">
+                            <span class="bau-details-label">${bt('phone')}</span>
+                            <span class="bau-details-value">${c.advPhone || '---'}</span>
                             <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
                         </div>
                     </div>
@@ -1441,6 +1448,10 @@ export function initBAUForm() {
                         <input class="bau-confirm-value-input" data-field="advEmail" data-step="1" value="${data.advEmail || ''}" placeholder="---">
                     </div>
                     <div class="bau-confirm-row">
+                        <span class="bau-confirm-label">${bt('phone')}</span>
+                        <input class="bau-confirm-value-input" data-field="advPhone" data-step="1" value="${data.advPhone || ''}" placeholder="${bt('notInformedPlaceholder')}">
+                    </div>
+                    <div class="bau-confirm-row">
                         <span class="bau-confirm-label">CID</span>
                         <input class="bau-confirm-value-input" data-field="cid" data-step="1" value="${data.cid || ''}" placeholder="---">
                     </div>
@@ -1582,6 +1593,7 @@ export function initBAUForm() {
             ...currentContextData,
             advName: c.advName || currentContextData.advName,
             advLastName: c.advLastName || currentContextData.advLastName,
+            advPhone: c.advPhone || currentContextData.advPhone,
             cid: c.cid || currentContextData.cid,
             caseId: c.caseId || currentContextData.caseId,
             seId: c.seId || currentContextData.seId,
