@@ -18,26 +18,64 @@ const path = require('path');
 const SRC = path.join(__dirname, '..', 'gas-backend', 'ContentAPI.js');
 
 // ---- Stub de planilha ----
+// O range real conhece a coluna de origem: setValues() escreve um BLOCO a
+// partir de (row, col), não a linha inteira. O stub antigo ignorava a coluna e
+// substituía a linha toda - o que passava enquanto todo mundo escrevia célula a
+// célula, e mentiria agora que as escritas são em lote.
 class FakeRange {
-  constructor(sheet, row, col) { this.sheet = sheet; this.row = row; this.col = col; }
+  constructor(sheet, row, col, numRows, numCols) {
+    this.sheet = sheet;
+    this.row = row;
+    this.col = col;
+    this.numRows = numRows;
+    this.numCols = numCols;
+  }
   setValue(v) { this.sheet._data[this.row - 1][this.col - 1] = v; return this; }
   setValues(rows) {
     rows.forEach((r, i) => {
       const target = this.row - 1 + i;
       while (this.sheet._data.length <= target) this.sheet._data.push([]);
-      this.sheet._data[target] = r.slice();
+      const line = this.sheet._data[target];
+      r.forEach((v, j) => { line[this.col - 1 + j] = v; });
     });
     return this;
   }
-  getValues() { return this.sheet._data.map(r => r.slice()); }
+  // Só o suficiente para o backfill: ordenar um bloco por uma coluna. Existe
+  // porque o backfill ANEXA linhas antigas no fim da aba e precisa reordenar -
+  // sem isso o teste não veria o bug que a ordenação conserta.
+  sort(spec) {
+    const col = (typeof spec === 'object' ? spec.column : spec) - 1;
+    const asc = (typeof spec === 'object') ? spec.ascending !== false : true;
+    const inicio = this.row - 1;
+    const quantas = this.numRows || (this.sheet._data.length - inicio);
+    const bloco = this.sheet._data.splice(inicio, quantas);
+    bloco.sort((a, b) => {
+      const x = String(a[col] == null ? '' : a[col]);
+      const y = String(b[col] == null ? '' : b[col]);
+      return (x < y ? -1 : x > y ? 1 : 0) * (asc ? 1 : -1);
+    });
+    this.sheet._data.splice(inicio, 0, ...bloco);
+    return this;
+  }
+  getValues() {
+    // getDataRange() (col 1, sem limites) segue devolvendo a aba inteira.
+    if (this.col === 1 && !this.numCols) return this.sheet._data.map(r => r.slice());
+    return this.sheet._data
+      .slice(this.row - 1, this.row - 1 + (this.numRows || 1))
+      .map(r => r.slice(this.col - 1, this.col - 1 + (this.numCols || 1)));
+  }
 }
 
 class FakeSheet {
   constructor(name) { this.name = name; this._data = []; }
   appendRow(row) { this._data.push(row.slice()); }
   getDataRange() { return new FakeRange(this, 1, 1); }
-  getRange(row, col) { return new FakeRange(this, row, col); }
+  getRange(row, col, numRows, numCols) { return new FakeRange(this, row, col, numRows, numCols); }
   getLastRow() { return this._data.length; }
+  // Os outros dublês do projeto já modelavam isto; este ficou para trás até
+  // discardContentDraft() precisar remover uma linha de verdade.
+  deleteRow(i) { this._data.splice(i - 1, 1); }
+  clear() { this._data.length = 0; return this; }
   setFrozenRows() { return this; }
 }
 
@@ -48,6 +86,19 @@ class FakeSpreadsheet {
 }
 
 // ---- Ambiente ----
+
+// `Utilities` do Apps Script, só o que o módulo usa. `formatDate` entrou com a
+// janela de exibição dos avisos: ela compara horários como TEXTO no fuso da
+// planilha, e o teste precisa de um relógio previsível.
+const UTILITIES_STUB = {
+  getUuid: () => require('node:crypto').randomUUID(),
+  formatDate: (d, tz, fmt) => {
+    const dois = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate()) +
+      'T' + dois(d.getHours()) + ':' + dois(d.getMinutes());
+  }
+};
+
 let CURRENT_USER = 'lucaste@google.com';
 const SS = new FakeSpreadsheet();
 const SENT_MAIL = [];
@@ -55,12 +106,36 @@ const LOGGED = [];
 
 const LOGGER = [];
 
+// Trava e cache: o código de produção degrada sozinho quando os serviços não
+// existem, mas então os testes não exercitariam nem a trava nem a invalidação.
+// Com stub, dá pra provar as duas - inclusive que a trava é liberada mesmo
+// quando o corpo lança.
+const LOCK_STATE = { held: false, acquires: 0, releases: 0, denyNext: false };
+const CACHE = new Map();
+
 const sandbox = {
+  LockService: {
+    getScriptLock: () => ({
+      tryLock: () => {
+        if (LOCK_STATE.denyNext) { LOCK_STATE.denyNext = false; return false; }
+        if (LOCK_STATE.held) return false;
+        LOCK_STATE.held = true; LOCK_STATE.acquires++; return true;
+      },
+      releaseLock: () => { LOCK_STATE.held = false; LOCK_STATE.releases++; }
+    })
+  },
+  CacheService: {
+    getScriptCache: () => ({
+      get: (k) => (CACHE.has(k) ? CACHE.get(k) : null),
+      put: (k, v) => { CACHE.set(k, v); },
+      remove: (k) => { CACHE.delete(k); }
+    })
+  },
   SpreadsheetApp: { getActiveSpreadsheet: () => SS },
-  Session: { getActiveUser: () => ({ getEmail: () => CURRENT_USER }) },
+  Session: { getActiveUser: () => ({ getEmail: () => CURRENT_USER }), getScriptTimeZone: () => 'America/Sao_Paulo' },
   MailApp: { sendEmail: (o) => SENT_MAIL.push(o) },
   Logger: { log: (m) => LOGGER.push(m) },
-  Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+  Utilities: UTILITIES_STUB,
   handleLog: (p) => LOGGED.push(p),
   console,
 };
@@ -87,6 +162,10 @@ vm.runInContext(fs.readFileSync(PEOPLE_SRC, 'utf8'), ctx);
 
 // Devolve o handleLog ao stub que o teste inspeciona (o do Código.gs escreveria
 // numa aba Logs de verdade).
+// A auditoria da Central não passa mais por aqui — ela escreve na aba
+// `Content_Log`. handleLog() continua neutralizado porque ele é o log de SESSÃO
+// do agente: deixá-lo escrever criaria uma aba `Logs` de verdade por baixo dos
+// testes, justamente a aba de onde o backfill lê seu fixture.
 sandbox.__captureLog = (p) => LOGGED.push(p);
 vm.runInContext('handleLog = __captureLog;', ctx);
 
@@ -112,6 +191,7 @@ function eq(a, b, m) {
   const A = JSON.stringify(a), B = JSON.stringify(b);
   if (A !== B) throw new Error((m || '') + ' esperado ' + B + ', veio ' + A);
 }
+function verdadeiro(cond, m) { if (!cond) throw new Error(m || 'esperado verdadeiro'); }
 function throws(fn, re, m) {
   try { fn(); } catch (e) {
     if (re && !re.test(e.message)) throw new Error((m || '') + ' erro inesperado: ' + e.message);
@@ -120,6 +200,20 @@ function throws(fn, re, m) {
   throw new Error((m || '') + ' deveria ter lançado erro');
 }
 function as(ldap, fn) { const old = CURRENT_USER; CURRENT_USER = ldap + '@google.com'; try { return fn(); } finally { CURRENT_USER = old; } }
+
+// A auditoria deixou de ser linha na aba `Logs` genérica e virou a aba
+// `Content_Log`, com uma coluna por informação. Lê-la aqui como objeto é o
+// mesmo que a tela faz.
+function logDaCentral() {
+  const aba = SS.getSheetByName('Content_Log');
+  if (!aba || aba._data.length < 2) return [];
+  const cab = aba._data[0];
+  return aba._data.slice(1).map(linha => {
+    const o = {};
+    cab.forEach((h, i) => { o[h] = linha[i]; });
+    return o;
+  });
+}
 
 console.log('\n--- Acesso e papéis ---');
 
@@ -167,8 +261,12 @@ check('QA não aprova nada', () => {
   });
 });
 
-check('ADMIN não pode remover o próprio acesso', () => {
-  throws(() => api.saveContentAccess('lucaste', 'ADMIN', false), /não pode remover o próprio/);
+check('o último que governa a Central não consegue se remover', () => {
+  // Antes a regra era "o ADMIN não remove a si mesmo". Agora a pergunta é se
+  // SOBRA alguém capaz de devolver o acesso — a mesma trava, generalizada
+  // (primeira invariante do ADR-0009).
+  throws(() => api.saveContentAccess('lucaste', 'ADMIN', false),
+    /sem ninguém capaz de gerenciar papéis e acessos/);
 });
 
 console.log('\n--- Rascunho não vaza para produção ---');
@@ -218,10 +316,14 @@ check('só agora o item está no ar', () => {
 });
 
 check('autoaprovação fica registrada no log', () => {
-  const entry = LOGGED.filter(l => l.action === 'approve').pop();
-  if (!/autoaprovação ADMIN/.test(entry.label)) {
-    throw new Error('log não marcou autoaprovação: ' + entry.label);
+  const entry = logDaCentral().filter(l => l.Action === 'approve').pop();
+  // O sufixo mudou de coluna: era colado na chave, o que fazia a MESMA chave
+  // virar duas para quem filtrasse por ela. Agora é detalhe, que é o que ele é.
+  if (!/autoaprovação ADMIN/.test(String(entry.Detail))) {
+    throw new Error('log não marcou autoaprovação: ' + entry.Detail);
   }
+  eq(entry.Module, 'links', 'o módulo tem coluna própria:');
+  eq(entry.Key, 'tech', 'a chave não carrega o sufixo:');
 });
 
 check('TL NÃO pode aprovar a própria proposta', () => {
@@ -350,10 +452,10 @@ check('seedLinksNow() popula o módulo numa planilha zerada', () => {
   const freshSS = new FakeSpreadsheet();
   const freshCtx = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     console,
   });
@@ -390,10 +492,10 @@ check('seedCallScriptNow() popula o roteiro numa planilha zerada', () => {
   const freshSS = new FakeSpreadsheet();
   const freshCtx = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     console,
   });
@@ -453,10 +555,10 @@ function makeTipsEnv(linhas) {
 
   const ctx2 = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => ss },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     SHEET_TIPS: 'Tips',
     console,
@@ -640,10 +742,10 @@ check('seedEmailsNow() popula os modelos numa planilha zerada', () => {
   const freshSS = new FakeSpreadsheet();
   const freshCtx = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     console,
   });
@@ -778,10 +880,10 @@ check('seedNoteTemplatesNow() migra os cenários existentes', () => {
   const freshSS = new FakeSpreadsheet();
   const freshCtx = vm.createContext({
     SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
-    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
     MailApp: { sendEmail: () => { } },
     Logger: { log: () => { } },
-    Utilities: { getUuid: () => require('node:crypto').randomUUID() },
+    Utilities: UTILITIES_STUB,
     handleLog: () => { },
     console,
   });
@@ -887,15 +989,15 @@ check('WFM NÃO publica aviso geral', () => {
   as('wfm1', () => {
     throws(
       () => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast() }),
-      /não edita o módulo 'broadcast'/
+      /não publica no módulo 'broadcast'/
     );
   });
 });
 
 check('QA não publica aviso nem disponibilidade', () => {
   as('quality1', () => {
-    throws(() => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast() }), /não edita o módulo/);
-    throws(() => api.publishContentDirect({ module: 'bau_availability', label: 'X', value: bau({}) }), /não edita o módulo/);
+    throws(() => api.publishContentDirect({ module: 'broadcast', label: 'X', value: bcast() }), /não publica no módulo/);
+    throws(() => api.publishContentDirect({ module: 'bau_availability', label: 'X', value: bau({}) }), /não publica no módulo/);
   });
 });
 
@@ -1167,6 +1269,1198 @@ check('seedBroadcastNow() migra a aba numa planilha zerada, sem argumentos', () 
   const legado = freshCtx.getBroadcastForLegacyEndpoint(freshSS);
   eq(legado.map(m => m.id), ['msg_2', 'msg_1'], 'mais novo primeiro:');
   eq(legado[0].active, true);
+});
+
+console.log('\n--- Rascunho de verdade ---');
+
+check('salvar sem enviar deixa o rascunho fora da fila', () => {
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica em rascunho',
+    value: 'Ainda pensando na frase.'
+  });
+
+  const meus = api.listContentDrafts('tips').filter(x => x.draftId === d.draftId);
+  eq(meus.length, 1, 'o rascunho existe:');
+  eq(meus[0].status, 'draft');
+
+  // O que separa rascunho de proposta: um não chega a quem revisa.
+  eq(api.listPendingApprovals().filter(x => x.draftId === d.draftId).length, 0,
+    'não apareceu na fila de revisão:');
+});
+
+check('descartar um rascunho o remove de vez', () => {
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica descartável',
+    value: 'Melhor não.'
+  });
+  eq(api.discardContentDraft(d.draftId).status, 'success');
+  eq(api.listContentDrafts('tips').filter(x => x.draftId === d.draftId).length, 0,
+    'sumiu da lista:');
+});
+
+check('proposta JÁ enviada não some por descarte', () => {
+  // Quem ia revisar não pode ver o item desaparecer por baixo. Uma proposta em
+  // revisão se resolve aprovando ou rejeitando.
+  const d = api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica enviada',
+    value: 'Já foi para a fila.'
+  });
+  throws(() => api.discardContentDraft(d.draftId), /Só um rascunho pode ser descartado/);
+  eq(api.listPendingApprovals().filter(x => x.draftId === d.draftId).length, 1,
+    'continua na fila:');
+});
+
+check('o rascunho é de quem escreveu', () => {
+  api.saveContentAccess('qa_rascunho', 'QA', true);
+  const d = as('qa_rascunho', () => api.saveContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo do QA', value: 'Rascunho alheio.'
+  }));
+
+  api.saveContentAccess('qa_outro', 'QA', true);
+  throws(() => as('qa_outro', () => api.discardContentDraft(d.draftId)),
+    /de outra pessoa/, 'outro QA descartando:');
+
+  // Quem aprova pode: é quem destrava a fila quando alguém sai de férias.
+  eq(api.discardContentDraft(d.draftId).status, 'success');
+});
+
+check('salvar registra quem está editando, para a tela poder avisar', () => {
+  const d = as('qa_rascunho', () => api.saveContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo travado', value: 'Editando agora.'
+  }));
+
+  const meu = api.listContentDrafts('call_script').filter(x => x.draftId === d.draftId)[0];
+  eq(meu.lockedBy, 'qa_rascunho', 'a trava diz quem:');
+  eq(!!meu.lockedAt, true, 'e desde quando:');
+
+  api.discardContentDraft(d.draftId);
+});
+
+console.log('\n--- Trava de escrita (concorrência) ---');
+
+// A corrida real não é "aprovar duas vezes em sequência" — essa a máquina de
+// estados já barra sozinha. É uma segunda execução entrando na janela ENTRE o
+// appendRow da linha nova e a virada do status do rascunho, quando a proposta
+// ainda consta como pendente. Este gancho reproduz exatamente essa janela.
+function duranteOAppendDeItems(fn) {
+  const sheet = SS.getSheetByName('Content_Items');
+  const original = sheet.appendRow.bind(sheet);
+  const capturado = { erro: null };
+  let disparou = false;
+
+  sheet.appendRow = (row) => {
+    original(row);
+    if (!disparou) {
+      disparou = true;
+      try { fn(); } catch (e) { capturado.erro = e; }
+    }
+  };
+
+  capturado.restaurar = () => { sheet.appendRow = original; };
+  return capturado;
+}
+
+function proposta(label) {
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: label,
+    value: 'Feche o caso com o substatus certo.'
+  });
+  api.submitContentDraft(d.draftId);
+  return d.draftId;
+}
+
+check('SEM a trava, a reentrância publica o item duas vezes', () => {
+  // Contraprova: sem esta demonstração, o teste seguinte passaria mesmo que a
+  // trava não estivesse fazendo nada.
+  const draftId = proposta('Dica sem trava');
+  const lockReal = sandbox.LockService;
+  sandbox.LockService = { getScriptLock: () => { throw new Error('sem LockService'); } };
+
+  const hook = duranteOAppendDeItems(() => api.approveContentDraft(draftId, ''));
+  try {
+    api.approveContentDraft(draftId, '');
+  } finally {
+    hook.restaurar();
+    sandbox.LockService = lockReal;
+  }
+
+  const live = api.handleContentPublicRead({ module: 'tips' }).items
+    .filter(i => i.label === 'Dica sem trava');
+  eq(live.length, 2, 'duplicou, como se esperava sem trava:');
+});
+
+check('COM a trava, a mesma reentrância é barrada e publica uma linha só', () => {
+  const draftId = proposta('Dica com trava');
+
+  const hook = duranteOAppendDeItems(() => api.approveContentDraft(draftId, ''));
+  try {
+    api.approveContentDraft(draftId, '');
+  } finally {
+    hook.restaurar();
+  }
+
+  eq(hook.erro !== null, true, 'a segunda execução foi recusada:');
+  eq(/Outra publicação/.test(hook.erro.message), true, 'recusada pela trava:');
+
+  const live = api.handleContentPublicRead({ module: 'tips' }).items
+    .filter(i => i.label === 'Dica com trava');
+  eq(live.length, 1, 'uma linha só no ar:');
+});
+
+check('trava ocupada recusa a publicação em vez de escrever junto', () => {
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica travada',
+    value: 'Confira o idioma do anunciante.'
+  });
+  api.submitContentDraft(d.draftId);
+
+  LOCK_STATE.denyNext = true;
+  throws(() => api.approveContentDraft(d.draftId, ''), /Outra publicação/, 'com a trava ocupada:');
+
+  // E nada foi escrito: a recusa acontece antes de qualquer setValue.
+  const pub = api.handleContentPublicRead({ module: 'tips' }).items;
+  eq(pub.filter(i => i.label === 'Dica travada').length, 0, 'nada publicado:');
+
+  // Com a trava livre de novo, a mesma proposta publica normalmente.
+  api.approveContentDraft(d.draftId, '');
+  eq(api.handleContentPublicRead({ module: 'tips' }).items
+    .filter(i => i.label === 'Dica travada').length, 1);
+});
+
+check('a trava é liberada mesmo quando a operação falha', () => {
+  const acquiresAntes = LOCK_STATE.releases;
+  throws(() => api.approveContentDraft('drf_inexistente', ''), /não encontrada/);
+  eq(LOCK_STATE.held, false, 'trava solta depois do erro:');
+  eq(LOCK_STATE.releases > acquiresAntes, true, 'releaseLock foi chamado:');
+});
+
+console.log('\n--- Cache da leitura pública ---');
+
+check('publicar invalida o cache do módulo na hora', () => {
+  const antes = api.handleContentPublicRead({ module: 'tips' }).items.length;
+
+  // A leitura acima populou o cache. Sem invalidação, a próxima devolveria a
+  // lista velha — e o agente veria conteúdo aprovado só depois do TTL.
+  const d = api.saveContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica nova',
+    value: 'Revise o caso antes de fechar.'
+  });
+  api.submitContentDraft(d.draftId);
+  api.approveContentDraft(d.draftId, '');
+
+  const depois = api.handleContentPublicRead({ module: 'tips' }).items;
+  eq(depois.length, antes + 1, 'a lista nova chegou sem esperar o TTL:');
+  eq(depois.filter(i => i.label === 'Dica nova').length, 1);
+});
+
+check('tirar do ar por publicação direta também invalida', () => {
+  const pub = api.publishContentDirect({
+    module: 'broadcast', key: 'aviso_cache', lang: 'ALL',
+    value: JSON.stringify({ type: 'info', title: 'Cache', text: 'Teste de cache.' })
+  });
+  eq(api.handleContentPublicRead({ module: 'broadcast' }).items
+    .filter(i => i.key === 'aviso_cache').length, 1, 'no ar:');
+
+  api.unpublishContentDirect(pub.itemId);
+  eq(api.handleContentPublicRead({ module: 'broadcast' }).items
+    .filter(i => i.key === 'aviso_cache').length, 0, 'saiu do ar na hora:');
+});
+
+check('cache não vaza entre módulos', () => {
+  const tips = api.handleContentPublicRead({ module: 'tips' }).items;
+  const links = api.handleContentPublicRead({ module: 'links' }).items;
+  tips.forEach(i => eq(i.module, 'tips', 'item de tips:'));
+  links.forEach(i => eq(i.module, 'links', 'item de links:'));
+});
+
+console.log('\n--- Leitura pública em lote ---');
+
+check('modules=a,b devolve os dois numa chamada só', () => {
+  const r = api.handleContentPublicRead({ modules: 'tips,links' });
+  eq(r.status, 'success');
+  eq(Object.keys(r.modules).sort(), ['links', 'tips']);
+
+  // Mesmo conteúdo da rota de um módulo: o lote é transporte, não regra nova.
+  eq(r.modules.tips.length, api.handleContentPublicRead({ module: 'tips' }).items.length);
+});
+
+check('lote recusa módulo desconhecido', () => {
+  throws(() => api.handleContentPublicRead({ modules: 'tips,inventado' }), /desconhecido/i);
+});
+
+check('lote NÃO é caminho para vazar módulo privado', () => {
+  // A regra do módulo privado é a mesma nas duas rotas — é o que impede que a
+  // aba People escape por uma URL só porque a chamada agora aceita lista.
+  throws(() => api.handleContentPublicRead({ modules: 'tips,people' }), /não tem leitura pública/);
+  throws(() => api.handleContentPublicRead({ module: 'people' }), /não tem leitura pública/);
+});
+
+console.log('\n--- Salvar e enviar numa viagem ---');
+
+check('saveAndSubmitContentDraft deixa a proposta pendente', () => {
+  const r = api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica de uma viagem',
+    value: 'Use o atalho para abrir a nota.'
+  });
+  eq(r.status, 'success');
+
+  const pend = api.listPendingApprovals().filter(d => d.draftId === r.draftId);
+  eq(pend.length, 1, 'está na fila de revisão:');
+  eq(pend[0].status, 'pending');
+});
+
+check('validação continua acontecendo antes de gravar', () => {
+  // O ganho é de viagens, não de rigor: um valor inválido tem que ser recusado
+  // igual, e sem deixar rascunho órfão para trás.
+  const antes = api.listContentDrafts('email_template').length;
+  throws(() => api.saveAndSubmitContentDraft({
+    module: 'email_template', key: 'x', lang: 'PT', label: 'Quebrado',
+    value: JSON.stringify({ subject: '', template: '' })
+  }));
+  eq(api.listContentDrafts('email_template').length, antes, 'nenhum rascunho órfão:');
+});
+
+console.log('\n--- E-mail de decisão ---');
+
+check('rejeição avisa quem propôs, com o motivo', () => {
+  as('qa_pessoa', () => { });
+  api.saveContentAccess('qa_pessoa', 'QA', true);
+
+  const d = as('qa_pessoa', () => api.saveAndSubmitContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo proposto', value: 'Confirme o nome do anunciante.'
+  }));
+
+  const antes = SENT_MAIL.length;
+  api.rejectContentDraft(d.draftId, 'Falta citar o CID.');
+
+  const enviados = SENT_MAIL.slice(antes);
+  const paraAutor = enviados.filter(m => m.to === 'qa_pessoa@google.com');
+  eq(paraAutor.length, 1, 'o autor foi avisado:');
+  eq(/Falta citar o CID/.test(paraAutor[0].htmlBody), true, 'o motivo vai no corpo:');
+  eq(/voltou para ajuste/.test(paraAutor[0].subject), true);
+});
+
+check('aprovação avisa o autor, e só ele', () => {
+  const d = as('qa_pessoa', () => api.saveAndSubmitContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo aprovado', value: 'Pergunte o melhor horário de retorno.'
+  }));
+
+  const antes = SENT_MAIL.length;
+  api.approveContentDraft(d.draftId, '');
+
+  const enviados = SENT_MAIL.slice(antes);
+  eq(enviados.length, 1, 'um e-mail só:');
+  eq(enviados[0].to, 'qa_pessoa@google.com', 'endereçado ao autor:');
+  eq(/publicada/.test(enviados[0].subject), true);
+});
+
+check('autoaprovação do ADMIN não manda e-mail para si mesmo', () => {
+  const d = api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica do admin',
+    value: 'Confirme o substatus antes de salvar.'
+  });
+
+  const antes = SENT_MAIL.length;
+  api.approveContentDraft(d.draftId, '');
+  eq(SENT_MAIL.length, antes, 'nenhum e-mail:');
+});
+
+console.log('\n--- Atividade e auditoria estruturada ---');
+
+check('toda ação vira uma linha com módulo e chave em colunas próprias', () => {
+  const linha = logDaCentral().filter(l => l.Action === 'publish_direct').pop();
+  eq(linha.Module, 'broadcast');
+  // Cai aqui se alguém voltar a concatenar: o `Key` de um aviso é o ID do item,
+  // e ele NÃO pode vir com o módulo grudado na frente.
+  eq(/\//.test(String(linha.Key)), false, 'a chave não é "módulo/chave":');
+  eq(String(linha.Item_ID).slice(0, 4), 'itm_', 'a linha aponta para o item publicado:');
+});
+
+check('a atividade chega da mais recente para a mais antiga', () => {
+  const a = api.listContentActivity(10);
+  const datas = a.map(l => l.at);
+  eq(datas.slice().sort().reverse(), datas, 'ordem decrescente por data:');
+});
+
+check('o limite é respeitado, e tem teto', () => {
+  eq(api.listContentActivity(3).length, 3);
+  // 999 não vira 999 leituras: o servidor corta no teto.
+  if (api.listContentActivity(999).length > 60) throw new Error('teto ignorado');
+});
+
+check('quem não tem papel não lê a atividade', () => {
+  as('estranho', () => throws(() => api.listContentActivity(5), /Acesso negado/));
+});
+
+check('QA não vê no log o que não vê na tela de Pessoas', () => {
+  // A linha existe: foi o ADMIN quem a criou.
+  api.saveContentAccess('ana_ppl', 'TL', true);
+  const doAdmin = api.listContentActivity(60);
+  if (!doAdmin.some(l => l.action === 'access_change')) {
+    throw new Error('o ADMIN deveria ver a mudança de acesso');
+  }
+
+  as('quality1', () => {
+    const doQa = api.listContentActivity(60);
+    eq(doQa.some(l => l.action === 'access_change'), false, 'QA não vê mudança de acesso:');
+    eq(doQa.some(l => l.module === 'people'), false, 'QA não vê o módulo people:');
+  });
+});
+
+check('o filtro é do SERVIDOR: a linha proibida nem viaja', () => {
+  // Prova que não é a tela que esconde - o que sai daqui é o que chega no
+  // navegador de quem perguntou.
+  as('quality1', () => {
+    const bruto = JSON.stringify(api.listContentActivity(60));
+    eq(/access_change/.test(bruto), false);
+  });
+});
+
+console.log('\n--- Backfill da aba Logs ---');
+
+function semearLogsAntigos() {
+  const logs = SS.insertSheet('Logs');
+  logs.appendRow(['Timestamp', 'User', 'Version', 'Category', 'Action', 'Label', 'Value']);
+  logs.appendRow(['2024-01-02T10:00:00.000Z', 'lucaste', 'content-central', 'ContentCentral',
+    'approve', 'links/tech (autoaprovação ADMIN)', 'v1 por lucaste']);
+  logs.appendRow(['2024-01-03T10:00:00.000Z', 'anaflor', 'content-central', 'ContentCentral',
+    'access_change', 'brunocs', 'TL ativo']);
+  logs.appendRow(['2024-01-04T10:00:00.000Z', 'lucaste', 'content-central', 'ContentCentral',
+    'seed', 'tips', '12 itens']);
+  // Ruído de outra categoria: a aba Logs é compartilhada com a sessão do agente.
+  logs.appendRow(['2024-01-05T10:00:00.000Z', 'agente1', '6.1.0', 'Geral', 'session', '', '']);
+  return logs;
+}
+
+check('sem `true`, o backfill só simula — não escreve nada', () => {
+  semearLogsAntigos();
+  const antes = logDaCentral().length;
+  const r = api.backfillContentLog();
+  eq(r.novas, 3, 'contou as três linhas de conteúdo:');
+  eq(r.aplicado, false);
+  eq(logDaCentral().length, antes, 'nada foi escrito:');
+});
+
+check('o backfill ignora o que não é da Central', () => {
+  const r = api.backfillContentLog();
+  eq(r.candidatas, 3, 'a linha de sessão do agente ficou de fora:');
+});
+
+let totalAposBackfill = 0;
+check('aplicado, traz as linhas e reparte o Label em colunas', () => {
+  const r = api.backfillContentLog(true);
+  eq(r.aplicado, true);
+  totalAposBackfill = logDaCentral().length;
+
+  const linhas = logDaCentral();
+  const aprov = linhas.find(l => String(l.Log_ID).indexOf('log_bf_') === 0 && l.Action === 'approve');
+  eq(aprov.Module, 'links');
+  eq(aprov.Key, 'tech', 'o sufixo saiu da chave:');
+  eq(/autoaprovação ADMIN/.test(String(aprov.Detail)), true, 'e virou detalhe:');
+
+  // `access_change` guardava um LDAP, não `módulo/chave`. Forçar um módulo aí
+  // seria inventar dado.
+  const acesso = linhas.find(l => String(l.Log_ID).indexOf('log_bf_') === 0 && l.Action === 'access_change');
+  eq(acesso.Module, '');
+  eq(acesso.Label, 'brunocs');
+
+  // `seed` guardava só o módulo, sem barra.
+  const seed = linhas.find(l => String(l.Log_ID).indexOf('log_bf_') === 0 && l.Action === 'seed');
+  eq(seed.Module, 'tips');
+  eq(seed.Key, '');
+});
+
+check('rodar de novo não duplica nada', () => {
+  const r = api.backfillContentLog(true);
+  eq(r.novas, 0);
+  eq(r.jaImportadas, 3);
+  eq(logDaCentral().length, totalAposBackfill, 'a aba não cresceu:');
+});
+
+check('a aba Logs continua intacta — o backfill COPIA', () => {
+  eq(SS.getSheetByName('Logs')._data.length, 5, 'cabeçalho + 4 linhas:');
+});
+
+check('depois do backfill, a atividade recente segue sendo a recente', () => {
+  // Este é o bug que a ordenação conserta: as linhas trazidas são as MAIS
+  // ANTIGAS e entram no FIM da aba. Sem reordenar, a barra lateral - que lê o
+  // fim - mostraria 2024 como "agora".
+  const a = api.listContentActivity(5);
+  eq(a.some(l => String(l.at).indexOf('2024-') === 0), false, 'nada de 2024 no topo:');
+  const datas = a.map(l => l.at);
+  eq(datas.slice().sort().reverse(), datas, 'e a ordem continua decrescente:');
+});
+
+check('só quem gerencia acesso roda o backfill', () => {
+  as('quality1', () => throws(() => api.backfillContentLog(), /Acesso negado/));
+});
+
+console.log('\n--- RBAC editável: o dia 1 não muda nada ---');
+
+// Cópia profunda para montar variações sem contaminar o preset.
+const clonar = (o) => JSON.parse(JSON.stringify(o));
+
+// `const` no topo de um script do vm NÃO vira propriedade do objeto global —
+// só `function` e `var` viram. Por isso as constantes do módulo se leem
+// avaliando o nome dentro do contexto, e não por `api.NOME`.
+const constante = (nome) => vm.runInContext(nome, ctx);
+
+function presetDe(papel) {
+  return clonar(api.contentPresetMatrix_()[papel]);
+}
+
+// Devolve a matriz de um papel como ela está VALENDO agora (planilha ou preset).
+function matrizAtual(papel) {
+  return clonar(api.contentPermsSnapshot_().roles[papel]);
+}
+
+check('a aba Content_Roles nasce semeada com os quatro papéis de hoje', () => {
+  const aba = SS.getSheetByName('Content_Roles');
+  eq(aba._data[0], ['Role', 'Permissions', 'Active', 'Updated_By', 'Updated_At']);
+  eq(aba._data.slice(1).map(r => r[0]).sort(), ['ADMIN', 'QA', 'TL', 'WFM']);
+});
+
+check('o preset reproduz EXATAMENTE o que a constante antiga dizia', () => {
+  // Esta é a promessa do ADR-0009: no dia da migração ninguém percebe nada.
+  // Comparar contra a constante, e não contra um literal escrito à mão, é o que
+  // faz o teste continuar valendo se a constante mudar.
+  const antigos = constante('CONTENT_ROLES');
+  Object.keys(antigos).forEach((papel) => {
+    const antigo = antigos[papel];
+    const novo = api.contentPresetMatrix_()[papel];
+
+    eq(api.modulosEscrevivies_(novo), antigo.propose.slice(),
+      papel + ': módulos que escreve —');
+    eq(api.podeGlobal_(novo, 'manageAccess'), antigo.manageAccess, papel + ': gerencia acesso —');
+    eq(api.podeGlobal_(novo, 'selfApprove'), antigo.selfApprove, papel + ': aprova a si —');
+    eq(constante('CONTENT_MODULES').some((m) => api.podeAprovarModulo_(novo, m)), antigo.approve,
+      papel + ': aprova algo —');
+  });
+});
+
+check('propor e publicar direto viraram casas diferentes', () => {
+  const wfm = matrizAtual('WFM');
+  // WFM tem os dois módulos, mas por caminhos diferentes: links passa pela
+  // fila, disponibilidade vai ao ar na hora. A lista `propose` antiga não
+  // sabia dizer isso.
+  eq(api.podeNoModulo_(wfm, 'links', 'propose'), true);
+  eq(api.podeNoModulo_(wfm, 'links', 'publish'), false, 'não existe publicar direto no catálogo:');
+  eq(api.podeNoModulo_(wfm, 'bau_availability', 'publish'), true);
+  eq(api.podeNoModulo_(wfm, 'bau_availability', 'propose'), false, 'não existe fila na operação:');
+});
+
+check('ver virou coluna: QA enxerga links, não enxerga people', () => {
+  const qa = matrizAtual('QA');
+  eq(api.podeNoModulo_(qa, 'links', 'view'), true);
+  eq(api.podeNoModulo_(qa, 'people', 'view'), false);
+});
+
+console.log('\n--- RBAC editável: mudar sem deploy ---');
+
+check('só quem gerencia papéis lê a matriz', () => {
+  as('quality1', () => throws(() => api.listContentRoles(), /Acesso negado/));
+  const r = api.listContentRoles();
+  eq(r.roles.map(x => x.role), ['ADMIN', 'QA', 'TL', 'WFM']);
+  eq(r.fallback, false, 'está lendo da planilha, não do preset:');
+});
+
+check('dar links ao QA passa a valer na hora, sem deploy', () => {
+  as('quality1', () => throws(
+    () => api.saveContentDraft({ module: 'links', key: 'tech', label: 'X', value: '{}' }),
+    /não edita o módulo/));
+
+  const qa = presetDe('QA');
+  qa.modules.links.propose = true;
+  eq(api.saveContentRole('QA', qa, {}).status, 'success');
+
+  // Terceira invariante: vale AGORA. Sem invalidar o cache, este mesmo teste
+  // passaria só depois de cinco minutos.
+  as('quality1', () => {
+    const d = api.saveContentDraft({
+      module: 'links', key: 'tech', lang: 'ALL', label: 'Link do QA',
+      value: JSON.stringify({ name: 'QA', url: 'https://go/qa', desc: 'x' })
+    });
+    eq(!!d.draftId, true);
+  });
+});
+
+check('e tirar também vale na hora', () => {
+  const qa = presetDe('QA');
+  eq(api.saveContentRole('QA', qa, {}).status, 'success');
+  as('quality1', () => throws(
+    () => api.saveContentDraft({ module: 'links', key: 'tech', label: 'X', value: '{}' }),
+    /não edita o módulo/));
+});
+
+check('um papel novo que publica disponibilidade e nada mais', () => {
+  // É o exemplo que o ADR-0009 dá para justificar separar propor de publicar.
+  const so = api.normalizeRoleMatrix_({ modules: {}, global: {} });
+  so.modules.bau_availability.publish = true;
+  so.modules.bau_availability.view = true;
+
+  eq(api.saveContentRole('PLANNER', so, {}).status, 'success');
+  api.saveContentAccess('plan1', 'PLANNER', true);
+
+  as('plan1', () => {
+    const s = api.getContentSession();
+    eq(s.proposableModules, ['bau_availability']);
+    eq(s.canApprove, false);
+    // Não enxerga nem os links, porque `ver` é casa própria e ninguém marcou.
+    throws(() => api.listContentItems('links'), /não tem acesso ao módulo/);
+    const r = api.publishContentDirect({
+      module: 'bau_availability', label: 'Disponibilidade',
+      value: JSON.stringify({ segments: { PT: { attention: '2026-10-01' }, ES: {} } })
+    });
+    eq(r.status, 'success');
+  });
+});
+
+console.log('\n--- RBAC editável: as invariantes ---');
+
+check('1. não dá para deixar a Central sem quem governe (pelo papel)', () => {
+  const admin = presetDe('ADMIN');
+  admin.global.manageRoles = false;
+  throws(() => api.saveContentRole('ADMIN', admin, { confirmSelf: true }),
+    /sem ninguém capaz de gerenciar papéis e acessos/);
+});
+
+check('1. nem pelo acesso — e a checagem é sobre quem SOBRA', () => {
+  throws(() => api.saveContentAccess('lucaste', 'ADMIN', false),
+    /sem ninguém capaz de gerenciar papéis e acessos/);
+
+  // Com um segundo governante, sair passa a ser permitido: a trava é sobre
+  // ficar sem ninguém, não sobre a pessoa.
+  api.saveContentAccess('admin2', 'ADMIN', true);
+  eq(api.saveContentAccess('lucaste', 'ADMIN', false).status, 'success');
+
+  as('admin2', () => { eq(api.saveContentAccess('lucaste', 'ADMIN', true).status, 'success'); });
+});
+
+check('2. escalação nova exige declaração — e não escreve enquanto não vier', () => {
+  const tl = presetDe('TL');
+  tl.global.selfApprove = true;
+
+  const r = api.saveContentRole('TL', tl, {});
+  eq(r.status, 'confirm');
+  eq(r.reason, 'escalation');
+  eq(r.modules.indexOf('links') !== -1, true, 'nomeia os módulos afetados:');
+  // O importante: nada foi gravado.
+  eq(api.podeGlobal_(matrizAtual('TL'), 'selfApprove'), false, 'nada foi gravado:');
+
+  const ok = api.saveContentRole('TL', tl, { confirmEscalation: true });
+  eq(ok.status, 'success');
+  eq(api.podeGlobal_(matrizAtual('TL'), 'selfApprove'), true);
+
+  api.saveContentRole('TL', presetDe('TL'), {});
+});
+
+check('2. o que já era escalada não pede declaração de novo', () => {
+  // O ADMIN já publica sozinho por desenho. Pedir confirmação a cada ajuste
+  // de outra coisa transformaria o aviso em ruído — e aviso que vira ruído
+  // deixa de ser lido justamente quando importa.
+  const admin = presetDe('ADMIN');
+  admin.global.viewAudit = false;
+  const r = api.saveContentRole('ADMIN', admin, { confirmSelf: true });
+  eq(r.status, 'success');
+  api.saveContentRole('ADMIN', presetDe('ADMIN'), { confirmSelf: true });
+});
+
+check('3. revogação é imediata, não por TTL', () => {
+  api.saveContentAccess('temp1', 'TL', true);
+  as('temp1', () => eq(api.getContentSession().hasAccess, true));
+
+  api.saveContentAccess('temp1', 'TL', false);
+  as('temp1', () => eq(api.getContentSession().hasAccess, false, 'ainda tinha acesso:'));
+});
+
+check('4. aprovar people exige gerenciar acessos, e isso é recusado ao salvar', () => {
+  const tl = presetDe('TL');
+  tl.modules.people.approve = true;
+  throws(() => api.saveContentRole('TL', tl, {}),
+    /exige também a permissão 'manageAccess'/);
+});
+
+console.log('\n--- RBAC editável: bordas ---');
+
+check('editar o próprio papel pede confirmação à parte', () => {
+  const admin = presetDe('ADMIN');
+  admin.global.viewAudit = false;
+
+  const r = api.saveContentRole('ADMIN', admin, {});
+  eq(r.status, 'confirm');
+  eq(r.reason, 'self');
+  eq(api.podeGlobal_(matrizAtual('ADMIN'), 'viewAudit'), true, 'nada foi gravado:');
+
+  const ok = api.saveContentRole('ADMIN', admin, { confirmSelf: true });
+  eq(ok.reloadSession, true, 'a tela precisa recarregar a sessão:');
+  api.saveContentRole('ADMIN', presetDe('ADMIN'), { confirmSelf: true });
+});
+
+check('papel em uso não pode ser desativado', () => {
+  throws(() => api.saveContentRole('PLANNER', matrizAtual('PLANNER'), { active: false }),
+    /ainda é de 1 pessoa/);
+});
+
+check('nome de papel inválido é recusado', () => {
+  throws(() => api.saveContentRole('mi nusculo', presetDe('QA'), {}), /Nome de papel inválido/);
+  throws(() => api.saveContentRole('X', presetDe('QA'), {}), /Nome de papel inválido/);
+});
+
+check('permissão desconhecida não entra pela porta dos fundos', () => {
+  const inventada = api.normalizeRoleMatrix_({
+    modules: { links: { view: true, propose: true, voar: true }, naoexiste: { view: true } },
+    global: { manageAccess: false, virarDeus: true }
+  });
+  eq(inventada.modules.links.voar, undefined, 'ação inventada não vira casa:');
+  eq(inventada.modules.naoexiste, undefined, 'módulo inventado não vira linha:');
+  eq(inventada.global.virarDeus, undefined, 'permissão global inventada não entra:');
+});
+
+check('aprovar não existe em módulo que publica direto, nem marcado à mão', () => {
+  const m = api.normalizeRoleMatrix_({
+    modules: { broadcast: { view: true, publish: true, approve: true } }, global: {}
+  });
+  eq(m.modules.broadcast.approve, false, 'não existe aprovar um aviso:');
+});
+
+check('a alteração de papel vai para a auditoria com o que MUDOU', () => {
+  const qa = presetDe('QA');
+  qa.modules.tips.propose = true;
+  api.saveContentRole('QA', qa, {});
+
+  const linha = logDaCentral().filter(l => l.Action === 'role_update').pop();
+  eq(linha.Label, 'QA');
+  eq(/tips\.propose: não → sim/.test(String(linha.Detail)), true,
+    'o log precisa dizer o que mudou, não o estado final: ' + linha.Detail);
+
+  api.saveContentRole('QA', presetDe('QA'), {});
+});
+
+check('planilha ilegível cai no preset em vez de trancar todo mundo', () => {
+  const aba = SS.getSheetByName('Content_Roles');
+  const guardado = aba._data.map(r => r.slice());
+
+  // JSON quebrado em TODAS as linhas: nenhum papel utilizável sobra.
+  for (let i = 1; i < aba._data.length; i++) aba._data[i][1] = '{quebrado';
+  api.invalidateContentPermsCache_();
+
+  const snap = api.contentPermsSnapshot_();
+  eq(snap.fallback, true, 'deveria estar no preset:');
+  eq(api.getContentSession().role, 'ADMIN', 'e o ADMIN continua entrando:');
+
+  aba._data.length = 0;
+  guardado.forEach(r => aba._data.push(r));
+  api.invalidateContentPermsCache_();
+  eq(api.contentPermsSnapshot_().fallback, false);
+});
+
+check('uma linha quebrada não derruba os outros papéis', () => {
+  const aba = SS.getSheetByName('Content_Roles');
+  const alvo = aba._data.findIndex(r => r[0] === 'QA');
+  const guardado = aba._data[alvo][1];
+
+  aba._data[alvo][1] = '{quebrado';
+  api.invalidateContentPermsCache_();
+
+  const snap = api.contentPermsSnapshot_();
+  eq(snap.fallback, false, 'não é caso de fallback geral:');
+  eq(!!snap.roles.ADMIN, true, 'ADMIN sobreviveu:');
+  eq(!!snap.roles.QA, false, 'e o papel quebrado simplesmente não existe:');
+
+  // Quem tinha o papel quebrado perde o acesso, em vez de herdar um papel
+  // qualquer — desconhecido é sem privilégio, como no resto do produto.
+  as('quality1', () => eq(api.getContentSession().hasAccess, false));
+
+  aba._data[alvo][1] = guardado;
+  api.invalidateContentPermsCache_();
+});
+
+console.log('\n--- Ver como: a prévia nunca concede ---');
+
+check('só quem gerencia papéis pode ver como outro', () => {
+  as('quality1', () => throws(() => api.previewContentSession('ADMIN'), /Acesso negado/));
+});
+
+check('a prévia devolve a sessão do papel escolhido', () => {
+  const p = api.previewContentSession('QA');
+  eq(p.role, 'QA');
+  eq(p.preview, true);
+  eq(p.realRole, 'ADMIN', 'a prévia diz de quem ela é:');
+  eq(p.ldap, 'lucaste', 'a identidade real não muda:');
+  eq(p.proposableModules, ['call_script', 'note_template']);
+  eq(p.canManageAccess, false);
+});
+
+check('a prévia é INTERSECTADA com quem pergunta — nunca amplia', () => {
+  // Um papel que governa mas não toca no catálogo. É o caso que importa:
+  // ver como ADMIN, sendo ele, não pode virar um caminho para agir como ADMIN.
+  const gov = api.normalizeRoleMatrix_({ modules: {}, global: {} });
+  gov.global.manageRoles = true;
+  gov.global.manageAccess = true;
+  gov.modules.links.view = true;
+  eq(api.saveContentRole('GOV', gov, {}).status, 'success');
+  api.saveContentAccess('gov1', 'GOV', true);
+
+  as('gov1', () => {
+    const p = api.previewContentSession('ADMIN');
+    eq(p.role, 'ADMIN', 'o rótulo é o do papel previsto:');
+    // ...mas nada do poder que gov1 não tem atravessa.
+    eq(p.proposableModules, [], 'a prévia não deu escrita nenhuma:');
+    eq(p.canSelfApprove, false, 'nem aprovar a si mesmo:');
+    eq(p.canApprove, false);
+    verdadeiro(p.beyond.length > 0, 'o que ficou de fora precisa ser dito');
+    verdadeiro(p.beyond.indexOf('links.propose') !== -1,
+      'links.propose deveria estar no que ficou de fora: ' + p.beyond.join(','));
+  });
+});
+
+check('a prévia não é caminho de escrita: o servidor segue julgando quem clicou', () => {
+  as('gov1', () => {
+    api.previewContentSession('ADMIN');
+    // Mesmo "sendo ADMIN" na tela, escrever continua sendo recusado.
+    throws(() => api.saveContentDraft({ module: 'links', key: 'tech', label: 'X', value: '{}' }),
+      /não edita o módulo/);
+  });
+});
+
+check('papel inexistente na prévia é recusado', () => {
+  throws(() => api.previewContentSession('NAOEXISTE'), /Papel desconhecido/);
+});
+
+console.log('\n--- Aviso com hora: agendamento e validade ---');
+
+// Um "agora" fixo para a janela, para o teste não depender do relógio da
+// máquina. O formato é o mesmo que janelaAgora_() produz.
+function comJanela(inicio, fim) {
+  return JSON.stringify({
+    type: 'info', title: 'Instabilidade', text: 'O CRM está lento.',
+    startsAt: inicio || '', endsAt: fim || ''
+  });
+}
+
+function publicoDeBroadcast() {
+  return api.handleContentPublicRead({ module: 'broadcast' }).items;
+}
+
+function limparBroadcasts() {
+  api.listContentItems('broadcast').forEach((it) => api.unpublishContentDirect(it.id));
+}
+
+check('aviso sem janela continua valendo sempre — ligar isto não apaga nada', () => {
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Sem janela',
+    value: JSON.stringify({ type: 'info', title: 'Sem janela', text: 'Vale sempre.' })
+  });
+  eq(publicoDeBroadcast().length, 1);
+});
+
+check('aviso agendado para o futuro NÃO chega ao agente', () => {
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Agendado', value: comJanela('2099-01-01T08:00', '')
+  });
+  eq(publicoDeBroadcast().length, 0, 'ainda não é hora:');
+  // Mas continua na Central, que é onde se administra.
+  eq(api.listContentItems('broadcast').length, 1, 'a Central mostra o agendado:');
+});
+
+check('aviso vencido para de chegar sozinho', () => {
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Vencido', value: comJanela('2020-01-01T08:00', '2020-01-02T08:00')
+  });
+  eq(publicoDeBroadcast().length, 0, 'a validade passou:');
+  eq(api.listContentItems('broadcast').length, 1, 'e ele continua auditável na Central:');
+});
+
+check('aviso dentro da janela chega normalmente', () => {
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Vigente', value: comJanela('2020-01-01T08:00', '2099-01-01T08:00')
+  });
+  eq(publicoDeBroadcast().length, 1);
+});
+
+check('a janela é do MÓDULO certo — não some conteúdo de outros', () => {
+  // O filtro roda só onde a janela existe. Um `startsAt` perdido no valor de um
+  // link não pode fazer o link sumir da tela do agente.
+  const antes = api.handleContentPublicRead({ module: 'links' }).items.length;
+  eq(antes > 0, true, 'precisa haver link para o teste valer:');
+  eq(api.handleContentPublicRead({ module: 'links' }).items.length, antes);
+});
+
+check('janela invertida é recusada na publicação', () => {
+  throws(() => api.publishContentDirect({
+    module: 'broadcast', label: 'Invertido', value: comJanela('2026-05-02T08:00', '2026-05-01T08:00')
+  }), /precisa vir depois do início/);
+});
+
+check('formato de data errado é recusado', () => {
+  throws(() => api.publishContentDirect({
+    module: 'broadcast', label: 'Ruim', value: comJanela('02/05/2026', '')
+  }), /Data de início inválida/);
+});
+
+check('a janela é avaliada DEPOIS do cache, não dentro dele', () => {
+  // O que o cache guarda é "o que está publicado"; o que a janela decide é "o
+  // que vale agora". Se o filtro morasse dentro do cache, um aviso agendado
+  // para daqui a um minuto ficaria de fora da entrada gravada agora e só
+  // apareceria quando o TTL expirasse.
+  limparBroadcasts();
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Vigente', value: comJanela('2020-01-01T08:00', '2099-01-01T08:00')
+  });
+  eq(publicoDeBroadcast().length, 1, 'aquece o cache:');
+
+  // Com o cache quente, um item VENCIDO entrando na aba não pode ser servido —
+  // o que só é verdade se o filtro rodar na leitura, não na gravação do cache.
+  const aba = SS.getSheetByName('Content_Items');
+  const cabecalho = aba._data[0];
+  const vigente = aba._data.find((r) => String(r[1]) === 'broadcast' && String(r[8]) === 'live');
+  const vencido = vigente.slice();
+  vencido[0] = 'itm_vencido';
+  vencido[6] = comJanela('2020-01-01T08:00', '2020-01-02T08:00');
+  vencido[12] = 'itm_vencido';
+  aba._data.push(vencido);
+  api.invalidateContentCache_('broadcast');
+
+  const servidos = publicoDeBroadcast();
+  eq(servidos.length, 1, 'o vencido não pode ser servido:');
+  eq(api.listContentItems('broadcast').length, 2, 'mas os dois estão publicados:');
+});
+
+console.log('\n--- Auditoria completa ---');
+
+// Um histórico grande o bastante para a paginação ter o que paginar. Escrito
+// direto na aba: o que se testa aqui é a LEITURA, e produzir 120 ações reais
+// custaria minutos sem provar nada a mais.
+function semearAuditoria(quantas) {
+  const aba = SS.getSheetByName('Content_Log');
+  const modulos = ['links', 'tips', 'call_script'];
+  const acoes = ['approve', 'reject', 'publish_direct'];
+  const gente = ['lucaste', 'anaflor', 'brunocs'];
+
+  // Datas CRESCENTES, como em produção: a aba é só anexada, e o backfill
+  // reordena o que trouxe. É essa garantia que permite a leitura ir de trás
+  // para a frente por número de linha em vez de ordenar 15 mil linhas.
+  for (let i = 0; i < quantas; i++) {
+    const mes = String(Math.floor(i / 28) + 1).padStart(2, '0');
+    const dia = String((i % 28) + 1).padStart(2, '0');
+    aba.appendRow([
+      'log_seed_' + i,
+      '2026-' + mes + '-' + dia + 'T10:00:00.000Z',
+      gente[i % 3],
+      acoes[i % 3],
+      modulos[i % 3],
+      'chave' + i,
+      '',
+      'Item ' + i,
+      i === 7 ? 'agulha no palheiro' : 'detalhe comum'
+    ]);
+  }
+}
+
+check('só quem vê a auditoria completa abre a lista', () => {
+  as('quality1', () => throws(() => api.listContentAudit({}), /Acesso negado/));
+});
+
+check('a auditoria vem da mais recente para a mais antiga', () => {
+  semearAuditoria(120);
+  const r = api.listContentAudit({ limit: 10 });
+  eq(r.rows.length, 10);
+  const datas = r.rows.map(l => l.at);
+  eq(datas.slice().sort().reverse(), datas, 'ordem decrescente:');
+});
+
+check('filtra por quem fez', () => {
+  const r = api.listContentAudit({ actor: 'anaflor', limit: 20 });
+  eq(r.rows.every(l => l.actor === 'anaflor'), true);
+  eq(r.rows.length > 0, true, 'precisa achar alguma coisa:');
+});
+
+check('filtra por ação e por módulo', () => {
+  const r = api.listContentAudit({ action: 'reject', module: 'tips', limit: 20 });
+  eq(r.rows.every(l => l.action === 'reject' && l.module === 'tips'), true);
+  eq(r.rows.length > 0, true);
+});
+
+check('filtra por texto livre, no rótulo e no detalhe', () => {
+  const r = api.listContentAudit({ text: 'agulha', limit: 20 });
+  eq(r.rows.length, 1, 'a agulha é uma só:');
+  eq(/agulha/.test(r.rows[0].detail), true);
+});
+
+check('filtra por período, com o dia final inteiro', () => {
+  // O carimbo é ISO e o filtro é data: sem o cuidado com o fim do dia, uma
+  // linha das 10h do dia `to` ficaria de fora do próprio dia pedido.
+  const r = api.listContentAudit({ from: '2026-02-01', to: '2026-02-28', limit: 200 });
+  eq(r.rows.length > 0, true, 'precisa achar alguma coisa:');
+  eq(r.rows.every(l => l.at >= '2026-02-01' && l.at <= '2026-02-28Z'), true);
+
+  // O que de fato pega o erro: uma linha das 10h do DIA FINAL tem que entrar.
+  // Comparando `at > to` cru, ela ficaria de fora do próprio dia pedido.
+  eq(r.rows.some(l => l.at.indexOf('2026-02-28') === 0), true,
+    'o último dia do período precisa entrar inteiro');
+  // E o dia seguinte, não.
+  eq(r.rows.some(l => l.at.indexOf('2026-03-') === 0), false, 'não pode vazar para março');
+});
+
+check('a paginação não repete nem pula linha', () => {
+  const p1 = api.listContentAudit({ limit: 25 });
+  const p2 = api.listContentAudit({ limit: 25, cursor: p1.nextCursor });
+
+  eq(p1.rows.length, 25);
+  eq(p2.rows.length, 25);
+
+  const ids1 = p1.rows.map(l => l.id);
+  const ids2 = p2.rows.map(l => l.id);
+  eq(ids1.filter(id => ids2.indexOf(id) !== -1), [], 'nenhum id nas duas páginas:');
+
+  // E a segunda continua exatamente onde a primeira parou.
+  eq(p2.rows[0].at <= p1.rows[24].at, true, 'a página 2 começa antes do fim da 1:');
+});
+
+check('paginar até o fim termina, e diz que terminou', () => {
+  let cursor = 0;
+  let total = 0;
+  let voltas = 0;
+  let fim = false;
+
+  while (voltas < 40) {
+    const p = api.listContentAudit({ limit: 200, cursor: cursor });
+    total += p.rows.length;
+    voltas++;
+    if (p.done) { fim = true; break; }
+    if (!p.nextCursor) break;
+    cursor = p.nextCursor;
+  }
+
+  eq(fim, true, 'a varredura precisa terminar sozinha:');
+  eq(total >= 120, true, 'trouxe pelo menos as 120 semeadas, veio ' + total);
+});
+
+check('exportar escreve uma aba com o MESMO filtro da tela', () => {
+  const r = api.exportContentAudit({ actor: 'anaflor' });
+  eq(r.sheet, 'Content_Audit_Export');
+  eq(r.rows > 0, true);
+
+  const aba = SS.getSheetByName('Content_Audit_Export');
+  eq(aba._data[0], ['Quando', 'Quem', 'Ação', 'Módulo', 'Chave', 'Item', 'Rótulo', 'Detalhe']);
+  eq(aba._data.length - 1, r.rows, 'cabeçalho + as linhas:');
+  eq(aba._data.slice(1).every(l => l[1] === 'anaflor'), true, 'o filtro valeu na exportação:');
+});
+
+check('exportar de novo substitui, não empilha', () => {
+  const grande = SS.getSheetByName('Content_Audit_Export')._data.length;
+  eq(grande > 3, true, 'a primeira exportação precisa ser grande para o teste valer:');
+
+  // Uma exportação MENOR depois de uma grande: sem limpar a aba, as linhas
+  // antigas sobreviveriam embaixo e a exportação passaria a misturar dois
+  // filtros diferentes — que é o pior desfecho possível para uma auditoria.
+  const r = api.exportContentAudit({ text: 'agulha' });
+  eq(r.rows, 1);
+  eq(SS.getSheetByName('Content_Audit_Export')._data.length, 2, 'cabeçalho + uma linha:');
+});
+
+check('a própria exportação vai para a auditoria', () => {
+  const linha = logDaCentral().filter(l => l.Action === 'audit_export').pop();
+  eq(linha.Actor, 'lucaste');
+  eq(/linhas/.test(String(linha.Detail)), true);
+});
+
+check('quem não vê a auditoria também não exporta', () => {
+  as('quality1', () => throws(() => api.exportContentAudit({}), /Acesso negado/));
+});
+
+console.log('\n--- Cobrança de pendência parada ---');
+
+// Envelhece um rascunho mexendo na coluna Proposed_At: o que se testa é a
+// regra de "parado há mais de N dias", não a passagem do tempo.
+function envelhecerProposta(draftId, dias) {
+  const aba = SS.getSheetByName('Content_Drafts');
+  const linha = aba._data.find((l) => String(l[0]) === draftId);
+  const d = new Date();
+  d.setDate(d.getDate() - dias);
+  linha[10] = d.toISOString();
+}
+
+check('proposta recente não vira cobrança', () => {
+  api.saveContentAccess('rev1', 'TL', true);
+  const d = as('rev1', () => api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica nova',
+    value: 'Confira o idioma antes de encerrar.'
+  }));
+
+  const r = api.listStaleContentApprovals();
+  eq(r.stale, 0, 'nada parado ainda:');
+  return d;
+});
+
+let draftParado;
+check('passados os dias, ela aparece — e para quem PODE resolvê-la', () => {
+  const d = as('rev1', () => api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Dica esquecida',
+    value: 'Confira o substatus antes de encerrar.'
+  }));
+  draftParado = d.draftId;
+  envelhecerProposta(draftParado, 5);
+
+  const r = api.listStaleContentApprovals();
+  eq(r.stale, 1);
+  const quem = r.recipients.map(x => x.ldap);
+  eq(quem.indexOf('lucaste') !== -1, true, 'o ADMIN aprova dicas:');
+  // O QA não revisa dicas. Mandar a fila inteira para todo mundo é como a
+  // cobrança vira ruído e passa a ser apagada sem ler.
+  eq(quem.indexOf('quality1'), -1, 'o QA não deveria ser cobrado:');
+});
+
+check('quem propôs não é cobrado pela própria proposta', () => {
+  // rev1 é TL: aprova dicas, mas não aprova a si mesmo. Um lembrete de algo
+  // que a pessoa não consegue resolver é só barulho.
+  const quem = api.listStaleContentApprovals().recipients.map(x => x.ldap);
+  eq(quem.indexOf('rev1'), -1, 'o autor não deveria ser cobrado:');
+});
+
+check('o disparo manda um e-mail por pessoa, com o link de PRODUÇÃO', () => {
+  const antes = SENT_MAIL.length;
+  const r = api.notifyStaleContentApprovals();
+
+  eq(r.status, 'ok');
+  eq(r.notified > 0, true, 'alguém precisa ser avisado:');
+
+  const enviados = SENT_MAIL.slice(antes);
+  eq(enviados.length, r.notified, 'um e-mail por pessoa:');
+  eq(/Dica esquecida/.test(enviados[0].htmlBody), true, 'o item precisa estar no corpo:');
+
+  // Num gatilho de tempo getUrl() pode devolver a URL de OUTRA implantação: o
+  // link tem que vir do mapa, e apontar para produção.
+  const producao = vm.runInContext('CW_DEPLOYMENTS.production', ctx);
+  eq(enviados[0].htmlBody.indexOf(producao) !== -1, true,
+    'o link deveria apontar para a implantação de produção');
+  eq(/page=content/.test(enviados[0].htmlBody), true);
+});
+
+check('o disparo vai para a auditoria', () => {
+  const linha = logDaCentral().filter(l => l.Action === 'stale_digest').pop();
+  eq(linha.Actor, 'system');
+  eq(/paradas/.test(String(linha.Detail)), true);
+});
+
+check('sem nada parado, o disparo não manda e-mail nenhum', () => {
+  api.approveContentDraft(draftParado, '');
+  const antes = SENT_MAIL.length;
+  const r = api.notifyStaleContentApprovals();
+  eq(r.notified, 0);
+  eq(SENT_MAIL.length, antes, 'nenhum e-mail:');
+});
+
+check('o gatilho nunca lança — falha vira log, não exceção', () => {
+  // Um gatilho que estoura some do radar do mesmo jeito que a pendência que
+  // ele existe para lembrar.
+  const original = sandbox.MailApp.sendEmail;
+  sandbox.MailApp.sendEmail = () => { throw new Error('quota estourada'); };
+
+  const d = as('rev1', () => api.saveAndSubmitContentDraft({
+    module: 'tips', key: 'geral', lang: 'PT', label: 'Outra parada',
+    value: 'Confira o fluxo antes de encerrar.'
+  }));
+  envelhecerProposta(d.draftId, 5);
+
+  const r = api.notifyStaleContentApprovals();
+  sandbox.MailApp.sendEmail = original;
+
+  eq(r.status, 'error', 'devolve o erro em vez de estourar:');
+  const linha = logDaCentral().filter(l => l.Action === 'stale_digest_failed').pop();
+  eq(/quota estourada/.test(String(linha.Detail)), true, 'e o motivo fica registrado:');
+});
+
+check('quem não aprova nada não consulta a cobrança', () => {
+  as('quality1', () => throws(() => api.listStaleContentApprovals(), /Acesso negado/));
+});
+
+console.log('\n--- Busca global ---');
+
+const contentAgora = () => new Date().toISOString();
+
+check('a busca ignora acento — quem procura não digita acento', () => {
+  api.publishContentDirect({
+    module: 'broadcast', label: 'Anúncio de manutenção',
+    value: JSON.stringify({ type: 'info', title: 'Anúncio de manutenção', text: 'Sistema fora.' })
+  });
+
+  const r = api.searchContentItems('anuncio');
+  eq(r.length > 0, true, 'deveria achar mesmo sem acento:');
+  eq(r.some(x => /Anúncio/.test(x.label)), true);
+});
+
+check('termo curto demais não vira varredura', () => {
+  eq(api.searchContentItems('a'), []);
+  eq(api.searchContentItems(''), []);
+});
+
+check('a busca respeita o `ver` da matriz', () => {
+  // A busca é a porta dos fundos mais fácil de esquecer: sem o filtro, ela
+  // devolve conteúdo de módulo que a pessoa nem consegue abrir na tela.
+  const cego = api.normalizeRoleMatrix_({ modules: {}, global: {} });
+  cego.modules.tips.view = true;   // enxerga dicas, e SÓ dicas
+  eq(api.saveContentRole('SOTIPS', cego, {}).status, 'success');
+  api.saveContentAccess('sotips1', 'SOTIPS', true);
+
+  SS.getSheetByName('Content_Items').appendRow([
+    'itm_busca_link', 'links', 'tech', '', 'ALL', 'LinkDeTesteDaBusca',
+    JSON.stringify({ name: 'LinkDeTesteDaBusca', url: 'https://go/busca', desc: 'x' }),
+    1, 'live', 'lucaste', contentAgora(), 0, 'itm_busca_link'
+  ]);
+  api.invalidateContentCache_('links');
+
+  // O ADMIN acha o link; quem só vê dicas, não.
+  eq(api.searchContentItems('LinkDeTesteDaBusca').some(x => x.module === 'links'), true,
+    'o ADMIN precisa achar o link para o teste valer:');
+
+  as('sotips1', () => {
+    const r = api.searchContentItems('LinkDeTesteDaBusca');
+    eq(r.some(x => x.module === 'links'), false, 'não pode achar o que não pode ver:');
+  });
+});
+
+check('quem não tem papel não busca nada', () => {
+  as('estranho', () => throws(() => api.searchContentItems('link'), /Acesso negado/));
+});
+
+check('só o que está no ar aparece', () => {
+  const d = api.saveContentDraft({
+    module: 'links', key: 'tech', lang: 'ALL', label: 'RascunhoSecretoXYZ',
+    value: JSON.stringify({ name: 'RascunhoSecretoXYZ', url: 'https://go/x', desc: 'x' })
+  });
+  eq(api.searchContentItems('RascunhoSecretoXYZ'), [], 'rascunho não é conteúdo no ar:');
+  api.discardContentDraft(d.draftId);
+});
+
+check('o trecho mostra o contexto, sem JSON cru na cara', () => {
+  const r = api.searchContentItems('manutencao');
+  eq(r.length > 0, true);
+  eq(/[{}"]/.test(r[0].snippet), false, 'o trecho não pode ter marca de JSON: ' + r[0].snippet);
+});
+
+check('a busca tem teto de resultados', () => {
+  // Uma busca que devolve tudo é uma busca que trava a tela em vez de ajudar.
+  // Precisa de mais itens que o teto para o teto ter o que cortar.
+  const aba = SS.getSheetByName('Content_Items');
+  for (let i = 0; i < 45; i++) {
+    aba.appendRow([
+      'itm_massa_' + i, 'tips', 'geral', '', 'PT', 'Dica massiva ' + i,
+      'Texto padronizado para a busca massiva.', 1, 'live', 'lucaste',
+      contentAgora(), i, 'itm_massa_' + i
+    ]);
+  }
+
+  const r = api.searchContentItems('massiva');
+  eq(r.length, 30, 'o teto precisa cortar, veio ' + r.length);
 });
 
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);

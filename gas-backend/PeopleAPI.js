@@ -15,7 +15,8 @@
 //   2. A linha aprovada vai para a aba People, não para Content_Items. A fila,
 //      o log e a regra de não-autoaprovação são reaproveitados do ContentAPI;
 //      só o destino da escrita muda.
-//   3. Aprovar é privilégio exclusivo do ADMIN (CONTENT_ADMIN_ONLY_APPROVAL_MODULES).
+//   3. Aprovar exige, além da casa da matriz, a permissão global de gerenciar
+//      acessos (CONTENT_APPROVAL_REQUIRES_GLOBAL).
 //      Promoção de papel aprovada por um par não é revisão, é combinação.
 //
 // SHEET_PEOPLE, isOverheadRoleCategory() e defaultLanguageForSegment() vêm do
@@ -344,7 +345,7 @@ function savePeopleChange(payload) {
   });
 
   // O ADMIN aplica na hora; qualquer outro papel entra na fila do ADMIN.
-  if (session.perms.selfApprove) {
+  if (podeGlobal_(session.perms, 'selfApprove')) {
     markPeopleDraftPending_(draft.draftId);
     const applied = approveContentDraft(draft.draftId, 'Aplicado direto pelo ADMIN.');
     return {
@@ -435,9 +436,14 @@ function requestPeopleRemoval(ldap, reason) {
     CONTENT_ACTIONS.REMOVE
   ]);
 
-  logContentEvent_(session.ldap, 'people_removal_request', target, String(reason).trim());
+  logContentEvent_(
+    session.ldap,
+    'people_removal_request',
+    { module: PEOPLE_MODULE, key: target, label: target },
+    String(reason).trim()
+  );
 
-  if (session.perms.selfApprove) {
+  if (podeGlobal_(session.perms, 'selfApprove')) {
     const applied = approveContentDraft(draftId, 'Aplicado direto pelo ADMIN.');
     return { status: 'success', applied: true, ldap: target, action: applied.action };
   }
@@ -493,12 +499,15 @@ function applyApprovedPeopleDraft_(draft, session, note) {
   draftsSheet.getRange(draft._row, 13).setValue(now);
   if (note) draftsSheet.getRange(draft._row, 14).setValue(note);
 
+  // Como no resto da Central: a marca de "aplicado pelo próprio ADMIN" é
+  // DETALHE, não parte da chave — senão o LDAP alvo vira dois valores
+  // diferentes para quem filtrar a auditoria por pessoa.
   const selfFlag = (String(draft.Proposed_By).trim() === session.ldap) ? ' (aplicado pelo próprio ADMIN)' : '';
   logContentEvent_(
     session.ldap,
     'people_' + outcome,
-    PEOPLE_MODULE + '/' + targetLdap + selfFlag,
-    'proposto por ' + String(draft.Proposed_By)
+    { module: PEOPLE_MODULE, key: targetLdap, label: targetLdap },
+    'proposto por ' + String(draft.Proposed_By) + selfFlag
   );
 
   return { status: 'success', action: action, outcome: outcome, ldap: targetLdap };

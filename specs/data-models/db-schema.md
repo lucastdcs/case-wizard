@@ -2,7 +2,10 @@
 
 ## Planilha Alvo
 - **Nome/Constante:** `SHEET_BAU_FORM`
-- **Total de Colunas:** 18 colunas. A função do Apps Script deve garantir o preenchimento/atualização exata deste índice (0 a 17).
+- **Total de Colunas:** 18 colunas do formulário (índices 0 a 17) + 3 de trilha
+  de auditoria (18 a 20, ver abaixo) + 1 de sinalização do agente (21). A
+  função do Apps Script deve garantir o preenchimento/atualização exata do
+  índice 0 a 17.
 
 ## Mapeamento de Índices (Array Google Sheets)
 | Índice | Nome da Coluna (Header) | Chave do Payload Esperada | Notas |
@@ -25,6 +28,14 @@
 | `15` | Task_BAU | `taskType` | Pode ser lista separada por vírgula |
 | `16` | Justificativa/Descrição | `description` ou `nonImplementationReason` | O Back-end deve mesclar estes dois campos se ambos existirem. |
 | `17` | Disponibilidade_Adv | `availability` | Formatado com pipe (`\|`) |
+
+## Colunas depois do formulário (escritas à parte, não pelo `appendRow` inicial)
+| Índice | Nome da Coluna (Header) | Chave do Payload | Notas |
+| :--- | :--- | :--- | :--- |
+| `18` | Processed_By | — (`Session.getActiveUser().getEmail()`) | Trilha de auditoria. Gravada por `updateBAUCaseStatus`, não no envio do agente. Colunas 18-20 garantidas por `ensureBAUHistoryColumns`. |
+| `19` | Processed_At | — (`new Date()`) | Idem acima. |
+| `20` | Processed_Action | — (derivado, ver `resolveProcessedAction`) | `APPROVED_CREATION` \| `REJECTED_CREATION` \| `CONFIRMED_DISCARD` \| `KEPT_ACTIVE`. |
+| `21` | Suggest_Discard | `suggestDiscard` | `"Sim"` \| `"Não"`. Só existe no fluxo BAU (Passo 3); isolada depois das colunas de auditoria de propósito, pra não deslocar os índices 18-20 em planilhas já em produção. Garantida por `ensureBAUSuggestDiscardColumn`. |
 
 ## Regra de Atualização (Update)
 - NUNCA reescrever dados de uma coluna com `""` se o valor recebido for `undefined`. 
@@ -145,4 +156,128 @@ dar baixa apagando a linha é seguro.
 - **Uma proposta pendente por pessoa.** A segunda é recusada, para que uma
   aprovação não sobrescreva em silêncio a decisão da outra.
 - **Baixa apaga a linha.** O histórico fica em `Content_Drafts` (com o motivo) e
-  na aba `Logs`, não na aba People.
+  na aba `Content_Log`, não na aba People.
+
+---
+
+# Aba `Content_Log` (Auditoria da Central de Conteúdo)
+
+- **Nome/Constante:** `SHEET_CONTENT_LOG` (`"Content_Log"`)
+- **Cardinalidade:** **uma linha por ação**, só anexada — nada aqui é editado
+  nem apagado pela aplicação.
+- **Papel no sistema:** responde *quem fez o quê, quando* na Central. Alimenta a
+  barra "Atividade recente" da tela e, no futuro, a aba de auditoria.
+
+| Índice | Nome da Coluna (Header) | Notas |
+| :--- | :--- | :--- |
+| `0` | Log_ID | `log_<uuid>`. Linhas trazidas da aba `Logs` usam `log_bf_<linha de origem>` — é o que torna o backfill idempotente. |
+| `1` | Timestamp | ISO 8601 em **texto**. Ordem alfabética = ordem cronológica, e é assim que a aba é reordenada. |
+| `2` | Actor | LDAP de quem agiu, vindo de `Session.getActiveUser()` — nunca de parâmetro do cliente. |
+| `3` | Action | `approve`, `reject`, `rollback`, `publish_direct`, `access_change`, `people_updated`… |
+| `4` | Module | Módulo da Central. **Vazio** quando o alvo não é conteúdo (`access_change` aponta para uma pessoa). |
+| `5` | Key | Chave do item. Vazio em ações de módulo inteiro (`seed`). |
+| `6` | Item_ID | Linha de `Content_Items` que a ação produziu, quando produziu alguma. |
+| `7` | Label | Rótulo legível do alvo — o que a barra lateral mostra em negrito. |
+| `8` | Detail | Texto de gente: a justificativa da rejeição, a versão publicada, a marca de autoaprovação. |
+
+## Por que módulo e chave têm colunas próprias
+
+O formato anterior era uma linha na aba `Logs` genérica, com `módulo/chave` e um
+sufixo `" (autoaprovação ADMIN)"` concatenados num campo `Label` só. Dava para
+**ler**, não para **filtrar** — e a barra lateral precisa saber de que módulo é
+cada linha para esconder de um QA o que ele não vê na aba Pessoas. Com tudo em
+texto livre, a alternativa seria adivinhar por prefixo, e adivinhar errado ali
+vaza o diretório de autorização.
+
+O sufixo de autoaprovação, pela mesma razão, virou **detalhe**: colado na chave,
+ele fazia a mesma chave contar como duas.
+
+## Quem lê, e com que filtro
+
+`listContentActivity(limite)` devolve as ações mais recentes **já filtradas pelo
+papel de quem pergunta** — o filtro é do servidor, para que a linha proibida nem
+viaje até o navegador:
+
+- ações sobre pessoas (`access_change`) só para quem gerencia acesso;
+- linhas do módulo `people` só para quem propõe nesse módulo
+  (`CONTENT_RESTRICTED_READ_MODULES`).
+
+A varredura é limitada às **últimas 200 linhas** da aba: a barra responde "o que
+aconteceu agora", e o custo dela não pode crescer com o histórico.
+
+## Retenção e backfill
+
+- Retenção de **24 meses**, com arquivamento por limiar de linhas — ver
+  `docs/decisions/0008-cache-e-retencao-do-conteudo.md`.
+- `backfillContentLog()` traz o histórico que ficou na aba `Logs`
+  (`Category = 'ContentCentral'`). **Simula por padrão**; só `backfillContentLog(true)`
+  escreve. **Copia, não move**: a aba `Logs` fica intacta. Depois de escrever,
+  reordena a aba pela data — as linhas trazidas são as mais antigas e entram no
+  fim, e sem reordenar a barra lateral mostraria 2024 como "agora".
+- Só quem tem `manageAccess` roda o backfill.
+
+---
+
+# Aba `Content_Roles` (Papéis da Central)
+
+- **Nome/Constante:** `SHEET_CONTENT_ROLES` (`"Content_Roles"`)
+- **Cardinalidade:** **uma linha por papel**, chaveada pelo nome em maiúsculas.
+- **Papel no sistema:** é a resposta a *"o que este papel pode fazer"*.
+  `Content_Access` continua sendo LDAP → papel; o que o papel significa mora
+  aqui. Ver `docs/decisions/0009-rbac-editavel-da-central.md`.
+
+| Índice | Nome da Coluna (Header) | Notas |
+| :--- | :--- | :--- |
+| `0` | Role | 2 a 24 caracteres `[A-Z0-9_]`, começando por letra. É o valor que aparece em `Content_Access.Role`. |
+| `1` | Permissions | JSON: `{ "modules": { "<módulo>": { "<ação>": bool } }, "global": { "<permissão>": bool } }` |
+| `2` | Active | `FALSE` esconde o papel. Um papel que alguém ainda usa **não pode** ser desativado. |
+| `3` | Updated_By | LDAP de quem salvou por último. |
+| `4` | Updated_At | ISO 8601. |
+
+## A matriz
+
+**Ações por módulo** (`CONTENT_MODULE_ACTIONS`): `view`, `propose`, `approve`,
+`publish`, `rollback`.
+
+Nem toda ação existe em todo módulo, porque **um módulo tem um caminho de
+escrita só**:
+
+| Regime | Ações que existem |
+| :--- | :--- |
+| Catálogo (passa pela fila) | `view`, `propose`, `approve`, `rollback` |
+| Operação (`CONTENT_DIRECT_PUBLISH_MODULES`) | `view`, `publish`, `rollback` |
+
+Casa que não existe é **apagada na normalização**, não guardada como `false`:
+marcar "aprovar aviso" à mão na planilha não vira permissão nenhuma, e a tela
+não desenha um checkbox inócuo.
+
+**Permissões globais** (`CONTENT_GLOBAL_PERMS`), que não pertencem a módulo:
+`manageAccess`, `manageRoles`, `viewAudit`, `selfApprove`.
+
+## As quatro regras que a planilha não consegue quebrar
+
+Vivem no servidor, com teste, porque o risco central do ADR-0009 é que um
+checkbox errado **não dá erro, não aparece em teste e não avisa ninguém — só
+concede**:
+
+1. **Anti-lockout.** Nenhuma alteração — de papel ou de acesso — pode deixar a
+   Central sem uma pessoa ativa que tenha `manageRoles` **e** `manageAccess` ao
+   mesmo tempo. Sem as duas juntas não há caminho de volta.
+2. **Escalação declarada.** `propose` + `approve` + `selfApprove` num mesmo
+   papel é publicar sem revisão. Continua possível, mas `saveContentRole()`
+   devolve `{ status: 'confirm' }` e **não escreve** até vir
+   `confirmEscalation: true`.
+3. **Revogação imediata.** O cache de permissão é invalidado no ato de qualquer
+   escrita em `Content_Roles` ou `Content_Access` — nunca esperando o TTL.
+4. **Aprovação de autorização** (`CONTENT_APPROVAL_REQUIRES_GLOBAL`). Aprovar o
+   módulo `people` exige, além da casa da matriz, a permissão global
+   `manageAccess`: quem decide uma mudança de autorização precisa já controlar
+   autorização. Recusado ao salvar o papel **e** de novo na aprovação.
+
+## Degradação
+
+Aba ausente, ilegível ou com **todas** as linhas corrompidas → o servidor cai
+para a constante `CONTENT_ROLES` do código, que é a mesma semente. Uma linha
+só corrompida é **pulada**: uma edição errada num papel não pode apagar os
+outros. Quem tinha o papel pulado perde o acesso, em vez de herdar um papel
+qualquer — desconhecido é sem privilégio, como no resto do produto.

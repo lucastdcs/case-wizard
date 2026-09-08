@@ -36,6 +36,9 @@ function handleBAUEscalation(ss, p) {
 
     sheet.appendRow(novaLinha);
 
+    ensureBAUSuggestDiscardColumn(sheet);
+    sheet.getRange(sheet.getLastRow(), BAU_SUGGEST_DISCARD_COL).setValue(p.suggestDiscard === 'Sim' ? 'Sim' : 'Não');
+
     let emailSent = false;
     try {
       if (typeof sendDynamicTechSolEmail === "function") {

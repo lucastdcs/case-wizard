@@ -17,7 +17,20 @@ export const FORM_CONFIG = {
                     type: 'text',
                     placeholder: 'Nome do Anunciante',
                     required: true,
-                    isSmart: true 
+                    isSmart: true
+                },
+                {
+                    id: 'advEmail',
+                    name: 'advEmail',
+                    label: 'Email do Anunciante',
+                    type: 'text',
+                    placeholder: 'email@exemplo.com',
+                    required: true,
+                    isSmart: true,
+                    validation: {
+                        regex: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$',
+                        error: 'Formato de email inválido'
+                    }
                 },
                 {
                     id: 'cid',
@@ -137,6 +150,17 @@ export const FORM_CONFIG = {
                         { name: 'availability_1', label: 'Opção 1 (Prioridade)', required: true },
                         { name: 'availability_2', label: 'Opção 2 (Opcional)', required: false },
                         { name: 'availability_3', label: 'Opção 3 (Opcional)', required: false }
+                    ]
+                },
+                {
+                    id: 'suggestDiscard',
+                    name: 'suggestDiscard',
+                    label: 'O caso deve ser descartado pelo TL?',
+                    type: 'select',
+                    required: false,
+                    options: [
+                        { value: "Não", text: "Não" },
+                        { value: "Sim", text: "Sim" }
                     ]
                 }
             ]

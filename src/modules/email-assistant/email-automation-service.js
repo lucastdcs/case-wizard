@@ -235,30 +235,65 @@ async function openEmailComposer() {
     }
 }
 
-// Caminho antigo, mantido como plano B enquanto as duas interfaces convivem:
-// em algumas telas o envelope ainda fica solto na action bar.
-function clicarBotaoEmailDireto() {
-    const icones = Array.from(document.querySelectorAll('i.material-icons-extended'));
-    const iconeEmail = icones.find(el => el.innerText.trim() === 'email' && el.offsetParent !== null);
-    if (!iconeEmail) return false;
+// Fluxo da interface ANTIGA do CRM, transplantado LITERALMENTE do commit
+// anterior à migração (269127d, 21/08) - envelope direto e, se ele não estiver
+// visível, o speed dial antigo. Esta é a versão que rodou meses em produção sem
+// reclamação.
+//
+// NÃO "melhore" este bloco. A primeira tentativa de restaurá-lo foi reescrevendo
+// o que ele fazia (polling no lugar dos 800ms fixos, checagem de visibilidade no
+// ícone, clique no <material-button> em vez do próprio <i>, textContent no lugar
+// de innerText) - tudo defensável no papel, e mesmo assim continuou falhando no
+// CRM antigo. Sem uma tela antiga onde testar, o texto original é a única versão
+// com prova de funcionamento; qualquer diferença aqui é uma hipótese não testada
+// disfarçada de melhoria.
+async function abrirPeloFluxoAntigo() {
+    const todosIcones = Array.from(document.querySelectorAll('i.material-icons-extended'));
+    const iconeEmail = todosIcones.find(el => el.innerText.trim() === 'email');
 
-    log("Botão de email direto encontrado.");
-    const botaoAlvo = iconeEmail.closest('material-button') || iconeEmail.closest('material-fab') || iconeEmail;
-    simularCliqueReal(botaoAlvo);
-    return true;
+    if (iconeEmail && iconeEmail.offsetParent !== null) {
+        log("Botão de email direto encontrado.");
+        const botaoAlvo = iconeEmail.closest('material-button') || iconeEmail.closest('material-fab') || iconeEmail;
+        simularCliqueReal(botaoAlvo);
+        return true;
+    }
+
+    log("Botão direto não visível. Tentando Speed Dial (+)...", 'warn');
+    const speedDial = document.querySelector('material-fab-speed-dial');
+    if (speedDial) {
+        const triggerBtn = speedDial.querySelector('.trigger');
+        if (triggerBtn) {
+            simularCliqueReal(triggerBtn);
+            await esperar(800);
+            const iconesNovos = Array.from(document.querySelectorAll('i.material-icons-extended'));
+            const emailBtnNovo = iconesNovos.find(el => el.innerText.trim() === 'email');
+            if (emailBtnNovo) {
+                simularCliqueReal(emailBtnNovo);
+                log("Email aberto pelo fluxo antigo.", 'success');
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 // --- CORE: ABRIR E LIMPAR ---
 async function openAndClearEmail() {
     log("🚀 FASE 1: Tentando abrir a janela de email...");
 
-    // O speed dial vem primeiro: é o fluxo da UI nova do CRM. O botão direto fica
-    // como plano B para as telas que ainda não migraram.
+    // Duas versões da interface do CRM convivem entre os agentes, porque a
+    // atualização do Connect Cases chega em ondas. A UI nova é tentada primeiro;
+    // se o markup dela não estiver na tela, cai no fluxo antigo inteiro, na
+    // forma exata em que ele funcionava antes da migração.
+    //
+    // No CRM antigo a primeira tentativa custa ~0ms e não clica em nada: os
+    // seletores dela são por id/classe da UI nova e simplesmente não casam.
     let emailAberto = await openEmailComposer();
 
     if (!emailAberto) {
-        log("Speed dial indisponível. Tentando o botão de email direto...", 'warn');
-        emailAberto = clicarBotaoEmailDireto();
+        log("UI nova não reconhecida. Voltando ao fluxo da UI antiga...", 'warn');
+        emailAberto = await abrirPeloFluxoAntigo();
     }
 
     if (!emailAberto) {
