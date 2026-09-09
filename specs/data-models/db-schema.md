@@ -108,10 +108,7 @@ Ver `docs/decisions/0002-atalhos-ctrl-k-por-agente.md`.
 - **Cardinalidade:** **uma linha por pessoa**, chaveada pelo LDAP.
 - **Papel no sistema:** é a fonte de autorização, não um cadastro informativo.
   `getUserProfileByLdap()` a lê para derivar **quem abre o TL Dashboard** e **em
-  que idioma o app abre**; `getBAUVolumeAlertRecipients()` (`BAU_Alerts.gs`) a lê
-  para derivar **quem recebe o alerta de fila cheia**, pela mesma régua de
-  `isOverhead`. Tratar como conteúdo comum é o erro a evitar — uma linha errada
-  aqui vira e-mail para quem não devia.
+  que idioma o app abre**. Tratar como conteúdo comum é o erro a evitar.
 
 | Índice | Nome da Coluna (Header) | Chave do Payload | Notas |
 | :--- | :--- | :--- | :--- |

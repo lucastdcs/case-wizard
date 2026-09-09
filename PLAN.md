@@ -44,13 +44,14 @@ This file differs from the long-term roadmap: it describes what is happening **n
          ler o `Archive_BAU`. Não antes de #333/#334 — o TL Dashboard já travou
          ao vivo, e isso soma uma planilha inteira por chamada.
 
-- [~] **Alerta de volume da fila BAU liberado para a liderança.** A lista de
-      destinatários saiu do código e passa a vir da aba `People`, pela régua de
-      `isOverhead`. **Falta uma ação manual:** rodar
-      `listBAUVolumeAlertRecipients()` pelo editor do Apps Script para conferir
-      quem receberia, e só então `setupBAUVolumeAlertTrigger()` — o gatilho ainda
-      não existe (mesma nota do `Backup.js`: o projeto não cria gatilho por
-      código).
+- [ ] **Alerta de volume da fila BAU — destinatários pelo TL Dashboard (#399).**
+      A lista segue **fixa no código**, rodando só para `lucaste`. Chegou a ser
+      derivada da aba `People` e foi **revertida por decisão**: a régua de
+      `isOverhead` é permissiva por construção, então uma categoria nova
+      (`Intern`, `Contractor`) passaria a receber e-mail sem ninguém ter decidido
+      isso. O destino é uma configuração explícita na tela.
+      **Ação manual pendente:** rodar `setupBAUVolumeAlertTrigger()` pelo editor
+      do Apps Script — o gatilho ainda não existe (mesma nota do `Backup.js`).
 
 ## Up next
 
