@@ -27,8 +27,8 @@ Each branch owns one Apps Script deployment and touches only that one.
 
 | Env | Trigger | Frontend | Apps Script deployment |
 |---|---|---|---|
-| Development | push to `refactor-structure` | GitHub Pages `bundle-dev.js` | dev deployment, promoted by CI on every push |
-| Production | merge + push to `main` | GitHub Pages `bundle.js` | production deployment, promoted by CI on that push only |
+| Development | push to `refactor-structure` | GitHub Pages `bundle-dev.js` | dev deployment, promoted by CI when the push changes `gas-backend/` |
+| Production | merge + push to `main` | GitHub Pages `bundle.js` | production deployment, promoted by CI on that push, when it changes `gas-backend/` |
 
 URLs: `https://lucastdcs.github.io/case-wizard/bundle{,-dev}.js`; Apps Script `.../exec`.
 
@@ -59,6 +59,35 @@ Covered by `npm run test:deployment-env` (the backend mapping, including the
 unknown-deployment case) and `npm run smoke:env-badge` (both builds in a real
 browser — notably that the badge is *absent from the DOM* in production, not
 merely hidden).
+
+### Why a push may not promote anything
+
+`clasp deploy` without `-V` mints a **new version** of the script project on
+every run, and Apps Script caps a project at **200 versions**. Once that cap is
+reached no version can be created at all: the promotion step fails, and with it
+the whole deploy — the frontend job declares `needs: deploy-backend-gas`.
+
+So CI promotes only when the push actually changed something under
+`gas-backend/`. Half the pushes to `refactor-structure` (31 of 63, measured over
+the branch history) are frontend-only and used to burn a version republishing a
+backend identical to the one already live.
+
+What does **not** change: `clasp push -f` still runs on every push. It updates
+the project HEAD and creates no version. Only the promotion is conditional.
+
+When the comparison base is missing — a brand-new branch, a force-push, a
+`before` SHA no longer in the clone — the step falls back to **promote**.
+Spending one version needlessly is cheap; leaving the deployment behind the code
+is the exact window the `needs:` ordering above exists to close. (This is also
+why the backend job checks out with `fetch-depth: 0`: the default shallow clone
+has no history to diff against.)
+
+**Deleting old versions is manual and cannot be automated.** There is no
+`projects.versions.delete` in the Apps Script API and no `clasp` command for it
+— the only route is the editor: **Project History → Bulk delete versions**. The
+dialog omits versions in use by an active deployment, so the live prod and dev
+versions can't be removed by accident. Check the count there when a deploy
+starts failing on the promotion step.
 
 ### Order within a deploy
 

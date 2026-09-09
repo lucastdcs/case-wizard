@@ -46,6 +46,38 @@ O conteúdo que a operação edita sem deploy (links, call script, modelos de e-
 * **Acesso:** o Web App do Apps Script está configurado com `access: "DOMAIN"` (`gas-backend/appsscript.json`) — só usuários autenticados do mesmo domínio Google Workspace conseguem chamar a API, não é público na internet.
 * **Dev vs. Produção são implantações (deployments) diferentes**, não uma só compartilhada: `main` e `refactor-structure` têm cada uma seu próprio `SCRIPT_ID`/deployment ID hardcoded em `data-service.js` (URLs `.../s/{id}/exec` distintas). Ambas compartilham o mesmo código-fonte (`gas-backend/`) e o mesmo projeto Apps Script, mas cada implantação fica travada na versão em que foi promovida por último — ver `docs/WORKFLOW.md`.
 
+## 3.2 Raspagem da tela do CRM
+
+O app não tem API do CRM: tudo o que ele sabe do caso sai do DOM da página em
+que o bookmarklet foi injetado. `src/modules/shared/page-data.js` é o
+compilador desses dados (`getPageData()`), apoiado em três módulos:
+
+* **`crm-labels.js`** — resolve campos pelo **rótulo**, tolerando o tradutor do
+  CRM (que traduz rótulo *e* valor: "Given name" → "Nome dado", `cognizant` →
+  `ciente`). Compara normalizado (sem acento/caixa) e por **igualdade**, não
+  por `includes` — a tela tem "Sales program" (formulário) e "Program" (tier de
+  suporte), e com `includes` quem vencia dependia da ordem do DOM. Lê com
+  `textContent`, para alcançar o que fica atrás do "More" (`.below-fold` vem
+  num container `hidden`).
+* **`am-resolver.js`** — resolve o **AM**, que é quem vai no BCC e nunca é o
+  dono do caso. Ver `docs/decisions/0011-am-do-bcc-vem-do-case-log.md`.
+* **`case-context.js`** e **`case-log-parser.js`** — contexto do cabeçalho
+  (estado, SLA, tier, país de cobrança) e fatos do case log (agendamento,
+  transferência, cancelamento, descarte).
+
+Duas regras que valem para qualquer leitura nova:
+
+1. **Prefira `debug-id`** a texto de rótulo. É o contrato mais estável dessa
+   app Angular, e o tradutor não o altera. Só quando não houver `debug-id` é
+   que se cai no `crm-labels.js`.
+2. **O preview de cada mensagem do case log é truncado em ~152 caracteres**
+   pelo servidor. Ancore o padrão em algo que só existe no texto completo,
+   senão ele devolve um pedaço como se fosse o valor inteiro.
+
+`npm run test:scraping` roda os scrapers reais contra duas capturas reais da
+mesma tela — traduzida e no idioma original — com a PII substituída
+(`specs/fixtures/`).
+
 ## 4. Design System & UI
 A interface não usa frameworks (React/Vue). É construída com **Vanilla JS** e **CSS-in-JS**.
 * **Header Factory:** Padroniza as janelas com efeito "Glassmorphism" (vidro), barra de gradiente Google e botões de controle.

@@ -7,10 +7,77 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
-_Nada em andamento. O plano da Central fechou na v6.2.0; o próximo trabalho
-começa por um item de *Waiting / blocked* ou por uma ideia triada._
+- [~] **Feedback dos TLs sobre o form BAU + Dash TL (2026-09-08).** Sete pedidos,
+      investigados e abertos como #392–#397. A ordem abaixo é de ataque, não de
+      pedido: os dois primeiros já saíram, os do meio dependem de decisão,
+      e o último é projeto.
+      1. [x] **#392 idioma + #393 sobrenome** — entregues juntos (mesmo módulo,
+         mesma migração de coluna). O idioma tinha DOIS defeitos: rótulo comparado
+         com caixa (`Business language` nunca casava) e travessia errada do DOM —
+         ver `docs/LEARNINGS.md`. E a abertura de caso não tinha campo de idioma
+         nenhum, então o `N/A` da raspagem ia direto pra planilha. Agora vem do
+         `profile.defaultLanguage` num `select` editável, como o db-schema já
+         mandava. Junto: coluna 23 `Adv_LastName` e `npm run smoke:bau-scraping`,
+         o primeiro teste que o módulo BAU já teve.
+      2. [x] **#397, primeira camada** — seletor de 7/30/90 dias no histórico do
+         TL. O backend já aceitava o parâmetro; só a tela é que pedia 7 fixo, e a
+         tela agora diz que o backup semanal é o teto do que ela alcança.
+      3. [x] **#394 agendamento (24h + fuso na escolha + fusos dos EUA)** —
+         decidido e entregue. Formato aprovado e registrado no **ADR-0010**: grava
+         com deslocamento resolvido pela data do agendamento. O `datetime-local`
+         saiu (o locale do navegador decide 12h/24h, e não há como forçar); no
+         lugar, data + `select` de 24h + fuso. Catálogo único de fusos em
+         `shared/timezones.js`, agora com os EUA — Arizona à parte, porque é
+         Mountain sem horário de verão.
+      4. [x] **#396 ID do caso filho na aprovação** — decidido **obrigatório**, sem
+         escape, e gravado em coluna (`Child_Case_ID`) e não em aba à parte.
+         Validado nos dois lados. **Fica um fio solto conhecido:** o backup semanal
+         apaga a linha, e com ela o ID, uma semana depois da aprovação — quem
+         resolve isso é o item 6.
+      5. [x] **#395 telefone do anunciante** — autorizado a gravar. Coluna 25
+         (`Adv_Phone`), captura com unmask em paralelo com a do e-mail, e a regra
+         de PII mascarada foi para `specs/workflow/scraping-rules.md`.
+         **Falta confirmar no CRM real:** o mock reproduz o unmask, mas só a
+         página de verdade diz qual é a marcação DEPOIS do clique — se a
+         heurística por dígitos não achar o número lá, é aqui que se ajusta.
+      6. [ ] **#397, segunda camada** — histórico além do que o backup arquivou:
+         ler o `Archive_BAU`. Não antes de #333/#334 — o TL Dashboard já travou
+         ao vivo, e isso soma uma planilha inteira por chamada.
+
+- [ ] **Alerta de volume da fila BAU — destinatários pelo TL Dashboard (#399).**
+      A lista segue **fixa no código**, rodando só para `lucaste`. Chegou a ser
+      derivada da aba `People` e foi **revertida por decisão**: a régua de
+      `isOverhead` é permissiva por construção, então uma categoria nova
+      (`Intern`, `Contractor`) passaria a receber e-mail sem ninguém ter decidido
+      isso. O destino é uma configuração explícita na tela.
+      **Ação manual pendente:** rodar `setupBAUVolumeAlertTrigger()` pelo editor
+      do Apps Script — o gatilho ainda não existe (mesma nota do `Backup.js`).
+
+## Done (esta sessão)
+
+- [x] **Auditoria e correção da raspagem do CRM.** Rodando as funções reais
+      contra uma captura real da tela, 7 das 10 capturas voltavam vazias — a
+      tela estava traduzida e a raspagem casava rótulo em inglês. Corrigido
+      via `crm-labels.js` (rótulo normalizado PT/ES/EN, por igualdade),
+      `am-resolver.js` (o AM do BCC vem do case log, não do assignee —
+      ADR-0011), CID só por rótulo, case ID por `debug-id`, identidade sem
+      abrir o menu de perfil. Novos: `case-context.js` e `case-log-parser.js`.
+      Travado por `npm run test:scraping` (8/20 → 46/46 asserções).
 
 ## Up next
+
+- [ ] **Consumir `appointmentTasks`.** Já exposto no `pageData` (multivalorado),
+      sem consumidor. A ideia mais valiosa é usá-lo para pré-selecionar script
+      de call e template de nota, mas isso depende de uma tabela
+      task → script/template que é regra de negócio da operação.
+- [ ] **Exibir o contexto do caso e os fatos do log** em algum lugar da UI
+      (`caseContext` e `caseLog` já vêm no `pageData`, ninguém lê ainda).
+- [ ] **Histórico do anunciante**: o Interaction History lista os casos
+      anteriores; daria para avisar "este cliente já abriu N casos". Não
+      implementado por falta de consumidor definido.
+- [ ] **Telemetria de captura**: registrar qual estratégia resolveu cada campo
+      (`debug-id` / rótulo / fallback) para ver o CRM mudando antes de a nota
+      sair errada. `amOrigem` já faz isso para o AM.
 
 Plano em seis fases da Central de Conteúdo, em ordem de dependência (não de
 prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
@@ -116,6 +183,16 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
+- [ ] **Limpar as versões antigas do projeto Apps Script** — o editor avisou que
+      estamos perto do teto de **200 versões**. Só dá para fazer pela UI:
+      Histórico do projeto → **Excluir versões em massa**. Não existe
+      `projects.versions.delete` na API nem comando no `clasp`, então nenhum
+      passo de CI resolve isso. O diálogo já omite as versões em uso por uma
+      implantação ativa (produção `…kw6hy3Cx6fAg` e dev `…uXP6kvo8l2LA`), então
+      não há risco de derrubar ambiente. O `deploy.yml` já parou de gerar
+      versão em push que não toca em `gas-backend/`, mas isso só segura o
+      crescimento — não desfaz o acumulado.
+
 - [ ] **Criar o gatilho diário de `notifyStaleContentApprovals()`** pelo editor
       do Apps Script (o projeto não cria gatilho por código — mesma nota do
       `Backup.js`). Antes de ligar, rode `listStaleContentApprovals()` e confira
@@ -185,7 +262,12 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
       (o `release.yml` não faz deploy). O link `[6.1.0]` do `CHANGELOG.md` aponta
       para uma tag que ainda não existe até isso ser feito.
       `git tag -a v6.1.0 dbc6eb5 -m "v6.1.0" && git push origin v6.1.0`
-      `git tag -a v6.2.0 <commit do merge> -m "v6.2.0" && git push origin v6.2.0`
+      `git tag -a v6.2.0 315b13d -m "v6.2.0" && git push origin v6.2.0`
+      **Confirmado nesta sessão:** o bloqueio não é do proxy nem novidade — o
+      push de tag responde 403 enquanto o push de branch para o MESMO host passa.
+      É a credencial do GitHub da sessão que não escreve refs de tag. As duas
+      tags precisam sair de uma máquina com credencial normal; nenhuma delas faz
+      deploy (o `release.yml` só publica notas).
 - [~] **Atalhos do Ctrl+K por agente** — captura no Case Notes + construtor em
       Configurações, persistência em `User_Prefs` (nuvem, cache-first), grupos e
       ranking por uso no palette. ADR em

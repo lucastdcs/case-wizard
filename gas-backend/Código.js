@@ -685,6 +685,58 @@ function ensureBAUSuggestDiscardColumn(sheet) {
   if (!headerCell.getValue()) headerCell.setValue(BAU_SUGGEST_DISCARD_HEADER);
 }
 
+// Sobrenome do anunciante ("Family name" no CRM). Entra DEPOIS da coluna de
+// sinalização pelo mesmo motivo que aquela entrou depois da trilha de auditoria:
+// acrescentar no fim nunca desloca índice que já está gravado em produção.
+//
+// Não faz parte do appendRow das 18 colunas do formulário porque planilhas
+// antigas não a têm — é escrita à parte, depois do ensure, como a 22.
+const BAU_ADV_LASTNAME_HEADER = "Adv_LastName";
+const BAU_ADV_LASTNAME_COL = 23;
+
+function ensureBAUAdvLastNameColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_ADV_LASTNAME_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_ADV_LASTNAME_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_ADV_LASTNAME_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_ADV_LASTNAME_HEADER);
+}
+
+// ID do caso BAU que a liderança gerou no CRM ao aprovar uma abertura — o
+// "caso filho" daquele pedido. Escrita por updateBAUCaseStatus, junto da trilha
+// de auditoria, e só na aprovação de criação: as outras três decisões do TL não
+// geram caso nenhum.
+const BAU_CHILD_CASE_HEADER = "Child_Case_ID";
+const BAU_CHILD_CASE_COL = 24;
+
+function ensureBAUChildCaseColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_CHILD_CASE_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_CHILD_CASE_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_CHILD_CASE_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_CHILD_CASE_HEADER);
+}
+
+// Telefone do anunciante. É PII: entra na planilha pela mesma porta que o
+// Adv_Email já usa, e sai no backup junto com a linha — ver #353 sobre o
+// inventário de PII desta base.
+const BAU_ADV_PHONE_HEADER = "Adv_Phone";
+const BAU_ADV_PHONE_COL = 25;
+
+function ensureBAUAdvPhoneColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_ADV_PHONE_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_ADV_PHONE_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_ADV_PHONE_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_ADV_PHONE_HEADER);
+}
+
 function findRowIndexById(sheet, id) {
   if (!sheet) return -1;
   const data = sheet.getDataRange().getValues();

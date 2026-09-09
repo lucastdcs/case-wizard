@@ -9,6 +9,26 @@ O objeto `fullPayload` deve conter:
 - As chaves mapeadas no `db-schema.md`.
 - Campos irrelevantes no fluxo de Descarte (ex: `availability`, `taskType`) devem ser forçados para `""` (string vazia).
 
+### `availability` viaja com fuso (ADR-0010)
+
+O formulário monta cada janela a partir de três controles — data, hora em 24h e
+o fuso do anunciante — e **carimba o deslocamento da zona escolhida na data
+escolhida** antes de enviar:
+
+```
+2026-09-10T14:30-04:00 | 2027-01-15T09:00-05:00
+```
+
+Os dois deslocamentos acima são da mesma zona (`America/New_York`): o horário de
+verão é resolvido pela data do agendamento, não pela data do envio.
+
+**Regras:**
+- O horário é sempre o **local do anunciante** — nunca converta para BRT antes
+  de gravar. Quem exibe converte; quem grava preserva o que foi combinado.
+- **Um fuso por caso**, não por janela: o anunciante é uma pessoa, num lugar só.
+- Quem lê deve aceitar as duas formas. Sem deslocamento = linha anterior ao ADR,
+  cuja premissa de fuso não é recuperável; não invente uma.
+
 ## Preferências do agente (`get_user_prefs` / `save_user_prefs`)
 
 Contrato das duas ops que servem as preferências por pessoa (hoje: os atalhos do
@@ -30,6 +50,25 @@ Ctrl+K). Esquema da aba em `db-schema.md`.
   isso, uma queda de rede zeraria o cache local do agente.
 - Sem `user`, ambas as ops falham. Sem e-mail capturado, o cliente opera só com
   o cache local e avisa que salvou apenas no navegador.
+
+## Decisão do TL (`updateBAUCaseStatus`)
+
+Por `google.script.run`, a partir do `TLDashboard.html`.
+
+`updateBAUCaseStatus(id, newStatus, childCaseId)`
+
+| Param | Obrigatório | Notas |
+| :--- | :--- | :--- |
+| `id` | sim | `ID_Escalacao` da linha |
+| `newStatus` | sim | `CREATED` ou `DISCARDED` — o front recicla os dois valores para as **quatro** decisões; `resolveProcessedAction` desfaz a ambiguidade |
+| `childCaseId` | **só em `APPROVED_CREATION`** | ID do caso BAU gerado no CRM. Recusado com erro se ausente nessa transição; ignorado nas outras |
+
+### Regras
+- **A validação do `childCaseId` roda no servidor**, não só no modal. Deixar
+  passar produziria exatamente o buraco que o campo existe para fechar: um caso
+  aprovado que ninguém sabe onde foi parar.
+- **Nada é gravado antes da validação.** A recusa acontece antes do `setValue` do
+  status, para uma aprovação incompleta não deixar a linha meio processada.
 
 ## Construção do Payload (Edição)
 - **Bloqueio de Data Wiping:** Ao editar, o `bau-form.js` **NÃO DEVE** injetar fallbacks de string vazia (`|| ""`) para campos que o usuário não interagiu ou que não existem na tela atual.

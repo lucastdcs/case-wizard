@@ -14,6 +14,8 @@ import { getLanguage } from "../shared/i18n.js";
 
 const FIELD_ES = {
     advName: { label: 'Nombre del Anunciante', placeholder: 'Nombre del Anunciante' },
+    advLastName: { label: 'Apellido del Anunciante', placeholder: 'Apellido del Anunciante' },
+    advPhone: { label: 'Teléfono del Anunciante', placeholder: '+55 11 90000-0000' },
     advEmail: { label: 'Email del Anunciante', placeholder: 'email@ejemplo.com', error: 'Formato de correo inválido' },
     cid: { label: 'CID', placeholder: '000-000-0000', tooltip: 'Usa el formato 000-000-0000 o 10 dígitos', error: 'Formato de CID incorrecto' },
     amName: { label: 'Account Manager (AM)', placeholder: 'Nombre del AM' },
@@ -30,7 +32,11 @@ const FIELD_ES = {
     availability_3: { label: 'Opción 3 (Opcional)' },
     suggestDiscard: { label: '¿El caso debe ser descartado por el TL?' },
     caseId: { label: 'Case ID', placeholder: 'Case ID' },
-    language: { label: 'Idioma', placeholder: 'Idioma' },
+    language: {
+        label: 'Idioma de la Atención',
+        tooltip: 'Viene de tu segmento en la hoja People. Cámbialo solo cuando este caso se salga de la regla.',
+    },
+    language_descarte: { label: 'Idioma de la Atención' },
     description_descarte: { label: 'Descripción', placeholder: 'Describe el motivo del descarte...' },
     discardReason: { label: 'Motivo del Descarte' },
 };
@@ -54,6 +60,9 @@ const OPTION_TEXT_ES = {
     "Geração de caso BAU (Reagendamento)": "Generación de caso BAU (Reprogramación)",
     "Sim": "Sí",
     "Não": "No",
+    "Português (PT-BR)": "Portugués (PT-BR)",
+    "Espanhol (ES)": "Español (ES)",
+    "Inglês (EN)": "Inglés (EN)",
 };
 
 function fieldKey(fieldConfig) {

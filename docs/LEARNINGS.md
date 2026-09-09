@@ -12,6 +12,184 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Tela do CRM traduzida: nunca case rótulo por texto em um idioma só
+
+**Why**: a raspagem casava `textContent.includes('Given name')`,
+`includes('Contact email')`, `includes('Customer Time Zone')`. O tradutor do
+CRM traduz **rótulo e valor** — "Given name" vira "Nome dado", `cognizant`
+vira `ciente`, `umm_scaled` vira `escala umm`. Rodando as funções reais contra
+uma captura real da tela (traduzida), **7 das 10 capturas voltavam vazias**: o
+nome do anunciante caía no literal `"Cliente"`, o site vinha `""`, e-mail do
+cliente e fuso vinham `null`. Ninguém tinha percebido porque o defeito é
+silencioso: o campo fica vazio, não dá erro.
+
+Três armadilhas relacionadas, todas confirmadas na mesma captura:
+- casar com `includes` deixa "Sales program" (formulário) e "Program" (tier de
+  suporte, ex.: `Silver`) competindo — quem vence depende da ordem do DOM;
+- `captureLanguage` usava `includes('Language')` com L maiúsculo, e o rótulo
+  real é `Business language`;
+- `innerText` devolve vazio para o que está atrás do "More" (`.below-fold` vem
+  num container `hidden`); `textContent` lê.
+
+**When to apply**: ao ler qualquer campo da tela do CRM. Prefira `debug-id`
+(o tradutor não toca nessa área). Quando só houver rótulo, use
+`crm-labels.js`: compara **normalizado** (sem acento/caixa) e por
+**igualdade**, não por `includes`. E rode `npm run test:scraping`, que roda
+nas duas variantes.
+
+**A conta da igualdade**: trocar `includes` por igualdade **estreita** o
+match, e o que era coberto de graça passa a precisar de entrada explícita.
+`includes('time zone')` casava tanto `Customer time zone` (Contact Us form)
+quanto `Time zone` (outras telas); a igualdade só casa o que está listado, e
+esquecer a segunda forma quebrou o `smoke:bau-scraping`. Ao migrar um campo
+para o dicionário, procure **todas** as formas do rótulo — inclusive as do
+`mock-crm.html` — antes de considerar feito.
+
+**Ler valor: `innerText` primeiro, `textContent` de reserva.** Os dois são
+necessários por motivos opostos. `innerText` ignora `display:none`, e é o que
+faz a PII mascarada funcionar (enquanto está escondido, o container tem o
+rótulo do botão "Phone" *e* o valor real oculto — `textContent` devolveria os
+dois grudados). `textContent` alcança o que está num container `hidden` (os
+dados atrás do "More", em `.below-fold`) e o conteúdo de `<ng-template>`, que
+nunca é renderizado. `lerValor()` em `crm-labels.js` faz essa ordem.
+
+## Preview do case log é truncado em ~152 caracteres pelo servidor
+
+**Why**: `captureSpeakeasyID()` varria `.preview` atrás de `P\d{15,25}` e
+nunca achava. O preview de cada mensagem vem cortado pelo servidor,
+terminando com `...` literal — um ID longo praticamente não cabe. Pior: um
+padrão frouxo devolve o **pedaço** como se fosse o valor inteiro. Foi o que
+aconteceu com o `AppointmentId`, que fica logo depois do motivo do
+cancelamento: `(AppointmentId= 5962040...` fazia um `\d+` retornar `5962040`
+como se fosse o ID — um valor que parece válido e não é, que é pior que vazio.
+
+**When to apply**: ao extrair qualquer coisa do case log sem expandir a
+mensagem. Assuma ~152 caracteres. Se o dado pode cair depois do corte, ancore
+o padrão num delimitador que só existe no texto completo (para o
+`AppointmentId`, o `)` de fechamento) — assim, truncado, ele devolve `null` em
+vez de mentir. Quem precisa do texto inteiro expande antes
+(`notes/automation/case-log-scraper.js`).
+
+## O AM (que vai no BCC) não é o assignee
+
+**Why**: `captureInternalEmail()` lia o input `debug-id="account-id-input"`,
+que é o campo de **busca de cliente** do cabeçalho, e colava `@google.com` no
+que achasse — podendo mandar BCC para um endereço construído a partir do
+e-mail do cliente. Trocar pelo `[debug-id="assignee"]` parecia a correção
+óbvia e também estaria errado: o assignee é o **dono do caso**; o BCC é o
+**AM**, outra pessoa (na captura real, `marco.dias@` vs `bianca.alves@`).
+
+**When to apply**: sempre que precisar do AM. Use `resolveAM()`
+(`am-resolver.js`), que resolve pelo case log e devolve `null` quando não tem
+certeza. Não substitua por assignee nem por "o primeiro
+`<internal-user-info>`" — a tela lista 55 contatos com o mesmo papel. Ver
+ADR-0011.
+## `clasp deploy` queima uma versão por execução: só promova quando o backend mudar
+
+**Why**: chegou um aviso do Apps Script de que o projeto estava perto das **200
+versões** — o teto rígido por projeto. Passado esse número não se cria mais
+nenhuma versão, o que faz o passo de promoção falhar e derrubar o deploy
+inteiro, frontend junto (o job do frontend declara `needs: deploy-backend-gas`).
+
+A causa estava no `scripts/promote-deployment.sh`: ele roda
+`clasp deploy -i "$DEPLOYMENT_ID"` **sem `-V`**, e nessa forma o `clasp` cria uma
+versão nova a cada execução. Como o job de backend rodava em todo push das duas
+branches, medindo o histórico da `refactor-structure` deu **31 de 63 pushes
+(49%)** que não tocavam em `gas-backend/` e mesmo assim gastavam uma versão para
+republicar um backend idêntico ao que já estava no ar.
+
+O segundo aprendizado é o que *não* dá para fazer: **não existe
+`projects.versions.delete` na API do Apps Script** (o recurso `projects.versions`
+tem só `create`, `get` e `list`), e o `clasp` também não expõe nada. Apagar
+versão é exclusivamente manual, pela UI: **Histórico do projeto → Excluir
+versões em massa**. O diálogo já omite as versões em uso por uma implantação
+ativa, então não há como derrubar produção por ali. `clasp undeploy` **não**
+libera versão — apagar implantação e apagar versão são coisas diferentes.
+
+Guarda que ficou no `deploy.yml`: o `clasp push -f` continua rodando sempre (ele
+mexe no HEAD e não cria versão); só a promoção é condicional. Sem base de
+comparação (branch nova, force-push, `before` fora do clone) o passo **promove**
+— gastar uma versão à toa é barato, deixar a implantação atrás do código é a
+janela de erro que a ordem `needs:` existe para fechar. E o checkout do job de
+backend precisa de `fetch-depth: 0`: o clone raso padrão não tem histórico para
+o diff.
+
+**When to apply**: sempre que um passo de CI chamar `clasp deploy`, `clasp
+version` ou qualquer coisa que crie versão do Apps Script — pergunte primeiro
+"este push mudou o backend?". E quando um deploy começar a falhar na promoção,
+antes de investigar credencial, confira a contagem em Histórico do projeto: o
+teto de 200 se parece com erro de permissão no log.
+
+## `?.` num campo que nunca existiu não é defesa, é código morto silencioso
+
+**Why**: o selo "Urgente" da lista de casos BAU nunca apareceu — em condição
+nenhuma, desde que foi escrito. A guarda era
+`if (c?.status === 'PENDING_TL_CREATION' && c?.availability_1)`, e o backend
+nunca devolveu `availability_1`: aquilo é o nome do **campo do formulário** (os
+três `<input>` de janela), enquanto o objeto de caso traz `availability`, com as
+três janelas numa string só.
+
+O que faz este bug atravessar meses é o `?.`. Sem ele haveria `TypeError` no
+console na primeira renderização. Com ele, a expressão vira `undefined`, o `if`
+não entra, e o card renderiza **corretamente sem o selo** — visualmente
+idêntico a "nenhum caso está urgente". Não há erro, não há log, e ninguém
+reporta a ausência de algo que nunca viu.
+
+O padrão: um nome de campo atravessou a fronteira entre **camadas** (nome de
+input do formulário → chave do objeto que vem da API) sem ninguém checar se ele
+existe do outro lado. É primo do learning do `advEmail` abaixo, mas o sintoma é
+o oposto: lá o campo faltava na origem, aqui ele existe nas duas pontas com
+nomes diferentes.
+
+**When to apply**: ao ler qualquer coisa de um objeto vindo do backend
+(`c.algumaCoisa`), confira o nome contra o que a função do Apps Script **monta**
+— `getAgentCases`, `getPendingBAUCases`, `getWeeklyHistory` — e não contra o que
+o formulário chama. E desconfie de `?.` em condição de exibição: se o campo não
+existir, o recurso simplesmente não aparece, o que é o modo de falha mais caro
+de descobrir. Quando a guarda controla algo **visível**, prefira falhar alto no
+desenvolvimento a proteger com `?.` um caminho que deveria sempre ter valor.
+
+---
+
+## Raspagem do CRM: compare rótulo sem caixa e leia o valor pelo `<sanitized-content>`
+
+**Why**: o idioma chegava `N/A` em toda escalação BAU, por meses. `captureLanguage()`
+procurava o rótulo com `el.textContent.includes('Language')` — e o campo no
+Contact Us form se chama **`Business language`**, com `l` minúsculo. A
+comparação sensível a caixa nunca casava. E o segundo defeito estava escondido
+atrás do primeiro: mesmo casando, a função lia o valor por
+`parent.nextElementSibling`, e nesse DOM o valor mora num `<sanitized-content>`
+**dentro** do container do rótulo, não num irmão. Ou seja: consertar só a caixa
+teria devolvido `N/A` do mesmo jeito, e a conclusão fácil seria "o rótulo mudou
+de novo".
+
+O detalhe que fecha o caso: `captureTimezone()`, **vinte linhas acima no mesmo
+arquivo**, já lia certo — porque busca `parent.querySelector('sanitized-content')`.
+A resposta estava do lado, e a comparação entre uma captura que funciona e uma que
+não funciona vale mais que qualquer leitura do DOM do CRM.
+
+```js
+// certo, e é o que captureTimezone() já fazia
+const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
+const alvo = labels.find(el => el.textContent.toLowerCase().includes('language'));
+const parent = alvo.closest('.data-pair') || alvo.parentElement;
+const valor = parent.querySelector('sanitized-content')?.textContent.trim();
+```
+
+**When to apply**: ao escrever ou depurar qualquer captura em
+`shared/page-data.js`. Antes de suspeitar que o CRM mudou, (1) compare o rótulo
+**em minúsculas** — os rótulos do CRM misturam `Given name`, `Business language`
+e `Customer time zone`, sem padrão de capitalização; (2) leia o valor pelo
+`sanitized-content` dentro do container antes de tentar irmão/`.data-pair-content`;
+e (3) rode a captura que **funciona** ao lado da que falha — se as duas usam
+seletores diferentes para o mesmo formato de par rótulo/valor, a diferença é a
+resposta. E acrescente o campo ao `mock-crm.html` **na forma real** do CRM: o
+mock só tinha a forma `.data-pair-content`, então nenhum teste possível teria
+pego este bug.
+
+---
+
+
 ## Campo referenciado em todo lugar menos no `FORM_CONFIG`: procure pelo nome antes de assumir bug de transporte
 
 **Why**: o email do anunciante chegava sempre vazio no `BAU_form_data`. A
@@ -37,6 +215,52 @@ do campo no módulo do formulário inteiro. Se ele aparece em `keyMap`, em
 telas de detalhe ou em fallbacks de submit mas não em `FORM_CONFIG` (ou
 equivalente — a lista de campos que de fato vira `<input>`), o campo nunca
 teve UI; não é bug de transporte, é campo que falta declarar.
+
+---
+
+## Feche o `[Unreleased]` do CHANGELOG na release, não a cada PR
+
+**Why**: depois de dezoito PRs contra a mesma branch, a seção `[Unreleased]`
+tinha **dois `### Added`, dois `### Fixed` e dois `### Security`**. Nenhum PR
+errou: cada um inseriu seu item no topo do primeiro cabeçalho que encontrou, e
+o cabeçalho que ele encontrava dependia de onde o PR anterior tinha inserido o
+dele. O resultado só aparece quando alguém lê a seção inteira de uma vez — que é
+exatamente o que acontece na release, quando ela vira as notas publicadas.
+
+O conserto é de dez minutos e pertence ao commit de release: agrupar por
+subseção na ordem do Keep a Changelog (Added, Changed, Deprecated, Removed,
+Fixed, Security), sem tocar em nenhum texto. Um script curto faz isso melhor que
+a mão, porque preserva os bullets literalmente:
+
+```python
+# agrupa por '### ', concatena os blocos de mesmo nome, descarta os vazios
+```
+
+**When to apply**: no passo 1 do `RELEASE.md`, antes de mover o `[Unreleased]`
+para `## [X.Y.Z]`. E sempre que uma branch de trabalho acumular mais de meia
+dúzia de PRs — vale conferir a seção mesmo sem release à vista, porque o
+cabeçalho duplicado também confunde quem só vai adicionar mais um item.
+
+---
+
+## Documento de processo também mente: confira o `RELEASE.md` contra o código
+
+**Why**: o `RELEASE.md` afirmava que `APP_VERSION` e `RELEASE_NOTES.version`
+usam a forma curta `vX.Y`. O código está em `vX.Y.Z` desde a v6.0 — a frase
+descrevia um estado que deixou de existir três releases atrás e ninguém releu,
+porque runbook é lido para *executar*, não para *conferir*. Seguir a frase ao pé
+da letra teria produzido `v6.2` no código e uma divergência com o
+`package.json`, que é a fonte SemVer.
+
+A regra que o código de fato aplica é outra e mais simples: as duas constantes
+têm que ser **idênticas entre si**, porque `checkAndShowChangelog` as compara
+como string. Foi essa que passou a estar escrita.
+
+**When to apply**: ao executar um runbook, confira cada afirmação verificável
+contra o código no momento em que for usá-la — `grep` no valor que ele descreve
+custa segundos. E quando encontrar divergência, corrija o documento no mesmo
+commit: um runbook que já mentiu uma vez é lido com desconfiança para sempre, o
+que é pior do que não existir.
 
 ---
 

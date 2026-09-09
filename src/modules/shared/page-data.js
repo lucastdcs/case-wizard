@@ -1,6 +1,10 @@
 // src/modules/shared/page-data.js
 import { fetchUserProfile } from './data-service.js';
 import { esperar } from './dom-utils.js';
+import { lerCampo, lerCampoTodos, acharRotulo } from './crm-labels.js';
+import { resolveAM, ldapLogado } from './am-resolver.js';
+import { getCaseContext } from './case-context.js';
+import { getCaseLogFacts } from './case-log-parser.js';
 
 // Variável que guarda o nome para usar nos emails depois
 let cachedAgentName = "";
@@ -13,56 +17,94 @@ let cachedUserProfile = null;
  */
 export async function ensureOriginalLanguage() {
     try {
-        const translateBtn = document.querySelector('material-button[debug-id="toggle-translation-button"]');
+        // A marca de "está traduzido" é a classe .translated-form no painel,
+        // não o texto do botão: o texto é ele próprio localizado ("Show
+        // original" / "Mostrar original" / ...), então casá-lo por string é
+        // depender de conhecer todos os idiomas de antemão.
+        if (!document.querySelector('.translated-form')) return true;
 
-        if (translateBtn) {
-            const text = translateBtn.textContent.toLowerCase();
-            // Verifica se o botão indica que a página está traduzida (exibindo opção de mostrar original)
-            if (text.includes('show original') || text.includes('mostrar original')) {
-                console.log("TechSol: Tradução detectada. Revertendo para o idioma original...");
-                translateBtn.click();
-                await esperar(400); // Aguarda renderização da interface original
-            }
+        const translateBtn = document.querySelector('material-button[debug-id="toggle-translation-button"]');
+        if (!translateBtn) return false;
+
+        console.log("TechSol: Tradução detectada. Revertendo para o idioma original...");
+        translateBtn.click();
+
+        // Espera a reversão ACONTECER em vez de torcer por um tempo fixo: o
+        // 400ms anterior era chute, e quando o Angular demorava mais que
+        // isso a raspagem seguia lendo a tela traduzida.
+        for (let i = 0; i < 20; i++) {
+            if (!document.querySelector('.translated-form')) return true;
+            await esperar(100);
         }
+
+        // Não reverteu: seguimos assim mesmo. O crm-labels.js reconhece os
+        // rótulos traduzidos, então a captura ainda funciona — só os VALORES
+        // é que virão no idioma da tradução.
+        console.warn("TechSol: tradução não reverteu; seguindo pelos rótulos traduzidos.");
+        return false;
     } catch (e) {
         // Silencioso: não deve interromper o fluxo principal se o botão falhar
         console.warn("TechSol: Erro ao tentar reverter tradução:", e);
+        return false;
     }
 }
 
 // --- 1. SHERLOCK HOLMES (Captura Silenciosa do Nome do Agente) ---
+//
+// Duas coisas diferentes saem daqui, e elas têm custos diferentes:
+//
+//   - a IDENTIDADE (LDAP/e-mail), que o CRM já entrega de graça no
+//     aria-label do botão da conta e na URL da foto;
+//   - o NOME DE EXIBIÇÃO, que só existe depois de abrir o menu de perfil
+//     (com o menu fechado, <material-popup class="profile-popup"> vem vazio).
+//
+// Antes, as duas dependiam de abrir o menu — então uma falha ali levava
+// junto o e-mail, e com ele o BCC e o carregamento do perfil. Agora a
+// identidade é resolvida primeiro e sem clique; o menu continua sendo aberto
+// só pelo nome, que é o que dá personalidade à animação de entrada.
 export async function captureNameWithMagic() {
     // Se já temos nome E email, retorna rápido
     if (cachedAgentName && cachedAgentEmail) return cachedAgentName;
+
+    // Identidade primeiro, sem tocar na tela.
+    const ldap = ldapLogado();
+    if (ldap && !cachedAgentEmail) {
+        cachedAgentEmail = `${ldap}@google.com`;
+    }
+
+    // Primeiro nome derivado do LDAP ("marco.dias" -> "Marco"). É o que a
+    // saudação usa se o menu não abrir: melhor que devolver o LDAP cru ou
+    // um "Consultor" genérico.
+    const nomeDoLdap = ldap
+        ? ldap.split(/[._-]/)[0].replace(/^./, (c) => c.toUpperCase())
+        : null;
 
     try {
         const btn = document.querySelector('profile-icon material-button') ||
             document.querySelector('a[aria-label*="Account"]');
 
-        if (!btn) return "Agente";
+        if (!btn) {
+            cachedAgentName = nomeDoLdap || "Consultor";
+            return cachedAgentName;
+        }
 
         // Abre o menu
         btn.click();
         await esperar(150); // Tempo para o Angular renderizar o menu
 
-        let name = "Consultor";
+        let name = nomeDoLdap || "Consultor";
 
         // 1. Captura o NOME
         const elName = document.querySelector('profile-details .name');
         if (elName) {
             const fullName = elName.textContent.trim();
-            name = fullName.split(' ')[0];
-            name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-        } else {
-            // Fallback pela imagem (LDAP)
-            const img = document.querySelector('profile-details img');
-            if (img && img.src.includes('/photos/')) {
-                const ldap = img.src.match(/\/photos\/([^\?]+)/)[1];
-                name = ldap.charAt(0).toUpperCase() + ldap.slice(1);
+            const primeiro = fullName.split(' ')[0];
+            if (primeiro) {
+                name = primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase();
             }
         }
 
-        // 2. Captura o EMAIL (NOVO) 📧
+        // 2. Captura o EMAIL (o do menu é a fonte mais confiável do domínio)
         const elEmail = document.querySelector('profile-details .email');
         if (elEmail) {
             cachedAgentEmail = elEmail.textContent.trim();
@@ -78,7 +120,8 @@ export async function captureNameWithMagic() {
 
     } catch (e) {
         console.warn("Sherlock falhou:", e);
-        return "Consultor";
+        cachedAgentName = nomeDoLdap || "Consultor";
+        return cachedAgentName;
     }
 }
 
@@ -141,14 +184,11 @@ export function getSmartGreeting(name) {
 // --- 4. CAPTURA DE EMAIL DO CLIENTE (Com Validação de @) ---
 export async function captureClientEmail() {
     try {
-        // 1. Acha o label "Contact email"
-        const xpath = "//div[contains(@class, 'form-label') and contains(text(), 'Contact email')]";
-        const labelNode = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-
+        // 1. Acha o campo "Contact email" (em qualquer idioma da tela)
+        const labelNode = acharRotulo('contactEmail');
         if (!labelNode) return null; // Retorna null se não achar, para tratar depois
 
-        // Sobe para o container pai que guarda Label e Valor
-        const container = labelNode.parentElement;
+        const container = labelNode.closest('cuf-form-field') || labelNode.parentElement;
 
         // 2. Verifica máscara e clica se necessário
         const unmaskBtn = container.querySelector('.unmask-button') ||
@@ -160,20 +200,16 @@ export async function captureClientEmail() {
             await esperar(500);
         }
 
-        // 3. BUSCA INTELIGENTE (Procura por @ e ignora "Is this: Email?")
-        const candidates = Array.from(container.querySelectorAll('a, span, div, pii-value'));
+        // 3. Lê a área de VALOR do campo, não o container inteiro: o
+        // container inclui o rótulo, e uma busca por "elemento que tem @"
+        // acabava devolvendo "Contact email\ncliente@..." grudado.
+        const valor = lerCampo('contactEmail');
 
-        // Filtramos o candidato vencedor
-        const emailElement = candidates.find(el => {
-            const text = el.innerText.trim();
-            // REGRAS: Tem @, não é pergunta do feedback, não é placeholder "Email"
-            return text.includes('@') &&
-                !text.includes('Is this:') &&
-                text.toLowerCase() !== 'email';
-        });
-
-        if (emailElement) {
-            return emailElement.innerText.trim();
+        // Continua valendo a validação de @: enquanto o campo está
+        // mascarado o valor renderizado é o texto do botão ("Email"), não
+        // um endereço.
+        if (valor && valor.includes('@') && !valor.includes('Is this:')) {
+            return valor.trim();
         }
 
         return null;
@@ -184,116 +220,109 @@ export async function captureClientEmail() {
     }
 }
 
-// --- 5. CAPTURA DE EMAIL INTERNO (Rastreabilidade) ---
-export function captureInternalEmail() {
-    try {
-        // Busca o input de busca/conta no topo (Identificador Único do Usuário no CRM)
-        const inputWrapper = document.querySelector('material-input[debug-id="account-id-input"]');
+// --- 4.5 CAPTURA DE TELEFONE DO CLIENTE (PII mascarada) ---
+//
+// Mesmo padrão do e-mail acima: o valor NÃO existe no DOM até alguém clicar no
+// unmask. A diferença que custa trabalho é o reconhecimento — e-mail se acha
+// pelo "@", telefone não tem marca dessas, então a heurística é por dígitos.
+//
+// Devolve null (e não "") quando não acha, pra quem consome distinguir "não tem
+// telefone" de "não consegui ler".
+function pareceTelefone(texto) {
+    const t = String(texto || "").trim();
+    if (!t || t.length > 30) return false;
 
-        if (inputWrapper) {
-            const inputElement = inputWrapper.querySelector('input');
-            if (inputElement) {
-                const val = inputElement.value.trim();
+    // "Phone" é o rótulo que o próprio botão de unmask mostra enquanto o valor
+    // está escondido — sem esta linha, o estado mascarado seria lido como se
+    // fosse o dado.
+    if (/^phone$/i.test(t)) return false;
+    if (t.includes("Is this:")) return false;
 
-                // Se tiver valor, resolve dinamicamente o e-mail completo
-                if (val) {
-                    // Se já for um e-mail completo, retorna. Caso contrário, anexa o domínio corporativo.
-                    return val.includes('@') ? val : `${val}@google.com`;
-                }
-            }
-        }
-    } catch (e) {
-        console.warn("Erro ao capturar email interno:", e);
-    }
-    return null;
+    // Só dígitos e pontuação de telefone. É o que descarta "Click to view",
+    // datas e IDs que por acaso morem no mesmo container.
+    if (!/^[\d\s()+\-.]+$/.test(t)) return false;
+
+    const digitos = t.replace(/\D/g, "");
+    return digitos.length >= 8 && digitos.length <= 15;
 }
 
-// --- 6. CAPTURA DE CID (NOVO) ---
+export async function captureClientPhone() {
+    try {
+        // Pelo resolvedor de rótulos, e não pelo XPath em inglês: numa tela
+        // traduzida o rótulo é "Número de telefone", e o contains(text(),
+        // 'Phone number') não casava — mesmo defeito que esvaziava as outras
+        // capturas.
+        const labelNode = acharRotulo('phoneNumber');
+        if (!labelNode) return null;
+
+        const container = labelNode.closest('cuf-form-field') || labelNode.parentElement;
+        if (!container) return null;
+
+        const unmaskBtn = container.querySelector('.unmask-button') ||
+            container.querySelector('[aria-label="Click to view"]');
+
+        if (unmaskBtn) {
+            unmaskBtn.click();
+            await esperar(500); // Espera o Angular renderizar o valor real
+        }
+
+        // Lê a área de VALOR do campo. O container inclui o rótulo, e varrer
+        // todos os descendentes atrás de "algo que pareça telefone" já trouxe
+        // rótulo grudado no valor uma vez (ver captureClientEmail).
+        const valor = lerCampo('phoneNumber');
+        return pareceTelefone(valor) ? valor.trim() : null;
+
+    } catch (e) {
+        console.warn("Erro ao capturar telefone do cliente:", e);
+        return null;
+    }
+}
+
+// --- 5. CAPTURA DO AM (vai no BCC) ---
+//
+// Regra de negócio: o BCC é o AM, e o AM nunca é o dono do caso. A versão
+// anterior lia material-input[debug-id="account-id-input"] — que é o campo
+// de BUSCA DE CLIENTE — e colava "@google.com" no que achasse ali, podendo
+// mandar BCC para um endereço que não existe. Ver am-resolver.js e ADR-0011.
+export async function captureAM() {
+    try {
+        return await resolveAM();
+    } catch (e) {
+        console.warn("Erro ao resolver AM:", e);
+        return { email: null, nome: null, origem: 'erro' };
+    }
+}
+
+// --- 6. CAPTURA DE CID ---
 export function captureCID() {
     try {
-        // Estratégia 1: Busca pelo Label Específico (Alta Precisão)
-        // Busca labels que contenham "Google Ads External Customer ID"
-        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
-        const cidLabel = labels.find(el => el.textContent.includes('Google Ads External Customer ID') || el.textContent.includes('Customer ID'));
+        // Só pelo rótulo. O fallback antigo varria body.innerText atrás de
+        // \d{3}-?\d{3}-?\d{4} — e qualquer telefone ou ID de 10 dígitos na
+        // tela virava "o CID", silenciosamente e sem como perceber depois.
+        const bruto = lerCampo('externalCustomerId');
+        if (!bruto) return "N/A";
 
-        if (cidLabel) {
-            // Tenta achar o container pai <home-data-item> ou similar
-            const parent = cidLabel.closest('home-data-item') || cidLabel.parentElement;
-            if (parent) {
-                const content = parent.querySelector('.data-pair-content');
-                if (content) {
-                    // Limpa quebras de linha e espaços, formata para XXX-XXX-XXXX
-                    return content.textContent.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-                }
-            }
-        }
+        const digitos = bruto.replace(/\D/g, '');
+        if (digitos.length !== 10) return "N/A";
 
-        // Estratégia 2: Regex Global (Fallback)
-        // Procura padrão XXX-XXX-XXXX ou XXXXXXXXXX (10 dígitos) no corpo da página
-        const bodyText = document.body.innerText;
-        const cidMatch = bodyText.match(/\b\d{3}[-]?\d{3}[-]?\d{4}\b/);
-
-        if (cidMatch) {
-            // Formata para garantir o padrão visual (123-456-7890)
-            return cidMatch[0].replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-        }
-
+        return digitos.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
     } catch (e) {
         console.warn("Erro ao capturar CID:", e);
     }
     return "N/A";
 }
 
-// --- 7. CAPTURA DE ACCOUNT MANAGER ---
-export function captureAMName() {
-    try {
-        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
-        const amLabel = labels.find(el =>
-            el.textContent.includes('Account Manager') ||
-            el.textContent.includes('AM Name') ||
-            el.textContent.includes('Sales Rep')
-        );
-
-        if (amLabel) {
-            const parent = amLabel.closest('.data-pair') || amLabel.parentElement;
-            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
-            if (content) return content.textContent.trim();
-        }
-    } catch (e) { console.warn("Erro ao capturar AM:", e); }
-    return null;
+// --- 7. NOME DO AM ---
+// Mesma fonte do BCC: AM e BCC são o mesmo endereço, então ter duas
+// resoluções independentes só criaria como divergirem entre si.
+export function captureAMName(am) {
+    return am?.nome || am?.email || null;
 }
 
-// --- 8. CAPTURA DE TIMEZONE (ATUALIZADO) ---
+// --- 8. CAPTURA DE TIMEZONE ---
 export function captureTimezone() {
     try {
-        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
-        const tzLabel = labels.find(el =>
-            el.textContent.toLowerCase().includes('customer time zone') ||
-            el.textContent.toLowerCase().includes('time zone') ||
-            el.textContent.toLowerCase().includes('timezone')
-        );
-
-        if (tzLabel) {
-            const parent = tzLabel.parentElement; // O container que agrupa label e valor
-            if (parent) {
-                // Estratégia 1: Busca por <sanitized-content> dentro do container pai
-                const sanitizedNode = parent.querySelector('sanitized-content');
-                if (sanitizedNode && sanitizedNode.textContent.trim()) {
-                    return sanitizedNode.textContent.trim();
-                }
-
-                // Estratégia 2: Fallback para irmão adjacente ou outros seletores
-                const content = parent.querySelector('.data-pair-content') || tzLabel.nextElementSibling;
-                 if (content && content.textContent.trim()) {
-                    // Verifica se o conteúdo é um elemento e tem texto
-                    const value = content.textContent.trim();
-                    // Evita pegar valores vazios ou placeholders
-                    if (value && value !== '---' && value !== 'N/A') {
-                        return value;
-                    }
-                }
-            }
-        }
+        return lerCampo('customerTimezone');
     } catch (e) {
         console.warn("Erro ao capturar Timezone:", e);
     }
@@ -302,68 +331,79 @@ export function captureTimezone() {
 
 
 export async function getCaseId() {
-    let id = "---";
     try {
-        let caseUrl = window.location.href;
-        id = caseUrl.split("/").pop();
+        // O caso tem um widget próprio com o ID e um botão de copiar. A URL
+        // é só o fallback: a tela mostra mais de um case ID (o histórico de
+        // interações lista casos antigos), então varrer texto erra o alvo.
+        const doWidget = document.querySelector('[debug-id="case-id"]')?.textContent;
+        const id = doWidget?.match(/\d-\d{6,}/)?.[0];
+        if (id) return id;
+
+        return window.location.href.split("/").pop() || "---";
     } catch (e) {
-        console.warn("Falha URL:", e);
+        console.warn("Falha ao capturar Case ID:", e);
+        return "---";
     }
-    return id;
 }
 
-    export function captureSalesProgram() {
+export function captureSalesProgram() {
     try {
-        // 1. Encontra a label correta ("Program" ou "Sales Program")
-        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
-        const programLabel = labels.find(el => 
-            el.textContent.toLowerCase().includes('sales program') || 
-            el.textContent.toLowerCase().trim() === 'program' ||
-            el.textContent.toLowerCase().includes('programa')
-        );
-
-        if (programLabel) {
-            // 2. Sobe para o bloco pai
-            const parent = programLabel.closest('.data-pair') || programLabel.parentElement;
-            
-            // 3. Mergulha na estrutura que você mapeou (<sanitized-content> -> <ng-template>)
-            const valueNode = parent.querySelector('sanitized-content ng-template[debug-id="html-value"]') 
-                           || parent.querySelector('sanitized-content');
-            
-            if (valueNode) {
-                return valueNode.textContent.trim(); // Puxa o "umm_scaled" ou "kickstart_scaled"
-            }
-
-            // Fallback padrão se não tiver <sanitized-content>
-            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
-            if (content) return content.textContent.trim();
-        }
+        // Casa o rótulo por igualdade, não por "contém": a tela também tem
+        // "Program" (o tier de suporte, ex.: Silver), que é outro campo.
+        // Com "contém", qual dos dois vencia dependia da ordem do DOM.
+        return lerCampo('salesProgram') || "";
     } catch (e) {
         console.warn("Erro ao capturar Sales Program:", e);
     }
     return "";
 }
 
+// Sobrenome do anunciante ("Family name" no Contact Us form). Mesmo formato do
+// "Given name" raspado em getPageData(): texto puro no irmão seguinte do rótulo,
+// sem máscara de PII — diferente do e-mail e do telefone, que exigem clique no
+// unmask antes de o valor sequer existir no DOM.
+//
+// Devolve "" (e não "N/A") quando não acha: quem consome trata string vazia como
+// "campo aparece editável no formulário", que é o comportamento certo aqui.
+export function captureAdvertiserLastName() {
+    try {
+        // Pelo resolvedor de rótulos: numa tela traduzida o rótulo é "Nome de
+        // família", e o contains(text(), 'Family name') não casava.
+        return lerCampo('familyName') || "";
+    } catch (e) { console.warn("Falha Sobrenome:", e); }
+    return "";
+}
+
 // --- 8.5 CAPTURA DE IDIOMA E SPEAKEASY ID ---
+// Idioma do NEGÓCIO do anunciante, raspado do CRM. Não é o que vai para a
+// coluna Idioma do BAU_form_data — lá vai o segmento que o AGENTE atende
+// (profile.defaultLanguage, ver db-schema.md índice 11). Esta captura é só
+// fallback para quando não há perfil carregado.
+//
+// Duas correções de uma vez, porque a função nunca devolveu nada útil:
+//   1. o rótulo no Contact Us form é "Business language", com l minúsculo — o
+//      includes('Language') sensível a caixa jamais casava;
+//   2. mesmo casando, o valor mora num <sanitized-content> DENTRO do container
+//      do rótulo, não num irmão seguinte. É o mesmo formato que captureTimezone()
+//      logo acima já trata — e é por isso que aquela funciona e esta não.
 export function captureLanguage() {
     try {
-        const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
-        const langLabel = labels.find(el =>
-            el.textContent.includes('Language') ||
-            el.textContent.includes('Idioma')
-        );
-        if (langLabel) {
-            const parent = langLabel.closest('.data-pair') || langLabel.parentElement;
-            const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
-            if (content) return content.textContent.trim();
-        }
+        // O crm-labels.js já faz as duas correções descritas acima (casa o
+        // rótulo sem caixa e lê o <sanitized-content> de dentro do container),
+        // e ainda casa "Linguagem comercial" na tela traduzida.
+        return lerCampo('businessLanguage') || "N/A";
     } catch (e) { console.warn("Erro ao capturar Idioma:", e); }
     return "N/A";
 }
 
 export function captureSpeakeasyID() {
     try {
-        // 1. TENTATIVA PADRÃO: Buscar pelas Labels Estruturadas
+        // Só pelas labels estruturadas. A varredura de .preview que existia
+        // aqui não tinha como funcionar: o servidor trunca o preview do case
+        // log em ~152 caracteres (termina com "..." literal), e um
+        // P\\d{15,25} praticamente nunca cabe. Quem acha o SE ID de verdade
+        // é o botão de busca (notes/automation/case-log-scraper.js), que
+        // expande a mensagem antes de ler.
         const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
         const seLabel = labels.find(el =>
             el.textContent.includes('Speakeasy ID') ||
@@ -374,22 +414,10 @@ export function captureSpeakeasyID() {
             const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
             if (content && content.textContent.trim()) return content.textContent.trim();
         }
-
-        // 2. TENTATIVA AVANÇADA (O Regex): Buscar varrendo blocos de texto e notas
-        const regexID = /Speakeasy.*?(P\d{15,25})/i;
-        const textAreas = Array.from(document.querySelectorAll('textarea, .preview, .message-body, .notes-content'));
-        
-        for (let i = textAreas.length - 1; i >= 0; i--) {
-            const text = textAreas[i].value || textAreas[i].innerText || "";
-            const match = text.match(regexID);
-            if (match && match[1]) {
-                return match[1];
-            }
-        }
-    } catch (e) { 
-        console.warn("Erro ao capturar SE ID:", e); 
+    } catch (e) {
+        console.warn("Erro ao capturar SE ID:", e);
     }
-    
+
     return "N/A";
 }
 
@@ -436,47 +464,46 @@ export async function getPageData() {
         await captureNameWithMagic();
     }
 
-    let advertiserName = "Cliente";
-    let websiteUrl = "";
+    // Nome do anunciante e site: pelo rótulo, que o resolvedor reconhece
+    // traduzido ou não. O XPath anterior casava o texto em inglês, então na
+    // tela traduzida o nome caía no literal "Cliente" e o site vinha vazio.
+    const advertiserName = lerCampo('givenName') || "Cliente";
+    const websiteUrl = lerCampo('website') || "";
 
-    // Captura NOME DO ANUNCIANTE
-    try {
-        const nameXpath = "//div[contains(text(), 'Given name')]";
-        const nameNode = document.evaluate(nameXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+    // Tarefas do agendamento: multivalorado (um caso real trouxe seis).
+    const appointmentTasks = lerCampoTodos('appointmentTasks');
 
-        if (nameNode && nameNode.nextElementSibling) {
-            const rawName = nameNode.nextElementSibling.innerText.trim();
-            if (rawName) advertiserName = rawName;
-        }
-    } catch (e) { console.warn("Falha Nome:", e); }
+    // Captura EMAILS e TELEFONE
+    // Em paralelo de propósito: os dois clicam no próprio unmask e esperam 500ms
+    // pelo Angular. Em série isso custaria 1s no caminho que TODO módulo chama
+    // (sete pontos de chamada de getPageData); juntos, custa os mesmos 500ms de
+    // antes do telefone existir.
+    const [clientEmail, clientPhone] = await Promise.all([
+        captureClientEmail(),
+        captureClientPhone(),
+    ]);
 
-    // Captura WEBSITE
-    try {
-        const urlXpath = "//div[contains(text(), 'Website')]";
-        const urlNode = document.evaluate(urlXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-
-        if (urlNode && urlNode.nextElementSibling) {
-            const rawUrl = urlNode.nextElementSibling.innerText.trim();
-            if (rawUrl) websiteUrl = rawUrl;
-        }
-    } catch (e) { console.warn("Falha URL:", e); }
-
-
-    // Captura EMAILS
-    const clientEmail = await captureClientEmail();
-    const internalEmail = captureInternalEmail();
+    // O AM é uma resolução só, usada tanto no campo AM quanto no BCC. Fica
+    // fora do Promise.all acima porque mexe noutra área da tela (o case log),
+    // e no caminho barato nem chega a clicar.
+    const am = await captureAM();
 
     // Captura CID
     const cid = captureCID();
 
-    // Captura AM e Timezone
-    const amName = captureAMName();
+    const amName = captureAMName(am);
     const timezone = captureTimezone();
+
+    // Contexto do cabeçalho e fatos do case log. Ambos já estavam na tela e
+    // nada consumia: leitura direta, sem clique e sem depender de idioma.
+    const caseContext = getCaseContext();
+    const caseLog = getCaseLogFacts();
 
     const caseId = await getCaseId();
     const salesProgram = captureSalesProgram();
     const language = captureLanguage();
     const seId = captureSpeakeasyID();
+    const advLastName = captureAdvertiserLastName();
 
     // Novo: Captura de Perfil de Usuário
     const agentEmail = getAgentEmail();
@@ -494,9 +521,14 @@ export async function getPageData() {
         advertiserName: advertiserName,
         websiteUrl: websiteUrl,
         clientEmail: clientEmail,
-        internalEmail: internalEmail,
+        internalEmail: am.email,
         cid: cid,
         amName: amName,
+        amEmail: am.email,
+        amOrigem: am.origem,
+        appointmentTasks: appointmentTasks,
+        caseContext: caseContext,
+        caseLog: caseLog,
         timezone: timezone,
         agentName: getAgentName(),
         agentEmail: getAgentEmail(),
@@ -511,7 +543,9 @@ export async function getPageData() {
         advEmail: clientEmail, // bau-form-config.js's campo 'advEmail' lê pageData.advEmail
         salesProgram: salesProgram,
         language: language,
-        seId: seId
+        seId: seId,
+        advLastName: advLastName,
+        advPhone: clientPhone
     };
 }
 

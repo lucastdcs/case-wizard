@@ -665,6 +665,33 @@ export const injectStyles = () => {
     .bau-availability-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
     .bau-field-hint { font-size: 11px; color: #5F6368; }
 
+    /* Data e hora lado a lado. A hora é um <select> de 24h, não um
+       datetime-local: o formato daquele vem do locale do navegador e não há
+       como forçar 24h por CSS ou atributo (ADR-0010). */
+    .bau-slot-row { display: grid; grid-template-columns: 1fr 120px; gap: 8px; }
+
+    @media (max-width: 480px) {
+      .bau-slot-row { grid-template-columns: 1fr; }
+    }
+
+    .bau-timezone-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #E8EAED;
+    }
+
+    .bau-timezone-echo {
+      font-size: 12px;
+      color: #5F6368;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+
+    .bau-timezone-echo strong { color: #202124; }
+
     .bau-availability-disclaimer {
       margin-top: 16px;
       padding: 12px 16px;
