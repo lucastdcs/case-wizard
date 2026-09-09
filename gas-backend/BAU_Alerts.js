@@ -7,7 +7,15 @@
 // =========================================================
 
 const BAU_VOLUME_ALERT_THRESHOLD = 10;
-const BAU_VOLUME_ALERT_RECIPIENTS = ["lucaste@google.com"]; // adicione mais emails aqui depois
+// Lista fixa, de propósito e por ora. Chegou a sair daqui e ser derivada da aba
+// People (pela régua de isOverhead), e a mudança foi revertida: aquela régua é
+// permissiva por construção — uma categoria nova que não diga "agent" nem
+// "apprentice" passaria a receber e-mail sozinha, sem ninguém decidir isso.
+//
+// O destino é uma configuração no TL Dashboard, onde a liderança escolhe quem
+// recebe de forma explícita (#399). Até lá, acrescentar alguém aqui custa um
+// deploy — é o preço aceito para o alerta não surpreender ninguém.
+const BAU_VOLUME_ALERT_RECIPIENTS = ["lucaste@google.com"];
 
 // Roda periodicamente (ver setupBAUVolumeAlertTrigger() abaixo). Conta a fila
 // combinada (criação + descarte pendentes) e manda um alerta só na TRANSIÇÃO

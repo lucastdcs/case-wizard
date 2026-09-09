@@ -19,14 +19,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **BCC ia para um endereço construído do e-mail do cliente.** A captura do
   e-mail interno lia o campo de *busca de cliente* do cabeçalho e colava
   `@google.com` no valor. O AM — que é quem vai no BCC, e nunca é o dono do
-  caso — passa a ser resolvido pelo case log (ver ADR-0010).
+  caso — passa a ser resolvido pelo case log (ver ADR-0011).
 - **CID podia vir de qualquer número de 10 dígitos da tela.** O fallback
   varria `body.innerText`; agora só lê pelo rótulo.
 - **Case ID dependia só da URL**, embora a tela mostre mais de um (o histórico
   de interações lista casos antigos). Passa a ler `[debug-id="case-id"]`.
 - **Identidade do agente dependia de abrir o menu de perfil.** Uma falha ali
   levava junto o e-mail, e com ele o BCC e o carregamento do perfil.
-
+- **Telefone e sobrenome do anunciante também casavam rótulo só em inglês**
+  (`contains(text(), 'Phone number')` / `'Family name'`), então voltavam
+  vazios na tela traduzida, onde os rótulos são "Número de telefone" e "Nome
+  de família". Passam pelo mesmo resolvedor dos demais campos.
 ### Added
 - **Contexto do caso e fatos do case log**: estado, SLA, idade, tier, programa
   e país de cobrança; data/hora/fuso do agendamento e quem foi designado,
@@ -35,6 +38,105 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **`appointmentTasks`** (multivalorado) exposto no `pageData`.
 - **`npm run test:scraping`**: trava a raspagem contra duas capturas reais da
   mesma tela — uma traduzida e uma no idioma original. 46 asserções.
+
+## [6.3.0] - 2026-09-09
+
+### Fixed
+- **O selo "Urgente" da lista de casos nunca aparecia** (#398). O card lia
+  `c.availability_1` — que é nome de campo do **formulário**, não chave do objeto
+  de caso que o backend devolve (`availability`, com as três janelas juntas). O
+  `?.` engolia o `undefined` sem erro nem log, então o selo era código morto
+  desde que foi escrito, e a tela ficava indistinguível de "nenhum caso urgente".
+  Agora lê a primeira janela — a de prioridade — e ignora valor inválido.
+- **O idioma parava de chegar como `N/A` na planilha BAU.** Dois defeitos somados
+  (#392): `captureLanguage()` comparava com `includes('Language')`, sensível a
+  caixa, e o rótulo do CRM é `Business language` com `l` minúsculo — nunca casava;
+  e mesmo casando, o valor mora num `<sanitized-content>` dentro do container do
+  rótulo, não num irmão seguinte. Além disso o fluxo de abertura **não tinha campo
+  de idioma nenhum**, então o `N/A` da raspagem ia direto pro payload. Agora a
+  coluna 11 recebe o segmento que o agente atende (`profile.defaultLanguage`),
+  como `specs/data-models/db-schema.md` já mandava, num `select` que abre na
+  opção certa e continua editável — porque existe caso que foge do segmento de
+  quem está atendendo.
+
+### Changed
+- **O agendamento do BAU passa a carregar fuso, e a hora vira 24h** (#394, ADR-0010).
+  A disponibilidade era gravada como `2026-09-10T14:30` — **sem fuso nenhum**. O
+  agente digitava o horário local do cliente (é o que o disclaimer manda) e o TL
+  Dashboard exibia aquilo em Brasília; o número só sobrevivia porque o TL também
+  está em BRT. Essa é a causa real do "o timezone vai errado": não era o campo
+  `Timezone`, era o horário nunca ter estado amarrado a ele.
+  Agora grava `2026-09-10T14:30-04:00`, com o deslocamento resolvido para a
+  **data do agendamento** (o horário de verão do anunciante entra na conta, e
+  duas janelas da mesma zona em meses diferentes saem com deslocamentos
+  diferentes). O TL passa a ver as duas leituras: `14:30 (cliente) · 15:30 BRT`.
+  Linhas antigas continuam legíveis — nada foi migrado.
+  O `<input type="datetime-local">` saiu: o formato dele (12h ou 24h) vem do
+  locale do navegador e **não há atributo que force 24h**. No lugar, data +
+  `<select>` de 24h + fuso, com o fuso já pré-selecionado a partir do
+  `Customer time zone` do CRM e um eco ao vivo mostrando o equivalente em Brasília.
+- **CI só promove a implantação do Apps Script quando `gas-backend/` muda.**
+  `clasp deploy` sem `-V` cria uma **versão** nova a cada execução, e o Apps
+  Script tem teto de **200 versões por projeto** — atingido o teto, nenhuma
+  versão nova é criada, a promoção falha e leva o deploy inteiro junto, frontend
+  incluído (`needs: deploy-backend-gas`). Metade dos pushes desta branch (31 de
+  63, medidos no histórico) é só de frontend e gastava uma versão para
+  republicar um backend idêntico ao que já estava no ar. O `clasp push -f`
+  continua rodando sempre — ele atualiza o HEAD e não cria versão; só a promoção
+  virou condicional. Sem base de comparação (branch nova, force-push) o passo
+  promove por precaução, e o job de backend passou a fazer checkout com
+  `fetch-depth: 0` porque o clone raso padrão não tem histórico para o diff.
+  Limpar versões antigas continua sendo manual (Histórico do projeto → Excluir
+  versões em massa): não existe `projects.versions.delete` na API.
+
+### Added
+- **Telefone do anunciante** (#395). É PII mascarada: o valor não existe no DOM
+  até o clique no unmask, e não tem marca óbvia como o `@` do e-mail — o
+  reconhecimento é por dígitos, descartando explicitamente o rótulo `Phone` que o
+  botão mascarado exibe, que é o engano fácil. Os dois unmasks (e-mail e
+  telefone) disparam **em paralelo**: em série custariam 1 s aos sete pontos que
+  chamam `getPageData()`; juntos custam os mesmos ~500 ms de antes.
+  Aparece no card do caso e na fila do TL, e é editável quando a raspagem falha.
+- **O ID do caso BAU gerado passa a ser registrado na aprovação** (#396). O TL
+  aprovava a abertura, criava o caso no CRM, e esse número não voltava para lugar
+  nenhum — nem para o histórico, nem para o agente. Agora aprovar pede o ID
+  (**obrigatório**, validado no modal e de novo no servidor, porque a tela nunca é
+  a fronteira), ele fica na coluna `Child_Case_ID`, aparece no histórico como link
+  clicável e entra na busca. As outras três decisões do TL não pedem nada: só a
+  aprovação de criação gera caso novo.
+  De brinde, o e-mail `AGENT_BAU_CREATED` deixa de dizer só "seu caso foi criado"
+  e passa a dizer **qual** — antes o agente tinha que ir procurar.
+- **Fusos dos Estados Unidos** (#394) — Eastern, Central, Mountain, Pacific,
+  Alasca, Havaí e **Arizona** à parte, que é Mountain sem horário de verão: sem
+  ela, meio ano de agendamento no Arizona sai uma hora errado, e é o tipo de erro
+  que ninguém atribui ao formulário. A lista virou catálogo único em
+  `shared/timezones.js`, usado pelo consultor de Time Zone **e** pelo formulário —
+  duas cópias divergiriam no primeiro país acrescentado num lugar só.
+- **Sobrenome do anunciante** (#393). O caso levava só o primeiro nome; quem
+  pegasse depois não tinha o nome completo. O `Family name` do CRM é raspado
+  junto com o resto, aparece editável quando a raspagem falha, e a fila do TL
+  passa a mostrar "Nome Sobrenome" — na linha, no card e na busca.
+- **Período no histórico do TL Dashboard** (#397, primeira camada). `getWeeklyHistory(days)`
+  sempre aceitou o parâmetro; só o cliente é que nunca oferecia nada além de 7.
+  Agora há um seletor de 7 / 30 / 90 dias, e os rótulos ("Aprovados (7d)") seguem
+  a escolha em vez de mentir. Abaixo dele, uma linha diz em voz alta o que o
+  seletor **não** alcança: o backup semanal arquiva os casos finalizados em outra
+  planilha, e ler aquilo é outro problema.
+- **`npm run test:timezones`** — o deslocamento gravado no agendamento é
+  calculado, e erra em silêncio: uma hora fora não derruba nada, vira uma ligação
+  perdida dias depois. Cobre horário de verão dos dois hemisférios, Arizona, e a
+  regressão que mais importa — duas janelas da mesma zona em meses diferentes
+  precisam sair com deslocamentos diferentes, que é o que um cálculo baseado em
+  "agora" erraria.
+- **`npm run smoke:bau-scraping`** — o módulo BAU não tinha teste nenhum, e foi
+  exatamente aí que os dois campos acima ficaram errados sem ninguém ver. O smoke
+  roda a raspagem contra o `mock-crm.html`, que agora reproduz a forma real do
+  Contact Us form (`<sanitized-content>`) além da forma antiga (`.data-pair-content`)
+  — um mock que só tivesse a forma fácil nunca teria pegado o bug do idioma.
+
+## [6.2.0] - 2026-09-08
+
+### Added
 - **Prévia "como o agente vê"** (fase 5). O editor mostra **campos**; o agente lê
   **texto**. Entre os dois cabe o erro que ninguém pega revisando o formulário: a
   descrição em espanhol que ficou em português, o passo do roteiro que só faz
@@ -211,13 +313,18 @@ versions follow [Semantic Versioning](https://semver.org/).
   só com o motivo do disparo; agora fecha com "Cases Wizard · automatizado por
   @lucaste", como os demais e-mails do fluxo.
 
-### Security
-- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
-  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
-  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
-  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
-  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
-  a mesma coisa é como um deles fica para trás.
+- **E-mail de decisão para quem propôs.** Aprovação e rejeição avisam o autor da
+  proposta, com a justificativa do revisor no corpo e um botão para a Central —
+  a URL derivada da implantação em execução, não fixa. Antes a rejeição era
+  invisível: o rascunho voltava para "draft" e o motivo ficava numa coluna que
+  ninguém abre.
+- **Form de bugs e sugestões unificado em uma variável só.** Havia três URLs
+  diferentes em produção (overlay de ajuda, Configurações → Suporte e rodapé dos
+  e-mails). Agora existe um ponto de verdade por runtime — `FEEDBACK_FORM_URL`
+  em `src/modules/shared/config.js` e `CW_FEEDBACK_FORM_URL` em
+  `gas-backend/Código.js` — apontando para o form novo.
+- **Crédito de autoria em formato único.** Convivia `@lucaste`, `lucaste@` e
+  `by lucaste@`. Passou a sair de `AUTHOR_CREDIT` / `CW_AUTHOR_CREDIT`.
 
 ### Changed
 - **O botão de desativar acesso passou a aparecer também para si mesmo.** A
@@ -283,25 +390,6 @@ versions follow [Semantic Versioning](https://semver.org/).
   editava um item com proposta em revisão levava uma recusa do servidor sem ter
   como explicar. Agora a falha aparece, com botão de tentar de novo.
 
-### Added
-- **E-mail de decisão para quem propôs.** Aprovação e rejeição avisam o autor da
-  proposta, com a justificativa do revisor no corpo e um botão para a Central —
-  a URL derivada da implantação em execução, não fixa. Antes a rejeição era
-  invisível: o rascunho voltava para "draft" e o motivo ficava numa coluna que
-  ninguém abre.
-- **Form de bugs e sugestões unificado em uma variável só.** Havia três URLs
-  diferentes em produção (overlay de ajuda, Configurações → Suporte e rodapé dos
-  e-mails). Agora existe um ponto de verdade por runtime — `FEEDBACK_FORM_URL`
-  em `src/modules/shared/config.js` e `CW_FEEDBACK_FORM_URL` em
-  `gas-backend/Código.js` — apontando para o form novo.
-- **Crédito de autoria em formato único.** Convivia `@lucaste`, `lucaste@` e
-  `by lucaste@`. Passou a sair de `AUTHOR_CREDIT` / `CW_AUTHOR_CREDIT`.
-
-### Deprecated
-
-### Removed
-
-### Fixed
 - **O atalho de e-mail voltou a funcionar na interface antiga do Connect
   Cases.** A migração para o speed dial da UI nova (`#action-bar-speed-dial-container`
   → `material-button.compose`) removeu o fluxo da UI antiga
@@ -319,6 +407,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   fluxos abriu o compositor.
 
 ### Security
+- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
+  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
+  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
+  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
+  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
+  a mesma coisa é como um deles fica para trás.
 
 ## [6.1.0] - 2026-09-01
 
@@ -523,6 +617,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...HEAD
+[6.3.0]: https://github.com/lucastdcs/case-wizard/compare/v6.2.0...v6.3.0
+[6.2.0]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...v6.2.0
 [6.1.0]: https://github.com/lucastdcs/case-wizard/compare/v6.0.0...v6.1.0
 [6.0.0]: https://github.com/lucastdcs/case-wizard/releases/tag/v6.0.0

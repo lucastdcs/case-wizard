@@ -183,6 +183,13 @@ jobs:
     steps:
       - name: Checkout do código
         uses: actions/checkout@v3
+        with:
+          # O padrão do checkout é um clone raso de 1 commit, e o passo
+          # "Detectar mudanças no backend" precisa comparar com o commit
+          # anterior ao push. Sem histórico, o diff não roda e o passo cai no
+          # fallback "mudou" - correto, mas promoveria sempre, que é
+          # exatamente o que este bloco existe para evitar.
+          fetch-depth: 0
 
       - name: Configurar Node.js
         uses: actions/setup-node@v3
@@ -216,6 +223,68 @@ jobs:
           cd gas-backend
           clasp push -f
 
+      # --- O BACKEND MUDOU? --------------------------------------------------
+      #
+      # `clasp deploy` sem `-V` cria uma VERSÃO nova do projeto a cada execução,
+      # e o Apps Script tem um teto rígido de 200 versões por projeto. Quando
+      # ele é atingido, não se cria mais nenhuma versão: o passo de promoção
+      # abaixo passa a falhar e, com ele, o deploy inteiro - o job do frontend
+      # declara `needs: deploy-backend-gas`.
+      #
+      # Metade dos pushes desta branch (31 de 63, medidos no histórico) não toca
+      # em `gas-backend/` e mesmo assim queimava uma versão promovendo um
+      # backend idêntico ao que já estava no ar. É esse desperdício que o passo
+      # corta.
+      #
+      # O `clasp push -f` acima continua rodando SEMPRE, de propósito: ele
+      # atualiza o HEAD do projeto e não cria versão nenhuma. O que fica
+      # condicional é só a promoção.
+      #
+      # Na dúvida, promove. Push de branch nova, force-push ou um `before` que
+      # não existe mais no clone caem no fallback "mudou": gastar uma versão à
+      # toa é barato, deixar a implantação atrás do código não é - é a janela
+      # de erro que o `needs:` do frontend foi criado para fechar.
+      #
+      # Versões antigas só podem ser apagadas na UI do editor (Histórico do
+      # projeto > Excluir versões em massa). Não existe `projects.versions.delete`
+      # na API do Apps Script, então nenhum passo de CI consegue fazer essa
+      # limpeza - ela é manual, e o diálogo já exclui da lista as versões em uso
+      # por uma implantação ativa.
+      - name: Detectar mudanças no backend
+        id: backend_changed
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -z "$BEFORE" ] \
+             || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            echo "Sem base de comparação ($BEFORE). Promovendo por precaução."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ARQUIVOS="$(git diff --name-only "$BEFORE" "$GITHUB_SHA" -- gas-backend/)"
+          if [ -n "$ARQUIVOS" ]; then
+            echo "Mudou em gas-backend/:"
+            echo "$ARQUIVOS"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nada mudou em gas-backend/. A implantação não será promovida."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+              {
+                echo "## ⏭️ Implantação não promovida"
+                echo ""
+                echo "Nenhum arquivo de \`gas-backend/\` mudou neste push, então"
+                echo "nenhuma versão nova do Apps Script foi criada."
+                echo ""
+                echo "O \`clasp push -f\` rodou normalmente e o HEAD do projeto"
+                echo "está atualizado; as URLs \`/exec\` seguem na versão anterior,"
+                echo "que é idêntica em conteúdo de backend."
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+
       # --- PROMOÇÃO DA IMPLANTAÇÃO -------------------------------------------
       #
       # `clasp push` (acima) só atualiza o HEAD do projeto - o que se vê no
@@ -244,14 +313,14 @@ jobs:
       # está sem precisar abrir o editor.
 
       - name: Promover implantação de desenvolvimento
-        if: github.ref == 'refs/heads/refactor-structure'
+        if: github.ref == 'refs/heads/refactor-structure' && steps.backend_changed.outputs.changed == 'true'
         env:
           AMBIENTE: desenvolvimento
           DEPLOYMENT_ID: "AKfycbyUtczRMulDAyO_1ku39Rb01zarPMw1JvO7aNOdJPYeAgCC7G9mmb-P_EuXP6kvo8l2LA"
         run: bash scripts/promote-deployment.sh
 
       - name: Promover implantação de produção
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.backend_changed.outputs.changed == 'true'
         env:
           AMBIENTE: produção
           DEPLOYMENT_ID: "AKfycbxkheuq28ENsHMZMH8t9-u4EIrktHC6cBi-87boDre0jJfl1lnSCPBzaEkw6hy3Cx6fAg"

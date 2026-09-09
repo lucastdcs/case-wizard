@@ -402,6 +402,71 @@
 
         .search-input::placeholder { color: var(--text-secondary); }
 
+        .history-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .history-period-select {
+            font-family: 'Google Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .history-period-select:focus-visible {
+            outline: 2px solid var(--gemini-blue);
+            outline-offset: 2px;
+        }
+
+        .child-case-label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .child-case-input {
+            width: 100%;
+            box-sizing: border-box;
+            font-family: 'Google Sans', sans-serif;
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+
+        .child-case-input:focus {
+            outline: none;
+            border-color: var(--gemini-blue);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12);
+        }
+
+        .child-case-input.invalid { border-color: var(--danger); }
+
+        .child-case-error {
+            font-size: 12px;
+            color: var(--danger);
+            margin-top: 6px;
+        }
+
+        .history-horizon {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
         .search-clear {
             background: none;
             border: none;
@@ -751,6 +816,13 @@
                     <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;" data-i18n="caseSummary">Resumo do Caso</div>
                     <div id="confirm-case-info" style="font-size: 14px; color: var(--text-primary); font-weight: 500;"></div>
                 </div>
+
+                <div id="confirm-child-case" style="margin-top: 16px; text-align: left;" hidden>
+                    <label for="confirm-child-case-input" class="child-case-label" data-i18n="childCaseLabel">ID do caso BAU gerado</label>
+                    <input id="confirm-child-case-input" class="child-case-input" type="text"
+                           autocomplete="off" data-i18n-ph="childCasePlaceholder" placeholder="0-0000000000000">
+                    <div id="confirm-child-case-error" class="child-case-error" data-i18n="childCaseRequired" hidden>Informe o ID do caso gerado para aprovar.</div>
+                </div>
             </div>
             <div class="confirm-footer">
                 <button class="btn btn-danger-outline" id="confirm-cancel-btn" onclick="closeModal('confirmModal')" style="flex: 1;" data-i18n="cancel">Cancelar</button>
@@ -827,6 +899,15 @@
             <div id="cases-container"></div>
 
             <div id="history-panel" class="history-panel" style="display: none;">
+                <div class="history-toolbar">
+                    <select id="history-period" class="history-period-select" data-i18n-aria="historyPeriodAria">
+                        <option value="7">7</option>
+                        <option value="30">30</option>
+                        <option value="90">90</option>
+                    </select>
+                    <div class="history-horizon" id="history-horizon"></div>
+                </div>
+
                 <div class="history-stats">
                     <div class="stat-card">
                         <div class="stat-value" id="stat-approved">0</div>
@@ -946,10 +1027,19 @@
                 tabHistory: "Histórico",
                 searchPlaceholder: "Buscar por anunciante, CID, caso ou agente...",
                 clearSearch: "Limpar busca",
-                statApproved: "Aprovados (7d)",
-                statDiscarded: "Descartados (7d)",
+                statApproved: function (d) { return "Aprovados (" + d + "d)"; },
+                statDiscarded: function (d) { return "Descartados (" + d + "d)"; },
                 statAvgTime: "Tempo médio de aprovação",
-                topAgents: "Quem mais abriu casos (7d)",
+                topAgents: function (d) { return "Quem mais abriu casos (" + d + "d)"; },
+                historyPeriodAria: "Período do histórico",
+                historyPeriodOption: function (d) { return "Últimos " + d + " dias"; },
+                historyHorizon: "Casos finalizados saem desta lista quando o backup semanal os arquiva.",
+                clientTimeSuffix: "(cliente)",
+                childCaseLabel: "ID do caso BAU gerado",
+                childCasePlaceholder: "0-0000000000000",
+                childCaseRequired: "Informe o ID do caso gerado para aprovar.",
+                childCaseHistory: "Caso gerado:",
+                rowAdvPhone: "Telefone",
                 activeNow: "Ativos agora",
                 recentActivity: "Atividade recente",
                 nothingFoundFor: function (q) { return 'Nada encontrado para "' + q + '"'; },
@@ -1030,10 +1120,19 @@
                 tabHistory: "Historial",
                 searchPlaceholder: "Buscar por anunciante, CID, caso o agente...",
                 clearSearch: "Limpiar búsqueda",
-                statApproved: "Aprobados (7d)",
-                statDiscarded: "Descartados (7d)",
+                statApproved: function (d) { return "Aprobados (" + d + "d)"; },
+                statDiscarded: function (d) { return "Descartados (" + d + "d)"; },
                 statAvgTime: "Tiempo promedio de aprobación",
-                topAgents: "Quién abrió más casos (7d)",
+                topAgents: function (d) { return "Quién abrió más casos (" + d + "d)"; },
+                historyPeriodAria: "Período del historial",
+                historyPeriodOption: function (d) { return "Últimos " + d + " días"; },
+                historyHorizon: "Los casos finalizados salen de esta lista cuando el respaldo semanal los archiva.",
+                clientTimeSuffix: "(cliente)",
+                childCaseLabel: "ID del caso BAU generado",
+                childCasePlaceholder: "0-0000000000000",
+                childCaseRequired: "Informa el ID del caso generado para aprobar.",
+                childCaseHistory: "Caso generado:",
+                rowAdvPhone: "Teléfono",
                 activeNow: "Activos ahora",
                 recentActivity: "Actividad reciente",
                 nothingFoundFor: function (q) { return 'No se encontró nada para "' + q + '"'; },
@@ -1073,6 +1172,13 @@
                 const v = tt(el.getAttribute('data-i18n-aria'));
                 if (typeof v === 'string') el.setAttribute('aria-label', v);
             });
+
+            // As <option> do período são texto gerado a partir do próprio value
+            // ("Últimos 30 dias"), então não cabem no laço de data-i18n acima —
+            // ficariam três chaves de dicionário dizendo a mesma frase.
+            document.querySelectorAll('#history-period option').forEach(opt => {
+                opt.textContent = tt('historyPeriodOption')(opt.value);
+            });
         }
         // DOMContentLoaded, não window.onload: confirmado ao vivo (DevTools) que o
         // loader ficava preso mesmo depois de 18s+, sem o watchdog de loadCases()
@@ -1094,6 +1200,18 @@
             // ES — assim um texto novo marcado com data-i18n nunca fica de
             // fora por esquecimento.
             applyStaticTexts();
+
+            document.getElementById('confirm-child-case-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('confirm-submit-btn').click();
+                }
+            });
+            document.getElementById('history-period').addEventListener('change', () => {
+                SoundKit.click();
+                loadHistory(true);
+            });
+
             // Pequeno atraso antes da primeiríssima chamada: em alguns carregamentos
             // "frios", o bridge do google.script.run ainda não estava pronto bem no
             // instante do DOMContentLoaded dentro do iframe sandboxado do Apps Script,
@@ -1285,16 +1403,51 @@
         // gas-backend/appsscript.json e o mesmo fuso que EmailEngine.js já usa
         // pros emails) - sem isso, o texto cru mostrava milissegundos e "Z" no
         // final (ex: "14:00:00.000Z") direto do ISO string, sem formatação.
+        // Desde o ADR-0010 a disponibilidade é gravada com deslocamento
+        // ("2026-09-10T14:30-04:00"), então o horário do CLIENTE está no próprio
+        // texto e o instante é absoluto. Mostramos os dois: o que foi combinado
+        // com o anunciante, e o equivalente em Brasília, que é o que o TL usa
+        // pra saber se cabe na agenda do time.
+        //
+        // Linhas antigas não têm deslocamento. Ali `new Date()` interpreta como
+        // hora local de quem lê, que é o comportamento que sempre existiu — só
+        // não dá pra afirmar de que fuso elas são, e por isso não ganham o "· BRT".
         function formatAvailability(raw) {
             if (!raw) return tt('notInformed');
             if (String(raw).includes(' | ')) {
                 return String(raw).split(' | ').map(formatAvailability).join(' | ');
             }
-            const d = new Date(raw);
+
+            const texto = String(raw).trim();
+            const d = new Date(texto);
             if (isNaN(d.getTime())) return tt('notInformed');
-            const datePart = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
-            const timePart = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
-            return `${datePart}${tt('dateAt')}${timePart}`;
+
+            const temFuso = /[+-]\d{2}:\d{2}$|Z$/.test(texto);
+            if (!temFuso) {
+                const dataLocal = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+                const horaLocal = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+                return `${dataLocal}${tt('dateAt')}${horaLocal}`;
+            }
+
+            // Horário do cliente: lido do próprio texto, sem conversão — é o que
+            // foi combinado com ele, e converter só pra reexibir seria arriscar
+            // um erro de arredondamento em cima de um dado que já está pronto.
+            const [dia, resto] = texto.split('T');
+            const [ano, mes, diaDoMes] = dia.split('-');
+            const horaCliente = resto.slice(0, 5);
+
+            const horaBr = new Intl.DateTimeFormat('pt-BR', {
+                timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false,
+            }).format(d);
+
+            return `${diaDoMes}/${mes}/${ano}${tt('dateAt')}${horaCliente} ${tt('clientTimeSuffix')} · ${horaBr} BRT`;
+        }
+
+        // Nome completo do anunciante. O sobrenome é coluna nova: casos gravados
+        // antes dela chegam com string vazia, e o filter derruba o espaço solto
+        // que um join cru deixaria.
+        function nomeCompleto(c) {
+            return [c.advName, c.advLastName].filter(Boolean).join(' ');
         }
 
         function escapeHtml(str) {
@@ -1505,7 +1658,7 @@
             const filtered = allCases.filter(c => {
                 const tabMatch = currentTab === 'CREATION' ? c.status === 'PENDING_TL_CREATION' : c.status === 'PENDING_TL_DISCARD';
                 if (!tabMatch) return false;
-                return matchesSearch([c.advName, c.cid, c.caseId, c.agentEmail, c.task]);
+                return matchesSearch([c.advName, c.advLastName, c.cid, c.caseId, c.agentEmail, c.task]);
             });
 
             if (loadError) {
@@ -1557,7 +1710,7 @@
                             <span class="material-symbols-rounded" style="font-size: 14px;">flag</span>
                             ${tt('suggestDiscardBadge')}
                         </div>` : ''}
-                        <div class="text-primary">${escapeHtml(c.advName)}</div>
+                        <div class="text-primary">${escapeHtml(nomeCompleto(c))}</div>
                         <div class="text-secondary">CID: <span class="text-mono">${escapeHtml(c.cid)}</span></div>
                     </div>
 
@@ -1641,7 +1794,7 @@
 
             document.getElementById('modal-body-content').innerHTML = `
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow(tt('rowAdvertiser'), c.advName)}
+                ${createRow(tt('rowAdvertiser'), nomeCompleto(c))}
                 ${createRow('CID', c.cid)}
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -1651,6 +1804,9 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 ${createRow('Speakeasy ID', c.speakeasyId)}
                 ${createRow(tt('rowAdvEmail'), c.advEmail)}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                ${createRow(tt('rowAdvPhone'), c.advPhone)}
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 ${createRow('Timezone', c.timezone)}
@@ -1702,23 +1858,51 @@
             icon.textContent = isPositive ? 'check_circle' : 'warning';
             icon.style.color = isPositive ? 'var(--success)' : 'var(--danger)';
 
-            caseInfo.textContent = `${c.advName} | ${c.task}`;
+            caseInfo.textContent = `${nomeCompleto(c)} | ${c.task}`;
+
+            // O ID do caso filho só é pedido na APROVAÇÃO DE CRIAÇÃO — é a única
+            // das quatro decisões do TL que gera um caso novo no CRM. Rejeitar
+            // criação, confirmar descarte e manter ativo não geram nada, e um
+            // campo pedindo "o caso gerado" nelas seria pergunta sem resposta.
+            const pedeCasoFilho = !isDiscardFlow && isPositive;
+            const blocoFilho = document.getElementById('confirm-child-case');
+            const inputFilho = document.getElementById('confirm-child-case-input');
+            const erroFilho = document.getElementById('confirm-child-case-error');
+
+            blocoFilho.hidden = !pedeCasoFilho;
+            inputFilho.value = '';
+            inputFilho.classList.remove('invalid');
+            erroFilho.hidden = true;
+            if (pedeCasoFilho) setTimeout(() => inputFilho.focus(), 50);
 
             submitBtn.className = 'btn btn-primary';
             submitBtn.style.background = isPositive ? '' : 'var(--danger)';
 
             submitBtn.onclick = () => {
+                const childCaseId = pedeCasoFilho ? inputFilho.value.trim() : '';
+
+                // Obrigatório na aprovação. O servidor recusa igual — a tela não
+                // é a fronteira —, mas barrar aqui evita a viagem e devolve o
+                // foco pro campo em vez de um toast genérico.
+                if (pedeCasoFilho && !childCaseId) {
+                    SoundKit.error();
+                    inputFilho.classList.add('invalid');
+                    erroFilho.hidden = false;
+                    inputFilho.focus();
+                    return;
+                }
+
                 SoundKit.click();
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Processando...';
                 document.getElementById('confirm-cancel-btn').disabled = true;
-                processAction(id, action);
+                processAction(id, action, childCaseId);
             };
 
             modal.classList.add('active');
         }
 
-        function processAction(id, newStatus) {
+        function processAction(id, newStatus, childCaseId) {
             const c = allCases.find(item => item.id === id);
             const wasDiscardFlow = c && c.status === 'PENDING_TL_DISCARD';
 
@@ -1753,7 +1937,7 @@
                     submitBtn.textContent = tt('confirm');
                     document.getElementById('confirm-cancel-btn').disabled = false;
                 })
-                .updateBAUCaseStatus(id, newStatus);
+                .updateBAUCaseStatus(id, newStatus, childCaseId || '');
         }
 
         // Tira a linha da tela na hora (animação já existia no CSS, nunca era usada -
@@ -1894,6 +2078,17 @@
         let historyLoaded = false;
         let lastHistoryData = null;
 
+        // getWeeklyHistory(days) sempre aceitou o parâmetro e sempre devolveu
+        // windowDays de volta - só o cliente é que nunca oferecia outra opção
+        // que não 7. O seletor é a única mudança necessária pro TL alcançar
+        // além da semana; o que ele NÃO alcança é o que o backup já arquivou,
+        // e é isso que a linha de horizonte abaixo do seletor diz em voz alta
+        // (ver #397: ler o Archive_BAU é outro problema, bem maior).
+        function periodoSelecionado() {
+            const select = document.getElementById('history-period');
+            return Number(select && select.value) || 7;
+        }
+
         function loadHistory(force) {
             if (historyLoaded && !force) return;
             const list = document.getElementById('history-list');
@@ -1905,7 +2100,7 @@
                     console.warn("Erro ao carregar histórico:", err);
                     list.innerHTML = '<div class="empty-state" style="padding: 40px 20px;">' + tt('historyLoadError') + '</div>';
                 })
-                .getWeeklyHistory(7);
+                .getWeeklyHistory(periodoSelecionado());
         }
 
         function formatHours(h) {
@@ -1924,6 +2119,15 @@
             historyLoaded = true;
             lastHistoryData = data;
             const stats = data.stats || {};
+            const dias = data.windowDays || 7;
+
+            // Os três rótulos abaixo diziam "(7d)" fixo no HTML. Agora são funções
+            // no dicionário - o applyStaticTexts() já ignora valores que não são
+            // string, então eles chegam aqui sem terem sido sobrescritos no boot.
+            document.querySelector('[data-i18n="statApproved"]').textContent = tt('statApproved')(dias);
+            document.querySelector('[data-i18n="statDiscarded"]').textContent = tt('statDiscarded')(dias);
+            document.querySelector('[data-i18n="topAgents"]').textContent = tt('topAgents')(dias);
+            document.getElementById('history-horizon').textContent = tt('historyHorizon');
 
             document.getElementById('stat-approved').textContent = stats.approved || 0;
             document.getElementById('stat-discarded').textContent = stats.discarded || 0;
@@ -1946,7 +2150,7 @@
             const list = document.getElementById('history-list');
             const allHistoryCases = (lastHistoryData && lastHistoryData.cases) || [];
             const windowDays = (lastHistoryData && lastHistoryData.windowDays) || 7;
-            const filtered = allHistoryCases.filter(c => matchesSearch([c.caseId, c.task, c.processedBy, c.agentEmail]));
+            const filtered = allHistoryCases.filter(c => matchesSearch([c.caseId, c.childCaseId, c.task, c.processedBy, c.agentEmail]));
 
             if (allHistoryCases.length === 0) {
                 list.innerHTML = `
@@ -1983,6 +2187,7 @@
                         </div>
                     </div>
                     <div class="text-primary" style="font-size: 14px; margin: 6px 0 2px;">${caseLinkHtml(c.caseId)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
+                    ${c.childCaseId ? `<div class="text-secondary" style="font-size: 13px; margin-bottom: 2px;">${tt('childCaseHistory')} ${caseLinkHtml(c.childCaseId)}</div>` : ''}
                     <div class="text-secondary" style="font-size: 12px;">${when}</div>
                 </div>`;
             }).join('');

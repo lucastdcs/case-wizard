@@ -46,7 +46,14 @@ const ROTULOS = {
     vendorPartner: ['vendor partner', 'parceiro fornecedor', 'socio proveedor'],
     appointmentTasks: ['appointment tasks', 'tarefas de agendamento', 'tareas de la cita'],
     salesProgram: ['sales program', 'programa de vendas', 'programa de ventas'],
-    customerTimezone: ['customer time zone', 'fuso horario do cliente', 'zona horaria del cliente'],
+    // "Customer time zone" no Contact Us form; "Time zone" em outras telas
+    // (e no mock-crm.html). O match é por igualdade, então as duas formas
+    // precisam estar listadas — não há como uma "conter" a outra.
+    customerTimezone: [
+        'customer time zone', 'time zone', 'timezone',
+        'fuso horario do cliente', 'fuso horario',
+        'zona horaria del cliente', 'zona horaria',
+    ],
     externalCustomerId: [
         'google ads external customer id',
         'id de cliente externo do google ads',
@@ -81,6 +88,22 @@ export function acharRotulo(campo, raiz = document) {
         .find((el) => alvos.has(normalizarRotulo(el.textContent))) || null;
 }
 
+// Lê o valor de um nó respeitando VISIBILIDADE quando ela existe.
+//
+// As duas leituras são necessárias, e por motivos opostos:
+//   - `innerText` ignora o que está com display:none. É o que faz a PII
+//     mascarada funcionar: enquanto o campo está escondido, o container tem
+//     tanto o rótulo do botão ("Phone") quanto o valor real oculto, e
+//     `textContent` devolveria os dois grudados.
+//   - `textContent` alcança o que está dentro de um container `hidden` (os
+//     dados atrás do "More", em `.below-fold`) e o conteúdo de `<ng-template>`,
+//     que nunca é renderizado e por isso não tem `innerText`.
+//
+// Ordem: o visível manda; vazio cai para o texto bruto.
+function lerValor(el) {
+    return el?.innerText?.trim() || el?.textContent?.trim() || '';
+}
+
 // Todos os valores do campo. `Appointment tasks` é multivalorado (um caso
 // real trouxe seis tarefas), por isso a leitura básica devolve lista.
 export function lerCampoTodos(campo, raiz = document) {
@@ -91,17 +114,21 @@ export function lerCampoTodos(campo, raiz = document) {
     const cuf = rotulo.closest('cuf-form-field');
     if (cuf) {
         const valores = Array.from(cuf.querySelectorAll('[debug-id="html-value"]'))
-            .map((el) => el.textContent.trim())
+            .map(lerValor)
             .filter(Boolean);
         if (valores.length) return valores;
     }
 
     // Cabeçalho do caso: <home-data-item> com .data-pair-content
+    // Cabeçalho do caso (<home-data-item> com .data-pair-content) e o formato
+    // mais simples que aparece em outras telas: o valor num <sanitized-content>
+    // dentro do container do rótulo, ou no irmão seguinte.
     const item = rotulo.closest('home-data-item');
     const conteudo = item?.querySelector('.data-pair-content')
         || rotulo.parentElement?.querySelector('.data-pair-content')
+        || rotulo.parentElement?.querySelector('sanitized-content')
         || rotulo.nextElementSibling;
-    const valor = conteudo?.textContent.trim();
+    const valor = lerValor(conteudo);
     return valor ? [valor] : [];
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "case-wizard",
-  "version": "6.1.0",
+  "version": "6.3.0",
   "description": "TechSol Operations Assistant - Productivity Suite",
   "main": "src/app.js",
   "scripts": {
@@ -21,8 +21,10 @@
     "test:people": "node scripts/test-people-api.js",
     "test:deployment-env": "node scripts/test-deployment-env.js",
     "test:scraping": "node scripts/test-scraping.mjs",
+    "test:timezones": "node scripts/test-timezones.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
+    "smoke:bau-scraping": "node scripts/smoke-bau-scraping.mjs",
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",
     "smoke:broadcast": "node scripts/smoke-broadcast.mjs",
     "smoke:content": "node scripts/smoke-content-dashboard.mjs",

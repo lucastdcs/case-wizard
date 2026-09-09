@@ -220,12 +220,70 @@ export async function captureClientEmail() {
     }
 }
 
+// --- 4.5 CAPTURA DE TELEFONE DO CLIENTE (PII mascarada) ---
+//
+// Mesmo padrão do e-mail acima: o valor NÃO existe no DOM até alguém clicar no
+// unmask. A diferença que custa trabalho é o reconhecimento — e-mail se acha
+// pelo "@", telefone não tem marca dessas, então a heurística é por dígitos.
+//
+// Devolve null (e não "") quando não acha, pra quem consome distinguir "não tem
+// telefone" de "não consegui ler".
+function pareceTelefone(texto) {
+    const t = String(texto || "").trim();
+    if (!t || t.length > 30) return false;
+
+    // "Phone" é o rótulo que o próprio botão de unmask mostra enquanto o valor
+    // está escondido — sem esta linha, o estado mascarado seria lido como se
+    // fosse o dado.
+    if (/^phone$/i.test(t)) return false;
+    if (t.includes("Is this:")) return false;
+
+    // Só dígitos e pontuação de telefone. É o que descarta "Click to view",
+    // datas e IDs que por acaso morem no mesmo container.
+    if (!/^[\d\s()+\-.]+$/.test(t)) return false;
+
+    const digitos = t.replace(/\D/g, "");
+    return digitos.length >= 8 && digitos.length <= 15;
+}
+
+export async function captureClientPhone() {
+    try {
+        // Pelo resolvedor de rótulos, e não pelo XPath em inglês: numa tela
+        // traduzida o rótulo é "Número de telefone", e o contains(text(),
+        // 'Phone number') não casava — mesmo defeito que esvaziava as outras
+        // capturas.
+        const labelNode = acharRotulo('phoneNumber');
+        if (!labelNode) return null;
+
+        const container = labelNode.closest('cuf-form-field') || labelNode.parentElement;
+        if (!container) return null;
+
+        const unmaskBtn = container.querySelector('.unmask-button') ||
+            container.querySelector('[aria-label="Click to view"]');
+
+        if (unmaskBtn) {
+            unmaskBtn.click();
+            await esperar(500); // Espera o Angular renderizar o valor real
+        }
+
+        // Lê a área de VALOR do campo. O container inclui o rótulo, e varrer
+        // todos os descendentes atrás de "algo que pareça telefone" já trouxe
+        // rótulo grudado no valor uma vez (ver captureClientEmail).
+        const valor = lerCampo('phoneNumber');
+        return pareceTelefone(valor) ? valor.trim() : null;
+
+    } catch (e) {
+        console.warn("Erro ao capturar telefone do cliente:", e);
+        return null;
+    }
+}
+
 // --- 5. CAPTURA DO AM (vai no BCC) ---
 //
 // Regra de negócio: o BCC é o AM, e o AM nunca é o dono do caso. A versão
 // anterior lia material-input[debug-id="account-id-input"] — que é o campo
 // de BUSCA DE CLIENTE — e colava "@google.com" no que achasse ali, podendo
-// mandar BCC para um endereço que não existe. Ver am-resolver.js.
+// mandar BCC para um endereço que não existe. Ver am-resolver.js e ADR-0011.
 export async function captureAM() {
     try {
         return await resolveAM();
@@ -300,9 +358,39 @@ export function captureSalesProgram() {
     return "";
 }
 
+// Sobrenome do anunciante ("Family name" no Contact Us form). Mesmo formato do
+// "Given name" raspado em getPageData(): texto puro no irmão seguinte do rótulo,
+// sem máscara de PII — diferente do e-mail e do telefone, que exigem clique no
+// unmask antes de o valor sequer existir no DOM.
+//
+// Devolve "" (e não "N/A") quando não acha: quem consome trata string vazia como
+// "campo aparece editável no formulário", que é o comportamento certo aqui.
+export function captureAdvertiserLastName() {
+    try {
+        // Pelo resolvedor de rótulos: numa tela traduzida o rótulo é "Nome de
+        // família", e o contains(text(), 'Family name') não casava.
+        return lerCampo('familyName') || "";
+    } catch (e) { console.warn("Falha Sobrenome:", e); }
+    return "";
+}
+
 // --- 8.5 CAPTURA DE IDIOMA E SPEAKEASY ID ---
+// Idioma do NEGÓCIO do anunciante, raspado do CRM. Não é o que vai para a
+// coluna Idioma do BAU_form_data — lá vai o segmento que o AGENTE atende
+// (profile.defaultLanguage, ver db-schema.md índice 11). Esta captura é só
+// fallback para quando não há perfil carregado.
+//
+// Duas correções de uma vez, porque a função nunca devolveu nada útil:
+//   1. o rótulo no Contact Us form é "Business language", com l minúsculo — o
+//      includes('Language') sensível a caixa jamais casava;
+//   2. mesmo casando, o valor mora num <sanitized-content> DENTRO do container
+//      do rótulo, não num irmão seguinte. É o mesmo formato que captureTimezone()
+//      logo acima já trata — e é por isso que aquela funciona e esta não.
 export function captureLanguage() {
     try {
+        // O crm-labels.js já faz as duas correções descritas acima (casa o
+        // rótulo sem caixa e lê o <sanitized-content> de dentro do container),
+        // e ainda casa "Linguagem comercial" na tela traduzida.
         return lerCampo('businessLanguage') || "N/A";
     } catch (e) { console.warn("Erro ao capturar Idioma:", e); }
     return "N/A";
@@ -385,10 +473,19 @@ export async function getPageData() {
     // Tarefas do agendamento: multivalorado (um caso real trouxe seis).
     const appointmentTasks = lerCampoTodos('appointmentTasks');
 
-    // Captura EMAILS
-    const clientEmail = await captureClientEmail();
+    // Captura EMAILS e TELEFONE
+    // Em paralelo de propósito: os dois clicam no próprio unmask e esperam 500ms
+    // pelo Angular. Em série isso custaria 1s no caminho que TODO módulo chama
+    // (sete pontos de chamada de getPageData); juntos, custa os mesmos 500ms de
+    // antes do telefone existir.
+    const [clientEmail, clientPhone] = await Promise.all([
+        captureClientEmail(),
+        captureClientPhone(),
+    ]);
 
-    // O AM é uma resolução só, usada tanto no campo AM quanto no BCC.
+    // O AM é uma resolução só, usada tanto no campo AM quanto no BCC. Fica
+    // fora do Promise.all acima porque mexe noutra área da tela (o case log),
+    // e no caminho barato nem chega a clicar.
     const am = await captureAM();
 
     // Captura CID
@@ -406,6 +503,7 @@ export async function getPageData() {
     const salesProgram = captureSalesProgram();
     const language = captureLanguage();
     const seId = captureSpeakeasyID();
+    const advLastName = captureAdvertiserLastName();
 
     // Novo: Captura de Perfil de Usuário
     const agentEmail = getAgentEmail();
@@ -445,7 +543,9 @@ export async function getPageData() {
         advEmail: clientEmail, // bau-form-config.js's campo 'advEmail' lê pageData.advEmail
         salesProgram: salesProgram,
         language: language,
-        seId: seId
+        seId: seId,
+        advLastName: advLastName,
+        advPhone: clientPhone
     };
 }
 

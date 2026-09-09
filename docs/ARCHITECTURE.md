@@ -60,7 +60,7 @@ compilador desses dados (`getPageData()`), apoiado em três módulos:
   `textContent`, para alcançar o que fica atrás do "More" (`.below-fold` vem
   num container `hidden`).
 * **`am-resolver.js`** — resolve o **AM**, que é quem vai no BCC e nunca é o
-  dono do caso. Ver `docs/decisions/0010-am-do-bcc-vem-do-case-log.md`.
+  dono do caso. Ver `docs/decisions/0011-am-do-bcc-vem-do-case-log.md`.
 * **`case-context.js`** e **`case-log-parser.js`** — contexto do cabeçalho
   (estado, SLA, tier, país de cobrança) e fatos do case log (agendamento,
   transferência, cancelamento, descarte).

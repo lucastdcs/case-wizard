@@ -6,6 +6,7 @@ import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import { TIMEZONE_HUBS } from "../shared/timezones.js";
 
 const PINNED_STORAGE_KEY = "cw_timezone_pinned";
 
@@ -54,7 +55,7 @@ const TZ_DICT = {
         idealBusinessHours: "Horário Comercial Ideal",
         limitHours: "Horário Limite (Atenção)",
         outOfHours: "Fora de Horário",
-        filters: { all: 'Todos', sa: 'América do Sul', na: 'Norte & Central', eu: 'Europa' },
+        filters: { all: 'Todos', sa: 'América do Sul', us: 'Estados Unidos', na: 'Norte & Central', eu: 'Europa' },
     },
     es: {
         headerDesc: "Monitoreo global y planificación de llamadas.",
@@ -76,7 +77,7 @@ const TZ_DICT = {
         idealBusinessHours: "Horario Comercial Ideal",
         limitHours: "Horario Límite (Atención)",
         outOfHours: "Fuera de Horario",
-        filters: { all: 'Todos', sa: 'América del Sur', na: 'Norte y Central', eu: 'Europa' },
+        filters: { all: 'Todos', sa: 'América del Sur', us: 'Estados Unidos', na: 'Norte y Central', eu: 'Europa' },
     },
 };
 function tt(key) {
@@ -84,38 +85,19 @@ function tt(key) {
     return TZ_DICT[lang]?.[key] ?? TZ_DICT.pt[key];
 }
 
-// Adicionei a propriedade 'region' para os filtros
-const HUBS = [
-    // --- EUROPA ---
-    { id: 'pt', name: 'Portugal', flag: '🇵🇹', zone: 'Europe/Lisbon', label: 'Lisboa', region: 'eu' },
-    { id: 'es', name: 'Espanha', flag: '🇪🇸', zone: 'Europe/Madrid', label: 'Madrid', region: 'eu' },
-
-    // --- AMÉRICA DO SUL ---
-    { id: 'ar', name: 'Argentina', flag: '🇦🇷', zone: 'America/Argentina/Buenos_Aires', label: 'Buenos Aires', region: 'sa' },
-    { id: 'bo', name: 'Bolívia', flag: '🇧🇴', zone: 'America/La_Paz', label: 'La Paz', region: 'sa' },
-    { id: 'cl', name: 'Chile', flag: '🇨🇱', zone: 'America/Santiago', label: 'Santiago', region: 'sa' },
-    { id: 'co', name: 'Colômbia', flag: '🇨🇴', zone: 'America/Bogota', label: 'Bogotá', region: 'sa' },
-    { id: 'ec', name: 'Equador', flag: '🇪🇨', zone: 'America/Guayaquil', label: 'Guayaquil', region: 'sa' },
-    { id: 'py', name: 'Paraguai', flag: '🇵🇾', zone: 'America/Asuncion', label: 'Assunção', region: 'sa' },
-    { id: 'pe', name: 'Peru', flag: '🇵🇪', zone: 'America/Lima', label: 'Lima', region: 'sa' },
-    { id: 'uy', name: 'Uruguai', flag: '🇺🇾', zone: 'America/Montevideo', label: 'Montevidéu', region: 'sa' },
-    { id: 've', name: 'Venezuela', flag: '🇻🇪', zone: 'America/Caracas', label: 'Caracas', region: 'sa' },
-
-    // --- AMÉRICA DO NORTE & CENTRAL ---
-    { id: 'mx', name: 'México', flag: '🇲🇽', zone: 'America/Mexico_City', label: 'CDMX', region: 'na' },
-    { id: 'cr', name: 'Costa Rica', flag: '🇨🇷', zone: 'America/Costa_Rica', label: 'San José', region: 'na' },
-    { id: 'sv', name: 'El Salvador', flag: '🇸🇻', zone: 'America/El_Salvador', label: 'San Salvador', region: 'na' },
-    { id: 'gt', name: 'Guatemala', flag: '🇬🇹', zone: 'America/Guatemala', label: 'C. da Guatemala', region: 'na' },
-    { id: 'hn', name: 'Honduras', flag: '🇭🇳', zone: 'America/Tegucigalpa', label: 'Tegucigalpa', region: 'na' },
-    { id: 'ni', name: 'Nicarágua', flag: '🇳🇮', zone: 'America/Managua', label: 'Manágua', region: 'na' },
-    { id: 'pa', name: 'Panamá', flag: '🇵🇦', zone: 'America/Panama', label: 'C. do Panamá', region: 'na' },
-    { id: 'do', name: 'Rep. Dominicana', flag: '🇩🇴', zone: 'America/Santo_Domingo', label: 'Santo Domingo', region: 'na' },
-    { id: 'pr', name: 'Porto Rico', flag: '🇵🇷', zone: 'America/Puerto_Rico', label: 'San Juan', region: 'na' }
-];
+// A lista mora em shared/timezones.js: o formulário BAU precisa da MESMA lista
+// pra saber em que fuso o agendamento foi combinado (ADR-0010), e duas cópias
+// divergiriam na primeira vez que alguém acrescentasse um país num lugar só.
+//
+// Os fusos do próprio Brasil ficam de fora daqui: um cartão dizendo ao agente
+// que horas são onde ele já está não informa nada, e a faixa "Você / Brasília"
+// no topo já responde isso. O formulário BAU, esse sim, precisa deles.
+const HUBS = TIMEZONE_HUBS.filter(h => !h.home);
 
 const FILTERS = [
     { id: 'all' },
     { id: 'sa' },
+    { id: 'us' },
     { id: 'na' },
     { id: 'eu' }
 ];

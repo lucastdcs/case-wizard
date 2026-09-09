@@ -1,5 +1,5 @@
 <!-- generated-by: groundrules v1.10.0 -->
-# 0010 — O AM do BCC vem do case log, não do assignee nem da lista de contatos
+# 0011 — O AM do BCC vem do case log, não do assignee nem da lista de contatos
 
 **Date**: 2026-09-09
 **Status**: Accepted

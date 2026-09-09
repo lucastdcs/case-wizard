@@ -9,6 +9,17 @@ O Back-end e o TL Dashboard devem rotear e exibir as informações estritamente 
 5. `REJECTED`: Ação rejeitada pelo TL.
 6. `CANCELED_BY_AGENT`: Agente desistiu/excluiu o caso antes da avaliação.
 
+## Aprovação de Abertura (Caso Filho)
+- **O ID do caso gerado é obrigatório.** Ao aprovar um pedido de abertura
+  (`PENDING_TL_CREATION` → `CREATED`), o TL informa o ID do caso BAU que ele
+  acabou de criar no CRM. Sem ele a aprovação é **recusada** — no modal e de novo
+  no servidor, porque a tela nunca é a fronteira.
+- A exigência vale **só** para `APPROVED_CREATION`. As outras três decisões
+  (`REJECTED_CREATION`, `CONFIRMED_DISCARD`, `KEPT_ACTIVE`) não geram caso novo e
+  não pedem ID nenhum.
+- O ID viaja para o e-mail `AGENT_BAU_CREATED`: antes, o agente era avisado de
+  que o caso tinha sido criado e **não recebia o número**.
+
 ## TL Dashboard (Gestão)
 - **Ordenação (FIFO):** As filas devem ser sempre ordenadas do mais antigo para o mais recente com base na coluna `Data_Envio`. O TL aprova primeiro quem está esperando há mais tempo.
 - **Separação de Abas:** NUNCA misture casos de Abertura com casos de Descarte na mesma visualização.

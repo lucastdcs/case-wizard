@@ -67,7 +67,8 @@ const EMAIL_I18N = {
     labelContext: "Motivo",
     labelDomain: "Domínio final",
     labelSchedule: "Agendamento (SLA)",
-    labelTask: "Procedimento"
+    labelTask: "Procedimento",
+    labelChildCase: "Caso BAU gerado"
   },
   es: {
     dateUnavailable: "Fecha no disponible",
@@ -116,7 +117,8 @@ const EMAIL_I18N = {
     labelContext: "Motivo",
     labelDomain: "Dominio final",
     labelSchedule: "Programación (SLA)",
-    labelTask: "Procedimiento"
+    labelTask: "Procedimiento",
+    labelChildCase: "Caso BAU generado"
   }
 };
 
@@ -465,13 +467,24 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
 
   const caseLink = '<a href="' + CASE_CONNECT_BASE + v.caseId + '" target="_blank" style="font-family: {{t.fontMono}}; color: {{t.link}}; text-decoration: none;">' + v.caseId + '</a>';
 
-  const blocks = renderEmailSection(L.sectionDetails, renderEmailFields([
+  // O aviso de "caso criado" nunca dizia QUAL caso: o agente era avisado e
+  // tinha que ir procurar. Só aparece quando existe (as outras decisões do TL
+  // não geram caso filho).
+  const childCaseId = String(data.childCaseId || "").trim();
+  const camposDetalhe = [
     { label: "Case Connect", value: caseLink },
     { label: "Customer ID", value: v.cid, mono: true },
     { label: L.labelDomain, value: v.site },
     { label: L.labelSchedule, value: v.availability },
     { label: L.labelTask, value: v.task }
-  ])) + renderEmailSection(L.labelContext, renderEmailParagraph(v.reason));
+  ];
+  if (childCaseId) {
+    const childLink = '<a href="' + CASE_CONNECT_BASE + childCaseId + '" target="_blank" style="font-family: {{t.fontMono}}; color: {{t.link}}; text-decoration: none;">' + childCaseId + '</a>';
+    camposDetalhe.push({ label: L.labelChildCase, value: childLink });
+  }
+
+  const blocks = renderEmailSection(L.sectionDetails, renderEmailFields(camposDetalhe))
+    + renderEmailSection(L.labelContext, renderEmailParagraph(v.reason));
 
   const htmlBody = renderBauEmail({
     preheader: preheader,
@@ -502,7 +515,12 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
     "Customer ID: " + v.cid,
     L.labelDomain + ": " + v.site,
     L.labelSchedule + ": " + v.availability,
-    L.labelTask + ": " + v.task,
+    L.labelTask + ": " + v.task
+  );
+  if (childCaseId) {
+    plainLines.push(L.labelChildCase + ": " + childCaseId);
+  }
+  plainLines.push(
     "",
     L.labelContext + ": " + stripEmailHtml(v.reason),
     "",

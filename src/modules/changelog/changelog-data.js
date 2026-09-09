@@ -15,25 +15,25 @@
 // contar uma release por vez (o localStorage guarda uma única versão vista).
 
 export const RELEASE_NOTES = {
-    version: "v6.1.0",
+    version: "v6.3.0",
 
-    title: "Case Wizard v6.1.0",
+    title: "Case Wizard v6.3.0",
 
     slides: [
         {
-            icon: "🐞",
-            title: "Achou um bug? Agora dá pra contar",
-            text: "Tem um formulário de bugs e sugestões dentro do app. Se algo travar, sair errado ou só te irritar, manda por ali — chega direto para quem cuida do Case Wizard, sem precisar caçar ninguém no chat."
+            icon: "🕐",
+            title: "O horário do agendamento agora diz de que fuso ele é",
+            text: "Antes você digitava o horário do cliente e o campo não guardava de onde ele era — quem lia depois adivinhava. Agora o fuso é escolhido junto com a data, e a hora virou uma lista em 24h: não tem mais AM/PM para trocar sem perceber. Os fusos dos Estados Unidos entraram (inclusive Arizona, que não faz horário de verão), e a tela mostra ao lado quanto dá em Brasília."
         },
         {
-            icon: "📢",
-            title: "Avisos mais fáceis de ler",
-            text: "O painel de avisos foi redesenhado em duas colunas, com o contraste corrigido e um espaço próprio para o estado de cada aviso. Menos rolagem para achar o que importa hoje."
+            icon: "✍️",
+            title: "Menos campo para preencher à mão",
+            text: "Sobrenome e telefone do anunciante passam a ser capturados da página junto com o resto, e aparecem para você editar quando a captura falha. O idioma parou de ir como \"N/A\": ele nasce no idioma que você atende e continua trocável caso este atendimento fuja da regra. E quando a liderança aprova seu caso, o e-mail agora diz qual caso foi criado, em vez de só avisar que foi."
         },
         {
-            icon: "🗂️",
-            title: "Para a liderança: o time se atualiza pela Central",
-            text: "A Central de Conteúdo ganhou a aba Pessoas. Entrada, saída, troca de fluxo e troca de idioma de um agente passam a ser feitas por ali, em vez de na planilha. TL propõe, ADMIN aprova — e o idioma em que o app abre para a pessoa acompanha a mudança."
+            icon: "✅",
+            title: "Para a liderança: aprovar agora registra o caso gerado",
+            text: "Ao aprovar uma abertura, o painel pede o ID do caso BAU que você criou no CRM. Ele fica no histórico como link, entra na busca, e vai no e-mail do agente. O histórico também ganhou período — 7, 30 ou 90 dias — e diz na tela até onde ele alcança, já que o backup semanal arquiva os casos finalizados."
         }
     ]
 };

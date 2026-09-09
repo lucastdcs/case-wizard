@@ -7,14 +7,51 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
-- [~] **Fase 0 da Central de Conteúdo — decidir antes de codar.** Três ADRs
-      escritos e aguardando validação: `0007` (trilho por regime no lugar das dez
-      abas), `0008` (cache da leitura pública + retenção por aba) e `0009`
-      (matriz RBAC editável). Falta a **maquete estática** do "Hoje" + trilho
-      para validação visual antes de propagar — `docs/LEARNINGS.md` já cobrou
-      esse preço uma vez com a paleta. Revisão de UX que originou o plano feita
-      em 2026-09-02, revalidada contra a `refactor-structure` depois da entrada
-      da aba Pessoas.
+- [~] **Feedback dos TLs sobre o form BAU + Dash TL (2026-09-08).** Sete pedidos,
+      investigados e abertos como #392–#397. A ordem abaixo é de ataque, não de
+      pedido: os dois primeiros já saíram, os do meio dependem de decisão,
+      e o último é projeto.
+      1. [x] **#392 idioma + #393 sobrenome** — entregues juntos (mesmo módulo,
+         mesma migração de coluna). O idioma tinha DOIS defeitos: rótulo comparado
+         com caixa (`Business language` nunca casava) e travessia errada do DOM —
+         ver `docs/LEARNINGS.md`. E a abertura de caso não tinha campo de idioma
+         nenhum, então o `N/A` da raspagem ia direto pra planilha. Agora vem do
+         `profile.defaultLanguage` num `select` editável, como o db-schema já
+         mandava. Junto: coluna 23 `Adv_LastName` e `npm run smoke:bau-scraping`,
+         o primeiro teste que o módulo BAU já teve.
+      2. [x] **#397, primeira camada** — seletor de 7/30/90 dias no histórico do
+         TL. O backend já aceitava o parâmetro; só a tela é que pedia 7 fixo, e a
+         tela agora diz que o backup semanal é o teto do que ela alcança.
+      3. [x] **#394 agendamento (24h + fuso na escolha + fusos dos EUA)** —
+         decidido e entregue. Formato aprovado e registrado no **ADR-0010**: grava
+         com deslocamento resolvido pela data do agendamento. O `datetime-local`
+         saiu (o locale do navegador decide 12h/24h, e não há como forçar); no
+         lugar, data + `select` de 24h + fuso. Catálogo único de fusos em
+         `shared/timezones.js`, agora com os EUA — Arizona à parte, porque é
+         Mountain sem horário de verão.
+      4. [x] **#396 ID do caso filho na aprovação** — decidido **obrigatório**, sem
+         escape, e gravado em coluna (`Child_Case_ID`) e não em aba à parte.
+         Validado nos dois lados. **Fica um fio solto conhecido:** o backup semanal
+         apaga a linha, e com ela o ID, uma semana depois da aprovação — quem
+         resolve isso é o item 6.
+      5. [x] **#395 telefone do anunciante** — autorizado a gravar. Coluna 25
+         (`Adv_Phone`), captura com unmask em paralelo com a do e-mail, e a regra
+         de PII mascarada foi para `specs/workflow/scraping-rules.md`.
+         **Falta confirmar no CRM real:** o mock reproduz o unmask, mas só a
+         página de verdade diz qual é a marcação DEPOIS do clique — se a
+         heurística por dígitos não achar o número lá, é aqui que se ajusta.
+      6. [ ] **#397, segunda camada** — histórico além do que o backup arquivou:
+         ler o `Archive_BAU`. Não antes de #333/#334 — o TL Dashboard já travou
+         ao vivo, e isso soma uma planilha inteira por chamada.
+
+- [ ] **Alerta de volume da fila BAU — destinatários pelo TL Dashboard (#399).**
+      A lista segue **fixa no código**, rodando só para `lucaste`. Chegou a ser
+      derivada da aba `People` e foi **revertida por decisão**: a régua de
+      `isOverhead` é permissiva por construção, então uma categoria nova
+      (`Intern`, `Contractor`) passaria a receber e-mail sem ninguém ter decidido
+      isso. O destino é uma configuração explícita na tela.
+      **Ação manual pendente:** rodar `setupBAUVolumeAlertTrigger()` pelo editor
+      do Apps Script — o gatilho ainda não existe (mesma nota do `Backup.js`).
 
 ## Done (esta sessão)
 
@@ -23,7 +60,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
       tela estava traduzida e a raspagem casava rótulo em inglês. Corrigido
       via `crm-labels.js` (rótulo normalizado PT/ES/EN, por igualdade),
       `am-resolver.js` (o AM do BCC vem do case log, não do assignee —
-      ADR-0010), CID só por rótulo, case ID por `debug-id`, identidade sem
+      ADR-0011), CID só por rótulo, case ID por `debug-id`, identidade sem
       abrir o menu de perfil. Novos: `case-context.js` e `case-log-parser.js`.
       Travado por `npm run test:scraping` (8/20 → 46/46 asserções).
 
@@ -45,7 +82,21 @@ This file differs from the long-term roadmap: it describes what is happening **n
 Plano em seis fases da Central de Conteúdo, em ordem de dependência (não de
 prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
 
-- [~] **Fase 1 — correção e carga** — entregue, aguardando revisão do PR.
+**Todas as seis fases fecharam e foram para produção na v6.2.0** (2026-09-08).
+O que sobrou delas está em *Waiting / blocked* abaixo: são passos que só rodam
+com a planilha de produção na frente.
+
+- [x] **Fase 0 da Central de Conteúdo — decidir antes de codar.** Os três ADRs
+      foram escritos, validados e implementados: `0007` (trilho por regime no
+      lugar das dez abas), `0008` (cache da leitura pública + retenção por aba) e
+      `0009` (matriz RBAC editável, com a correção de rota registrada no próprio
+      ADR). A maquete estática do "Hoje" não chegou a ser feita: a validação
+      visual acabou acontecendo a cada PR, pelas capturas do smoke em navegador
+      real — que é a mesma proteção que `docs/LEARNINGS.md` cobrou na paleta, por
+      um caminho mais barato. Revisão de UX que originou o plano feita em
+      2026-09-02, revalidada contra a `refactor-structure` depois da entrada da
+      aba Pessoas.
+- [x] **Fase 1 — correção e carga** — entregue e em produção na v6.2.0.
       `LockService` em aprovar/publicar/reverter — hoje duas aprovações
       simultâneas do mesmo rascunho publicam o item duas vezes, sem erro em log
       nenhum; `CacheService` na leitura pública com invalidação explícita;
@@ -65,7 +116,7 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       web. **Fora do PR:** o manifesto (módulo → versão) foi descartado — com a
       chamada em lote ele não reduz execução nenhuma, só payload, e não paga a
       complexidade. Ver a nota no ADR-0008.
-- [~] **Fase 2 — casca e arquitetura** — entregue em três PRs, aguardando revisão.
+- [x] **Fase 2 — casca e arquitetura** — entregue em três PRs, em produção na v6.2.0.
       Smoke Playwright da tela **antes** de qualquer mudança — hoje o
       `ContentDashboard.html` não tem teste nenhum; quebra do arquivo em includes
       do `HtmlService` como primeiro commit, mecânico; trilho escuro/glass com os
@@ -119,8 +170,10 @@ prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.
       lista, sem acento, filtrada pelo `ver` da matriz, com duas velocidades
       (destino na tecla, conteúdo depois de 220 ms de silêncio) — e a prévia
       "como o agente vê", que resolve o item no idioma escolhido e nomeia o que
-      falta em vez de mostrar cartão vazio. **PR final:** aba de
-      auditoria restrita, com filtros, paginação e exportação.
+      falta em vez de mostrar cartão vazio.
+      **Correção logo depois:** metade das ações apareciam na auditoria com o
+      nome interno (`role_update`) porque nasceram depois da barra lateral e
+      ninguém traduziu. Só apareceu olhando a tela renderizada.
 
 ## Ideas — to triage
 
@@ -129,6 +182,16 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 - [ ] ...
 
 ## Waiting / blocked
+
+- [ ] **Limpar as versões antigas do projeto Apps Script** — o editor avisou que
+      estamos perto do teto de **200 versões**. Só dá para fazer pela UI:
+      Histórico do projeto → **Excluir versões em massa**. Não existe
+      `projects.versions.delete` na API nem comando no `clasp`, então nenhum
+      passo de CI resolve isso. O diálogo já omite as versões em uso por uma
+      implantação ativa (produção `…kw6hy3Cx6fAg` e dev `…uXP6kvo8l2LA`), então
+      não há risco de derrubar ambiente. O `deploy.yml` já parou de gerar
+      versão em push que não toca em `gas-backend/`, mas isso só segura o
+      crescimento — não desfaz o acumulado.
 
 - [ ] **Criar o gatilho diário de `notifyStaleContentApprovals()`** pelo editor
       do Apps Script (o projeto não cria gatilho por código — mesma nota do
@@ -194,11 +257,17 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
       aba People batem com o cabeçalho que a Central cria quando a aba não
       existe, e passar os olhos na lista de segmentos reais para ver se alguma
       cor de chip ficou ruim. (2026-09-01)
-- [ ] **Publicar a tag `v6.1.0`** — passo 4 do `RELEASE.md`. Produção já está no
-      ar; a tag só publica as notas do GitHub Release (o `release.yml` não faz
-      deploy). Não subiu da sessão que fez o merge porque o proxy de lá bloqueia
-      escrita de tag, tanto no push quanto na API:
+- [ ] **Publicar as tags `v6.1.0` e `v6.2.0`** — passo 4 do `RELEASE.md`. Nos dois
+      casos produção já está no ar; a tag só publica as notas do GitHub Release
+      (o `release.yml` não faz deploy). O link `[6.1.0]` do `CHANGELOG.md` aponta
+      para uma tag que ainda não existe até isso ser feito.
       `git tag -a v6.1.0 dbc6eb5 -m "v6.1.0" && git push origin v6.1.0`
+      `git tag -a v6.2.0 315b13d -m "v6.2.0" && git push origin v6.2.0`
+      **Confirmado nesta sessão:** o bloqueio não é do proxy nem novidade — o
+      push de tag responde 403 enquanto o push de branch para o MESMO host passa.
+      É a credencial do GitHub da sessão que não escreve refs de tag. As duas
+      tags precisam sair de uma máquina com credencial normal; nenhuma delas faz
+      deploy (o `release.yml` só publica notas).
 - [~] **Atalhos do Ctrl+K por agente** — captura no Case Notes + construtor em
       Configurações, persistência em `User_Prefs` (nuvem, cache-first), grupos e
       ranking por uso no palette. ADR em

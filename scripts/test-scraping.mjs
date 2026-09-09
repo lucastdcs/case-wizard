@@ -63,6 +63,9 @@ const igual = {
     clientEmail: 'cliente.teste@example.com',
     advertiserName: 'Ana Teste',
     websiteUrl: 'http://www.exemplo-entregas.com/',
+    advLastName: 'Exemplo',
+    // PII mascarada: só existe depois do clique no unmask (specs/workflow/scraping-rules.md).
+    advPhone: '+55 011999990000',
     // O AM é quem vai no BCC, e nunca é o assignee: no caso real o dono é
     // marco.dias@ e o AM é bianca.alves@, que aparece no To: do e-mail de
     // confirmação e como quem submeteu o Contact Us Form. Esta asserção é a
@@ -113,6 +116,8 @@ async function raspar(pagina, arquivo) {
             clientEmail: dados.clientEmail,
             advertiserName: dados.advertiserName,
             websiteUrl: dados.websiteUrl,
+            advLastName: dados.advLastName,
+            advPhone: dados.advPhone,
             amEmail: dados.amEmail ?? dados.amName,
             internalEmail: dados.internalEmail,
             timezone: dados.timezone,
