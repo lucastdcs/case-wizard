@@ -9,6 +9,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **O selo "Urgente" da lista de casos nunca aparecia** (#398). O card lia
+  `c.availability_1` — que é nome de campo do **formulário**, não chave do objeto
+  de caso que o backend devolve (`availability`, com as três janelas juntas). O
+  `?.` engolia o `undefined` sem erro nem log, então o selo era código morto
+  desde que foi escrito, e a tela ficava indistinguível de "nenhum caso urgente".
+  Agora lê a primeira janela — a de prioridade — e ignora valor inválido.
 - **O idioma parava de chegar como `N/A` na planilha BAU.** Dois defeitos somados
   (#392): `captureLanguage()` comparava com `includes('Language')`, sensível a
   caixa, e o rótulo do CRM é `Business language` com `l` minúsculo — nunca casava;

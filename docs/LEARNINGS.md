@@ -12,6 +12,37 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## `?.` num campo que nunca existiu não é defesa, é código morto silencioso
+
+**Why**: o selo "Urgente" da lista de casos BAU nunca apareceu — em condição
+nenhuma, desde que foi escrito. A guarda era
+`if (c?.status === 'PENDING_TL_CREATION' && c?.availability_1)`, e o backend
+nunca devolveu `availability_1`: aquilo é o nome do **campo do formulário** (os
+três `<input>` de janela), enquanto o objeto de caso traz `availability`, com as
+três janelas numa string só.
+
+O que faz este bug atravessar meses é o `?.`. Sem ele haveria `TypeError` no
+console na primeira renderização. Com ele, a expressão vira `undefined`, o `if`
+não entra, e o card renderiza **corretamente sem o selo** — visualmente
+idêntico a "nenhum caso está urgente". Não há erro, não há log, e ninguém
+reporta a ausência de algo que nunca viu.
+
+O padrão: um nome de campo atravessou a fronteira entre **camadas** (nome de
+input do formulário → chave do objeto que vem da API) sem ninguém checar se ele
+existe do outro lado. É primo do learning do `advEmail` abaixo, mas o sintoma é
+o oposto: lá o campo faltava na origem, aqui ele existe nas duas pontas com
+nomes diferentes.
+
+**When to apply**: ao ler qualquer coisa de um objeto vindo do backend
+(`c.algumaCoisa`), confira o nome contra o que a função do Apps Script **monta**
+— `getAgentCases`, `getPendingBAUCases`, `getWeeklyHistory` — e não contra o que
+o formulário chama. E desconfie de `?.` em condição de exibição: se o campo não
+existir, o recurso simplesmente não aparece, o que é o modo de falha mais caro
+de descobrir. Quando a guarda controla algo **visível**, prefira falhar alto no
+desenvolvimento a proteger com `?.` um caminho que deveria sempre ter valor.
+
+---
+
 ## Raspagem do CRM: compare rótulo sem caixa e leia o valor pelo `<sanitized-content>`
 
 **Why**: o idioma chegava `N/A` em toda escalação BAU, por meses. `captureLanguage()`

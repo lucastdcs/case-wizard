@@ -872,10 +872,20 @@ export function initBAUForm() {
 
         let slaBadge = '';
         let pulseClass = '';
-        if (c?.status === 'PENDING_TL_CREATION' && c?.availability_1) {
-            const availDate = new Date(c.availability_1);
+        // A janela de prioridade é a PRIMEIRA de `availability`, que vem da
+        // planilha como as três opções juntas ("janela | janela | janela").
+        // Antes isto lia `c.availability_1`, que é nome de campo do FORMULÁRIO e
+        // nunca existiu no objeto de caso — o `?.` engolia o undefined e o selo
+        // era código morto, indistinguível de "nenhum caso urgente" (#398).
+        //
+        // Desde o ADR-0010 a janela carrega fuso, então `new Date()` devolve o
+        // instante certo; linhas antigas, sem fuso, caem no fuso de quem lê,
+        // que é o comportamento que elas sempre tiveram.
+        const janelaPrioritaria = String(c?.availability || '').split('|')[0].trim();
+        if (c?.status === 'PENDING_TL_CREATION' && janelaPrioritaria) {
+            const availDate = new Date(janelaPrioritaria);
             const now = new Date();
-            if (availDate <= now || (availDate - now) < 3600000 * 2) {
+            if (!isNaN(availDate.getTime()) && (availDate <= now || (availDate - now) < 3600000 * 2)) {
                 slaBadge = `<span class="bau-sla-badge">${bt('urgent')}</span>`;
                 pulseClass = 'bau-pulse-attention';
             }
