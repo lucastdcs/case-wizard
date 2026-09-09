@@ -26,9 +26,14 @@ export const RELEASE_NOTES = {
             text: "Antes você digitava o horário do cliente e o campo não guardava de onde ele era — quem lia depois adivinhava. Agora o fuso é escolhido junto com a data, e a hora virou uma lista em 24h: não tem mais AM/PM para trocar sem perceber. Os fusos dos Estados Unidos entraram (inclusive Arizona, que não faz horário de verão), e a tela mostra ao lado quanto dá em Brasília."
         },
         {
-            icon: "✍️",
-            title: "Menos campo para preencher à mão",
-            text: "Sobrenome e telefone do anunciante passam a ser capturados da página junto com o resto, e aparecem para você editar quando a captura falha. O idioma parou de ir como \"N/A\": ele nasce no idioma que você atende e continua trocável caso este atendimento fuja da regra. E quando a liderança aprova seu caso, o e-mail agora diz qual caso foi criado, em vez de só avisar que foi."
+            icon: "🔤",
+            title: "A captura parou de falhar com a tela traduzida",
+            text: "Se o tradutor do CRM estivesse ligado, 7 dos 10 campos voltavam vazios em silêncio — anunciante virava \"Cliente\", site em branco, fuso nulo — e você preenchia tudo à mão sem saber por quê. Os campos agora são reconhecidos em português, espanhol e inglês. Junto: sobrenome e telefone do anunciante passaram a ser capturados, e o idioma parou de ir como \"N/A\"."
+        },
+        {
+            icon: "📧",
+            title: "O BCC vai para o AM certo",
+            text: "O e-mail em cópia oculta estava indo para um endereço montado a partir do campo de busca do cabeçalho — que nem sempre é uma pessoa de verdade. Agora o AM é resolvido pelo histórico do caso, e nunca é confundido com o dono do caso."
         },
         {
             icon: "✅",

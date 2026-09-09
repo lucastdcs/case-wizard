@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.3.0] - 2026-09-09
+
 ### Fixed
 - **Raspagem do CRM na tela traduzida.** O tradutor do CRM traduz rótulos *e*
   valores, e a raspagem casava rótulo por texto em inglês: numa captura real da
@@ -30,18 +32,7 @@ versions follow [Semantic Versioning](https://semver.org/).
   (`contains(text(), 'Phone number')` / `'Family name'`), então voltavam
   vazios na tela traduzida, onde os rótulos são "Número de telefone" e "Nome
   de família". Passam pelo mesmo resolvedor dos demais campos.
-### Added
-- **Contexto do caso e fatos do case log**: estado, SLA, idade, tier, programa
-  e país de cobrança; data/hora/fuso do agendamento e quem foi designado,
-  origem e destino da transferência, motivo do cancelamento e do descarte.
-  Tudo já estava na tela e nada consumia.
-- **`appointmentTasks`** (multivalorado) exposto no `pageData`.
-- **`npm run test:scraping`**: trava a raspagem contra duas capturas reais da
-  mesma tela — uma traduzida e uma no idioma original. 46 asserções.
 
-## [6.3.0] - 2026-09-09
-
-### Fixed
 - **O selo "Urgente" da lista de casos nunca aparecia** (#398). O card lia
   `c.availability_1` — que é nome de campo do **formulário**, não chave do objeto
   de caso que o backend devolve (`availability`, com as três janelas juntas). O
@@ -90,6 +81,14 @@ versions follow [Semantic Versioning](https://semver.org/).
   versões em massa): não existe `projects.versions.delete` na API.
 
 ### Added
+- **Contexto do caso e fatos do case log**: estado, SLA, idade, tier, programa
+  e país de cobrança; data/hora/fuso do agendamento e quem foi designado,
+  origem e destino da transferência, motivo do cancelamento e do descarte.
+  Tudo já estava na tela e nada consumia.
+- **`appointmentTasks`** (multivalorado) exposto no `pageData`.
+- **`npm run test:scraping`**: trava a raspagem contra duas capturas reais da
+  mesma tela — uma traduzida e uma no idioma original. 50 asserções.
+
 - **Telefone do anunciante** (#395). É PII mascarada: o valor não existe no DOM
   até o clique no unmask, e não tem marca óbvia como o `@` do e-mail — o
   reconhecimento é por dígitos, descartando explicitamente o rótulo `Phone` que o
