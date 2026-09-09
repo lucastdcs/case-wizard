@@ -2,7 +2,9 @@
 import { fetchUserProfile } from './data-service.js';
 import { esperar } from './dom-utils.js';
 import { lerCampo, lerCampoTodos, acharRotulo } from './crm-labels.js';
-import { resolveAM } from './am-resolver.js';
+import { resolveAM, ldapLogado } from './am-resolver.js';
+import { getCaseContext } from './case-context.js';
+import { getCaseLogFacts } from './case-log-parser.js';
 
 // Variável que guarda o nome para usar nos emails depois
 let cachedAgentName = "";
@@ -48,38 +50,61 @@ export async function ensureOriginalLanguage() {
 }
 
 // --- 1. SHERLOCK HOLMES (Captura Silenciosa do Nome do Agente) ---
+//
+// Duas coisas diferentes saem daqui, e elas têm custos diferentes:
+//
+//   - a IDENTIDADE (LDAP/e-mail), que o CRM já entrega de graça no
+//     aria-label do botão da conta e na URL da foto;
+//   - o NOME DE EXIBIÇÃO, que só existe depois de abrir o menu de perfil
+//     (com o menu fechado, <material-popup class="profile-popup"> vem vazio).
+//
+// Antes, as duas dependiam de abrir o menu — então uma falha ali levava
+// junto o e-mail, e com ele o BCC e o carregamento do perfil. Agora a
+// identidade é resolvida primeiro e sem clique; o menu continua sendo aberto
+// só pelo nome, que é o que dá personalidade à animação de entrada.
 export async function captureNameWithMagic() {
     // Se já temos nome E email, retorna rápido
     if (cachedAgentName && cachedAgentEmail) return cachedAgentName;
+
+    // Identidade primeiro, sem tocar na tela.
+    const ldap = ldapLogado();
+    if (ldap && !cachedAgentEmail) {
+        cachedAgentEmail = `${ldap}@google.com`;
+    }
+
+    // Primeiro nome derivado do LDAP ("marco.dias" -> "Marco"). É o que a
+    // saudação usa se o menu não abrir: melhor que devolver o LDAP cru ou
+    // um "Consultor" genérico.
+    const nomeDoLdap = ldap
+        ? ldap.split(/[._-]/)[0].replace(/^./, (c) => c.toUpperCase())
+        : null;
 
     try {
         const btn = document.querySelector('profile-icon material-button') ||
             document.querySelector('a[aria-label*="Account"]');
 
-        if (!btn) return "Agente";
+        if (!btn) {
+            cachedAgentName = nomeDoLdap || "Consultor";
+            return cachedAgentName;
+        }
 
         // Abre o menu
         btn.click();
         await esperar(150); // Tempo para o Angular renderizar o menu
 
-        let name = "Consultor";
+        let name = nomeDoLdap || "Consultor";
 
         // 1. Captura o NOME
         const elName = document.querySelector('profile-details .name');
         if (elName) {
             const fullName = elName.textContent.trim();
-            name = fullName.split(' ')[0];
-            name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-        } else {
-            // Fallback pela imagem (LDAP)
-            const img = document.querySelector('profile-details img');
-            if (img && img.src.includes('/photos/')) {
-                const ldap = img.src.match(/\/photos\/([^\?]+)/)[1];
-                name = ldap.charAt(0).toUpperCase() + ldap.slice(1);
+            const primeiro = fullName.split(' ')[0];
+            if (primeiro) {
+                name = primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase();
             }
         }
 
-        // 2. Captura o EMAIL (NOVO) 📧
+        // 2. Captura o EMAIL (o do menu é a fonte mais confiável do domínio)
         const elEmail = document.querySelector('profile-details .email');
         if (elEmail) {
             cachedAgentEmail = elEmail.textContent.trim();
@@ -95,7 +120,8 @@ export async function captureNameWithMagic() {
 
     } catch (e) {
         console.warn("Sherlock falhou:", e);
-        return "Consultor";
+        cachedAgentName = nomeDoLdap || "Consultor";
+        return cachedAgentName;
     }
 }
 
@@ -284,7 +310,12 @@ export function captureLanguage() {
 
 export function captureSpeakeasyID() {
     try {
-        // 1. TENTATIVA PADRÃO: Buscar pelas Labels Estruturadas
+        // Só pelas labels estruturadas. A varredura de .preview que existia
+        // aqui não tinha como funcionar: o servidor trunca o preview do case
+        // log em ~152 caracteres (termina com "..." literal), e um
+        // P\\d{15,25} praticamente nunca cabe. Quem acha o SE ID de verdade
+        // é o botão de busca (notes/automation/case-log-scraper.js), que
+        // expande a mensagem antes de ler.
         const labels = Array.from(document.querySelectorAll('.data-pair-label, .form-label'));
         const seLabel = labels.find(el =>
             el.textContent.includes('Speakeasy ID') ||
@@ -295,22 +326,10 @@ export function captureSpeakeasyID() {
             const content = parent.querySelector('.data-pair-content') || parent.nextElementSibling;
             if (content && content.textContent.trim()) return content.textContent.trim();
         }
-
-        // 2. TENTATIVA AVANÇADA (O Regex): Buscar varrendo blocos de texto e notas
-        const regexID = /Speakeasy.*?(P\d{15,25})/i;
-        const textAreas = Array.from(document.querySelectorAll('textarea, .preview, .message-body, .notes-content'));
-        
-        for (let i = textAreas.length - 1; i >= 0; i--) {
-            const text = textAreas[i].value || textAreas[i].innerText || "";
-            const match = text.match(regexID);
-            if (match && match[1]) {
-                return match[1];
-            }
-        }
-    } catch (e) { 
-        console.warn("Erro ao capturar SE ID:", e); 
+    } catch (e) {
+        console.warn("Erro ao capturar SE ID:", e);
     }
-    
+
     return "N/A";
 }
 
@@ -378,6 +397,11 @@ export async function getPageData() {
     const amName = captureAMName(am);
     const timezone = captureTimezone();
 
+    // Contexto do cabeçalho e fatos do case log. Ambos já estavam na tela e
+    // nada consumia: leitura direta, sem clique e sem depender de idioma.
+    const caseContext = getCaseContext();
+    const caseLog = getCaseLogFacts();
+
     const caseId = await getCaseId();
     const salesProgram = captureSalesProgram();
     const language = captureLanguage();
@@ -405,6 +429,8 @@ export async function getPageData() {
         amEmail: am.email,
         amOrigem: am.origem,
         appointmentTasks: appointmentTasks,
+        caseContext: caseContext,
+        caseLog: caseLog,
         timezone: timezone,
         agentName: getAgentName(),
         agentEmail: getAgentEmail(),

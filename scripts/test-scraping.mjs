@@ -65,10 +65,35 @@ const igual = {
     websiteUrl: 'http://www.exemplo-entregas.com/',
     // O AM é quem vai no BCC, e nunca é o assignee: no caso real o dono é
     // marco.dias@ e o AM é bianca.alves@, que aparece no To: do e-mail de
-    // confirmação e como quem submeteu o Contact Us Form.
+    // confirmação e como quem submeteu o Contact Us Form. Esta asserção é a
+    // que trava a regra de negócio: se algum dia amEmail voltar igual ao
+    // assignee, o BCC está indo para a pessoa errada.
     amEmail: 'bianca.alves@google.com',
     internalEmail: 'bianca.alves@google.com',
+
+    // Cabeçalho do caso (debug-id, não depende de idioma).
+    'caseContext.estado': 'Finished',
+    'caseContext.slaTexto': 'SLA met',
+    'caseContext.tier': 'Silver',
+    'caseContext.paisCobranca': 'Brazil',
+    'caseContext.assignee': 'marco.dias@',
+
+    // Fatos do case log, tudo dentro do preview truncado em ~152 chars.
+    'caseLog.agendamento.data': 'September 10',
+    'caseLog.agendamento.hora': '9:00AM',
+    'caseLog.agendamento.timezone': 'Brazil/East',
+    'caseLog.agendamento.designado': 'marco.dias@google.com',
+    'caseLog.transferencia.para': 'Technical Solutions-PT-Cognizant',
+    'caseLog.descarte.motivo': 'Abandoned',
+    'caseLog.cancelamento.motivo': 'AutoCanceled, All Pending, InitialAppointment',
+    // O AppointmentId cai fora do preview truncado; só existe se a mensagem
+    // for expandida, e este parser não expande nada por conta própria.
+    'caseLog.cancelamento.appointmentId': null,
 };
+
+// Lê "a.b.c" no objeto raspado.
+const porCaminho = (obj, caminho) =>
+    caminho.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
 
 const porVariante = {
     timezone: { original: 'Brazil/East', traduzida: 'Brasil/Leste' },
@@ -93,6 +118,8 @@ async function raspar(pagina, arquivo) {
             timezone: dados.timezone,
             salesProgram: dados.salesProgram,
             language: dados.language,
+            caseContext: dados.caseContext,
+            caseLog: dados.caseLog,
         };
     });
 }
@@ -111,7 +138,7 @@ const linhas = [];
 
 for (const [campo, esperado] of Object.entries(igual)) {
     for (const variante of Object.keys(VARIANTES)) {
-        const valor = obtido[variante][campo];
+        const valor = porCaminho(obtido[variante], campo);
         const ok = valor === esperado;
         if (!ok) falhas.push(`${campo} [${variante}]: esperado ${JSON.stringify(esperado)}, veio ${JSON.stringify(valor)}`);
         linhas.push([ok, campo, variante, valor, esperado]);
@@ -129,7 +156,7 @@ for (const [campo, esperados] of Object.entries(porVariante)) {
 for (const [ok, campo, variante, valor, esperado] of linhas) {
     const marca = ok ? 'ok  ' : 'FALHA';
     const detalhe = ok ? String(valor) : `${JSON.stringify(valor)}  (esperado ${JSON.stringify(esperado)})`;
-    console.log(`${marca} ${campo.padEnd(16)} ${variante.padEnd(10)} ${detalhe}`);
+    console.log(`${marca} ${campo.padEnd(36)} ${variante.padEnd(10)} ${detalhe}`);
 }
 
 const total = linhas.length;
