@@ -8,7 +8,33 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Raspagem do CRM na tela traduzida.** O tradutor do CRM traduz rótulos *e*
+  valores, e a raspagem casava rótulo por texto em inglês: numa captura real da
+  tela, 7 das 10 capturas voltavam vazias — nome do anunciante caía no literal
+  "Cliente", site vazio, e-mail do cliente e fuso `null`, tudo em silêncio. Os
+  campos agora são resolvidos por rótulo normalizado (PT/ES/EN) e por
+  igualdade, o que também desfaz a disputa entre "Sales program" e "Program"
+  (o tier de suporte).
+- **BCC ia para um endereço construído do e-mail do cliente.** A captura do
+  e-mail interno lia o campo de *busca de cliente* do cabeçalho e colava
+  `@google.com` no valor. O AM — que é quem vai no BCC, e nunca é o dono do
+  caso — passa a ser resolvido pelo case log (ver ADR-0010).
+- **CID podia vir de qualquer número de 10 dígitos da tela.** O fallback
+  varria `body.innerText`; agora só lê pelo rótulo.
+- **Case ID dependia só da URL**, embora a tela mostre mais de um (o histórico
+  de interações lista casos antigos). Passa a ler `[debug-id="case-id"]`.
+- **Identidade do agente dependia de abrir o menu de perfil.** Uma falha ali
+  levava junto o e-mail, e com ele o BCC e o carregamento do perfil.
+
 ### Added
+- **Contexto do caso e fatos do case log**: estado, SLA, idade, tier, programa
+  e país de cobrança; data/hora/fuso do agendamento e quem foi designado,
+  origem e destino da transferência, motivo do cancelamento e do descarte.
+  Tudo já estava na tela e nada consumia.
+- **`appointmentTasks`** (multivalorado) exposto no `pageData`.
+- **`npm run test:scraping`**: trava a raspagem contra duas capturas reais da
+  mesma tela — uma traduzida e uma no idioma original. 46 asserções.
 - **Prévia "como o agente vê"** (fase 5). O editor mostra **campos**; o agente lê
   **texto**. Entre os dois cabe o erro que ninguém pega revisando o formulário: a
   descrição em espanhol que ficou em português, o passo do roteiro que só faz

@@ -16,7 +16,31 @@ This file differs from the long-term roadmap: it describes what is happening **n
       em 2026-09-02, revalidada contra a `refactor-structure` depois da entrada
       da aba Pessoas.
 
+## Done (esta sessão)
+
+- [x] **Auditoria e correção da raspagem do CRM.** Rodando as funções reais
+      contra uma captura real da tela, 7 das 10 capturas voltavam vazias — a
+      tela estava traduzida e a raspagem casava rótulo em inglês. Corrigido
+      via `crm-labels.js` (rótulo normalizado PT/ES/EN, por igualdade),
+      `am-resolver.js` (o AM do BCC vem do case log, não do assignee —
+      ADR-0010), CID só por rótulo, case ID por `debug-id`, identidade sem
+      abrir o menu de perfil. Novos: `case-context.js` e `case-log-parser.js`.
+      Travado por `npm run test:scraping` (8/20 → 46/46 asserções).
+
 ## Up next
+
+- [ ] **Consumir `appointmentTasks`.** Já exposto no `pageData` (multivalorado),
+      sem consumidor. A ideia mais valiosa é usá-lo para pré-selecionar script
+      de call e template de nota, mas isso depende de uma tabela
+      task → script/template que é regra de negócio da operação.
+- [ ] **Exibir o contexto do caso e os fatos do log** em algum lugar da UI
+      (`caseContext` e `caseLog` já vêm no `pageData`, ninguém lê ainda).
+- [ ] **Histórico do anunciante**: o Interaction History lista os casos
+      anteriores; daria para avisar "este cliente já abriu N casos". Não
+      implementado por falta de consumidor definido.
+- [ ] **Telemetria de captura**: registrar qual estratégia resolveu cada campo
+      (`debug-id` / rótulo / fallback) para ver o CRM mudando antes de a nota
+      sair errada. `amOrigem` já faz isso para o AM.
 
 Plano em seis fases da Central de Conteúdo, em ordem de dependência (não de
 prioridade). Cada fase é um ou mais PRs contra `refactor-structure`.

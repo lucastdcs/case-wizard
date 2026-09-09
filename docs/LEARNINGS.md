@@ -12,6 +12,64 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Tela do CRM traduzida: nunca case rótulo por texto em um idioma só
+
+**Why**: a raspagem casava `textContent.includes('Given name')`,
+`includes('Contact email')`, `includes('Customer Time Zone')`. O tradutor do
+CRM traduz **rótulo e valor** — "Given name" vira "Nome dado", `cognizant`
+vira `ciente`, `umm_scaled` vira `escala umm`. Rodando as funções reais contra
+uma captura real da tela (traduzida), **7 das 10 capturas voltavam vazias**: o
+nome do anunciante caía no literal `"Cliente"`, o site vinha `""`, e-mail do
+cliente e fuso vinham `null`. Ninguém tinha percebido porque o defeito é
+silencioso: o campo fica vazio, não dá erro.
+
+Três armadilhas relacionadas, todas confirmadas na mesma captura:
+- casar com `includes` deixa "Sales program" (formulário) e "Program" (tier de
+  suporte, ex.: `Silver`) competindo — quem vence depende da ordem do DOM;
+- `captureLanguage` usava `includes('Language')` com L maiúsculo, e o rótulo
+  real é `Business language`;
+- `innerText` devolve vazio para o que está atrás do "More" (`.below-fold` vem
+  num container `hidden`); `textContent` lê.
+
+**When to apply**: ao ler qualquer campo da tela do CRM. Prefira `debug-id`
+(o tradutor não toca nessa área). Quando só houver rótulo, use
+`crm-labels.js`: compara **normalizado** (sem acento/caixa) e por
+**igualdade**, não por `includes`. E rode `npm run test:scraping`, que roda
+nas duas variantes.
+
+## Preview do case log é truncado em ~152 caracteres pelo servidor
+
+**Why**: `captureSpeakeasyID()` varria `.preview` atrás de `P\d{15,25}` e
+nunca achava. O preview de cada mensagem vem cortado pelo servidor,
+terminando com `...` literal — um ID longo praticamente não cabe. Pior: um
+padrão frouxo devolve o **pedaço** como se fosse o valor inteiro. Foi o que
+aconteceu com o `AppointmentId`, que fica logo depois do motivo do
+cancelamento: `(AppointmentId= 5962040...` fazia um `\d+` retornar `5962040`
+como se fosse o ID — um valor que parece válido e não é, que é pior que vazio.
+
+**When to apply**: ao extrair qualquer coisa do case log sem expandir a
+mensagem. Assuma ~152 caracteres. Se o dado pode cair depois do corte, ancore
+o padrão num delimitador que só existe no texto completo (para o
+`AppointmentId`, o `)` de fechamento) — assim, truncado, ele devolve `null` em
+vez de mentir. Quem precisa do texto inteiro expande antes
+(`notes/automation/case-log-scraper.js`).
+
+## O AM (que vai no BCC) não é o assignee
+
+**Why**: `captureInternalEmail()` lia o input `debug-id="account-id-input"`,
+que é o campo de **busca de cliente** do cabeçalho, e colava `@google.com` no
+que achasse — podendo mandar BCC para um endereço construído a partir do
+e-mail do cliente. Trocar pelo `[debug-id="assignee"]` parecia a correção
+óbvia e também estaria errado: o assignee é o **dono do caso**; o BCC é o
+**AM**, outra pessoa (na captura real, `marco.dias@` vs `bianca.alves@`).
+
+**When to apply**: sempre que precisar do AM. Use `resolveAM()`
+(`am-resolver.js`), que resolve pelo case log e devolve `null` quando não tem
+certeza. Não substitua por assignee nem por "o primeiro
+`<internal-user-info>`" — a tela lista 55 contatos com o mesmo papel. Ver
+ADR-0010.
+
+
 ## Campo referenciado em todo lugar menos no `FORM_CONFIG`: procure pelo nome antes de assumir bug de transporte
 
 **Why**: o email do anunciante chegava sempre vazio no `BAU_form_data`. A
