@@ -302,6 +302,60 @@ e texto:
 
 ---
 
+## Catálogo de tasks (`task_screenshots`)
+
+Uma task do Case Notes e, para cada modo de atendimento, os screenshots que o Win
+Criteria exige como evidência. **Um item por task**, `lang: 'ALL'`, tradução no
+próprio valor.
+
+| Campo do item | Conteúdo |
+| :--- | :--- |
+| `key` | Identidade da task (`ads_conversion_tracking`). `^[a-z][a-z0-9_]{2,39}$` |
+| `lang` | Sempre `ALL` — o par PT/ES vive dentro do valor |
+| `label` | O nome da task (o mesmo de `value.name`) |
+| `sortOrder` | Ordem na tela do agente |
+
+```json
+{
+  "name": "Ads Conversion Tracking",
+  "popular": true,
+  "screenshots":    { "implementation": ["Tag criada", "Teste GTM"], "education": [] },
+  "screenshots_es": { "implementation": ["Etiqueta creada", "Prueba GTM"] }
+}
+```
+
+| Função | Params | Quem pode | Resposta |
+| :--- | :--- | :--- | :--- |
+| `checkTaskScreenshots(value)` | valor JSON da task | qualquer papel ativo | `{ ok }` ou `{ ok: false, error }` |
+
+### Regras
+- **A tradução é posicional e do mesmo tamanho da lista base.** `screenshots_es[modo][i]`
+  traduz `screenshots[modo][i]`. Tamanho diferente é **recusado no servidor**: a
+  quantidade de evidências que o Win Criteria exige não muda com o idioma, e um
+  campo a menos em ES é uma nota incompleta que ninguém percebe. Linha em branco
+  quer dizer "sem redação própria" e o agente ES lê o texto original — nunca um
+  campo a menos.
+- **Modo ausente em `screenshots_es` = nenhuma tradução naquele modo**, e é
+  diferente de uma lista vazia. É o que mantém em inglês/português os rótulos que
+  hoje já saem assim para o agente ES.
+- **O que está publicado é o que o agente vê.** O mapa de tradução embutido no
+  bundle (`SCREENSHOT_LABEL_ES`) vale só para o catálogo embutido; numa task vinda
+  da Central ele não é consultado. Sem essa regra, a prévia "como o agente vê" —
+  que não conhece o código do bundle — mentiria, e uma tradução antiga do código
+  sobreviveria a uma correção do rótulo em PT.
+- **A chave não muda depois de criada.** `linkedTask` nos modelos de nota, os
+  rascunhos salvos do agente e os atalhos do Ctrl+K guardam a string. Editar um
+  item com chave diferente da que está no ar é recusado; para trocar, tire do ar
+  e crie outra. Chave repetida entre tasks no ar também é recusada.
+- **Pelo menos um screenshot em um dos modos.** Task sem nenhum não mostra cartão
+  para o agente — publicar isso é publicar nada, achando que publicou.
+- **Rótulo em branco é recusado**: viraria um campo de link sem legenda, e o
+  agente não teria como saber que evidência colar ali.
+- **`popular: true`** põe a task no "Acesso rápido" do agente, antes da busca do
+  catálogo.
+- **Limites:** nome até 60 caracteres (o cartão do agente não cabe mais), rótulo
+  até 300.
+
 ## Busca global (Ctrl+K)
 
 | Função | Params | Quem pode | Resposta |

@@ -78,12 +78,12 @@ const SESSOES = {
         canApprove: true, canManageAccess: true, canManageRoles: true,
         canViewAudit: true, canSelfApprove: true,
         proposableModules: ['links', 'call_script', 'email_template', 'note_template',
-            'tips', 'broadcast', 'bau_availability', 'people'],
+            'task_screenshots', 'tips', 'broadcast', 'bau_availability', 'people'],
     },
     qa: {
         ldap: 'qapessoa', role: 'QA', hasAccess: true,
         canApprove: false, canManageAccess: false, canSelfApprove: false,
-        proposableModules: ['call_script', 'note_template'],
+        proposableModules: ['call_script', 'note_template', 'task_screenshots'],
     },
     wfm: {
         ldap: 'wfmpessoa', role: 'WFM', hasAccess: true,
@@ -97,8 +97,8 @@ const SESSOES = {
 // desenha as casas a partir de `actionsByModule`, em vez de repetir a regra de
 // regime de cada módulo.
 const ACOES = ['view', 'propose', 'approve', 'publish', 'rollback'];
-const MODULOS_MATRIZ = ['links', 'call_script', 'note_template', 'email_template',
-    'tips', 'broadcast', 'bau_availability', 'people'];
+const MODULOS_MATRIZ = ['links', 'call_script', 'note_template', 'task_screenshots',
+    'email_template', 'tips', 'broadcast', 'bau_availability', 'people'];
 const DIRETOS = ['broadcast', 'bau_availability'];
 
 const ACOES_POR_MODULO = MODULOS_MATRIZ.reduce((acc, m) => {
@@ -134,7 +134,8 @@ const MATRIZ = {
             role: 'QA', people: 3, escalation: [],
             permissions: permsDe({
                 links: ['view'], call_script: ['view', 'propose'],
-                note_template: ['view', 'propose'], email_template: ['view'],
+                note_template: ['view', 'propose'], task_screenshots: ['view', 'propose'],
+                email_template: ['view'],
                 tips: ['view'], broadcast: ['view'], bau_availability: ['view'],
             }, {}),
         },
@@ -162,6 +163,33 @@ const ITENS = {
         value: 'Confira o substatus antes de fechar.',
     }],
     call_script: [], email_template: [], note_template: [],
+    // Duas tasks: uma no Acesso rápido e traduzida, outra fora dele e com a
+    // tradução pela metade. É o par que faz a lista ter o que dizer sobre
+    // cobertura de ES — a informação que decide se vale abrir a task.
+    task_screenshots: [
+        {
+            id: 'itm_t1', module: 'task_screenshots', key: 'ads_conversion_tracking',
+            field: '', lang: 'ALL', label: 'Ads Conversion Tracking', version: 1,
+            status: 'live', publishedBy: 'lucaste', publishedAt: '2026-09-01T10:00:00Z',
+            sortOrder: 0, lineage: 'itm_t1',
+            value: JSON.stringify({
+                name: 'Ads Conversion Tracking', popular: true,
+                screenshots: { implementation: ['Tag criada', 'Teste GTM'], education: [] },
+                screenshots_es: { implementation: ['Etiqueta creada', 'Prueba GTM'] },
+            }),
+        },
+        {
+            id: 'itm_t2', module: 'task_screenshots', key: 'ga4_setup',
+            field: '', lang: 'ALL', label: 'Analytics Set Up (GA4)', version: 1,
+            status: 'live', publishedBy: 'lucaste', publishedAt: '2026-09-01T10:00:00Z',
+            sortOrder: 1, lineage: 'itm_t2',
+            value: JSON.stringify({
+                name: 'Analytics Set Up (GA4)', popular: false,
+                screenshots: { implementation: ['Tag GA4 no GTM', 'Tag Assistant', 'GA4 e Ads vinculados'] },
+                screenshots_es: { implementation: ['Etiqueta GA4 en GTM', '', ''] },
+            }),
+        },
+    ],
     // Três avisos que cobrem os três estados da janela: um vigente para sempre,
     // um agendado e um vencido. É o que faz a lista da Central ter o que dizer.
     broadcast: [
@@ -352,7 +380,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
                         ldap: sessao.ldap, role: 'QA', hasAccess: true,
                         canApprove: false, canManageAccess: false, canManageRoles: false,
                         canViewAudit: false, canSelfApprove: false,
-                        proposableModules: ['call_script', 'note_template'],
+                        proposableModules: ['call_script', 'note_template', 'task_screenshots'],
                     }
                     : Object.assign({}, sessao, { role: papel });
                 return Object.assign(base, {
@@ -475,8 +503,9 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
     // sobreviver não é "existem abas", é "escolher um destino mostra um painel
     // e esconde os outros".
     await check('trocar de destino mostra um painel só', async () => {
-        const panes = ['links', 'callscript', 'notes', 'emails', 'tips', 'broadcast', 'bau', 'approvals'];
-        for (const destino of ['tips', 'broadcast', 'links']) {
+        const panes = ['links', 'callscript', 'notes', 'tasks', 'emails', 'tips', 'broadcast',
+            'bau', 'approvals'];
+        for (const destino of ['tips', 'tasks', 'broadcast', 'links']) {
             await page.evaluate((d) => switchTab(d), destino);
             await page.waitForTimeout(120);
             const visiveis = [];
@@ -570,6 +599,120 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         await page.waitForTimeout(150);
         verdade(!(await page.locator('#bc-new-btn').isVisible()),
             'WFM não publica aviso — o botão não deveria aparecer');
+    });
+
+    await page.close();
+}
+
+// ------------------------------------------------------------- tasks (Win Criteria)
+//
+// O que precisa continuar verdadeiro: a lista mostra a cobertura da tradução (é
+// o que decide se vale abrir a task), a chave sai do nome ao criar, é de leitura
+// ao editar, e o desalinhamento entre PT e ES é DITO antes de virar proposta —
+// porque na tela do agente ele é invisível.
+{
+    const page = await abrir({ sessao: 'admin' });
+
+    await check('a lista separa Acesso rápido do resto e diz a cobertura em ES', async () => {
+        await page.evaluate(() => switchTab('tasks'));
+        await page.waitForTimeout(200);
+
+        const texto = await page.locator('#tsk-list').textContent();
+        verdade(/Acesso rápido/.test(texto), 'faltou o grupo do Acesso rápido');
+        verdade(/Catálogo completo/.test(texto), 'faltou o grupo do catálogo');
+        verdade(/Ads Conversion Tracking/.test(texto), 'a task popular deveria aparecer');
+        verdade(/ES ok/.test(texto), 'a task traduzida deveria dizer que está ok');
+        verdade(/ES 1\/3/.test(texto), 'a task com tradução parcial deveria dizer 1/3');
+    });
+
+    await check('task nova: a chave sai do nome, sem inventar formato', async () => {
+        await page.evaluate(() => openTaskEditor(null));
+        await page.waitForTimeout(150);
+
+        await page.fill('#tsk-f-name', 'Ads Teste Automático');
+        await page.waitForTimeout(50);
+        igual(await page.inputValue('#tsk-f-key'), 'ads_teste_automatico', 'chave sugerida');
+    });
+
+    await check('linha de ES sem screenshot ao lado é apontada antes de publicar', async () => {
+        await page.fill('#tsk-pt-implementation', 'Tag criada\nTeste GTM');
+        await page.fill('#tsk-es-implementation', 'Etiqueta creada\nPrueba GTM\nsobrando');
+        await page.waitForTimeout(80);
+
+        const aviso = await page.locator('#tsk-contagem-implementation');
+        verdade(await aviso.evaluate((el) => el.classList.contains('erro')),
+            'a contagem deveria estar marcada como erro');
+        const texto = await aviso.textContent();
+        verdade(/linha 3/.test(texto), 'o aviso precisa dizer QUAL linha: ' + texto);
+
+        // E não deixa passar: enviar desalinhado não pode custar uma viagem ao
+        // servidor para voltar recusado.
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('#tsk-save');
+        await page.waitForTimeout(250);
+        igual(await page.evaluate(() => window.__chamadas.map(c => c.metodo)), [],
+            'nenhuma chamada deveria sair');
+    });
+
+    await check('linha em branco no meio da lista não desloca a tradução', async () => {
+        // O SME cola as duas listas da planilha do Win Criteria, separadores e
+        // tudo. Pareando por número de linha, o branco sai dos dois lados junto —
+        // filtrar só o PT deslocaria todas as traduções seguintes em silêncio.
+        await page.fill('#tsk-pt-implementation', 'Tag criada\n\nTeste GTM');
+        await page.fill('#tsk-es-implementation', 'Etiqueta creada\n\nPrueba GTM');
+        await page.waitForTimeout(80);
+
+        const aviso = await page.locator('#tsk-contagem-implementation');
+        verdade(!(await aviso.evaluate((el) => el.classList.contains('erro'))),
+            'não deveria acusar erro: ' + await aviso.textContent());
+        verdade(/2 screenshots · 2 com redação em ES/.test(await aviso.textContent()),
+            'a contagem deveria ignorar a linha em branco: ' + await aviso.textContent());
+    });
+
+    await check('task nova vira UMA proposta, com as duas listas no valor', async () => {
+        await page.fill('#tsk-pt-implementation', 'Tag criada\nTeste GTM');
+        await page.fill('#tsk-es-implementation', 'Etiqueta creada\n');
+        await page.waitForTimeout(80);
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('#tsk-save');
+        await page.waitForTimeout(400);
+
+        const escritas = await page.evaluate(() => window.__chamadas
+            .filter(c => ['saveContentDraft', 'submitContentDraft', 'saveAndSubmitContentDraft']
+                .includes(c.metodo)));
+        igual(escritas.map(c => c.metodo), ['saveAndSubmitContentDraft'], 'chamadas de escrita');
+
+        const payload = escritas[0].args[0];
+        igual(payload.module, 'task_screenshots', 'módulo');
+        igual(payload.key, 'ads_teste_automatico', 'chave');
+        igual(payload.lang, 'ALL', 'idioma do item');
+
+        const v = JSON.parse(payload.value);
+        igual(v.screenshots.implementation, ['Tag criada', 'Teste GTM'], 'lista base');
+        // A tradução é POSICIONAL: a linha 2 em branco mantém o texto de PT para
+        // o agente ES, e some da lista seria perder o alinhamento.
+        igual(v.screenshots_es.implementation, ['Etiqueta creada', ''], 'tradução alinhada');
+    });
+
+    await check('a chave de uma task no ar é de leitura', async () => {
+        await page.evaluate(() => openTaskEditor('itm_t1'));
+        await page.waitForTimeout(150);
+        verdade(await page.locator('#tsk-f-key').evaluate((el) => el.readOnly),
+            'a chave é identidade: os modelos de nota e os atalhos do agente a guardam');
+        igual(await page.inputValue('#tsk-f-key'), 'ads_conversion_tracking', 'chave do item');
+        await page.evaluate(() => closeModal());
+    });
+
+    await check('a prévia do agente diz qual linha sai sem ES', async () => {
+        await page.evaluate(() => { document.getElementById('lang-global').value = 'ES'; });
+        await page.evaluate(() => verComoAgente('itm_t2'));
+        await page.waitForTimeout(250);
+
+        const texto = await page.locator('#ag-corpo').textContent();
+        verdade(/Etiqueta GA4 en GTM/.test(texto), 'a linha traduzida sai em ES');
+        verdade(/sem ES — sai assim/.test(texto),
+            'a linha sem tradução precisa ser apontada: ' + texto);
+        await page.evaluate(() => closeModal());
     });
 
     await page.close();
@@ -1176,7 +1319,10 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
 
     await check('a matriz desenha um módulo por linha e uma ação por coluna', async () => {
         verdade(await page.locator('#tab-roles').isVisible(), 'a aba deveria aparecer para o ADMIN');
-        igual(await page.locator('.rol-matriz tbody tr').count(), 8, 'linhas (módulos)');
+        // Uma linha por módulo da matriz que o servidor mandou — e não um número
+        // escrito à mão, que envelhece a cada módulo novo.
+        igual(await page.locator('.rol-matriz tbody tr').count(), MODULOS_MATRIZ.length,
+            'linhas (módulos)');
         igual(await page.locator('.rol-matriz thead th').count(), 6, 'colunas (módulo + 5 ações)');
     });
 

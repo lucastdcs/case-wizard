@@ -7,6 +7,19 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Tasks e screenshots do Win Criteria na Central** (módulo
+      `task_screenshots`, aba "Tasks") — entregue, aguardando revisão do PR e a
+      semeadura na planilha real. As 13 tasks e os 126 rótulos de evidência
+      saíram do `TASKS_DB` do bundle (que ficou como fallback embutido, como
+      links e dicas), o espanhol saiu do mapa por frase `SCREENSHOT_LABEL_ES` e
+      virou coluna ao lado da lista base — posicional e do mesmo tamanho —, e
+      criar task nova passou a ter caminho pela tela. ADRs `0012` (o módulo) e
+      `0013` (módulo novo herda o preset nas casas ausentes de `Content_Roles` —
+      sem isso o módulo nascia invisível até para o ADMIN). Testes:
+      `test:tasks` (round-trip, incluindo a prova de que o ES publicado é igual
+      ao do mapa antigo), `test:content` (+20), `smoke:content` (+7) e o novo `smoke:tasks`.
+      **Falta**: rodar `seedTasksNow()` na planilha e conferir na tela do agente
+      (ver "Waiting / blocked").
 - [~] **Feedback dos TLs sobre o form BAU + Dash TL (2026-09-08).** Sete pedidos,
       investigados e abertos como #392–#397. A ordem abaixo é de ataque, não de
       pedido: os dois primeiros já saíram, os do meio dependem de decisão,
@@ -183,6 +196,18 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
+- [ ] **Rodar o `seedTasksNow()` na planilha de verdade** (editor do Apps
+      Script, mesma mecânica de `seedNoteTemplatesNow`). Roda uma vez: se o
+      módulo já tiver item no ar, devolve `skipped` sem duplicar. Depois,
+      confira na aba **Tasks** que as 13 tasks apareceram com o mesmo Acesso
+      rápido de hoje (5), e no app do agente que o cartão de screenshots segue
+      idêntico — em PT e em ES. Enquanto a semeadura não rodar, o agente segue
+      vendo o catálogo embutido, que é o mesmo conteúdo.
+- [ ] **Conferir a permissão do módulo `task_screenshots` na aba Papéis.** Pelo
+      ADR-0013 os quatro papéis herdam o preset (ADMIN/TL propõem e aprovam, QA
+      propõe, WFM só vê), mas a herança nunca foi exercitada numa planilha real
+      — vale abrir a aba Papéis e conferir a linha nova antes de avisar o time
+      de QA que a aba existe.
 - [ ] **Limpar as versões antigas do projeto Apps Script** — o editor avisou que
       estamos perto do teto de **200 versões**. Só dá para fazer pela UI:
       Histórico do projeto → **Excluir versões em massa**. Não existe

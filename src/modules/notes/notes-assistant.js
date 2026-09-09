@@ -6,6 +6,7 @@ import { createNotesPopup, HEADER_DESC } from "./ui/notes-popup.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "./notes-styles.js";
 import { buildDynamicForm } from "./core/form-builder.js";
 import { loadNoteTemplates } from "./data/note-templates-service.js";
+import { loadTasks } from "./data/tasks-service.js";
 import { generateOutputHtml } from "./core/output-generator.js";
 import { createScenariosComponent } from "./components/step-scenarios.js";
 import { createStepTasksComponent } from "./components/step-tasks.js";
@@ -1254,6 +1255,12 @@ export function initCaseNotesAssistant() {
     }, 3000);
 
     document.body.appendChild(popup);
+
+    // Catálogo de tasks e screenshots do Win Criteria publicados na Central. O
+    // seletor já está montado aqui, então o conteúdo que chega precisa repintar
+    // as listas - ver refreshCatalog() em components/step-tasks.js. Repinta a
+    // cada aplicação (cache agora, rede depois) - ver loadTasks().
+    loadTasks(() => stepTasks.refreshCatalog());
 
     // Carrega os modelos de nota publicados na Central. Eles substituem os
     // cenários embutidos in loco, então basta repintar a lista de chips - e o

@@ -320,6 +320,16 @@
         /* O que FALTA é a informação mais útil de uma prévia de tradução. */
         .ag-falta { color: var(--danger); }
 
+        /* Checklist de screenshots da task: numerada porque a ORDEM é o que o
+           agente segue ao colar as evidências. */
+        .ag-lista {
+            margin: 8px 0 0;
+            padding-left: 22px;
+            font-size: 13px;
+            color: var(--text-primary);
+            line-height: 1.75;
+        }
+
         .ag-dica {
             display: flex;
             align-items: center;
@@ -1052,6 +1062,41 @@
             grid-template-columns: 1fr 1fr;
             gap: 0 16px;
         }
+
+        /* Checkbox com rótulo na mesma linha (editor de task). O da matriz de
+           papéis não serve: ali o rótulo é a célula da tabela. */
+        label.chk {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 14px;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        label.chk input[type="checkbox"] {
+            width: 17px;
+            height: 17px;
+            accent-color: var(--gemini-blue);
+            flex: 0 0 auto;
+        }
+
+        /* Lista de screenshots: um por linha, e a caixa de ES ao lado com as
+           MESMAS linhas. O monoespaçado é o que faz as duas colunas casarem
+           visualmente linha a linha — é assim que se enxerga um desalinhamento
+           antes de publicá-lo. */
+        textarea.tsk-lista {
+            min-height: 150px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12.5px;
+            line-height: 1.7;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+
+        .tsk-contagem { margin: 8px 0 0; }
+        .tsk-contagem.erro { color: var(--danger); font-weight: 500; }
 
         @media (max-width: 700px) {
             .grid-2 {

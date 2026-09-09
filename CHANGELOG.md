@@ -8,6 +8,32 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Tasks e screenshots do Win Criteria na Central de Conteúdo** (módulo
+  `task_screenshots`, aba "Tasks"). As 13 tasks do Case Notes e os 126 rótulos de
+  evidência que o Win Criteria exige saíram do `TASKS_DB` do bundle e passaram a
+  ser conteúdo gerenciável: quem conhece a régua publica a mudança, sem PR, sem
+  CI e sem esperar o `clasp deploy`. Inclui o caminho para **criar uma task
+  nova** pela tela — antes só existia editando código. O espanhol dos rótulos,
+  que vivia num mapa por frase invisível a qualquer tela
+  (`SCREENSHOT_LABEL_ES`), virou uma coluna ao lado da lista base: **posicional e
+  do mesmo tamanho**, porque a quantidade de evidências não muda com o idioma, e
+  linha em branco cai no texto original. A lista da Central diz a cobertura da
+  tradução por task ("ES 1/3") e a prévia "como o agente vê" aponta a linha que
+  sai sem espanhol. A chave da task é identidade — modelos de nota, rascunhos
+  salvos e atalhos do Ctrl+K a guardam — e por isso não muda depois de criada. O
+  `TASKS_DB` embutido continua como fallback do primeiro load offline. Ver
+  `docs/decisions/0012-tasks-e-screenshots-na-central.md`.
+
+### Fixed
+- **Módulo novo nascia invisível para todo mundo.** Numa planilha que já tem a aba
+  `Content_Roles`, um módulo acrescentado ao código depois não aparecia em
+  nenhuma linha de papel — e `normalizeRoleMatrix_()` tratava a casa ausente como
+  desmarcada. Nem o ADMIN via a aba, e nada na tela explicava por quê. Casa
+  **ausente** passa a herdar o preset do papel; casa **desmarcada** continua
+  desmarcada, porque é decisão de alguém. Ver
+  `docs/decisions/0013-modulo-novo-herda-o-preset.md`.
+
 ## [6.3.0] - 2026-09-09
 
 ### Fixed
@@ -324,6 +350,13 @@ versions follow [Semantic Versioning](https://semver.org/).
   `gas-backend/Código.js` — apontando para o form novo.
 - **Crédito de autoria em formato único.** Convivia `@lucaste`, `lucaste@` e
   `by lucaste@`. Passou a sair de `AUTHOR_CREDIT` / `CW_AUTHOR_CREDIT`.
+### Security
+- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
+  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
+  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
+  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
+  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
+  a mesma coisa é como um deles fica para trás.
 
 ### Changed
 - **O botão de desativar acesso passou a aparecer também para si mesmo.** A

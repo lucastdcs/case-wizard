@@ -244,7 +244,7 @@ check('ADMIN concede acesso a um QA', () => {
     const s = api.getContentSession();
     eq(s.role, 'QA');
     eq(s.canApprove, false);
-    eq(s.proposableModules, ['call_script', 'note_template']);
+    eq(s.proposableModules, ['call_script', 'note_template', 'task_screenshots']);
   });
 });
 
@@ -927,6 +927,197 @@ check('ES ainda não tem a seção de Tag Support (lacuna conhecida)', () => {
 
   eq(esMeio.length, 0, 'ES segue sem passos de Tag Support:');
   if (!ptMeio.length) throw new Error('PT deveria ter a seção de Tag Support');
+});
+
+console.log('\n--- Catálogo de tasks (screenshots do Win Criteria) ---');
+
+const taskValue = (over) => JSON.stringify(Object.assign({
+  name: 'Nova Task',
+  popular: false,
+  screenshots: { implementation: ['Tag criada', 'Teste GTM'], education: [] }
+}, over || {}));
+
+check('QA propõe task (o Win Criteria é matéria de SME)', () => {
+  as('quality1', () => {
+    const r = api.saveContentDraft({
+      module: 'task_screenshots', key: 'ads_teste_novo', lang: 'ALL',
+      label: 'Nova Task', value: taskValue()
+    });
+    if (!r.draftId) throw new Error('rascunho não criado');
+    api.discardContentDraft(r.draftId);
+  });
+});
+
+check('WFM NÃO propõe task', () => {
+  as('wfm1', () => {
+    throws(() => api.saveContentDraft({
+      module: 'task_screenshots', key: 'ads_teste_novo', lang: 'ALL',
+      label: 'X', value: taskValue()
+    }), /não edita o módulo/);
+  });
+});
+
+check('chave fora do formato é recusada', () => {
+  ['Ads Teste', 'AdsTeste', 'ab', 'ads-teste', '1ads', ''].forEach((chave) => {
+    throws(() => api.saveContentDraft({
+      module: 'task_screenshots', key: chave, lang: 'ALL',
+      label: 'X', value: taskValue()
+    }), /Chave de task inválida/, 'chave "' + chave + '":');
+  });
+});
+
+check('task sem screenshot nenhum é recusada', () => {
+  // Publicar isso é publicar nada: o agente não vê cartão para a task, e quem
+  // publicou acha que publicou.
+  throws(() => api.saveContentDraft({
+    module: 'task_screenshots', key: 'ads_vazia', lang: 'ALL', label: 'X',
+    value: taskValue({ screenshots: { implementation: [], education: [] } })
+  }), /pelo menos um screenshot/);
+});
+
+check('rótulo em branco na lista é recusado', () => {
+  throws(() => api.saveContentDraft({
+    module: 'task_screenshots', key: 'ads_branco', lang: 'ALL', label: 'X',
+    value: taskValue({ screenshots: { implementation: ['Tag criada', '   '] } })
+  }), /sem descrição/);
+});
+
+check('tradução com mais linhas que a lista base é recusada', () => {
+  // A falha que a coluna de ES esconde: uma linha a mais desloca todas as
+  // traduções seguintes, e o agente ES passa a ler a legenda de outra evidência.
+  throws(() => api.saveContentDraft({
+    module: 'task_screenshots', key: 'ads_desalinhada', lang: 'ALL', label: 'X',
+    value: taskValue({
+      screenshots: { implementation: ['Tag criada', 'Teste GTM'] },
+      screenshots_es: { implementation: ['Etiqueta creada', 'Prueba GTM', 'sobrando'] }
+    })
+  }), /quantidade de evidências é a mesma/);
+});
+
+check('tradução com MENOS linhas também é recusada', () => {
+  throws(() => api.saveContentDraft({
+    module: 'task_screenshots', key: 'ads_faltando', lang: 'ALL', label: 'X',
+    value: taskValue({
+      screenshots: { implementation: ['Tag criada', 'Teste GTM'] },
+      screenshots_es: { implementation: ['Etiqueta creada'] }
+    })
+  }), /quantidade de evidências é a mesma/);
+});
+
+check('linha em branco na tradução é aceita (cai no texto original)', () => {
+  const d = api.saveContentDraft({
+    module: 'task_screenshots', key: 'ads_meia_traducao', lang: 'ALL', label: 'Meia tradução',
+    value: taskValue({
+      screenshots: { implementation: ['Tag criada', 'Teste GTM'] },
+      screenshots_es: { implementation: ['Etiqueta creada', ''] }
+    })
+  });
+  if (!d.draftId) throw new Error('rascunho não criado');
+  api.discardContentDraft(d.draftId);
+});
+
+check('modo de screenshot inventado é recusado', () => {
+  throws(() => api.saveContentDraft({
+    module: 'task_screenshots', key: 'ads_modo', lang: 'ALL', label: 'X',
+    value: taskValue({ screenshots: { implementation: ['A'], treinamento: ['B'] } })
+  }), /Modo de screenshot desconhecido/);
+});
+
+check('checkTaskScreenshots devolve o erro em vez de lançar', () => {
+  eq(api.checkTaskScreenshots(taskValue({ name: '' })).ok, false);
+  eq(api.checkTaskScreenshots('{sem json').ok, false);
+  eq(api.checkTaskScreenshots(taskValue()).ok, true);
+});
+
+check('task aprovada chega ao agente com chave, nome e as duas listas', () => {
+  const d = api.saveContentDraft({
+    module: 'task_screenshots', key: 'ads_nova_task', lang: 'ALL', label: 'Ads Nova Task',
+    value: taskValue({
+      name: 'Ads Nova Task',
+      popular: true,
+      screenshots: { implementation: ['Tag criada', 'Teste Ads'], education: ['Print do painel'] },
+      screenshots_es: { implementation: ['Etiqueta creada', 'Prueba Ads'] }
+    })
+  });
+  api.submitContentDraft(d.draftId);
+  api.approveContentDraft(d.draftId, '');
+
+  const pub = api.handleContentPublicRead({ module: 'task_screenshots' });
+  const meu = pub.items.filter(i => i.key === 'ads_nova_task');
+  eq(meu.length, 1);
+
+  const v = JSON.parse(meu[0].value);
+  eq(v.name, 'Ads Nova Task');
+  eq(v.popular, true);
+  eq(v.screenshots.implementation, ['Tag criada', 'Teste Ads']);
+  eq(v.screenshots.education, ['Print do painel']);
+  eq(v.screenshots_es.implementation, ['Etiqueta creada', 'Prueba Ads']);
+});
+
+check('chave repetida é recusada na criação', () => {
+  throws(() => api.saveContentDraft({
+    module: 'task_screenshots', key: 'ads_nova_task', lang: 'ALL',
+    label: 'Outra com a mesma chave', value: taskValue()
+  }), /Já existe uma task com a chave/);
+});
+
+check('a chave de uma task no ar não muda', () => {
+  // Chave é identidade: os modelos de nota (linkedTask), os rascunhos salvos do
+  // agente e os atalhos do Ctrl+K todos guardam a string. Renomear desligaria
+  // tudo isso em silêncio.
+  const noAr = api.listContentItems('task_screenshots')
+    .filter(i => i.key === 'ads_nova_task')[0];
+
+  throws(() => api.saveContentDraft({
+    module: 'task_screenshots', itemId: noAr.id, key: 'ads_renomeada', lang: 'ALL',
+    label: 'Ads Nova Task', value: taskValue({ name: 'Ads Nova Task' })
+  }), /chave de uma task não muda/);
+
+  // Editar o conteúdo mantendo a chave segue funcionando.
+  const d = api.saveContentDraft({
+    module: 'task_screenshots', itemId: noAr.id, key: 'ads_nova_task', lang: 'ALL',
+    label: 'Ads Nova Task', value: taskValue({ name: 'Ads Nova Task' })
+  });
+  if (!d.draftId) throw new Error('edição legítima foi barrada');
+  api.discardContentDraft(d.draftId);
+});
+
+check('seedTasksNow() migra o catálogo embutido', () => {
+  const freshSS = new FakeSpreadsheet();
+  const freshCtx = vm.createContext({
+    SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
+    MailApp: { sendEmail: () => { } },
+    Logger: { log: () => { } },
+    Utilities: UTILITIES_STUB,
+    handleLog: () => { },
+    console,
+  });
+
+  vm.runInContext(fs.readFileSync(SRC, 'utf8'), freshCtx);
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'ContentSeed_Tasks.js'), 'utf8'),
+    freshCtx
+  );
+
+  const res = freshCtx.seedTasksNow();
+  eq(res.status, 'success');
+  eq(res.seeded, 13, 'as 13 tasks de hoje:');
+
+  const live = freshCtx.listContentItems('task_screenshots');
+  eq(live.length, 13);
+
+  // Toda task semeada tem que passar na própria validação — senão a migração
+  // publicaria algo que a tela recusaria depois.
+  live.forEach(i => {
+    const r = freshCtx.checkTaskScreenshots(i.value);
+    if (!r.ok) throw new Error('task semeada inválida [' + i.key + ']: ' + r.error);
+    const chaves = live.map(x => x.key);
+    eq(new Set(chaves).size, chaves.length, 'uma linha por task:');
+  });
+
+  // Semear duas vezes não duplica.
+  eq(freshCtx.seedTasksNow().status, 'skipped');
 });
 
 // =========================================================
@@ -1979,6 +2170,57 @@ check('uma linha quebrada não derruba os outros papéis', () => {
   api.invalidateContentPermsCache_();
 });
 
+check('módulo ACRESCENTADO ao código herda o preset nas casas ausentes', () => {
+  // ADR-0011. A linha da planilha foi gravada ANTES do módulo existir, então ela
+  // não tem nada a dizer sobre ele. Tratar isso como "tudo desmarcado" faria um
+  // módulo novo nascer invisível para todo mundo — inclusive para o ADMIN, que é
+  // justamente quem precisaria concedê-lo na aba Papéis.
+  const aba = SS.getSheetByName('Content_Roles');
+  const alvo = aba._data.findIndex(r => r[0] === 'ADMIN');
+  const guardado = aba._data[alvo][1];
+
+  const semOModulo = JSON.parse(guardado);
+  delete semOModulo.modules.task_screenshots;
+  aba._data[alvo][1] = JSON.stringify(semOModulo);
+  api.invalidateContentPermsCache_();
+
+  const herdado = matrizAtual('ADMIN');
+  const preset = presetDe('ADMIN');
+  eq(herdado.modules.task_screenshots, preset.modules.task_screenshots,
+    'a casa ausente vale o preset:');
+  eq(api.podeNoModulo_(herdado, 'links', 'propose'), true, 'e o resto não é tocado:');
+
+  aba._data[alvo][1] = guardado;
+  api.invalidateContentPermsCache_();
+});
+
+check('módulo DESMARCADO à mão continua desmarcado (é decisão, não ausência)', () => {
+  // A outra metade da regra: quem desmarcou tudo decidiu isso, e a herança não
+  // pode desfazer a decisão. É a mesma distinção de delta contra invariante que
+  // docs/LEARNINGS.md registra.
+  const aba = SS.getSheetByName('Content_Roles');
+  const alvo = aba._data.findIndex(r => r[0] === 'ADMIN');
+  const guardado = aba._data[alvo][1];
+
+  const fechado = JSON.parse(guardado);
+  fechado.modules.task_screenshots = { view: false, propose: false, approve: false, rollback: false };
+  aba._data[alvo][1] = JSON.stringify(fechado);
+  api.invalidateContentPermsCache_();
+
+  const atual = matrizAtual('ADMIN');
+  eq(api.podeNoModulo_(atual, 'task_screenshots', 'view'), false, 'segue fechado:');
+  eq(api.podeNoModulo_(atual, 'task_screenshots', 'propose'), false);
+
+  aba._data[alvo][1] = guardado;
+  api.invalidateContentPermsCache_();
+});
+
+check('papel criado pela tela não herda nada (não há de quem herdar)', () => {
+  const semPreset = api.normalizeRoleMatrix_({ modules: {}, global: {} }, 'EDITOR');
+  eq(api.podeNoModulo_(semPreset, 'task_screenshots', 'view'), false);
+  eq(api.podeNoModulo_(semPreset, 'links', 'view'), false);
+});
+
 console.log('\n--- Ver como: a prévia nunca concede ---');
 
 check('só quem gerencia papéis pode ver como outro', () => {
@@ -1991,7 +2233,7 @@ check('a prévia devolve a sessão do papel escolhido', () => {
   eq(p.preview, true);
   eq(p.realRole, 'ADMIN', 'a prévia diz de quem ela é:');
   eq(p.ldap, 'lucaste', 'a identidade real não muda:');
-  eq(p.proposableModules, ['call_script', 'note_template']);
+  eq(p.proposableModules, ['call_script', 'note_template', 'task_screenshots']);
   eq(p.canManageAccess, false);
 });
 

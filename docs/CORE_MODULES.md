@@ -4,14 +4,14 @@
 O módulo mais complexo, responsável pela geração de notas padronizadas. Já foi decomposto em subpastas:
 * `core/` — `notes-state.js` (estado do formulário), `form-builder.js` (construção dos campos dinâmicos), `output-generator.js` (montagem do HTML final).
 * `ui/` — `notes-popup.js` (janela/popup).
-* `data/` — `notes-data.js` (templates/tasks/traduções), `screenshot-rules.js`.
+* `data/` — `notes-data.js` (templates/tasks/traduções), `note-templates-service.js` e `tasks-service.js` (o que a Central de Conteúdo publica sobrescreve os embutidos).
 * `components/`, `drafts/`, `automation/` — subcomponentes visuais, sistema de rascunhos e o scraper de Speakeasy ID.
 
 ### Componentes Principais:
-* **`data/notes-data.js`**: O "Banco de Dados". Contém os templates de texto (`SUBSTATUS_TEMPLATES`), tarefas (`TASKS_DB`) e traduções. É aqui que você edita o texto das notas.
+* **`data/notes-data.js`**: O "Banco de Dados" **embutido**. Contém os templates de texto (`SUBSTATUS_TEMPLATES`), o catálogo de tarefas com os screenshots do Win Criteria (`TASKS_DB`) e as traduções. Atenção: os cenários rápidos e o `TASKS_DB` deixaram de ser a fonte da verdade — quem manda é a Central de Conteúdo (módulos `note_template` e `task_screenshots`), e os serviços em `data/` reescrevem essas estruturas no lugar quando o conteúdo publicado chega. Editar aqui só muda o **fallback** do primeiro load offline; para mudar o que o agente vê, publique na Central.
 * **`notes-bridge.js`**: A ponte com o CRM. Contém a função crítica `ensureNoteCardIsOpen`.
     * *Lógica:* Tenta encontrar o botão de "Nova Nota" por ícones ou seletores específicos. Após clicar, entra em um loop de verificação (`while`) monitorando o DOM até que um novo editor de texto (`contenteditable`) apareça na tela.
-* **`components/step-tasks.js`**: O seletor visual de tarefas. Gerencia contadores, seleção de marcas (Ads, Analytics) e exibe inputs condicionais de screenshots.
+* **`components/step-tasks.js`**: O seletor visual de tarefas. Gerencia contadores, seleção de marcas (Ads, Analytics) e exibe inputs condicionais de screenshots. `refreshCatalog()` repinta o Acesso rápido e o acordeão quando o catálogo publicado chega — o componente é montado no boot, antes da rede responder.
 
 ### Fluxo de Geração:
 1.  Usuário seleciona Status/Substatus.

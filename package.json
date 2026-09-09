@@ -13,6 +13,8 @@
     "seed:links": "node scripts/generate-links-seed.mjs",
     "seed:call-script": "node scripts/generate-call-script-seed.mjs",
     "seed:note-fields": "node scripts/generate-note-fields.mjs",
+    "seed:tasks": "node scripts/generate-tasks-seed.mjs",
+    "test:tasks": "node scripts/test-tasks-content.mjs",
     "test:emails": "node scripts/test-email-roundtrip.mjs",
     "seed:emails": "node scripts/generate-email-seed.mjs",
     "test:note-templates": "node scripts/test-note-templates.mjs",
@@ -28,6 +30,7 @@
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",
     "smoke:broadcast": "node scripts/smoke-broadcast.mjs",
     "smoke:content": "node scripts/smoke-content-dashboard.mjs",
+    "smoke:tasks": "node scripts/smoke-tasks.mjs",
     "smoke:people": "node scripts/smoke-people.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },

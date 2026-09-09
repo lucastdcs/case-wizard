@@ -55,8 +55,14 @@ Keep definitions short and precise. The goal: a new developer (or Claude) quickl
 
 ## T
 
+**Task** — Uma implementação que o agente marca na nota (GTM Installation, Ads Conversion Tracking, GA4 Setup…). Cada task carrega a lista de **screenshots** que o Win Criteria exige como evidência, em dois modos: `implementation` (o agente implementou pelo anunciante) e `education` (ensinou o anunciante a implementar). Desde 2026-09 é conteúdo gerenciável pelos SMEs — módulo `task_screenshots` da Central de Conteúdo, aba "Tasks" (ADR-0012) —, e não mais o `TASKS_DB` do bundle, que ficou como fallback embutido. A **chave** da task (`ads_conversion_tracking`) é a identidade que os modelos de nota (`linkedTask`), os rascunhos salvos e os atalhos do Ctrl+K guardam: não muda.
+
 **TL Dashboard** — `gas-backend/TLDashboard.html`, a separate Apps Script HTML Service page (`?page=tl`) used by team leads to review and act on escalated BAU cases. Uses `google.script.run`, not the JSONP router.
 
 **trustedTypes policy** — The browser API the production bookmarklet uses to satisfy the CRM's strict Content Security Policy before injecting the app's `<script>` tag.
+
+## W
+
+**Win Criteria** — A régua de qualidade do atendimento, mantida pelos SMEs numa planilha própria (linkada em Links → "Win Criteria"). Define, por task, quais evidências (screenshots) a nota precisa carregar para o caso ser considerado bem resolvido. O Case Wizard não interpreta a régua: ele exibe os rótulos de evidência publicados na Central e monta um campo de link para cada um.
 
 <!-- Continue alphabetically -->
