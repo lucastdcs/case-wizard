@@ -15,25 +15,25 @@
 // contar uma release por vez (o localStorage guarda uma única versão vista).
 
 export const RELEASE_NOTES = {
-    version: "v6.2.0",
+    version: "v6.3.0",
 
-    title: "Case Wizard v6.2.0",
+    title: "Case Wizard v6.3.0",
 
     slides: [
         {
-            icon: "📢",
-            title: "Aviso velho não fica mais na sua tela",
-            text: "Quem publica um aviso agora pode dizer quando ele começa a aparecer e quando sai do ar. Na prática: o aviso da manutenção de segunda aparece na segunda, e o da instabilidade de ontem some sozinho — em vez de continuar dizendo que um problema já resolvido está acontecendo agora."
+            icon: "🕐",
+            title: "O horário do agendamento agora diz de que fuso ele é",
+            text: "Antes você digitava o horário do cliente e o campo não guardava de onde ele era — quem lia depois adivinhava. Agora o fuso é escolhido junto com a data, e a hora virou uma lista em 24h: não tem mais AM/PM para trocar sem perceber. Os fusos dos Estados Unidos entraram (inclusive Arizona, que não faz horário de verão), e a tela mostra ao lado quanto dá em Brasília."
         },
         {
-            icon: "🔎",
-            title: "Para a liderança: Ctrl+K acha qualquer coisa na Central",
-            text: "A Central ganhou busca global. Ctrl+K, digita, e ela acha o destino e o conteúdo — sem acento, sem lembrar em qual aba o item mora. E cada item publicado agora tem uma prévia \"como o agente vê\", que mostra o texto no idioma do agente e avisa quando falta a tradução."
+            icon: "✍️",
+            title: "Menos campo para preencher à mão",
+            text: "Sobrenome e telefone do anunciante passam a ser capturados da página junto com o resto, e aparecem para você editar quando a captura falha. O idioma parou de ir como \"N/A\": ele nasce no idioma que você atende e continua trocável caso este atendimento fuja da regra. E quando a liderança aprova seu caso, o e-mail agora diz qual caso foi criado, em vez de só avisar que foi."
         },
         {
-            icon: "🛡️",
-            title: "Para a liderança: acessos e histórico agora se resolvem na tela",
-            text: "O que cada papel pode fazer virou uma matriz editável — dá para criar um papel que publica disponibilidade sem tocar no catálogo, sem esperar deploy. E entrou uma aba de auditoria com filtro, período e exportação, mais uma barra de atividade recente com a foto de quem fez cada coisa."
+            icon: "✅",
+            title: "Para a liderança: aprovar agora registra o caso gerado",
+            text: "Ao aprovar uma abertura, o painel pede o ID do caso BAU que você criou no CRM. Ele fica no histórico como link, entra na busca, e vai no e-mail do agente. O histórico também ganhou período — 7, 30 ou 90 dias — e diz na tela até onde ele alcança, já que o backup semanal arquiva os casos finalizados."
         }
     ]
 };

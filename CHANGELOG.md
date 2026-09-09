@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.3.0] - 2026-09-09
+
 ### Fixed
 - **O selo "Urgente" da lista de casos nunca aparecia** (#398). O card lia
   `c.availability_1` — que é nome de campo do **formulário**, não chave do objeto
@@ -584,7 +586,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.2.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...HEAD
+[6.3.0]: https://github.com/lucastdcs/case-wizard/compare/v6.2.0...v6.3.0
 [6.2.0]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...v6.2.0
 [6.1.0]: https://github.com/lucastdcs/case-wizard/compare/v6.0.0...v6.1.0
 [6.0.0]: https://github.com/lucastdcs/case-wizard/releases/tag/v6.0.0
