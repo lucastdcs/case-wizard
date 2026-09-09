@@ -73,7 +73,7 @@ const igual = {
 const porVariante = {
     timezone: { original: 'Brazil/East', traduzida: 'Brasil/Leste' },
     salesProgram: { original: 'umm_scaled', traduzida: 'escala umm' },
-    language: { original: 'Business language', traduzida: 'Linguagem comercial' },
+    language: { original: 'portuguese', traduzida: 'português' },
 };
 
 async function raspar(pagina, arquivo) {
