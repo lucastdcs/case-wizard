@@ -159,6 +159,16 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
+- [ ] **Limpar as versões antigas do projeto Apps Script** — o editor avisou que
+      estamos perto do teto de **200 versões**. Só dá para fazer pela UI:
+      Histórico do projeto → **Excluir versões em massa**. Não existe
+      `projects.versions.delete` na API nem comando no `clasp`, então nenhum
+      passo de CI resolve isso. O diálogo já omite as versões em uso por uma
+      implantação ativa (produção `…kw6hy3Cx6fAg` e dev `…uXP6kvo8l2LA`), então
+      não há risco de derrubar ambiente. O `deploy.yml` já parou de gerar
+      versão em push que não toca em `gas-backend/`, mas isso só segura o
+      crescimento — não desfaz o acumulado.
+
 - [ ] **Criar o gatilho diário de `notifyStaleContentApprovals()`** pelo editor
       do Apps Script (o projeto não cria gatilho por código — mesma nota do
       `Backup.js`). Antes de ligar, rode `listStaleContentApprovals()` e confira

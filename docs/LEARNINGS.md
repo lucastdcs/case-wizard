@@ -12,6 +12,42 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## `clasp deploy` queima uma versão por execução: só promova quando o backend mudar
+
+**Why**: chegou um aviso do Apps Script de que o projeto estava perto das **200
+versões** — o teto rígido por projeto. Passado esse número não se cria mais
+nenhuma versão, o que faz o passo de promoção falhar e derrubar o deploy
+inteiro, frontend junto (o job do frontend declara `needs: deploy-backend-gas`).
+
+A causa estava no `scripts/promote-deployment.sh`: ele roda
+`clasp deploy -i "$DEPLOYMENT_ID"` **sem `-V`**, e nessa forma o `clasp` cria uma
+versão nova a cada execução. Como o job de backend rodava em todo push das duas
+branches, medindo o histórico da `refactor-structure` deu **31 de 63 pushes
+(49%)** que não tocavam em `gas-backend/` e mesmo assim gastavam uma versão para
+republicar um backend idêntico ao que já estava no ar.
+
+O segundo aprendizado é o que *não* dá para fazer: **não existe
+`projects.versions.delete` na API do Apps Script** (o recurso `projects.versions`
+tem só `create`, `get` e `list`), e o `clasp` também não expõe nada. Apagar
+versão é exclusivamente manual, pela UI: **Histórico do projeto → Excluir
+versões em massa**. O diálogo já omite as versões em uso por uma implantação
+ativa, então não há como derrubar produção por ali. `clasp undeploy` **não**
+libera versão — apagar implantação e apagar versão são coisas diferentes.
+
+Guarda que ficou no `deploy.yml`: o `clasp push -f` continua rodando sempre (ele
+mexe no HEAD e não cria versão); só a promoção é condicional. Sem base de
+comparação (branch nova, force-push, `before` fora do clone) o passo **promove**
+— gastar uma versão à toa é barato, deixar a implantação atrás do código é a
+janela de erro que a ordem `needs:` existe para fechar. E o checkout do job de
+backend precisa de `fetch-depth: 0`: o clone raso padrão não tem histórico para
+o diff.
+
+**When to apply**: sempre que um passo de CI chamar `clasp deploy`, `clasp
+version` ou qualquer coisa que crie versão do Apps Script — pergunte primeiro
+"este push mudou o backend?". E quando um deploy começar a falhar na promoção,
+antes de investigar credencial, confira a contagem em Histórico do projeto: o
+teto de 200 se parece com erro de permissão no log.
+
 ## `?.` num campo que nunca existiu não é defesa, é código morto silencioso
 
 **Why**: o selo "Urgente" da lista de casos BAU nunca apareceu — em condição
@@ -80,6 +116,7 @@ mock só tinha a forma `.data-pair-content`, então nenhum teste possível teria
 pego este bug.
 
 ---
+
 
 ## Campo referenciado em todo lugar menos no `FORM_CONFIG`: procure pelo nome antes de assumir bug de transporte
 

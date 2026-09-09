@@ -42,6 +42,19 @@ versions follow [Semantic Versioning](https://semver.org/).
   locale do navegador e **não há atributo que force 24h**. No lugar, data +
   `<select>` de 24h + fuso, com o fuso já pré-selecionado a partir do
   `Customer time zone` do CRM e um eco ao vivo mostrando o equivalente em Brasília.
+- **CI só promove a implantação do Apps Script quando `gas-backend/` muda.**
+  `clasp deploy` sem `-V` cria uma **versão** nova a cada execução, e o Apps
+  Script tem teto de **200 versões por projeto** — atingido o teto, nenhuma
+  versão nova é criada, a promoção falha e leva o deploy inteiro junto, frontend
+  incluído (`needs: deploy-backend-gas`). Metade dos pushes desta branch (31 de
+  63, medidos no histórico) é só de frontend e gastava uma versão para
+  republicar um backend idêntico ao que já estava no ar. O `clasp push -f`
+  continua rodando sempre — ele atualiza o HEAD e não cria versão; só a promoção
+  virou condicional. Sem base de comparação (branch nova, force-push) o passo
+  promove por precaução, e o job de backend passou a fazer checkout com
+  `fetch-depth: 0` porque o clone raso padrão não tem histórico para o diff.
+  Limpar versões antigas continua sendo manual (Histórico do projeto → Excluir
+  versões em massa): não existe `projects.versions.delete` na API.
 
 ### Added
 - **Telefone do anunciante** (#395). É PII mascarada: o valor não existe no DOM
