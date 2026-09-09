@@ -44,6 +44,14 @@ This file differs from the long-term roadmap: it describes what is happening **n
          ler o `Archive_BAU`. Não antes de #333/#334 — o TL Dashboard já travou
          ao vivo, e isso soma uma planilha inteira por chamada.
 
+- [~] **Alerta de volume da fila BAU liberado para a liderança.** A lista de
+      destinatários saiu do código e passa a vir da aba `People`, pela régua de
+      `isOverhead`. **Falta uma ação manual:** rodar
+      `listBAUVolumeAlertRecipients()` pelo editor do Apps Script para conferir
+      quem receberia, e só então `setupBAUVolumeAlertTrigger()` — o gatilho ainda
+      não existe (mesma nota do `Backup.js`: o projeto não cria gatilho por
+      código).
+
 ## Up next
 
 Plano em seis fases da Central de Conteúdo, em ordem de dependência (não de

@@ -27,6 +27,17 @@ versions follow [Semantic Versioning](https://semver.org/).
   quem está atendendo.
 
 ### Changed
+- **O alerta de volume da fila passa a avisar toda a liderança**, e não só uma
+  pessoa. A lista era fixa no código (`["lucaste@google.com"]`, com um comentário
+  "adicione mais emails aqui depois"), o que significava um deploy a cada TL
+  novo. Agora sai da aba `People`, pela **mesma régua que abre o TL Dashboard** —
+  o alerta chama pra ação "Abrir TL Dashboard", então quem não consegue abrir não
+  devia ser chamado. `lucaste` entra sempre, mesmo que a planilha esteja vazia ou
+  ilegível, pra o aviso não sumir junto com ela.
+  ⚠️ Essa régua é permissiva por construção: uma categoria nova que não diga
+  "agent" nem "apprentice" passa a receber sozinha, sem mudança de código. Rode
+  `listBAUVolumeAlertRecipients()` no editor do Apps Script antes de ligar o
+  gatilho — ela mostra a lista sem enviar nada.
 - **O agendamento do BAU passa a carregar fuso, e a hora vira 24h** (#394, ADR-0010).
   A disponibilidade era gravada como `2026-09-10T14:30` — **sem fuso nenhum**. O
   agente digitava o horário local do cliente (é o que o disclaimer manda) e o TL

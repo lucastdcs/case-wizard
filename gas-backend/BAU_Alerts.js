@@ -7,7 +7,57 @@
 // =========================================================
 
 const BAU_VOLUME_ALERT_THRESHOLD = 10;
-const BAU_VOLUME_ALERT_RECIPIENTS = ["lucaste@google.com"]; // adicione mais emails aqui depois
+
+// Quem sempre recebe o alerta, esteja ou não na aba People com papel de
+// liderança. É o dono do projeto: se a planilha ficar vazia, mal preenchida ou
+// ilegível, o alerta ainda chega em alguém em vez de sumir em silêncio.
+const BAU_VOLUME_ALERT_ALWAYS = ["lucaste"];
+
+// Destinatários derivados da aba People, não mais uma lista fixa no código.
+//
+// O critério é o MESMO que abre o TL Dashboard (isOverheadRoleCategory), e não
+// uma segunda régua: o alerta chama pra ação "Abrir TL Dashboard", então quem
+// não consegue abrir não deveria ser chamado, e quem consegue e pode dar vazão
+// à fila deveria. É a mesma lista que getActiveTLs() já usa pra presença.
+//
+// ⚠️ Essa régua é PERMISSIVA por construção (ver db-schema.md): uma categoria
+// nova que não contenha "agent" nem "apprentice" — 'Intern', 'Contractor' —
+// entra sozinha, sem mudança de código, e passa a receber este e-mail. Rode
+// listBAUVolumeAlertRecipients() antes de ligar o gatilho pra ver a lista de
+// verdade; é o mesmo cuidado que listStaleContentApprovals() existe pra dar.
+function getBAUVolumeAlertRecipients() {
+  const ldaps = {};
+  BAU_VOLUME_ALERT_ALWAYS.forEach(function (l) { ldaps[String(l).toLowerCase().trim()] = true; });
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_PEOPLE);
+    if (sheet) {
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        const ldap = String(data[i][0] || "").toLowerCase().trim();
+        if (ldap && isOverheadRoleCategory(data[i][2])) ldaps[ldap] = true;
+      }
+    }
+  } catch (e) {
+    // Falha de leitura não pode zerar o alerta: cai pro BAU_VOLUME_ALERT_ALWAYS,
+    // que é o comportamento de antes desta mudança.
+    console.warn("Aviso: falha ao ler People para o alerta de volume", e);
+  }
+
+  return Object.keys(ldaps).sort().map(function (l) { return l + "@google.com"; });
+}
+
+/**
+ * Leitura de conferência: devolve quem receberia o alerta AGORA, sem enviar
+ * nada. Rode pelo editor do Apps Script antes de ligar o gatilho — o primeiro
+ * disparo não deve surpreender ninguém.
+ */
+function listBAUVolumeAlertRecipients() {
+  const lista = getBAUVolumeAlertRecipients();
+  console.log("Destinatários do alerta de volume BAU (" + lista.length + "):\n" + lista.join("\n"));
+  return lista;
+}
 
 // Roda periodicamente (ver setupBAUVolumeAlertTrigger() abaixo). Conta a fila
 // combinada (criação + descarte pendentes) e manda um alerta só na TRANSIÇÃO
@@ -96,7 +146,7 @@ function sendBAUVolumeAlertEmail(pendingCount, creationCount, discardCount) {
   ].join("\n");
 
   MailApp.sendEmail({
-    to: BAU_VOLUME_ALERT_RECIPIENTS.join(','),
+    to: getBAUVolumeAlertRecipients().join(','),
     subject: pendingCount + " casos aguardando revisão no BAU Central",
     htmlBody: htmlBody,
     body: plainBody,

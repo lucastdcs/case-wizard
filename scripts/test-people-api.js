@@ -14,7 +14,8 @@
 //   - baixa devolve a pessoa ao fallback restritivo, sem privilégio;
 //   - a operação nunca fica sem nenhuma liderança;
 //   - o diretório não sai pela leitura pública (JSONP), em nenhuma hipótese;
-//   - LDAP é identidade validada, não texto livre.
+//   - LDAP é identidade validada, não texto livre;
+//   - o alerta de volume BAU vai para a liderança, e nunca para agentes.
 //
 // Uso: npm run test:people
 
@@ -106,7 +107,11 @@ function reset(people) {
   // A ordem é a do Apps Script: todos os arquivos do projeto no mesmo escopo
   // global. O Código.gs precisa vir antes de reapontarmos handleLog, porque é
   // ele quem declara a função.
-  ['Código.js', 'ContentAPI.js', 'PeopleAPI.js'].forEach((f) => {
+  // BAU_Alerts.js entra porque a lista de quem recebe o alerta de volume é
+  // DERIVADA desta mesma aba People, pela mesma régua de isOverheadRoleCategory.
+  // Ele só declara constantes no topo; o resto (EmailEngine, TL_DASHBOARD_URL)
+  // só é tocado dentro das funções de envio, que este harness não chama.
+  ['Código.js', 'ContentAPI.js', 'PeopleAPI.js', 'BAU_Alerts.js'].forEach((f) => {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx);
   });
   // A auditoria da Central escreve em `Content_Log`, não aqui. handleLog()
@@ -636,6 +641,45 @@ check('a aba People nasce com cabeçalho se não existir', () => {
 
   eq(SS.getSheetByName('People')._data[0], ['LDAP', 'Role', 'Role_Category', 'Segment']);
   eq(peopleRows(), [['novapes', 'Support Agent', 'Agent', 'PT']]);
+});
+
+// ---- Alerta de volume BAU (BAU_Alerts.gs) ----
+//
+// A lista de destinatários deixou de ser fixa no código e passou a sair desta
+// aba. Isso é bom (não precisa de deploy pra incluir um TL novo) e é perigoso
+// pelo mesmo motivo: uma linha errada na planilha vira e-mail para quem não
+// devia. Estes casos são a régua.
+
+check('o alerta de volume vai para a liderança, e não para agentes', () => {
+  reset(TIME_BASE);
+  const lista = api.getBAUVolumeAlertRecipients();
+
+  eq(lista.includes('lucaste@google.com'), true, 'o TL entra:');
+  eq(lista.includes('anaflor@google.com'), false, 'agente NÃO entra:');
+  eq(lista.includes('brunocs@google.com'), false, 'agente ES NÃO entra:');
+  eq(lista.includes('carladm@google.com'), false, 'apprentice NÃO entra:');
+});
+
+check('lucaste recebe o alerta mesmo fora da aba People', () => {
+  // A planilha pode estar vazia, mal preenchida ou ilegível. O alerta não pode
+  // sumir em silêncio junto com ela.
+  reset([]);
+  eq(api.getBAUVolumeAlertRecipients(), ['lucaste@google.com']);
+});
+
+check('lucaste não aparece duas vezes quando também está na planilha', () => {
+  reset(TIME_BASE);
+  const lista = api.getBAUVolumeAlertRecipients();
+  eq(lista.filter((m) => m === 'lucaste@google.com').length, 1);
+});
+
+// A régua de permissão é permissiva por construção (ver db-schema.md): uma
+// categoria nova que não diga "agent" nem "apprentice" entra sozinha. Este caso
+// não reprova esse desenho — ele o deixa VISÍVEL, pra ninguém descobrir por
+// e-mail recebido.
+check('categoria nova de liderança entra sozinha no alerta, sem deploy', () => {
+  reset(TIME_BASE.concat([['novoint', 'Intern', 'Intern', 'PT']]));
+  eq(api.getBAUVolumeAlertRecipients().includes('novoint@google.com'), true);
 });
 
 console.log('\n' + (fail ? '✗' : '✓') + ' ' + pass + ' passaram, ' + fail + ' falharam\n');
