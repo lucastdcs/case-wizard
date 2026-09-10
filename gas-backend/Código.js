@@ -737,6 +737,25 @@ function ensureBAUAdvPhoneColumn(sheet) {
   if (!headerCell.getValue()) headerCell.setValue(BAU_ADV_PHONE_HEADER);
 }
 
+// Texto de uma célula do BAU_form_data, já limpo dos literais que o transporte
+// JSONP deixou gravados antes da correção em `buildQueryString`.
+//
+// O payload viaja como query string, e `encodeURIComponent(null)` devolve a
+// STRING "null" — que `p.campo || ''` não descarta, porque string não-vazia é
+// truthy. O resultado foi o TL Dashboard exibindo `null` num campo de caso.
+//
+// A origem está consertada no front, mas as linhas JÁ GRAVADAS não se curam
+// sozinhas: ficam na planilha até o backup semanal arquivá-las. Esta função é o
+// que faz um caso antigo parar de mostrar `null` para o TL.
+//
+// Só vale para os campos raspados do CRM (fuso, idioma, nome, telefone…), onde
+// "null" nunca é um valor legítimo.
+function celulaTexto(valor) {
+  const texto = String(valor === null || valor === undefined ? "" : valor).trim();
+  if (texto === "null" || texto === "undefined") return "";
+  return texto;
+}
+
 function findRowIndexById(sheet, id) {
   if (!sheet) return -1;
   const data = sheet.getDataRange().getValues();

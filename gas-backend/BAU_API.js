@@ -82,7 +82,7 @@ function getAgentCases(ss, userEmail) {
       // grava só a descrição pura. Desfazemos a mesma mescla aqui, senão o
       // formulário de edição nunca consegue pré-preencher o dropdown de motivo
       // e acaba jogando a string inteira ("Motivo | Descrição") no campo de texto.
-      const rawDescription = String(row[16] || "");
+      const rawDescription = celulaTexto(row[16]);
       const isDiscardFlow = status === 'PENDING_TL_DISCARD' || status === 'DISCARDED';
       let nonImplementationReason = "";
       let description = rawDescription;
@@ -98,23 +98,23 @@ function getAgentCases(ss, userEmail) {
         date: row[1] instanceof Date ? row[1].toISOString() : String(row[1]),
         agentEmail: String(row[2]),
         status: status,
-        caseId: String(row[4] || ""),
-        cid: String(row[5] || ""),
-        seId: String(row[6] || ""),
-        advName: String(row[7] || ""),
-        advLastName: String(row[22] || ""),
-        advPhone: String(row[24] || ""),
-        advEmail: String(row[8] || ""),
-        site: String(row[9] || ""),
-        timezone: String(row[10] || ""),
-        language: String(row[11] || ""),
-        amName: String(row[12] || ""),
-        salesProgram: String(row[13] || ""),
-        reason: String(row[14] || ""),
-        task: String(row[15] || ""),
+        caseId: celulaTexto(row[4]),
+        cid: celulaTexto(row[5]),
+        seId: celulaTexto(row[6]),
+        advName: celulaTexto(row[7]),
+        advLastName: celulaTexto(row[22]),
+        advPhone: celulaTexto(row[24]),
+        advEmail: celulaTexto(row[8]),
+        site: celulaTexto(row[9]),
+        timezone: celulaTexto(row[10]),
+        language: celulaTexto(row[11]),
+        amName: celulaTexto(row[12]),
+        salesProgram: celulaTexto(row[13]),
+        reason: celulaTexto(row[14]),
+        task: celulaTexto(row[15]),
         nonImplementationReason: nonImplementationReason,
         description: description,
-        availability: row[17] instanceof Date ? row[17].toISOString() : String(row[17] || "")
+        availability: row[17] instanceof Date ? row[17].toISOString() : celulaTexto(row[17])
       });
 
       if (myCases.length >= 30) break;

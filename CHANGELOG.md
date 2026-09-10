@@ -8,6 +8,25 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.3.1] - 2026-09-10
+
+### Fixed
+- **Campo não capturado chegava na planilha como o texto `null`.** O transporte é
+  JSONP, então o payload vira query string — e `encodeURIComponent(null)` devolve
+  a **string** `"null"`. O backend faz `p.timezone || ''`, que não descarta
+  `"null"` porque string não-vazia é truthy, e o literal ia para a coluna. Foi o
+  que o TL viu no fuso horário de um caso; sete capturas do `page-data.js` podem
+  devolver `null`, então valia para qualquer uma delas.
+  A metade cara estava na **edição**: `update_bau_case` preserva o valor antigo
+  testando `p.chave !== undefined`, e a string `"undefined"` passa nesse teste —
+  o campo seria sobrescrito com o texto, que é o oposto da regra de
+  não-sobrescrita do `api-payloads.md`. Agora `null` e `undefined` saem do
+  payload; string vazia continua indo, porque o fluxo de descarte zera campos de
+  propósito e isso é instrução, não ausência.
+  As linhas **já gravadas** não se curam sozinhas, então a leitura do
+  `BAU_form_data` também passou a tratar `"null"`/`"undefined"` como vazio — é o
+  que faz o caso antigo parar de exibir `null` para o TL.
+
 ## [6.3.0] - 2026-09-09
 
 ### Fixed
@@ -616,7 +635,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...HEAD
+[6.3.1]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...v6.3.1
 [6.3.0]: https://github.com/lucastdcs/case-wizard/compare/v6.2.0...v6.3.0
 [6.2.0]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...v6.2.0
 [6.1.0]: https://github.com/lucastdcs/case-wizard/compare/v6.0.0...v6.1.0
