@@ -92,6 +92,31 @@ const FALLBACK_TIPS = ["Processando...", "Mantenha o foco!", "Aguarde..."];
 
 // --- Helper JSONP Poderoso (Core do Sistema) ---
 
+// Monta a query string do JSONP.
+//
+// O `filter` é o ponto do arquivo: `encodeURIComponent(null)` devolve a STRING
+// "null", e `encodeURIComponent(undefined)` devolve "undefined". Sem ele, um
+// campo que a raspagem não achou (lerCampo devolve null) chega ao backend como
+// texto de quatro letras em vez de ausência — e sete capturas do page-data.js
+// podem devolver null. Foi assim que o fuso horário apareceu como `null` no TL
+// Dashboard: `p.timezone || ''` não descarta "null", porque string não-vazia é
+// truthy, e o literal foi parar na coluna 11 da planilha.
+//
+// Na EDIÇÃO o estrago é maior: `update_bau_case` decide preservar o valor
+// antigo com `p.chave !== undefined`, e a string "undefined" passa nesse teste
+// — o campo seria sobrescrito com o texto "undefined". Omitir a chave é o que
+// faz o backend enxergar ausência de verdade, que é o contrato escrito em
+// `specs/data-models/api-payloads.md`.
+//
+// String vazia CONTINUA sendo enviada: o fluxo de descarte zera `taskType` e
+// `availability` de propósito, e isso é uma instrução, não uma ausência.
+export function buildQueryString(params = {}) {
+    return Object.keys(params)
+        .filter(key => params[key] !== null && params[key] !== undefined)
+        .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(params[key]))
+        .join('&');
+}
+
 function jsonpFetch(operation, params = {}) {
     return new Promise((resolve, reject) => {
         const callbackName = 'cw_cb_' + Math.round(100000 * Math.random());
@@ -112,9 +137,7 @@ function jsonpFetch(operation, params = {}) {
             resolve(data);
         };
 
-        const queryString = Object.keys(params)
-            .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(params[key]))
-            .join('&');
+        const queryString = buildQueryString(params);
 
         const finalUrl = `${API_URL}?op=${operation}&callback=${callbackName}&t=${Date.now()}&${queryString}`;
         

@@ -22,6 +22,7 @@
     "test:deployment-env": "node scripts/test-deployment-env.js",
     "test:scraping": "node scripts/test-scraping.mjs",
     "test:timezones": "node scripts/test-timezones.mjs",
+    "test:jsonp": "node scripts/test-jsonp-payload.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:bau-scraping": "node scripts/smoke-bau-scraping.mjs",
