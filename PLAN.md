@@ -57,6 +57,12 @@ This file differs from the long-term roadmap: it describes what is happening **n
          ler o `Archive_BAU`. Não antes de #333/#334 — o TL Dashboard já travou
          ao vivo, e isso soma uma planilha inteira por chamada.
 
+- [x] **Fuso chegando como `null` no TL Dash.** Relatado em 2026-09-10. Não era
+      raspagem: o `encodeURIComponent` do JSONP transformava `null` na string
+      `"null"`, e o `|| ''` do backend não descarta string não-vazia. Consertado
+      na origem (`buildQueryString`) e na leitura (`celulaTexto`), porque as
+      linhas já gravadas não se curam sozinhas. Coberto por `npm run test:jsonp`.
+
 - [ ] **Alerta de volume da fila BAU — destinatários pelo TL Dashboard (#399).**
       A lista segue **fixa no código**, rodando só para `lucaste`. Chegou a ser
       derivada da aba `People` e foi **revertida por decisão**: a régua de

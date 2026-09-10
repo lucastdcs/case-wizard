@@ -26,6 +26,21 @@ versions follow [Semantic Versioning](https://semver.org/).
   `docs/decisions/0012-tasks-e-screenshots-na-central.md`.
 
 ### Fixed
+- **Campo não capturado chegava na planilha como o texto `null`.** O transporte é
+  JSONP, então o payload vira query string — e `encodeURIComponent(null)` devolve
+  a **string** `"null"`. O backend faz `p.timezone || ''`, que não descarta
+  `"null"` porque string não-vazia é truthy, e o literal ia para a coluna. Foi o
+  que o TL viu no fuso horário de um caso; sete capturas do `page-data.js` podem
+  devolver `null`, então valia para qualquer uma delas.
+  A metade cara estava na **edição**: `update_bau_case` preserva o valor antigo
+  testando `p.chave !== undefined`, e a string `"undefined"` passa nesse teste —
+  o campo seria sobrescrito com o texto, que é o oposto da regra de
+  não-sobrescrita do `api-payloads.md`. Agora `null` e `undefined` saem do
+  payload; string vazia continua indo, porque o fluxo de descarte zera campos de
+  propósito e isso é instrução, não ausência.
+  As linhas **já gravadas** não se curam sozinhas, então a leitura do
+  `BAU_form_data` também passou a tratar `"null"`/`"undefined"` como vazio — é o
+  que faz o caso antigo parar de exibir `null` para o TL.
 - **Módulo novo nascia invisível para todo mundo.** Numa planilha que já tem a aba
   `Content_Roles`, um módulo acrescentado ao código depois não aparecia em
   nenhuma linha de papel — e `normalizeRoleMatrix_()` tratava a casa ausente como

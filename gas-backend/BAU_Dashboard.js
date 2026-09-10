@@ -32,27 +32,27 @@ function getPendingBAUCases() {
     
     if (status === "PENDING_TL_CREATION" || status === "PENDING_TL_DISCARD") {
       cases.push({
-        id: String(row[0] || ""),
-        date: row[1] instanceof Date ? row[1].toISOString() : String(row[1] || ""), 
-        agentEmail: String(row[2] || ""),
+        id: celulaTexto(row[0]),
+        date: row[1] instanceof Date ? row[1].toISOString() : celulaTexto(row[1]), 
+        agentEmail: celulaTexto(row[2]),
         status: String(status || ""),
-        caseId: String(row[4] || ""),
-        cid: String(row[5] || ""),
-        speakeasyId: String(row[6] || ""),
-        advName: String(row[7] || ""),
-        advLastName: String(row[22] || ""),
-        advPhone: String(row[24] || ""),
-        advEmail: String(row[8] || ""),
-        site: String(row[9] || ""),
-        timezone: String(row[10] || ""),
-        language: String(row[11] || ""),
-        amName: String(row[12] || ""),
-        salesProgram: String(row[13] || ""),
-        reason: String(row[14] || ""),
-        task: String(row[15] || ""),
-        description: String(row[16] || ""),
-        availability: row[17] instanceof Date ? row[17].toISOString() : String(row[17] || ""),
-        suggestDiscard: String(row[21] || "")
+        caseId: celulaTexto(row[4]),
+        cid: celulaTexto(row[5]),
+        speakeasyId: celulaTexto(row[6]),
+        advName: celulaTexto(row[7]),
+        advLastName: celulaTexto(row[22]),
+        advPhone: celulaTexto(row[24]),
+        advEmail: celulaTexto(row[8]),
+        site: celulaTexto(row[9]),
+        timezone: celulaTexto(row[10]),
+        language: celulaTexto(row[11]),
+        amName: celulaTexto(row[12]),
+        salesProgram: celulaTexto(row[13]),
+        reason: celulaTexto(row[14]),
+        task: celulaTexto(row[15]),
+        description: celulaTexto(row[16]),
+        availability: row[17] instanceof Date ? row[17].toISOString() : celulaTexto(row[17]),
+        suggestDiscard: celulaTexto(row[21])
       });
     }
   }
@@ -205,12 +205,12 @@ function getRecentActivity(limit) {
     if (!processedAt) continue;
 
     activity.push({
-      id: String(row[0] || ""),
-      caseId: String(row[4] || ""),
-      agentEmail: String(row[2] || ""),
-      status: String(row[3] || ""),
-      action: String(row[20] || ""),
-      processedBy: String(row[18] || ""),
+      id: celulaTexto(row[0]),
+      caseId: celulaTexto(row[4]),
+      agentEmail: celulaTexto(row[2]),
+      status: celulaTexto(row[3]),
+      action: celulaTexto(row[20]),
+      processedBy: celulaTexto(row[18]),
       processedAt: processedAt instanceof Date ? processedAt.toISOString() : String(processedAt)
     });
   }
@@ -252,7 +252,7 @@ function getWeeklyHistory(days) {
     // Ranking "quem mais abre casos": conta todo envio dentro da janela,
     // independente do status atual (ainda pendente, aprovado ou descartado).
     const submittedAt = row[1] instanceof Date ? row[1] : new Date(row[1]);
-    const agentEmail = String(row[2] || "").toLowerCase().trim();
+    const agentEmail = celulaTexto(row[2]).toLowerCase().trim();
     if (agentEmail && !isNaN(submittedAt.getTime()) && submittedAt >= cutoff) {
       submittedByAgent[agentEmail] = (submittedByAgent[agentEmail] || 0) + 1;
     }
@@ -262,17 +262,17 @@ function getWeeklyHistory(days) {
     const processedAt = processedAtRaw instanceof Date ? processedAtRaw : new Date(processedAtRaw);
     if (isNaN(processedAt.getTime()) || processedAt < cutoff) continue;
 
-    const action = String(row[20] || "");
+    const action = celulaTexto(row[20]);
     if (action !== "APPROVED_CREATION" && action !== "REJECTED_CREATION" && action !== "CONFIRMED_DISCARD") continue;
 
     cases.push({
-      id: String(row[0] || ""),
-      caseId: String(row[4] || ""),
-      childCaseId: String(row[23] || ""),
+      id: celulaTexto(row[0]),
+      caseId: celulaTexto(row[4]),
+      childCaseId: celulaTexto(row[23]),
       agentEmail: agentEmail,
-      task: String(row[15] || ""),
+      task: celulaTexto(row[15]),
       action: action,
-      processedBy: String(row[18] || ""),
+      processedBy: celulaTexto(row[18]),
       processedAt: processedAt.toISOString()
     });
 

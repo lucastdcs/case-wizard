@@ -156,6 +156,46 @@ version` ou qualquer coisa que crie versão do Apps Script — pergunte primeiro
 antes de investigar credencial, confira a contagem em Histórico do projeto: o
 teto de 200 se parece com erro de permissão no log.
 
+## JSONP transforma `null` em texto: filtre no transporte, não em cada campo
+
+**Why**: um TL abriu o painel e viu o fuso horário de um caso escrito como
+`null`. Parecia raspagem falhando, mas não era: `captureTimezone()` devolve
+`null` corretamente quando não acha o rótulo. O estrago acontece no transporte.
+
+O payload viaja como query string, e `encodeURIComponent(null)` devolve a
+**string** `"null"` — quatro letras. O backend faz `p.timezone || ''`, que não
+descarta nada, porque string não-vazia é truthy. O literal foi para a planilha,
+e de lá para a tela.
+
+A metade cara é a edição. `update_bau_case` preserva o valor antigo testando
+`p.chave !== undefined`, e a string `"undefined"` **passa** nesse teste: o campo
+seria sobrescrito com o texto. Ou seja, o transporte quebrava calado a regra de
+não-sobrescrita que o `api-payloads.md` escreve como contrato.
+
+```js
+// O filtro é o conserto inteiro. Está num lugar só porque só existe um lugar
+// que monta query string no projeto.
+Object.keys(params)
+    .filter(key => params[key] !== null && params[key] !== undefined)
+    .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(params[key]))
+```
+
+String vazia continua sendo enviada de propósito: o fluxo de descarte zera
+`taskType` e `availability`, e isso é **instrução**, não ausência. Confundir as
+duas faria o descarte parar de limpar campos, sem erro nenhum.
+
+**When to apply**: sempre que um valor atravessar o JSONP. Antes de acusar a
+raspagem por um campo errado na planilha, olhe o **literal**: `"null"` e
+`"undefined"` escritos por extenso nunca vêm do CRM — vêm da serialização. E
+conserte no transporte, não campo a campo: sete capturas do `page-data.js`
+devolvem `null`, e blindar cada uma seria sete lugares para esquecer o oitavo.
+
+Corolário: consertar a origem **não cura o que já foi gravado**. Uma linha com
+`"null"` fica na planilha até o backup arquivá-la, então a leitura também
+precisa tratá-la — foi por isso que `celulaTexto()` existe.
+
+---
+
 ## `?.` num campo que nunca existiu não é defesa, é código morto silencioso
 
 **Why**: o selo "Urgente" da lista de casos BAU nunca apareceu — em condição
