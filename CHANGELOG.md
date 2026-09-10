@@ -26,6 +26,17 @@ versions follow [Semantic Versioning](https://semver.org/).
   `docs/decisions/0012-tasks-e-screenshots-na-central.md`.
 
 ### Fixed
+- **Módulo novo nascia invisível para todo mundo.** Numa planilha que já tem a aba
+  `Content_Roles`, um módulo acrescentado ao código depois não aparecia em
+  nenhuma linha de papel — e `normalizeRoleMatrix_()` tratava a casa ausente como
+  desmarcada. Nem o ADMIN via a aba, e nada na tela explicava por quê. Casa
+  **ausente** passa a herdar o preset do papel; casa **desmarcada** continua
+  desmarcada, porque é decisão de alguém. Ver
+  `docs/decisions/0013-modulo-novo-herda-o-preset.md`.
+
+## [6.3.1] - 2026-09-10
+
+### Fixed
 - **Campo não capturado chegava na planilha como o texto `null`.** O transporte é
   JSONP, então o payload vira query string — e `encodeURIComponent(null)` devolve
   a **string** `"null"`. O backend faz `p.timezone || ''`, que não descarta
@@ -41,13 +52,6 @@ versions follow [Semantic Versioning](https://semver.org/).
   As linhas **já gravadas** não se curam sozinhas, então a leitura do
   `BAU_form_data` também passou a tratar `"null"`/`"undefined"` como vazio — é o
   que faz o caso antigo parar de exibir `null` para o TL.
-- **Módulo novo nascia invisível para todo mundo.** Numa planilha que já tem a aba
-  `Content_Roles`, um módulo acrescentado ao código depois não aparecia em
-  nenhuma linha de papel — e `normalizeRoleMatrix_()` tratava a casa ausente como
-  desmarcada. Nem o ADMIN via a aba, e nada na tela explicava por quê. Casa
-  **ausente** passa a herdar o preset do papel; casa **desmarcada** continua
-  desmarcada, porque é decisão de alguém. Ver
-  `docs/decisions/0013-modulo-novo-herda-o-preset.md`.
 
 ## [6.3.0] - 2026-09-09
 
@@ -664,7 +668,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...HEAD
+[6.3.1]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...v6.3.1
 [6.3.0]: https://github.com/lucastdcs/case-wizard/compare/v6.2.0...v6.3.0
 [6.2.0]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...v6.2.0
 [6.1.0]: https://github.com/lucastdcs/case-wizard/compare/v6.0.0...v6.1.0
