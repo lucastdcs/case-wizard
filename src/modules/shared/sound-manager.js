@@ -200,22 +200,12 @@ export const SoundManager = {
         const t = ctx.currentTime;
 
         // DEFINIÇÃO DO TEMPO (O Segredo do Ritmo)
-        // O "TA" acontece em t=0
-        // O "DUM" começa sutilmente em t=0.05 mas explode em t=0.15
-        const dumDelay = 0.12; 
+        // O "TU" bate em t=0 e morre em 150ms (estalo de 100ms + kick de 150ms).
+        // O "DUM" só pode entrar depois disso: é o silêncio entre os dois que
+        // faz o ouvido escutar duas batidas em vez de uma.
+        const dumDelay = 0.18;
 
-
-
-
-
-
-
-
-
-
-
-
-        // === EVENTO 1: O "TA" (O Impacto Seco) ===
+        // === EVENTO 1: O "TU" (O Impacto Seco) ===
         // Precisa ser agudo no início para cortar a mixagem
         
         // 1.1 O Estalo (Knock)
@@ -224,7 +214,7 @@ export const SoundManager = {
         const snapFilter = ctx.createBiquadFilter();
 
         snapOsc.type = 'square'; // Quadrada = Som oco/madeira
-        // Começa bem agudo (400Hz) e cai instantaneamente. Isso dá o "T" do "Ta"
+        // Começa bem agudo (400Hz) e cai instantaneamente. Isso dá o "T" do "Tu"
         snapOsc.frequency.setValueAtTime(400, t); 
         snapOsc.frequency.exponentialRampToValueAtTime(50, t + 0.1); 
 
@@ -240,7 +230,7 @@ export const SoundManager = {
         snapGain.connect(ctx.destination);
         snapOsc.start(t); snapOsc.stop(t + 0.12);
 
-        // 1.2 O Peso do TA (Kick)
+        // 1.2 O Peso do TU (Kick)
         // Um suporte grave para o estalo não ficar magro
         const kickOsc = ctx.createOscillator();
         const kickGain = ctx.createGain();
@@ -258,9 +248,11 @@ export const SoundManager = {
 
 
         // === EVENTO 2: O "DUM" (O Bloom Cinematográfico) ===
-        // Só começa DEPOIS que o TA bateu (usando a variável dumDelay)
-
-
+        // Tudo aqui é agendado a partir de dumStart, nunca de t: uma rampa da
+        // Web Audio parte do evento anterior da automação, então marcar só o
+        // FIM em "t + dumDelay" fazia o swell subir desde t=0, grudado no TU -
+        // os dois eventos viravam um "TUM" só.
+        const dumStart = t + dumDelay;
 
         const freqs = [55, 55.4, 110.5]; // Lá A1 + Oitava (Chorus effect)
 
@@ -274,25 +266,22 @@ export const SoundManager = {
 
             // FILTRO DE ABERTURA (O "Wahhh")
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(30, t); // Começa fechado
-            // Abre o filtro EXATAMENTE após o delay
-            filter.frequency.linearRampToValueAtTime(900, t + dumDelay + 0.2); 
+            filter.frequency.setValueAtTime(30, dumStart); // Começa fechado
+            filter.frequency.linearRampToValueAtTime(900, dumStart + 0.2);
             // Fecha devagar
-            filter.frequency.exponentialRampToValueAtTime(40, t + 3.0); 
+            filter.frequency.exponentialRampToValueAtTime(40, dumStart + 3.0);
 
             // VOLUME (Fade In)
-            gain.gain.setValueAtTime(0, t);
-            // O volume sobe só depois do delay, criando a separação
-            gain.gain.linearRampToValueAtTime(MASTER_GAIN * 0.6, t + dumDelay + 0.1); 
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 3.5);
+            gain.gain.setValueAtTime(0, dumStart);
+            gain.gain.linearRampToValueAtTime(MASTER_GAIN * 0.6, dumStart + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, dumStart + 3.5);
 
             osc.connect(filter);
             filter.connect(gain);
             gain.connect(ctx.destination);
 
-            // Note que o oscilador começa mudo em t, mas só aparece em t + dumDelay
-            osc.start(t); 
-            osc.stop(t + 3.6);
+            osc.start(dumStart);
+            osc.stop(dumStart + 3.6);
         });
     },
     playNotification: () => {

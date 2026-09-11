@@ -12,6 +12,56 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Rampa da Web Audio começa no evento anterior: para atrasar um som, agende o **início**, não só o fim
+
+**Why**: o som de abertura devia fazer "TU DUM" (estilo Netflix) e fazia um
+"TUM" só. O código *parecia* certo — tinha até uma constante `dumDelay = 0.12`
+e o comentário "o volume sobe só depois do delay, criando a separação". Mas o
+envelope do segundo tempo era escrito assim:
+
+```js
+gain.gain.setValueAtTime(0, t);                                  // t = agora
+gain.gain.linearRampToValueAtTime(MASTER_GAIN * 0.6, t + dumDelay + 0.1);
+```
+
+Uma rampa da Web Audio interpola **do evento anterior da automação até o
+instante marcado**. Como o evento anterior estava em `t`, o volume começava a
+subir em `t = 0`, grudado na batida seca: `dumDelay` não atrasava o início,
+só esticava o fade. O mesmo valia para o `filter.frequency` e para o
+`osc.start(t)`. Resultado: dois eventos que deviam ser separados por silêncio
+soavam como um só. O conserto é dar ao segundo som um tempo próprio e agendar
+**tudo** a partir dele:
+
+```js
+const dumStart = t + dumDelay;
+gain.gain.setValueAtTime(0, dumStart);
+gain.gain.linearRampToValueAtTime(MASTER_GAIN * 0.6, dumStart + 0.1);
+osc.start(dumStart);
+```
+
+A versão que de fato soava "TU DUM" (commit `66f3b3f`) já fazia isso com um
+`bloomStart`; a reescrita seguinte trocou por `t + delay` nos finais de rampa
+e perdeu a separação sem que ninguém notasse no diff — o comentário continuou
+prometendo o que o código não fazia mais.
+
+**Segundo aprendizado, sobre provar**: som não tem teste no projeto e o
+container não tem browser. Dá para provar sem ouvir — um renderizador offline
+de ~150 linhas no scratchpad (stub de `AudioContext` que grava o grafo, depois
+sintetiza as amostras) executa o módulo **real** nas duas versões e mede o
+vale de RMS entre as batidas: 27,5% do pico antes, 0% depois. É o "behavior
+diff" que o `CLAUDE.md` pede, e ainda gera um `.wav` para ouvir.
+
+**When to apply**: sempre que agendar dois eventos sonoros que precisam ser
+percebidos como **separados** em `sound-manager.js`. Se o atraso aparece só
+como `t + delay` no argumento de tempo de um `linearRampToValueAtTime` /
+`exponentialRampToValueAtTime`, ele não está atrasando nada — confira se
+existe um `setValueAtTime(valorInicial, inícioDoSegundoEvento)` e um
+`osc.start(inícioDoSegundoEvento)` antes dele. Vale também para desconfiar de
+comentário que afirma um comportamento de timing: nesse arquivo o comentário
+estava certo sobre a intenção e errado sobre o código.
+
+---
+
 ## Campo referenciado em todo lugar menos no `FORM_CONFIG`: procure pelo nome antes de assumir bug de transporte
 
 **Why**: o email do anunciante chegava sempre vazio no `BAU_form_data`. A

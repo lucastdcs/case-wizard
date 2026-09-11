@@ -229,6 +229,16 @@ versions follow [Semantic Versioning](https://semver.org/).
   vão em bloco (`setValues`) em vez de uma chamada por coluna.
 
 ### Fixed
+- **O som de abertura voltou a fazer "TU DUM".** Virou um "TUM" só: o bloom
+  grave do segundo tempo era agendado a partir de `t`, com o atraso aplicado
+  apenas no **fim** da rampa (`linearRampToValueAtTime(vol, t + dumDelay + 0.1)`).
+  Uma rampa da Web Audio parte do evento anterior da automação, então o swell
+  subia desde `t = 0`, colado na batida seca — a variável `dumDelay` não
+  atrasava nada, só alongava o fade. Agora o DUM inteiro (ganho, filtro e
+  oscilador) sai de `dumStart = t + dumDelay`, com o atraso em 180 ms para
+  entrar depois de o TU morrer. Medido em renderização offline: o vale entre as
+  duas batidas foi de **27,5% do pico** (uma batida contínua) para **0%** (duas
+  batidas separadas).
 - **A auditoria mostrava o nome interno de metade das ações.** `role_update`,
   `audit_export`, `people_updated` e as outras que nasceram depois da barra
   lateral não tinham tradução, e apareciam como jargão de código exatamente na
