@@ -53,9 +53,13 @@ This file differs from the long-term roadmap: it describes what is happening **n
          **Falta confirmar no CRM real:** o mock reproduz o unmask, mas só a
          página de verdade diz qual é a marcação DEPOIS do clique — se a
          heurística por dígitos não achar o número lá, é aqui que se ajusta.
-      6. [ ] **#397, segunda camada** — histórico além do que o backup arquivou:
-         ler o `Archive_BAU`. Não antes de #333/#334 — o TL Dashboard já travou
-         ao vivo, e isso soma uma planilha inteira por chamada.
+      6. [x] **#397, segunda camada** — resolvida por outro caminho, mais barato:
+         em vez de o dashboard ler o `Archive_BAU` (uma planilha inteira por
+         chamada, num painel que já travou ao vivo — #333/#334), o **backup
+         parou de deletar**. A linha arquivada continua na planilha de casos, e
+         o histórico passa a alcançar tudo que ela tem. Fecha junto o fio solto
+         do item 4: o `Child_Case_ID` não some mais uma semana depois da
+         aprovação. ADR-0014, coberto por `npm run test:backup`.
 
 - [x] **Fuso chegando como `null` no TL Dash.** Relatado em 2026-09-10. Não era
       raspagem: o `encodeURIComponent` do JSONP transformava `null` na string
@@ -73,6 +77,23 @@ This file differs from the long-term roadmap: it describes what is happening **n
       do Apps Script — o gatilho ainda não existe (mesma nota do `Backup.js`).
 
 ## Done (esta sessão)
+
+- [~] **Resumo copiável do caso no TL Dashboard + backup que copia em vez de
+      mover.** Dois pontos do fluxo BAU, entregues juntos porque o segundo é o
+      que faz o primeiro valer depois de uma semana.
+      1. **Resumo** — último campo do modal de detalhes, com a headline
+         `Caso LM para BAU`. Texto concatenado do que o agente já preenche
+         (nada novo pedido no formulário), no idioma do **atendimento** e não no
+         da tela do TL. Conteúdo decidido por subtração: fora o que já está no
+         caso filho por ser da mesma conta (nome, CID, site, sales program) e
+         fora a PII (e-mail, telefone). Descarte não ganha resumo. Regra em
+         `specs/workflow/bau-lifecycle.md`.
+      2. **Backup** — `runWeeklyBackup()` copia e não remove (ADR-0014).
+         Idempotente pelos IDs já no arquivo. Sem reset e sem poda: a planilha
+         que a operação mantém desde 2024 tem ~5.000 linhas.
+      Testes novos: `npm run test:backup` (9) e `npm run smoke:tl-dash` (9, a
+      tela real no Chromium). **Falta validar na planilha de verdade** — ver
+      "Waiting / blocked".
 
 - [x] **Auditoria e correção da raspagem do CRM.** Rodando as funções reais
       contra uma captura real da tela, 7 das 10 capturas voltavam vazias — a
@@ -201,6 +222,21 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 - [ ] ...
 
 ## Waiting / blocked
+
+- [ ] **Conferir a largura da aba `Archive_BAU` na planilha de backup.** O job
+      antigo escrevia um bloco com a largura da planilha de casos sem conferir se
+      o destino comporta — e a planilha de casos ganhou as colunas 22 a 24 depois
+      que o arquivo foi criado. Se a aba estiver com menos de 25 colunas, **o
+      backup vinha falhando toda semana, em silêncio**, e há casos resolvidos que
+      nunca chegaram ao arquivo. O código novo alarga a aba antes de escrever, o
+      que conserta daqui pra frente; o que ficou para trás precisa ser conferido
+      na mão. Passo: abrir o `Archive_BAU`, ver a última data arquivada e comparar
+      com a execução mais recente no log do Apps Script.
+- [ ] **Decidir se vale trazer o histórico antigo do `Archive_BAU` de volta.** Com
+      o backup copiando, o histórico do TL cresce a partir de agora — mas o que
+      foi deletado antes só existe no arquivo. Uma função de uma tacada (mesma
+      mecânica do `backfillContentLog()`: simula por padrão, copia sem apagar)
+      resolveria. Não foi feita por não ter sido pedida.
 
 - [ ] **Rodar o `seedTasksNow()` na planilha de verdade** (editor do Apps
       Script, mesma mecânica de `seedNoteTemplatesNow`). Roda uma vez: se o
