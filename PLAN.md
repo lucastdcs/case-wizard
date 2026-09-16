@@ -94,7 +94,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
          descarte `CREATED` significa *negar* o pedido. A régua agora deriva a
          ação como o servidor deriva.
       Testes: `test:tl-decision` (13, o primeiro que o `BAU_Dashboard.js` tem) e
-      `smoke:tl-dash` de 21 para 30. **Falta o `clasp deploy` de produção.**
+      `smoke:tl-dash` de 21 para 30. **Em produção desde a v6.3.2** (2026-09-16).
 
 - [~] **Vista de caso remodelada + changelog do TL Dashboard.** Segunda rodada
       de feedback sobre o modal do TL.
@@ -109,8 +109,8 @@ This file differs from the long-term roadmap: it describes what is happening **n
       3. **Changelog do dashboard** — `gas-backend/DashReleaseNotes.js`, injetado
          pelo servidor, com guarda de sincronia de versão em
          `npm run test:dash-changelog`.
-      `smoke:tl-dash` foi de 9 para 21 asserções. **Falta o `clasp deploy` de
-      produção** e a validação na planilha real.
+      `smoke:tl-dash` foi de 9 para 21 asserções. **Em produção desde a
+      v6.3.2** (2026-09-16).
 
 - [~] **Resumo copiável do caso no TL Dashboard + backup que copia em vez de
       mover.** Dois pontos do fluxo BAU, entregues juntos porque o segundo é o
@@ -126,8 +126,8 @@ This file differs from the long-term roadmap: it describes what is happening **n
          Idempotente pelos IDs já no arquivo. Sem reset e sem poda: a planilha
          que a operação mantém desde 2024 tem ~5.000 linhas.
       Testes novos: `npm run test:backup` (9) e `npm run smoke:tl-dash` (9, a
-      tela real no Chromium). **Falta validar na planilha de verdade** — ver
-      "Waiting / blocked".
+      tela real no Chromium). **Em produção desde a v6.3.2** (2026-09-16).
+      **Falta validar na planilha de verdade** — ver "Waiting / blocked".
 
 - [x] **Auditoria e correção da raspagem do CRM.** Rodando as funções reais
       contra uma captura real da tela, 7 das 10 capturas voltavam vazias — a
@@ -260,6 +260,22 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 - [ ] ...
 
 ## Waiting / blocked
+
+> **Correção de rota (2026-09-16):** vários itens abaixo e acima diziam "falta o
+> `clasp deploy` manual de produção". Não falta: o `deploy.yml` tem um passo
+> **"Promover implantação de produção"** que roda sozinho no merge para a `main`,
+> quando o commit toca em `gas-backend/`. Conferido no run 1052 da v6.3.2, que
+> promoveu produção sem intervenção nenhuma. O que exige mão continua sendo o que
+> roda DENTRO da planilha (semeaduras e gatilhos), listado abaixo.
+
+- [ ] **Publicar a tag `v6.3.2`.** A v6.3.2 já está em produção; a tag só publica
+      as notas do GitHub Release (o `release.yml` não faz deploy). O push de tag
+      **falha nesta sessão** — a credencial do GitHub daqui não escreve refs de
+      tag, o mesmo bloqueio já registrado para a v6.1.0 e a v6.2.0. Precisa sair
+      de uma máquina com credencial normal:
+      `git tag -a v6.3.2 abee437 -m "v6.3.2" && git push origin v6.3.2`
+      O `scripts/extract-changelog.sh` já foi rodado contra a seção `[6.3.2]` e
+      aceitou — as notas não sairão vazias.
 
 - [ ] **Levar o changelog para a Central de Conteúdo.** A constante
       `CW_DASH_RELEASE_NOTES` e o `template.CW_RELEASE_NOTES` do
