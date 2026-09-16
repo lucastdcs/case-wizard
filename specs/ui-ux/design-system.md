@@ -33,6 +33,27 @@ particular, evite:
   hierarquia interna feita por tipografia e espaço;
 - cor decorativa fora da paleta do app.
 
+## Vista de registro: leitura x área de transferência
+
+Numa tela que mostra um registro (o modal de caso do TL Dashboard é a referência
+viva), o layout segue o **propósito** de cada informação, não a ordem da planilha:
+
+1. **Cabeçalho** — de quem é o registro: título, selos que mudam a decisão de
+   quem lê, e autoria. Autoria não é campo copiável.
+2. **Briefing** — por que ele existe. Um contêiner só, hierarquia por tipografia.
+   **Sem botão de copiar**: ninguém cola uma justificativa em lugar nenhum, e o
+   botão ali é promessa falsa.
+3. **Dados** — o que a pessoa leva para outro sistema. Lista de definição com
+   hairline (não caixa por campo), botão de copiar no hover/foco.
+
+O botão de copiar tem que significar uma coisa só: *"isto vai para o outro
+sistema"*. Espalhá-lo por todo campo esvazia o sinal.
+
+Ações de decisão vivem num rodapé fixo da própria vista — fechar para agir é
+uma busca visual a mais por registro. A confirmação continua sendo a fronteira.
+
+Ver `docs/decisions/0015-vista-de-caso-leitura-e-copiavel.md`.
+
 ## Acessibilidade (piso, não extra)
 
 - Todo controle é `<button>`/`<a>` — nunca `<div>` com `onclick`, que o teclado

@@ -9,6 +9,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Changelog dos dashboards.** O TL nunca carrega o bookmarklet, então toda
+  mudança no painel dele chegava sem aviso — o único changelog do projeto era o
+  do agente. Agora o TL Dashboard abre as novidades quando a versão muda, com um
+  botão no cabeçalho para reler depois. O conteúdo vem de
+  `gas-backend/DashReleaseNotes.js`, injetado pelo servidor na própria página
+  (uma chamada a menos no boot, cf. #333/#334), e `npm run test:dash-changelog`
+  falha quando a versão dele fica para trás do `package.json` — a mesma guarda
+  que o bookmarklet ganhou depois de anunciar as novidades da v5.1 com o selo da
+  v5.2.
 - **Resumo copiável do caso no TL Dashboard.** Último campo do modal de
   detalhes: o texto pronto, em linguagem humana, que o TL cola dentro do caso BAU
   que acabou de abrir no CRM — headline `Caso LM para BAU`, caso de origem, quem
@@ -38,6 +47,16 @@ versions follow [Semantic Versioning](https://semver.org/).
   `docs/decisions/0012-tasks-e-screenshots-na-central.md`.
 
 ### Changed
+- **A vista de detalhes do caso foi remodelada.** Era uma grade de 16 caixas
+  idênticas em 640px, onde "O que deve ser feito" — a decisão — tinha o mesmo
+  peso visual de "Programa de Vendas". Agora são três zonas por propósito
+  (ADR-0015): **cabeçalho** com o anunciante, os selos e a autoria; **briefing**
+  com o que se lê para decidir (o que fazer, motivo, justificativa, agendamento),
+  em contêiner único e **sem botão de copiar**; e **dados** com o que se leva
+  para o CRM. Nome e sobrenome viraram campos separados, com `N/A` quando não há
+  sobrenome. A vista passou para 900px e ganhou rodapé com aprovar/rejeitar — o
+  TL decide sem fechar e reachar a linha na fila.
+
 - **O backup semanal passa a copiar em vez de mover.** A linha arquivada continua
   na planilha de casos, que é o que alimenta o histórico do TL. Antes o job
   deletava a origem, e o efeito aparecia uma segunda-feira depois: a aba
@@ -49,6 +68,13 @@ versions follow [Semantic Versioning](https://semver.org/).
   justifica podar nada. Ver `docs/decisions/0014-arquivo-copia-em-vez-de-mover.md`.
 
 ### Fixed
+- **A fila do TL não era alcançável pelo teclado.** As linhas eram `<div>` com
+  `onclick`, o que o `specs/ui-ux/design-system.md` proíbe explicitamente — na
+  prática, não havia como abrir um caso sem mouse. O nome do anunciante virou um
+  botão de verdade (o clique na linha inteira continua funcionando). Junto:
+  `Esc` fecha a vista de detalhes, o foco entra no modal ao abrir e volta para a
+  linha ao fechar.
+
 - **O backup podia falhar toda semana, em silêncio.** O job escrevia no arquivo um
   bloco com a largura da planilha de casos sem conferir se a aba de destino
   comporta essa largura — e a planilha de casos ganhou as colunas 22 a 24 depois

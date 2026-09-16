@@ -26,8 +26,15 @@ O Back-end e o TL Dashboard devem rotear e exibir as informações estritamente 
 
 ## Resumo para o caso BAU (TL Dashboard)
 
-- O **último** campo copiável do modal de detalhes é o resumo do caso em texto
-  humano — o que o TL cola dentro do caso BAU que acabou de abrir no CRM.
+- O **último** bloco da vista de detalhes é o resumo do caso em texto humano — o
+  que o TL cola dentro do caso BAU que acabou de abrir no CRM. A vista é
+  organizada em três zonas (ADR-0015): cabeçalho, briefing (leitura) e dados
+  (copiáveis). *O que deve ser feito*, *motivo*, *justificativa* e *agendamento*
+  vivem no briefing e **não** têm botão de copiar; o resumo é o que carrega essa
+  informação para o outro sistema.
+- **Nome e sobrenome do anunciante são campos separados** nos dados, e sobrenome
+  ausente é exibido e copiado como `N/A` — campo vazio não diz se o dado falta ou
+  se a pessoa não tem sobrenome.
 - **Headline fixa:** `Caso LM para BAU`, igual nos três idiomas. É o marcador
   pelo qual a operação identifica o caso, não uma frase para ler.
 - **Conteúdo, por subtração:** entra o que o caso filho não sabe sozinho — caso

@@ -12,13 +12,18 @@
 //
 // O QUE ELE PROTEGE
 //
-//   - o resumo é o ÚLTIMO campo do modal (é o que o TL procura no fim da lista);
+//   - o resumo é o ÚLTIMO bloco do modal (é o que o TL procura no fim);
 //   - a headline diz "Caso LM para BAU", literalmente;
 //   - o texto copiado preserva as quebras de linha do texto exibido;
 //   - o idioma segue o ATENDIMENTO (c.language), não a tela do TL;
 //   - "Motivo | Justificativa" é desmesclado em vez de sair com o pipe;
 //   - PII (e-mail, telefone) e dado redundante não vazam para o texto;
-//   - pedido de descarte NÃO ganha resumo (não há caso BAU para abrir).
+//   - pedido de descarte NÃO ganha resumo (não há caso BAU para abrir);
+//   - o briefing (o que fazer / justificativa / agendamento) é LEITURA: nenhum
+//     deles tem botão de copiar, porque o TL não cola isso em lugar nenhum;
+//   - nome e sobrenome são campos separados, e sobrenome ausente vira "N/A";
+//   - as ações de decisão existem dentro da vista, sem precisar fechar;
+//   - Esc fecha o modal e o foco volta para onde estava.
 //
 // COMO ELE RODA SEM APPS SCRIPT
 //
@@ -29,6 +34,7 @@
 // Uso: npm run smoke:tl-dash
 
 import { chromium } from 'playwright';
+import vm from 'node:vm';
 import { readFile, writeFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -47,8 +53,21 @@ const executablePath = process.env.CW_CHROMIUM || undefined;
 async function prepararArquivo() {
     let html = await readFile(resolve(raiz, 'gas-backend/TLDashboard.html'), 'utf8');
     html = html.replace(/<\?!=\s*CW_ENV_BADGE\s*\?>/g, '').replace(/<\?!=\s*CW_CREDIT\s*\?>/g, '');
+    // As notas de versão vêm do arquivo de verdade, e não de um fixture: se
+    // alguém quebrar o formato de CW_DASH_RELEASE_NOTES, é aqui que aparece.
+    html = html.replace(/<\?!=\s*CW_RELEASE_NOTES\s*\?>/g, () => JSON.stringify(NOTAS));
     if (/<\?/.test(html)) throw new Error('TLDashboard: sobrou tag de template não resolvida');
     await writeFile(ARQUIVO, html, 'utf8');
+}
+
+// Lê o CW_DASH_RELEASE_NOTES do gas-backend sem Apps Script: o arquivo é JS de
+// verdade, então basta avaliá-lo num contexto vazio e pegar a constante.
+async function lerNotasDeVersao() {
+    const fonte = await readFile(resolve(raiz, 'gas-backend/DashReleaseNotes.js'), 'utf8');
+    const ctx = { };
+    vm.createContext(ctx);
+    vm.runInContext(fonte + '\n;globalThis.__notas = CW_DASH_RELEASE_NOTES;', ctx);
+    return ctx.__notas;
 }
 
 // ---------------------------------------------------------------- fixture
@@ -98,9 +117,23 @@ const CASOS = [
     },
 ];
 
+CASOS.push({
+    id: 'bau_semsobrenome', status: 'PENDING_TL_CREATION',
+    date: '2026-09-09T16:00:00Z',
+    agentEmail: 'lucaste@google.com',
+    caseId: '0-4444444444', cid: '444-444-4444', speakeasyId: '444444',
+    advName: 'Padaria', advLastName: '',
+    advEmail: 'oi@padaria.exemplo', advPhone: '', site: 'https://padaria.exemplo',
+    timezone: 'America/Sao_Paulo', language: 'PT-BR',
+    amName: 'Beltrano', salesProgram: 'Programa Z',
+    reason: 'Instalar o GTM.', task: 'Google Tag Manager Installation',
+    description: 'Falta de acessos ou backup do site | Sem acesso ao servidor.',
+    availability: '', suggestDiscard: 'Não',
+});
+
 const PERFIL = { ldap: 'tlpessoa', role: 'TL', defaultLanguage: 'PT-BR' };
 
-async function abrirPagina(browser, { idiomaDoTL } = {}) {
+async function abrirPagina(browser, { idiomaDoTL, versaoJaVista } = {}) {
     const page = await browser.newPage();
     page.on('pageerror', (e) => { console.log('      [erro na página] ' + e.message); });
 
@@ -135,30 +168,54 @@ async function abrirPagina(browser, { idiomaDoTL } = {}) {
         });
     }, { casos: CASOS, perfil: Object.assign({}, PERFIL, idiomaDoTL ? { defaultLanguage: idiomaDoTL } : {}) });
 
+    if (versaoJaVista) {
+        await page.addInitScript((v) => {
+            try { localStorage.setItem('cw_tl_seen_version', v); } catch (e) { /* ignora */ }
+        }, versaoJaVista);
+    }
+
     await page.goto('file://' + ARQUIVO, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.case-row', { timeout: 5000 });
     await page.waitForTimeout(150);
     return page;
 }
 
-// Abre o modal do caso e devolve o que a tela MOSTRA e o que ela COPIA.
-async function resumoDoCaso(page, id) {
+// Abre o modal do caso e devolve o estado das três zonas.
+async function abrirCaso(page, id) {
     await page.evaluate((caseId) => { openDetails(caseId); }, id);
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(120);
     return page.evaluate(() => {
-        const grupos = Array.from(document.querySelectorAll('#modal-body-content .detail-group'));
-        const ultimo = grupos[grupos.length - 1];
-        const etiqueta = ultimo.querySelector('.detail-label').textContent.trim();
-        const botao = ultimo.querySelector('.copy-btn');
+        const txt = (sel, raiz) => {
+            const el = (raiz || document).querySelector(sel);
+            return el ? el.textContent.trim() : null;
+        };
+        const secoes = Array.from(document.querySelectorAll('#modal-body-content > section'));
+        const ultima = secoes[secoes.length - 1];
+        const resumoEl = document.querySelector('.case-summary-text');
+        const botaoResumo = document.querySelector('.btn-copy-summary');
         return {
-            totalDeGrupos: grupos.length,
-            etiquetaDoUltimo: etiqueta,
-            exibido: ultimo.querySelector('.summary-text') ? ultimo.querySelector('.summary-text').textContent : null,
-            copiado: botao ? botao.dataset.copyValue : null,
-            etiquetas: grupos.map((g) => g.querySelector('.detail-label').textContent.trim()),
+            titulo: txt('#case-modal-title'),
+            cabecalho: txt('#modal-header-content'),
+            selos: Array.from(document.querySelectorAll('#modal-header-content .status-badge')).map((b) => b.textContent.trim()),
+            briefing: Array.from(document.querySelectorAll('.case-brief .brief-item')).map((i) => ({
+                label: txt('.brief-label', i),
+                texto: txt('.brief-text', i),
+                temBotaoCopiar: !!i.querySelector('.copy-btn'),
+            })),
+            fatos: Array.from(document.querySelectorAll('.case-facts .fact')).map((f) => ({
+                label: txt('.fact-label', f),
+                valor: txt('.fact-value', f),
+                copia: f.querySelector('.copy-btn').dataset.copyValue,
+            })),
+            resumoEhUltimaSecao: !!(ultima && ultima.classList.contains('case-summary-block')),
+            exibido: resumoEl ? resumoEl.textContent : null,
+            copiado: botaoResumo ? botaoResumo.dataset.copyValue : null,
+            acoes: Array.from(document.querySelectorAll('#modal-footer-content button')).map((b) => b.textContent.trim()),
+            larguraMaxima: getComputedStyle(document.querySelector('#caseModal .modal-content')).maxWidth,
         };
     });
 }
+const fatoDe = (r, label) => r.fatos.filter((f) => f.label === label)[0];
 
 let fail = 0;
 async function check(nome, fn) {
@@ -177,28 +234,93 @@ function naoContem(texto, trecho, oque) {
     if (String(texto).indexOf(trecho) !== -1) throw new Error(`${oque}: achei ${JSON.stringify(trecho)} e não devia, em\n---\n${texto}\n---`);
 }
 
+const NOTAS = await lerNotasDeVersao();
 await prepararArquivo();
 const browser = await chromium.launch({ headless: true, executablePath });
 
 console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
 
 {
-    const page = await abrirPagina(browser);
+    // versaoJaVista: estes blocos testam a vista de caso, e o aviso de novidades
+    // abriria por cima no meio deles. O changelog tem bloco próprio no fim.
+    const page = await abrirPagina(browser, { versaoJaVista: NOTAS.version });
 
-    await check('o resumo é o ÚLTIMO campo do modal', async () => {
-        const r = await resumoDoCaso(page, 'bau_pt');
-        igual(r.etiquetaDoUltimo, 'Resumo para o caso BAU', 'etiqueta do último grupo');
-        verdade(r.etiquetas.indexOf('Justificativa / Detalhes') < r.etiquetas.length - 1,
-            'o resumo vem depois da justificativa');
+    await check('o cabeçalho diz de quem é o caso, não "Detalhes da Solicitação"', async () => {
+        const r = await abrirCaso(page, 'bau_pt');
+        igual(r.titulo, 'Loja Exemplo', 'título do modal');
+        contem(r.cabecalho, 'Enviado por', 'autoria no cabeçalho');
+        contem(r.cabecalho, 'lucaste', 'ldap de quem abriu');
+        contem(r.selos.join(' § '), 'Criação de BAU', 'selo do fluxo');
+    });
+
+    await check('o modal foi ampliado para 900px', async () => {
+        const r = await abrirCaso(page, 'bau_pt');
+        igual(r.larguraMaxima, '900px', 'max-width do modal');
+    });
+
+    await check('o briefing é LEITURA: nenhum dos quatro campos tem botão de copiar', async () => {
+        const r = await abrirCaso(page, 'bau_pt');
+        const labels = r.briefing.map((b) => b.label);
+        igual(labels, ['O que deve ser feito', 'Motivo da não implementação',
+            'Justificativa / Detalhes', 'Agendamento'], 'campos do briefing');
+        verdade(!r.briefing.some((b) => b.temBotaoCopiar), 'nenhum deles é copiável');
+        // E não sobraram como campo de dado, que é o ponto do pedido.
+        const dados = r.fatos.map((f) => f.label);
+        verdade(dados.indexOf('O que deve ser feito') === -1, 'o que fazer saiu dos copiáveis');
+        verdade(dados.indexOf('Justificativa / Detalhes') === -1, 'justificativa saiu dos copiáveis');
+        verdade(dados.indexOf('Agendamento') === -1, 'agendamento saiu dos copiáveis');
+        verdade(dados.indexOf('Agente') === -1, 'agente saiu dos copiáveis (virou autoria no cabeçalho)');
+    });
+
+    await check('o briefing desmescla "Motivo | Justificativa"', async () => {
+        const r = await abrirCaso(page, 'bau_pt');
+        const porLabel = (l) => r.briefing.filter((b) => b.label === l)[0].texto;
+        igual(porLabel('Motivo da não implementação'),
+            'Implementação parcial (nem todas as tasks concluídas)', 'motivo isolado');
+        igual(porLabel('Justificativa / Detalhes'),
+            'Cliente não tinha acesso ao GTM no momento da call; ficou de liberar.', 'detalhe isolado');
+        verdade(porLabel('Justificativa / Detalhes').indexOf(' | ') === -1, 'sem o pipe');
+    });
+
+    await check('nome e sobrenome são campos separados', async () => {
+        const r = await abrirCaso(page, 'bau_pt');
+        igual(fatoDe(r, 'Anunciante').valor, 'Loja', 'nome sozinho');
+        igual(fatoDe(r, 'Sobrenome do Anunciante').valor, 'Exemplo', 'sobrenome sozinho');
+        // O que se copia tem que ser o campo, e não o nome inteiro de novo.
+        igual(fatoDe(r, 'Anunciante').copia, 'Loja', 'valor copiado do nome');
+    });
+
+    await check('sobrenome ausente vira N/A, e é isso que se copia', async () => {
+        const r = await abrirCaso(page, 'bau_semsobrenome');
+        igual(fatoDe(r, 'Sobrenome do Anunciante').valor, 'N/A', 'exibido');
+        igual(fatoDe(r, 'Sobrenome do Anunciante').copia, 'N/A', 'copiado');
+    });
+
+    await check('as ações de decisão existem dentro da vista', async () => {
+        const r = await abrirCaso(page, 'bau_pt');
+        igual(r.acoes.length, 2, 'dois botões no rodapé');
+        contem(r.acoes.join(' § '), 'Aprovar e Notificar', 'ação primária');
+        contem(r.acoes.join(' § '), 'Rejeitar Solicitação', 'ação secundária');
+    });
+
+    await check('no fluxo de descarte o rodapé inverte as ações', async () => {
+        const r = await abrirCaso(page, 'bau_descarte');
+        contem(r.acoes.join(' § '), 'Confirmar Descarte', 'ação primária do descarte');
+        contem(r.acoes.join(' § '), 'Manter Caso Ativo', 'ação secundária do descarte');
+    });
+
+    await check('o resumo é o ÚLTIMO bloco do modal', async () => {
+        const r = await abrirCaso(page, 'bau_pt');
+        verdade(r.resumoEhUltimaSecao, 'o resumo fecha o modal');
     });
 
     await check('a headline é "Caso LM para BAU", literal e na primeira linha', async () => {
-        const r = await resumoDoCaso(page, 'bau_pt');
+        const r = await abrirCaso(page, 'bau_pt');
         igual(r.copiado.split('\n')[0], 'Caso LM para BAU', 'primeira linha do texto copiado');
     });
 
     await check('o texto copiado é igual ao exibido, com as quebras de linha', async () => {
-        const r = await resumoDoCaso(page, 'bau_pt');
+        const r = await abrirCaso(page, 'bau_pt');
         // É este o par que só um navegador de verdade prova: o innerHTML colapsa
         // quebras de linha, o atributo não — ou o contrário, dependendo do escape.
         igual(r.exibido, r.copiado, 'exibido x copiado');
@@ -206,7 +328,7 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
     });
 
     await check('diz o que aconteceu, o que fazer, as tasks e o AM', async () => {
-        const r = await resumoDoCaso(page, 'bau_pt');
+        const r = await abrirCaso(page, 'bau_pt');
         contem(r.copiado, 'Caso de origem (LM): 0-1234567890', 'caso de origem');
         contem(r.copiado, 'Aberto por lucaste@ em 08/09/2026', 'quem abriu e quando');
         contem(r.copiado, 'O que aconteceu: Implementação parcial (nem todas as tasks concluídas).', 'motivo');
@@ -214,15 +336,11 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
         contem(r.copiado, 'O que deve ser feito em BAU:\nConcluir a implementação do Consent Mode', 'o que fazer');
         contem(r.copiado, 'Tasks: Consent Mode · Ads Enhanced Conversions', 'tasks separadas por ponto médio');
         contem(r.copiado, 'AM: Fulano de Tal', 'AM');
-    });
-
-    await check('desmescla "Motivo | Justificativa" em vez de copiar o pipe', async () => {
-        const r = await resumoDoCaso(page, 'bau_pt');
         naoContem(r.copiado, ' | ', 'o pipe da coluna 16');
     });
 
     await check('não carrega PII nem dado que já está no caso do CRM', async () => {
-        const r = await resumoDoCaso(page, 'bau_pt');
+        const r = await abrirCaso(page, 'bau_pt');
         naoContem(r.copiado, 'contato@loja.exemplo', 'e-mail do anunciante');
         naoContem(r.copiado, '90000-0000', 'telefone do anunciante');
         naoContem(r.copiado, '123-456-7890', 'CID');
@@ -231,14 +349,15 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
     });
 
     await check('pedido de descarte não ganha resumo', async () => {
-        const r = await resumoDoCaso(page, 'bau_descarte');
-        naoContem(r.etiquetas.join(' § '), 'Resumo para o caso BAU', 'etiqueta do resumo');
+        const r = await abrirCaso(page, 'bau_descarte');
+        igual(r.copiado, null, 'bloco de resumo');
+        verdade(!r.resumoEhUltimaSecao, 'e nenhuma seção de resumo fecha o modal');
     });
 
     await check('o texto segue o idioma do ATENDIMENTO, não o da tela do TL', async () => {
         // Mesmo TL (tela em PT), dois casos, dois idiomas.
-        const pt = await resumoDoCaso(page, 'bau_pt');
-        const es = await resumoDoCaso(page, 'bau_es');
+        const pt = await abrirCaso(page, 'bau_pt');
+        const es = await abrirCaso(page, 'bau_es');
         contem(pt.copiado, 'O que aconteceu:', 'caso PT em português');
         contem(es.copiado, 'Qué pasó:', 'caso ES em espanhol');
         contem(es.copiado, 'Qué debe hacerse en BAU:', 'o que fazer, em espanhol');
@@ -247,17 +366,81 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
         igual(es.copiado.split('\n')[0], 'Caso LM para BAU', 'headline não traduz — é marcador');
     });
 
+    await check('a fila é alcançável pelo teclado e o foco volta no Esc', async () => {
+        // As verificações acima abrem o modal por openDetails() e não o fecham.
+        // Este é o único caso que precisa do caminho de verdade (clique na fila),
+        // porque é o clique que registra o foco a ser devolvido.
+        await page.evaluate(() => closeModal('caseModal'));
+        await page.waitForTimeout(80);
+        await page.click('#row-bau_pt .row-open-btn');
+        await page.waitForTimeout(120);
+        verdade(await page.evaluate(() => document.getElementById('caseModal').classList.contains('active')),
+            'o modal abriu pelo controle da linha');
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(120);
+        verdade(!(await page.evaluate(() => document.getElementById('caseModal').classList.contains('active'))),
+            'Esc fechou');
+        igual(await page.evaluate(() => document.activeElement.className), 'row-open-btn text-primary', 'foco devolvido');
+    });
+
     await page.close();
 }
 
 {
     // O TL em ES vê a ETIQUETA do campo em espanhol (é a tela dele), mas o TEXTO
     // continua sendo o do caso. São dois idiomas independentes de propósito.
-    const page = await abrirPagina(browser, { idiomaDoTL: 'ES' });
-    await check('etiqueta segue a tela do TL; texto segue o caso', async () => {
-        const r = await resumoDoCaso(page, 'bau_pt');
-        igual(r.etiquetaDoUltimo, 'Resumen para el caso BAU', 'etiqueta em ES');
+    const page = await abrirPagina(browser, { idiomaDoTL: 'ES', versaoJaVista: NOTAS.version });
+    await check('rótulos seguem a tela do TL; o texto do resumo segue o caso', async () => {
+        const r = await abrirCaso(page, 'bau_pt');
+        verdade(!!fatoDe(r, 'Apellido del Anunciante'), 'rótulo de sobrenome em ES');
+        contem(r.briefing.map((b) => b.label).join(' § '), 'Qué debe hacerse', 'briefing em ES');
         contem(r.copiado, 'O que aconteceu:', 'mas o texto do caso PT segue em PT');
+    });
+    await page.close();
+}
+
+{
+    // Changelog do dashboard. O do bookmarklet é do agente — o TL nunca o carrega.
+    const page = await abrirPagina(browser);
+
+    await check('o changelog abre sozinho quando a versão ainda não foi vista', async () => {
+        await page.waitForSelector('#releaseModal.active', { timeout: 4000 });
+        const visto = await page.evaluate(() => ({
+            versao: document.getElementById('release-version').textContent,
+            titulo: document.getElementById('release-title').textContent,
+            itens: document.querySelectorAll('#release-body .release-item').length,
+            gravado: localStorage.getItem('cw_tl_seen_version'),
+        }));
+        igual(visto.versao, 'v' + NOTAS.version, 'versão exibida');
+        igual(visto.titulo, NOTAS.title, 'título');
+        igual(visto.itens, NOTAS.items.length, 'itens renderizados');
+        igual(visto.gravado, NOTAS.version, 'versão marcada como vista');
+    });
+
+    await check('não rouba a tela de quem abriu o painel para aprovar', async () => {
+        // A fila tem que estar renderizada ANTES do aviso aparecer.
+        const filaPrimeiro = await page.evaluate(() => document.querySelectorAll('.case-row').length > 0);
+        verdade(filaPrimeiro, 'a fila carregou antes');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrirPagina(browser, { versaoJaVista: NOTAS.version });
+    await check('quem já viu esta versão não é interrompido de novo', async () => {
+        await page.waitForTimeout(1800);
+        verdade(!(await page.evaluate(() => document.getElementById('releaseModal').classList.contains('active'))),
+            'o modal não abriu sozinho');
+        verdade(await page.evaluate(() => document.getElementById('whats-new-dot').hidden),
+            'e o ponto de aviso não aparece');
+    });
+
+    await check('mas o botão do cabeçalho reabre as novidades', async () => {
+        await page.click('#btn-whats-new');
+        await page.waitForTimeout(150);
+        verdade(await page.evaluate(() => document.getElementById('releaseModal').classList.contains('active')),
+            'reabriu pelo botão');
     });
     await page.close();
 }

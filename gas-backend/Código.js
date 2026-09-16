@@ -226,6 +226,11 @@ function renderDashboard(fileName, title) {
   // Consumido por <?!= CW_CREDIT ?>, logo depois do selo de ambiente.
   template.CW_CREDIT = buildCreditHtml();
 
+  // Consumido por <?!= CW_RELEASE_NOTES ?>. Vai como JSON na própria página em
+  // vez de por google.script.run: é conteúdo estático, e uma chamada a mais no
+  // boot do dashboard é o que #333/#334 pediu para evitar.
+  template.CW_RELEASE_NOTES = buildReleaseNotesJson();
+
   return template.evaluate()
     .setTitle(title)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)

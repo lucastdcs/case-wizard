@@ -26,6 +26,7 @@
     "test:timezones": "node scripts/test-timezones.mjs",
     "test:jsonp": "node scripts/test-jsonp-payload.mjs",
     "test:backup": "node scripts/test-bau-backup.mjs",
+    "test:dash-changelog": "node scripts/test-dash-changelog.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:bau-scraping": "node scripts/smoke-bau-scraping.mjs",

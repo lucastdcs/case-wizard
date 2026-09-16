@@ -677,6 +677,117 @@
         .copy-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; transition: color 0.2s; }
         .copy-btn:hover { color: var(--gemini-blue); }
 
+        /* ---------------------------------------------------------------
+           Vista de detalhes do caso — três zonas, por propósito
+
+           O modal antigo era uma grade de 16 caixas idênticas: o "o que deve ser
+           feito", que É a decisão, tinha o mesmo peso visual de "Programa de
+           Vendas". Isso contraria a regra de conteúdo do design-system ("caixa
+           dentro de caixa: um contêiner por unidade de informação, com a
+           hierarquia interna feita por tipografia e espaço").
+
+           Agora: CABEÇALHO diz de quem é o caso, BRIEFING diz por que ele está
+           sendo aberto (leitura, sem botão de copiar), e DADOS traz só o que o
+           TL leva para o CRM (copiável).
+           --------------------------------------------------------------- */
+        /* A linha da fila inteira continua clicável pelo mouse, mas quem abre os
+           detalhes pelo TECLADO precisa de um controle de verdade: `div` com
+           onclick o Tab não alcança (regra de acessibilidade do design-system).
+           O nome do anunciante é esse controle — e é também o que o foco recebe
+           de volta quando o modal fecha. */
+        .whats-new-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--gemini-blue);
+            display: inline-block; margin-left: 2px;
+        }
+        .release-item { display: flex; gap: 16px; align-items: flex-start; }
+        .release-item .material-symbols-rounded { color: var(--gemini-purple); font-size: 22px; flex: 0 0 auto; }
+        .release-item-title { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+        .release-item-text { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+
+        .row-open-btn {
+            background: none; border: none; padding: 0; margin: 0;
+            font: inherit; color: inherit; text-align: left; cursor: pointer;
+        }
+        .row-open-btn:hover { text-decoration: underline; }
+        .row-open-btn:focus-visible { outline: 2px solid var(--gemini-blue); outline-offset: 3px; border-radius: 2px; }
+
+        .modal-case { max-width: 900px; }
+
+        .case-header { align-items: flex-start; gap: 24px; }
+        .case-header-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .case-title { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1.3; }
+        .case-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .case-header-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--text-secondary); }
+
+        /* Briefing: UM contêiner, hierarquia por tipografia. Mesma família visual
+           da .reason-box da fila (aspa em roxo Gemini), que já dizia esta mesma
+           informação no card — a vista de detalhes não inventa componente novo. */
+        .case-brief {
+            background: var(--surface-level-2);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--gemini-purple);
+            border-radius: var(--radius-sm);
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .brief-item { display: flex; flex-direction: column; gap: 6px; }
+        .brief-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        .brief-text { font-size: 15px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; }
+        .brief-text.is-empty { color: var(--text-secondary); font-style: italic; }
+
+        /* Dados: lista de definição com hairline, não caixa por campo. */
+        .section-title { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .case-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+        .fact {
+            display: flex; align-items: baseline; gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            min-width: 0;
+        }
+        .fact-label { font-size: 12px; color: var(--text-secondary); flex: 0 0 34%; }
+        .fact-value { font-size: 14px; color: var(--text-primary); flex: 1 1 auto; word-break: break-word; min-width: 0; }
+        .fact-value.is-empty { color: var(--text-tertiary); }
+        /* O botão de copiar só aparece no hover ou no foco: doze ícones sempre
+           visíveis competiam com os valores, que são o que se lê. `visibility`
+           e não `display` para o alvo do Tab nunca sumir do fluxo. */
+        .fact .copy-btn { visibility: hidden; flex: 0 0 auto; }
+        .fact:hover .copy-btn, .fact .copy-btn:focus-visible { visibility: visible; }
+
+        .case-summary-block { display: flex; flex-direction: column; gap: 10px; }
+        .case-summary-text {
+            background: var(--surface-level-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+        }
+        .btn-copy-summary { align-self: flex-start; }
+
+        /* Rodapé de decisão: o TL aprova sem fechar a vista e reachar a linha na
+           fila. A fronteira não muda — os dois botões chamam o mesmo
+           confirmAction() da fila, então nenhuma aprovação vira um clique só. */
+        .modal-footer {
+            padding: 20px 32px;
+            border-top: 1px solid var(--border-subtle);
+            background: var(--surface-level-2);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            position: sticky; bottom: 0; z-index: 2;
+        }
+
+        @media (max-width: 720px) {
+            .case-facts { grid-template-columns: 1fr; }
+            .case-header { flex-direction: column; gap: 12px; }
+        }
+
         /* Agent Profile */
         .agent-profile { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
         .agent-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-subtle); background: var(--surface-level-3); }
@@ -794,14 +905,28 @@
 
     <!-- Modal Detalhes -->
     <div id="caseModal" class="modal-overlay" onclick="closeModal('caseModal')">
-        <div class="modal-content" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+        <div class="modal-content modal-case" role="dialog" aria-modal="true"
+             aria-labelledby="case-modal-title" onclick="event.stopPropagation()">
+            <div class="modal-header case-header" id="modal-header-content"></div>
+            <div class="modal-body" id="modal-body-content"></div>
+            <div class="modal-footer" id="modal-footer-content"></div>
+        </div>
+    </div>
+
+    <!-- Modal Novidades da versão -->
+    <div id="releaseModal" class="modal-overlay" onclick="closeModal('releaseModal')">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="release-title"
+             style="max-width: 560px;" onclick="event.stopPropagation()">
             <div class="modal-header">
-                <div style="font-size: 18px; font-weight: 500;" data-i18n="detailsTitle">Detalhes da Solicitação</div>
-                <button class="btn-icon-close" onclick="closeModal('caseModal')">
-                    <span class="material-symbols-rounded">close</span>
+                <div>
+                    <div style="font-size: 18px; font-weight: 500;" id="release-title"></div>
+                    <div id="release-version" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;"></div>
+                </div>
+                <button class="btn-icon-close" onclick="closeModal('releaseModal')" data-i18n-aria="closeWhatsNew" aria-label="Fechar novidades">
+                    <span class="material-symbols-rounded" aria-hidden="true">close</span>
                 </button>
             </div>
-            <div class="modal-body" id="modal-body-content"></div>
+            <div class="modal-body" id="release-body"></div>
         </div>
     </div>
 
@@ -851,8 +976,13 @@
             </div>
             <div style="width: 1px; height: 24px; background: var(--nav-border);"></div>
             <span id="last-synced-label" style="font-size: 12px; color: var(--nav-text-secondary);"></span>
+            <button class="btn" id="btn-whats-new" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);"
+                    onclick="SoundKit.click(); openReleaseNotes()" data-i18n-aria="whatsNew" aria-label="Novidades desta versão">
+                <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 20px;">campaign</span>
+                <span id="whats-new-dot" class="whats-new-dot" hidden></span>
+            </button>
             <button class="btn" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);" onclick="SoundKit.click(); loadCases()">
-                <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
+                <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 20px;">sync</span>
                 <span data-i18n="sync">Sincronizar</span>
             </button>
         </div>
@@ -966,7 +1096,6 @@
         // cuida do resto.
         const TL_I18N = {
             pt: {
-                detailsTitle: "Detalhes da Solicitação",
                 confirmTitle: "Confirmar Ação",
                 confirmMessage: "Você tem certeza que deseja prosseguir com esta ação?",
                 caseSummary: "Resumo do Caso",
@@ -1007,6 +1136,15 @@
                 rowWhatToDo: "O que deve ser feito",
                 rowJustification: "Justificativa / Detalhes",
                 rowCaseSummary: "Resumo para o caso BAU",
+                rowAdvLastName: "Sobrenome do Anunciante",
+                rowReasonNotImpl: "Motivo da não implementação",
+                dataTitle: "Dados do caso",
+                submittedBy: "Enviado por",
+                closeDetails: "Fechar os detalhes da solicitação",
+                copyField: "Copiar",
+                copySummary: "Copiar resumo",
+                whatsNew: "Novidades desta versão",
+                closeWhatsNew: "Fechar novidades",
                 confirmKeepTitle: "Manter Caso Ativo",
                 confirmDiscardTitle: "Confirmar Descarte",
                 confirmKeepMsg: "O caso permanecerá ativo e o agente será avisado que o pedido de descarte não foi aceito.",
@@ -1060,7 +1198,6 @@
                 noCasesResolved: function (d) { return "Nenhum caso resolvido nos últimos " + d + " dias."; }
             },
             es: {
-                detailsTitle: "Detalles de la Solicitud",
                 confirmTitle: "Confirmar Acción",
                 confirmMessage: "¿Estás seguro de que deseas continuar con esta acción?",
                 caseSummary: "Resumen del Caso",
@@ -1101,6 +1238,15 @@
                 rowWhatToDo: "Qué debe hacerse",
                 rowJustification: "Justificación / Detalles",
                 rowCaseSummary: "Resumen para el caso BAU",
+                rowAdvLastName: "Apellido del Anunciante",
+                rowReasonNotImpl: "Motivo de la no implementación",
+                dataTitle: "Datos del caso",
+                submittedBy: "Enviado por",
+                closeDetails: "Cerrar los detalles de la solicitud",
+                copyField: "Copiar",
+                copySummary: "Copiar resumen",
+                whatsNew: "Novedades de esta versión",
+                closeWhatsNew: "Cerrar novedades",
                 confirmKeepTitle: "Mantener Caso Activo",
                 confirmDiscardTitle: "Confirmar Descarte",
                 confirmKeepMsg: "El caso permanecerá activo y se avisará al agente que el pedido de descarte no fue aceptado.",
@@ -1204,6 +1350,15 @@
             // fora por esquecimento.
             applyStaticTexts();
 
+            // Esc fecha o modal aberto. O de confirmação vem primeiro: quando os
+            // dois estão na tela, ele é o que está por cima.
+            document.addEventListener('keydown', (e) => {
+                if (e.key !== 'Escape') return;
+                const confirmar = document.getElementById('confirmModal');
+                if (confirmar.classList.contains('active')) { closeModal('confirmModal'); return; }
+                if (document.getElementById('caseModal').classList.contains('active')) closeModal('caseModal');
+            });
+
             document.getElementById('confirm-child-case-input').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -1222,6 +1377,7 @@
             // tem seu próprio watchdog (abaixo) como rede de segurança pra esse mesmo
             // sintoma, então essa espera aqui é só a primeira linha de defesa.
             setTimeout(loadCases, 50);
+            checkReleaseNotes();
             // getCurrentTLProfile() só é disparado depois que o primeiro loadCases()
             // termina (ver loadCases() abaixo) - dois google.script.run em paralelo
             // logo no carregamento inicial travavam o "Acessando base de dados..."
@@ -1520,14 +1676,7 @@
         function buildCaseSummary(c) {
             const t = CASE_SUMMARY_I18N[c.language] || CASE_SUMMARY_I18N['PT-BR'];
 
-            // Mesma desmesclagem que o BAU_API.js faz pro dashboard do agente: a
-            // coluna 16 guarda "Motivo | Justificativa" num campo só no fluxo BAU.
-            // A leitura do TL nunca desfez isso — é por isso que a linha
-            // "Justificativa / Detalhes" do modal mostra o pipe até hoje.
-            const bruto = String(c.description || '').trim();
-            const temMescla = bruto.includes(' | ');
-            const motivo = temMescla ? bruto.split(' | ')[0].trim() : '';
-            const detalhe = temMescla ? bruto.split(' | ').slice(1).join(' | ').trim() : bruto;
+            const { motivo, detalhe } = splitDescription(c);
 
             const blocos = [t.headline];
 
@@ -1820,7 +1969,8 @@
                             <span class="material-symbols-rounded" style="font-size: 14px;">flag</span>
                             ${tt('suggestDiscardBadge')}
                         </div>` : ''}
-                        <div class="text-primary">${escapeHtml(nomeCompleto(c))}</div>
+                        <button type="button" class="row-open-btn text-primary"
+                                onclick="event.stopPropagation(); SoundKit.click(); openDetails('${c.id}')">${escapeHtml(nomeCompleto(c))}</button>
                         <div class="text-secondary">CID: <span class="text-mono">${escapeHtml(c.cid)}</span></div>
                     </div>
 
@@ -1873,89 +2023,215 @@
             });
         }
 
+        // =====================================================
+        //                NOVIDADES DA VERSÃO
+        // =====================================================
+        //
+        // O changelog do bookmarklet (src/modules/changelog/) é do AGENTE — o TL
+        // nunca carrega o bookmarklet, ele abre esta página. Até aqui, toda mudança
+        // feita neste dashboard chegava sem aviso nenhum.
+        //
+        // O conteúdo vem injetado pelo servidor (CW_RELEASE_NOTES, ver
+        // renderDashboard), e não por google.script.run: é estático, e uma chamada a
+        // mais no boot é o que #333/#334 pediu para evitar.
+        const RELEASE_NOTES = <?!= CW_RELEASE_NOTES ?>;
+
+        // O navegador guarda UMA versão vista, igual ao changelog-wizard.js do
+        // bundle. Chave própria: o dashboard e o bookmarklet versionam junto mas são
+        // lidos por pessoas diferentes, e um TL que também é agente veria o aviso do
+        // outro sumir sem ter lido.
+        const RELEASE_SEEN_KEY = 'cw_tl_seen_version';
+
+        function lerVersaoVista() {
+            // localStorage some em navegação privada e com cookies de terceiros
+            // bloqueados — e este dashboard vive num iframe do Apps Script, onde isso
+            // é comum. Falhar aqui não pode derrubar o boot da fila.
+            try { return localStorage.getItem(RELEASE_SEEN_KEY); } catch (e) { return null; }
+        }
+
+        function marcarVersaoVista() {
+            try { localStorage.setItem(RELEASE_SEEN_KEY, RELEASE_NOTES.version); } catch (e) { /* sem persistência: reabre na próxima */ }
+        }
+
+        function renderReleaseNotes() {
+            document.getElementById('release-title').textContent = RELEASE_NOTES.title;
+            document.getElementById('release-version').textContent = 'v' + RELEASE_NOTES.version;
+            document.getElementById('release-body').innerHTML = (RELEASE_NOTES.items || []).map(item => `
+                <div class="release-item">
+                    <span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(item.icon)}</span>
+                    <div>
+                        <div class="release-item-title">${escapeHtml(item.title)}</div>
+                        <div class="release-item-text">${escapeHtml(item.text)}</div>
+                    </div>
+                </div>`).join('');
+        }
+
+        function openReleaseNotes() {
+            renderReleaseNotes();
+            document.getElementById('releaseModal').classList.add('active');
+            document.getElementById('whats-new-dot').hidden = true;
+            marcarVersaoVista();
+        }
+
+        // Chamado no boot. Só abre sozinho quando a versão mudou; nas outras vezes
+        // o botão do cabeçalho continua lá para reler.
+        function checkReleaseNotes() {
+            if (lerVersaoVista() === RELEASE_NOTES.version) return;
+            document.getElementById('whats-new-dot').hidden = false;
+            // Depois da fila carregar: o aviso não pode ser a primeira coisa na
+            // frente de quem abriu o painel para aprovar um caso.
+            setTimeout(openReleaseNotes, 1200);
+        }
+
+        // Desmescla a coluna 16, que guarda "Motivo | Justificativa" num campo só
+        // no fluxo BAU (ver handleBAUEscalation). O dashboard do agente já fazia
+        // isso; o do TL era o único que ainda mostrava o pipe na tela.
+        function splitDescription(c) {
+            const bruto = String(c.description || '').trim();
+            const temMescla = bruto.includes(' | ');
+            return {
+                motivo: temMescla ? bruto.split(' | ')[0].trim() : '',
+                detalhe: temMescla ? bruto.split(' | ').slice(1).join(' | ').trim() : bruto
+            };
+        }
+
+        // Guarda o que tinha o foco antes do modal abrir, pra devolver no fechamento.
+        let focoAntesDoModal = null;
+
         function openDetails(caseId) {
             const c = allCases.find(item => item.id === caseId);
             if (!c) return;
 
-            const createRow = (label, value) => `
-            <div class="detail-group">
-                <span class="detail-label">${escapeHtml(label)}</span>
-                <div class="detail-value">
-                    <span>${value ? escapeHtml(value) : '---'}</span>
-                    <button class="copy-btn" data-copy-value="${escapeHtml(value || '')}" onclick="copyText(this)">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
-                    </button>
-                </div>
-            </div>`;
+            const isDiscardFlow = c.status === 'PENDING_TL_DISCARD';
+            const { motivo, detalhe } = splitDescription(c);
+            const agentLdap = c.agentEmail ? c.agentEmail.split('@')[0] : '';
 
-            // Mesma ideia do createRow acima, mas pra texto longo (motivo/justificativa) -
-            // display:block pra parágrafo quebrar linha normalmente, botão de copiar fixo
-            // no canto em vez de disputar espaço com o texto num flex row.
-            const createBlockRow = (label, value) => `
-            <div class="detail-group">
-                <span class="detail-label">${escapeHtml(label)}</span>
-                <div class="detail-value" style="display: block; font-style: italic; position: relative; padding-right: 48px;">
-                    "${value ? escapeHtml(value) : '---'}"
-                    <button class="copy-btn" data-copy-value="${escapeHtml(value || '')}" onclick="copyText(this)" style="position: absolute; top: 10px; right: 10px;">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
-                    </button>
-                </div>
-            </div>`;
-
-            // O resumo é texto de várias linhas, e não um valor de campo: precisa de
-            // white-space: pre-wrap (sem isso o HTML colapsa as quebras e o que o TL
-            // LÊ deixa de ser o que ele COPIA) e de fonte normal, sem itálico de citação.
+            // ---------- Zona 1: cabeçalho — de quem é o caso ----------
             //
-            // O pre-wrap fica no <span>, não no contêiner: aplicado no contêiner ele
-            // também respeita a indentação DO PRÓPRIO HTML entre o texto e o botão, e
-            // o TL vê linhas em branco no fim do bloco que não existem no que ele copia.
-            const createSummaryRow = (label, value) => `
-            <div class="detail-group">
-                <span class="detail-label">${escapeHtml(label)}</span>
-                <div class="detail-value" style="display: block; line-height: 1.6; position: relative; padding-right: 48px;"><span class="summary-text">${escapeHtml(value)}</span><button class="copy-btn" data-copy-value="${escapeHtml(value)}" onclick="copyText(this)" style="position: absolute; top: 10px; right: 10px;">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
-                    </button>
+            // O título era "Detalhes da Solicitação", que não informa nada sobre O
+            // QUE está aberto na tela. Agora é o anunciante, com os selos que mudam
+            // a decisão do TL e a autoria do pedido.
+            document.getElementById('modal-header-content').innerHTML = `
+            <div class="case-header-main">
+                <div class="case-badges">
+                    <div class="status-badge ${isDiscardFlow ? 'badge-discard' : 'badge-create'}">
+                        <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 14px;">${isDiscardFlow ? 'delete' : 'add_circle'}</span>
+                        ${isDiscardFlow ? tt('flowDiscard') : tt('flowCreation')}
+                    </div>
+                    ${c.suggestDiscard === 'Sim' ? `
+                    <div class="status-badge badge-warn">
+                        <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 14px;">flag</span>
+                        ${tt('suggestDiscardBadge')}
+                    </div>` : ''}
                 </div>
+                <div class="case-title" id="case-modal-title">${escapeHtml(nomeCompleto(c)) || tt('notInformed')}</div>
+                <div class="case-header-meta">
+                    ${caseLinkHtml(c.caseId)}
+                    <span>${tt('submittedBy')} <strong>${escapeHtml(agentLdap || tt('notInformed'))}</strong> · ${escapeHtml(formatSubmittedAt(c.date))}</span>
+                </div>
+            </div>
+            <button class="btn-icon-close" onclick="closeModal('caseModal')" aria-label="${escapeHtml(tt('closeDetails'))}">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>`;
+
+            // ---------- Zona 2: briefing — por que o caso está sendo aberto ----------
+            //
+            // Leitura, não área de transferência. Estes quatro campos saíram dos
+            // copiáveis de propósito: o TL não cola "justificativa" em lugar nenhum,
+            // ele lê pra decidir. O que vai pro CRM é o resumo, lá embaixo.
+            const briefItem = (label, valor) => `
+            <div class="brief-item">
+                <span class="brief-label">${escapeHtml(label)}</span>
+                <div class="brief-text${valor ? '' : ' is-empty'}">${valor ? escapeHtml(valor) : tt('notInformed')}</div>
             </div>`;
+
+            const briefing = [
+                briefItem(tt('rowWhatToDo'), c.reason),
+                motivo ? briefItem(tt('rowReasonNotImpl'), motivo) : '',
+                briefItem(tt('rowJustification'), detalhe),
+                isDiscardFlow ? '' : briefItem(tt('rowSchedule'), formatAvailability(c.availability))
+            ].filter(Boolean).join('');
+
+            // ---------- Zona 3: dados — o que o TL leva pro CRM ----------
+            const fact = (label, value) => `
+            <div class="fact">
+                <span class="fact-label">${escapeHtml(label)}</span>
+                <span class="fact-value${value ? '' : ' is-empty'}">${value ? escapeHtml(value) : '---'}</span>
+                <button class="copy-btn" data-copy-value="${escapeHtml(value || '')}" onclick="copyText(this)"
+                        aria-label="${escapeHtml(tt('copyField'))} ${escapeHtml(label)}">
+                    <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 18px;">content_copy</span>
+                </button>
+            </div>`;
+
+            // Sobrenome em campo próprio, e "N/A" quando não houver: o CRM chama de
+            // `Family name` e há formulário do outro lado que exige os dois separados
+            // — um campo vazio ali não diz se o dado falta ou se a pessoa não tem.
+            const dados = [
+                fact(tt('rowAdvertiser'), c.advName),
+                fact(tt('rowAdvLastName'), c.advLastName || 'N/A'),
+                fact('CID', c.cid),
+                fact('Case ID', c.caseId),
+                fact('Speakeasy ID', c.speakeasyId),
+                fact(tt('rowTask'), c.task),
+                fact(tt('rowAdvEmail'), c.advEmail),
+                fact(tt('rowAdvPhone'), c.advPhone),
+                fact(tt('rowSite'), c.site),
+                fact('Timezone', c.timezone),
+                fact(tt('rowLanguage'), c.language),
+                fact(tt('rowAm'), c.amName),
+                fact(tt('rowSalesProgram'), c.salesProgram)
+            ].join('');
 
             // Só no fluxo de criação. No pedido de descarte não há caso BAU pra abrir,
             // nem tasks nem AM pra citar — e a headline "Caso LM para BAU" seria mentira
             // num texto que pede pra FECHAR um caso.
-            const resumo = c.status === 'PENDING_TL_CREATION' ? buildCaseSummary(c) : '';
+            const resumo = isDiscardFlow ? '' : buildCaseSummary(c);
 
             document.getElementById('modal-body-content').innerHTML = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow(tt('rowAdvertiser'), nomeCompleto(c))}
-                ${createRow('CID', c.cid)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow(tt('rowTask'), c.task)}
-                ${createRow('Case ID', c.caseId)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow('Speakeasy ID', c.speakeasyId)}
-                ${createRow(tt('rowAdvEmail'), c.advEmail)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow(tt('rowAdvPhone'), c.advPhone)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow('Timezone', c.timezone)}
-                ${createRow(tt('rowLanguage'), c.language)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow(tt('rowAm'), c.amName)}
-                ${createRow(tt('rowSalesProgram'), c.salesProgram)}
-            </div>
-            ${createRow(tt('rowSite'), c.site)}
-            ${createRow(tt('rowSchedule'), formatAvailability(c.availability))}
-            ${c.suggestDiscard === 'Sim' ? createRow(tt('rowSuggestDiscard'), tt('suggestDiscardBadge')) : ''}
-            ${createRow(tt('rowAgent'), c.agentEmail)}
-            ${createBlockRow(tt('rowWhatToDo'), c.reason)}
-            ${createBlockRow(tt('rowJustification'), c.description)}
-            ${resumo ? createSummaryRow(tt('rowCaseSummary'), resumo) : ''}
-            `;
+            <section class="case-brief">${briefing}</section>
+            <section>
+                <div class="section-title">${escapeHtml(tt('dataTitle'))}</div>
+                <div class="case-facts">${dados}</div>
+            </section>
+            ${resumo ? `
+            <section class="case-summary-block">
+                <div class="section-title">${escapeHtml(tt('rowCaseSummary'))}</div>
+                <div class="case-summary-text summary-text">${escapeHtml(resumo)}</div>
+                <button class="btn btn-primary btn-copy-summary" data-copy-value="${escapeHtml(resumo)}" onclick="copyText(this)">
+                    <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 18px;">content_copy</span>
+                    ${escapeHtml(tt('copySummary'))}
+                </button>
+            </section>` : ''}`;
+
+            // ---------- Rodapé: decidir sem fechar ----------
+            document.getElementById('modal-footer-content').innerHTML = `
+            <button class="btn btn-danger-outline" onclick="closeModal('caseModal'); confirmAction('${c.id}', '${isDiscardFlow ? 'CREATED' : 'DISCARDED'}')">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                ${isDiscardFlow ? tt('keepActive') : tt('rejectRequest')}
+            </button>
+            <button class="btn btn-primary" onclick="closeModal('caseModal'); confirmAction('${c.id}', '${isDiscardFlow ? 'DISCARDED' : 'CREATED'}')">
+                <span class="material-symbols-rounded" aria-hidden="true">check</span>
+                ${isDiscardFlow ? tt('confirmDiscard') : tt('approveNotify')}
+            </button>`;
+
+            focoAntesDoModal = document.activeElement;
             document.getElementById('caseModal').classList.add('active');
+            // O foco precisa ENTRAR no modal: com aria-modal o leitor de tela já
+            // ignora o resto da página, mas o Tab do teclado não — sem isto a
+            // primeira tabulação cai na fila atrás do overlay.
+            setTimeout(() => {
+                const primeiro = document.querySelector('#caseModal .btn-icon-close');
+                if (primeiro) primeiro.focus();
+            }, 50);
+        }
+
+        // Data de envio em texto curto, no idioma da tela do TL.
+        function formatSubmittedAt(iso) {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return tt('notInformed');
+            return new Intl.DateTimeFormat(TL_LANG === 'es' ? 'es-ES' : 'pt-BR', {
+                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+            }).format(d);
         }
 
         function confirmAction(id, action) {
@@ -2117,6 +2393,12 @@
 
         function closeModal(id) {
             document.getElementById(id).classList.remove('active');
+            // Devolve o foco pra linha da fila que abriu o modal. Sem isto o Tab
+            // recomeça do topo da página a cada caso revisado.
+            if (id === 'caseModal' && focoAntesDoModal && document.contains(focoAntesDoModal)) {
+                focoAntesDoModal.focus();
+                focoAntesDoModal = null;
+            }
         }
 
         function copyText(btn) {

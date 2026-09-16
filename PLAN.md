@@ -78,10 +78,26 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [~] **Vista de caso remodelada + changelog do TL Dashboard.** Segunda rodada
+      de feedback sobre o modal do TL.
+      1. **Três zonas por propósito** (ADR-0015): cabeçalho (anunciante, selos,
+         autoria), briefing (o que fazer / motivo / justificativa / agendamento —
+         **leitura, sem copiar**) e dados (o que vai pro CRM). 900px, rodapé com
+         aprovar/rejeitar, nome e sobrenome separados com `N/A`. Padrão
+         registrado em `specs/ui-ux/design-system.md`.
+      2. **Acessibilidade:** a fila era `<div onclick>` e não abria pelo teclado,
+         contrariando o próprio design-system. Virou botão; `Esc` fecha e o foco
+         volta.
+      3. **Changelog do dashboard** — `gas-backend/DashReleaseNotes.js`, injetado
+         pelo servidor, com guarda de sincronia de versão em
+         `npm run test:dash-changelog`.
+      `smoke:tl-dash` foi de 9 para 21 asserções. **Falta o `clasp deploy` de
+      produção** e a validação na planilha real.
+
 - [~] **Resumo copiável do caso no TL Dashboard + backup que copia em vez de
       mover.** Dois pontos do fluxo BAU, entregues juntos porque o segundo é o
       que faz o primeiro valer depois de uma semana.
-      1. **Resumo** — último campo do modal de detalhes, com a headline
+      1. **Resumo** — último bloco da vista de detalhes, com a headline
          `Caso LM para BAU`. Texto concatenado do que o agente já preenche
          (nada novo pedido no formulário), no idioma do **atendimento** e não no
          da tela do TL. Conteúdo decidido por subtração: fora o que já está no
@@ -161,8 +177,12 @@ com a planilha de produção na frente.
       `ContentDashboard.html` não tem teste nenhum; quebra do arquivo em includes
       do `HtmlService` como primeiro commit, mecânico; trilho escuro/glass com os
       três grupos; home "Hoje" moldada pelo papel; idioma único e persistente no
-      lugar dos `select` independentes; rota por hash. **PR irmão:** changelog de
-      versão na Central e no TL Dash, a partir de fonte única no repo.
+      lugar dos `select` independentes; rota por hash.
+      **Correção de registro (2026-09-16):** constava aqui um "PR irmão" de
+      changelog de versão na Central e no TL Dash como entregue. Ele **nunca
+      existiu** — não havia nada de changelog no `gas-backend/` inteiro. O do TL
+      Dash saiu agora (ver a entrada no topo); o da Central segue pendente, e a
+      constante `CW_DASH_RELEASE_NOTES` já está pronta para ele.
 - [x] **Fase 3 — ciclo de vida do item** — completa, em quatro PRs:
       1. **histórico e "voltar para esta versão"** — `listContentItemHistory` e
          `rollbackContentItem` existiam no backend e nunca tinham sido chamados
@@ -222,6 +242,11 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 - [ ] ...
 
 ## Waiting / blocked
+
+- [ ] **Levar o changelog para a Central de Conteúdo.** A constante
+      `CW_DASH_RELEASE_NOTES` e o `template.CW_RELEASE_NOTES` do
+      `renderDashboard()` já servem as duas telas — falta o modal no
+      `ContentDashboard.html`. Não foi feito junto por não ter sido pedido.
 
 - [ ] **Conferir a largura da aba `Archive_BAU` na planilha de backup.** O job
       antigo escrevia um bloco com a largura da planilha de casos sem conferir se
