@@ -42,7 +42,8 @@ viva), o layout segue o **propósito** de cada informação, não a ordem da pla
    quem lê, e autoria. Autoria não é campo copiável.
 2. **Briefing** — por que ele existe. Um contêiner só, hierarquia por tipografia.
    **Sem botão de copiar**: ninguém cola uma justificativa em lugar nenhum, e o
-   botão ali é promessa falsa.
+   botão ali é promessa falsa. No topo dele vem o **desfecho pedido**, quando
+   houver um (ver abaixo).
 3. **Dados** — o que a pessoa leva para outro sistema. Lista de definição com
    hairline (não caixa por campo), botão de copiar no hover/foco.
 
@@ -51,6 +52,33 @@ sistema"*. Espalhá-lo por todo campo esvazia o sinal.
 
 Ações de decisão vivem num rodapé fixo da própria vista — fechar para agir é
 uma busca visual a mais por registro. A confirmação continua sendo a fronteira.
+
+### Desfecho pedido: diga os dois lados, e diga "não sei"
+
+Quando um registro carrega o que quem o abriu **pediu que aconteça** (no modal do
+TL: descartar o caso, ou deixar o agente implementar), isso é a moldura do resto
+— vem como primeira linha do briefing, antes do "por quê".
+
+Três regras, todas aprendidas errando:
+
+- **Diga os dois estados por extenso.** Renderizar só o estado "positivo" (um selo
+  que aparece quando é "Sim") faz o outro estado virar tela em branco, e quem lê
+  não distingue "o agente escolheu isto" de "o campo não chegou". Foi o que
+  aconteceu com a sugestão de descarte: por meses o TL só via alguma coisa quando
+  era "Sim".
+- **Ausência é um terceiro estado, não o padrão.** Célula vazia (linha anterior à
+  coluna existir, campo que não se aplica) não é "Não". Afirmar um desfecho que
+  ninguém escolheu, bem no texto que orienta a decisão, é pior que dizer que não
+  foi informado.
+- **Frase normal com ponto semântico**, não pílula em maiúsculas nem caixa
+  própria: o briefing já é um contêiner, e caixa dentro de caixa está proibida
+  acima. A cor fica no ponto (âmbar para o que pede atenção, verde para o que
+  segue, cinza para o desconhecido) — é o caso de "cor apenas onde ela tem
+  função", porque este estado muda a decisão de quem lê.
+
+O texto do desfecho é **chrome**: segue o idioma da tela de quem lê, não o do
+registro. (O resumo copiável é o oposto — segue o atendimento, porque é colado
+noutro sistema.)
 
 Ver `docs/decisions/0015-vista-de-caso-leitura-e-copiavel.md`.
 

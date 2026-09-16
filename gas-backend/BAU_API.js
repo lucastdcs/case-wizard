@@ -114,7 +114,10 @@ function getAgentCases(ss, userEmail) {
         task: celulaTexto(row[15]),
         nonImplementationReason: nonImplementationReason,
         description: description,
-        availability: row[17] instanceof Date ? row[17].toISOString() : celulaTexto(row[17])
+        availability: row[17] instanceof Date ? row[17].toISOString() : celulaTexto(row[17]),
+        // Faltava aqui, e por isso o form de edição abria sempre no padrão do
+        // <select> ("Não") em vez do que está gravado. Mesma coluna que o TL lê.
+        suggestDiscard: celulaTexto(row[21])
       });
 
       if (myCases.length >= 30) break;
@@ -226,6 +229,16 @@ function update_bau_case(ss, p) {
         if (p.advPhone !== undefined) {
           ensureBAUAdvPhoneColumn(sheet);
           sheet.getRange(i + 1, BAU_ADV_PHONE_COL).setValue(p.advPhone);
+        }
+
+        // A sugestão de descarte mora na coluna 21, também fora do bloco contíguo
+        // 4-18 do setValues acima — e não tinha escrita nenhuma aqui. O agente
+        // editava o campo no bookmarklet, o payload chegava com o valor novo e ele
+        // era descartado em silêncio: o TL seguia vendo o que foi gravado na
+        // criação. Normaliza como o caminho de criação, para os dois não divergirem.
+        if (p.suggestDiscard !== undefined) {
+          ensureBAUSuggestDiscardColumn(sheet);
+          sheet.getRange(i + 1, BAU_SUGGEST_DISCARD_COL).setValue(p.suggestDiscard === 'Sim' ? 'Sim' : 'Não');
         }
 
         console.log("Caso atualizado com sucesso. ID:", p.id, "Row:", i+1);

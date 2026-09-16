@@ -9,6 +9,23 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **O TL não via o que o agente pediu que acontecesse com o caso.** A sugestão de
+  descarte existia no modal só como selo, e **só quando era "Sim"** — então "o
+  agente vai implementar" e "o campo não chegou" eram a mesma tela em branco, e o
+  TL decidia sem saber o que tinha sido pedido. Agora é um disclaimer no topo do
+  briefing, dizendo por extenso "O caso deve ser descartado pelo TL" ou "O caso
+  será implementado pelo agente". Célula vazia (linha anterior à coluna 21) vira
+  um terceiro estado, "não informado": afirmar um desfecho que ninguém escolheu,
+  bem no texto que orienta a decisão, é pior que admitir que não se sabe. O fluxo
+  de descarte não ganha o disclaimer — ali a pergunta não é feita ao agente.
+- **Editar a sugestão de descarte no bookmarklet não chegava ao TL.** A coluna 21
+  fica fora do bloco contíguo 4-18 que a edição grava de uma vez, e ninguém
+  escrevia ela no caminho de edição: o payload chegava com o valor novo e era
+  descartado em silêncio, com o TL seguindo a ver o que foi gravado na criação.
+  Junto, dois defeitos que só apareciam depois de consertar o primeiro: a lista
+  do agente não devolvia o campo (o `<select>` da edição abria sempre em "Não", e
+  salvar apagaria um "Sim" que ninguém tocou) e valor gravado fora do domínio
+  zerava o `<select>` — a mesma armadilha que o campo de idioma já tinha.
 - **O mesmo AM ia para todos os casos de uma conta.** Quando o case log não tinha
   e-mail `@google.com` para resolver — caso recém-aberto, ou 2+ candidatos sem
   Contact Us Form para desempatar — a raspagem caía no **primeiro

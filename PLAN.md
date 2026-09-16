@@ -78,6 +78,30 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [x] **Sugestão de descarte: invisível no modal do TL e não editável de fato.**
+      Relatado em 2026-09-16 como "o campo não aparece para o TL". Eram três
+      defeitos encadeados:
+      1. **Tela** — o campo só renderizava quando era "Sim", e como selo. "O
+         agente vai implementar" e "o campo não chegou" eram a mesma tela em
+         branco. Virou disclaimer no topo do briefing, com os dois lados por
+         extenso e um terceiro estado para célula vazia. Padrão registrado em
+         `specs/ui-ux/design-system.md`.
+      2. **Escrita** — a edição nunca gravava a coluna 21 (fora do bloco
+         contíguo 4-18 do `setValues`): o agente editava, o payload chegava, e o
+         valor era descartado em silêncio.
+      3. **Leitura** — `getAgentCases` não devolvia o campo, então o `<select>`
+         da edição abria sempre em "Não". Consertar só o item 2 teria
+         transformado um no-op silencioso em **perda de dado** silenciosa.
+      `BAU_API.js` ganhou seu primeiro teste (round-trip agente→TL no
+      `test:tl-decision`, +5) e `smoke:tl-dash` foi de 30 para 36.
+      Junto: `RELEASE.md` listava **três** fontes de versão e o
+      `test:dash-changelog` cobra uma quarta (`CW_DASH_RELEASE_NOTES`) — seguir o
+      doc à risca quebrava o teste. Corrigido.
+      **Falta na próxima release:** reescrever os itens de
+      `gas-backend/DashReleaseNotes.js` — é o único changelog que o TL vê, e o
+      disclaimer é mudança na tela dele.
+
+
 - [x] **AM sempre em e-mail + o fallback que repetia o mesmo AM.** Relatado em
       2026-09-16: "AM Responsável" no modal do TL Dash vinha como nome, e
       suspeita de que o mesmo AM estivesse indo para todos os casos. As duas

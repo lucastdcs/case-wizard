@@ -12,6 +12,71 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Campo gravado fora do bloco contíguo: procure os TRÊS caminhos, não um
+
+**Why**: a sugestão de descarte (coluna 21) era editável no bookmarklet e a
+edição não fazia nada. O `setValues` de `update_bau_case` grava a faixa 4-18 de
+uma vez; tudo que mora depois precisa do seu próprio `setValue`, e a coluna 21
+simplesmente não tinha um. O payload chegava certo, ninguém escrevia, e o TL
+seguia vendo o valor da criação. Zero erro, zero log — só um campo que "não
+atualiza".
+
+O conserto expôs que o defeito era triplo, e que consertar **só a escrita**
+teria sido pior que o bug:
+
+1. **Escrita na edição** — a coluna não era gravada (o defeito relatado).
+2. **Leitura que alimenta o form** — `getAgentCases` não devolvia o campo, então
+   o `<select>` da edição abria sempre no padrão ("Não"). Com a escrita
+   consertada e a leitura não, todo save apagaria um "Sim" que o agente nunca
+   tocou: um no-op silencioso viraria **perda de dado** silenciosa.
+3. **Atribuição ao `<select>`** — valor gravado fora do domínio (linha anterior à
+   coluna, `""`) zera o select, que então envia `""`. É a mesma armadilha que o
+   campo `language` já documentava dez linhas acima no mesmo arquivo — e que
+   ninguém aplicou ao campo vizinho.
+
+**When to apply**: ao mexer em qualquer coluna acima do índice 17 da planilha BAU
+(21, 22, 23, 25 — e toda nova, que por definição nasce lá). Antes de dar por
+pronto, responda às três:
+
+```bash
+# 1. Quem ESCREVE? Tem que aparecer nos DOIS caminhos.
+grep -n "BAU_MINHA_COL" gas-backend/BAU_API.js   # handleBAUEscalation E update_bau_case
+# 2. Quem LÊ para o form de edição?
+grep -n "minhaChave" gas-backend/BAU_API.js      # getAgentCases
+# 3. O destino é <select>? Então valor inválido não pode ser atribuído direto.
+grep -n "temOpcao" src/modules/bau-form/bau-form-assistant.js
+```
+
+Um teste que só prova a escrita passa com o bug 2 intacto. O que vale é o
+round-trip: escreve pela API do agente, lê pelo mapeador do TL — é o que
+`npm run test:tl-decision` faz agora, com os dois arquivos no mesmo sandbox.
+
+---
+
+## Estado renderizado só no "Sim" deixa quem lê sem saber se houve resposta
+
+**Why**: o modal do TL mostrava a sugestão de descarte como um selo, condicionado
+a `suggestDiscard === 'Sim'`. Parecia econômico — só sinaliza o que precisa de
+atenção. Na prática, o TL via a mesma coisa (nada) em três situações
+completamente diferentes: o agente respondeu "implemento eu", o agente não
+respondeu, e o campo não chegou à tela. O relato veio como "o campo não aparece",
+que é exatamente como um estado invisível se manifesta.
+
+A regra que saiu disso, agora em `specs/ui-ux/design-system.md`: quando um
+registro carrega **o desfecho que alguém pediu**, renderize os dois lados por
+extenso, e trate ausência como um terceiro estado explícito. Célula vazia não é
+"Não" — é "ninguém respondeu", e afirmar um desfecho que ninguém escolheu, no
+texto que orienta uma decisão, é pior que admitir que não se sabe. Mesma família
+do learning sobre `normalizeRoleMatrix_()` preencher casa ausente com `false`:
+**ausência não é decisão de ninguém**.
+
+**When to apply**: ao renderizar qualquer campo booleano/enum num registro que
+outra pessoa vai ler para decidir. Se o markup é
+`${x === 'valor' ? algo : ''}`, pergunte o que a outra pessoa vê no `else` — e se
+ela consegue distinguir "respondeu o contrário" de "não respondeu".
+
+---
+
 ## Fallback que lê "o primeiro da lista" não é fallback: é o mesmo valor em todo caso
 
 **Why**: o AM vinha certo na captura real e ninguém desconfiava. Mas o caminho
