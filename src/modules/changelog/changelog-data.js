@@ -15,15 +15,20 @@
 // contar uma release por vez (o localStorage guarda uma única versão vista).
 
 export const RELEASE_NOTES = {
-    version: "v6.3.2",
+    version: "v6.3.3",
 
-    title: "Case Wizard v6.3.2",
+    title: "Case Wizard v6.3.3",
 
     slides: [
         {
-            icon: "✉️",
-            title: "Quando a liderança recusa um pedido, agora você recebe o motivo",
-            text: "Se um pedido de abertura de BAU for recusado, ou se um pedido de descarte for negado, o e-mail que chega até você passa a trazer a justificativa escrita pelo TL, logo no topo. Antes o aviso dizia apenas que o pedido não foi aceito, e descobrir o porquê dependia de perguntar no chat."
+            icon: "📧",
+            title: "O AM agora vem como e-mail — e vem vazio quando não dá para ter certeza",
+            text: "O campo Account Manager passou a trazer o e-mail do AM, não o nome: é o que a liderança usa para acionar a pessoa a partir do painel dela, e um nome próprio não diz qual LDAP é. Junto, o assistente parou de chutar: quando o case log não deixa claro quem é o AM, o campo vem em branco em vez de preenchido com o primeiro contato da conta — que era sempre o mesmo em todos os casos daquele anunciante. Se vier vazio, preencha; o campo aceita só e-mail."
+        },
+        {
+            icon: "💾",
+            title: "Editar a sugestão de descarte agora salva de verdade",
+            text: "No Passo 3, a resposta para \"o caso deve ser descartado pelo TL?\" podia ser alterada na edição de um caso já enviado, mas a mudança não chegava à liderança: o TL continuava vendo o que foi gravado no envio original. Agora ela é gravada, e ao reabrir um caso para editar o campo já vem marcado com o que está valendo."
         }
     ]
 };

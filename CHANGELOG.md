@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.3.3] - 2026-09-16
+
 ### Fixed
 - **O TL não via o que o agente pediu que acontecesse com o caso.** A sugestão de
   descarte existia no modal só como selo, e **só quando era "Sim"** — então "o
@@ -795,7 +797,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...HEAD
+[6.3.3]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...v6.3.3
 [6.3.2]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...v6.3.2
 [6.3.1]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...v6.3.1
 [6.3.0]: https://github.com/lucastdcs/case-wizard/compare/v6.2.0...v6.3.0

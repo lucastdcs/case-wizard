@@ -78,6 +78,18 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [x] **v6.3.3 cortada e promovida.** Fecha o `[Unreleased]` do CHANGELOG, alinha
+      as quatro fontes de versão (`package.json`, `APP_VERSION`,
+      `RELEASE_NOTES.version` e `CW_DASH_RELEASE_NOTES.version`) e reescreve os
+      dois changelogs: o do bookmarklet conta ao agente que o AM virou e-mail e
+      que a sugestão de descarte passou a salvar de verdade; o do TL Dashboard
+      conta o disclaimer novo e que as correções do agente agora chegam. Suíte
+      completa verde antes do merge, `smoke:env-badge` incluído (é o que prova
+      que o build de produção não leva o selo de dev).
+      **Depois do merge, conferir no Actions:** o job do backend promove a
+      implantação de produção antes de publicar o frontend — se ele falhar, o
+      frontend não sai, e é isso que evita meio-deploy.
+
 - [x] **Sugestão de descarte: invisível no modal do TL e não editável de fato.**
       Relatado em 2026-09-16 como "o campo não aparece para o TL". Eram três
       defeitos encadeados:
@@ -97,9 +109,8 @@ This file differs from the long-term roadmap: it describes what is happening **n
       Junto: `RELEASE.md` listava **três** fontes de versão e o
       `test:dash-changelog` cobra uma quarta (`CW_DASH_RELEASE_NOTES`) — seguir o
       doc à risca quebrava o teste. Corrigido.
-      **Falta na próxima release:** reescrever os itens de
-      `gas-backend/DashReleaseNotes.js` — é o único changelog que o TL vê, e o
-      disclaimer é mudança na tela dele.
+      Notas de versão reescritas nos DOIS changelogs (bookmarklet e TL
+      Dashboard) e a v6.3.3 cortada — ver abaixo.
 
 
 - [x] **AM sempre em e-mail + o fallback que repetia o mesmo AM.** Relatado em
