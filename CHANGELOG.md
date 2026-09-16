@@ -62,6 +62,17 @@ versions follow [Semantic Versioning](https://semver.org/).
   `docs/decisions/0012-tasks-e-screenshots-na-central.md`.
 
 ### Changed
+- **Passada de acabamento no painel do TL.** A profundidade passou a significar
+  alguma coisa: o bloco da decisão é tingido com a cor de identidade e salta
+  primeiro, o briefing recua, e o resumo — a única coisa que sai da tela — é o
+  único elevado. Copiar passou a confirmar nos três canais (botão, som e vibração
+  onde houver motor) em vez de só num toast no canto oposto. As linhas do
+  histórico ganharam o estado de `hover` que faltava desde que viraram clicáveis.
+  Entraram junto `tabular-nums` nas colunas de dígitos, a grade de 4/8px,
+  `prefers-reduced-motion`, e o diálogo de decisão passou a ter um eixo só
+  quando tem campo para preencher, com o botão dizendo a ação em vez de
+  "Confirmar". Regras em `specs/ui-ux/design-system.md`.
+
 - **A vista de detalhes do caso foi remodelada.** Era uma grade de 16 caixas
   idênticas em 640px, onde "O que deve ser feito" — a decisão — tinha o mesmo
   peso visual de "Programa de Vendas". Agora são três zonas por propósito
@@ -83,6 +94,14 @@ versions follow [Semantic Versioning](https://semver.org/).
   justifica podar nada. Ver `docs/decisions/0014-arquivo-copia-em-vez-de-mover.md`.
 
 ### Fixed
+- **O rodapé do modal continuava desenhado num caso resolvido.** O atributo
+  `hidden` perde para o `display: flex` da classe, então a faixa cinza e a
+  hairline ficavam no fim da vista com o atributo aparentemente correto — e o
+  teste, que checava o atributo, passava. Agora o teste compara o `display`
+  computado.
+- **A aba Histórico dizia que os casos saem da lista no backup semanal.** Deixou
+  de ser verdade quando o backup parou de deletar (ADR-0014), na mesma entrega.
+
 - **A fila do TL não era alcançável pelo teclado.** As linhas eram `<div>` com
   `onclick`, o que o `specs/ui-ux/design-system.md` proíbe explicitamente — na
   prática, não havia como abrir um caso sem mouse. O nome do anunciante virou um

@@ -476,8 +476,12 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
     await check('caso resolvido NÃO oferece aprovar nem rejeitar', async () => {
         const r = await abrirCaso(page, 'hist_rejeitado');
         igual(r.acoes, [], 'rodapé vazio');
-        verdade(await page.evaluate(() => document.getElementById('modal-footer-content').hidden),
-            'e escondido, para não deixar a borda do rodapé sobrando');
+        // Visibilidade COMPUTADA, não o atributo: [hidden] perde para o
+        // `display: flex` da classe, e a faixa cinza continuava desenhada no fim
+        // do modal com o atributo aparentemente correto.
+        igual(await page.evaluate(() =>
+            getComputedStyle(document.getElementById('modal-footer-content')).display),
+            'none', 'e some de verdade, sem deixar a faixa do rodapé');
     });
 
     await check('decisão anterior à coluna não renderiza justificativa vazia', async () => {

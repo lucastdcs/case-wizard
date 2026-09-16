@@ -571,13 +571,28 @@
         .stat-card .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); }
         .stat-card .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
 
-        .history-row { cursor: pointer; }
         .history-row {
             background: var(--surface-level-1);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
-            padding: 14px 16px;
-            margin-bottom: 10px;
+            padding: 16px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: border-color 0.15s var(--spring-functional),
+                        box-shadow 0.15s var(--spring-functional),
+                        transform 0.15s var(--spring-functional);
+        }
+        /* A linha virou clicável nesta entrega; sem estado visual ela ficava com
+           cursor de mão e nenhuma resposta — que é o que faz uma tela parecer
+           montada e não desenhada. Sobe 1px: o bastante para o olho registrar,
+           pouco o bastante para não empurrar a lista inteira. */
+        .history-row:hover {
+            border-color: var(--gemini-blue);
+            box-shadow: 0 1px 2px rgba(60, 64, 67, 0.1), 0 4px 10px rgba(60, 64, 67, 0.08);
+            transform: translateY(-1px);
+        }
+        .history-row:has(.row-open-btn:focus-visible) {
+            border-color: var(--gemini-blue);
         }
 
         .history-row-top {
@@ -646,6 +661,18 @@
 
         /* Confirmation Modal Specifics */
         .modal-confirm-content { max-width: 480px; text-align: center; }
+        /* Com campo para preencher, o corpo INTEIRO deixa de ser centralizado.
+           Um diálogo de tarefa não é um alerta: texto corrido centralizado em
+           várias linhas já é difícil de ler, e misturar título ao centro com
+           formulário à esquerda cria três eixos competindo na mesma caixa. Um
+           eixo só, à esquerda, é o que o olho segue de rótulo para campo. */
+        .modal-confirm-content.has-form .modal-body { text-align: left; }
+        .modal-confirm-content.has-form .confirm-icon { display: none; }
+        .modal-confirm-content.has-form .confirm-footer { justify-content: flex-end; }
+        /* Os dois botões carregam flex:1 inline na marcação; sem anular, eles
+           esticam e o justify-content acima não tem efeito nenhum. Do tamanho do
+           conteúdo e à direita: o mesmo rodapé da vista de caso. */
+        .modal-confirm-content.has-form .confirm-footer .btn { flex: 0 0 auto; }
         .confirm-icon {
             font-size: 48px !important;
             margin-bottom: 16px;
@@ -676,6 +703,9 @@
         }
 
         .summary-text { white-space: pre-wrap; }
+        /* Todo lugar que mostra CID, número de caso ou horário: sem isto, cada
+           linha de uma coluna de dígitos alinha num ponto diferente. */
+        .text-mono, .fact-value, .history-row, .stat-value { font-variant-numeric: tabular-nums; }
         .copy-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; transition: color 0.2s; }
         .copy-btn:hover { color: var(--gemini-blue); }
 
@@ -714,17 +744,38 @@
         .row-open-btn:hover { text-decoration: underline; }
         .row-open-btn:focus-visible { outline: 2px solid var(--gemini-blue); outline-offset: 3px; border-radius: 2px; }
 
+        /* Quem pediu menos movimento recebe menos movimento. O arquivo tem molas
+           de até 0,6s; sem esta guarda, a preferência do sistema é ignorada — e
+           ignorá-la é acessibilidade, não preferência estética. */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            .history-row:hover { transform: none; }
+        }
+
         .modal-case { max-width: 900px; }
 
         .case-header { align-items: flex-start; gap: 24px; }
         .case-header-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-        .case-title { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1.3; }
+        .case-title { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1.3; letter-spacing: -0.2px; }
         .case-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         .case-header-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--text-secondary); }
 
-        /* Briefing: UM contêiner, hierarquia por tipografia. Mesma família visual
-           da .reason-box da fila (aspa em roxo Gemini), que já dizia esta mesma
-           informação no card — a vista de detalhes não inventa componente novo. */
+        /* PROFUNDIDADE COM SIGNIFICADO
+           O Material 3 manda preferir elevação TONAL e guardar a sombra para o que
+           precisa de foco. Aqui os três níveis dizem o que cada coisa é:
+
+             recuado (tonal)  → material de referência: decisão e briefing, que o
+                                TL LÊ. Fundo tingido, sem sombra.
+             plano            → os dados, direto sobre a superfície do modal.
+             elevado (sombra) → o resumo, a única coisa que o TL LEVA daqui.
+
+           Antes as três zonas usavam a mesma --surface-level-2 com a mesma borda:
+           a profundidade não codificava nada, e só a cor da régua lateral
+           diferenciava. */
         .case-brief {
             background: var(--surface-level-2);
             border: 1px solid var(--border-subtle);
@@ -735,8 +786,15 @@
             flex-direction: column;
             gap: 20px;
         }
-        .case-decision { border-left-color: var(--gemini-blue); gap: 14px; }
-        .brief-item { display: flex; flex-direction: column; gap: 6px; }
+        /* A decisão é o desfecho, não contexto: tinta azul de identidade em vez do
+           cinza neutro do briefing. A cor é o que faz o olho achar o bloco primeiro. */
+        .case-decision {
+            background: rgba(26, 115, 232, 0.05);
+            border-color: rgba(26, 115, 232, 0.18);
+            border-left-color: var(--gemini-blue);
+            gap: 16px;
+        }
+        .brief-item { display: flex; flex-direction: column; gap: 4px; }
         .brief-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
         .brief-text { font-size: 15px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; }
         .brief-text.is-empty { color: var(--text-secondary); font-style: italic; }
@@ -746,22 +804,45 @@
         .case-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
         .fact {
             display: flex; align-items: baseline; gap: 12px;
-            padding: 10px 0;
+            /* Padding lateral negativo no hover exigiria mexer no grid; em vez
+               disso o realce entra por dentro, com o mesmo raio dos cartões. */
+            padding: 12px 8px;
+            margin: 0 -8px;
+            border-radius: var(--radius-sm);
             border-bottom: 1px solid var(--border-subtle);
             min-width: 0;
+            transition: background-color 0.15s var(--spring-functional);
         }
-        .fact-label { font-size: 12px; color: var(--text-secondary); flex: 0 0 34%; }
-        .fact-value { font-size: 14px; color: var(--text-primary); flex: 1 1 auto; word-break: break-word; min-width: 0; }
+        /* A linha inteira responde, não só o ícone que aparece. "Hover que não faz
+           nada" é o que denuncia uma tela montada por partes. */
+        .fact:hover { background-color: var(--surface-level-2); }
+        .fact-label { font-size: 12px; color: var(--text-secondary); flex: 0 0 38%; }
+        /* 15px contra os 12px do rótulo: dois pixels não estabelecem hierarquia,
+           e sem degrau a diferenciação fica toda por conta da cor. */
+        .fact-value {
+            font-size: 15px; color: var(--text-primary);
+            flex: 1 1 auto; word-break: break-word; min-width: 0;
+            /* CID, Case ID, Speakeasy e telefone são colunas de dígitos: sem
+               tabular-nums cada linha alinha num lugar diferente. */
+            font-variant-numeric: tabular-nums;
+        }
         .fact-value.is-empty { color: var(--text-tertiary); }
+        /* O último dado fica sozinho numa coluna quando a contagem é ímpar, e o
+           separador dele ficava pendurado sobre o nada. Detalhe pequeno, mas é
+           exatamente o tipo de coisa que faz uma tela parecer gerada. */
+        .fact:last-child { border-bottom: none; }
         /* O botão de copiar só aparece no hover ou no foco: doze ícones sempre
            visíveis competiam com os valores, que são o que se lê. `visibility`
            e não `display` para o alvo do Tab nunca sumir do fluxo. */
         .fact .copy-btn { visibility: hidden; flex: 0 0 auto; }
         .fact:hover .copy-btn, .fact .copy-btn:focus-visible { visibility: visible; }
+        .copy-btn:focus-visible { outline: 2px solid var(--gemini-blue); outline-offset: 2px; border-radius: 4px; }
 
-        .case-summary-block { display: flex; flex-direction: column; gap: 10px; }
+        .case-summary-block { display: flex; flex-direction: column; gap: 12px; }
+        /* Branco sobre branco + sombra: o resumo É o entregável desta tela, e é o
+           único bloco que sobe. Os outros dois descem (tonais). */
         .case-summary-text {
-            background: var(--surface-level-2);
+            background: var(--surface-level-1);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
             padding: 16px 20px;
@@ -769,14 +850,23 @@
             line-height: 1.6;
             color: var(--text-primary);
             white-space: pre-wrap;
+            box-shadow: 0 1px 3px rgba(60, 64, 67, 0.12), 0 6px 16px rgba(60, 64, 67, 0.1);
         }
         .btn-copy-summary { align-self: flex-start; }
+        /* Estado "copiado": o botão confirma sozinho, sem depender do toast que
+           aparece no canto oposto da tela. */
+        .btn-copy-summary.is-copied { background: var(--success); }
 
         /* Rodapé de decisão: o TL aprova sem fechar a vista e reachar a linha na
            fila. A fronteira não muda — os dois botões chamam o mesmo
            confirmAction() da fila, então nenhuma aprovação vira um clique só. */
+        /* `display: flex` abaixo vence o `display: none` que o atributo [hidden]
+           traz do navegador. Sem esta linha, esconder o rodapé por JS deixava a
+           faixa cinza e a hairline desenhadas no fim do modal — o atributo ficava
+           certo e a tela continuava errada. */
+        .modal-footer[hidden] { display: none; }
         .modal-footer {
-            padding: 20px 32px;
+            padding: 24px 32px;
             border-top: 1px solid var(--border-subtle);
             background: var(--surface-level-2);
             display: flex;
@@ -1194,7 +1284,7 @@
                 topAgents: function (d) { return "Quem mais abriu casos (" + d + "d)"; },
                 historyPeriodAria: "Período do histórico",
                 historyPeriodOption: function (d) { return "Últimos " + d + " dias"; },
-                historyHorizon: "Casos finalizados saem desta lista quando o backup semanal os arquiva.",
+                historyHorizon: "Casos finalizados ficam nesta lista. O backup semanal copia, não remove.",
                 clientTimeSuffix: "(cliente)",
                 childCaseLabel: "ID do caso BAU gerado",
                 childCasePlaceholder: "0-0000000000000",
@@ -1307,7 +1397,7 @@
                 topAgents: function (d) { return "Quién abrió más casos (" + d + "d)"; },
                 historyPeriodAria: "Período del historial",
                 historyPeriodOption: function (d) { return "Últimos " + d + " días"; },
-                historyHorizon: "Los casos finalizados salen de esta lista cuando el respaldo semanal los archiva.",
+                historyHorizon: "Los casos finalizados permanecen en esta lista. El respaldo semanal copia, no elimina.",
                 clientTimeSuffix: "(cliente)",
                 childCaseLabel: "ID del caso BAU generado",
                 childCasePlaceholder: "0-0000000000000",
@@ -2234,7 +2324,12 @@
             // Só no fluxo de criação. No pedido de descarte não há caso BAU pra abrir,
             // nem tasks nem AM pra citar — e a headline "Caso LM para BAU" seria mentira
             // num texto que pede pra FECHAR um caso.
-            const resumo = isDiscardFlow ? '' : buildCaseSummary(c);
+            // Fora do fluxo de descarte (não há caso BAU pra abrir) e fora de um
+            // caso REJEITADO: a liderança disse que esse caso não vira BAU, e
+            // oferecer "Copiar resumo" ali convida a colar no CRM exatamente o que
+            // foi recusado. Num caso aprovado o resumo fica — o caso filho existe e
+            // pode ser preciso recopiar.
+            const resumo = (isDiscardFlow || c.action === 'REJECTED_CREATION') ? '' : buildCaseSummary(c);
 
             // Zona da decisão — só existe em caso resolvido. Os itens vazios caem
             // fora: caso decidido antes desta entrega não tem justificativa, e um
@@ -2320,7 +2415,6 @@
 
             // Reset state
             submitBtn.disabled = false;
-            submitBtn.textContent = tt('confirm');
             document.getElementById('confirm-cancel-btn').disabled = false;
 
             if (isDiscardFlow) {
@@ -2338,7 +2432,7 @@
             icon.textContent = isPositive ? 'check_circle' : 'warning';
             icon.style.color = isPositive ? 'var(--success)' : 'var(--danger)';
 
-            caseInfo.textContent = `${nomeCompleto(c)} | ${c.task}`;
+            caseInfo.textContent = [nomeCompleto(c), c.task].filter(Boolean).join(' · ');
 
             // O ID do caso filho só é pedido na APROVAÇÃO DE CRIAÇÃO — é a única
             // das quatro decisões do TL que gera um caso novo no CRM. Rejeitar
@@ -2376,6 +2470,18 @@
 
             submitBtn.className = 'btn btn-primary';
             submitBtn.style.background = isPositive ? '' : 'var(--danger)';
+
+            // O botão diz O QUE VAI ACONTECER, não "Confirmar". Num diálogo com
+            // dois botões, "Confirmar" obriga a reler o título para saber o que se
+            // está confirmando — e as quatro decisões do TL chegam aqui com o
+            // mesmo rótulo genérico, sendo que duas delas são irreversíveis.
+            submitBtn.textContent = isDiscardFlow
+                ? (isPositive ? tt('keepActive') : tt('confirmDiscard'))
+                : (isPositive ? tt('approve') : tt('rejectRequest'));
+
+            // Só ganha eixo à esquerda quando há de fato o que preencher.
+            document.querySelector('#confirmModal .modal-content')
+                .classList.toggle('has-form', pedeCasoFilho || pedeJustificativa);
 
             submitBtn.onclick = () => {
                 const childCaseId = pedeCasoFilho ? inputFilho.value.trim() : '';
@@ -2501,12 +2607,26 @@
             }
         }
 
+        // Copiar é o gesto central desta tela, e era o único sem retorno nenhum
+        // além do toast — que aparece no canto oposto de onde a mão está. Agora
+        // confirma nos três canais: no próprio botão (visual), no alto-falante e
+        // no toque, quando o aparelho tiver motor.
         function copyText(btn) {
             const text = btn.dataset.copyValue || '';
             navigator.clipboard.writeText(text);
+
+            SoundKit.click();
+            // vibrate não existe em desktop nem no Safari; o if evita o TypeError
+            // e o resto do retorno não depende dele.
+            if (navigator.vibrate) navigator.vibrate(10);
+
             const icon = btn.querySelector('span');
             icon.textContent = 'check';
-            setTimeout(() => icon.textContent = 'content_copy', 1500);
+            btn.classList.add('is-copied');
+            setTimeout(() => {
+                icon.textContent = 'content_copy';
+                btn.classList.remove('is-copied');
+            }, 1500);
             showToast(tt('toastCopied'));
         }
 
