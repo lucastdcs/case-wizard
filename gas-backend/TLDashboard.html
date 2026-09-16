@@ -673,6 +673,7 @@
             word-break: break-word;
         }
 
+        .summary-text { white-space: pre-wrap; }
         .copy-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; transition: color 0.2s; }
         .copy-btn:hover { color: var(--gemini-blue); }
 
@@ -1005,6 +1006,7 @@
                 rowAgent: "Agente",
                 rowWhatToDo: "O que deve ser feito",
                 rowJustification: "Justificativa / Detalhes",
+                rowCaseSummary: "Resumo para o caso BAU",
                 confirmKeepTitle: "Manter Caso Ativo",
                 confirmDiscardTitle: "Confirmar Descarte",
                 confirmKeepMsg: "O caso permanecerá ativo e o agente será avisado que o pedido de descarte não foi aceito.",
@@ -1098,6 +1100,7 @@
                 rowAgent: "Agente",
                 rowWhatToDo: "Qué debe hacerse",
                 rowJustification: "Justificación / Detalles",
+                rowCaseSummary: "Resumen para el caso BAU",
                 confirmKeepTitle: "Mantener Caso Activo",
                 confirmDiscardTitle: "Confirmar Descarte",
                 confirmKeepMsg: "El caso permanecerá activo y se avisará al agente que el pedido de descarte no fue aceptado.",
@@ -1450,6 +1453,113 @@
             return [c.advName, c.advLastName].filter(Boolean).join(' ');
         }
 
+        // Resumo do caso em texto humano — o ÚLTIMO campo copiável do modal, e o
+        // único que não é um dado solto: é a frase que o TL cola dentro do caso BAU
+        // que acabou de abrir no CRM, dizendo o que aconteceu e o que fazer.
+        //
+        // O que entra foi decidido por subtração: o caso filho nasce na mesma conta
+        // do anunciante, então nome, CID, site, e-mail e telefone já estão lá.
+        // Repetir isso empurraria a instrução do agente pra baixo da dobra — e
+        // e-mail e telefone ainda são PII que não precisa circular colada num texto.
+        //
+        // O idioma NÃO é o da tela do TL (TL_LANG): é o do atendimento (c.language),
+        // porque quem lê isso do outro lado é o agente de BAU que vai falar com esse
+        // anunciante. Um TL em PT aprovando caso de ES copia texto em ES.
+        //
+        // A headline fica igual nos três idiomas de propósito: é o marcador pelo
+        // qual a operação identifica o caso, não uma frase pra ler.
+        const CASE_SUMMARY_I18N = {
+            'PT-BR': {
+                headline: 'Caso LM para BAU',
+                origin: 'Caso de origem (LM)',
+                openedBy: 'Aberto por', at: 'em',
+                whatHappened: 'O que aconteceu',
+                whatToDo: 'O que deve ser feito em BAU',
+                tasks: 'Tasks', am: 'AM',
+                dateLocale: 'pt-BR', dateMonth: '2-digit'
+            },
+            'ES': {
+                headline: 'Caso LM para BAU',
+                origin: 'Caso de origen (LM)',
+                openedBy: 'Abierto por', at: 'el',
+                whatHappened: 'Qué pasó',
+                whatToDo: 'Qué debe hacerse en BAU',
+                tasks: 'Tasks', am: 'AM',
+                dateLocale: 'es-ES', dateMonth: '2-digit'
+            },
+            'EN': {
+                headline: 'Caso LM para BAU',
+                origin: 'Source case (LM)',
+                openedBy: 'Opened by', at: 'on',
+                whatHappened: 'What happened',
+                whatToDo: 'What needs to be done in BAU',
+                tasks: 'Tasks', am: 'AM',
+                // Mês por extenso de propósito: 08/09 é 8 de setembro pra metade do
+                // mundo e 9 de agosto pra outra, e este texto vai parar num caso lido
+                // por quem não sabe qual das duas regras vale aqui.
+                dateLocale: 'en-GB', dateMonth: 'short'
+            }
+        };
+
+        // Data de envio no fuso da operação, no formato do idioma do atendimento.
+        function formatSummaryDate(iso, t) {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            return new Intl.DateTimeFormat(t.dateLocale, {
+                timeZone: 'America/Sao_Paulo',
+                day: '2-digit', month: t.dateMonth, year: 'numeric'
+            }).format(d);
+        }
+
+        // O motivo vem de um <select> e nunca traz pontuação final; sem isto ele
+        // encosta na frase seguinte do agente e as duas viram uma só.
+        function comPontoFinal(texto) {
+            return /[.!?…]$/.test(texto) ? texto : texto + '.';
+        }
+
+        function buildCaseSummary(c) {
+            const t = CASE_SUMMARY_I18N[c.language] || CASE_SUMMARY_I18N['PT-BR'];
+
+            // Mesma desmesclagem que o BAU_API.js faz pro dashboard do agente: a
+            // coluna 16 guarda "Motivo | Justificativa" num campo só no fluxo BAU.
+            // A leitura do TL nunca desfez isso — é por isso que a linha
+            // "Justificativa / Detalhes" do modal mostra o pipe até hoje.
+            const bruto = String(c.description || '').trim();
+            const temMescla = bruto.includes(' | ');
+            const motivo = temMescla ? bruto.split(' | ')[0].trim() : '';
+            const detalhe = temMescla ? bruto.split(' | ').slice(1).join(' | ').trim() : bruto;
+
+            const blocos = [t.headline];
+
+            // Bloco de identificação. Cada pedaço entra só se existir: um caso sem
+            // data de envio legível não deve render "Aberto por fulano@ em ".
+            const identificacao = [];
+            if (c.caseId) identificacao.push(t.origin + ': ' + c.caseId);
+            const ldap = c.agentEmail ? c.agentEmail.split('@')[0] + '@' : '';
+            const dataEnvio = formatSummaryDate(c.date, t);
+            if (ldap) {
+                identificacao.push(t.openedBy + ' ' + ldap +
+                    (dataEnvio ? ' ' + t.at + ' ' + dataEnvio : ''));
+            }
+            if (identificacao.length) blocos.push(identificacao.join(' · '));
+
+            // O motivo do <select> e o texto livre do agente viram um parágrafo só:
+            // juntos é que eles respondem "o que aconteceu no caso de origem".
+            if (motivo || detalhe) {
+                const cabeca = t.whatHappened + ':' + (motivo ? ' ' + comPontoFinal(motivo) : '');
+                blocos.push([cabeca, detalhe].filter(Boolean).join('\n'));
+            }
+
+            if (c.reason) blocos.push(t.whatToDo + ':\n' + String(c.reason).trim());
+
+            const tasks = String(c.task || '').split(',').map(s => s.trim()).filter(Boolean);
+            if (tasks.length) blocos.push(t.tasks + ': ' + tasks.join(' · '));
+
+            if (c.amName) blocos.push(t.am + ': ' + c.amName);
+
+            return blocos.join('\n\n');
+        }
+
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
             return String(str)
@@ -1792,6 +1902,27 @@
                 </div>
             </div>`;
 
+            // O resumo é texto de várias linhas, e não um valor de campo: precisa de
+            // white-space: pre-wrap (sem isso o HTML colapsa as quebras e o que o TL
+            // LÊ deixa de ser o que ele COPIA) e de fonte normal, sem itálico de citação.
+            //
+            // O pre-wrap fica no <span>, não no contêiner: aplicado no contêiner ele
+            // também respeita a indentação DO PRÓPRIO HTML entre o texto e o botão, e
+            // o TL vê linhas em branco no fim do bloco que não existem no que ele copia.
+            const createSummaryRow = (label, value) => `
+            <div class="detail-group">
+                <span class="detail-label">${escapeHtml(label)}</span>
+                <div class="detail-value" style="display: block; line-height: 1.6; position: relative; padding-right: 48px;"><span class="summary-text">${escapeHtml(value)}</span><button class="copy-btn" data-copy-value="${escapeHtml(value)}" onclick="copyText(this)" style="position: absolute; top: 10px; right: 10px;">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
+                    </button>
+                </div>
+            </div>`;
+
+            // Só no fluxo de criação. No pedido de descarte não há caso BAU pra abrir,
+            // nem tasks nem AM pra citar — e a headline "Caso LM para BAU" seria mentira
+            // num texto que pede pra FECHAR um caso.
+            const resumo = c.status === 'PENDING_TL_CREATION' ? buildCaseSummary(c) : '';
+
             document.getElementById('modal-body-content').innerHTML = `
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 ${createRow(tt('rowAdvertiser'), nomeCompleto(c))}
@@ -1822,6 +1953,7 @@
             ${createRow(tt('rowAgent'), c.agentEmail)}
             ${createBlockRow(tt('rowWhatToDo'), c.reason)}
             ${createBlockRow(tt('rowJustification'), c.description)}
+            ${resumo ? createSummaryRow(tt('rowCaseSummary'), resumo) : ''}
             `;
             document.getElementById('caseModal').classList.add('active');
         }

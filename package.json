@@ -25,6 +25,7 @@
     "test:scraping": "node scripts/test-scraping.mjs",
     "test:timezones": "node scripts/test-timezones.mjs",
     "test:jsonp": "node scripts/test-jsonp-payload.mjs",
+    "test:backup": "node scripts/test-bau-backup.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:bau-scraping": "node scripts/smoke-bau-scraping.mjs",
@@ -33,6 +34,7 @@
     "smoke:content": "node scripts/smoke-content-dashboard.mjs",
     "smoke:tasks": "node scripts/smoke-tasks.mjs",
     "smoke:people": "node scripts/smoke-people.mjs",
+    "smoke:tl-dash": "node scripts/smoke-tl-dashboard.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },
   "dependencies": {
