@@ -454,6 +454,7 @@
         }
 
         .child-case-input.invalid { border-color: var(--danger); }
+        textarea.child-case-input { resize: vertical; min-height: 72px; font-family: inherit; line-height: 1.5; }
 
         .child-case-error {
             font-size: 12px;
@@ -570,6 +571,7 @@
         .stat-card .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary); }
         .stat-card .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
 
+        .history-row { cursor: pointer; }
         .history-row {
             background: var(--surface-level-1);
             border: 1px solid var(--border-subtle);
@@ -733,6 +735,7 @@
             flex-direction: column;
             gap: 20px;
         }
+        .case-decision { border-left-color: var(--gemini-blue); gap: 14px; }
         .brief-item { display: flex; flex-direction: column; gap: 6px; }
         .brief-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
         .brief-text { font-size: 15px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; }
@@ -949,6 +952,13 @@
                            autocomplete="off" data-i18n-ph="childCasePlaceholder" placeholder="0-0000000000000">
                     <div id="confirm-child-case-error" class="child-case-error" data-i18n="childCaseRequired" hidden>Informe o ID do caso gerado para aprovar.</div>
                 </div>
+
+                <div id="confirm-justification" style="margin-top: 16px; text-align: left;" hidden>
+                    <label for="confirm-justification-input" class="child-case-label" data-i18n="justificationLabel">Justificativa para o agente</label>
+                    <textarea id="confirm-justification-input" class="child-case-input" rows="3"
+                              data-i18n-ph="justificationPlaceholder" placeholder="Por que este pedido não foi aceito?"></textarea>
+                    <div id="confirm-justification-error" class="child-case-error" data-i18n="justificationRequired" hidden>Escreva a justificativa — ela vai no e-mail do agente.</div>
+                </div>
             </div>
             <div class="confirm-footer">
                 <button class="btn btn-danger-outline" id="confirm-cancel-btn" onclick="closeModal('confirmModal')" style="flex: 1;" data-i18n="cancel">Cancelar</button>
@@ -1143,6 +1153,17 @@
                 closeDetails: "Fechar os detalhes da solicitação",
                 copyField: "Copiar",
                 copySummary: "Copiar resumo",
+                decisionTitle: "Decisão",
+                decidedBy: "Decidido por",
+                decidedAt: "Decidido em",
+                tlJustification: "Justificativa da liderança",
+                outcomeAPPROVED_CREATION: "Criação aprovada",
+                outcomeREJECTED_CREATION: "Criação rejeitada",
+                outcomeCONFIRMED_DISCARD: "Descarte confirmado",
+                outcomeKEPT_ACTIVE: "Caso mantido ativo",
+                justificationLabel: "Justificativa para o agente",
+                justificationPlaceholder: "Por que este pedido não foi aceito?",
+                justificationRequired: "Escreva a justificativa — ela vai no e-mail do agente.",
                 whatsNew: "Novidades desta versão",
                 closeWhatsNew: "Fechar novidades",
                 confirmKeepTitle: "Manter Caso Ativo",
@@ -1245,6 +1266,17 @@
                 closeDetails: "Cerrar los detalles de la solicitud",
                 copyField: "Copiar",
                 copySummary: "Copiar resumen",
+                decisionTitle: "Decisión",
+                decidedBy: "Decidido por",
+                decidedAt: "Decidido el",
+                tlJustification: "Justificación de la gerencia",
+                outcomeAPPROVED_CREATION: "Creación aprobada",
+                outcomeREJECTED_CREATION: "Creación rechazada",
+                outcomeCONFIRMED_DISCARD: "Descarte confirmado",
+                outcomeKEPT_ACTIVE: "Caso mantenido activo",
+                justificationLabel: "Justificación para el agente",
+                justificationPlaceholder: "¿Por qué no se aceptó esta solicitud?",
+                justificationRequired: "Escribe la justificación — va en el correo del agente.",
                 whatsNew: "Novedades de esta versión",
                 closeWhatsNew: "Cerrar novedades",
                 confirmKeepTitle: "Mantener Caso Activo",
@@ -2098,11 +2130,28 @@
         // Guarda o que tinha o foco antes do modal abrir, pra devolver no fechamento.
         let focoAntesDoModal = null;
 
+        // Procura na fila E no histórico: desde que getWeeklyHistory passou a
+        // devolver o registro inteiro, um caso resolvido tem exatamente os mesmos
+        // campos de um pendente, e a mesma vista serve os dois.
+        function findCase(caseId) {
+            const naFila = allCases.find(item => item.id === caseId);
+            if (naFila) return naFila;
+            const noHistorico = (lastHistoryData && lastHistoryData.cases) || [];
+            return noHistorico.find(item => item.id === caseId);
+        }
+
         function openDetails(caseId) {
-            const c = allCases.find(item => item.id === caseId);
+            const c = findCase(caseId);
             if (!c) return;
 
-            const isDiscardFlow = c.status === 'PENDING_TL_DISCARD';
+            // Um caso resolvido chega com `action` preenchida. NÃO dá pra usar
+            // `status` aqui: 'DISCARDED' tanto confirma um descarte quanto rejeita
+            // uma criação — é a mesma ambiguidade que já fez o agente receber
+            // "Caso descartado" por um pedido que nunca chegou a existir.
+            const resolvido = !!c.action;
+            const isDiscardFlow = resolvido
+                ? (c.action === 'CONFIRMED_DISCARD' || c.action === 'KEPT_ACTIVE')
+                : c.status === 'PENDING_TL_DISCARD';
             const { motivo, detalhe } = splitDescription(c);
             const agentLdap = c.agentEmail ? c.agentEmail.split('@')[0] : '';
 
@@ -2114,9 +2163,9 @@
             document.getElementById('modal-header-content').innerHTML = `
             <div class="case-header-main">
                 <div class="case-badges">
-                    <div class="status-badge ${isDiscardFlow ? 'badge-discard' : 'badge-create'}">
-                        <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 14px;">${isDiscardFlow ? 'delete' : 'add_circle'}</span>
-                        ${isDiscardFlow ? tt('flowDiscard') : tt('flowCreation')}
+                    <div class="status-badge ${OUTCOME_BADGE_CLASS[c.action] || (isDiscardFlow ? 'badge-discard' : 'badge-create')}">
+                        <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 14px;">${resolvido ? 'task_alt' : (isDiscardFlow ? 'delete' : 'add_circle')}</span>
+                        ${resolvido ? tt('outcome' + c.action) : (isDiscardFlow ? tt('flowDiscard') : tt('flowCreation'))}
                     </div>
                     ${c.suggestDiscard === 'Sim' ? `
                     <div class="status-badge badge-warn">
@@ -2187,7 +2236,21 @@
             // num texto que pede pra FECHAR um caso.
             const resumo = isDiscardFlow ? '' : buildCaseSummary(c);
 
+            // Zona da decisão — só existe em caso resolvido. Os itens vazios caem
+            // fora: caso decidido antes desta entrega não tem justificativa, e um
+            // rótulo com "---" ali só anuncia uma ausência que não dá pra corrigir.
+            const decisao = !resolvido ? '' : [
+                briefItem(tt('decidedBy'), c.processedBy ? c.processedBy.split('@')[0] : ''),
+                briefItem(tt('decidedAt'), formatSubmittedAt(c.processedAt)),
+                c.childCaseId ? briefItem(tt('childCaseLabel'), c.childCaseId) : '',
+                c.tlJustification ? briefItem(tt('tlJustification'), c.tlJustification) : ''
+            ].filter(Boolean).join('');
+
             document.getElementById('modal-body-content').innerHTML = `
+            ${decisao ? `<section class="case-brief case-decision">
+                <div class="section-title" style="margin: 0;">${escapeHtml(tt('decisionTitle'))}</div>
+                ${decisao}
+            </section>` : ''}
             <section class="case-brief">${briefing}</section>
             <section>
                 <div class="section-title">${escapeHtml(tt('dataTitle'))}</div>
@@ -2204,6 +2267,14 @@
             </section>` : ''}`;
 
             // ---------- Rodapé: decidir sem fechar ----------
+            //
+            // Caso resolvido não tem rodapé: a decisão já foi tomada, e oferecer
+            // "Aprovar" num caso aprovado convida a um erro que o servidor
+            // rejeitaria depois — mostrar o caminho e negá-lo no fim é pior que
+            // não mostrar.
+            const rodape = document.getElementById('modal-footer-content');
+            rodape.hidden = resolvido;
+            if (resolvido) { rodape.innerHTML = ''; } else {
             document.getElementById('modal-footer-content').innerHTML = `
             <button class="btn btn-danger-outline" onclick="closeModal('caseModal'); confirmAction('${c.id}', '${isDiscardFlow ? 'CREATED' : 'DISCARDED'}')">
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
@@ -2213,6 +2284,7 @@
                 <span class="material-symbols-rounded" aria-hidden="true">check</span>
                 ${isDiscardFlow ? tt('confirmDiscard') : tt('approveNotify')}
             </button>`;
+            }
 
             focoAntesDoModal = document.activeElement;
             document.getElementById('caseModal').classList.add('active');
@@ -2281,16 +2353,36 @@
             inputFilho.value = '';
             inputFilho.classList.remove('invalid');
             erroFilho.hidden = true;
+
+            // A justificativa é pedida nas duas decisões em que o TL diz NÃO ao
+            // agente. NÃO dá para usar `isPositive` aqui: ele diz apenas se o
+            // newStatus é 'CREATED', e no fluxo de descarte 'CREATED' significa
+            // "manter o caso ativo" — ou seja, NEGAR o pedido. Derivar a ação
+            // como o servidor deriva é o que impede a tela de pedir justificativa
+            // exatamente nas decisões erradas.
+            const acaoDecidida = resolveProcessedActionClient(c.status, action);
+            const pedeJustificativa = decisionRequiresJustificationClient(acaoDecidida);
+            const blocoMotivo = document.getElementById('confirm-justification');
+            const inputMotivo = document.getElementById('confirm-justification-input');
+            const erroMotivo = document.getElementById('confirm-justification-error');
+
+            blocoMotivo.hidden = !pedeJustificativa;
+            inputMotivo.value = '';
+            inputMotivo.classList.remove('invalid');
+            erroMotivo.hidden = true;
+
             if (pedeCasoFilho) setTimeout(() => inputFilho.focus(), 50);
+            else if (pedeJustificativa) setTimeout(() => inputMotivo.focus(), 50);
 
             submitBtn.className = 'btn btn-primary';
             submitBtn.style.background = isPositive ? '' : 'var(--danger)';
 
             submitBtn.onclick = () => {
                 const childCaseId = pedeCasoFilho ? inputFilho.value.trim() : '';
+                const justificativa = pedeJustificativa ? inputMotivo.value.trim() : '';
 
-                // Obrigatório na aprovação. O servidor recusa igual — a tela não
-                // é a fronteira —, mas barrar aqui evita a viagem e devolve o
+                // Obrigatórios nos dois lados. O servidor recusa igual — a tela
+                // não é a fronteira —, mas barrar aqui evita a viagem e devolve o
                 // foco pro campo em vez de um toast genérico.
                 if (pedeCasoFilho && !childCaseId) {
                     SoundKit.error();
@@ -2300,17 +2392,25 @@
                     return;
                 }
 
+                if (pedeJustificativa && !justificativa) {
+                    SoundKit.error();
+                    inputMotivo.classList.add('invalid');
+                    erroMotivo.hidden = false;
+                    inputMotivo.focus();
+                    return;
+                }
+
                 SoundKit.click();
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Processando...';
                 document.getElementById('confirm-cancel-btn').disabled = true;
-                processAction(id, action, childCaseId);
+                processAction(id, action, childCaseId, justificativa);
             };
 
             modal.classList.add('active');
         }
 
-        function processAction(id, newStatus, childCaseId) {
+        function processAction(id, newStatus, childCaseId, justification) {
             const c = allCases.find(item => item.id === id);
             const wasDiscardFlow = c && c.status === 'PENDING_TL_DISCARD';
 
@@ -2345,7 +2445,7 @@
                     submitBtn.textContent = tt('confirm');
                     document.getElementById('confirm-cancel-btn').disabled = false;
                 })
-                .updateBAUCaseStatus(id, newStatus, childCaseId || '');
+                .updateBAUCaseStatus(id, newStatus, childCaseId || '', justification || '');
         }
 
         // Tira a linha da tela na hora (animação já existia no CSS, nunca era usada -
@@ -2529,6 +2629,35 @@
             CONFIRMED_DISCARD: 'Descartado'
         };
 
+        // Espelho de resolveProcessedAction() e decisionRequiresJustification() do
+        // servidor. Duplicar regra é ruim, mas esta página roda fora do bundle e
+        // fora do Apps Script — não há import possível. O que protege a cópia de
+        // divergir é o teste: test:tl-decision prova a régua no servidor e
+        // smoke:tl-dash prova que a tela pede nas MESMAS quatro decisões.
+        function resolveProcessedActionClient(previousStatus, newStatus) {
+            if (previousStatus === 'PENDING_TL_CREATION') {
+                return newStatus === 'CREATED' ? 'APPROVED_CREATION' : 'REJECTED_CREATION';
+            }
+            if (previousStatus === 'PENDING_TL_DISCARD') {
+                return newStatus === 'DISCARDED' ? 'CONFIRMED_DISCARD' : 'KEPT_ACTIVE';
+            }
+            return newStatus;
+        }
+
+        function decisionRequiresJustificationClient(processedAction) {
+            return processedAction === 'REJECTED_CREATION' || processedAction === 'KEPT_ACTIVE';
+        }
+
+        // Cor do selo pelo DESFECHO, não pelo fluxo: rejeitar uma criação e negar
+        // um descarte são decisões opostas que compartilham o mesmo `status` na
+        // planilha, e pintar as duas igual esconderia justamente o que aconteceu.
+        const OUTCOME_BADGE_CLASS = {
+            APPROVED_CREATION: 'badge-create',
+            REJECTED_CREATION: 'badge-discard',
+            CONFIRMED_DISCARD: 'badge-discard',
+            KEPT_ACTIVE: 'badge-create'
+        };
+
         function renderHistory(data) {
             historyLoaded = true;
             lastHistoryData = data;
@@ -2564,7 +2693,7 @@
             const list = document.getElementById('history-list');
             const allHistoryCases = (lastHistoryData && lastHistoryData.cases) || [];
             const windowDays = (lastHistoryData && lastHistoryData.windowDays) || 7;
-            const filtered = allHistoryCases.filter(c => matchesSearch([c.caseId, c.childCaseId, c.task, c.processedBy, c.agentEmail]));
+            const filtered = allHistoryCases.filter(c => matchesSearch([c.caseId, c.childCaseId, c.task, c.processedBy, c.agentEmail, nomeCompleto(c), c.cid]));
 
             if (allHistoryCases.length === 0) {
                 list.innerHTML = `
@@ -2589,7 +2718,7 @@
                 const tlLdap = tlLdapRaw || '—';
                 const agentLdap = agentLdapRaw || '—';
                 return `
-                <div class="history-row">
+                <div class="history-row" onclick="SoundKit.click(); openDetails('${c.id}')">
                     <div class="history-row-top">
                         <span class="status-badge ${isApproved ? 'badge-create' : 'badge-discard'}" style="margin-bottom: 0;">${label}</span>
                         <div class="history-flow" title="${escapeHtml(tlLdap)} → ${escapeHtml(agentLdap)}">
@@ -2600,7 +2729,9 @@
                             <span class="text-secondary">${escapeHtml(agentLdap)}</span>
                         </div>
                     </div>
-                    <div class="text-primary" style="font-size: 14px; margin: 6px 0 2px;">${caseLinkHtml(c.caseId)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
+                    <button type="button" class="row-open-btn text-primary" style="font-size: 14px; margin: 6px 0 2px; display: block;"
+                            onclick="event.stopPropagation(); SoundKit.click(); openDetails('${c.id}')">${escapeHtml(nomeCompleto(c)) || tt('notInformed')}</button>
+                    <div class="text-primary" style="font-size: 14px; margin: 0 0 2px;">${caseLinkHtml(c.caseId)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
                     ${c.childCaseId ? `<div class="text-secondary" style="font-size: 13px; margin-bottom: 2px;">${tt('childCaseHistory')} ${caseLinkHtml(c.childCaseId)}</div>` : ''}
                     <div class="text-secondary" style="font-size: 12px;">${when}</div>
                 </div>`;
