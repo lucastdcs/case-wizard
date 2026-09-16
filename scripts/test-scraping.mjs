@@ -73,6 +73,12 @@ const igual = {
     // assignee, o BCC está indo para a pessoa errada.
     amEmail: 'bianca.alves@google.com',
     internalEmail: 'bianca.alves@google.com',
+    // O que vai para a coluna AM_Nome da planilha e aparece como
+    // "AM Responsável" no TL Dashboard. É o E-MAIL, nunca o nome de exibição:
+    // o fixture tem `<div debug-id="name">Bianca Alves</div>` ao lado do
+    // e-mail, e era ele que vencia — um rótulo traduzível, que não identifica
+    // qual LDAP é a pessoa nem permite acionar o AM a partir do dashboard.
+    amName: 'bianca.alves@google.com',
 
     // Cabeçalho do caso (debug-id, não depende de idioma).
     'caseContext.estado': 'Finished',
@@ -119,6 +125,7 @@ async function raspar(pagina, arquivo) {
             advLastName: dados.advLastName,
             advPhone: dados.advPhone,
             amEmail: dados.amEmail ?? dados.amName,
+            amName: dados.amName,
             internalEmail: dados.internalEmail,
             timezone: dados.timezone,
             salesProgram: dados.salesProgram,
@@ -136,10 +143,71 @@ const obtido = {};
 for (const [nome, arquivo] of Object.entries(VARIANTES)) {
     obtido[nome] = await raspar(pagina, arquivo);
 }
+
+// --- Fallback do AM: o que acontece quando o log NÃO resolve ---
+//
+// O caminho feliz acima (um candidato no log) é o único que os fixtures
+// exercitam sozinhos, e ele escondia o defeito: `<internal-user-info>` lista
+// os contatos da CONTA (55 na captura real, todos com o mesmo papel), então
+// o "primeiro da tela" é o MESMO em todos os casos daquele anunciante. Todo
+// caso sem @google.com no log gravava esse mesmo contato na planilha, calado
+// e com cara de raspagem bem-sucedida.
+//
+// Estes cenários mutam o DOM do fixture para alcançar o fallback e travam a
+// regra: com 2+ contatos internos o AM é `null`, não um chute.
+const CENARIOS_AM = [
+    {
+        nome: 'am.fallback/log-sem-candidato',
+        // Caso recém-aberto: nenhum e-mail interno no log ainda.
+        mutacao: `document.querySelectorAll('case-message-view').forEach(m => m.remove())`,
+        esperado: { email: null, origem: 'nao-resolvido' },
+    },
+    {
+        nome: 'am.fallback/2-candidatos-sem-desempate',
+        // Dois internos no log e nenhum Contact Us Form para desempatar.
+        mutacao: `document.querySelectorAll('case-message-view').forEach(m => m.remove());
+                  const d = document.createElement('case-message-view');
+                  d.textContent = 'From: carlos.souza@google.com To: diana.reis@google.com';
+                  document.body.appendChild(d);`,
+        esperado: { email: null, origem: 'nao-resolvido' },
+    },
+    {
+        nome: 'am.fallback/contato-interno-unico',
+        // Um único contato interno na tela: aí não há o que chutar, e o
+        // fallback continua valendo.
+        mutacao: `document.querySelectorAll('case-message-view').forEach(m => m.remove());
+                  document.querySelectorAll('internal-user-info').forEach((b, i) => { if (i > 0) b.remove(); })`,
+        esperado: { email: 'bianca.alves@google.com', origem: 'internal-user-info' },
+    },
+];
+
+const htmlOriginal = await readFile(resolve(raiz, VARIANTES.original), 'utf8');
+const obtidoAM = {};
+for (const cenario of CENARIOS_AM) {
+    await pagina.setContent(`<!doctype html><html>${htmlOriginal}</html>`);
+    await pagina.addScriptTag({ content: bundle });
+    obtidoAM[cenario.nome] = await pagina.evaluate(async (mut) => {
+        // eslint-disable-next-line no-eval
+        eval(mut);
+        // expandir=false: o fixture é estático, clicar não re-renderiza nada,
+        // e o passo caro só somaria 400ms por cabeçalho fechado.
+        return await PD.captureAM({ expandir: false });
+    }, cenario.mutacao);
+}
+
 await navegador.close();
 
 const falhas = [];
 const linhas = [];
+
+for (const cenario of CENARIOS_AM) {
+    for (const [chave, esperado] of Object.entries(cenario.esperado)) {
+        const valor = obtidoAM[cenario.nome][chave];
+        const ok = valor === esperado;
+        if (!ok) falhas.push(`${cenario.nome}.${chave}: esperado ${JSON.stringify(esperado)}, veio ${JSON.stringify(valor)}`);
+        linhas.push([ok, `${cenario.nome}.${chave}`, 'fallback', valor, esperado]);
+    }
+}
 
 for (const [campo, esperado] of Object.entries(igual)) {
     for (const variante of Object.keys(VARIANTES)) {
@@ -161,7 +229,7 @@ for (const [campo, esperados] of Object.entries(porVariante)) {
 for (const [ok, campo, variante, valor, esperado] of linhas) {
     const marca = ok ? 'ok  ' : 'FALHA';
     const detalhe = ok ? String(valor) : `${JSON.stringify(valor)}  (esperado ${JSON.stringify(esperado)})`;
-    console.log(`${marca} ${campo.padEnd(36)} ${variante.padEnd(10)} ${detalhe}`);
+    console.log(`${marca} ${campo.padEnd(44)} ${variante.padEnd(10)} ${detalhe}`);
 }
 
 const total = linhas.length;

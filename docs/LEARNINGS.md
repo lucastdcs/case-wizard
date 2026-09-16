@@ -12,6 +12,61 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Fallback que lê "o primeiro da lista" não é fallback: é o mesmo valor em todo caso
+
+**Why**: o AM vinha certo na captura real e ninguém desconfiava. Mas o caminho
+feliz (um `@google.com` no case log) é só um dos caminhos: quando o log não
+resolvia — caso recém-aberto, ou 2+ candidatos sem Contact Us Form para
+desempatar — a resolução caía em
+`document.querySelector('internal-user-info')`, **o primeiro da ordem do DOM**.
+
+Esse bloco lista os contatos internos da **conta**, não do caso: 55 na captura
+real, todos com o mesmo `home-label`. Como a lista é da conta, ela é idêntica e
+na mesma ordem em **todos os casos daquele anunciante** — então todo caso que o
+log não resolvesse gravava o mesmo AM na planilha. O defeito é da pior espécie:
+o campo vem **preenchido**, com um nome plausível, e passa por raspagem
+bem-sucedida. Só aparece quando alguém olha a planilha e nota o mesmo nome
+repetido — que foi exatamente como chegou o relato.
+
+O comentário do próprio código já dizia "com 55 indistinguíveis, chutar erra
+quase sempre", e o cabeçalho do módulo prometia "sem candidato, devolve null".
+As duas coisas estavam escritas e nenhuma valia: o passo 4 sempre achava algo,
+então o passo 5 nunca rodava. **Princípio declarado em comentário não é
+invariante** — se não há teste no caminho de fallback, ele não existe.
+
+**When to apply**: sempre que escrever um fallback de raspagem que pega "o
+primeiro" de uma coleção do DOM. Faça as duas perguntas:
+
+1. **Essa coleção é do caso ou da conta/tela?** Se é da conta, o "primeiro" é
+   constante entre casos — e o campo vira um valor fixo disfarçado de dado
+   raspado.
+2. **Existe teste no caminho de fallback?** O fixture exercita o caminho feliz
+   sozinho; o fallback só roda se o teste **mutar o DOM** para chegar nele. Em
+   `test:scraping` isso é um cenário com `mutacao`, não um fixture novo.
+
+Quando o dado alimenta uma ação de verdade (BCC de e-mail, coluna de planilha
+que a liderança usa), o certo é `null` + campo obrigatório no formulário. Vazio
+o agente vê e corrige; errado ninguém vê.
+
+---
+
+## Identificador de pessoa é e-mail, nunca o nome de exibição do CRM
+
+**Why**: `captureAMName()` fazia `am.nome || am.email` — preferindo o nome. O
+nome saía de `<internal-user-info> [debug-id="name"]`, e com ele a coluna
+`AM_Nome` e o modal do TL Dashboard mostravam "Bianca Alves". Dois problemas de
+uma vez: a liderança não consegue acionar alguém a partir de um nome próprio
+(qual LDAP é?), e **nome de exibição é texto que o tradutor do CRM reescreve** —
+o mesmo vetor do learning sobre rótulos traduzidos, agora no valor.
+
+**When to apply**: ao raspar qualquer pessoa da tela do CRM (AM, assignee,
+submitter). Grave o **e-mail**; se quiser o nome, que seja enfeite ao lado, nunca
+o valor persistido. E valide o formato no campo do formulário — a raspagem já
+devolve e-mail, mas o campo é editável e o que é digitado à mão também precisa
+da trava.
+
+---
+
 ## Acrescentar item a uma enumeração compartilhada: procure quem a PERSISTIU e quem a CONTA
 
 **Why**: acrescentar `'task_screenshots'` a `CONTENT_MODULES` era "uma string", como

@@ -8,6 +8,26 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **O mesmo AM ia para todos os casos de uma conta.** Quando o case log não tinha
+  e-mail `@google.com` para resolver — caso recém-aberto, ou 2+ candidatos sem
+  Contact Us Form para desempatar — a raspagem caía no **primeiro
+  `<internal-user-info>` da tela**. Esse bloco lista os contatos internos da
+  **conta**, não do caso (55 na captura real, todos com o mesmo papel), e a lista
+  é a mesma, na mesma ordem, em todo caso daquele anunciante: o resultado era o
+  mesmo nome gravado em todos eles, calado e com cara de raspagem bem-sucedida.
+  O próprio comentário do código já dizia "com 55 indistinguíveis, chutar erra
+  quase sempre". Agora o fallback só responde quando há **exatamente um** contato
+  interno na tela; com 2+ devolve `null` e o agente preenche — que é o princípio
+  que o módulo sempre declarou ("chutar o AM errado é pior que não preencher")
+  mas não cumpria.
+- **"AM Responsável" mostrava nome, não e-mail.** `captureAMName()` preferia o
+  nome de exibição (`am.nome || am.email`), então a coluna `AM_Nome` e o modal do
+  TL Dashboard traziam "Bianca Alves" — texto traduzível, que não diz qual LDAP é
+  a pessoa e não permite acionar o AM. Passa a ser **sempre o e-mail**, e o campo
+  do formulário BAU valida o formato para travar também o que é digitado à mão.
+  Linhas antigas continuam com o nome; nada é reescrito.
+
 ## [6.3.2] - 2026-09-16
 
 ### Added

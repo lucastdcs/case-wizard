@@ -22,7 +22,7 @@
 | `9` | Adv_Site | `website` | **CRÍTICO:** Unificar chave (não usar `site`) |
 | `10` | Fuso_Horario | `timezone` | |
 | `11` | Idioma | `language` | Deve vir de `profile.defaultLanguage` (`PT-BR` \| `ES` \| `EN`), **não** do "Business language" do anunciante que a página do CRM exibe. O formulário mostra um `select` já na opção do segmento de quem atende, e permite trocar — existe caso que foge da regra. |
-| `12` | AM_Nome | `amName` | |
+| `12` | AM_Nome | `amName` | **Sempre o e-mail do AM**, nunca o nome de exibição do CRM — apesar do header histórico dizer "Nome". O nome vinha de `<internal-user-info>`, que é texto traduzível e não diz qual LDAP é a pessoa: a liderança lia "Bianca Alves" no TL Dashboard e não tinha como acionar ninguém. O campo do formulário valida formato de e-mail. Linhas gravadas antes desta regra continuam com nome e não são reescritas. |
 | `13` | Sales_Program | `salesProgram` | |
 | `14` | Motivo_Abertura | `reason` | Campo principal de categorização |
 | `15` | Task_BAU | `taskType` | Pode ser lista separada por vírgula |

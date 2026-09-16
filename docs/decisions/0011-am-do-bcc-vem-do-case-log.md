@@ -35,8 +35,10 @@ Uma única função (`resolveAM()`, em `src/modules/shared/am-resolver.js`)
 resolve o AM a partir do **case log**, e alimenta tanto o campo AM quanto o
 BCC. Ela coleta os `@google.com` das mensagens do log e descarta os robôs
 (`ads-support@`, `noreply@`) e o assignee; com um candidato, é ele; com vários,
-desempata pelo **submitter do Contact Us Form**; sem nenhum, cai no primeiro
-`<internal-user-info>`; e se ainda assim não resolver, devolve `null`.
+desempata pelo **submitter do Contact Us Form**; sem nenhum, cai no
+`<internal-user-info>` **quando há exatamente um na tela** (ver *Update
+2026-09-16* abaixo — este passo dizia "o primeiro" e foi estreitado); e se ainda
+assim não resolver, devolve `null`.
 
 Ordem de esforço: primeiro só o que já está **visível** (sem clique), e apenas
 se isso falhar é que expande as mensagens de e-mail do log.
@@ -77,3 +79,35 @@ se isso falhar é que expande as mensagens de e-mail do log.
   endereço aparece como submitter do Contact Us Form. Filtrando robô e
   assignee, sobrou exatamente um candidato.
 - Fixtures e gabarito: `specs/fixtures/README.md`.
+
+## Update — 2026-09-16 (fallback estreitado)
+
+O fallback aprovado aqui ("sem nenhum, cai no primeiro `<internal-user-info>`")
+era pior do que esta ADR previa, e do jeito mais silencioso possível.
+
+O raciocínio original tratava os 55 contatos como um sorteio: "gravar o AM
+errado com alta frequência". Não é sorteio — é **constante**. O bloco lista os
+contatos da **conta**, não do caso, então a lista é a mesma e na mesma ordem em
+todos os casos daquele anunciante. "O primeiro" devolve sempre a mesma pessoa:
+todo caso que o log não resolvesse gravava **o mesmo AM**, com o campo
+preenchido e cara de raspagem bem-sucedida. Foi assim que apareceu — pelo nome
+repetido na planilha, não por erro.
+
+Havia ainda uma contradição interna: a ADR e o cabeçalho do módulo prometiam
+`null` para o caso ambíguo, mas o passo do `<internal-user-info>` quase sempre
+achava alguém, então o `null` praticamente nunca acontecia.
+
+**O fallback passa a responder apenas quando há exatamente um
+`<internal-user-info>` na tela** — o único caso em que ele não é chute. Com 2+,
+`null`, e o agente preenche o campo obrigatório. Os três caminhos (sem
+candidato, 2 candidatos sem desempate, contato interno único) estão travados em
+`npm run test:scraping`.
+
+Na mesma mudança: o campo gravado passa a ser **sempre o e-mail**. `AM_Name`
+preferia o nome de exibição do CRM, que é texto traduzível e não identifica
+qual LDAP é a pessoa — a liderança lia "Bianca Alves" no TL Dashboard sem ter
+como acionar ninguém.
+
+**Consequência assumida**: mais casos com AM vazio. É o tradeoff que a seção
+*Negative* já declarava ("chutar o AM errado escreve na planilha e envia e-mail
+para quem não devia"), agora de fato cumprido.

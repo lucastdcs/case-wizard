@@ -78,6 +78,22 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [x] **AM sempre em e-mail + o fallback que repetia o mesmo AM.** Relatado em
+      2026-09-16: "AM Responsável" no modal do TL Dash vinha como nome, e
+      suspeita de que o mesmo AM estivesse indo para todos os casos. As duas
+      coisas eram verdade e são independentes:
+      `captureAMName()` preferia o nome de exibição (`am.nome || am.email`), e o
+      fallback do resolver pegava o **primeiro `<internal-user-info>` da tela** —
+      um bloco que lista os contatos da **conta** (55, mesmo papel, mesma ordem),
+      logo idêntico em todos os casos daquele anunciante. Todo caso que o log não
+      resolvia gravava o mesmo nome, em silêncio. Agora: e-mail sempre (com
+      validação no campo do formulário) e fallback só com **um** contato interno
+      na tela — ambíguo devolve `null`. `test:scraping` passou a cobrir os
+      caminhos de fallback (58 asserções, era 50).
+      **Falta confirmar no CRM real:** com que frequência o AM passa a vir vazio
+      nos casos em que o log não tem `@google.com` — é o custo consciente de não
+      chutar, e o número decide se vale caçar outra fonte para o AM.
+
 - [~] **Histórico clicável + justificativa da recusa** (branch
       `feat/historico-clicavel-e-justificativa`, v6.3.2). Terceira rodada sobre o
       painel do TL.
