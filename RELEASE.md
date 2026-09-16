@@ -190,4 +190,21 @@ still describing the old one.)
 - **JSONP watchdog**: every backend call times out client-side after 15s (`jsonpFetch` in `data-service.js`) if Apps Script doesn't respond — a slow/erroring deployment surfaces as a generic timeout in the browser console, not a clear backend error.
 - **`github.io` reachability**: the bookmarklet hard-depends on reaching `lucastdcs.github.io`; a corporate network block there is silent failure from the agent's point of view (see `README.md` → Troubleshooting).
 - **The Pages URL contains the repo name**: renaming the repository moves the Pages site and GitHub does *not* redirect the old Pages URL, so every installed bookmarklet would 404 silently. A shim repository under the old name keeps them alive — see `docs/decisions/0003-rename-repo-to-case-wizard.md`. **Do not delete `lucastdcs/techsol_DialIn_AutoCopy`** while pre-rename bookmarklets are still in circulation.
-- <fill in as you learn>
+- **O passo da tag vem sendo pulado, e ninguém percebe.** Em 2026-09-16 o
+  repositório tinha **uma única tag, `v6.0.0`** (de agosto), e uma única GitHub
+  Release — apesar de v6.1.0, v6.2.0, v6.3.0, v6.3.1 e v6.3.2 terem ido a
+  produção normalmente. Nada quebra por causa disso: o merge em `main` é o portão
+  de produção e ele funcionou nas cinco. O que se perde é silencioso — não há
+  Release publicada, e **todos os link refs de comparação no rodapé do
+  CHANGELOG apontam para tags que não existem** (`compare/v6.3.2...v6.3.3` dá
+  404). Ao fechar uma release, confira com `git ls-remote --tags origin` em vez
+  de assumir que o `git tag` local foi suficiente — a tag só existe depois do
+  push dela, que é um comando à parte do push da branch.
+- **Sessões do Claude Code na web não conseguem empurrar tags.** O proxy de saída
+  do contêiner responde **HTTP 403** ao push de `refs/tags/*`, enquanto o push de
+  branch passa normalmente. O sintoma é confuso: `git push origin <tag>` imprime
+  "RPC failed; HTTP 403" seguido de "Everything up-to-date", e tentar de novo não
+  adianta — não é falha transitória de rede. A release inteira pode ser feita de
+  lá (o merge em `main` promove produção); só a tag precisa sair de um checkout
+  local:
+  `git fetch origin main && git tag -a vX.Y.Z <sha-do-merge> -m "vX.Y.Z" && git push origin vX.Y.Z`

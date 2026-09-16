@@ -12,6 +12,38 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Passo de release que não quebra nada quando falha some do processo
+
+**Why**: ao cortar a v6.3.3 o push da tag falhou, e ao conferir o repositório
+apareceu o quadro real: **uma única tag, `v6.0.0`**, de agosto, com cinco
+releases promovidas depois dela (v6.1.0, v6.2.0, v6.3.0, v6.3.1, v6.3.2). O
+passo 4 do `RELEASE.md` vinha sendo pulado há meses sem ninguém notar.
+
+Notar era difícil por construção: a tag é **bookkeeping, não deploy** — o merge
+em `main` é o portão de produção e ele funcionou todas as vezes. Nada fica
+vermelho, nenhum agente reclama. O que se perde só aparece quando alguém procura:
+não há GitHub Release publicada, e todos os link refs do rodapé do CHANGELOG
+apontam para tags inexistentes (`compare/v6.3.2...v6.3.3` → 404).
+
+O mesmo padrão dos itens pendentes que o `PLAN.md` chama de "falta rodar na
+planilha": passo manual, fora do caminho que dá erro, com resultado que ninguém
+consulta no dia seguinte.
+
+**When to apply**: ao terminar uma release, e ao escrever qualquer runbook com
+passo manual depois do passo que de fato entrega.
+
+```bash
+# Não confie no `git tag` local: a tag só existe depois do push dela.
+git ls-remote --tags origin | tail -5
+```
+
+Quando um passo do runbook não tem como falhar ruidosamente, ele precisa de uma
+verificação explícita escrita ao lado — ou de alguém que confira o efeito, não o
+comando. "Rodei o comando" e "o efeito existe no servidor" são afirmações
+diferentes, e aqui elas divergiram por cinco releases.
+
+---
+
 ## Campo gravado fora do bloco contíguo: procure os TRÊS caminhos, não um
 
 **Why**: a sugestão de descarte (coluna 21) era editável no bookmarklet e a
