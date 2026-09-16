@@ -28,33 +28,23 @@
 // conta uma release por vez (o navegador guarda uma única versão vista).
 
 const CW_DASH_RELEASE_NOTES = {
-  version: "6.3.2",
+  version: "6.3.3",
   title: "Novidades do TL Dashboard",
   items: [
     {
-      icon: "content_copy",
-      title: "Resumo pronto para colar no caso BAU",
-      text: "Ao abrir uma solicitação, o último bloco traz o caso escrito em texto corrido — o que aconteceu, o que precisa ser feito, as tasks e o AM — com a chamada \"Caso LM para BAU\". É só copiar e colar no caso que você acabou de criar. O texto sai no idioma do atendimento: caso de ES vem em espanhol, mesmo com o seu painel em português."
+      icon: "flag",
+      title: "A vista de caso agora diz o que o agente pediu que aconteça",
+      text: "Logo no topo do bloco de leitura, uma linha diz \"O caso deve ser descartado pelo TL\" ou \"O caso será implementado pelo agente\". Até aqui isso aparecia só como um selo, e só quando o agente sugeria descarte — então \"o agente vai implementar\" e \"o campo não chegou\" eram a mesma tela em branco, e não dava para saber o que tinha sido pedido. Casos antigos, gravados antes desse campo existir, aparecem como \"não informado\" em vez de inventar uma resposta."
     },
     {
-      icon: "dashboard_customize",
-      title: "A vista de detalhes foi remodelada",
-      text: "Ficou mais larga e agora separa o que você LÊ para decidir (o que deve ser feito, o motivo, a justificativa e o agendamento, no bloco do topo) do que você COPIA para o CRM (os dados do caso, logo abaixo). Nome e sobrenome do anunciante viraram campos separados — sem sobrenome, o campo diz N/A. E dá para aprovar ou rejeitar sem fechar a vista: os botões estão no rodapé dela."
+      icon: "sync",
+      title: "Quando o agente corrige essa resposta, você passa a ver a correção",
+      text: "O agente podia alterar a sugestão de descarte ao editar um caso já enviado, mas a mudança nunca chegava aqui: o painel seguia mostrando o que foi gravado no envio original. Agora ela chega. Se você já tinha visto um caso antes desta versão, vale reabrir."
     },
     {
-      icon: "manage_search",
-      title: "O histórico virou clicável",
-      text: "Clique em qualquer caso resolvido e você vê tudo o que veria na fila — anunciante, CID, tasks, justificativa, agendamento —, não só o número do caso. No topo, um bloco novo diz quem decidiu, quando, e a justificativa registrada. A busca do histórico também passou a achar por anunciante e CID."
-    },
-    {
-      icon: "edit_note",
-      title: "Rejeitar agora pede uma justificativa",
-      text: "Ao recusar uma abertura ou negar um descarte, o painel pede o motivo — e ele vai no e-mail que o agente recebe. Até aqui o agente era avisado do \"não\" sem nenhuma razão e tinha que perguntar no chat. A justificativa fica gravada e aparece no histórico junto com a decisão."
-    },
-    {
-      icon: "history",
-      title: "O histórico parou de sumir toda segunda-feira",
-      text: "O arquivamento semanal copiava os casos resolvidos para a planilha de backup e apagava os originais — por isso a aba Histórico só alcançava o último domingo, mesmo com o filtro de 90 dias. Agora ele só copia. O histórico passa a crescer de verdade, e o ID do caso gerado na aprovação não desaparece mais."
+      icon: "alternate_email",
+      title: "O AM aparece como e-mail",
+      text: "O campo \"AM Responsável\" passa a trazer o e-mail do Account Manager em vez do nome de exibição — é o que permite acionar a pessoa a partir daqui. O mesmo vale para o resumo copiável. Casos abertos antes desta versão continuam com o nome que foi gravado na época. Quando o assistente do agente não consegue determinar o AM com segurança, o campo agora vem vazio em vez de trazer um nome errado: antes ele caía no primeiro contato da conta, que era o mesmo em todos os casos daquele anunciante."
     }
   ]
 };

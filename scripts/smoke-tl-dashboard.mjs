@@ -131,6 +131,41 @@ CASOS.push({
     availability: '', suggestDiscard: 'Não',
 });
 
+// O desfecho pedido pelo agente tem três estados na tela, e os fixtures acima só
+// cobriam "Não". Sem estes dois, a regra que distingue "vai ser descartado" de
+// "ninguém informou" não teria nada provando que ela existe.
+CASOS.push({
+    id: 'bau_sugere_descarte', status: 'PENDING_TL_CREATION',
+    date: '2026-09-09T17:00:00Z',
+    agentEmail: 'lucaste@google.com',
+    caseId: '0-6666666666', cid: '666-666-6666', speakeasyId: '666666',
+    advName: 'Oficina', advLastName: 'Central',
+    advEmail: 'oi@oficina.exemplo', advPhone: '', site: 'https://oficina.exemplo',
+    timezone: 'America/Sao_Paulo', language: 'PT-BR',
+    amName: 'Ciclano', salesProgram: 'Programa K',
+    reason: 'Anunciante desistiu da implementação.',
+    task: 'Consent Mode',
+    description: 'Solicitação do anunciante | Pediu para não seguir.',
+    availability: '', suggestDiscard: 'Sim',
+});
+
+// Linha gravada antes da coluna 21 existir: vem em branco. NÃO é "Não" — ninguém
+// respondeu a pergunta, e a tela não pode inventar que o agente vai implementar.
+CASOS.push({
+    id: 'bau_sem_sugestao', status: 'PENDING_TL_CREATION',
+    date: '2026-09-09T18:00:00Z',
+    agentEmail: 'lucaste@google.com',
+    caseId: '0-7777777777', cid: '777-777-7777', speakeasyId: '777777',
+    advName: 'Livraria', advLastName: 'Antiga',
+    advEmail: 'oi@livraria.exemplo', advPhone: '', site: 'https://livraria.exemplo',
+    timezone: 'America/Sao_Paulo', language: 'PT-BR',
+    amName: 'Fulana', salesProgram: 'Programa J',
+    reason: 'Terminar o Consent Mode.',
+    task: 'Consent Mode',
+    description: 'Implementação parcial | Faltou acesso.',
+    availability: '', suggestDiscard: '',
+});
+
 // Histórico: o payload agora é o registro INTEIRO mais os campos de resolução —
 // é isso que permite abrir um caso resolvido e ver o mesmo que se vê na fila.
 // O segundo caso é anterior à coluna de justificativa e nunca vai ter uma.
@@ -238,6 +273,10 @@ async function abrirCaso(page, id) {
             titulo: txt('#case-modal-title'),
             cabecalho: txt('#modal-header-content'),
             selos: Array.from(document.querySelectorAll('#modal-header-content .status-badge')).map((b) => b.textContent.trim()),
+            desfecho: (() => {
+                const el = document.querySelector('.case-brief .brief-outcome');
+                return el ? { texto: el.textContent.trim(), classe: el.className } : null;
+            })(),
             briefing: Array.from(document.querySelectorAll('.case-brief .brief-item')).map((i) => ({
                 label: txt('.brief-label', i),
                 texto: txt('.brief-text', i),
@@ -311,6 +350,56 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
         verdade(dados.indexOf('Justificativa / Detalhes') === -1, 'justificativa saiu dos copiáveis');
         verdade(dados.indexOf('Agendamento') === -1, 'agendamento saiu dos copiáveis');
         verdade(dados.indexOf('Agente') === -1, 'agente saiu dos copiáveis (virou autoria no cabeçalho)');
+    });
+
+    // ---- O desfecho que o agente pediu ----
+    //
+    // Antes isto existia só como selo no cabeçalho, e SÓ quando era "Sim": para o
+    // TL, "o agente vai implementar" e "o campo não veio" eram a mesma tela em
+    // branco. Os três estados agora são ditos por extenso, no topo do briefing.
+    await check('o caso com sugestão de descarte diz isso ao TL, por extenso', async () => {
+        const r = await abrirCaso(page, 'bau_sugere_descarte');
+        igual(r.desfecho.texto, 'O caso deve ser descartado pelo TL', 'frase do desfecho');
+        contem(r.desfecho.classe, 'is-discard', 'cor semântica de atenção');
+    });
+
+    await check('o caso sem sugestão de descarte também diz — era o que faltava', async () => {
+        const r = await abrirCaso(page, 'bau_pt');
+        igual(r.desfecho.texto, 'O caso será implementado pelo agente', 'frase do desfecho');
+        contem(r.desfecho.classe, 'is-implement', 'cor semântica de seguimento');
+    });
+
+    await check('célula vazia não vira "o agente vai implementar"', async () => {
+        // Linha anterior à coluna 21. Afirmar um desfecho que ninguém escolheu é
+        // pior que dizer que não foi informado, porque é ISTO que orienta o TL.
+        const r = await abrirCaso(page, 'bau_sem_sugestao');
+        igual(r.desfecho.texto, 'O agente não informou se o caso deve ser descartado', 'frase do desfecho');
+        contem(r.desfecho.classe, 'is-unknown', 'tratado como desconhecido');
+    });
+
+    await check('o desfecho é o PRIMEIRO item do briefing', async () => {
+        // É a moldura do que vem abaixo: o TL lê "descartar" ou "implementar"
+        // antes de ler o porquê.
+        const primeiro = await page.evaluate(() => {
+            const brief = document.querySelector('.case-brief:not(.case-decision)');
+            return brief.firstElementChild.className;
+        });
+        contem(primeiro, 'brief-outcome', 'vem antes do "o que deve ser feito"');
+    });
+
+    await check('pedido de descarte não ganha desfecho', async () => {
+        // A pergunta não é feita ao agente nesse fluxo: o pedido inteiro JÁ é um
+        // descarte, e a coluna vem vazia por não se aplicar.
+        const r = await abrirCaso(page, 'bau_descarte');
+        igual(r.desfecho, null, 'sem disclaimer no fluxo de descarte');
+    });
+
+    await check('o desfecho segue a tela do TL, não o idioma do atendimento', async () => {
+        // Ao contrário do resumo (que é colado no CRM e segue o atendimento),
+        // isto é chrome: quem lê é o TL, na língua da tela dele.
+        const r = await abrirCaso(page, 'bau_es');
+        igual(r.desfecho.texto, 'O caso será implementado pelo agente',
+            'caso em ES, tela do TL em PT');
     });
 
     await check('o briefing desmescla "Motivo | Justificativa"', async () => {

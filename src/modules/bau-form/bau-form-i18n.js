@@ -18,7 +18,7 @@ const FIELD_ES = {
     advPhone: { label: 'Teléfono del Anunciante', placeholder: '+55 11 90000-0000' },
     advEmail: { label: 'Email del Anunciante', placeholder: 'email@ejemplo.com', error: 'Formato de correo inválido' },
     cid: { label: 'CID', placeholder: '000-000-0000', tooltip: 'Usa el formato 000-000-0000 o 10 dígitos', error: 'Formato de CID incorrecto' },
-    amName: { label: 'Account Manager (AM)', placeholder: 'Nombre del AM' },
+    amName: { label: 'Account Manager (AM)', placeholder: 'am@google.com', error: 'Informa el correo del AM (ej.: am@google.com)' },
     website: { label: 'Website', placeholder: 'https://www.ejemplo.com' },
     seId: { label: 'Speakeasy ID (SE ID)', placeholder: 'Speakeasy ID', buttonTitle: 'Buscar ID automáticamente' },
     seId_descarte: { label: 'Speakeasy ID (SE ID)', placeholder: 'Speakeasy ID' },

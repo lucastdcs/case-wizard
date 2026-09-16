@@ -794,6 +794,32 @@
             border-left-color: var(--gemini-blue);
             gap: 16px;
         }
+        /* O desfecho que o agente pediu, no topo do briefing: é a moldura do que
+           vem abaixo — o TL lê "descartar" ou "implementar" antes de ler o porquê.
+           Frase normal com um ponto na cor semântica, e não pílula em maiúsculas:
+           o design-system pede o estado dito em texto. Sem caixa própria, porque
+           o briefing já é um contêiner e caixa dentro de caixa é proibida. */
+        .brief-outcome {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .brief-outcome .outcome-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: var(--text-secondary);
+        }
+        .brief-outcome.is-discard .outcome-dot { background: var(--warning); }
+        .brief-outcome.is-implement .outcome-dot { background: var(--success); }
+        .brief-outcome.is-unknown { color: var(--text-secondary); font-style: italic; }
+
         .brief-item { display: flex; flex-direction: column; gap: 4px; }
         .brief-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
         .brief-text { font-size: 15px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; }
@@ -1227,6 +1253,9 @@
                 rowAdvEmail: "Email do Anunciante",
                 rowSuggestDiscard: "Sugestão do Agente",
                 suggestDiscardBadge: "Agente sugere descarte",
+                outcomeDiscard: "O caso deve ser descartado pelo TL",
+                outcomeImplement: "O caso será implementado pelo agente",
+                outcomeUnknown: "O agente não informou se o caso deve ser descartado",
                 rowLanguage: "Idioma",
                 rowAm: "AM Responsável",
                 rowSalesProgram: "Programa de Vendas",
@@ -1340,6 +1369,9 @@
                 rowAdvEmail: "Email del Anunciante",
                 rowSuggestDiscard: "Sugerencia del Agente",
                 suggestDiscardBadge: "Agente sugiere descarte",
+                outcomeDiscard: "El caso debe ser descartado por el TL",
+                outcomeImplement: "El caso será implementado por el agente",
+                outcomeUnknown: "El agente no informó si el caso debe ser descartado",
                 rowLanguage: "Idioma",
                 rowAm: "AM Responsable",
                 rowSalesProgram: "Programa de Ventas",
@@ -2284,7 +2316,31 @@
                 <div class="brief-text${valor ? '' : ' is-empty'}">${valor ? escapeHtml(valor) : tt('notInformed')}</div>
             </div>`;
 
+            // O desfecho que o agente pediu. Antes existia só como selo, e SÓ
+            // quando era "Sim" — então "o agente vai implementar" e "o campo não
+            // veio" eram a mesma tela em branco, e o TL não tinha como saber o que
+            // o agente pediu. Agora os dois estados são ditos por extenso.
+            //
+            // Célula vazia NÃO é "Não": linhas gravadas antes da coluna 21 existir
+            // vêm em branco, e ler isso como "o agente vai implementar" seria
+            // afirmar uma decisão que ninguém tomou, bem no texto que orienta o TL.
+            // Por isso o terceiro estado.
+            //
+            // Só no fluxo de criação: no pedido de descarte a pergunta não é feita
+            // ao agente (o pedido inteiro JÁ é um descarte), e a coluna vem vazia
+            // por não se aplicar, não por ser antiga.
+            const outcomeClass = c.suggestDiscard === 'Sim' ? 'is-discard'
+                : c.suggestDiscard === 'Não' ? 'is-implement' : 'is-unknown';
+            const outcomeText = c.suggestDiscard === 'Sim' ? tt('outcomeDiscard')
+                : c.suggestDiscard === 'Não' ? tt('outcomeImplement') : tt('outcomeUnknown');
+            const outcome = isDiscardFlow ? '' : `
+            <div class="brief-outcome ${outcomeClass}">
+                <span class="outcome-dot" aria-hidden="true"></span>
+                <span>${escapeHtml(outcomeText)}</span>
+            </div>`;
+
             const briefing = [
+                outcome,
                 briefItem(tt('rowWhatToDo'), c.reason),
                 motivo ? briefItem(tt('rowReasonNotImpl'), motivo) : '',
                 briefItem(tt('rowJustification'), detalhe),

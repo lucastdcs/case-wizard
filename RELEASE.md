@@ -125,6 +125,15 @@ backend is the exact state this ordering exists to prevent.
 
 `APP_VERSION` (`src/app.js`) drives *when* the "what's new" modal fires; `RELEASE_NOTES.version` (`src/modules/changelog/changelog-data.js`) drives *what it says*. **Bump both in the same commit.** If they diverge, `checkAndShowChangelog` suppresses the modal and logs a warning rather than showing the new version's badge over the old version's content.
 
+**The TL Dashboard has its own, separate notes.** `CW_DASH_RELEASE_NOTES`
+(`gas-backend/DashReleaseNotes.js`) is what the *TL* sees, and the TL never loads
+the bookmarklet — so a change to the dashboard that is only in
+`changelog-data.js` reaches nobody who uses it. Its `version` must equal
+`package.json` (no `v` prefix, unlike the two above), and
+`npm run test:dash-changelog` fails when it falls behind. The modal shows **one
+release at a time**, so on a fix release this file holds only what changed in
+that release — replace the items, don't append to them.
+
 ## Tags & GitHub Releases
 
 A tag is **bookkeeping, not a deploy**. `deploy.yml` triggers on `push.branches`
@@ -138,9 +147,13 @@ Order — the tag comes **last**, on a commit that is already in production:
 # 1. Close the section in CHANGELOG.md: move what is under [Unreleased] into
 #    "## [X.Y.Z] - YYYY-MM-DD", leave a fresh empty [Unreleased] above it, and
 #    add the two link refs at the bottom.
-# 2. Align the three version sources in the same commit:
+# 2. Align the four version sources in the same commit:
 #    package.json "version", APP_VERSION (src/app.js), RELEASE_NOTES.version
-#    (src/modules/changelog/changelog-data.js). See "App version" above.
+#    (src/modules/changelog/changelog-data.js) and CW_DASH_RELEASE_NOTES.version
+#    (gas-backend/DashReleaseNotes.js). See "App version" above.
+#    If the release touched the TL Dashboard, rewrite that file's items too —
+#    it is the only changelog the TL ever sees.
+#    Check with: npm run test:dash-changelog
 # 3. Merge into main and push — this is what promotes production.
 git checkout main && git merge refactor-structure && git push origin main
 
@@ -157,7 +170,9 @@ looking deliberate.
 
 **Versioning.** `package.json` is the SemVer source of truth and the number the
 tag must match. `APP_VERSION` and `RELEASE_NOTES.version` carry the same number
-prefixed with `v` (`v6.2.0`), and the only hard rule between those two is that
+prefixed with `v` (`v6.2.0`); `CW_DASH_RELEASE_NOTES.version` carries it
+**without** the prefix, because its guard compares it to `package.json`
+directly. The only hard rule between the first two is that
 they must be **byte-identical to each other** — `checkAndShowChangelog` compares
 them as strings and suppresses the modal when they differ. (Up to v5.2 they used
 a shorter `vX.Y` form; the full form has been in use since, and this line was

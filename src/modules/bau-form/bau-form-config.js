@@ -80,9 +80,17 @@ export const FORM_CONFIG = {
                     name: 'amName',
                     label: 'Account Manager (AM)',
                     type: 'text',
-                    placeholder: 'Nome do AM',
+                    placeholder: 'am@google.com',
                     required: true,
-                    isSmart: true
+                    isSmart: true,
+                    // E-mail, nunca o nome de exibição: é o que a liderança
+                    // usa para acionar o AM a partir do TL Dashboard. A
+                    // raspagem já devolve e-mail; a validação trava o que for
+                    // digitado à mão.
+                    validation: {
+                        regex: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$',
+                        error: 'Informe o e-mail do AM (ex.: am@google.com)'
+                    }
                 },
                 {
                     id: 'website',

@@ -22,7 +22,7 @@
 | `9` | Adv_Site | `website` | **CRÍTICO:** Unificar chave (não usar `site`) |
 | `10` | Fuso_Horario | `timezone` | |
 | `11` | Idioma | `language` | Deve vir de `profile.defaultLanguage` (`PT-BR` \| `ES` \| `EN`), **não** do "Business language" do anunciante que a página do CRM exibe. O formulário mostra um `select` já na opção do segmento de quem atende, e permite trocar — existe caso que foge da regra. |
-| `12` | AM_Nome | `amName` | |
+| `12` | AM_Nome | `amName` | **Sempre o e-mail do AM**, nunca o nome de exibição do CRM — apesar do header histórico dizer "Nome". O nome vinha de `<internal-user-info>`, que é texto traduzível e não diz qual LDAP é a pessoa: a liderança lia "Bianca Alves" no TL Dashboard e não tinha como acionar ninguém. O campo do formulário valida formato de e-mail. Linhas gravadas antes desta regra continuam com nome e não são reescritas. |
 | `13` | Sales_Program | `salesProgram` | |
 | `14` | Motivo_Abertura | `reason` | Campo principal de categorização |
 | `15` | Task_BAU | `taskType` | Pode ser lista separada por vírgula |
@@ -35,7 +35,7 @@
 | `18` | Processed_By | — (`Session.getActiveUser().getEmail()`) | Trilha de auditoria. Gravada por `updateBAUCaseStatus`, não no envio do agente. Colunas 18-20 garantidas por `ensureBAUHistoryColumns`. |
 | `19` | Processed_At | — (`new Date()`) | Idem acima. |
 | `20` | Processed_Action | — (derivado, ver `resolveProcessedAction`) | `APPROVED_CREATION` \| `REJECTED_CREATION` \| `CONFIRMED_DISCARD` \| `KEPT_ACTIVE`. |
-| `21` | Suggest_Discard | `suggestDiscard` | `"Sim"` \| `"Não"`. Só existe no fluxo BAU (Passo 3); isolada depois das colunas de auditoria de propósito, pra não deslocar os índices 18-20 em planilhas já em produção. Garantida por `ensureBAUSuggestDiscardColumn`. |
+| `21` | Suggest_Discard | `suggestDiscard` | `"Sim"` \| `"Não"`. Só existe no fluxo BAU (Passo 3); isolada depois das colunas de auditoria de propósito, pra não deslocar os índices 18-20 em planilhas já em produção. Garantida por `ensureBAUSuggestDiscardColumn`. Escrita **nos dois caminhos** — criação e edição —, cada um com seu `setValue` próprio por cair fora do bloco contíguo 4-18 (a edição não escrevia, e o campo editado pelo agente era descartado em silêncio). **Célula vazia não é `"Não"`**: linhas anteriores à coluna não responderam a pergunta, e o TL Dashboard as mostra como "não informado" em vez de afirmar um desfecho que ninguém escolheu. |
 | `24` | Adv_Phone | `advPhone` | Telefone do anunciante. **PII** — raspado do CRM só depois do clique no unmask, e vai para o arquivo junto com a linha (ver #353). Desde o ADR-0014 o backup copia em vez de mover, então o valor também **permanece** nesta planilha. Garantida por `ensureBAUAdvPhoneColumn`. |
 | `23` | Child_Case_ID | `childCaseId` | ID do caso BAU que a liderança gerou no CRM ao aprovar a abertura — o "caso filho" daquele pedido. Escrita por `updateBAUCaseStatus`, junto da trilha de auditoria, e **só** em `APPROVED_CREATION`. Sobrevive ao arquivamento semanal desde o ADR-0014. Garantida por `ensureBAUChildCaseColumn`. |
 | `22` | Adv_LastName | `advLastName` | Sobrenome do anunciante (`Family name` no CRM). Mesma razão de estar no fim: acrescentar coluna nunca desloca índice já gravado. Fora do `appendRow` das 18, escrita à parte depois de `ensureBAUAdvLastNameColumn`; na edição, escrita própria porque cai fora do bloco contíguo 4-18 do `setValues`. |
@@ -44,6 +44,15 @@
 ## Regra de Atualização (Update)
 - NUNCA reescrever dados de uma coluna com `""` se o valor recebido for `undefined`. 
 - No Apps Script, a validação deve ser sempre: `p.chave !== undefined ? p.chave : valorAntigoDaPlanilha`.
+- **Coluna fora do bloco contíguo 4-18 precisa de escrita própria na edição.** O
+  `setValues` da edição grava uma faixa só; tudo que mora depois (21, 22, 23, 25)
+  tem que ter o seu `if (p.chave !== undefined) { ensure…; setValue }`. Esquecer
+  isso não dá erro nenhum: o payload chega com o valor novo, ninguém escreve, e a
+  tela de quem lê segue mostrando o valor da criação. Já aconteceu com
+  `Suggest_Discard`. Ao acrescentar coluna nova, procure os **dois** caminhos —
+  `handleBAUEscalation` (criação) e `update_bau_case` (edição) — e a leitura que
+  alimenta o form de edição (`getAgentCases`), senão o campo volta ao padrão do
+  `<select>` no próximo save.
 
 ---
 

@@ -284,12 +284,12 @@ export async function captureClientPhone() {
 // anterior lia material-input[debug-id="account-id-input"] — que é o campo
 // de BUSCA DE CLIENTE — e colava "@google.com" no que achasse ali, podendo
 // mandar BCC para um endereço que não existe. Ver am-resolver.js e ADR-0011.
-export async function captureAM() {
+export async function captureAM(opcoes) {
     try {
-        return await resolveAM();
+        return await resolveAM(opcoes);
     } catch (e) {
         console.warn("Erro ao resolver AM:", e);
-        return { email: null, nome: null, origem: 'erro' };
+        return { email: null, origem: 'erro' };
     }
 }
 
@@ -312,11 +312,17 @@ export function captureCID() {
     return "N/A";
 }
 
-// --- 7. NOME DO AM ---
+// --- 7. AM (identificador que vai para a planilha) ---
 // Mesma fonte do BCC: AM e BCC são o mesmo endereço, então ter duas
 // resoluções independentes só criaria como divergirem entre si.
+//
+// Devolve SEMPRE o e-mail, nunca o nome de exibição. O nome vinha de
+// `<internal-user-info>` — que é texto traduzível e não identifica ninguém:
+// "Bianca Alves" não diz qual LDAP é, e a coluna AM_Nome da planilha vira
+// um campo que a liderança não consegue acionar a partir do TL Dashboard.
+// O e-mail é a chave estável (ver ADR-0011 e specs/workflow/scraping-rules.md).
 export function captureAMName(am) {
-    return am?.nome || am?.email || null;
+    return am?.email || null;
 }
 
 // --- 8. CAPTURA DE TIMEZONE ---

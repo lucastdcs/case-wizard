@@ -78,6 +78,57 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [x] **v6.3.3 cortada e promovida.** Fecha o `[Unreleased]` do CHANGELOG, alinha
+      as quatro fontes de versão (`package.json`, `APP_VERSION`,
+      `RELEASE_NOTES.version` e `CW_DASH_RELEASE_NOTES.version`) e reescreve os
+      dois changelogs: o do bookmarklet conta ao agente que o AM virou e-mail e
+      que a sugestão de descarte passou a salvar de verdade; o do TL Dashboard
+      conta o disclaimer novo e que as correções do agente agora chegam. Suíte
+      completa verde antes do merge, `smoke:env-badge` incluído (é o que prova
+      que o build de produção não leva o selo de dev).
+      **Depois do merge, conferir no Actions:** o job do backend promove a
+      implantação de produção antes de publicar o frontend — se ele falhar, o
+      frontend não sai, e é isso que evita meio-deploy.
+
+- [x] **Sugestão de descarte: invisível no modal do TL e não editável de fato.**
+      Relatado em 2026-09-16 como "o campo não aparece para o TL". Eram três
+      defeitos encadeados:
+      1. **Tela** — o campo só renderizava quando era "Sim", e como selo. "O
+         agente vai implementar" e "o campo não chegou" eram a mesma tela em
+         branco. Virou disclaimer no topo do briefing, com os dois lados por
+         extenso e um terceiro estado para célula vazia. Padrão registrado em
+         `specs/ui-ux/design-system.md`.
+      2. **Escrita** — a edição nunca gravava a coluna 21 (fora do bloco
+         contíguo 4-18 do `setValues`): o agente editava, o payload chegava, e o
+         valor era descartado em silêncio.
+      3. **Leitura** — `getAgentCases` não devolvia o campo, então o `<select>`
+         da edição abria sempre em "Não". Consertar só o item 2 teria
+         transformado um no-op silencioso em **perda de dado** silenciosa.
+      `BAU_API.js` ganhou seu primeiro teste (round-trip agente→TL no
+      `test:tl-decision`, +5) e `smoke:tl-dash` foi de 30 para 36.
+      Junto: `RELEASE.md` listava **três** fontes de versão e o
+      `test:dash-changelog` cobra uma quarta (`CW_DASH_RELEASE_NOTES`) — seguir o
+      doc à risca quebrava o teste. Corrigido.
+      Notas de versão reescritas nos DOIS changelogs (bookmarklet e TL
+      Dashboard) e a v6.3.3 cortada — ver abaixo.
+
+
+- [x] **AM sempre em e-mail + o fallback que repetia o mesmo AM.** Relatado em
+      2026-09-16: "AM Responsável" no modal do TL Dash vinha como nome, e
+      suspeita de que o mesmo AM estivesse indo para todos os casos. As duas
+      coisas eram verdade e são independentes:
+      `captureAMName()` preferia o nome de exibição (`am.nome || am.email`), e o
+      fallback do resolver pegava o **primeiro `<internal-user-info>` da tela** —
+      um bloco que lista os contatos da **conta** (55, mesmo papel, mesma ordem),
+      logo idêntico em todos os casos daquele anunciante. Todo caso que o log não
+      resolvia gravava o mesmo nome, em silêncio. Agora: e-mail sempre (com
+      validação no campo do formulário) e fallback só com **um** contato interno
+      na tela — ambíguo devolve `null`. `test:scraping` passou a cobrir os
+      caminhos de fallback (58 asserções, era 50).
+      **Falta confirmar no CRM real:** com que frequência o AM passa a vir vazio
+      nos casos em que o log não tem `@google.com` — é o custo consciente de não
+      chutar, e o número decide se vale caçar outra fonte para o AM.
+
 - [~] **Histórico clicável + justificativa da recusa** (branch
       `feat/historico-clicavel-e-justificativa`, v6.3.2). Terceira rodada sobre o
       painel do TL.
@@ -94,7 +145,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
          descarte `CREATED` significa *negar* o pedido. A régua agora deriva a
          ação como o servidor deriva.
       Testes: `test:tl-decision` (13, o primeiro que o `BAU_Dashboard.js` tem) e
-      `smoke:tl-dash` de 21 para 30. **Falta o `clasp deploy` de produção.**
+      `smoke:tl-dash` de 21 para 30. **Em produção desde a v6.3.2** (2026-09-16).
 
 - [~] **Vista de caso remodelada + changelog do TL Dashboard.** Segunda rodada
       de feedback sobre o modal do TL.
@@ -109,8 +160,8 @@ This file differs from the long-term roadmap: it describes what is happening **n
       3. **Changelog do dashboard** — `gas-backend/DashReleaseNotes.js`, injetado
          pelo servidor, com guarda de sincronia de versão em
          `npm run test:dash-changelog`.
-      `smoke:tl-dash` foi de 9 para 21 asserções. **Falta o `clasp deploy` de
-      produção** e a validação na planilha real.
+      `smoke:tl-dash` foi de 9 para 21 asserções. **Em produção desde a
+      v6.3.2** (2026-09-16).
 
 - [~] **Resumo copiável do caso no TL Dashboard + backup que copia em vez de
       mover.** Dois pontos do fluxo BAU, entregues juntos porque o segundo é o
@@ -126,8 +177,8 @@ This file differs from the long-term roadmap: it describes what is happening **n
          Idempotente pelos IDs já no arquivo. Sem reset e sem poda: a planilha
          que a operação mantém desde 2024 tem ~5.000 linhas.
       Testes novos: `npm run test:backup` (9) e `npm run smoke:tl-dash` (9, a
-      tela real no Chromium). **Falta validar na planilha de verdade** — ver
-      "Waiting / blocked".
+      tela real no Chromium). **Em produção desde a v6.3.2** (2026-09-16).
+      **Falta validar na planilha de verdade** — ver "Waiting / blocked".
 
 - [x] **Auditoria e correção da raspagem do CRM.** Rodando as funções reais
       contra uma captura real da tela, 7 das 10 capturas voltavam vazias — a
@@ -260,6 +311,22 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 - [ ] ...
 
 ## Waiting / blocked
+
+> **Correção de rota (2026-09-16):** vários itens abaixo e acima diziam "falta o
+> `clasp deploy` manual de produção". Não falta: o `deploy.yml` tem um passo
+> **"Promover implantação de produção"** que roda sozinho no merge para a `main`,
+> quando o commit toca em `gas-backend/`. Conferido no run 1052 da v6.3.2, que
+> promoveu produção sem intervenção nenhuma. O que exige mão continua sendo o que
+> roda DENTRO da planilha (semeaduras e gatilhos), listado abaixo.
+
+- [ ] **Publicar a tag `v6.3.2`.** A v6.3.2 já está em produção; a tag só publica
+      as notas do GitHub Release (o `release.yml` não faz deploy). O push de tag
+      **falha nesta sessão** — a credencial do GitHub daqui não escreve refs de
+      tag, o mesmo bloqueio já registrado para a v6.1.0 e a v6.2.0. Precisa sair
+      de uma máquina com credencial normal:
+      `git tag -a v6.3.2 abee437 -m "v6.3.2" && git push origin v6.3.2`
+      O `scripts/extract-changelog.sh` já foi rodado contra a seção `[6.3.2]` e
+      aceitou — as notas não sairão vazias.
 
 - [ ] **Levar o changelog para a Central de Conteúdo.** A constante
       `CW_DASH_RELEASE_NOTES` e o `template.CW_RELEASE_NOTES` do

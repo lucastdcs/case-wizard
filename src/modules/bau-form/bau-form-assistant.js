@@ -1663,14 +1663,19 @@ export function initBAUForm() {
                     }
                     input.value = m[2];
                 }
-            } else if (fieldName === 'language') {
+            } else if (fieldName === 'language' || fieldName === 'suggestDiscard') {
                 // Casos gravados antes do select carregam texto livre na coluna 11
                 // ("N/A", "portuguese", vazio). Atribuir isso a um <select> não dá
                 // erro: ele silenciosamente cai na primeira opção, e o agente
                 // reenviaria PT-BR sem ter escolhido. Só sobrescrevemos o padrão
                 // vindo do perfil quando o valor gravado é uma opção de verdade.
-                const temOpcao = Array.from(input.options).some(o => o.value === c.language);
-                if (temOpcao) input.value = c.language;
+                //
+                // `suggestDiscard` entra pela mesma porta: linhas anteriores à
+                // coluna 21 vêm com "", e agora que a edição de fato GRAVA o campo,
+                // deixar o select em branco mandaria "" para o backend — que
+                // normaliza para "Não" e apagaria um "Sim" que o agente nunca tocou.
+                const temOpcao = Array.from(input.options).some(o => o.value === c[fieldName]);
+                if (temOpcao) input.value = c[fieldName];
             } else if (c[dataKey] !== undefined) {
                 input.value = c[dataKey];
             } else if (fieldName === 'reason') {

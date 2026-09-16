@@ -19,7 +19,8 @@
 //   1. o que já está VISÍVEL no log — sem clicar em nada, sem custo;
 //   2. se não achou, aí sim expande as mensagens de e-mail e tenta de novo;
 //   3. com 2+ candidatos, desempata pelo submitter do Contact Us Form;
-//   4. sem candidato, cai no primeiro <internal-user-info> da tela;
+//   4. sem candidato, cai no <internal-user-info> da tela **apenas quando há
+//      exatamente um** — ou seja, quando não há o que chutar;
 //   5. ainda ambíguo, devolve null — que a UI trata pedindo confirmação.
 //
 // Devolver null é de propósito: este valor vai para a planilha BAU e para o
@@ -83,13 +84,25 @@ function submitterDoFormulario(lista) {
     return email || null;
 }
 
-// Último recurso: a tela lista os contatos internos da conta. Numa captura
-// real eram 55, todos com o mesmo papel — por isso isto é FALLBACK, e não a
-// fonte principal: com 55 indistinguíveis, chutar erra quase sempre.
-function primeiroContatoInterno() {
-    const bloco = document.querySelector('internal-user-info');
-    if (!bloco) return null;
-    const email = bloco.querySelector('.email')?.textContent.trim().toLowerCase();
+// Último recurso: a tela lista os contatos internos da CONTA — não do caso.
+// Numa captura real eram 55, todos com o mesmo `home-label`
+// ("Non-Technical Sales / Upsell Agent"): nada no DOM diz qual deles é o AM
+// deste caso.
+//
+// A versão anterior devolvia `document.querySelector('internal-user-info')`,
+// o primeiro da ordem do DOM. Como a lista é da conta, ela é a MESMA — e na
+// mesma ordem — em todos os casos daquele anunciante: todo caso sem e-mail
+// @google.com no log gravava o mesmo nome na planilha, em silêncio, e isso
+// passava por raspagem bem-sucedida. Era o "chutar erra quase sempre" do
+// comentário antigo acontecendo de verdade.
+//
+// Agora só responde quando há exatamente UM contato interno na tela, que é o
+// único caso em que isto não é chute. Com 2+, devolve null e o agente
+// preenche — ver o princípio no topo do arquivo.
+function contatoInternoUnico() {
+    const blocos = document.querySelectorAll('internal-user-info');
+    if (blocos.length !== 1) return null;
+    const email = blocos[0].querySelector('.email')?.textContent.trim().toLowerCase();
     return email && !ehRobo(email) ? email : null;
 }
 
@@ -106,18 +119,14 @@ async function expandirEmails() {
     }
 }
 
-// Nome de exibição do AM, quando a tela tiver o bloco de contato interno.
-export function nomeDoContato(email) {
-    if (!email) return null;
-    const bloco = Array.from(document.querySelectorAll('internal-user-info'))
-        .find((u) => u.querySelector('.email')?.textContent.trim().toLowerCase() === email);
-    return bloco?.querySelector('[debug-id="name"]')?.textContent.trim() || null;
-}
-
 /**
  * Resolve o AM do caso.
+ *
+ * O AM é identificado pelo E-MAIL, e só por ele: o nome de exibição do CRM é
+ * texto traduzível e não diz qual LDAP é a pessoa.
+ *
  * @param {{expandir?: boolean}} opcoes  expandir=false pula o passo caro.
- * @returns {Promise<{email: string|null, nome: string|null, origem: string}>}
+ * @returns {Promise<{email: string|null, origem: string}>}
  */
 export async function resolveAM({ expandir = true } = {}) {
     let lista = candidatos();
@@ -138,9 +147,9 @@ export async function resolveAM({ expandir = true } = {}) {
     }
 
     if (!email) {
-        email = primeiroContatoInterno();
+        email = contatoInternoUnico();
         origem = email ? 'internal-user-info' : 'nao-resolvido';
     }
 
-    return { email: email || null, nome: nomeDoContato(email), origem };
+    return { email: email || null, origem };
 }

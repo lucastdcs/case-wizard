@@ -139,6 +139,11 @@ function montar(linhas) {
     // metade da regra contra dublês da outra.
     vm.runInContext(trechoDeCodigo(), ctx);
     vm.runInContext(ler('gas-backend/BAU_Dashboard.js'), ctx);
+    // BAU_API.js entra no MESMO sandbox de propósito: o round-trip que interessa
+    // é "o agente edita (BAU_API) e o TL lê (BAU_Dashboard)". Testar os dois
+    // contra dublês um do outro provaria os dois separados e o defeito de verdade
+    // estava justamente entre eles.
+    vm.runInContext(ler('gas-backend/BAU_API.js'), ctx);
     api = ctx;
 }
 
@@ -340,6 +345,69 @@ check('texto livre do TL é escapado antes de virar HTML', () => {
     verdade(html.indexOf('&lt;b&gt;') !== -1, 'a tag foi escapada');
     verdade(html.indexOf('<b>') === -1, 'e não sobrou tag crua do texto do TL');
     verdade(html.indexOf('&amp;') !== -1, 'o & foi escapado');
+});
+
+console.log('\n--- O que o agente edita chega ao TL ---\n');
+
+// O agente edita um caso no bookmarklet e o TL precisa ver o valor novo. As duas
+// pontas estão em arquivos diferentes (BAU_API.js escreve, BAU_Dashboard.js lê),
+// e o campo "sugestão de descarte" mora na coluna 21 — FORA do bloco contíguo
+// 4-18 que o setValues da edição grava de uma vez. Era exatamente aí que ele se
+// perdia: o payload chegava com o valor novo e ninguém escrevia a coluna.
+//
+// Cada asserção abaixo vai até o fim da linha: escreve pela API do agente e lê
+// pelo MESMO mapeador que alimenta a fila do TL.
+const COL_SUGGEST = 21; // 0-based
+
+function editar(id, patch) {
+    // `user` é obrigatório: a edição só aceita o dono do caso, e é o mesmo
+    // e-mail que linhaBAU() grava na coluna 3.
+    return api.update_bau_case(SS, Object.assign(
+        { id: id, requestType: 'BAU', user: 'agente@google.com' }, patch));
+}
+const comoOTLVe = (id) =>
+    api.mapBAURow_(sheet._data.find((r) => r[0] === id));
+
+check('editar a sugestão de descarte chega ao TL', () => {
+    montar([linhaBAU('bau_e1', 'PENDING_TL_CREATION')]);
+    igual(comoOTLVe('bau_e1').suggestDiscard, 'Não', 'estado inicial');
+
+    editar('bau_e1', { suggestDiscard: 'Sim' });
+    igual(sheet._data[1][COL_SUGGEST], 'Sim', 'gravado na coluna 21');
+    igual(comoOTLVe('bau_e1').suggestDiscard, 'Sim', 'o TL lê o valor novo');
+});
+
+check('e volta atrás também chega', () => {
+    montar([linhaBAU('bau_e2', 'PENDING_TL_CREATION')]);
+    editar('bau_e2', { suggestDiscard: 'Sim' });
+    editar('bau_e2', { suggestDiscard: 'Não' });
+    igual(comoOTLVe('bau_e2').suggestDiscard, 'Não', 'o TL lê o valor novo');
+});
+
+check('edição que não toca no campo preserva o valor gravado', () => {
+    // Regra de não-sobrescrita do api-payloads.md: ausente no payload nunca é "".
+    montar([linhaBAU('bau_e3', 'PENDING_TL_CREATION')]);
+    editar('bau_e3', { suggestDiscard: 'Sim' });
+    editar('bau_e3', { cid: '999-888-7777' });
+    igual(comoOTLVe('bau_e3').suggestDiscard, 'Sim', 'sugestão intacta');
+    igual(comoOTLVe('bau_e3').cid, '999-888-7777', 'e o campo editado mudou');
+});
+
+check('valor fora do domínio vira "Não", como na criação', () => {
+    montar([linhaBAU('bau_e4', 'PENDING_TL_CREATION')]);
+    editar('bau_e4', { suggestDiscard: '' });
+    igual(comoOTLVe('bau_e4').suggestDiscard, 'Não', 'normalizado');
+});
+
+check('a lista do agente devolve o campo, senão a edição abre no padrão', () => {
+    // Sem isto o <select> do form abria sempre em "Não" — e agora que a edição
+    // GRAVA de verdade, reenviar esse padrão apagaria um "Sim" que ninguém tocou.
+    montar([linhaBAU('bau_e5', 'PENDING_TL_CREATION')]);
+    editar('bau_e5', { suggestDiscard: 'Sim' });
+    const meus = api.getAgentCases(SS, 'agente@google.com');
+    const caso = meus.cases.find((c) => c.id === 'bau_e5');
+    verdade(caso !== undefined, 'o caso aparece na lista do agente');
+    igual(caso.suggestDiscard, 'Sim', 'com a sugestão gravada');
 });
 
 console.log(fail === 0 ? '\n✅ Decisões do TL: tudo certo.\n' : `\n❌ ${fail} falha(s).\n`);

@@ -27,3 +27,26 @@ que é o engano mais fácil de cometer aqui.
   os mesmos 500 ms de quando havia só um.
 - Devolva `null` quando não achar — nunca `""` nem o rótulo. Quem consome
   precisa distinguir "não tem" de "não consegui ler".
+
+## AM (Account Manager)
+
+O AM é **o e-mail**, e só o e-mail. Ele vai para a coluna `AM_Nome` da planilha,
+aparece como "AM Responsável" no TL Dashboard e é o BCC dos e-mails — três usos
+em que um nome de exibição não serve: "Bianca Alves" não diz qual LDAP é a
+pessoa, e o tradutor do CRM ainda pode reescrever esse texto.
+
+- A resolução vive em `src/modules/shared/am-resolver.js` (ver ADR-0011). A fonte
+  é o **case log**; o AM nunca é o `assignee`.
+- **`<internal-user-info>` não identifica o AM.** Esse bloco lista os contatos
+  internos da **conta**, não do caso — numa captura real são 55, todos com o
+  mesmo `home-label`. Como a lista é da conta, ela é a mesma, e na mesma ordem,
+  em **todos os casos daquele anunciante**: pegar "o primeiro da tela" grava o
+  mesmo AM em todo caso que o log não resolver, em silêncio e com cara de
+  raspagem bem-sucedida. Só use esse bloco como fallback quando houver
+  **exatamente um** contato interno na tela.
+- **Ambíguo devolve `null`.** Com 2+ candidatos e nada que desempate, não chute:
+  o campo do formulário é obrigatório e o agente preenche. Chutar o AM errado
+  manda BCC para a pessoa errada e polui a planilha — é pior que não preencher.
+- Travado por `npm run test:scraping`, que exercita o caminho feliz **e** os
+  cenários de fallback (sem candidato, 2 candidatos sem desempate, contato
+  interno único).
