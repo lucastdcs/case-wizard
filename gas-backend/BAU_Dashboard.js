@@ -11,6 +11,43 @@ function getCurrentTLProfile() {
   return assertCallerIsOverhead();
 }
 
+// Uma linha da planilha vira o objeto que as duas telas do TL consomem.
+//
+// POR QUE COMPARTILHADO: getPendingBAUCases e getWeeklyHistory mapeavam os
+// mesmos índices em dois lugares, e o histórico tinha ficado para trás — devolvia
+// 8 campos contra os 20 da fila, que é a razão de a aba Histórico só conseguir
+// mostrar o número do caso. Com um mapeador só, os dois payloads não divergem
+// de novo por esquecimento.
+//
+// Colunas 22 em diante não existem em planilha antiga: ali row[n] é undefined e
+// celulaTexto devolve "". Nenhum ensure é chamado aqui de propósito — isto é
+// LEITURA, e getPendingBAUCases roda a cada 60s por TL com o painel aberto.
+function mapBAURow_(row) {
+  return {
+    id: celulaTexto(row[0]),
+    date: row[1] instanceof Date ? row[1].toISOString() : celulaTexto(row[1]),
+    agentEmail: celulaTexto(row[2]),
+    status: celulaTexto(row[3]),
+    caseId: celulaTexto(row[4]),
+    cid: celulaTexto(row[5]),
+    speakeasyId: celulaTexto(row[6]),
+    advName: celulaTexto(row[7]),
+    advLastName: celulaTexto(row[22]),
+    advPhone: celulaTexto(row[24]),
+    advEmail: celulaTexto(row[8]),
+    site: celulaTexto(row[9]),
+    timezone: celulaTexto(row[10]),
+    language: celulaTexto(row[11]),
+    amName: celulaTexto(row[12]),
+    salesProgram: celulaTexto(row[13]),
+    reason: celulaTexto(row[14]),
+    task: celulaTexto(row[15]),
+    description: celulaTexto(row[16]),
+    availability: row[17] instanceof Date ? row[17].toISOString() : celulaTexto(row[17]),
+    suggestDiscard: celulaTexto(row[21])
+  };
+}
+
 function getPendingBAUCases() {
   assertCallerIsOverhead();
 
@@ -31,29 +68,7 @@ function getPendingBAUCases() {
     const status = row[3]; 
     
     if (status === "PENDING_TL_CREATION" || status === "PENDING_TL_DISCARD") {
-      cases.push({
-        id: celulaTexto(row[0]),
-        date: row[1] instanceof Date ? row[1].toISOString() : celulaTexto(row[1]), 
-        agentEmail: celulaTexto(row[2]),
-        status: String(status || ""),
-        caseId: celulaTexto(row[4]),
-        cid: celulaTexto(row[5]),
-        speakeasyId: celulaTexto(row[6]),
-        advName: celulaTexto(row[7]),
-        advLastName: celulaTexto(row[22]),
-        advPhone: celulaTexto(row[24]),
-        advEmail: celulaTexto(row[8]),
-        site: celulaTexto(row[9]),
-        timezone: celulaTexto(row[10]),
-        language: celulaTexto(row[11]),
-        amName: celulaTexto(row[12]),
-        salesProgram: celulaTexto(row[13]),
-        reason: celulaTexto(row[14]),
-        task: celulaTexto(row[15]),
-        description: celulaTexto(row[16]),
-        availability: row[17] instanceof Date ? row[17].toISOString() : celulaTexto(row[17]),
-        suggestDiscard: celulaTexto(row[21])
-      });
+      cases.push(mapBAURow_(row));
     }
   }
   // FIFO por data de envio, não pela ordem da planilha: o timestamp pode vir
@@ -90,7 +105,7 @@ function resolveProcessedAction(previousStatus, newStatus) {
 // três (rejeitar criação, confirmar descarte, manter ativo) não geram caso.
 //
 // A exigência é validada AQUI, e não só no modal: a tela nunca é a fronteira.
-function updateBAUCaseStatus(id, newStatus, childCaseId) {
+function updateBAUCaseStatus(id, newStatus, childCaseId, justification) {
   assertCallerIsOverhead();
 
   const lock = LockService.getScriptLock();
@@ -108,6 +123,7 @@ function updateBAUCaseStatus(id, newStatus, childCaseId) {
         const previousStatus = String(data[i][3] || "");
         const processedAction = resolveProcessedAction(previousStatus, newStatus);
         const childId = String(childCaseId || "").trim();
+        const motivoTL = String(justification || "").trim();
 
         // Antes de gravar qualquer coisa: aprovação sem o ID do caso gerado é
         // recusada. Deixar passar produziria exatamente o buraco que esta
@@ -115,6 +131,15 @@ function updateBAUCaseStatus(id, newStatus, childCaseId) {
         // onde foi parar.
         if (processedAction === "APPROVED_CREATION" && !childId) {
           throw new Error("Informe o ID do caso BAU gerado para aprovar esta criação.");
+        }
+
+        // Dizer NÃO sem dizer por quê é o que esta regra fecha: até aqui o agente
+        // recebia o e-mail de recusa sem razão nenhuma e só descobria perguntando
+        // no chat. Vale para as duas negativas (recusar abertura e negar
+        // descarte) — ver decisionRequiresJustification, que é a mesma régua que
+        // a tela usa para decidir se mostra o campo.
+        if (decisionRequiresJustification(processedAction) && !motivoTL) {
+          throw new Error("Escreva a justificativa desta decisão para o agente.");
         }
 
         sheet.getRange(i + 1, 4).setValue(newStatus);
@@ -127,6 +152,11 @@ function updateBAUCaseStatus(id, newStatus, childCaseId) {
           sheet.getRange(i + 1, BAU_CHILD_CASE_COL).setValue(childId);
         }
 
+        if (motivoTL) {
+          ensureBAUTLJustificationColumn(sheet);
+          sheet.getRange(i + 1, BAU_TL_JUSTIFICATION_COL).setValue(motivoTL);
+        }
+
         const rowData = data[i];
         const emailData = {
           advName: rowData[7],
@@ -136,7 +166,8 @@ function updateBAUCaseStatus(id, newStatus, childCaseId) {
           cid: rowData[5],
           taskType: rowData[15],
           reason: rowData[14],
-          childCaseId: childId
+          childCaseId: childId,
+          tlJustification: motivoTL
         };
         const agentEmail = rowData[2];
 
@@ -174,7 +205,7 @@ function updateBAUCaseStatus(id, newStatus, childCaseId) {
           console.warn("Aviso: Falha ao enviar email de confirmação de status", e);
         }
 
-        return { success: true, newStatus: newStatus, emailSent: emailSent, childCaseId: childId };
+        return { success: true, newStatus: newStatus, emailSent: emailSent, childCaseId: childId, tlJustification: motivoTL };
       }
     }
     throw new Error("Caso não encontrado.");
@@ -265,16 +296,18 @@ function getWeeklyHistory(days) {
     const action = celulaTexto(row[20]);
     if (action !== "APPROVED_CREATION" && action !== "REJECTED_CREATION" && action !== "CONFIRMED_DISCARD") continue;
 
-    cases.push({
-      id: celulaTexto(row[0]),
-      caseId: celulaTexto(row[4]),
-      childCaseId: celulaTexto(row[23]),
-      agentEmail: agentEmail,
-      task: celulaTexto(row[15]),
+    // O registro INTEIRO, e não os oito campos de antes: é o que permite abrir
+    // um caso resolvido e ver o mesmo que se vê na fila. Custa payload — a
+    // varredura da planilha é a mesma —, e essa é a troca registrada no plano:
+    // uma leitura gorda no carregamento do histórico em vez de uma varredura
+    // inteira a cada clique.
+    cases.push(Object.assign(mapBAURow_(row), {
       action: action,
       processedBy: celulaTexto(row[18]),
-      processedAt: processedAt.toISOString()
-    });
+      processedAt: processedAt.toISOString(),
+      childCaseId: celulaTexto(row[23]),
+      tlJustification: celulaTexto(row[25])
+    }));
 
     if (action === "APPROVED_CREATION") {
       approvedCount++;

@@ -222,6 +222,17 @@ export const translations = {
     }
 };
 
+// Catálogo de tasks e, para cada uma, os screenshots que o Win Criteria exige.
+//
+// A partir do módulo `task_screenshots` da Central de Conteúdo, isto deixou de
+// ser a fonte da verdade e passou a ser o FALLBACK embutido: quem manda é o que
+// os SMEs publicam (tasks-service.js reescreve este objeto no lugar). O código
+// segue carregando a cópia por dois motivos — o primeiro load de um navegador
+// sem cache e offline, e o dia em que a Central estiver fora do ar no meio de um
+// atendimento.
+//
+// Mexer aqui NÃO muda o que o agente vê enquanto houver conteúdo publicado.
+// Alterou o Win Criteria? A mudança é na Central, aba Tasks.
 export const TASKS_DB = {
    'gtm_installation': {
         name: 'GTM Installation',
@@ -457,10 +468,37 @@ const SCREENSHOT_LABEL_ES = {
     '5. O gclid foi passado para a página de conversão?': '5. ¿El gclid fue pasado a la página de conversión?',
 };
 
-// Rótulos de screenshot de uma task no idioma ativo (ver mapa acima).
+// Rótulos de screenshot de uma task no idioma ativo.
+//
+// Três fontes, nesta ordem: a tradução publicada na Central (`screenshots_es`,
+// linha a linha, na mesma ordem da lista base), o mapa embutido acima e, por
+// fim, o próprio texto base — que é o que já acontecia com os rótulos escritos
+// em inglês.
+//
+// A tradução publicada é posicional de propósito: a QUANTIDADE de evidências
+// que o Win Criteria exige é a mesma nos dois idiomas, então só a redação muda.
+// Linha em branco quer dizer "sem tradução própria" e cai nas fontes seguintes,
+// em vez de o agente ES ver um campo a menos que o agente PT.
 export function getTaskScreenshots(task, mode, lang) {
     const labels = task?.screenshots?.[mode] || [];
     if (lang !== 'es') return labels;
+
+    const publicada = task?.screenshots_es?.[mode];
+    const traduzida = (i) => String(publicada?.[i] == null ? '' : publicada[i]).trim();
+
+    // Task publicada na Central é AUTOSSUFICIENTE: o mapa embutido não entra
+    // como terceira fonte. Se entrasse, a prévia "como o agente vê" da Central —
+    // que não conhece este arquivo — passaria a mentir justamente no caso que ela
+    // existe para mostrar, e uma tradução antiga do código poderia sobreviver a
+    // uma correção do rótulo em PT. O mapa continua valendo para o catálogo
+    // embutido, que é de onde ele veio.
+    if (task?.daCentral) {
+        return labels.map((l, i) => traduzida(i) || l);
+    }
+
+    if (Array.isArray(publicada)) {
+        return labels.map((l, i) => traduzida(i) || SCREENSHOT_LABEL_ES[l] || l);
+    }
     return labels.map(l => SCREENSHOT_LABEL_ES[l] || l);
 }
 

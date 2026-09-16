@@ -12,6 +12,42 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Acrescentar item a uma enumeração compartilhada: procure quem a PERSISTIU e quem a CONTA
+
+**Why**: acrescentar `'task_screenshots'` a `CONTENT_MODULES` era "uma string", como
+o próprio comentário do array promete. Duas coisas quebraram calado:
+
+1. **Quem persistiu a lista.** A aba `Content_Roles` guarda, por papel, um JSON com
+   a matriz módulo × ação — gravado quando o módulo novo ainda não existia.
+   `normalizeRoleMatrix_()` preenchia com `false` toda casa que não achasse, e o
+   resultado numa planilha real seria um módulo **invisível até para o ADMIN**, sem
+   nada na tela explicando por quê. Ausência de chave não é decisão de ninguém, e
+   tratá-la como "desmarcado" é o mesmo erro do learning da trava escrita como
+   invariante. Conserto em ADR-0013: casa ausente herda o preset; casa desmarcada
+   continua desmarcada.
+2. **Quem contou a lista.** O `smoke:content` afirmava
+   `igual(linhas.count(), 8, 'linhas (módulos)')` — um número escrito à mão que
+   envelhece a cada módulo novo, e cuja falha ("esperado 8, veio 9") não diz nada
+   sobre o que está errado. Passou a contar `MODULOS_MATRIZ.length`, que é a fonte
+   que a própria tela usa.
+
+**When to apply**: ao acrescentar valor a qualquer enumeração que o resto do
+sistema consome — `CONTENT_MODULES`, `CONTENT_MODULE_ACTIONS`, `CONTENT_LANGS`,
+`SUBSTATUS_TEMPLATES`, a lista de módulos do pré-carregamento em `app.js`. Antes de
+commitar, faça as duas perguntas:
+
+```bash
+# Quem GRAVOU a lista antiga em algum lugar (planilha, localStorage, prefs)?
+grep -rn "CONTENT_MODULES" gas-backend/ | grep -v "^.*://"
+# Quem CONTA os itens em vez de derivar do array?
+grep -rn "length, [0-9]\+\|count(), [0-9]\+" scripts/
+```
+
+Se a resposta da primeira for "uma aba da planilha", o valor novo precisa de uma
+regra explícita para as linhas gravadas antes dele.
+
+---
+
 ## Tela do CRM traduzida: nunca case rótulo por texto em um idioma só
 
 **Why**: a raspagem casava `textContent.includes('Given name')`,

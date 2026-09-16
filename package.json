@@ -1,6 +1,6 @@
 {
   "name": "case-wizard",
-  "version": "6.3.1",
+  "version": "6.3.2",
   "description": "TechSol Operations Assistant - Productivity Suite",
   "main": "src/app.js",
   "scripts": {
@@ -13,6 +13,8 @@
     "seed:links": "node scripts/generate-links-seed.mjs",
     "seed:call-script": "node scripts/generate-call-script-seed.mjs",
     "seed:note-fields": "node scripts/generate-note-fields.mjs",
+    "seed:tasks": "node scripts/generate-tasks-seed.mjs",
+    "test:tasks": "node scripts/test-tasks-content.mjs",
     "test:emails": "node scripts/test-email-roundtrip.mjs",
     "seed:emails": "node scripts/generate-email-seed.mjs",
     "test:note-templates": "node scripts/test-note-templates.mjs",
@@ -23,13 +25,18 @@
     "test:scraping": "node scripts/test-scraping.mjs",
     "test:timezones": "node scripts/test-timezones.mjs",
     "test:jsonp": "node scripts/test-jsonp-payload.mjs",
+    "test:backup": "node scripts/test-bau-backup.mjs",
+    "test:dash-changelog": "node scripts/test-dash-changelog.mjs",
+    "test:tl-decision": "node scripts/test-tl-decision.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:bau-scraping": "node scripts/smoke-bau-scraping.mjs",
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",
     "smoke:broadcast": "node scripts/smoke-broadcast.mjs",
     "smoke:content": "node scripts/smoke-content-dashboard.mjs",
+    "smoke:tasks": "node scripts/smoke-tasks.mjs",
     "smoke:people": "node scripts/smoke-people.mjs",
+    "smoke:tl-dash": "node scripts/smoke-tl-dashboard.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },
   "dependencies": {

@@ -454,6 +454,7 @@
         }
 
         .child-case-input.invalid { border-color: var(--danger); }
+        textarea.child-case-input { resize: vertical; min-height: 72px; font-family: inherit; line-height: 1.5; }
 
         .child-case-error {
             font-size: 12px;
@@ -574,8 +575,24 @@
             background: var(--surface-level-1);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
-            padding: 14px 16px;
-            margin-bottom: 10px;
+            padding: 16px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: border-color 0.15s var(--spring-functional),
+                        box-shadow 0.15s var(--spring-functional),
+                        transform 0.15s var(--spring-functional);
+        }
+        /* A linha virou clicável nesta entrega; sem estado visual ela ficava com
+           cursor de mão e nenhuma resposta — que é o que faz uma tela parecer
+           montada e não desenhada. Sobe 1px: o bastante para o olho registrar,
+           pouco o bastante para não empurrar a lista inteira. */
+        .history-row:hover {
+            border-color: var(--gemini-blue);
+            box-shadow: 0 1px 2px rgba(60, 64, 67, 0.1), 0 4px 10px rgba(60, 64, 67, 0.08);
+            transform: translateY(-1px);
+        }
+        .history-row:has(.row-open-btn:focus-visible) {
+            border-color: var(--gemini-blue);
         }
 
         .history-row-top {
@@ -644,6 +661,18 @@
 
         /* Confirmation Modal Specifics */
         .modal-confirm-content { max-width: 480px; text-align: center; }
+        /* Com campo para preencher, o corpo INTEIRO deixa de ser centralizado.
+           Um diálogo de tarefa não é um alerta: texto corrido centralizado em
+           várias linhas já é difícil de ler, e misturar título ao centro com
+           formulário à esquerda cria três eixos competindo na mesma caixa. Um
+           eixo só, à esquerda, é o que o olho segue de rótulo para campo. */
+        .modal-confirm-content.has-form .modal-body { text-align: left; }
+        .modal-confirm-content.has-form .confirm-icon { display: none; }
+        .modal-confirm-content.has-form .confirm-footer { justify-content: flex-end; }
+        /* Os dois botões carregam flex:1 inline na marcação; sem anular, eles
+           esticam e o justify-content acima não tem efeito nenhum. Do tamanho do
+           conteúdo e à direita: o mesmo rodapé da vista de caso. */
+        .modal-confirm-content.has-form .confirm-footer .btn { flex: 0 0 auto; }
         .confirm-icon {
             font-size: 48px !important;
             margin-bottom: 16px;
@@ -673,8 +702,184 @@
             word-break: break-word;
         }
 
+        .summary-text { white-space: pre-wrap; }
+        /* Todo lugar que mostra CID, número de caso ou horário: sem isto, cada
+           linha de uma coluna de dígitos alinha num ponto diferente. */
+        .text-mono, .fact-value, .history-row, .stat-value { font-variant-numeric: tabular-nums; }
         .copy-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; transition: color 0.2s; }
         .copy-btn:hover { color: var(--gemini-blue); }
+
+        /* ---------------------------------------------------------------
+           Vista de detalhes do caso — três zonas, por propósito
+
+           O modal antigo era uma grade de 16 caixas idênticas: o "o que deve ser
+           feito", que É a decisão, tinha o mesmo peso visual de "Programa de
+           Vendas". Isso contraria a regra de conteúdo do design-system ("caixa
+           dentro de caixa: um contêiner por unidade de informação, com a
+           hierarquia interna feita por tipografia e espaço").
+
+           Agora: CABEÇALHO diz de quem é o caso, BRIEFING diz por que ele está
+           sendo aberto (leitura, sem botão de copiar), e DADOS traz só o que o
+           TL leva para o CRM (copiável).
+           --------------------------------------------------------------- */
+        /* A linha da fila inteira continua clicável pelo mouse, mas quem abre os
+           detalhes pelo TECLADO precisa de um controle de verdade: `div` com
+           onclick o Tab não alcança (regra de acessibilidade do design-system).
+           O nome do anunciante é esse controle — e é também o que o foco recebe
+           de volta quando o modal fecha. */
+        .whats-new-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--gemini-blue);
+            display: inline-block; margin-left: 2px;
+        }
+        .release-item { display: flex; gap: 16px; align-items: flex-start; }
+        .release-item .material-symbols-rounded { color: var(--gemini-purple); font-size: 22px; flex: 0 0 auto; }
+        .release-item-title { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+        .release-item-text { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+
+        .row-open-btn {
+            background: none; border: none; padding: 0; margin: 0;
+            font: inherit; color: inherit; text-align: left; cursor: pointer;
+        }
+        .row-open-btn:hover { text-decoration: underline; }
+        .row-open-btn:focus-visible { outline: 2px solid var(--gemini-blue); outline-offset: 3px; border-radius: 2px; }
+
+        /* Quem pediu menos movimento recebe menos movimento. O arquivo tem molas
+           de até 0,6s; sem esta guarda, a preferência do sistema é ignorada — e
+           ignorá-la é acessibilidade, não preferência estética. */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            .history-row:hover { transform: none; }
+        }
+
+        .modal-case { max-width: 900px; }
+
+        .case-header { align-items: flex-start; gap: 24px; }
+        .case-header-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .case-title { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1.3; letter-spacing: -0.2px; }
+        .case-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .case-header-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--text-secondary); }
+
+        /* PROFUNDIDADE COM SIGNIFICADO
+           O Material 3 manda preferir elevação TONAL e guardar a sombra para o que
+           precisa de foco. Aqui os três níveis dizem o que cada coisa é:
+
+             recuado (tonal)  → material de referência: decisão e briefing, que o
+                                TL LÊ. Fundo tingido, sem sombra.
+             plano            → os dados, direto sobre a superfície do modal.
+             elevado (sombra) → o resumo, a única coisa que o TL LEVA daqui.
+
+           Antes as três zonas usavam a mesma --surface-level-2 com a mesma borda:
+           a profundidade não codificava nada, e só a cor da régua lateral
+           diferenciava. */
+        .case-brief {
+            background: var(--surface-level-2);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--gemini-purple);
+            border-radius: var(--radius-sm);
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        /* A decisão é o desfecho, não contexto: tinta azul de identidade em vez do
+           cinza neutro do briefing. A cor é o que faz o olho achar o bloco primeiro. */
+        .case-decision {
+            background: rgba(26, 115, 232, 0.05);
+            border-color: rgba(26, 115, 232, 0.18);
+            border-left-color: var(--gemini-blue);
+            gap: 16px;
+        }
+        .brief-item { display: flex; flex-direction: column; gap: 4px; }
+        .brief-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        .brief-text { font-size: 15px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; }
+        .brief-text.is-empty { color: var(--text-secondary); font-style: italic; }
+
+        /* Dados: lista de definição com hairline, não caixa por campo. */
+        .section-title { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .case-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+        .fact {
+            display: flex; align-items: baseline; gap: 12px;
+            /* Padding lateral negativo no hover exigiria mexer no grid; em vez
+               disso o realce entra por dentro, com o mesmo raio dos cartões. */
+            padding: 12px 8px;
+            margin: 0 -8px;
+            border-radius: var(--radius-sm);
+            border-bottom: 1px solid var(--border-subtle);
+            min-width: 0;
+            transition: background-color 0.15s var(--spring-functional);
+        }
+        /* A linha inteira responde, não só o ícone que aparece. "Hover que não faz
+           nada" é o que denuncia uma tela montada por partes. */
+        .fact:hover { background-color: var(--surface-level-2); }
+        .fact-label { font-size: 12px; color: var(--text-secondary); flex: 0 0 38%; }
+        /* 15px contra os 12px do rótulo: dois pixels não estabelecem hierarquia,
+           e sem degrau a diferenciação fica toda por conta da cor. */
+        .fact-value {
+            font-size: 15px; color: var(--text-primary);
+            flex: 1 1 auto; word-break: break-word; min-width: 0;
+            /* CID, Case ID, Speakeasy e telefone são colunas de dígitos: sem
+               tabular-nums cada linha alinha num lugar diferente. */
+            font-variant-numeric: tabular-nums;
+        }
+        .fact-value.is-empty { color: var(--text-tertiary); }
+        /* O último dado fica sozinho numa coluna quando a contagem é ímpar, e o
+           separador dele ficava pendurado sobre o nada. Detalhe pequeno, mas é
+           exatamente o tipo de coisa que faz uma tela parecer gerada. */
+        .fact:last-child { border-bottom: none; }
+        /* O botão de copiar só aparece no hover ou no foco: doze ícones sempre
+           visíveis competiam com os valores, que são o que se lê. `visibility`
+           e não `display` para o alvo do Tab nunca sumir do fluxo. */
+        .fact .copy-btn { visibility: hidden; flex: 0 0 auto; }
+        .fact:hover .copy-btn, .fact .copy-btn:focus-visible { visibility: visible; }
+        .copy-btn:focus-visible { outline: 2px solid var(--gemini-blue); outline-offset: 2px; border-radius: 4px; }
+
+        .case-summary-block { display: flex; flex-direction: column; gap: 12px; }
+        /* Branco sobre branco + sombra: o resumo É o entregável desta tela, e é o
+           único bloco que sobe. Os outros dois descem (tonais). */
+        .case-summary-text {
+            background: var(--surface-level-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            box-shadow: 0 1px 3px rgba(60, 64, 67, 0.12), 0 6px 16px rgba(60, 64, 67, 0.1);
+        }
+        .btn-copy-summary { align-self: flex-start; }
+        /* Estado "copiado": o botão confirma sozinho, sem depender do toast que
+           aparece no canto oposto da tela. */
+        .btn-copy-summary.is-copied { background: var(--success); }
+
+        /* Rodapé de decisão: o TL aprova sem fechar a vista e reachar a linha na
+           fila. A fronteira não muda — os dois botões chamam o mesmo
+           confirmAction() da fila, então nenhuma aprovação vira um clique só. */
+        /* `display: flex` abaixo vence o `display: none` que o atributo [hidden]
+           traz do navegador. Sem esta linha, esconder o rodapé por JS deixava a
+           faixa cinza e a hairline desenhadas no fim do modal — o atributo ficava
+           certo e a tela continuava errada. */
+        .modal-footer[hidden] { display: none; }
+        .modal-footer {
+            padding: 24px 32px;
+            border-top: 1px solid var(--border-subtle);
+            background: var(--surface-level-2);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            position: sticky; bottom: 0; z-index: 2;
+        }
+
+        @media (max-width: 720px) {
+            .case-facts { grid-template-columns: 1fr; }
+            .case-header { flex-direction: column; gap: 12px; }
+        }
 
         /* Agent Profile */
         .agent-profile { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
@@ -793,14 +998,28 @@
 
     <!-- Modal Detalhes -->
     <div id="caseModal" class="modal-overlay" onclick="closeModal('caseModal')">
-        <div class="modal-content" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+        <div class="modal-content modal-case" role="dialog" aria-modal="true"
+             aria-labelledby="case-modal-title" onclick="event.stopPropagation()">
+            <div class="modal-header case-header" id="modal-header-content"></div>
+            <div class="modal-body" id="modal-body-content"></div>
+            <div class="modal-footer" id="modal-footer-content"></div>
+        </div>
+    </div>
+
+    <!-- Modal Novidades da versão -->
+    <div id="releaseModal" class="modal-overlay" onclick="closeModal('releaseModal')">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="release-title"
+             style="max-width: 560px;" onclick="event.stopPropagation()">
             <div class="modal-header">
-                <div style="font-size: 18px; font-weight: 500;" data-i18n="detailsTitle">Detalhes da Solicitação</div>
-                <button class="btn-icon-close" onclick="closeModal('caseModal')">
-                    <span class="material-symbols-rounded">close</span>
+                <div>
+                    <div style="font-size: 18px; font-weight: 500;" id="release-title"></div>
+                    <div id="release-version" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;"></div>
+                </div>
+                <button class="btn-icon-close" onclick="closeModal('releaseModal')" data-i18n-aria="closeWhatsNew" aria-label="Fechar novidades">
+                    <span class="material-symbols-rounded" aria-hidden="true">close</span>
                 </button>
             </div>
-            <div class="modal-body" id="modal-body-content"></div>
+            <div class="modal-body" id="release-body"></div>
         </div>
     </div>
 
@@ -822,6 +1041,13 @@
                     <input id="confirm-child-case-input" class="child-case-input" type="text"
                            autocomplete="off" data-i18n-ph="childCasePlaceholder" placeholder="0-0000000000000">
                     <div id="confirm-child-case-error" class="child-case-error" data-i18n="childCaseRequired" hidden>Informe o ID do caso gerado para aprovar.</div>
+                </div>
+
+                <div id="confirm-justification" style="margin-top: 16px; text-align: left;" hidden>
+                    <label for="confirm-justification-input" class="child-case-label" data-i18n="justificationLabel">Justificativa para o agente</label>
+                    <textarea id="confirm-justification-input" class="child-case-input" rows="3"
+                              data-i18n-ph="justificationPlaceholder" placeholder="Por que este pedido não foi aceito?"></textarea>
+                    <div id="confirm-justification-error" class="child-case-error" data-i18n="justificationRequired" hidden>Escreva a justificativa — ela vai no e-mail do agente.</div>
                 </div>
             </div>
             <div class="confirm-footer">
@@ -850,8 +1076,13 @@
             </div>
             <div style="width: 1px; height: 24px; background: var(--nav-border);"></div>
             <span id="last-synced-label" style="font-size: 12px; color: var(--nav-text-secondary);"></span>
+            <button class="btn" id="btn-whats-new" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);"
+                    onclick="SoundKit.click(); openReleaseNotes()" data-i18n-aria="whatsNew" aria-label="Novidades desta versão">
+                <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 20px;">campaign</span>
+                <span id="whats-new-dot" class="whats-new-dot" hidden></span>
+            </button>
             <button class="btn" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);" onclick="SoundKit.click(); loadCases()">
-                <span class="material-symbols-rounded" style="font-size: 20px;">sync</span>
+                <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 20px;">sync</span>
                 <span data-i18n="sync">Sincronizar</span>
             </button>
         </div>
@@ -965,7 +1196,6 @@
         // cuida do resto.
         const TL_I18N = {
             pt: {
-                detailsTitle: "Detalhes da Solicitação",
                 confirmTitle: "Confirmar Ação",
                 confirmMessage: "Você tem certeza que deseja prosseguir com esta ação?",
                 caseSummary: "Resumo do Caso",
@@ -1005,6 +1235,27 @@
                 rowAgent: "Agente",
                 rowWhatToDo: "O que deve ser feito",
                 rowJustification: "Justificativa / Detalhes",
+                rowCaseSummary: "Resumo para o caso BAU",
+                rowAdvLastName: "Sobrenome do Anunciante",
+                rowReasonNotImpl: "Motivo da não implementação",
+                dataTitle: "Dados do caso",
+                submittedBy: "Enviado por",
+                closeDetails: "Fechar os detalhes da solicitação",
+                copyField: "Copiar",
+                copySummary: "Copiar resumo",
+                decisionTitle: "Decisão",
+                decidedBy: "Decidido por",
+                decidedAt: "Decidido em",
+                tlJustification: "Justificativa da liderança",
+                outcomeAPPROVED_CREATION: "Criação aprovada",
+                outcomeREJECTED_CREATION: "Criação rejeitada",
+                outcomeCONFIRMED_DISCARD: "Descarte confirmado",
+                outcomeKEPT_ACTIVE: "Caso mantido ativo",
+                justificationLabel: "Justificativa para o agente",
+                justificationPlaceholder: "Por que este pedido não foi aceito?",
+                justificationRequired: "Escreva a justificativa — ela vai no e-mail do agente.",
+                whatsNew: "Novidades desta versão",
+                closeWhatsNew: "Fechar novidades",
                 confirmKeepTitle: "Manter Caso Ativo",
                 confirmDiscardTitle: "Confirmar Descarte",
                 confirmKeepMsg: "O caso permanecerá ativo e o agente será avisado que o pedido de descarte não foi aceito.",
@@ -1033,7 +1284,7 @@
                 topAgents: function (d) { return "Quem mais abriu casos (" + d + "d)"; },
                 historyPeriodAria: "Período do histórico",
                 historyPeriodOption: function (d) { return "Últimos " + d + " dias"; },
-                historyHorizon: "Casos finalizados saem desta lista quando o backup semanal os arquiva.",
+                historyHorizon: "Casos finalizados ficam nesta lista. O backup semanal copia, não remove.",
                 clientTimeSuffix: "(cliente)",
                 childCaseLabel: "ID do caso BAU gerado",
                 childCasePlaceholder: "0-0000000000000",
@@ -1058,7 +1309,6 @@
                 noCasesResolved: function (d) { return "Nenhum caso resolvido nos últimos " + d + " dias."; }
             },
             es: {
-                detailsTitle: "Detalles de la Solicitud",
                 confirmTitle: "Confirmar Acción",
                 confirmMessage: "¿Estás seguro de que deseas continuar con esta acción?",
                 caseSummary: "Resumen del Caso",
@@ -1098,6 +1348,27 @@
                 rowAgent: "Agente",
                 rowWhatToDo: "Qué debe hacerse",
                 rowJustification: "Justificación / Detalles",
+                rowCaseSummary: "Resumen para el caso BAU",
+                rowAdvLastName: "Apellido del Anunciante",
+                rowReasonNotImpl: "Motivo de la no implementación",
+                dataTitle: "Datos del caso",
+                submittedBy: "Enviado por",
+                closeDetails: "Cerrar los detalles de la solicitud",
+                copyField: "Copiar",
+                copySummary: "Copiar resumen",
+                decisionTitle: "Decisión",
+                decidedBy: "Decidido por",
+                decidedAt: "Decidido el",
+                tlJustification: "Justificación de la gerencia",
+                outcomeAPPROVED_CREATION: "Creación aprobada",
+                outcomeREJECTED_CREATION: "Creación rechazada",
+                outcomeCONFIRMED_DISCARD: "Descarte confirmado",
+                outcomeKEPT_ACTIVE: "Caso mantenido activo",
+                justificationLabel: "Justificación para el agente",
+                justificationPlaceholder: "¿Por qué no se aceptó esta solicitud?",
+                justificationRequired: "Escribe la justificación — va en el correo del agente.",
+                whatsNew: "Novedades de esta versión",
+                closeWhatsNew: "Cerrar novedades",
                 confirmKeepTitle: "Mantener Caso Activo",
                 confirmDiscardTitle: "Confirmar Descarte",
                 confirmKeepMsg: "El caso permanecerá activo y se avisará al agente que el pedido de descarte no fue aceptado.",
@@ -1126,7 +1397,7 @@
                 topAgents: function (d) { return "Quién abrió más casos (" + d + "d)"; },
                 historyPeriodAria: "Período del historial",
                 historyPeriodOption: function (d) { return "Últimos " + d + " días"; },
-                historyHorizon: "Los casos finalizados salen de esta lista cuando el respaldo semanal los archiva.",
+                historyHorizon: "Los casos finalizados permanecen en esta lista. El respaldo semanal copia, no elimina.",
                 clientTimeSuffix: "(cliente)",
                 childCaseLabel: "ID del caso BAU generado",
                 childCasePlaceholder: "0-0000000000000",
@@ -1201,6 +1472,15 @@
             // fora por esquecimento.
             applyStaticTexts();
 
+            // Esc fecha o modal aberto. O de confirmação vem primeiro: quando os
+            // dois estão na tela, ele é o que está por cima.
+            document.addEventListener('keydown', (e) => {
+                if (e.key !== 'Escape') return;
+                const confirmar = document.getElementById('confirmModal');
+                if (confirmar.classList.contains('active')) { closeModal('confirmModal'); return; }
+                if (document.getElementById('caseModal').classList.contains('active')) closeModal('caseModal');
+            });
+
             document.getElementById('confirm-child-case-input').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -1219,6 +1499,7 @@
             // tem seu próprio watchdog (abaixo) como rede de segurança pra esse mesmo
             // sintoma, então essa espera aqui é só a primeira linha de defesa.
             setTimeout(loadCases, 50);
+            checkReleaseNotes();
             // getCurrentTLProfile() só é disparado depois que o primeiro loadCases()
             // termina (ver loadCases() abaixo) - dois google.script.run em paralelo
             // logo no carregamento inicial travavam o "Acessando base de dados..."
@@ -1448,6 +1729,106 @@
         // que um join cru deixaria.
         function nomeCompleto(c) {
             return [c.advName, c.advLastName].filter(Boolean).join(' ');
+        }
+
+        // Resumo do caso em texto humano — o ÚLTIMO campo copiável do modal, e o
+        // único que não é um dado solto: é a frase que o TL cola dentro do caso BAU
+        // que acabou de abrir no CRM, dizendo o que aconteceu e o que fazer.
+        //
+        // O que entra foi decidido por subtração: o caso filho nasce na mesma conta
+        // do anunciante, então nome, CID, site, e-mail e telefone já estão lá.
+        // Repetir isso empurraria a instrução do agente pra baixo da dobra — e
+        // e-mail e telefone ainda são PII que não precisa circular colada num texto.
+        //
+        // O idioma NÃO é o da tela do TL (TL_LANG): é o do atendimento (c.language),
+        // porque quem lê isso do outro lado é o agente de BAU que vai falar com esse
+        // anunciante. Um TL em PT aprovando caso de ES copia texto em ES.
+        //
+        // A headline fica igual nos três idiomas de propósito: é o marcador pelo
+        // qual a operação identifica o caso, não uma frase pra ler.
+        const CASE_SUMMARY_I18N = {
+            'PT-BR': {
+                headline: 'Caso LM para BAU',
+                origin: 'Caso de origem (LM)',
+                openedBy: 'Aberto por', at: 'em',
+                whatHappened: 'O que aconteceu',
+                whatToDo: 'O que deve ser feito em BAU',
+                tasks: 'Tasks', am: 'AM',
+                dateLocale: 'pt-BR', dateMonth: '2-digit'
+            },
+            'ES': {
+                headline: 'Caso LM para BAU',
+                origin: 'Caso de origen (LM)',
+                openedBy: 'Abierto por', at: 'el',
+                whatHappened: 'Qué pasó',
+                whatToDo: 'Qué debe hacerse en BAU',
+                tasks: 'Tasks', am: 'AM',
+                dateLocale: 'es-ES', dateMonth: '2-digit'
+            },
+            'EN': {
+                headline: 'Caso LM para BAU',
+                origin: 'Source case (LM)',
+                openedBy: 'Opened by', at: 'on',
+                whatHappened: 'What happened',
+                whatToDo: 'What needs to be done in BAU',
+                tasks: 'Tasks', am: 'AM',
+                // Mês por extenso de propósito: 08/09 é 8 de setembro pra metade do
+                // mundo e 9 de agosto pra outra, e este texto vai parar num caso lido
+                // por quem não sabe qual das duas regras vale aqui.
+                dateLocale: 'en-GB', dateMonth: 'short'
+            }
+        };
+
+        // Data de envio no fuso da operação, no formato do idioma do atendimento.
+        function formatSummaryDate(iso, t) {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            return new Intl.DateTimeFormat(t.dateLocale, {
+                timeZone: 'America/Sao_Paulo',
+                day: '2-digit', month: t.dateMonth, year: 'numeric'
+            }).format(d);
+        }
+
+        // O motivo vem de um <select> e nunca traz pontuação final; sem isto ele
+        // encosta na frase seguinte do agente e as duas viram uma só.
+        function comPontoFinal(texto) {
+            return /[.!?…]$/.test(texto) ? texto : texto + '.';
+        }
+
+        function buildCaseSummary(c) {
+            const t = CASE_SUMMARY_I18N[c.language] || CASE_SUMMARY_I18N['PT-BR'];
+
+            const { motivo, detalhe } = splitDescription(c);
+
+            const blocos = [t.headline];
+
+            // Bloco de identificação. Cada pedaço entra só se existir: um caso sem
+            // data de envio legível não deve render "Aberto por fulano@ em ".
+            const identificacao = [];
+            if (c.caseId) identificacao.push(t.origin + ': ' + c.caseId);
+            const ldap = c.agentEmail ? c.agentEmail.split('@')[0] + '@' : '';
+            const dataEnvio = formatSummaryDate(c.date, t);
+            if (ldap) {
+                identificacao.push(t.openedBy + ' ' + ldap +
+                    (dataEnvio ? ' ' + t.at + ' ' + dataEnvio : ''));
+            }
+            if (identificacao.length) blocos.push(identificacao.join(' · '));
+
+            // O motivo do <select> e o texto livre do agente viram um parágrafo só:
+            // juntos é que eles respondem "o que aconteceu no caso de origem".
+            if (motivo || detalhe) {
+                const cabeca = t.whatHappened + ':' + (motivo ? ' ' + comPontoFinal(motivo) : '');
+                blocos.push([cabeca, detalhe].filter(Boolean).join('\n'));
+            }
+
+            if (c.reason) blocos.push(t.whatToDo + ':\n' + String(c.reason).trim());
+
+            const tasks = String(c.task || '').split(',').map(s => s.trim()).filter(Boolean);
+            if (tasks.length) blocos.push(t.tasks + ': ' + tasks.join(' · '));
+
+            if (c.amName) blocos.push(t.am + ': ' + c.amName);
+
+            return blocos.join('\n\n');
         }
 
         function escapeHtml(str) {
@@ -1710,7 +2091,8 @@
                             <span class="material-symbols-rounded" style="font-size: 14px;">flag</span>
                             ${tt('suggestDiscardBadge')}
                         </div>` : ''}
-                        <div class="text-primary">${escapeHtml(nomeCompleto(c))}</div>
+                        <button type="button" class="row-open-btn text-primary"
+                                onclick="event.stopPropagation(); SoundKit.click(); openDetails('${c.id}')">${escapeHtml(nomeCompleto(c))}</button>
                         <div class="text-secondary">CID: <span class="text-mono">${escapeHtml(c.cid)}</span></div>
                     </div>
 
@@ -1763,67 +2145,260 @@
             });
         }
 
+        // =====================================================
+        //                NOVIDADES DA VERSÃO
+        // =====================================================
+        //
+        // O changelog do bookmarklet (src/modules/changelog/) é do AGENTE — o TL
+        // nunca carrega o bookmarklet, ele abre esta página. Até aqui, toda mudança
+        // feita neste dashboard chegava sem aviso nenhum.
+        //
+        // O conteúdo vem injetado pelo servidor (CW_RELEASE_NOTES, ver
+        // renderDashboard), e não por google.script.run: é estático, e uma chamada a
+        // mais no boot é o que #333/#334 pediu para evitar.
+        const RELEASE_NOTES = <?!= CW_RELEASE_NOTES ?>;
+
+        // O navegador guarda UMA versão vista, igual ao changelog-wizard.js do
+        // bundle. Chave própria: o dashboard e o bookmarklet versionam junto mas são
+        // lidos por pessoas diferentes, e um TL que também é agente veria o aviso do
+        // outro sumir sem ter lido.
+        const RELEASE_SEEN_KEY = 'cw_tl_seen_version';
+
+        function lerVersaoVista() {
+            // localStorage some em navegação privada e com cookies de terceiros
+            // bloqueados — e este dashboard vive num iframe do Apps Script, onde isso
+            // é comum. Falhar aqui não pode derrubar o boot da fila.
+            try { return localStorage.getItem(RELEASE_SEEN_KEY); } catch (e) { return null; }
+        }
+
+        function marcarVersaoVista() {
+            try { localStorage.setItem(RELEASE_SEEN_KEY, RELEASE_NOTES.version); } catch (e) { /* sem persistência: reabre na próxima */ }
+        }
+
+        function renderReleaseNotes() {
+            document.getElementById('release-title').textContent = RELEASE_NOTES.title;
+            document.getElementById('release-version').textContent = 'v' + RELEASE_NOTES.version;
+            document.getElementById('release-body').innerHTML = (RELEASE_NOTES.items || []).map(item => `
+                <div class="release-item">
+                    <span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(item.icon)}</span>
+                    <div>
+                        <div class="release-item-title">${escapeHtml(item.title)}</div>
+                        <div class="release-item-text">${escapeHtml(item.text)}</div>
+                    </div>
+                </div>`).join('');
+        }
+
+        function openReleaseNotes() {
+            renderReleaseNotes();
+            document.getElementById('releaseModal').classList.add('active');
+            document.getElementById('whats-new-dot').hidden = true;
+            marcarVersaoVista();
+        }
+
+        // Chamado no boot. Só abre sozinho quando a versão mudou; nas outras vezes
+        // o botão do cabeçalho continua lá para reler.
+        function checkReleaseNotes() {
+            if (lerVersaoVista() === RELEASE_NOTES.version) return;
+            document.getElementById('whats-new-dot').hidden = false;
+            // Depois da fila carregar: o aviso não pode ser a primeira coisa na
+            // frente de quem abriu o painel para aprovar um caso.
+            setTimeout(openReleaseNotes, 1200);
+        }
+
+        // Desmescla a coluna 16, que guarda "Motivo | Justificativa" num campo só
+        // no fluxo BAU (ver handleBAUEscalation). O dashboard do agente já fazia
+        // isso; o do TL era o único que ainda mostrava o pipe na tela.
+        function splitDescription(c) {
+            const bruto = String(c.description || '').trim();
+            const temMescla = bruto.includes(' | ');
+            return {
+                motivo: temMescla ? bruto.split(' | ')[0].trim() : '',
+                detalhe: temMescla ? bruto.split(' | ').slice(1).join(' | ').trim() : bruto
+            };
+        }
+
+        // Guarda o que tinha o foco antes do modal abrir, pra devolver no fechamento.
+        let focoAntesDoModal = null;
+
+        // Procura na fila E no histórico: desde que getWeeklyHistory passou a
+        // devolver o registro inteiro, um caso resolvido tem exatamente os mesmos
+        // campos de um pendente, e a mesma vista serve os dois.
+        function findCase(caseId) {
+            const naFila = allCases.find(item => item.id === caseId);
+            if (naFila) return naFila;
+            const noHistorico = (lastHistoryData && lastHistoryData.cases) || [];
+            return noHistorico.find(item => item.id === caseId);
+        }
+
         function openDetails(caseId) {
-            const c = allCases.find(item => item.id === caseId);
+            const c = findCase(caseId);
             if (!c) return;
 
-            const createRow = (label, value) => `
-            <div class="detail-group">
-                <span class="detail-label">${escapeHtml(label)}</span>
-                <div class="detail-value">
-                    <span>${value ? escapeHtml(value) : '---'}</span>
-                    <button class="copy-btn" data-copy-value="${escapeHtml(value || '')}" onclick="copyText(this)">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
-                    </button>
+            // Um caso resolvido chega com `action` preenchida. NÃO dá pra usar
+            // `status` aqui: 'DISCARDED' tanto confirma um descarte quanto rejeita
+            // uma criação — é a mesma ambiguidade que já fez o agente receber
+            // "Caso descartado" por um pedido que nunca chegou a existir.
+            const resolvido = !!c.action;
+            const isDiscardFlow = resolvido
+                ? (c.action === 'CONFIRMED_DISCARD' || c.action === 'KEPT_ACTIVE')
+                : c.status === 'PENDING_TL_DISCARD';
+            const { motivo, detalhe } = splitDescription(c);
+            const agentLdap = c.agentEmail ? c.agentEmail.split('@')[0] : '';
+
+            // ---------- Zona 1: cabeçalho — de quem é o caso ----------
+            //
+            // O título era "Detalhes da Solicitação", que não informa nada sobre O
+            // QUE está aberto na tela. Agora é o anunciante, com os selos que mudam
+            // a decisão do TL e a autoria do pedido.
+            document.getElementById('modal-header-content').innerHTML = `
+            <div class="case-header-main">
+                <div class="case-badges">
+                    <div class="status-badge ${OUTCOME_BADGE_CLASS[c.action] || (isDiscardFlow ? 'badge-discard' : 'badge-create')}">
+                        <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 14px;">${resolvido ? 'task_alt' : (isDiscardFlow ? 'delete' : 'add_circle')}</span>
+                        ${resolvido ? tt('outcome' + c.action) : (isDiscardFlow ? tt('flowDiscard') : tt('flowCreation'))}
+                    </div>
+                    ${c.suggestDiscard === 'Sim' ? `
+                    <div class="status-badge badge-warn">
+                        <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 14px;">flag</span>
+                        ${tt('suggestDiscardBadge')}
+                    </div>` : ''}
                 </div>
+                <div class="case-title" id="case-modal-title">${escapeHtml(nomeCompleto(c)) || tt('notInformed')}</div>
+                <div class="case-header-meta">
+                    ${caseLinkHtml(c.caseId)}
+                    <span>${tt('submittedBy')} <strong>${escapeHtml(agentLdap || tt('notInformed'))}</strong> · ${escapeHtml(formatSubmittedAt(c.date))}</span>
+                </div>
+            </div>
+            <button class="btn-icon-close" onclick="closeModal('caseModal')" aria-label="${escapeHtml(tt('closeDetails'))}">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>`;
+
+            // ---------- Zona 2: briefing — por que o caso está sendo aberto ----------
+            //
+            // Leitura, não área de transferência. Estes quatro campos saíram dos
+            // copiáveis de propósito: o TL não cola "justificativa" em lugar nenhum,
+            // ele lê pra decidir. O que vai pro CRM é o resumo, lá embaixo.
+            const briefItem = (label, valor) => `
+            <div class="brief-item">
+                <span class="brief-label">${escapeHtml(label)}</span>
+                <div class="brief-text${valor ? '' : ' is-empty'}">${valor ? escapeHtml(valor) : tt('notInformed')}</div>
             </div>`;
 
-            // Mesma ideia do createRow acima, mas pra texto longo (motivo/justificativa) -
-            // display:block pra parágrafo quebrar linha normalmente, botão de copiar fixo
-            // no canto em vez de disputar espaço com o texto num flex row.
-            const createBlockRow = (label, value) => `
-            <div class="detail-group">
-                <span class="detail-label">${escapeHtml(label)}</span>
-                <div class="detail-value" style="display: block; font-style: italic; position: relative; padding-right: 48px;">
-                    "${value ? escapeHtml(value) : '---'}"
-                    <button class="copy-btn" data-copy-value="${escapeHtml(value || '')}" onclick="copyText(this)" style="position: absolute; top: 10px; right: 10px;">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">content_copy</span>
-                    </button>
-                </div>
+            const briefing = [
+                briefItem(tt('rowWhatToDo'), c.reason),
+                motivo ? briefItem(tt('rowReasonNotImpl'), motivo) : '',
+                briefItem(tt('rowJustification'), detalhe),
+                isDiscardFlow ? '' : briefItem(tt('rowSchedule'), formatAvailability(c.availability))
+            ].filter(Boolean).join('');
+
+            // ---------- Zona 3: dados — o que o TL leva pro CRM ----------
+            const fact = (label, value) => `
+            <div class="fact">
+                <span class="fact-label">${escapeHtml(label)}</span>
+                <span class="fact-value${value ? '' : ' is-empty'}">${value ? escapeHtml(value) : '---'}</span>
+                <button class="copy-btn" data-copy-value="${escapeHtml(value || '')}" onclick="copyText(this)"
+                        aria-label="${escapeHtml(tt('copyField'))} ${escapeHtml(label)}">
+                    <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 18px;">content_copy</span>
+                </button>
             </div>`;
+
+            // Sobrenome em campo próprio, e "N/A" quando não houver: o CRM chama de
+            // `Family name` e há formulário do outro lado que exige os dois separados
+            // — um campo vazio ali não diz se o dado falta ou se a pessoa não tem.
+            const dados = [
+                fact(tt('rowAdvertiser'), c.advName),
+                fact(tt('rowAdvLastName'), c.advLastName || 'N/A'),
+                fact('CID', c.cid),
+                fact('Case ID', c.caseId),
+                fact('Speakeasy ID', c.speakeasyId),
+                fact(tt('rowTask'), c.task),
+                fact(tt('rowAdvEmail'), c.advEmail),
+                fact(tt('rowAdvPhone'), c.advPhone),
+                fact(tt('rowSite'), c.site),
+                fact('Timezone', c.timezone),
+                fact(tt('rowLanguage'), c.language),
+                fact(tt('rowAm'), c.amName),
+                fact(tt('rowSalesProgram'), c.salesProgram)
+            ].join('');
+
+            // Só no fluxo de criação. No pedido de descarte não há caso BAU pra abrir,
+            // nem tasks nem AM pra citar — e a headline "Caso LM para BAU" seria mentira
+            // num texto que pede pra FECHAR um caso.
+            // Fora do fluxo de descarte (não há caso BAU pra abrir) e fora de um
+            // caso REJEITADO: a liderança disse que esse caso não vira BAU, e
+            // oferecer "Copiar resumo" ali convida a colar no CRM exatamente o que
+            // foi recusado. Num caso aprovado o resumo fica — o caso filho existe e
+            // pode ser preciso recopiar.
+            const resumo = (isDiscardFlow || c.action === 'REJECTED_CREATION') ? '' : buildCaseSummary(c);
+
+            // Zona da decisão — só existe em caso resolvido. Os itens vazios caem
+            // fora: caso decidido antes desta entrega não tem justificativa, e um
+            // rótulo com "---" ali só anuncia uma ausência que não dá pra corrigir.
+            const decisao = !resolvido ? '' : [
+                briefItem(tt('decidedBy'), c.processedBy ? c.processedBy.split('@')[0] : ''),
+                briefItem(tt('decidedAt'), formatSubmittedAt(c.processedAt)),
+                c.childCaseId ? briefItem(tt('childCaseLabel'), c.childCaseId) : '',
+                c.tlJustification ? briefItem(tt('tlJustification'), c.tlJustification) : ''
+            ].filter(Boolean).join('');
 
             document.getElementById('modal-body-content').innerHTML = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow(tt('rowAdvertiser'), nomeCompleto(c))}
-                ${createRow('CID', c.cid)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow(tt('rowTask'), c.task)}
-                ${createRow('Case ID', c.caseId)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow('Speakeasy ID', c.speakeasyId)}
-                ${createRow(tt('rowAdvEmail'), c.advEmail)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow(tt('rowAdvPhone'), c.advPhone)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow('Timezone', c.timezone)}
-                ${createRow(tt('rowLanguage'), c.language)}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                ${createRow(tt('rowAm'), c.amName)}
-                ${createRow(tt('rowSalesProgram'), c.salesProgram)}
-            </div>
-            ${createRow(tt('rowSite'), c.site)}
-            ${createRow(tt('rowSchedule'), formatAvailability(c.availability))}
-            ${c.suggestDiscard === 'Sim' ? createRow(tt('rowSuggestDiscard'), tt('suggestDiscardBadge')) : ''}
-            ${createRow(tt('rowAgent'), c.agentEmail)}
-            ${createBlockRow(tt('rowWhatToDo'), c.reason)}
-            ${createBlockRow(tt('rowJustification'), c.description)}
-            `;
+            ${decisao ? `<section class="case-brief case-decision">
+                <div class="section-title" style="margin: 0;">${escapeHtml(tt('decisionTitle'))}</div>
+                ${decisao}
+            </section>` : ''}
+            <section class="case-brief">${briefing}</section>
+            <section>
+                <div class="section-title">${escapeHtml(tt('dataTitle'))}</div>
+                <div class="case-facts">${dados}</div>
+            </section>
+            ${resumo ? `
+            <section class="case-summary-block">
+                <div class="section-title">${escapeHtml(tt('rowCaseSummary'))}</div>
+                <div class="case-summary-text summary-text">${escapeHtml(resumo)}</div>
+                <button class="btn btn-primary btn-copy-summary" data-copy-value="${escapeHtml(resumo)}" onclick="copyText(this)">
+                    <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 18px;">content_copy</span>
+                    ${escapeHtml(tt('copySummary'))}
+                </button>
+            </section>` : ''}`;
+
+            // ---------- Rodapé: decidir sem fechar ----------
+            //
+            // Caso resolvido não tem rodapé: a decisão já foi tomada, e oferecer
+            // "Aprovar" num caso aprovado convida a um erro que o servidor
+            // rejeitaria depois — mostrar o caminho e negá-lo no fim é pior que
+            // não mostrar.
+            const rodape = document.getElementById('modal-footer-content');
+            rodape.hidden = resolvido;
+            if (resolvido) { rodape.innerHTML = ''; } else {
+            document.getElementById('modal-footer-content').innerHTML = `
+            <button class="btn btn-danger-outline" onclick="closeModal('caseModal'); confirmAction('${c.id}', '${isDiscardFlow ? 'CREATED' : 'DISCARDED'}')">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                ${isDiscardFlow ? tt('keepActive') : tt('rejectRequest')}
+            </button>
+            <button class="btn btn-primary" onclick="closeModal('caseModal'); confirmAction('${c.id}', '${isDiscardFlow ? 'DISCARDED' : 'CREATED'}')">
+                <span class="material-symbols-rounded" aria-hidden="true">check</span>
+                ${isDiscardFlow ? tt('confirmDiscard') : tt('approveNotify')}
+            </button>`;
+            }
+
+            focoAntesDoModal = document.activeElement;
             document.getElementById('caseModal').classList.add('active');
+            // O foco precisa ENTRAR no modal: com aria-modal o leitor de tela já
+            // ignora o resto da página, mas o Tab do teclado não — sem isto a
+            // primeira tabulação cai na fila atrás do overlay.
+            setTimeout(() => {
+                const primeiro = document.querySelector('#caseModal .btn-icon-close');
+                if (primeiro) primeiro.focus();
+            }, 50);
+        }
+
+        // Data de envio em texto curto, no idioma da tela do TL.
+        function formatSubmittedAt(iso) {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return tt('notInformed');
+            return new Intl.DateTimeFormat(TL_LANG === 'es' ? 'es-ES' : 'pt-BR', {
+                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+            }).format(d);
         }
 
         function confirmAction(id, action) {
@@ -1840,7 +2415,6 @@
 
             // Reset state
             submitBtn.disabled = false;
-            submitBtn.textContent = tt('confirm');
             document.getElementById('confirm-cancel-btn').disabled = false;
 
             if (isDiscardFlow) {
@@ -1858,7 +2432,7 @@
             icon.textContent = isPositive ? 'check_circle' : 'warning';
             icon.style.color = isPositive ? 'var(--success)' : 'var(--danger)';
 
-            caseInfo.textContent = `${nomeCompleto(c)} | ${c.task}`;
+            caseInfo.textContent = [nomeCompleto(c), c.task].filter(Boolean).join(' · ');
 
             // O ID do caso filho só é pedido na APROVAÇÃO DE CRIAÇÃO — é a única
             // das quatro decisões do TL que gera um caso novo no CRM. Rejeitar
@@ -1873,16 +2447,48 @@
             inputFilho.value = '';
             inputFilho.classList.remove('invalid');
             erroFilho.hidden = true;
+
+            // A justificativa é pedida nas duas decisões em que o TL diz NÃO ao
+            // agente. NÃO dá para usar `isPositive` aqui: ele diz apenas se o
+            // newStatus é 'CREATED', e no fluxo de descarte 'CREATED' significa
+            // "manter o caso ativo" — ou seja, NEGAR o pedido. Derivar a ação
+            // como o servidor deriva é o que impede a tela de pedir justificativa
+            // exatamente nas decisões erradas.
+            const acaoDecidida = resolveProcessedActionClient(c.status, action);
+            const pedeJustificativa = decisionRequiresJustificationClient(acaoDecidida);
+            const blocoMotivo = document.getElementById('confirm-justification');
+            const inputMotivo = document.getElementById('confirm-justification-input');
+            const erroMotivo = document.getElementById('confirm-justification-error');
+
+            blocoMotivo.hidden = !pedeJustificativa;
+            inputMotivo.value = '';
+            inputMotivo.classList.remove('invalid');
+            erroMotivo.hidden = true;
+
             if (pedeCasoFilho) setTimeout(() => inputFilho.focus(), 50);
+            else if (pedeJustificativa) setTimeout(() => inputMotivo.focus(), 50);
 
             submitBtn.className = 'btn btn-primary';
             submitBtn.style.background = isPositive ? '' : 'var(--danger)';
 
+            // O botão diz O QUE VAI ACONTECER, não "Confirmar". Num diálogo com
+            // dois botões, "Confirmar" obriga a reler o título para saber o que se
+            // está confirmando — e as quatro decisões do TL chegam aqui com o
+            // mesmo rótulo genérico, sendo que duas delas são irreversíveis.
+            submitBtn.textContent = isDiscardFlow
+                ? (isPositive ? tt('keepActive') : tt('confirmDiscard'))
+                : (isPositive ? tt('approve') : tt('rejectRequest'));
+
+            // Só ganha eixo à esquerda quando há de fato o que preencher.
+            document.querySelector('#confirmModal .modal-content')
+                .classList.toggle('has-form', pedeCasoFilho || pedeJustificativa);
+
             submitBtn.onclick = () => {
                 const childCaseId = pedeCasoFilho ? inputFilho.value.trim() : '';
+                const justificativa = pedeJustificativa ? inputMotivo.value.trim() : '';
 
-                // Obrigatório na aprovação. O servidor recusa igual — a tela não
-                // é a fronteira —, mas barrar aqui evita a viagem e devolve o
+                // Obrigatórios nos dois lados. O servidor recusa igual — a tela
+                // não é a fronteira —, mas barrar aqui evita a viagem e devolve o
                 // foco pro campo em vez de um toast genérico.
                 if (pedeCasoFilho && !childCaseId) {
                     SoundKit.error();
@@ -1892,17 +2498,25 @@
                     return;
                 }
 
+                if (pedeJustificativa && !justificativa) {
+                    SoundKit.error();
+                    inputMotivo.classList.add('invalid');
+                    erroMotivo.hidden = false;
+                    inputMotivo.focus();
+                    return;
+                }
+
                 SoundKit.click();
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Processando...';
                 document.getElementById('confirm-cancel-btn').disabled = true;
-                processAction(id, action, childCaseId);
+                processAction(id, action, childCaseId, justificativa);
             };
 
             modal.classList.add('active');
         }
 
-        function processAction(id, newStatus, childCaseId) {
+        function processAction(id, newStatus, childCaseId, justification) {
             const c = allCases.find(item => item.id === id);
             const wasDiscardFlow = c && c.status === 'PENDING_TL_DISCARD';
 
@@ -1937,7 +2551,7 @@
                     submitBtn.textContent = tt('confirm');
                     document.getElementById('confirm-cancel-btn').disabled = false;
                 })
-                .updateBAUCaseStatus(id, newStatus, childCaseId || '');
+                .updateBAUCaseStatus(id, newStatus, childCaseId || '', justification || '');
         }
 
         // Tira a linha da tela na hora (animação já existia no CSS, nunca era usada -
@@ -1985,14 +2599,34 @@
 
         function closeModal(id) {
             document.getElementById(id).classList.remove('active');
+            // Devolve o foco pra linha da fila que abriu o modal. Sem isto o Tab
+            // recomeça do topo da página a cada caso revisado.
+            if (id === 'caseModal' && focoAntesDoModal && document.contains(focoAntesDoModal)) {
+                focoAntesDoModal.focus();
+                focoAntesDoModal = null;
+            }
         }
 
+        // Copiar é o gesto central desta tela, e era o único sem retorno nenhum
+        // além do toast — que aparece no canto oposto de onde a mão está. Agora
+        // confirma nos três canais: no próprio botão (visual), no alto-falante e
+        // no toque, quando o aparelho tiver motor.
         function copyText(btn) {
             const text = btn.dataset.copyValue || '';
             navigator.clipboard.writeText(text);
+
+            SoundKit.click();
+            // vibrate não existe em desktop nem no Safari; o if evita o TypeError
+            // e o resto do retorno não depende dele.
+            if (navigator.vibrate) navigator.vibrate(10);
+
             const icon = btn.querySelector('span');
             icon.textContent = 'check';
-            setTimeout(() => icon.textContent = 'content_copy', 1500);
+            btn.classList.add('is-copied');
+            setTimeout(() => {
+                icon.textContent = 'content_copy';
+                btn.classList.remove('is-copied');
+            }, 1500);
             showToast(tt('toastCopied'));
         }
 
@@ -2115,6 +2749,35 @@
             CONFIRMED_DISCARD: 'Descartado'
         };
 
+        // Espelho de resolveProcessedAction() e decisionRequiresJustification() do
+        // servidor. Duplicar regra é ruim, mas esta página roda fora do bundle e
+        // fora do Apps Script — não há import possível. O que protege a cópia de
+        // divergir é o teste: test:tl-decision prova a régua no servidor e
+        // smoke:tl-dash prova que a tela pede nas MESMAS quatro decisões.
+        function resolveProcessedActionClient(previousStatus, newStatus) {
+            if (previousStatus === 'PENDING_TL_CREATION') {
+                return newStatus === 'CREATED' ? 'APPROVED_CREATION' : 'REJECTED_CREATION';
+            }
+            if (previousStatus === 'PENDING_TL_DISCARD') {
+                return newStatus === 'DISCARDED' ? 'CONFIRMED_DISCARD' : 'KEPT_ACTIVE';
+            }
+            return newStatus;
+        }
+
+        function decisionRequiresJustificationClient(processedAction) {
+            return processedAction === 'REJECTED_CREATION' || processedAction === 'KEPT_ACTIVE';
+        }
+
+        // Cor do selo pelo DESFECHO, não pelo fluxo: rejeitar uma criação e negar
+        // um descarte são decisões opostas que compartilham o mesmo `status` na
+        // planilha, e pintar as duas igual esconderia justamente o que aconteceu.
+        const OUTCOME_BADGE_CLASS = {
+            APPROVED_CREATION: 'badge-create',
+            REJECTED_CREATION: 'badge-discard',
+            CONFIRMED_DISCARD: 'badge-discard',
+            KEPT_ACTIVE: 'badge-create'
+        };
+
         function renderHistory(data) {
             historyLoaded = true;
             lastHistoryData = data;
@@ -2150,7 +2813,7 @@
             const list = document.getElementById('history-list');
             const allHistoryCases = (lastHistoryData && lastHistoryData.cases) || [];
             const windowDays = (lastHistoryData && lastHistoryData.windowDays) || 7;
-            const filtered = allHistoryCases.filter(c => matchesSearch([c.caseId, c.childCaseId, c.task, c.processedBy, c.agentEmail]));
+            const filtered = allHistoryCases.filter(c => matchesSearch([c.caseId, c.childCaseId, c.task, c.processedBy, c.agentEmail, nomeCompleto(c), c.cid]));
 
             if (allHistoryCases.length === 0) {
                 list.innerHTML = `
@@ -2175,7 +2838,7 @@
                 const tlLdap = tlLdapRaw || '—';
                 const agentLdap = agentLdapRaw || '—';
                 return `
-                <div class="history-row">
+                <div class="history-row" onclick="SoundKit.click(); openDetails('${c.id}')">
                     <div class="history-row-top">
                         <span class="status-badge ${isApproved ? 'badge-create' : 'badge-discard'}" style="margin-bottom: 0;">${label}</span>
                         <div class="history-flow" title="${escapeHtml(tlLdap)} → ${escapeHtml(agentLdap)}">
@@ -2186,7 +2849,9 @@
                             <span class="text-secondary">${escapeHtml(agentLdap)}</span>
                         </div>
                     </div>
-                    <div class="text-primary" style="font-size: 14px; margin: 6px 0 2px;">${caseLinkHtml(c.caseId)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
+                    <button type="button" class="row-open-btn text-primary" style="font-size: 14px; margin: 6px 0 2px; display: block;"
+                            onclick="event.stopPropagation(); SoundKit.click(); openDetails('${c.id}')">${escapeHtml(nomeCompleto(c)) || tt('notInformed')}</button>
+                    <div class="text-primary" style="font-size: 14px; margin: 0 0 2px;">${caseLinkHtml(c.caseId)} <span class="text-secondary">· ${escapeHtml(c.task)}</span></div>
                     ${c.childCaseId ? `<div class="text-secondary" style="font-size: 13px; margin-bottom: 2px;">${tt('childCaseHistory')} ${caseLinkHtml(c.childCaseId)}</div>` : ''}
                     <div class="text-secondary" style="font-size: 12px;">${when}</div>
                 </div>`;

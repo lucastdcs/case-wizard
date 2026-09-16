@@ -39,8 +39,18 @@ const CONTENT_MODULES = [
   // Diretório de autorização (aba People). Entra na mesma máquina de fila e log
   // do resto, mas com destino, leitura e aprovação próprios - ver os três
   // conjuntos logo abaixo e PeopleAPI.gs.
-  'people'
+  'people',
+  // Catálogo de tasks do Case Notes e, para cada uma, os screenshots que o Win
+  // Criteria exige. Era o TASKS_DB embutido no bundle: mudar uma exigência de
+  // evidência custava um deploy, e quem conhece a regra (o SME) não é quem
+  // consegue fazer deploy. Ver ADR-0012.
+  'task_screenshots'
 ];
+
+// Nome do módulo das tasks, usado nas validações abaixo. Constante em vez de
+// string repetida porque ele aparece em quatro lugares e um erro de digitação
+// desligaria a validação em silêncio.
+const CONTENT_TASK_MODULE = 'task_screenshots';
 
 // Módulos que publicam direto em 'live', sem passar pela fila de aprovação.
 //
@@ -138,7 +148,11 @@ const CONTENT_ROLES = {
     selfApprove: false
   },
   QA: {
-    propose: ['call_script', 'note_template'],
+    // O Win Criteria é matéria de SME, e QA é o papel que já cura o roteiro e os
+    // modelos de nota pelo mesmo motivo: correção de conteúdo. Vale como
+    // SEMENTE — numa planilha que já tem `Content_Roles`, quem concede é a aba
+    // Papéis (ver a herança do preset em normalizeRoleMatrix_).
+    propose: ['call_script', 'note_template', 'task_screenshots'],
     approve: false,
     manageAccess: false,
     selfApprove: false
@@ -503,19 +517,38 @@ function contentPresetMatrix_() {
   return matriz;
 }
 
-// Normaliza o que veio da planilha: casa desconhecida é ignorada, casa que
-// falta vira `false`, e ação impossível para o módulo é apagada. Um JSON
-// editado à mão não pode inventar permissão nem derrubar a leitura.
-function normalizeRoleMatrix_(bruto) {
+/**
+ * Normaliza o que veio da planilha: casa desconhecida é ignorada, casa que falta
+ * vira `false`, e ação impossível para o módulo é apagada. Um JSON editado à mão
+ * não pode inventar permissão nem derrubar a leitura.
+ *
+ * MÓDULO AUSENTE HERDA O PRESET (`papelParaHeranca`, ver ADR-0013).
+ *
+ * A diferença entre "ausente" e "tudo desmarcado" é a mesma do delta contra a
+ * invariante: um papel com `{view:false, propose:false…}` é uma decisão que
+ * alguém tomou na aba Papéis, e ela vale. Um módulo que NÃO EXISTIA quando
+ * aquela linha foi gravada nunca foi decidido por ninguém — e tratá-lo como
+ * "tudo desmarcado" faz um módulo novo nascer invisível para todo mundo,
+ * inclusive para o ADMIN que precisaria concedê-lo. O comentário de
+ * CONTENT_MODULES promete que acrescentar um módulo é acrescentar uma string;
+ * isto é o que mantém a promessa depois do ADR-0009.
+ *
+ * Só vale para papéis que existem no preset: um papel criado pela tela
+ * (`EDITOR`, digamos) não herda nada, porque não há de quem herdar.
+ */
+function normalizeRoleMatrix_(bruto, papelParaHeranca) {
   const entrada = bruto || {};
   const modulesIn = entrada.modules || {};
   const globalIn = entrada.global || {};
   const modules = {};
 
+  const preset = papelParaHeranca ? contentPresetMatrix_()[papelParaHeranca] : null;
+
   CONTENT_MODULES.forEach(function (m) {
     const perms = emptyModulePerms_();
     const possiveis = contentActionsForModule_(m);
-    const doModulo = modulesIn[m] || {};
+    const ausente = !modulesIn[m];
+    const doModulo = (ausente && preset ? preset.modules[m] : modulesIn[m]) || {};
 
     possiveis.forEach(function (acao) { perms[acao] = doModulo[acao] === true; });
     modules[m] = perms;
@@ -560,7 +593,10 @@ function readContentRolesMatrix_() {
       continue;
     }
 
-    matriz[nome] = normalizeRoleMatrix_(bruto);
+    // O nome do papel vai adiante para que um módulo acrescentado ao código
+    // DEPOIS desta linha ter sido gravada herde o preset em vez de nascer
+    // fechado para todos (ADR-0013).
+    matriz[nome] = normalizeRoleMatrix_(bruto, nome);
   }
 
   return Object.keys(matriz).length ? matriz : null;
@@ -1032,6 +1068,194 @@ function checkEmailTemplate(rawValue, lang) {
 }
 
 // ---------------------------------------------------------
+//  Validação: catálogo de tasks (screenshots do Win Criteria)
+// ---------------------------------------------------------
+
+// Os dois modos em que o agente monta a nota. Não são idioma: são o tipo de
+// atendimento (fez pelo anunciante x ensinou o anunciante a fazer), e o Win
+// Criteria pede evidências diferentes em cada um.
+const CONTENT_TASK_MODES = ['implementation', 'education'];
+
+// A chave é a IDENTIDADE da task fora desta aba: os modelos de nota apontam para
+// ela em `linkedTask`/`activeTasks`, os rascunhos salvos do agente guardam a
+// chave, e os atalhos do Ctrl+K também. Por isso o formato é fechado e a chave
+// nunca muda depois de criada.
+const CONTENT_TASK_KEY_RE = /^[a-z][a-z0-9_]{2,39}$/;
+
+const CONTENT_TASK_NAME_MAX = 60;
+const CONTENT_TASK_LABEL_MAX = 300;
+
+/**
+ * Valida uma task do catálogo antes de virar rascunho.
+ *
+ * As falhas que isto impede são todas silenciosas na tela do agente:
+ *   - sem nome, o cartão do "Acesso rápido" nasce sem rótulo;
+ *   - rótulo vazio na lista vira um campo de link sem legenda nenhuma, e o
+ *     agente não tem como saber que evidência colar ali;
+ *   - lista em ES com tamanho diferente da base faria o agente ES ver MENOS
+ *     campos de evidência que o agente PT para o mesmo Win Criteria — a nota
+ *     sairia incompleta sem ninguém errar nada;
+ *   - task sem screenshot nenhum em nenhum dos dois modos não mostra cartão, e
+ *     quem publicou acha que publicou.
+ */
+function assertValidTaskScreenshots_(rawValue) {
+  let parsed;
+  try {
+    parsed = JSON.parse(rawValue || '{}');
+  } catch (e) {
+    throw new Error("Conteúdo da task inválido (JSON malformado).");
+  }
+
+  const nome = String(parsed.name || "").trim();
+  if (!nome) throw new Error("Dê um nome à task.");
+  if (nome.length > CONTENT_TASK_NAME_MAX) {
+    throw new Error(
+      "O nome da task passa de " + CONTENT_TASK_NAME_MAX + " caracteres e não caberia no cartão do agente."
+    );
+  }
+
+  if (parsed.popular !== undefined && typeof parsed.popular !== 'boolean') {
+    throw new Error("O campo 'popular' precisa ser verdadeiro ou falso.");
+  }
+
+  const listas = parsed.screenshots || {};
+  const desconhecidos = Object.keys(listas).filter(function (m) {
+    return CONTENT_TASK_MODES.indexOf(m) === -1;
+  });
+  if (desconhecidos.length) {
+    throw new Error(
+      "Modo de screenshot desconhecido: " + desconhecidos.join(", ") +
+      ". Só existem " + CONTENT_TASK_MODES.join(" e ") + "."
+    );
+  }
+
+  let total = 0;
+
+  for (let i = 0; i < CONTENT_TASK_MODES.length; i++) {
+    const modo = CONTENT_TASK_MODES[i];
+    const base = listas[modo];
+    if (base === undefined) continue;
+
+    if (!Array.isArray(base)) {
+      throw new Error("A lista de screenshots de '" + modo + "' precisa ser uma lista.");
+    }
+
+    for (let j = 0; j < base.length; j++) {
+      const rotulo = String(base[j] == null ? "" : base[j]).trim();
+      if (!rotulo) {
+        throw new Error(
+          "Screenshot " + (j + 1) + " de '" + modo + "' está sem descrição. " +
+          "O agente veria um campo de link sem saber que evidência colar ali."
+        );
+      }
+      if (rotulo.length > CONTENT_TASK_LABEL_MAX) {
+        throw new Error(
+          "O screenshot " + (j + 1) + " de '" + modo + "' passa de " +
+          CONTENT_TASK_LABEL_MAX + " caracteres."
+        );
+      }
+    }
+
+    total += base.length;
+  }
+
+  if (!total) {
+    throw new Error(
+      "A task precisa de pelo menos um screenshot em um dos modos — sem nenhum, " +
+      "o agente não vê cartão nenhum para ela."
+    );
+  }
+
+  const es = parsed.screenshots_es;
+  if (es !== undefined) {
+    if (es === null || typeof es !== 'object' || Array.isArray(es)) {
+      throw new Error("A tradução (screenshots_es) precisa ser um objeto por modo.");
+    }
+
+    const modosEs = Object.keys(es).filter(function (m) {
+      return CONTENT_TASK_MODES.indexOf(m) === -1;
+    });
+    if (modosEs.length) {
+      throw new Error("Modo de tradução desconhecido: " + modosEs.join(", ") + ".");
+    }
+
+    for (let k = 0; k < CONTENT_TASK_MODES.length; k++) {
+      const modo = CONTENT_TASK_MODES[k];
+      const traduzido = es[modo];
+      if (traduzido === undefined) continue;
+
+      if (!Array.isArray(traduzido)) {
+        throw new Error("A tradução de '" + modo + "' precisa ser uma lista.");
+      }
+
+      const base = listas[modo] || [];
+      if (traduzido.length !== base.length) {
+        throw new Error(
+          "A tradução de '" + modo + "' tem " + traduzido.length + " linha(s) para " +
+          base.length + " screenshot(s). A quantidade de evidências é a mesma nos dois " +
+          "idiomas — deixe a linha em branco para manter o texto original."
+        );
+      }
+    }
+  }
+}
+
+// A tela chama antes de gravar, pra o erro aparecer com o texto ainda em tela.
+function checkTaskScreenshots(rawValue) {
+  try {
+    assertValidTaskScreenshots_(rawValue);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/**
+ * Valida a CHAVE da task.
+ *
+ * Chave é identidade: um modelo de nota que marca `ads_conversion_tracking`, um
+ * rascunho salvo do agente e um atalho do Ctrl+K todos guardam a string. Por
+ * isso ela é validada no formato, é única entre as tasks no ar, e NÃO MUDA
+ * depois de criada — renomear seria desligar em silêncio tudo que aponta para
+ * ela, sem erro em log nenhum.
+ */
+function assertValidTaskKey_(key, itemId) {
+  const chave = String(key || "").trim();
+
+  if (!CONTENT_TASK_KEY_RE.test(chave)) {
+    throw new Error(
+      "Chave de task inválida: use de 3 a 40 caracteres entre letras minúsculas, " +
+      "números e '_', começando por letra (ex.: ads_conversion_tracking)."
+    );
+  }
+
+  const noAr = readContentRows_(SHEET_CONTENT_ITEMS).filter(function (r) {
+    return String(r.Module).trim() === CONTENT_TASK_MODULE &&
+      String(r.Status).trim() === CONTENT_STATUS.LIVE;
+  });
+
+  if (itemId) {
+    const alvo = noAr.filter(function (r) { return String(r.ID) === String(itemId); });
+    if (alvo.length && String(alvo[0].Key).trim() !== chave) {
+      throw new Error(
+        "A chave de uma task não muda: '" + String(alvo[0].Key).trim() + "' é o que os " +
+        "modelos de nota, os rascunhos salvos e os atalhos do agente já guardam. " +
+        "Para trocar, tire esta task do ar e crie outra."
+      );
+    }
+    return;
+  }
+
+  const repetida = noAr.filter(function (r) { return String(r.Key).trim() === chave; });
+  if (repetida.length) {
+    throw new Error(
+      "Já existe uma task com a chave '" + chave + "' (" +
+      String(repetida[0].Label || "") + ")."
+    );
+  }
+}
+
+// ---------------------------------------------------------
 //  Validação: avisos
 // ---------------------------------------------------------
 
@@ -1441,6 +1665,10 @@ function saveContentDraft(payload) {
   }
   if (p.module === PEOPLE_MODULE) {
     assertValidPeopleValue_(String(p.value || ""));
+  }
+  if (p.module === CONTENT_TASK_MODULE) {
+    assertValidTaskKey_(p.key, p.itemId);
+    assertValidTaskScreenshots_(String(p.value || ""));
   }
 
   const sheet = getContentSheet_(SHEET_CONTENT_DRAFTS);

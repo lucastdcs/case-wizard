@@ -54,6 +54,9 @@
             if (!document.getElementById('pane-notes').classList.contains('hidden')) {
                 loadNoteTemplates();
             }
+            if (!document.getElementById('pane-tasks').classList.contains('hidden')) {
+                loadTaskCatalog();
+            }
             if (!document.getElementById('pane-emails').classList.contains('hidden')) {
                 loadEmails();
             }
@@ -88,6 +91,10 @@
             notes: {
                 titulo: 'Case Notes', carregar: function () { loadNoteTemplates(); },
                 sub: 'Notas prontas por substatus. Editar cria uma proposta.'
+            },
+            tasks: {
+                titulo: 'Tasks', carregar: function () { loadTaskCatalog(); },
+                sub: 'O catálogo de tasks e os screenshots que o Win Criteria exige de cada uma.'
             },
             emails: {
                 titulo: 'E-mails', carregar: function () { loadEmails(); },
@@ -400,8 +407,8 @@
 
         var ATIVIDADE_MODULO = {
             links: 'Links', call_script: 'Call Script', note_template: 'Case Notes',
-            email_template: 'E-mails', tips: 'Dicas', broadcast: 'Avisos',
-            bau_availability: 'Disponibilidade', people: 'Pessoas'
+            task_screenshots: 'Tasks', email_template: 'E-mails', tips: 'Dicas',
+            broadcast: 'Avisos', bau_availability: 'Disponibilidade', people: 'Pessoas'
         };
 
         var FOTO_PADRAO = 'https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg';
@@ -660,6 +667,8 @@
                     '<div class="ag-titulo">' + esc(v.title || item.label) + '</div>' +
                     '<div class="ag-texto">' + esc(v.text || '') + '</div>' +
                     '</div>' + avisoDaJanelaNaPrevia(v);
+            } else if (item.module === 'task_screenshots') {
+                corpo = previaDaTask(v, idioma);
             } else if (item.module === 'email_template') {
                 corpo =
                     '<div class="ag-cartao">' +
@@ -693,6 +702,58 @@
                     esc(bcFormatDate(v.endsAt)) + '. Nenhum agente vê isto agora.</div>';
             }
             return '';
+        }
+
+        // A task como o agente a recebe: um cartão por modo, com as legendas dos
+        // campos de link na ORDEM em que ele vai preenchê-las.
+        //
+        // A regra do idioma é a mesma do bundle (getTaskScreenshots): a linha de
+        // ES traduz o screenshot da mesma posição e, em branco, o agente ES lê o
+        // texto original. Dizer QUAL linha caiu no original é o ponto — é o que
+        // não se enxerga revisando as duas caixas do editor.
+        function previaDaTask(v, idioma) {
+            var modos = [
+                { key: 'implementation', label: 'Implementação' },
+                { key: 'education', label: 'Educação' }
+            ];
+            var listas = v.screenshots || {};
+            var trad = v.screenshots_es || {};
+
+            var cartoes = modos.map(function (m) {
+                var base = Array.isArray(listas[m.key]) ? listas[m.key] : [];
+                if (!base.length) {
+                    return '<div class="ag-cartao"><div class="ag-meta">' + esc(m.label) + '</div>' +
+                        '<div class="ag-texto"><em class="ag-falta">sem screenshots — ' +
+                        'o agente não vê cartão neste modo</em></div></div>';
+                }
+
+                var es = Array.isArray(trad[m.key]) ? trad[m.key] : null;
+                var linhas = base.map(function (rotulo, i) {
+                    var texto = rotulo;
+                    var falta = '';
+                    if (idioma === 'ES') {
+                        var traduzido = es ? String(es[i] == null ? '' : es[i]).trim() : '';
+                        if (traduzido) {
+                            texto = traduzido;
+                        } else {
+                            falta = ' <em class="ag-falta">(sem ES — sai assim)</em>';
+                        }
+                    }
+                    return '<li>' + esc(texto) + falta + '</li>';
+                }).join('');
+
+                return '<div class="ag-cartao">' +
+                    '<div class="ag-meta">' + esc(m.label) + ' · ' + base.length +
+                    ' screenshot' + (base.length === 1 ? '' : 's') + '</div>' +
+                    '<div class="ag-titulo">' + esc(v.name || '') + '</div>' +
+                    '<ol class="ag-lista">' + linhas + '</ol>' +
+                    '</div>';
+            }).join('');
+
+            return cartoes + (v.popular === true
+                ? '<div class="note">Aparece no <strong>Acesso rápido</strong>, ' +
+                  'antes da busca do catálogo.</div>'
+                : '');
         }
 
         // --- Busca global (Ctrl+K) ---
@@ -817,8 +878,8 @@
         // o trilho fala com quem usa e o módulo fala com o banco.
         var DESTINO_DO_MODULO = {
             links: 'links', call_script: 'callscript', note_template: 'notes',
-            email_template: 'emails', tips: 'tips', broadcast: 'broadcast',
-            bau_availability: 'bau', people: 'people'
+            task_screenshots: 'tasks', email_template: 'emails', tips: 'tips',
+            broadcast: 'broadcast', bau_availability: 'bau', people: 'people'
         };
 
         function destinoDoModulo(module) {
@@ -977,6 +1038,8 @@
                 'vê os modelos, mas não propõe alterações neste módulo.');
             gate('note_template', 'nt-new-btn', 'nt-note',
                 'vê os modelos de nota, mas não propõe alterações neste módulo.');
+            gate('task_screenshots', 'tsk-new-btn', 'tsk-note',
+                'vê as tasks e os screenshots exigidos, mas não propõe alterações neste módulo.');
             // Avisos e disponibilidade seguem a mesma regra do resto da tela:
             // quem tem acesso enxerga o que está no ar, e só quem tem o papel vê
             // o caminho de publicar. É o WFM que separa os dois na prática —

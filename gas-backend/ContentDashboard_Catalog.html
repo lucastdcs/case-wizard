@@ -804,6 +804,399 @@
             }, btn, loadNoteTemplates);
         }
 
+        // --- Tasks (catálogo + screenshots do Win Criteria) ---
+        //
+        // A unidade aqui é a TASK, e não o screenshot: o que o agente marca na
+        // nota é a task, e a lista de evidências é propriedade dela. Um item por
+        // task, em `lang: 'ALL'`, com a tradução no próprio valor — mesma escolha
+        // dos links (desc/desc_es) e pelo mesmo motivo: a QUANTIDADE de
+        // evidências é uma decisão só, e duas linhas por idioma deixariam PT e ES
+        // pedirem números diferentes de screenshot para o mesmo Win Criteria.
+        var TSK_ITEMS = [];
+        var TSK_DRAFTS = [];
+
+        var TSK_MODOS = [
+            { key: 'implementation', label: 'Implementação', ajuda: 'quando o agente implementa pelo anunciante' },
+            { key: 'education', label: 'Educação', ajuda: 'quando o agente ensina o anunciante a implementar' }
+        ];
+
+        function loadTaskCatalog() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    TSK_ITEMS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (d) { TSK_DRAFTS = d || []; delete DRAFTS_OFFLINE.tasks; renderTaskCatalog(); })
+                        .withFailureHandler(function () { TSK_DRAFTS = []; DRAFTS_OFFLINE.tasks = true; renderTaskCatalog(); })
+                        .listContentDrafts('task_screenshots');
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('tsk-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar as tasks</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('task_screenshots');
+        }
+
+        function tskDraftForItem(itemId) {
+            for (var i = 0; i < TSK_DRAFTS.length; i++) {
+                if (TSK_DRAFTS[i].itemId === itemId) return TSK_DRAFTS[i];
+            }
+            return null;
+        }
+
+        function parseTask(raw) {
+            var v;
+            try { v = JSON.parse(raw || '{}'); } catch (e) { v = {}; }
+            var s = v.screenshots || {};
+            var es = v.screenshots_es || {};
+            return {
+                name: v.name || '',
+                popular: v.popular === true,
+                screenshots: {
+                    implementation: Array.isArray(s.implementation) ? s.implementation : [],
+                    education: Array.isArray(s.education) ? s.education : []
+                },
+                // `null` quando o modo não tem tradução própria: é diferente de
+                // "traduzido para lista vazia", e é o que faz o agente ES cair no
+                // texto base em vez de ficar sem campo.
+                screenshots_es: {
+                    implementation: Array.isArray(es.implementation) ? es.implementation : null,
+                    education: Array.isArray(es.education) ? es.education : null
+                }
+            };
+        }
+
+        // Quantas linhas já têm redação própria em ES. É a informação que decide
+        // se vale abrir a task: "12 screenshots, 5 traduzidos" é trabalho
+        // pendente, e sem isso ele fica invisível até alguém abrir uma por uma.
+        function tskTraduzidos(v, modo) {
+            var lista = v.screenshots_es[modo];
+            if (!lista) return 0;
+            var n = 0;
+            for (var i = 0; i < lista.length; i++) {
+                if (String(lista[i] || '').trim()) n++;
+            }
+            return n;
+        }
+
+        function renderTaskCatalog() {
+            var host = document.getElementById('tsk-list');
+            var summary = document.getElementById('tsk-summary');
+
+            if (!TSK_ITEMS.length) {
+                summary.textContent = 'Nenhuma task publicada ainda.';
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">checklist</span>' +
+                    '<h2>Nenhuma task na Central ainda</h2>' +
+                    '<p>Enquanto isso o app segue com o catálogo embutido no código. ' +
+                    'Rode a semeadura (seedTasksNow) para trazer as atuais.</p></div>';
+                return;
+            }
+
+            var pend = TSK_DRAFTS.length;
+            summary.textContent = TSK_ITEMS.length + ' tasks publicadas' +
+                (pend ? ' · ' + pend + ' com alteração em andamento' : '');
+
+            // Duas seções: o que o agente vê primeiro (Acesso rápido) e o resto do
+            // catálogo. É a mesma divisão da tela dele, então quem edita enxerga
+            // onde a task vai aparecer sem ter que abrir o app.
+            var grupos = [
+                { titulo: 'Acesso rápido', itens: TSK_ITEMS.filter(function (i) { return parseTask(i.value).popular; }) },
+                { titulo: 'Catálogo completo', itens: TSK_ITEMS.filter(function (i) { return !parseTask(i.value).popular; }) }
+            ];
+
+            var html = '';
+            grupos.forEach(function (g) {
+                if (!g.itens.length) return;
+                html += '<div class="cat-head">' + esc(g.titulo) +
+                    ' <span class="pill draft">' + g.itens.length + '</span></div>';
+
+                g.itens.forEach(function (it) {
+                    var v = parseTask(it.value);
+                    var d = tskDraftForItem(it.id);
+                    var badge = selosDoRascunho(d);
+
+                    var partes = TSK_MODOS.map(function (m) {
+                        var total = v.screenshots[m.key].length;
+                        if (!total) return m.label + ': nenhum';
+                        var traduzidos = tskTraduzidos(v, m.key);
+                        return m.label + ': ' + total +
+                            (traduzidos === total ? ' (ES ok)' : ' (ES ' + traduzidos + '/' + total + ')');
+                    });
+
+                    var descarte = (d && d.status === 'draft' && !travadoPorOutro(d))
+                        ? '<button class="btn btn-danger btn-sm" onclick="descartarRascunho(\'' +
+                          d.draftId + '\', loadTaskCatalog)">Descartar rascunho</button>'
+                        : '';
+
+                    // Histórico é LEITURA: quem enxerga o item enxerga por onde ele
+                    // passou. Só reverter é que depende de aprovar.
+                    var historico = '<button class="btn btn-ghost btn-sm" '
+                        + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'task_screenshots\')">Histórico</button>'
+                        + botaoComoAgente(it.id);
+
+                    var actions = podeEscrever('task_screenshots')
+                        ? '<div style="display:flex;gap:8px">' + historico + descarte +
+                        '<button class="btn btn-ghost btn-sm" onclick="openTaskEditor(\'' + it.id + '\')">Editar</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Tirar do ar</button>' +
+                        '</div>'
+                        : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
+
+                    html += '<div class="item-row" data-item="' + esc(it.id) + '">' +
+                        '<div class="item-main">' +
+                        '<div class="item-name">' + esc(v.name || it.label) + ' ' + badge + '</div>' +
+                        '<div class="item-meta"><code>' + esc(it.key) + '</code> — ' +
+                        esc(partes.join(' · ')) + '</div>' +
+                        '</div>' + actions + '</div>';
+                });
+            });
+
+            host.innerHTML = avisoRascunhosOffline('tasks') + html;
+        }
+
+        // Uma chave a partir do nome, para quem está criando não ter de inventar
+        // formato. Continua editável: é identidade, e quem conhece o catálogo
+        // pode querer casar com o nome usado no Win Criteria.
+        function tskChaveDoNome(nome) {
+            return String(nome || '')
+                .normalize('NFD').replace(DIACRITICOS_NA_TELA, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '')
+                .slice(0, 40);
+        }
+
+        // Pareia as duas caixas POR NÚMERO DE LINHA, que é o que o olho faz ao
+        // olhar as duas colunas lado a lado.
+        //
+        // Linha em branco no PT não é screenshot e sai da lista — junto com a
+        // linha de ES na mesma posição, senão um separador em branco no meio da
+        // lista deslocaria todas as traduções seguintes em silêncio. Linha de ES
+        // que não pareia com nenhum screenshot é ERRO, e não texto descartado:
+        // quem escreveu ali acha que traduziu algo.
+        function tskPares(textoPt, textoEs) {
+            var pt = String(textoPt || '').split('\n');
+            var es = String(textoEs || '').split('\n');
+
+            var base = [];
+            var trad = [];
+            var orfas = [];
+
+            pt.forEach(function (linha, i) {
+                var rotulo = String(linha).trim();
+                if (!rotulo) return;
+                base.push(rotulo);
+                trad.push(String(es[i] == null ? '' : es[i]).trim());
+            });
+
+            es.forEach(function (linha, i) {
+                if (!String(linha).trim()) return;
+                if (i >= pt.length || !String(pt[i] || '').trim()) orfas.push(i + 1);
+            });
+
+            return { base: base, trad: trad, orfas: orfas };
+        }
+
+        // Editor. O nome é UM para os dois idiomas (como hoje: o catálogo do
+        // agente nunca traduziu nome de task); o que tem par PT/ES é a lista de
+        // evidências, lado a lado, linha a linha.
+        function openTaskEditor(itemId) {
+            var item = null;
+            for (var i = 0; i < TSK_ITEMS.length; i++) {
+                if (TSK_ITEMS[i].id === itemId) item = TSK_ITEMS[i];
+            }
+
+            var existingDraft = itemId ? tskDraftForItem(itemId) : null;
+            var src = existingDraft || item;
+            var v = parseTask(src ? src.value : '{}');
+            var chave = src ? src.key : '';
+
+            var blocos = TSK_MODOS.map(function (m) {
+                var base = v.screenshots[m.key];
+                var trad = v.screenshots_es[m.key] || [];
+                // A tradução é POSICIONAL: linha 3 do ES traduz o screenshot 3.
+                // Preenchida até o tamanho da base para as duas caixas nascerem
+                // com o mesmo número de linhas — é a leitura que o SME faz.
+                var linhasEs = base.map(function (_, i) { return String(trad[i] || ''); });
+
+                return '<div class="tsk-modo">' +
+                    '<div class="cat-head" style="margin-top:22px">' + esc(m.label) +
+                    ' <span class="pill draft">' + esc(m.ajuda) + '</span></div>' +
+                    '<div class="grid-2">' +
+                    '<div>' +
+                    '<label class="fld" for="tsk-pt-' + m.key + '">Screenshots (PT) — um por linha</label>' +
+                    '<textarea id="tsk-pt-' + m.key + '" class="tsk-lista" ' +
+                    'placeholder="ex.: Tag criada&#10;Teste GTM&#10;Versão Publicada">' +
+                    esc(base.join('\n')) + '</textarea>' +
+                    '</div>' +
+                    '<div>' +
+                    '<label class="fld" for="tsk-es-' + m.key + '">Tradução (ES) — mesma ordem</label>' +
+                    '<textarea id="tsk-es-' + m.key + '" class="tsk-lista" ' +
+                    'placeholder="deixe a linha em branco para manter o texto em PT">' +
+                    esc(linhasEs.join('\n')) + '</textarea>' +
+                    '</div>' +
+                    '</div>' +
+                    '<p class="card-sub tsk-contagem" id="tsk-contagem-' + m.key + '"></p>' +
+                    '</div>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:820px" role="dialog" aria-modal="true">' +
+                '<h2>' + (item ? 'Editar task' : 'Nova task') + '</h2>' +
+                '<p class="card-sub">Isso cria uma proposta. O que o agente vê só muda depois da aprovação.</p>' +
+                (existingDraft && existingDraft.status === 'pending'
+                    ? '<div class="note warn" style="margin-top:14px">Esta task já está em revisão.</div>'
+                    : '') +
+                '<div class="grid-2">' +
+                '<div><label class="fld" for="tsk-f-name">Nome</label>' +
+                '<input type="text" id="tsk-f-name" placeholder="como o agente vê na lista" ' +
+                'maxlength="60" value="' + esc(v.name) + '"></div>' +
+                '<div><label class="fld" for="tsk-f-key">Chave</label>' +
+                (item
+                    ? '<input type="text" id="tsk-f-key" value="' + esc(chave) + '" readonly ' +
+                      'aria-describedby="tsk-key-ajuda">'
+                    : '<input type="text" id="tsk-f-key" placeholder="ads_conversion_tracking" ' +
+                      'maxlength="40" value="' + esc(chave) + '" aria-describedby="tsk-key-ajuda">') +
+                '</div>' +
+                '</div>' +
+                '<p class="card-sub" id="tsk-key-ajuda">' +
+                (item
+                    ? 'A chave não muda: é o que os modelos de nota, os rascunhos salvos e os ' +
+                      'atalhos do agente já guardam.'
+                    : 'Identidade da task. Sai do nome automaticamente e não muda depois de criada.') +
+                '</p>' +
+                '<label class="chk" style="margin-top:16px">' +
+                '<input type="checkbox" id="tsk-f-popular"' + (v.popular ? ' checked' : '') + '> ' +
+                'Mostrar no <strong>Acesso rápido</strong> do agente' +
+                '</label>' +
+                blocos +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-ghost" id="tsk-draft">Salvar rascunho</button>' +
+                '<button class="btn btn-primary" id="tsk-save">Enviar para revisão</button>' +
+                '</div></div></div>';
+
+            // Chave sugerida enquanto o nome é digitado, e só em task nova: numa
+            // existente ela é identidade e o campo é de leitura.
+            if (!item) {
+                var campoNome = document.getElementById('tsk-f-name');
+                var campoChave = document.getElementById('tsk-f-key');
+                var chaveTocada = !!chave;
+                campoChave.addEventListener('input', function () { chaveTocada = true; });
+                campoNome.addEventListener('input', function () {
+                    if (!chaveTocada) campoChave.value = tskChaveDoNome(campoNome.value);
+                });
+            }
+
+            TSK_MODOS.forEach(function (m) {
+                var pt = document.getElementById('tsk-pt-' + m.key);
+                var es = document.getElementById('tsk-es-' + m.key);
+                pt.addEventListener('input', function () { atualizarContagemTask(m.key); });
+                es.addEventListener('input', function () { atualizarContagemTask(m.key); });
+                atualizarContagemTask(m.key);
+            });
+
+            document.getElementById('tsk-save').onclick = function () {
+                submitTask(itemId, existingDraft ? existingDraft.draftId : null, src, this);
+            };
+            document.getElementById('tsk-draft').onclick = function () {
+                submitTask(itemId, existingDraft ? existingDraft.draftId : null, src, this, true);
+            };
+            document.getElementById('tsk-f-name').focus();
+        }
+
+        // A contagem existe porque o desalinhamento é invisível: uma linha a mais
+        // no ES desloca todas as traduções seguintes, e o agente ES passa a ver a
+        // legenda de outra evidência sem nada dar erro.
+        function atualizarContagemTask(modo) {
+            var alvo = document.getElementById('tsk-contagem-' + modo);
+            if (!alvo) return;
+
+            var par = tskPares(
+                document.getElementById('tsk-pt-' + modo).value,
+                document.getElementById('tsk-es-' + modo).value
+            );
+
+            if (par.orfas.length) {
+                alvo.textContent = 'A linha ' + par.orfas.join(', ') +
+                    ' da coluna em ES não fica ao lado de nenhum screenshot — ' +
+                    'a tradução vai sair deslocada.';
+                alvo.classList.add('erro');
+                return;
+            }
+
+            alvo.classList.remove('erro');
+
+            if (!par.base.length) {
+                alvo.textContent = 'Nenhum screenshot neste modo — o agente não vê cartão para ele.';
+                return;
+            }
+
+            var traduzidos = par.trad.filter(function (t) { return t.length > 0; }).length;
+            alvo.textContent = par.base.length + ' screenshot' + (par.base.length === 1 ? '' : 's') +
+                ' · ' + traduzidos + ' com redação em ES' +
+                (traduzidos < par.base.length ? ' (o resto sai em PT para o agente ES)' : '');
+        }
+
+        function submitTask(itemId, draftId, src, btn, apenasRascunho) {
+            var nome = document.getElementById('tsk-f-name').value.trim();
+            if (!nome) return toast('Dê um nome à task.', true);
+
+            var chave = document.getElementById('tsk-f-key').value.trim();
+            if (!/^[a-z][a-z0-9_]{2,39}$/.test(chave)) {
+                return toast('A chave usa de 3 a 40 caracteres entre letras minúsculas, números e "_", começando por letra.', true);
+            }
+
+            var screenshots = {};
+            var traducao = {};
+            var total = 0;
+
+            for (var i = 0; i < TSK_MODOS.length; i++) {
+                var modo = TSK_MODOS[i].key;
+                var par = tskPares(
+                    document.getElementById('tsk-pt-' + modo).value,
+                    document.getElementById('tsk-es-' + modo).value
+                );
+
+                if (par.orfas.length) {
+                    return toast('Em "' + TSK_MODOS[i].label + '", a linha ' + par.orfas.join(', ') +
+                        ' da coluna em ES não fica ao lado de nenhum screenshot.', true);
+                }
+
+                screenshots[modo] = par.base;
+                total += par.base.length;
+
+                // A tradução viaja com as linhas em branco: é a POSIÇÃO que casa
+                // cada uma com o screenshot que ela traduz, e branco quer dizer
+                // "mantém o texto de PT".
+                if (par.trad.some(function (t) { return t.length > 0; })) {
+                    traducao[modo] = par.trad;
+                }
+            }
+
+            if (!total) {
+                return toast('A task precisa de pelo menos um screenshot em um dos modos.', true);
+            }
+
+            var value = { name: nome, popular: document.getElementById('tsk-f-popular').checked,
+                          screenshots: screenshots };
+            if (Object.keys(traducao).length) value.screenshots_es = traducao;
+
+            (apenasRascunho ? salvarRascunho : enviarProposta)({
+                draftId: draftId || '',
+                itemId: itemId || '',
+                module: 'task_screenshots',
+                key: chave,
+                lang: 'ALL',
+                label: nome,
+                value: JSON.stringify(value),
+                sortOrder: src ? src.sortOrder : TSK_ITEMS.reduce(function (max, i) {
+                    return Math.max(max, i.sortOrder);
+                }, 0) + 1
+            }, btn, loadTaskCatalog);
+        }
+
         // --- E-mails ---
         var EM_ITEMS = [];
         var EM_DRAFTS = [];

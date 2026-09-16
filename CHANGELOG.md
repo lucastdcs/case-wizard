@@ -8,6 +8,122 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.3.2] - 2026-09-16
+
+### Added
+- **Histórico clicável.** Clicar num caso resolvido abre a mesma vista de
+  detalhes da fila, com tudo — anunciante, CID, tasks, justificativa,
+  agendamento —, e não só o número do caso. `getWeeklyHistory` devolvia 8 campos
+  por caso contra os 20 da fila; agora as duas leituras saem do mesmo
+  `mapBAURow_`, que é o que impede elas de divergirem de novo. No topo da vista,
+  uma zona "Decisão" diz quem decidiu, quando, o caso filho gerado e a
+  justificativa. Caso resolvido não mostra aprovar/rejeitar — a decisão já foi
+  tomada. A busca do histórico passou a achar por anunciante e CID.
+- **Justificativa obrigatória na recusa.** Ao rejeitar uma abertura ou negar um
+  descarte, a liderança escreve o motivo, que vai no e-mail do agente e fica
+  gravado na coluna `TL_Justification`. Até aqui o agente recebia o "não" sem
+  razão nenhuma e só descobria perguntando no chat. Exigida nos dois lados — a
+  tela nunca é a fronteira. **Atenção ao `Status`:** ele não distingue as quatro
+  decisões (`DISCARDED` tanto confirma um descarte quanto rejeita uma criação),
+  então quem decide se a justificativa é pedida é `Processed_Action`.
+- **Changelog dos dashboards.** O TL nunca carrega o bookmarklet, então toda
+  mudança no painel dele chegava sem aviso — o único changelog do projeto era o
+  do agente. Agora o TL Dashboard abre as novidades quando a versão muda, com um
+  botão no cabeçalho para reler depois. O conteúdo vem de
+  `gas-backend/DashReleaseNotes.js`, injetado pelo servidor na própria página
+  (uma chamada a menos no boot, cf. #333/#334), e `npm run test:dash-changelog`
+  falha quando a versão dele fica para trás do `package.json` — a mesma guarda
+  que o bookmarklet ganhou depois de anunciar as novidades da v5.1 com o selo da
+  v5.2.
+- **Resumo copiável do caso no TL Dashboard.** Último campo do modal de
+  detalhes: o texto pronto, em linguagem humana, que o TL cola dentro do caso BAU
+  que acabou de abrir no CRM — headline `Caso LM para BAU`, caso de origem, quem
+  abriu e quando, o que aconteceu, o que deve ser feito, as tasks e o AM. Nada é
+  pedido a mais ao agente: o texto é concatenado do que ele já preenche no
+  formulário. O que já está no caso filho por ser da mesma conta do anunciante
+  (nome, CID, site) fica de fora, e e-mail e telefone também — são PII que não
+  precisa circular colada num texto. O idioma **não** é o da tela do TL: é o do
+  atendimento, então um TL em PT aprovando caso de ES copia texto em ES. Pedido
+  de descarte não ganha resumo. De quebra, a coluna 16 (`Motivo | Justificativa`)
+  passa a ser desmesclada também na leitura do TL, que era a única que ainda
+  mostrava o pipe.
+- **Tasks e screenshots do Win Criteria na Central de Conteúdo** (módulo
+  `task_screenshots`, aba "Tasks"). As 13 tasks do Case Notes e os 126 rótulos de
+  evidência que o Win Criteria exige saíram do `TASKS_DB` do bundle e passaram a
+  ser conteúdo gerenciável: quem conhece a régua publica a mudança, sem PR, sem
+  CI e sem esperar o `clasp deploy`. Inclui o caminho para **criar uma task
+  nova** pela tela — antes só existia editando código. O espanhol dos rótulos,
+  que vivia num mapa por frase invisível a qualquer tela
+  (`SCREENSHOT_LABEL_ES`), virou uma coluna ao lado da lista base: **posicional e
+  do mesmo tamanho**, porque a quantidade de evidências não muda com o idioma, e
+  linha em branco cai no texto original. A lista da Central diz a cobertura da
+  tradução por task ("ES 1/3") e a prévia "como o agente vê" aponta a linha que
+  sai sem espanhol. A chave da task é identidade — modelos de nota, rascunhos
+  salvos e atalhos do Ctrl+K a guardam — e por isso não muda depois de criada. O
+  `TASKS_DB` embutido continua como fallback do primeiro load offline. Ver
+  `docs/decisions/0012-tasks-e-screenshots-na-central.md`.
+
+### Changed
+- **Passada de acabamento no painel do TL.** A profundidade passou a significar
+  alguma coisa: o bloco da decisão é tingido com a cor de identidade e salta
+  primeiro, o briefing recua, e o resumo — a única coisa que sai da tela — é o
+  único elevado. Copiar passou a confirmar nos três canais (botão, som e vibração
+  onde houver motor) em vez de só num toast no canto oposto. As linhas do
+  histórico ganharam o estado de `hover` que faltava desde que viraram clicáveis.
+  Entraram junto `tabular-nums` nas colunas de dígitos, a grade de 4/8px,
+  `prefers-reduced-motion`, e o diálogo de decisão passou a ter um eixo só
+  quando tem campo para preencher, com o botão dizendo a ação em vez de
+  "Confirmar". Regras em `specs/ui-ux/design-system.md`.
+
+- **A vista de detalhes do caso foi remodelada.** Era uma grade de 16 caixas
+  idênticas em 640px, onde "O que deve ser feito" — a decisão — tinha o mesmo
+  peso visual de "Programa de Vendas". Agora são três zonas por propósito
+  (ADR-0015): **cabeçalho** com o anunciante, os selos e a autoria; **briefing**
+  com o que se lê para decidir (o que fazer, motivo, justificativa, agendamento),
+  em contêiner único e **sem botão de copiar**; e **dados** com o que se leva
+  para o CRM. Nome e sobrenome viraram campos separados, com `N/A` quando não há
+  sobrenome. A vista passou para 900px e ganhou rodapé com aprovar/rejeitar — o
+  TL decide sem fechar e reachar a linha na fila.
+
+- **O backup semanal passa a copiar em vez de mover.** A linha arquivada continua
+  na planilha de casos, que é o que alimenta o histórico do TL. Antes o job
+  deletava a origem, e o efeito aparecia uma segunda-feira depois: a aba
+  "Histórico" só alcançava o último domingo (o seletor de 90 dias nunca entregou
+  90 dias) e o `Child_Case_ID` exigido na aprovação sumia uma semana depois de
+  ser gravado. Idempotente pelos IDs já presentes no arquivo, então uma execução
+  interrompida se conserta sozinha na semana seguinte. Sem reset e sem poda: a
+  planilha que a operação mantém desde 2024 tem ~5.000 linhas, volume que não
+  justifica podar nada. Ver `docs/decisions/0014-arquivo-copia-em-vez-de-mover.md`.
+
+### Fixed
+- **O rodapé do modal continuava desenhado num caso resolvido.** O atributo
+  `hidden` perde para o `display: flex` da classe, então a faixa cinza e a
+  hairline ficavam no fim da vista com o atributo aparentemente correto — e o
+  teste, que checava o atributo, passava. Agora o teste compara o `display`
+  computado.
+- **A aba Histórico dizia que os casos saem da lista no backup semanal.** Deixou
+  de ser verdade quando o backup parou de deletar (ADR-0014), na mesma entrega.
+
+- **A fila do TL não era alcançável pelo teclado.** As linhas eram `<div>` com
+  `onclick`, o que o `specs/ui-ux/design-system.md` proíbe explicitamente — na
+  prática, não havia como abrir um caso sem mouse. O nome do anunciante virou um
+  botão de verdade (o clique na linha inteira continua funcionando). Junto:
+  `Esc` fecha a vista de detalhes, o foco entra no modal ao abrir e volta para a
+  linha ao fechar.
+
+- **O backup podia falhar toda semana, em silêncio.** O job escrevia no arquivo um
+  bloco com a largura da planilha de casos sem conferir se a aba de destino
+  comporta essa largura — e a planilha de casos ganhou as colunas 22 a 24 depois
+  que o arquivo foi criado. Num arquivo mais estreito, a execução inteira caía,
+  num gatilho que ninguém olha. Agora o arquivo é alargado antes da escrita.
+- **Módulo novo nascia invisível para todo mundo.** Numa planilha que já tem a aba
+  `Content_Roles`, um módulo acrescentado ao código depois não aparecia em
+  nenhuma linha de papel — e `normalizeRoleMatrix_()` tratava a casa ausente como
+  desmarcada. Nem o ADMIN via a aba, e nada na tela explicava por quê. Casa
+  **ausente** passa a herdar o preset do papel; casa **desmarcada** continua
+  desmarcada, porque é decisão de alguém. Ver
+  `docs/decisions/0013-modulo-novo-herda-o-preset.md`.
+
 ## [6.3.1] - 2026-09-10
 
 ### Fixed
@@ -343,6 +459,13 @@ versions follow [Semantic Versioning](https://semver.org/).
   `gas-backend/Código.js` — apontando para o form novo.
 - **Crédito de autoria em formato único.** Convivia `@lucaste`, `lucaste@` e
   `by lucaste@`. Passou a sair de `AUTHOR_CREDIT` / `CW_AUTHOR_CREDIT`.
+### Security
+- **A prévia de e-mail passou a rodar em `iframe` fechado** (`sandbox=""`). Um
+  modelo é HTML escrito por uma pessoa e lido por outra, numa tela que fala com
+  o backend na autoridade de quem revisa — injetá-lo direto no documento seria
+  XSS armazenado entre usuários, a classe que `docs/LEARNINGS.md` registrou no
+  Ctrl+K. A prévia do editor foi para o mesmo caminho: dois jeitos de renderizar
+  a mesma coisa é como um deles fica para trás.
 
 ### Changed
 - **O botão de desativar acesso passou a aparecer também para si mesmo.** A
@@ -635,7 +758,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...HEAD
+[6.3.2]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...v6.3.2
 [6.3.1]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...v6.3.1
 [6.3.0]: https://github.com/lucastdcs/case-wizard/compare/v6.2.0...v6.3.0
 [6.2.0]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...v6.2.0

@@ -35,7 +35,7 @@ function initApp() {
     }
     window.techSolInitialized = true;
 
-    const APP_VERSION = "v6.3.1"; 
+    const APP_VERSION = "v6.3.2"; 
 
     console.log(`🚀 TechSol Suite Initializing (${APP_VERSION})...`);
 
@@ -53,7 +53,7 @@ function initApp() {
             console.warn("Áudio bloqueado:", audioErr);
         }
         
-        // B. Busca o conteúdo gerenciável — os sete módulos numa execução só.
+        // B. Busca o conteúdo gerenciável — os oito módulos numa execução só.
         //
         // Antes cada módulo pedia o seu quando era aberto, e o boot já disparava
         // três (dicas, avisos, disponibilidade). Numa virada de turno isso são
@@ -65,7 +65,8 @@ function initApp() {
         // boot não espera a rede para desenhar a tela.
         DataService.fetchContentModules([
             'tips', 'broadcast', 'bau_availability',
-            'links', 'call_script', 'email_template', 'note_template'
+            'links', 'call_script', 'email_template', 'note_template',
+            'task_screenshots'
         ]);
 
         // C. Animação de Entrada (Aqui o 'Sherlock' começa a buscar o nome)

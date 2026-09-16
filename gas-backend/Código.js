@@ -226,6 +226,11 @@ function renderDashboard(fileName, title) {
   // Consumido por <?!= CW_CREDIT ?>, logo depois do selo de ambiente.
   template.CW_CREDIT = buildCreditHtml();
 
+  // Consumido por <?!= CW_RELEASE_NOTES ?>. Vai como JSON na própria página em
+  // vez de por google.script.run: é conteúdo estático, e uma chamada a mais no
+  // boot do dashboard é o que #333/#334 pediu para evitar.
+  template.CW_RELEASE_NOTES = buildReleaseNotesJson();
+
   return template.evaluate()
     .setTitle(title)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -735,6 +740,35 @@ function ensureBAUAdvPhoneColumn(sheet) {
 
   const headerCell = sheet.getRange(1, BAU_ADV_PHONE_COL);
   if (!headerCell.getValue()) headerCell.setValue(BAU_ADV_PHONE_HEADER);
+}
+
+// Justificativa que a liderança escreve ao dizer NÃO ao pedido do agente —
+// tanto ao recusar a abertura de um caso quanto ao negar um descarte.
+//
+// É obrigatória nessas duas decisões (ver bau-lifecycle.md) pela mesma razão que
+// o Child_Case_ID é obrigatório na aprovação: antes disso o agente recebia o
+// e-mail de "recusado" sem razão nenhuma, e a única saída era perguntar no chat.
+//
+// Entra no fim pelo mesmo motivo das colunas 22 a 25: acrescentar coluna nunca
+// desloca índice já gravado em planilha de produção.
+const BAU_TL_JUSTIFICATION_HEADER = "TL_Justification";
+const BAU_TL_JUSTIFICATION_COL = 26;
+
+function ensureBAUTLJustificationColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_TL_JUSTIFICATION_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_TL_JUSTIFICATION_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_TL_JUSTIFICATION_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_TL_JUSTIFICATION_HEADER);
+}
+
+// As duas decisões em que a liderança diz NÃO ao agente. Uma função e não um
+// literal espalhado: a regra vale no servidor (updateBAUCaseStatus) e decide
+// também o que a tela pede antes de enviar — e as duas não podem divergir.
+function decisionRequiresJustification(processedAction) {
+  return processedAction === "REJECTED_CREATION" || processedAction === "KEPT_ACTIVE";
 }
 
 // Texto de uma célula do BAU_form_data, já limpo dos literais que o transporte

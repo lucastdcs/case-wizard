@@ -15,15 +15,15 @@
 // contar uma release por vez (o localStorage guarda uma única versão vista).
 
 export const RELEASE_NOTES = {
-    version: "v6.3.1",
+    version: "v6.3.2",
 
-    title: "Case Wizard v6.3.1",
+    title: "Case Wizard v6.3.2",
 
     slides: [
         {
-            icon: "🩹",
-            title: "Campo que a captura não achava ia para a planilha como a palavra \"null\"",
-            text: "Quando a raspagem não encontrava um campo — foi o fuso horário que apareceu assim para um TL —, o que chegava na planilha não era um espaço em branco, e sim as quatro letras de \"null\". Agora o campo vai vazio de verdade, e os casos já gravados param de exibir isso no painel. Na edição de um caso, o mesmo problema podia sobrescrever um campo que você nem tocou; também está resolvido."
+            icon: "✉️",
+            title: "Quando a liderança recusa um pedido, agora você recebe o motivo",
+            text: "Se um pedido de abertura de BAU for recusado, ou se um pedido de descarte for negado, o e-mail que chega até você passa a trazer a justificativa escrita pelo TL, logo no topo. Antes o aviso dizia apenas que o pedido não foi aceito, e descobrir o porquê dependia de perguntar no chat."
         }
     ]
 };

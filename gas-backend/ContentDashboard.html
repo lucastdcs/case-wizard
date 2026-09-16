@@ -107,6 +107,9 @@
                     <button class="rail-item" id="tab-notes" data-tab="notes" onclick="switchTab('notes')">
                         <span class="material-symbols-rounded" aria-hidden="true">edit_note</span> <span class="rail-label">Case Notes</span>
                     </button>
+                    <button class="rail-item" id="tab-tasks" data-tab="tasks" onclick="switchTab('tasks')">
+                        <span class="material-symbols-rounded" aria-hidden="true">checklist</span> <span class="rail-label">Tasks</span>
+                    </button>
                     <button class="rail-item" id="tab-emails" data-tab="emails" onclick="switchTab('emails')">
                         <span class="material-symbols-rounded" aria-hidden="true">mail</span> <span class="rail-label">E-mails</span>
                     </button>
@@ -250,6 +253,28 @@
                     </button>
                 </div>
                 <div class="card" id="nt-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Tasks (catálogo + screenshots do Win Criteria) -->
+            <section id="pane-tasks" class="hidden">
+                <div class="note" id="tsk-note">
+                    Cada task é uma implementação que o agente marca na nota, e a lista de
+                    screenshots é o que o <strong>Win Criteria</strong> exige como evidência.
+                    O agente vê exatamente estes rótulos, na mesma ordem.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div>
+                        <div class="card-title">Tasks no ar</div>
+                        <p class="card-sub" id="tsk-summary">Carregando…</p>
+                    </div>
+                    <button class="btn btn-primary" id="tsk-new-btn" onclick="openTaskEditor(null)">
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Nova task
+                    </button>
+                </div>
+                <div class="card" id="tsk-list">
                     <div class="skeleton"></div>
                     <div class="skeleton"></div>
                 </div>

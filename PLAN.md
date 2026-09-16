@@ -7,6 +7,19 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Tasks e screenshots do Win Criteria na Central** (módulo
+      `task_screenshots`, aba "Tasks") — entregue, aguardando revisão do PR e a
+      semeadura na planilha real. As 13 tasks e os 126 rótulos de evidência
+      saíram do `TASKS_DB` do bundle (que ficou como fallback embutido, como
+      links e dicas), o espanhol saiu do mapa por frase `SCREENSHOT_LABEL_ES` e
+      virou coluna ao lado da lista base — posicional e do mesmo tamanho —, e
+      criar task nova passou a ter caminho pela tela. ADRs `0012` (o módulo) e
+      `0013` (módulo novo herda o preset nas casas ausentes de `Content_Roles` —
+      sem isso o módulo nascia invisível até para o ADMIN). Testes:
+      `test:tasks` (round-trip, incluindo a prova de que o ES publicado é igual
+      ao do mapa antigo), `test:content` (+20), `smoke:content` (+7) e o novo `smoke:tasks`.
+      **Falta**: rodar `seedTasksNow()` na planilha e conferir na tela do agente
+      (ver "Waiting / blocked").
 - [~] **Feedback dos TLs sobre o form BAU + Dash TL (2026-09-08).** Sete pedidos,
       investigados e abertos como #392–#397. A ordem abaixo é de ataque, não de
       pedido: os dois primeiros já saíram, os do meio dependem de decisão,
@@ -40,9 +53,13 @@ This file differs from the long-term roadmap: it describes what is happening **n
          **Falta confirmar no CRM real:** o mock reproduz o unmask, mas só a
          página de verdade diz qual é a marcação DEPOIS do clique — se a
          heurística por dígitos não achar o número lá, é aqui que se ajusta.
-      6. [ ] **#397, segunda camada** — histórico além do que o backup arquivou:
-         ler o `Archive_BAU`. Não antes de #333/#334 — o TL Dashboard já travou
-         ao vivo, e isso soma uma planilha inteira por chamada.
+      6. [x] **#397, segunda camada** — resolvida por outro caminho, mais barato:
+         em vez de o dashboard ler o `Archive_BAU` (uma planilha inteira por
+         chamada, num painel que já travou ao vivo — #333/#334), o **backup
+         parou de deletar**. A linha arquivada continua na planilha de casos, e
+         o histórico passa a alcançar tudo que ela tem. Fecha junto o fio solto
+         do item 4: o `Child_Case_ID` não some mais uma semana depois da
+         aprovação. ADR-0014, coberto por `npm run test:backup`.
 
 - [x] **Fuso chegando como `null` no TL Dash.** Relatado em 2026-09-10. Não era
       raspagem: o `encodeURIComponent` do JSONP transformava `null` na string
@@ -60,6 +77,57 @@ This file differs from the long-term roadmap: it describes what is happening **n
       do Apps Script — o gatilho ainda não existe (mesma nota do `Backup.js`).
 
 ## Done (esta sessão)
+
+- [~] **Histórico clicável + justificativa da recusa** (branch
+      `feat/historico-clicavel-e-justificativa`, v6.3.2). Terceira rodada sobre o
+      painel do TL.
+      1. **Histórico** — `getWeeklyHistory` devolvia 8 campos contra os 20 da
+         fila, por isso a aba só mostrava o número. As duas leituras saem agora
+         do mesmo `mapBAURow_`. Clicar abre a vista de detalhes com uma zona
+         "Decisão" (quem/quando/caso filho/justificativa) e **sem** rodapé de
+         ação.
+      2. **Justificativa** — coluna 26 `TL_Justification`, obrigatória em
+         `REJECTED_CREATION` e `KEPT_ACTIVE`, validada nos dois lados e enviada
+         no e-mail do agente.
+      3. **Bug pego pelo teste:** a tela pedia justificativa nas decisões
+         erradas. `isPositive` só diz se o `newStatus` é `CREATED`, e no fluxo de
+         descarte `CREATED` significa *negar* o pedido. A régua agora deriva a
+         ação como o servidor deriva.
+      Testes: `test:tl-decision` (13, o primeiro que o `BAU_Dashboard.js` tem) e
+      `smoke:tl-dash` de 21 para 30. **Falta o `clasp deploy` de produção.**
+
+- [~] **Vista de caso remodelada + changelog do TL Dashboard.** Segunda rodada
+      de feedback sobre o modal do TL.
+      1. **Três zonas por propósito** (ADR-0015): cabeçalho (anunciante, selos,
+         autoria), briefing (o que fazer / motivo / justificativa / agendamento —
+         **leitura, sem copiar**) e dados (o que vai pro CRM). 900px, rodapé com
+         aprovar/rejeitar, nome e sobrenome separados com `N/A`. Padrão
+         registrado em `specs/ui-ux/design-system.md`.
+      2. **Acessibilidade:** a fila era `<div onclick>` e não abria pelo teclado,
+         contrariando o próprio design-system. Virou botão; `Esc` fecha e o foco
+         volta.
+      3. **Changelog do dashboard** — `gas-backend/DashReleaseNotes.js`, injetado
+         pelo servidor, com guarda de sincronia de versão em
+         `npm run test:dash-changelog`.
+      `smoke:tl-dash` foi de 9 para 21 asserções. **Falta o `clasp deploy` de
+      produção** e a validação na planilha real.
+
+- [~] **Resumo copiável do caso no TL Dashboard + backup que copia em vez de
+      mover.** Dois pontos do fluxo BAU, entregues juntos porque o segundo é o
+      que faz o primeiro valer depois de uma semana.
+      1. **Resumo** — último bloco da vista de detalhes, com a headline
+         `Caso LM para BAU`. Texto concatenado do que o agente já preenche
+         (nada novo pedido no formulário), no idioma do **atendimento** e não no
+         da tela do TL. Conteúdo decidido por subtração: fora o que já está no
+         caso filho por ser da mesma conta (nome, CID, site, sales program) e
+         fora a PII (e-mail, telefone). Descarte não ganha resumo. Regra em
+         `specs/workflow/bau-lifecycle.md`.
+      2. **Backup** — `runWeeklyBackup()` copia e não remove (ADR-0014).
+         Idempotente pelos IDs já no arquivo. Sem reset e sem poda: a planilha
+         que a operação mantém desde 2024 tem ~5.000 linhas.
+      Testes novos: `npm run test:backup` (9) e `npm run smoke:tl-dash` (9, a
+      tela real no Chromium). **Falta validar na planilha de verdade** — ver
+      "Waiting / blocked".
 
 - [x] **Auditoria e correção da raspagem do CRM.** Rodando as funções reais
       contra uma captura real da tela, 7 das 10 capturas voltavam vazias — a
@@ -127,8 +195,12 @@ com a planilha de produção na frente.
       `ContentDashboard.html` não tem teste nenhum; quebra do arquivo em includes
       do `HtmlService` como primeiro commit, mecânico; trilho escuro/glass com os
       três grupos; home "Hoje" moldada pelo papel; idioma único e persistente no
-      lugar dos `select` independentes; rota por hash. **PR irmão:** changelog de
-      versão na Central e no TL Dash, a partir de fonte única no repo.
+      lugar dos `select` independentes; rota por hash.
+      **Correção de registro (2026-09-16):** constava aqui um "PR irmão" de
+      changelog de versão na Central e no TL Dash como entregue. Ele **nunca
+      existiu** — não havia nada de changelog no `gas-backend/` inteiro. O do TL
+      Dash saiu agora (ver a entrada no topo); o da Central segue pendente, e a
+      constante `CW_DASH_RELEASE_NOTES` já está pronta para ele.
 - [x] **Fase 3 — ciclo de vida do item** — completa, em quatro PRs:
       1. **histórico e "voltar para esta versão"** — `listContentItemHistory` e
          `rollbackContentItem` existiam no backend e nunca tinham sido chamados
@@ -189,6 +261,38 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
+- [ ] **Levar o changelog para a Central de Conteúdo.** A constante
+      `CW_DASH_RELEASE_NOTES` e o `template.CW_RELEASE_NOTES` do
+      `renderDashboard()` já servem as duas telas — falta o modal no
+      `ContentDashboard.html`. Não foi feito junto por não ter sido pedido.
+
+- [ ] **Conferir a largura da aba `Archive_BAU` na planilha de backup.** O job
+      antigo escrevia um bloco com a largura da planilha de casos sem conferir se
+      o destino comporta — e a planilha de casos ganhou as colunas 22 a 24 depois
+      que o arquivo foi criado. Se a aba estiver com menos de 25 colunas, **o
+      backup vinha falhando toda semana, em silêncio**, e há casos resolvidos que
+      nunca chegaram ao arquivo. O código novo alarga a aba antes de escrever, o
+      que conserta daqui pra frente; o que ficou para trás precisa ser conferido
+      na mão. Passo: abrir o `Archive_BAU`, ver a última data arquivada e comparar
+      com a execução mais recente no log do Apps Script.
+- [ ] **Decidir se vale trazer o histórico antigo do `Archive_BAU` de volta.** Com
+      o backup copiando, o histórico do TL cresce a partir de agora — mas o que
+      foi deletado antes só existe no arquivo. Uma função de uma tacada (mesma
+      mecânica do `backfillContentLog()`: simula por padrão, copia sem apagar)
+      resolveria. Não foi feita por não ter sido pedida.
+
+- [ ] **Rodar o `seedTasksNow()` na planilha de verdade** (editor do Apps
+      Script, mesma mecânica de `seedNoteTemplatesNow`). Roda uma vez: se o
+      módulo já tiver item no ar, devolve `skipped` sem duplicar. Depois,
+      confira na aba **Tasks** que as 13 tasks apareceram com o mesmo Acesso
+      rápido de hoje (5), e no app do agente que o cartão de screenshots segue
+      idêntico — em PT e em ES. Enquanto a semeadura não rodar, o agente segue
+      vendo o catálogo embutido, que é o mesmo conteúdo.
+- [ ] **Conferir a permissão do módulo `task_screenshots` na aba Papéis.** Pelo
+      ADR-0013 os quatro papéis herdam o preset (ADMIN/TL propõem e aprovam, QA
+      propõe, WFM só vê), mas a herança nunca foi exercitada numa planilha real
+      — vale abrir a aba Papéis e conferir a linha nova antes de avisar o time
+      de QA que a aba existe.
 - [ ] **Limpar as versões antigas do projeto Apps Script** — o editor avisou que
       estamos perto do teto de **200 versões**. Só dá para fazer pela UI:
       Histórico do projeto → **Excluir versões em massa**. Não existe

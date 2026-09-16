@@ -112,18 +112,30 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
     return DS.brands.default;
   }
 
-  // 1. Populares (Hero)
-  const heroTasks = Object.entries(TASKS_DB).filter(([_, t]) => t.popular);
+  // O catálogo vem do TASKS_DB, que a Central de Conteúdo reescreve quando o
+  // conteúdo publicado chega (tasks-service.js). Por isso as duas listas são
+  // `let` e recalculadas por uma função: no boot elas nascem do fallback
+  // embutido e, quando o conteúdo dos SMEs carrega, `refreshCatalog()` as
+  // recalcula e repinta — sem o agente ter que reabrir nada.
+  let heroTasks = [];
+  let groupedTasks = {};
 
-  // 2. Agrupamento por Categoria (Accordion)
-  const groupedTasks = {};
-  Object.entries(TASKS_DB).forEach(([key, task]) => {
-    if (task.popular) return; 
-    const brand = getBrand(task.name);
-    if (!groupedTasks[brand.label])
-      groupedTasks[brand.label] = { brand, tasks: [] };
-    groupedTasks[brand.label].tasks.push({ key, ...task });
-  });
+  function recomputeCatalog() {
+    // 1. Populares (Hero)
+    heroTasks = Object.entries(TASKS_DB).filter(([_, t]) => t.popular);
+
+    // 2. Agrupamento por Categoria (Accordion)
+    groupedTasks = {};
+    Object.entries(TASKS_DB).forEach(([key, task]) => {
+      if (task.popular) return;
+      const brand = getBrand(task.name);
+      if (!groupedTasks[brand.label])
+        groupedTasks[brand.label] = { brand, tasks: [] };
+      groupedTasks[brand.label].tasks.push({ key, ...task });
+    });
+  }
+
+  recomputeCatalog();
 
 
   const styleId = "cw-zen-tasks";
@@ -583,47 +595,52 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
   }
 
   // 1. Heroes
-  heroTasks.forEach(([key, task]) => {
-    const brand = getBrand(task.name);
-    const card = document.createElement("div");
-    card.className = "cw-hero-card";
-    card.id = `hero-${key}`;
+  function renderHeroCards() {
+    heroGrid.innerHTML = "";
+    heroTasks.forEach(([key, task]) => {
+      const brand = getBrand(task.name);
+      const card = document.createElement("div");
+      card.className = "cw-hero-card";
+      card.id = `hero-${key}`;
 
-    card.style.setProperty("--hero-color", brand.color);
+      card.style.setProperty("--hero-color", brand.color);
 
-    card.innerHTML = `
-            <div class="cw-hero-main">
-                <div class="cw-hero-icon">${ICONS[brand.icon]}</div>
-                <div class="cw-hero-label">${task.name}</div>
-            </div>
+      card.innerHTML = `
+              <div class="cw-hero-main">
+                  <div class="cw-hero-icon">${ICONS[brand.icon]}</div>
+                  <div class="cw-hero-label">${task.name}</div>
+              </div>
             
-            <div class="cw-hero-stepper">
-                <div class="cw-step-btn-hero minus">−</div>
-                <div class="cw-step-val">1</div>
-                <div class="cw-step-btn-hero plus">+</div>
-            </div>
-        `;
+              <div class="cw-hero-stepper">
+                  <div class="cw-step-btn-hero minus">−</div>
+                  <div class="cw-step-val">1</div>
+                  <div class="cw-step-btn-hero plus">+</div>
+              </div>
+          `;
 
-    card.onclick = makeToggleHandler(key, task);
-    card.querySelector(".minus").onclick = () => updateTask(key, -1, task);
-    card.querySelector(".plus").onclick = () => updateTask(key, 1, task);
+      card.onclick = makeToggleHandler(key, task);
+      card.querySelector(".minus").onclick = () => updateTask(key, -1, task);
+      card.querySelector(".plus").onclick = () => updateTask(key, 1, task);
 
-    // Cards eram só clicáveis por mouse - a etapa de escolher a task é a
-    // interação central do módulo de Notes, então precisa funcionar por teclado.
-    card.tabIndex = 0;
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-pressed", "false");
-    card.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        card.click();
-      }
+      // Cards eram só clicáveis por mouse - a etapa de escolher a task é a
+      // interação central do módulo de Notes, então precisa funcionar por teclado.
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-pressed", "false");
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          card.click();
+        }
+      });
+
+      card.dataset.color = brand.color;
+
+      heroGrid.appendChild(card);
     });
+  }
 
-    card.dataset.color = brand.color;
-
-    heroGrid.appendChild(card);
-  });
+  renderHeroCards();
 
 
   function createListItem(key, task) {
@@ -667,51 +684,56 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
   }
 
 
-  Object.entries(groupedTasks).forEach(([catName, data]) => {
-    const group = document.createElement("div");
-    group.className = "cw-acc-group";
+  function renderAccordion() {
+    accContainer.innerHTML = "";
+    Object.entries(groupedTasks).forEach(([catName, data]) => {
+      const group = document.createElement("div");
+      group.className = "cw-acc-group";
 
-    const header = document.createElement("div");
-    header.className = "cw-acc-header";
-    header.innerHTML = `
-            <div class="cw-acc-title">
-                <div class="cw-acc-dot" style="background:${data.brand.color}"></div>
-                ${catName}
-            </div>
-            <div class="cw-acc-icon">▼</div>
-        `;
-    header.tabIndex = 0;
-    header.setAttribute("role", "button");
-    header.setAttribute("aria-expanded", "false");
-    header.onclick = () => {
-      accContainer.querySelectorAll(".cw-acc-group.open").forEach((g) => {
-        if (g !== group) {
-          g.classList.remove("open");
-          g.querySelector(".cw-acc-header")?.setAttribute("aria-expanded", "false");
+      const header = document.createElement("div");
+      header.className = "cw-acc-header";
+      header.innerHTML = `
+              <div class="cw-acc-title">
+                  <div class="cw-acc-dot" style="background:${data.brand.color}"></div>
+                  ${catName}
+              </div>
+              <div class="cw-acc-icon">▼</div>
+          `;
+      header.tabIndex = 0;
+      header.setAttribute("role", "button");
+      header.setAttribute("aria-expanded", "false");
+      header.onclick = () => {
+        accContainer.querySelectorAll(".cw-acc-group.open").forEach((g) => {
+          if (g !== group) {
+            g.classList.remove("open");
+            g.querySelector(".cw-acc-header")?.setAttribute("aria-expanded", "false");
+          }
+        });
+        const isOpen = group.classList.toggle("open");
+        header.setAttribute("aria-expanded", String(isOpen));
+      };
+      header.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          header.click();
         }
       });
-      const isOpen = group.classList.toggle("open");
-      header.setAttribute("aria-expanded", String(isOpen));
-    };
-    header.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        header.click();
-      }
+
+      const body = document.createElement("div");
+      body.className = "cw-acc-body";
+
+      data.tasks.forEach((item) => {
+        const row = createListItem(item.key, item);
+        body.appendChild(row);
+      });
+
+      group.appendChild(header);
+      group.appendChild(body);
+      accContainer.appendChild(group);
     });
+  }
 
-    const body = document.createElement("div");
-    body.className = "cw-acc-body";
-
-    data.tasks.forEach((item) => {
-      const row = createListItem(item.key, item);
-      body.appendChild(row);
-    });
-
-    group.appendChild(header);
-    group.appendChild(body);
-    accContainer.appendChild(group);
-  });
+  renderAccordion();
 
 
   function updateTask(key, delta, taskData) {
@@ -1020,6 +1042,31 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
         updateUI();
     },
     
+    // Repinta o catálogo depois que a Central de Conteúdo reescreve o TASKS_DB
+    // (tasks-service.js). Chamado no boot, quando o conteúdo publicado chega -
+    // o componente já está montado nessa hora, e sem isto a tela seguiria
+    // mostrando o catálogo embutido até o agente recarregar a página.
+    refreshCatalog: () => {
+      recomputeCatalog();
+
+      // A seleção sobrevive, mas passa a apontar para a definição NOVA: sem
+      // isto o cartão de screenshots do que já estava marcado continuaria
+      // pedindo a lista antiga, que é exatamente a evidência errada. Task que
+      // saiu do catálogo fica como está - tirar do agente algo que ele já
+      // marcou, no meio da nota, é pior do que manter.
+      Object.keys(selection).forEach((key) => {
+        const nova = TASKS_DB[key];
+        if (!nova) return;
+        selection[key].data = nova;
+        selection[key].brand = getBrand(nova.name);
+      });
+
+      renderHeroCards();
+      renderAccordion();
+      updateUI();
+      renderScreenshots();
+    },
+
     reset: () => {
       for (const key in selection) delete selection[key];
       searchInput.value = "";

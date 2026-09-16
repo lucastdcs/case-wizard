@@ -39,3 +39,7 @@ No ADR needed for trivial choices or implementation details.
 | [0007](0007-arquitetura-da-central-de-conteudo.md) | Arquitetura da Central de Conteúdo: trilho por regime, no lugar de abas | **Proposed** | 2026-09-02 |
 | [0008](0008-cache-e-retencao-do-conteudo.md) | Cache da leitura pública e retenção das abas de conteúdo | **Proposed** | 2026-09-02 |
 | [0009](0009-rbac-editavel-da-central.md) | Papéis da Central como dado editável, não como constante do código | **Proposed** | 2026-09-02 |
+| [0010](0010-disponibilidade-bau-com-fuso.md) | Disponibilidade do BAU gravada com deslocamento de fuso | Accepted | 2026-09-08 |
+| [0011](0011-am-do-bcc-vem-do-case-log.md) | O AM do BCC vem do case log, não do assignee nem da lista de contatos | Accepted | 2026-09-09 |
+| [0012](0012-tasks-e-screenshots-na-central.md) | Catálogo de tasks e screenshots do Win Criteria na Central de Conteúdo | Accepted | 2026-09-09 |
+| [0013](0013-modulo-novo-herda-o-preset.md) | Módulo novo herda o preset nas casas que a planilha não tem | Accepted | 2026-09-09 |
