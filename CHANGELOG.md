@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.3.2] - 2026-09-16
+
 ### Added
 - **Histórico clicável.** Clicar num caso resolvido abre a mesma vista de
   detalhes da fila, com tudo — anunciante, CID, tasks, justificativa,
@@ -756,7 +758,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...HEAD
+[6.3.2]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...v6.3.2
 [6.3.1]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...v6.3.1
 [6.3.0]: https://github.com/lucastdcs/case-wizard/compare/v6.2.0...v6.3.0
 [6.2.0]: https://github.com/lucastdcs/case-wizard/compare/v6.1.0...v6.2.0
