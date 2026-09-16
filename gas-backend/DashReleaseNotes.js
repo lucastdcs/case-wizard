@@ -28,7 +28,7 @@
 // conta uma release por vez (o navegador guarda uma única versão vista).
 
 const CW_DASH_RELEASE_NOTES = {
-  version: "6.3.1",
+  version: "6.3.2",
   title: "Novidades do TL Dashboard",
   items: [
     {
@@ -40,6 +40,16 @@ const CW_DASH_RELEASE_NOTES = {
       icon: "dashboard_customize",
       title: "A vista de detalhes foi remodelada",
       text: "Ficou mais larga e agora separa o que você LÊ para decidir (o que deve ser feito, o motivo, a justificativa e o agendamento, no bloco do topo) do que você COPIA para o CRM (os dados do caso, logo abaixo). Nome e sobrenome do anunciante viraram campos separados — sem sobrenome, o campo diz N/A. E dá para aprovar ou rejeitar sem fechar a vista: os botões estão no rodapé dela."
+    },
+    {
+      icon: "manage_search",
+      title: "O histórico virou clicável",
+      text: "Clique em qualquer caso resolvido e você vê tudo o que veria na fila — anunciante, CID, tasks, justificativa, agendamento —, não só o número do caso. No topo, um bloco novo diz quem decidiu, quando, e a justificativa registrada. A busca do histórico também passou a achar por anunciante e CID."
+    },
+    {
+      icon: "edit_note",
+      title: "Rejeitar agora pede uma justificativa",
+      text: "Ao recusar uma abertura ou negar um descarte, o painel pede o motivo — e ele vai no e-mail que o agente recebe. Até aqui o agente era avisado do \"não\" sem nenhuma razão e tinha que perguntar no chat. A justificativa fica gravada e aparece no histórico junto com a decisão."
     },
     {
       icon: "history",

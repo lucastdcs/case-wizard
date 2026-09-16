@@ -78,6 +78,24 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [~] **Histórico clicável + justificativa da recusa** (branch
+      `feat/historico-clicavel-e-justificativa`, v6.3.2). Terceira rodada sobre o
+      painel do TL.
+      1. **Histórico** — `getWeeklyHistory` devolvia 8 campos contra os 20 da
+         fila, por isso a aba só mostrava o número. As duas leituras saem agora
+         do mesmo `mapBAURow_`. Clicar abre a vista de detalhes com uma zona
+         "Decisão" (quem/quando/caso filho/justificativa) e **sem** rodapé de
+         ação.
+      2. **Justificativa** — coluna 26 `TL_Justification`, obrigatória em
+         `REJECTED_CREATION` e `KEPT_ACTIVE`, validada nos dois lados e enviada
+         no e-mail do agente.
+      3. **Bug pego pelo teste:** a tela pedia justificativa nas decisões
+         erradas. `isPositive` só diz se o `newStatus` é `CREATED`, e no fluxo de
+         descarte `CREATED` significa *negar* o pedido. A régua agora deriva a
+         ação como o servidor deriva.
+      Testes: `test:tl-decision` (13, o primeiro que o `BAU_Dashboard.js` tem) e
+      `smoke:tl-dash` de 21 para 30. **Falta o `clasp deploy` de produção.**
+
 - [~] **Vista de caso remodelada + changelog do TL Dashboard.** Segunda rodada
       de feedback sobre o modal do TL.
       1. **Três zonas por propósito** (ADR-0015): cabeçalho (anunciante, selos,
