@@ -742,6 +742,35 @@ function ensureBAUAdvPhoneColumn(sheet) {
   if (!headerCell.getValue()) headerCell.setValue(BAU_ADV_PHONE_HEADER);
 }
 
+// Justificativa que a liderança escreve ao dizer NÃO ao pedido do agente —
+// tanto ao recusar a abertura de um caso quanto ao negar um descarte.
+//
+// É obrigatória nessas duas decisões (ver bau-lifecycle.md) pela mesma razão que
+// o Child_Case_ID é obrigatório na aprovação: antes disso o agente recebia o
+// e-mail de "recusado" sem razão nenhuma, e a única saída era perguntar no chat.
+//
+// Entra no fim pelo mesmo motivo das colunas 22 a 25: acrescentar coluna nunca
+// desloca índice já gravado em planilha de produção.
+const BAU_TL_JUSTIFICATION_HEADER = "TL_Justification";
+const BAU_TL_JUSTIFICATION_COL = 26;
+
+function ensureBAUTLJustificationColumn(sheet) {
+  const currentMaxCols = sheet.getMaxColumns();
+  if (currentMaxCols < BAU_TL_JUSTIFICATION_COL) {
+    sheet.insertColumnsAfter(currentMaxCols, BAU_TL_JUSTIFICATION_COL - currentMaxCols);
+  }
+
+  const headerCell = sheet.getRange(1, BAU_TL_JUSTIFICATION_COL);
+  if (!headerCell.getValue()) headerCell.setValue(BAU_TL_JUSTIFICATION_HEADER);
+}
+
+// As duas decisões em que a liderança diz NÃO ao agente. Uma função e não um
+// literal espalhado: a regra vale no servidor (updateBAUCaseStatus) e decide
+// também o que a tela pede antes de enviar — e as duas não podem divergir.
+function decisionRequiresJustification(processedAction) {
+  return processedAction === "REJECTED_CREATION" || processedAction === "KEPT_ACTIVE";
+}
+
 // Texto de uma célula do BAU_form_data, já limpo dos literais que o transporte
 // JSONP deixou gravados antes da correção em `buildQueryString`.
 //

@@ -131,21 +131,61 @@ CASOS.push({
     availability: '', suggestDiscard: 'Não',
 });
 
+// Histórico: o payload agora é o registro INTEIRO mais os campos de resolução —
+// é isso que permite abrir um caso resolvido e ver o mesmo que se vê na fila.
+// O segundo caso é anterior à coluna de justificativa e nunca vai ter uma.
+const HISTORICO = {
+    windowDays: 30,
+    cases: [
+        {
+            id: 'hist_rejeitado', status: 'DISCARDED',
+            date: '2026-09-01T10:00:00Z', agentEmail: 'lucaste@google.com',
+            caseId: '0-5555555555', cid: '555-555-5555', speakeasyId: '555555',
+            advName: 'Mercearia', advLastName: 'Central',
+            advEmail: 'oi@mercearia.exemplo', advPhone: '+55 21 98888-8888',
+            site: 'https://mercearia.exemplo', timezone: 'America/Sao_Paulo',
+            language: 'PT-BR', amName: 'Sicrano', salesProgram: 'Programa W',
+            reason: 'Revisar o Enhanced Conversions.',
+            task: 'Ads Enhanced Conversions',
+            description: 'Solicitação de tarefas (tasks) adicionais | O anunciante pediu mais duas tasks.',
+            availability: '2026-09-05T10:00-03:00', suggestDiscard: 'Não',
+            action: 'REJECTED_CREATION', processedBy: 'tlpessoa@google.com',
+            processedAt: '2026-09-02T14:00:00Z', childCaseId: '',
+            tlJustification: 'As tasks pedidas cabem no caso atual, não precisa de BAU.',
+        },
+        {
+            id: 'hist_antigo', status: 'CREATED',
+            date: '2026-08-20T10:00:00Z', agentEmail: 'anaes@google.com',
+            caseId: '0-6666666666', cid: '666-666-6666', speakeasyId: '666666',
+            advName: 'Farmácia', advLastName: '',
+            advEmail: '', advPhone: '', site: '', timezone: '',
+            language: 'PT-BR', amName: '', salesProgram: '',
+            reason: 'Instalar GTM.', task: 'Google Tag Manager Installation',
+            description: 'Tempo da consultoria esgotado | Sem tempo.',
+            availability: '', suggestDiscard: 'Não',
+            action: 'APPROVED_CREATION', processedBy: 'tlpessoa@google.com',
+            processedAt: '2026-08-21T09:00:00Z', childCaseId: '0-7777777777',
+            tlJustification: '',
+        },
+    ],
+    stats: { approved: 1, discarded: 1, avgResolutionHours: 20, topAgents: [] },
+};
+
 const PERFIL = { ldap: 'tlpessoa', role: 'TL', defaultLanguage: 'PT-BR' };
 
 async function abrirPagina(browser, { idiomaDoTL, versaoJaVista } = {}) {
     const page = await browser.newPage();
     page.on('pageerror', (e) => { console.log('      [erro na página] ' + e.message); });
 
-    await page.addInitScript(({ casos, perfil }) => {
+    await page.addInitScript(({ casos, historico, perfil }) => {
         const RESPOSTAS = {
             getPendingBAUCases: () => casos,
             getCurrentTLProfile: () => perfil,
             getActiveTLs: () => [],
             getRecentActivity: () => [],
-            getWeeklyHistory: () => ({ windowDays: 7, cases: [], stats: { approved: 0, discarded: 0, avgResolutionHours: null, topAgents: [] } }),
+            getWeeklyHistory: () => historico,
             recordTLPresence: () => ({ ldap: perfil.ldap }),
-            updateBAUCaseStatus: () => ({ status: 'success', emailSent: true }),
+            updateBAUCaseStatus: () => ({ success: true, emailSent: true }),
         };
         function construir() {
             let ok = null, erro = null;
@@ -154,6 +194,7 @@ async function abrirPagina(browser, { idiomaDoTL, versaoJaVista } = {}) {
                     if (prop === 'withSuccessHandler') return function (f) { ok = f; return proxy; };
                     if (prop === 'withFailureHandler') return function (f) { erro = f; return proxy; };
                     return function (...args) {
+                        (window.__enviou = window.__enviou || []).push({ metodo: String(prop), args });
                         setTimeout(() => {
                             try { const r = (RESPOSTAS[prop] || (() => null))(...args); if (ok) ok(r); }
                             catch (e) { if (erro) erro({ message: e.message }); }
@@ -166,7 +207,7 @@ async function abrirPagina(browser, { idiomaDoTL, versaoJaVista } = {}) {
         Object.defineProperty(window, 'google', {
             value: { script: { get run() { return construir(); } } }, writable: true,
         });
-    }, { casos: CASOS, perfil: Object.assign({}, PERFIL, idiomaDoTL ? { defaultLanguage: idiomaDoTL } : {}) });
+    }, { casos: CASOS, historico: HISTORICO, perfil: Object.assign({}, PERFIL, idiomaDoTL ? { defaultLanguage: idiomaDoTL } : {}) });
 
     if (versaoJaVista) {
         await page.addInitScript((v) => {
@@ -396,6 +437,130 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
         contem(r.briefing.map((b) => b.label).join(' § '), 'Qué debe hacerse', 'briefing em ES');
         contem(r.copiado, 'O que aconteceu:', 'mas o texto do caso PT segue em PT');
     });
+    await page.close();
+}
+
+{
+    // Histórico clicável e justificativa da recusa.
+    const page = await abrirPagina(browser, { versaoJaVista: NOTAS.version });
+    await page.click('#tab-history');
+    await page.waitForSelector('.history-row', { timeout: 5000 });
+    await page.waitForTimeout(150);
+
+    await check('clicar no histórico abre a MESMA vista da fila, com tudo', async () => {
+        const r = await abrirCaso(page, 'hist_rejeitado');
+        igual(r.titulo, 'Mercearia Central', 'anunciante no título');
+        // Os campos que o histórico antigo não tinha como mostrar:
+        igual(fatoDe(r, 'CID').valor, '555-555-5555', 'CID');
+        igual(fatoDe(r, 'Email do Anunciante').valor, 'oi@mercearia.exemplo', 'e-mail');
+        igual(fatoDe(r, 'AM Responsável').valor, 'Sicrano', 'AM');
+        contem(r.briefing.map((b) => b.texto).join(' § '), 'Revisar o Enhanced Conversions.', 'o que fazer');
+        contem(r.briefing.map((b) => b.texto).join(' § '), 'O anunciante pediu mais duas tasks.', 'justificativa do agente');
+    });
+
+    await check('caso resolvido mostra o bloco da decisão', async () => {
+        const r = await abrirCaso(page, 'hist_rejeitado');
+        const decisao = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('.case-decision .brief-item')).map((i) => ({
+                label: i.querySelector('.brief-label').textContent.trim(),
+                texto: i.querySelector('.brief-text').textContent.trim(),
+            })));
+        const porLabel = (l) => (decisao.filter((d) => d.label === l)[0] || {}).texto;
+        igual(porLabel('Decidido por'), 'tlpessoa', 'quem decidiu');
+        igual(porLabel('Justificativa da liderança'),
+            'As tasks pedidas cabem no caso atual, não precisa de BAU.', 'justificativa registrada');
+        verdade(!!porLabel('Decidido em'), 'quando');
+        contem(r.selos.join(' § '), 'Criação rejeitada', 'selo do desfecho, não do fluxo');
+    });
+
+    await check('caso resolvido NÃO oferece aprovar nem rejeitar', async () => {
+        const r = await abrirCaso(page, 'hist_rejeitado');
+        igual(r.acoes, [], 'rodapé vazio');
+        // Visibilidade COMPUTADA, não o atributo: [hidden] perde para o
+        // `display: flex` da classe, e a faixa cinza continuava desenhada no fim
+        // do modal com o atributo aparentemente correto.
+        igual(await page.evaluate(() =>
+            getComputedStyle(document.getElementById('modal-footer-content')).display),
+            'none', 'e some de verdade, sem deixar a faixa do rodapé');
+    });
+
+    await check('decisão anterior à coluna não renderiza justificativa vazia', async () => {
+        const r = await abrirCaso(page, 'hist_antigo');
+        const labels = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('.case-decision .brief-label')).map((l) => l.textContent.trim()));
+        verdade(labels.indexOf('Justificativa da liderança') === -1,
+            'sem bloco de justificativa para caso decidido antes dela existir');
+        contem(labels.join(' § '), 'ID do caso BAU gerado', 'mas o caso filho aparece');
+        contem(r.selos.join(' § '), 'Criação aprovada', 'selo de aprovado');
+    });
+
+    await check('a busca do histórico acha por anunciante e CID', async () => {
+        await page.evaluate(() => closeModal('caseModal'));
+        await page.fill('#search-input', 'mercearia');
+        await page.waitForTimeout(250);
+        igual(await page.evaluate(() => document.querySelectorAll('.history-row').length), 1, 'por anunciante');
+        await page.fill('#search-input', '666-666');
+        await page.waitForTimeout(250);
+        igual(await page.evaluate(() => document.querySelectorAll('.history-row').length), 1, 'por CID');
+        await page.fill('#search-input', '');
+        await page.waitForTimeout(250);
+    });
+
+    await page.close();
+}
+
+{
+    // O campo de justificativa no modal de confirmação.
+    const page = await abrirPagina(browser, { versaoJaVista: NOTAS.version });
+
+    const estadoDoModal = () => page.evaluate(() => ({
+        pedeJustificativa: !document.getElementById('confirm-justification').hidden,
+        pedeCasoFilho: !document.getElementById('confirm-child-case').hidden,
+        erroVisivel: !document.getElementById('confirm-justification-error').hidden,
+    }));
+
+    await check('rejeitar pede justificativa; aprovar não', async () => {
+        await page.evaluate(() => confirmAction('bau_pt', 'DISCARDED'));
+        await page.waitForTimeout(100);
+        igual(await estadoDoModal(), { pedeJustificativa: true, pedeCasoFilho: false, erroVisivel: false },
+            'rejeição de criação');
+
+        await page.evaluate(() => { closeModal('confirmModal'); confirmAction('bau_pt', 'CREATED'); });
+        await page.waitForTimeout(100);
+        igual(await estadoDoModal(), { pedeJustificativa: false, pedeCasoFilho: true, erroVisivel: false },
+            'aprovação de criação');
+    });
+
+    await check('negar um descarte também pede justificativa', async () => {
+        await page.evaluate(() => { closeModal('confirmModal'); confirmAction('bau_descarte', 'CREATED'); });
+        await page.waitForTimeout(100);
+        igual((await estadoDoModal()).pedeJustificativa, true, 'manter caso ativo é a outra negativa');
+
+        await page.evaluate(() => { closeModal('confirmModal'); confirmAction('bau_descarte', 'DISCARDED'); });
+        await page.waitForTimeout(100);
+        igual((await estadoDoModal()).pedeJustificativa, false, 'confirmar o descarte é aceitar o pedido');
+    });
+
+    await check('enviar sem justificativa é barrado, e nada vai ao servidor', async () => {
+        await page.evaluate(() => { closeModal('confirmModal'); window.__enviou = []; confirmAction('bau_pt', 'DISCARDED'); });
+        await page.waitForTimeout(100);
+        await page.click('#confirm-submit-btn');
+        await page.waitForTimeout(200);
+        igual((await estadoDoModal()).erroVisivel, true, 'erro na tela');
+        igual(await page.evaluate(() => window.__enviou.length), 0, 'nenhuma chamada ao servidor');
+        verdade(await page.evaluate(() => document.getElementById('confirmModal').classList.contains('active')),
+            'o modal continua aberto');
+    });
+
+    await check('com justificativa, ela viaja para o servidor', async () => {
+        await page.fill('#confirm-justification-input', 'Cabe no caso atual.');
+        await page.click('#confirm-submit-btn');
+        await page.waitForTimeout(250);
+        const chamada = await page.evaluate(() => window.__enviou[0]);
+        igual(chamada.metodo, 'updateBAUCaseStatus', 'método');
+        igual(chamada.args[3], 'Cabe no caso atual.', 'justificativa no 4º argumento');
+    });
+
     await page.close();
 }
 

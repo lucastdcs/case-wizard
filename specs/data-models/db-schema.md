@@ -3,8 +3,8 @@
 ## Planilha Alvo
 - **Nome/Constante:** `SHEET_BAU_FORM`
 - **Total de Colunas:** 18 colunas do formulário (índices 0 a 17) + 3 de trilha
-  de auditoria (18 a 20, ver abaixo) + 1 de sinalização do agente (21) + 3 acrescentadas
-  depois (22 a 24). A função do Apps Script deve
+  de auditoria (18 a 20, ver abaixo) + 1 de sinalização do agente (21) + 4 acrescentadas
+  depois (22 a 25). A função do Apps Script deve
   garantir o preenchimento/atualização exata do índice 0 a 17.
 
 ## Mapeamento de Índices (Array Google Sheets)
@@ -39,6 +39,7 @@
 | `24` | Adv_Phone | `advPhone` | Telefone do anunciante. **PII** — raspado do CRM só depois do clique no unmask, e vai para o arquivo junto com a linha (ver #353). Desde o ADR-0014 o backup copia em vez de mover, então o valor também **permanece** nesta planilha. Garantida por `ensureBAUAdvPhoneColumn`. |
 | `23` | Child_Case_ID | `childCaseId` | ID do caso BAU que a liderança gerou no CRM ao aprovar a abertura — o "caso filho" daquele pedido. Escrita por `updateBAUCaseStatus`, junto da trilha de auditoria, e **só** em `APPROVED_CREATION`. Sobrevive ao arquivamento semanal desde o ADR-0014. Garantida por `ensureBAUChildCaseColumn`. |
 | `22` | Adv_LastName | `advLastName` | Sobrenome do anunciante (`Family name` no CRM). Mesma razão de estar no fim: acrescentar coluna nunca desloca índice já gravado. Fora do `appendRow` das 18, escrita à parte depois de `ensureBAUAdvLastNameColumn`; na edição, escrita própria porque cai fora do bloco contíguo 4-18 do `setValues`. |
+| `25` | TL_Justification | `justification` | Razão que a liderança escreveu ao dizer **não** ao agente. **Obrigatória** em `REJECTED_CREATION` e `KEPT_ACTIVE`, recusada no servidor antes de gravar qualquer coisa (mesma régua do `Child_Case_ID`); ausente nas duas decisões positivas. Vai para o e-mail do agente. Linhas decididas antes desta coluna existir nunca terão valor — a tela omite o bloco em vez de exibir vazio. Garantida por `ensureBAUTLJustificationColumn`. |
 
 ## Regra de Atualização (Update)
 - NUNCA reescrever dados de uma coluna com `""` se o valor recebido for `undefined`. 
