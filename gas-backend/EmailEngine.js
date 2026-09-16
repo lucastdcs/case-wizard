@@ -68,7 +68,8 @@ const EMAIL_I18N = {
     labelDomain: "Domínio final",
     labelSchedule: "Agendamento (SLA)",
     labelTask: "Procedimento",
-    labelChildCase: "Caso BAU gerado"
+    labelChildCase: "Caso BAU gerado",
+    labelTLJustification: "Justificativa da liderança"
   },
   es: {
     dateUnavailable: "Fecha no disponible",
@@ -118,7 +119,8 @@ const EMAIL_I18N = {
     labelDomain: "Dominio final",
     labelSchedule: "Programación (SLA)",
     labelTask: "Procedimiento",
-    labelChildCase: "Caso BAU generado"
+    labelChildCase: "Caso BAU generado",
+    labelTLJustification: "Justificación de la gerencia"
   }
 };
 
@@ -283,6 +285,35 @@ function renderEmailCallout(kind, text) {
     + text + '</td></tr></table>';
 }
 
+// Escapa texto livre antes de ele virar HTML de e-mail.
+//
+// O arquivo não tinha nenhum escape: o motivo escrito pelo agente (v.reason) já
+// entra cru em renderEmailParagraph. Não consertei aquele caminho aqui — é outro
+// campo, com outro autor e outro destino —, mas a justificativa da liderança
+// nasce escapada: um `<` solto numa frase quebraria a tabela do e-mail, e o
+// corpo é montado por concatenação de strings.
+function escapeEmailText(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// A razão que a liderança deu ao dizer NÃO. Vai no callout e não numa seção lá
+// embaixo porque é a única informação que o agente abre este e-mail para achar —
+// antes dela, o aviso de recusa não dizia nada além de "recusado".
+//
+// Decisão antiga sem justificativa devolve string vazia: o renderizador já trata
+// callout vazio como "não há nada a avisar", e um bloco tingido em branco seria
+// pior que a ausência dele.
+function renderTLJustificationCallout(L, texto) {
+  const limpo = String(texto || "").trim();
+  if (!limpo) return "";
+  return renderEmailCallout("warn",
+    '<strong style="font-weight:500;">' + L.labelTLJustification + ':</strong> ' + escapeEmailText(limpo));
+}
+
 // Pares rótulo/valor. Sem borda e sem caixa: o que separa as linhas é ritmo
 // vertical, que é como o Material resolve isso.
 function renderEmailFields(rows) {
@@ -432,6 +463,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
       title = L.creationRejectedTitle;
       lead = L.creationRejectedMessage(data.advName);
       subject = L.creationRejectedSubject(data.advName);
+      callout = renderTLJustificationCallout(L, data.tlJustification);
       break;
 
     // A liderança negou o pedido de DESCARTE de um caso existente — o caso
@@ -444,6 +476,7 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
       title = L.discardDeniedTitle;
       lead = L.discardDeniedMessage(data.advName);
       subject = L.discardDeniedSubject(data.advName);
+      callout = renderTLJustificationCallout(L, data.tlJustification);
       break;
   }
 

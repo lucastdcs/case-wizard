@@ -20,6 +20,32 @@ O Back-end e o TL Dashboard devem rotear e exibir as informações estritamente 
 - O ID viaja para o e-mail `AGENT_BAU_CREATED`: antes, o agente era avisado de
   que o caso tinha sido criado e **não recebia o número**.
 
+## Justificativa da Recusa
+
+- **Dizer não exige dizer por quê.** Ao **rejeitar uma abertura**
+  (`REJECTED_CREATION`) ou **negar um descarte** (`KEPT_ACTIVE`), a liderança
+  escreve uma justificativa. Sem ela a decisão é **recusada** — no modal e de novo
+  no servidor, porque a tela nunca é a fronteira.
+- **Só nas duas negativas.** `APPROVED_CREATION` e `CONFIRMED_DISCARD` aceitam o
+  pedido do agente e não pedem nada.
+- **Cuidado com o `Status`:** ele não diz qual das quatro decisões foi tomada.
+  `DISCARDED` tanto confirma um descarte quanto rejeita uma criação, e `CREATED`
+  tanto aprova uma criação quanto nega um descarte. Quem decide se a justificativa
+  é exigida é sempre `Processed_Action` (`decisionRequiresJustification`), nunca
+  o `Status` — vale para o servidor e para a tela.
+- A justificativa vai para o **e-mail do agente** (`AGENT_CREATION_REJECTED` e
+  `AGENT_DISCARD_DENIED`) e fica visível no histórico junto com a decisão.
+
+## Histórico (aba 3 do TL Dashboard)
+
+- `getWeeklyHistory` devolve o **registro completo** (o mesmo `mapBAURow_` da
+  fila) mais os campos de resolução — `action`, `processedBy`, `processedAt`,
+  `Child_Case_ID` e `TL_Justification`.
+- Clicar num caso resolvido abre a **mesma vista de detalhes** da fila, com uma
+  zona "Decisão" no topo e **sem** o rodapé de aprovar/rejeitar.
+- O selo do desfecho sai de `action`, não de `status`, pela ambiguidade descrita
+  acima.
+
 ## TL Dashboard (Gestão)
 - **Ordenação (FIFO):** As filas devem ser sempre ordenadas do mais antigo para o mais recente com base na coluna `Data_Envio`. O TL aprova primeiro quem está esperando há mais tempo.
 - **Separação de Abas:** NUNCA misture casos de Abertura com casos de Descarte na mesma visualização.
