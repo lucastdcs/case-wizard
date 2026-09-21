@@ -335,6 +335,42 @@ function renderEmailSection(title, inner) {
     + '<tr><td>' + inner + '</td></tr></table>';
 }
 
+// Os três avisos que falam de um caso QUE JÁ EXISTE e se quer fechar: pedido
+// de descarte, descarte concluído e descarte negado. Distinto de
+// AGENT_CREATION_REJECTED, que também é uma negativa mas de um caso que nunca
+// chegou a existir — lá o agendamento pedido ainda é a informação relevante.
+function ehFluxoDeDescarte(tipoEmail) {
+  return tipoEmail === 'AGENT_DISCARD_SENT'
+    || tipoEmail === 'AGENT_DISCARD_DONE'
+    || tipoEmail === 'AGENT_DISCARD_DENIED';
+}
+
+// As linhas da seção "Detalhes do caso", por fluxo. Função à parte, e não um
+// array montado no meio do envio, por dois motivos: é a única regra de conteúdo
+// que depende do tipo do e-mail, e é o que permite prová-la sem instanciar o
+// MailApp inteiro (ver test:tl-decision).
+//
+// `plain` é o que a alternativa em texto puro imprime quando o valor HTML é um
+// link — sem isso, a versão texto mostraria a marcação crua.
+function camposDetalheDoEmail(L, v, tipoEmail, links) {
+  const campos = [
+    { label: "Case Connect", value: links.caseLink, plain: v.caseId },
+    { label: "Customer ID", value: v.cid, mono: true },
+    { label: L.labelDomain, value: v.site }
+  ];
+
+  if (!ehFluxoDeDescarte(tipoEmail)) {
+    campos.push({ label: L.labelSchedule, value: v.availability });
+    campos.push({ label: L.labelTask, value: v.task });
+  }
+
+  if (links.childCaseId) {
+    campos.push({ label: L.labelChildCase, value: links.childLink, plain: links.childCaseId });
+  }
+
+  return campos;
+}
+
 // Parágrafo simples dentro de uma seção.
 function renderEmailParagraph(text) {
   return '<p style="margin: 0; font-family: {{t.fontSans}}; font-size: {{t.sizeMeta}}; line-height: 1.6; color: {{t.textBody}};" class="dm-text">' + text + '</p>';
@@ -504,17 +540,16 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
   // tinha que ir procurar. Só aparece quando existe (as outras decisões do TL
   // não geram caso filho).
   const childCaseId = String(data.childCaseId || "").trim();
-  const camposDetalhe = [
-    { label: "Case Connect", value: caseLink },
-    { label: "Customer ID", value: v.cid, mono: true },
-    { label: L.labelDomain, value: v.site },
-    { label: L.labelSchedule, value: v.availability },
-    { label: L.labelTask, value: v.task }
-  ];
-  if (childCaseId) {
-    const childLink = '<a href="' + CASE_CONNECT_BASE + childCaseId + '" target="_blank" style="font-family: {{t.fontMono}}; color: {{t.link}}; text-decoration: none;">' + childCaseId + '</a>';
-    camposDetalhe.push({ label: L.labelChildCase, value: childLink });
-  }
+
+  const childLink = childCaseId
+    ? '<a href="' + CASE_CONNECT_BASE + childCaseId + '" target="_blank" style="font-family: {{t.fontMono}}; color: {{t.link}}; text-decoration: none;">' + childCaseId + '</a>'
+    : "";
+
+  const camposDetalhe = camposDetalheDoEmail(L, v, tipoEmail, {
+    caseLink: caseLink,
+    childCaseId: childCaseId,
+    childLink: childLink
+  });
 
   const blocks = renderEmailSection(L.sectionDetails, renderEmailFields(camposDetalhe))
     + renderEmailSection(L.labelContext, renderEmailParagraph(v.reason));
@@ -543,16 +578,15 @@ function sendDynamicTechSolEmail(destinatario, data, escalacaoId, tipoEmail, aut
     "",
     actionLabel + ": " + actionUrl,
     "",
-    L.sectionDetails,
-    "Case Connect: " + v.caseId,
-    "Customer ID: " + v.cid,
-    L.labelDomain + ": " + v.site,
-    L.labelSchedule + ": " + v.availability,
-    L.labelTask + ": " + v.task
+    L.sectionDetails
   );
-  if (childCaseId) {
-    plainLines.push(L.labelChildCase + ": " + childCaseId);
-  }
+  // Derivado de camposDetalhe, e não reescrito à mão: as duas listas eram
+  // cópias uma da outra, então toda regra de campo (a do descarte, a do caso
+  // filho) precisava ser lembrada duas vezes para as versões HTML e texto não
+  // divergirem em silêncio.
+  camposDetalhe.forEach(function (campo) {
+    plainLines.push(campo.label + ": " + (campo.plain !== undefined ? campo.plain : stripEmailHtml(campo.value)));
+  });
   plainLines.push(
     "",
     L.labelContext + ": " + stripEmailHtml(v.reason),

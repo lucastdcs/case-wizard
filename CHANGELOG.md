@@ -8,6 +8,30 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Pedir descarte disparava o e-mail de abertura de caso.** Quem começava pelo
+  "Solicitar Descarte" no passo 0 do formulário recebia "Caso na fila BAU — a
+  solicitação foi registrada e aguarda análise da liderança": o texto de um caso
+  sendo **aberto**, para um pedido de **fechar** um caso que já existe.
+  `handleBAUEscalation()` escolhia o `Status` pelo `requestType` (gravava
+  `PENDING_TL_DISCARD`, correto) e o tipo do e-mail não — mandava
+  `AGENT_BAU_SENT` fixo. O `AGENT_DISCARD_SENT`, que existe e está certo desde
+  agosto, só disparava no caminho de **edição** (um caso já criado transicionando
+  para descarte), e é por isso que o defeito sobreviveu: só aparece para quem
+  começa pelo descarte. Agora o status e o e-mail saem do mesmo campo, amarrados
+  num teste.
+- **O e-mail de descarte anunciava um horário que não existe.** A seção "Detalhes
+  do caso" era a mesma para os sete tipos de e-mail, então um pedido de descarte
+  — fluxo que nem pergunta agendamento nem task — imprimia "Agendamento (SLA):
+  Data indisponível" e "Procedimento: N/A". Os dois campos agora só aparecem nos
+  fluxos de **abertura**. `AGENT_CREATION_REJECTED` continua mostrando os dois: é
+  uma negativa, mas de um caso que nunca existiu, e ali o agendamento pedido
+  ainda é a informação relevante.
+- **A versão em texto puro do e-mail era uma cópia manual da versão HTML.** Toda
+  regra de campo precisava ser lembrada duas vezes, e as duas listas divergiriam
+  em silêncio na primeira que alguém esquecesse. A lista de texto passa a ser
+  derivada da mesma estrutura que gera o HTML.
+
 ## [6.3.3] - 2026-09-16
 
 ### Fixed

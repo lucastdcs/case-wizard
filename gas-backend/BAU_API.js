@@ -45,10 +45,22 @@ function handleBAUEscalation(ss, p) {
     ensureBAUAdvPhoneColumn(sheet);
     sheet.getRange(sheet.getLastRow(), BAU_ADV_PHONE_COL).setValue(p.advPhone || '');
 
+    // O tipo do e-mail segue o MESMO campo que decidiu o status acima. Antes
+    // daqui, um descarte aberto direto pelo passo 0 do formulário gravava
+    // PENDING_TL_DISCARD e mandava 'AGENT_BAU_SENT' — "a solicitação foi
+    // registrada e aguarda análise", que é o texto de abertura de caso. O
+    // agente pedia para descartar um caso existente e recebia a confirmação
+    // de um caso sendo aberto. O caminho de EDIÇÃO (updateBAUCase) já
+    // escolhia certo, e é por isso que o defeito sobreviveu: só aparece em
+    // quem começa pelo descarte.
+    const tipoEmailAgente = p.requestType === 'DISCARD'
+      ? 'AGENT_DISCARD_SENT'
+      : 'AGENT_BAU_SENT';
+
     let emailSent = false;
     try {
       if (typeof sendDynamicTechSolEmail === "function") {
-        sendDynamicTechSolEmail(userEmail, p, newId, 'AGENT_BAU_SENT', userEmail);
+        sendDynamicTechSolEmail(userEmail, p, newId, tipoEmailAgente, userEmail);
         emailSent = true;
       }
     } catch(e) {
