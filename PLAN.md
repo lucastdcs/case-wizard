@@ -348,6 +348,17 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 > promoveu produção sem intervenção nenhuma. O que exige mão continua sendo o que
 > roda DENTRO da planilha (semeaduras e gatilhos), listado abaixo.
 
+- [ ] **Duas falhas reais em `smoke:shortcuts`, escondidas pelo ferramental.**
+      Apareceram no minuto em que o script passou a rodar (antes ele morria no
+      launch do browser, e o ambiente lia isso como "suíte verde"). **Não são
+      regressão do commit que as revelou** — conferido rodando o smoke corrigido
+      contra o commit anterior. As duas são na tela de Configurações:
+      `a lista de Configurações segue a mesma ordem do Ctrl+K` (a tela mostrou só
+      `["Teste"]`, ou seja, a lista está incompleta, não só fora de ordem) e
+      `o construtor só oferece cenários do substatus escolhido` (timeout de 30s
+      esperando `.cw-sc-add` — o botão não existe mais ou mudou de seletor).
+      Escopo próprio: não misturar com a repaginação do BAU.
+
 - [ ] **AM sempre igual — falta a saída do diagnóstico no CRM real.** Bloqueado
       em dado, não em código. `noguti@google.com` não está em lugar nenhum do
       repositório (working tree e histórico), então entra pelo runtime. Duas

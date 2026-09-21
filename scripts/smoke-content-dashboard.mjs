@@ -465,7 +465,11 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
 }
 
 await prepararArquivo();
-const browser = await chromium.launch({ headless: true });
+// Mesmo gancho de test-scraping.mjs e smoke-tl-dashboard.mjs: num ambiente
+// que ja tem Chromium mas nao o build exato que o Playwright fixa, e o que
+// permite rodar o smoke em vez de pular. Vazio, o Playwright resolve sozinho.
+const executablePath = process.env.CW_CHROMIUM || undefined;
+const browser = await chromium.launch({ headless: true, executablePath });
 
 console.log('\n--- Smoke: Central de Conteúdo ---');
 
