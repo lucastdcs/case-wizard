@@ -78,12 +78,6 @@ export const injectStyles = () => {
       overflow: hidden;
     }
 
-    /* Enquanto os detalhes estão abertos, as views de baixo saem da tela de
-       verdade. Antes elas só ficavam ESCONDIDAS ATRÁS de um painel opaco:
-       seguiam rolando, recebendo foco por Tab e sendo lidas por leitor de
-       tela. */
-    .bau-view-container.details-open .bau-view { visibility: hidden; }
-
     .bau-view {
       display: none;
       flex-direction: column;
@@ -104,11 +98,14 @@ export const injectStyles = () => {
     /* --- 3. ESTILOS GERAIS E CLASSES ADICIONAIS --- */
     .bau-dashboard-content {
       flex: 1;
-      overflow-y: auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      /* Nao rola: no mestre-detalhe quem rola sao os DOIS paineis, cada um no
+         seu eixo. Uma rolagem so para os dois obrigaria a descer a lista para
+         ler o fim do detalhe. */
+      overflow: hidden;
       padding: 24px;
-      padding-bottom: 120px;
-      scroll-behavior: smooth;
-      height: 100%;
       box-sizing: border-box;
 
       scrollbar-width: thin;
@@ -650,8 +647,8 @@ export const injectStyles = () => {
        position: relative) para não ocupar uma célula e desalinhar os vitais. */
     .bau-rescan-btn {
       position: absolute;
-      top: 10px;
-      right: 10px;
+      top: 8px;
+      right: 8px;
       width: 32px;
       height: 32px;
       display: flex;
@@ -948,178 +945,157 @@ export const injectStyles = () => {
     .bau-pulse-attention { animation: pulseGlow 2s infinite; }
     @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(217, 48, 37, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0); } }
 
-    /* --- BAU DETAILS INTERNAL VIEW (Standard Regular Material) --- */
-    /* Cobre o container inteiro. O 'top: 56px' anterior descontava um header
-       que NÃO é ancestral daqui — o header padrão é irmão de
-       .bau-view-container, não filho —, então a janela de detalhes nascia 56px
-       baixo demais e deixava uma faixa do dashboard aparecendo por cima dela. */
-    .bau-details-view {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: #F8F9FA;
-        z-index: 200;
-        display: none;
-        flex-direction: column;
-        pointer-events: none;
-        opacity: 0;
-        transform: scale(0.95) translateY(10px);
-        transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-                    transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-        border-radius: 0 0 16px 16px;
-        overflow: hidden;
+    /* --- MESTRE-DETALHE ---------------------------------------------------
+       Lista e detalhe lado a lado. Substitui o painel sobreposto: nao ha mais
+       nada absoluto por cima de nada, entao offset, z-index e rolagem dupla
+       deixam de ser possiveis. */
+    .bau-md {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      gap: 16px;
     }
 
-    .bau-details-view.active {
-        display: flex;
-        opacity: 1;
-        pointer-events: auto;
-        transform: scale(1) translateY(0);
+    .bau-md-list,
+    .bau-md-detail {
+      min-width: 0;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #DADCE0 transparent;
     }
+    .bau-md-list::-webkit-scrollbar,
+    .bau-md-detail::-webkit-scrollbar { width: 6px; }
+    .bau-md-list::-webkit-scrollbar-thumb,
+    .bau-md-detail::-webkit-scrollbar-thumb { background-color: #DADCE0; border-radius: 4px; }
 
-    .bau-details-header {
-        padding: 16px 24px;
-        background: #FFFFFF;
-        border-bottom: 1px solid #DADCE0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-shrink: 0;
-    }
+    /* O FAB flutua sobre AS DUAS colunas (esta ancorado no canto da janela, nao
+       da lista). Este respiro e o que garante que o ultimo card, o acordeao e a
+       ultima linha do detalhe alcancem o fim da rolagem sem ficar embaixo dele. */
+    .bau-md-list,
+    .bau-md-detail { padding-bottom: 88px; }
 
-    .bau-details-title {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: #202124;
-    }
+    /* Na coluna do mestre o card tem ~380px, nao os 850 de antes. Em linha
+       unica o titulo sobrava com 145px e quebrava em tres linhas enquanto data
+       e selo dividiam o resto. Empilhado, o titulo ganha a largura toda. */
+    .bau-md-list .bau-case-card { flex-direction: column; align-items: stretch; gap: 12px; }
+    .bau-md-list .bau-case-header { flex-wrap: wrap; gap: 4px 8px; }
+    .bau-md-list .bau-case-title { flex: 1 1 100%; }
+    /* Fora do mestre (largura cheia) segue empilhado a direita, como era. */
+    .bau-case-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .bau-md-list .bau-case-actions { flex-direction: row; align-items: center; justify-content: flex-end; }
 
-    .bau-details-close-btn {
-        background: #F1F3F4;
-        border: 1px solid #DADCE0;
-        color: #5F6368;
-        cursor: pointer;
-        padding: 6px 16px;
-        border-radius: 100px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        font-weight: 500;
-        transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
-    }
-    .bau-details-close-btn:hover { background: #E8EAED; color: #202124; transform: scale(1.02); }
-    .bau-details-close-btn:active { transform: scale(0.95); transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
-
-    .bau-details-content {
-        padding: 24px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        scrollbar-width: thin;
-    }
-
-    .bau-details-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-    }
-
-    .bau-details-card {
-        background: #FFFFFF;
-        border: 1px solid #DADCE0;
-        border-radius: 12px;
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        transition: transform 0.2s ease;
-        /* min-width:0 é necessário pra célula de grid poder encolher abaixo
-           do conteúdo — sem isso, um texto sem quebra (URL, ID de rastreio)
-           força a coluna a ficar larga, estoura o grid, e o pai com
-           overflow:hidden corta/sobrepõe em vez de rolar. Casos já
-           resolvidos tendem a ter os campos mais preenchidos, por isso o
-           problema aparecia mais neles. */
-        min-width: 0;
-    }
-
-    .bau-details-row {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        position: relative;
-    }
-    /* Numa coluna flex o padrão é esticar, e o selo de status virava uma barra
-       de 258px atravessando o card em vez de uma pílula do tamanho do texto. */
-    .bau-details-row .bau-case-status-badge { align-self: flex-start; }
-    .bau-details-card.full-width { grid-column: 1 / -1; }
-
-    .bau-details-label {
-        font-size: 11px;
-        font-weight: 700;
-        color: #5F6368;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-    }
-
-    .bau-details-value {
-        font-size: 14px;
-        font-weight: 500;
-        color: #202124;
-        line-height: 1.5;
-        overflow-wrap: break-word;
-        word-break: break-word;
-    }
-
-    .bau-copy-btn {
-        position: absolute;
-        top: 0;
-        right: 0;
-        background: transparent;
-        border: none;
-        color: #1A73E8;
-        cursor: pointer;
-        padding: 4px;
-        opacity: 0;
-        transition: opacity 0.2s ease, background-color 0.2s ease;
-        border-radius: 6px;
-    }
-    .bau-details-row:hover .bau-copy-btn { opacity: 1; background: #E8F0FE; }
-    .bau-copy-btn:active { transform: scale(0.85); transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
-
-    .bau-details-divider {
-        grid-column: 1 / -1;
-        height: 1px;
-        background: #DADCE0;
-        margin: 8px 0;
-    }
-
-    .bau-input-group {
-      display: flex;
-    }
-
-    .bau-input-group > .bau-input {
-      border-radius: 8px 0 0 8px;
-    }
-
-    .bau-mini-btn-input {
+    /* Zona de leitura: recuada (tonal, sem sombra), como manda o design-system
+       para "material de referencia, o que a pessoa le". A sombra fica para o
+       que a pessoa leva embora — um elevado por tela, que aqui e o FAB. */
+    .bau-md-detail {
+      min-width: 0;
       background: #F8F9FA;
       border: 1px solid #DADCE0;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .bau-md-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 48px 16px;
       color: #5F6368;
-      border-radius: 0 8px 8px 0;
-      padding: 12px 16px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-      margin-left: -1px;
+    }
+    .bau-md-empty svg { width: 48px; height: 48px; opacity: 0.4; }
+    .bau-md-empty-text { margin: 0; font-size: 13px; text-align: center; max-width: 240px; }
+
+    .bau-md-head { margin-bottom: 16px; }
+    .bau-md-title {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      font-weight: 500;
+      color: #202124;
+      line-height: 1.3;
+    }
+    .bau-md-head-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .bau-md-date {
+      font-size: 12px;
+      color: #5F6368;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Um contentor por unidade de informacao: o briefing e UMA caixa, nao uma
+       caixa por campo. Hierarquia por tipografia e hairline, como o spec pede. */
+    .bau-md-briefing,
+    .bau-md-data { display: flex; flex-direction: column; }
+    .bau-md-briefing { margin-bottom: 16px; }
+
+    .bau-md-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid #E8EAED;
+      align-items: start;
+    }
+    /* Separador nao fica pendurado: o ultimo item nao leva hairline. */
+    .bau-md-line.is-last { border-bottom: none; }
+
+    /* Degrau tipografico real (12 contra 15), nao dois pixels de diferenca. */
+    .bau-md-label {
+      grid-column: 1 / -1;
+      font-size: 12px;
+      color: #5F6368;
+      margin-bottom: 2px;
+    }
+    .bau-md-value {
+      grid-column: 1;
+      font-size: 15px;
+      color: #202124;
+      word-break: break-word;
+      line-height: 1.45;
+    }
+    .bau-md-value.is-mono { font-variant-numeric: tabular-nums; }
+
+    /* O botao de copiar significa UMA coisa: "isto vai para o outro sistema".
+       So existe na zona de dados, e so aparece no hover/foco da linha. */
+    .bau-md-copy {
+      grid-column: 2;
+      grid-row: 2;
+      width: 28px;
+      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 0;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: #5F6368;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease;
     }
+    .bau-md-copy svg { width: 16px; height: 16px; }
+    .bau-md-line:hover .bau-md-copy,
+    .bau-md-copy:focus-visible { opacity: 1; }
+    .bau-md-copy:hover { background: #E8F0FE; color: ${COLORS.blue}; }
+    .bau-md-copy:focus-visible { outline: 2px solid ${COLORS.blue}; outline-offset: 2px; }
+    .bau-md-copy.is-done { opacity: 1; color: ${COLORS.green}; }
+
+    /* Card selecionado na lista: sem isso o agente perde de vista qual caso o
+       painel da direita esta mostrando assim que a lista rola. */
+    .bau-case-card.is-selected {
+      border-color: ${COLORS.blue};
+      background: #E8F0FE;
+    }
+
+    /* Abaixo de 900px a janela encolhe (max-width: 95vw) e duas colunas viram
+       duas colunas espremidas. Empilha: o detalhe vai para baixo da lista. */
+    @media (max-width: 900px) {
+      .bau-md { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+    }
+
 
     /* --- LOADING OVERLAY --- */
     .bau-form-loading-overlay {

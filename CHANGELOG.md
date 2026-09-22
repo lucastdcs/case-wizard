@@ -22,6 +22,22 @@ versions follow [Semantic Versioning](https://semver.org/).
   Central. Caso pendente gravado com um nome antigo não perde a task ao ser
   editado: ela volta para a grade já marcada. Ver
   `docs/decisions/0014-tasks-do-form-bau-vem-da-central.md`.
+- **O dashboard do BAU virou mestre-detalhe.** A lista e o detalhe do caso
+  convivem lado a lado; abrir um caso deixou de ser troca de tela. O agente não
+  perde de vista onde estava na fila, e a classe inteira de bugs de sobreposição
+  (offset, z-index, rolagem dupla) deixa de existir porque **não há mais nada
+  sobreposto** — o painel absoluto `.bau-details-view` foi removido. Cada coluna
+  rola no próprio eixo: uma rolagem só para as duas obrigaria a descer a lista
+  para ler o fim do detalhe.
+- **A vista de detalhe seguiu as três zonas do `design-system.md`** (as mesmas
+  do modal do TL — ADR-0015): cabeçalho, briefing, dados. A versão anterior era
+  uma grade de **sete** `.bau-details-card`, ou seja caixa dentro de caixa, que o
+  próprio spec proíbe; e tinha botão de copiar em todo campo, inclusive em
+  justificativa e fuso. O spec é explícito: o botão de copiar significa "isto vai
+  para o outro sistema", e espalhá-lo por todo campo esvazia o sinal — agora ele
+  existe só na zona de dados, aparece no hover/foco da linha, e confirma nos três
+  canais (visual no próprio controle, som e `navigator.vibrate(10)` atrás da
+  guarda de suporte).
 - **A janela do BAU Form cresceu para 900x720, com altura fixa.** Era 650px — a
   mais estreita dos módulos principais (o Email Assistant é 850x650) — no módulo
   que carrega mais dado por tela: a vista de detalhes tinha **600px de conteúdo
