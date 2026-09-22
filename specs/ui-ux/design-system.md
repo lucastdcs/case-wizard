@@ -110,6 +110,25 @@ Todo gesto que produz um resultado invisível — copiar, sobretudo — confirma
 Um controle com `cursor: pointer` e nenhum estado de `:hover` é um defeito, não
 um descuido: é o detalhe que faz uma tela parecer montada em vez de desenhada.
 
+## Separação: espaço antes de tom, tom antes de borda
+
+Borda cinza chapada em volta de toda caixa é o sinal mais forte de tela
+**gerada** em vez de desenhada — e foi o que envelheceu o dashboard do BAU (dez
+bordas `1px solid #DADCE0` numa tela só). A ordem a seguir, sempre:
+
+1. **espaço em branco** — resolve a maioria dos casos sozinho;
+2. **degrau de luminosidade** de 3–5% no fundo;
+3. **elevação suave** (sombra curta), quando o elemento precisa flutuar;
+4. **borda** — só se os três acima falharem, e nunca um cinza chapado.
+
+Três caixas tonais idênticas em fila são o mesmo defeito que a borda, com outra
+roupa: é "grade de cards" de novo. Para número + rótulo, o degrau tipográfico
+(22 contra 12) e um separador fino entre eles bastam.
+
+**Peso de fonte**: 400 e 500. `600` e `700` em corpo pequeno (rótulo de 11px,
+selo de status) é a assinatura de painel administrativo antigo — a hierarquia
+vem do tamanho e da cor, não da gordura da letra. Título de card: 500.
+
 ## Acabamento (o que separa desenhado de gerado)
 
 - **Grade de 4/8px.** `10px`, `14px`, `6px` não existem.

@@ -130,12 +130,12 @@ export const injectStyles = () => {
     }
     .bau-accordion-toggle {
         width: 100%;
-        background: #F8F9FA;
-        border: 1px solid #DADCE0;
+        background: transparent;
+        border: none;
         border-radius: 12px;
         padding: 12px 20px;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 400;
         color: #5F6368;
         cursor: pointer;
         display: flex;
@@ -166,13 +166,14 @@ export const injectStyles = () => {
     .bau-dashboard-metrics {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 24px;
       margin-bottom: 24px;
+      padding: 0 4px;
     }
 
     .bau-metrics-refresh-btn {
-      background: #F8F9FA;
-      border: 1px solid #DADCE0;
+      background: transparent;
+      border: none;
       color: #5F6368;
       border-radius: 12px;
       padding: 12px;
@@ -182,43 +183,48 @@ export const injectStyles = () => {
       justify-content: center;
       gap: 8px;
       font-size: 13px;
-      font-weight: 600;
-      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-      height: 60px; /* Alinha com os cards de métricas */
+      font-weight: 400;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      height: 40px;
     }
-    .bau-metrics-refresh-btn:hover {
-      background: #F1F3F4;
-      color: #202124;
-      border-color: #5F6368;
-    }
+    .bau-metrics-refresh-btn:hover { background: #F1F3F4; color: #202124; }
+    .bau-metrics-refresh-btn:focus-visible { outline: 2px solid ${COLORS.blue}; outline-offset: 2px; }
     .bau-metrics-refresh-btn svg { width: 18px; height: 18px; }
     .bau-metrics-refresh-btn.spinning svg { animation: rotate 1s linear infinite; }
 
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+    /* Sem borda E sem caixa. A hierarquia que a pesquisa recomenda comeca por
+       ESPACO EM BRANCO — so depois tom, so depois elevacao, e borda apenas se
+       os tres falharem. Para tres numeros com rotulo, o espaco e o degrau
+       tipografico (22 contra 12) ja bastam: tres caixas tonais identicas em
+       fila sao o mesmo tell de "grade de cards" que a borda era.
+       O separador vertical fino fica so entre elas, nao em volta. */
     .bau-metric-card {
       flex: 1;
-      background: #F8F9FA;
-      border: 1px solid #DADCE0;
-      border-radius: 12px;
-      padding: 12px 16px;
+      background: transparent;
+      border: none;
+      padding: 4px 0;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
       position: relative;
-      overflow: hidden;
     }
+    .bau-metric-card + .bau-metric-card { padding-left: 24px; box-shadow: inset 1px 0 0 #E8EAED; }
     .bau-metric-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: #1A73E8;
+      font-size: 22px;
+      font-weight: 400;
+      color: #202124;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
     }
+    /* Sem uppercase e sem letter-spacing: o spec ja proibia, e e a assinatura
+       visual de dashboard antigo. Degrau tipografico real faz o trabalho
+       (22 contra 12), nao a caixa alta. */
     .bau-metric-label {
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 400;
       color: #5F6368;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
     }
 
     .bau-case-list { list-style: none; padding: 0; margin: 0; }
@@ -231,7 +237,7 @@ export const injectStyles = () => {
 
     .bau-case-card {
       background: #F8F9FA;
-      border: 1px solid #DADCE0;
+      border: none;
       border-radius: 12px;
       padding: 16px;
       display: flex;
@@ -247,8 +253,8 @@ export const injectStyles = () => {
       /* Sem transform no próprio card: hit-box parado evita o flicker
          hover-liga/desliga perto da borda superior quando ele "sobe". A
          elevação vem só da sombra crescendo. */
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-      border-color: rgba(26, 115, 232, 0.4);
+      box-shadow: 0 2px 8px rgba(60,64,67,0.12);
+      background: #F1F3F4;
       background: #F1F3F4;
     }
 
@@ -262,36 +268,54 @@ export const injectStyles = () => {
     .bau-case-icon { color: #5F6368; margin-top: 2px; }
     .bau-case-info { display: flex; flex-direction: column; gap: 4px; }
     .bau-case-header { display: flex; align-items: baseline; gap: 8px; }
-    .bau-case-title { margin: 0; font-size: 15px; font-weight: 600; color: #202124; }
+    /* 500, nao 600. Peso alto em corpo pequeno e o que faz uma tela parecer
+       painel administrativo de 2012; a hierarquia aqui vem do tamanho e da cor. */
+    .bau-case-title { margin: 0; font-size: 15px; font-weight: 500; color: #202124; }
     .bau-case-date { font-size: 11px; color: #5F6368; }
     .bau-case-details { margin: 0; font-size: 12px; color: #5F6368; max-width: 400px;}
 
+    /* O design-system PROIBE "pilula em maiusculas com status decorativo": o
+       estado se diz em TEXTO NORMAL, com um ponto na cor semantica. A pilula de
+       peso 700 era o item que mais datava a tela — e era violacao do proprio
+       spec, nao so gosto. O ponto carrega a cor; o texto fica legivel. */
     .bau-case-status-badge {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-radius: 100px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 400;
+      color: #5F6368;
+      background: none;
+      padding: 0;
       white-space: nowrap;
     }
-    .bau-case-status-badge.status-yellow { background: rgba(249, 171, 0, 0.2); color: #F9AB00; }
-    .bau-case-status-badge.status-green { background: rgba(30, 142, 62, 0.2); color: #1E8E3E; }
-    .bau-case-status-badge.status-red { background: rgba(217, 48, 37, 0.2); color: #D93025; }
-    .bau-case-status-badge.status-gray { background: rgba(128, 134, 139, 0.2); color: #5F6368; }
+    .bau-case-status-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 100px;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .bau-case-status-badge.status-yellow::before { background: #F9AB00; }
+    .bau-case-status-badge.status-green::before { background: #1E8E3E; }
+    .bau-case-status-badge.status-red::before { background: #D93025; }
+    .bau-case-status-badge.status-gray::before { background: #9AA0A6; }
     /* Descarte pendente. Laranja, e nao o amarelo da criacao pendente: os dois
        esperam o TL, mas pedem o OPOSTO um do outro (abrir x fechar um caso), e
        compartilhar cor apagava a distincao justamente na lista onde os dois
        aparecem lado a lado. Nao e o vermelho do descarte JA feito: aqui ainda
        nao ha desfecho. */
-    .bau-case-status-badge.status-orange { background: rgba(230, 81, 0, 0.18); color: #E65100; }
+    .bau-case-status-badge.status-orange::before { background: #E65100; }
 
     .bau-case-edit-btn {
-      background: transparent;
-      border: 1px solid #DADCE0;
+      background: rgba(255,255,255,0.7);
+      border: none;
       color: #5F6368;
       border-radius: 8px;
       padding: 6px 12px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 400;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -640,8 +664,8 @@ export const injectStyles = () => {
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
 
-    .bau-highlight-label { font-size: 11px; color: #5F6368; text-transform: uppercase; letter-spacing: 0.5px; }
-    .bau-highlight-value { font-size: 14px; font-weight: 500; color: #202124; }
+    .bau-highlight-label { font-size: 12px; color: #5F6368; }
+    .bau-highlight-value { font-size: 15px; font-weight: 400; color: #202124; }
 
     /* Recaptura do contexto. Posicionado por cima da grade (o painel já é
        position: relative) para não ocupar uma célula e desalinhar os vitais. */
@@ -655,15 +679,15 @@ export const injectStyles = () => {
       align-items: center;
       justify-content: center;
       padding: 0;
-      border: 1px solid #DADCE0;
+      border: none;
       border-radius: 50%;
-      background: #FFFFFF;
+      background: rgba(255,255,255,0.75);
       color: #5F6368;
       cursor: pointer;
-      transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      transition: color 0.2s ease, background-color 0.2s ease;
     }
     .bau-rescan-btn svg { width: 16px; height: 16px; }
-    .bau-rescan-btn:hover { color: ${COLORS.blue}; border-color: ${COLORS.blue}; box-shadow: 0 1px 3px rgba(60,64,67,0.25); }
+    .bau-rescan-btn:hover { color: ${COLORS.blue}; background: #FFFFFF; }
     .bau-rescan-btn:focus-visible { outline: 2px solid ${COLORS.blue}; outline-offset: 2px; }
     .bau-rescan-btn.spinning { cursor: default; color: ${COLORS.blue}; }
     .bau-rescan-btn.spinning svg { animation: rotate 1s linear infinite; }
@@ -992,7 +1016,7 @@ export const injectStyles = () => {
     .bau-md-detail {
       min-width: 0;
       background: #F8F9FA;
-      border: 1px solid #DADCE0;
+      border: none;
       border-radius: 12px;
       padding: 16px;
     }
@@ -1085,9 +1109,11 @@ export const injectStyles = () => {
 
     /* Card selecionado na lista: sem isso o agente perde de vista qual caso o
        painel da direita esta mostrando assim que a lista rola. */
+    /* Acento numa aresta, nao moldura em volta: diz "e este" sem desenhar mais
+       uma caixa. */
     .bau-case-card.is-selected {
-      border-color: ${COLORS.blue};
       background: #E8F0FE;
+      box-shadow: inset 3px 0 0 ${COLORS.blue};
     }
 
     /* Abaixo de 900px a janela encolhe (max-width: 95vw) e duas colunas viram

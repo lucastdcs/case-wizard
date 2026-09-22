@@ -1010,6 +1010,10 @@ export function initBAUForm() {
         });
 
         listEl.innerHTML = '';
+        // Estado vazio do painel da direita. Sem isto o mestre-detalhe abria com
+        // um retangulo cinza mudo, que le como area quebrada e nao como "escolha
+        // um caso".
+        renderCaseDetail(null);
         const recentCases = safeCases.slice(0, 5);
         const olderCases = safeCases.slice(5);
 

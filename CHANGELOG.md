@@ -9,6 +9,19 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **A tela inicial do BAU perdeu a cara de sistema antigo.** Auditada em
+  navegador e reestruturada contra três tells medidos: **dez bordas
+  `1px solid #DADCE0`** (a separação passa a vir de espaço em branco → degrau de
+  luminosidade → elevação, e borda só se os três falharem), **peso 700 em selo
+  de 11px e em métrica** e 600 em título (produto Google usa 400/500 — peso alto
+  em corpo pequeno é assinatura de painel administrativo), e **maiúsculas com
+  `letter-spacing`** em rótulo, que o próprio `design-system.md` já proibia.
+  Os **selos de status viraram texto com ponto na cor semântica**, que é o que o
+  spec manda desde sempre ("pílula em maiúsculas com status decorativo" está na
+  lista de proibições). As métricas perderam a caixa: três caixas tonais
+  idênticas em fila são o mesmo tell da borda com outra roupa. O card
+  selecionado ganhou acento numa aresta em vez de moldura em volta. A regra foi
+  escrita em `specs/ui-ux/design-system.md` para não voltar.
 - **As tasks do form BAU passam a vir da Central de Conteúdo.** O formulário
   oferecia uma lista de 17 nomes escrita à mão no `bau-form-config.js`, de antes
   da Central existir, e ela divergiu em silêncio do catálogo publicado: 5 tasks
