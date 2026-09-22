@@ -21,7 +21,7 @@ const FIELD_ES = {
     amName: { label: 'Account Manager (AM)', placeholder: 'am@google.com', error: 'Informa el correo del AM (ej.: am@google.com)' },
     website: { label: 'Website', placeholder: 'https://www.ejemplo.com' },
     seId: { label: 'Speakeasy ID (SE ID)', placeholder: 'Speakeasy ID', buttonTitle: 'Buscar ID automáticamente' },
-    seId_descarte: { label: 'Speakeasy ID (SE ID)', placeholder: 'Speakeasy ID' },
+    seId_descarte: { label: 'Speakeasy ID (SE ID)', placeholder: 'Speakeasy ID', buttonTitle: 'Buscar ID automáticamente' },
     reason: { label: 'Qué debe hacerse en BAU', placeholder: 'Describe las acciones esperadas...' },
     taskType: { label: 'Tareas para BAU (Selecciona 1 o más)', tooltip: 'Selecciona los tipos de implementación técnica' },
     nonImplementationReason: { label: 'Motivo de la No Implementación (Justificación BAU)' },

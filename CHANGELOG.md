@@ -8,6 +8,16 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Busca automática do SE ID no fluxo de descarte.** O botão que varre o case
+  log atrás do Speakeasy ID existia só no passo de abertura. No de descarte —
+  onde o campo é **obrigatório**, e no de abertura não é — o agente tinha que
+  garimpar o ID à mão para conseguir enviar. Na mesma mudança, o alvo da busca
+  deixou de ser resolvido por `getElementById`: os dois passos renderizam
+  `id="bau-form-seId"`, então o botão novo escreveria no campo do passo 1
+  (invisível na hora) e deixaria o obrigatório vazio, sem erro na tela. O
+  listener passou a resolver o input pelo irmão do botão clicado.
+
 ### Fixed
 - **Pedir descarte disparava o e-mail de abertura de caso.** Quem começava pelo
   "Solicitar Descarte" no passo 0 do formulário recebia "Caso na fila BAU — a

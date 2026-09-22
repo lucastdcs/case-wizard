@@ -1340,9 +1340,18 @@ export function initBAUForm() {
         });
     }
 
-    popup.querySelector('#bau-top-se-search')?.addEventListener('click', (e) => {
+    // Delegado, e resolvendo o input pelo IRMÃO do botão clicado — não por id.
+    // O campo seId existe em dois passos (1, abertura; 5, descarte) e os dois
+    // renderizam id="bau-form-seId": ligar um listener por id atenderia só o
+    // primeiro, e a busca escreveria no campo do passo errado.
+    popup.addEventListener('click', (e) => {
+        const btn = e.target.closest('.bau-mini-btn-input');
+        if (!btn) return;
+        const alvo = btn.closest('.bau-input-group')?.querySelector('input[name="seId"]');
+        if (!alvo) return;
         e.preventDefault();
-        fetchAndInsertSpeakeasyId("bau-form-seId");
+        SoundManager.playClick();
+        fetchAndInsertSpeakeasyId(alvo);
     });
 
     const cidInput = popup.querySelector('#bau-form-cid');

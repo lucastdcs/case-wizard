@@ -104,12 +104,22 @@ function toggleLoadingOverlay(show) {
 
 /**
  * Executa a varredura no Case Log e insere o ID no input alvo.
+ *
+ * @param {HTMLElement|string} alvo  o input em si, ou o id dele.
+ *
+ * Aceita o elemento porque `getElementById` não serve quando o mesmo campo
+ * existe em mais de um passo do formulário: o BAU Form renderiza `seId` no
+ * passo 1 (abertura) e no passo 5 (descarte), os dois com
+ * id="bau-form-seId", e o `getElementById` sempre devolve o primeiro. Buscar
+ * pelo id ali escreveria o resultado no campo do passo INVISÍVEL e deixaria o
+ * obrigatório vazio — sem erro nenhum na tela. Quem tem o botão na mão já tem
+ * o input ao lado; passar o elemento remove a ambiguidade na origem.
  */
-export async function fetchAndInsertSpeakeasyId(targetInputId) {
+export async function fetchAndInsertSpeakeasyId(alvo) {
     // Garante que a página esteja no idioma original antes de iniciar a extração
     await ensureOriginalLanguage();
 
-    const inputWidget = document.getElementById(targetInputId);
+    const inputWidget = typeof alvo === 'string' ? document.getElementById(alvo) : alvo;
     let originalPlaceholder = "";
 
     // 1. ATIVA OS EFEITOS VISUAIS

@@ -348,6 +348,17 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 > promoveu produção sem intervenção nenhuma. O que exige mão continua sendo o que
 > roda DENTRO da planilha (semeaduras e gatilhos), listado abaixo.
 
+- [ ] **Ids de campo duplicados entre passos do BAU Form.** `createField()` faz
+      `input.id = \`bau-form-${fieldConfig.id}\``, e três campos existem em dois
+      passos com o mesmo `id`: `seId`, `language` e `description`. A tela
+      renderiza ids repetidos (HTML inválido) e todo `getElementById` cai sempre
+      no primeiro. O `seId` já mordeu — ver o botão de busca do descarte, onde o
+      conserto foi parar de resolver por id. Os outros dois são **latentes**:
+      hoje ninguém os alcança por id (o Smart Rendering busca por
+      `#bau-step-N [name=...]`, que é escopado e correto). Conserto de verdade:
+      `createField` receber o passo e compor `bau-form-<passo>-<id>` — mas isso
+      toca todos os campos de uma vez e merece PR próprio, junto da repaginação.
+
 - [ ] **Duas falhas reais em `smoke:shortcuts`, escondidas pelo ferramental.**
       Apareceram no minuto em que o script passou a rodar (antes ele morria no
       launch do browser, e o ambiente lia isso como "suíte verde"). **Não são

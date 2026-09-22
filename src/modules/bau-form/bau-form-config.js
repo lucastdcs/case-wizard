@@ -243,10 +243,19 @@ export const FORM_CONFIG = {
                     i18nKey: 'seId_descarte',
                     name: 'seId',
                     label: 'Speakeasy ID (SE ID)',
-                    type: 'text',
+                    // Mesma busca automática do passo 1. Aqui ela importa MAIS:
+                    // neste passo o SE ID é obrigatório (no de abertura não é),
+                    // e sem o botão o agente tinha que garimpar o ID no case log
+                    // à mão para conseguir enviar um descarte.
+                    type: 'text-with-button',
                     placeholder: 'Speakeasy ID',
                     required: true,
-                    isSmart: true
+                    isSmart: true,
+                    button: {
+                        id: 'bau-discard-se-search',
+                        icon: 'wand',
+                        title: 'Buscar ID automaticamente'
+                    }
                 },
                 {
                     id: 'description',
