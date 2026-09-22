@@ -24,20 +24,32 @@ This file differs from the long-term roadmap: it describes what is happening **n
          (o código antigo devolve o AM do caso anterior nos dois cenários) e
          travado em `test:scraping` (`am.escopo/*`, +4 asserções). Junto: botão
          de recaptura no formulário, no molde do call script.
-      3. [ ] **Repaginação da tela do BAU Form.** Diagnóstico estrutural já
-         feito em navegador real (1440x900), causas identificadas:
-         `.bau-details-view` usa `top: 56px` supondo um header que é **irmão** do
-         container, e o dashboard nunca é escondido — daí a janela de detalhes
-         abrir desalinhada com o dashboard vazando por trás; três contextos de
-         rolagem aninhados (`.bau-view-container` com `overflow: scroll` literal
-         + `.bau-details-content` + `.bau-dashboard-content`); 435px de conteúdo
-         abaixo da dobra numa janela de 650x810 (o Email Assistant é 850x650);
-         toast cortado pelo `overflow: hidden` do popup; `PENDING_TL_DISCARD` sem
-         entrada em `getStatusData()`, aparecendo cru para o agente; as métricas
-         do dashboard não contam a fila de descarte; sobrenome do anunciante
-         some no card e reaparece no detalhe; dado duplicado entre o hero e a
-         barra de chips. Decisões pendentes com o Lucas (tamanho da janela,
-         mestre-detalhe vs. painel sobreposto).
+      3. [~] **Repaginação da tela do BAU Form — camada estrutural entregue.**
+         As quebras diagnosticadas em navegador real foram consertadas e estão
+         no CHANGELOG `[Unreleased]`: o `top: 56px` da vista de detalhes (que
+         descontava um header não-ancestral), os três contextos de rolagem
+         aninhados, o `margin-top` que estourava o container, o dashboard que
+         nunca era escondido, a janela de 650px (agora 900x720, com altura
+         fixa), o `PENDING_TL_DISCARD` cru, a fila de descarte fora das
+         métricas, o sobrenome sumido no card e o selo de status esticado.
+         **Falta a camada sensorial (3b)** e duas decisões com o Lucas:
+         - **mestre-detalhe vs. painel sobreposto.** Com 900px cabe lista à
+           esquerda + detalhe à direita, sem troca de tela. Mata a classe
+           inteira de bugs de sobreposição, mas é reescrita da view, não
+           conserto — por isso não entrou aqui.
+         - **Material + feedback tátil/sonoro**: elevação com significado na
+           transição dashboard→detalhes, som nas transições de status,
+           micro-recompensa no envio. É o "dopaminérgico" do `VISION.md`.
+         Dois itens de acabamento que ficaram de fora por serem escopo próprio:
+         - o FAB "Novo Caso BAU" cobre 7px do acordeão "mostrar casos antigos"
+           quando a lista rola pouco. É comportamento padrão de FAB (Material
+           manda flutuar sobre o conteúdo, com `padding-bottom` na área
+           rolável, que já existe), mas o Material também diz que um FAB não
+           deve obstruir controle interativo. Conserto de verdade é tirar o FAB
+           do fluxo de rolagem, e isso é decisão de layout.
+         - ainda há ~400px de conteúdo abaixo da dobra na vista de detalhes,
+           agora numa rolagem só. Menos que os 600px de antes; some de vez com
+           o mestre-detalhe.
 
 - [~] **Tasks e screenshots do Win Criteria na Central** (módulo
       `task_screenshots`, aba "Tasks") — entregue, aguardando revisão do PR e a

@@ -107,6 +107,8 @@ const BAU_DICT = {
         casesWillAppear: "Seus casos BAU aparecerão aqui",
         createdApproved: "Criados / Aprovados",
         refreshDashboard: "Atualizar Dashboard",
+        statusPendingDiscard: "Descarte em avaliação",
+        metricAwaitingDiscard: "Descarte em avaliação",
         rescanTitle: "Recapturar os dados desta tela",
         rescanDone: "Dados recapturados da tela atual.",
         errorPrefix: (msg) => `Erro: ${msg}`,
@@ -210,6 +212,8 @@ const BAU_DICT = {
         casesWillAppear: "Tus casos BAU aparecerán aquí",
         createdApproved: "Creados / Aprobados",
         refreshDashboard: "Actualizar Panel",
+        statusPendingDiscard: "Descarte en evaluación",
+        metricAwaitingDiscard: "Descarte en evaluación",
         rescanTitle: "Recapturar los datos de esta pantalla",
         rescanDone: "Datos recapturados de la pantalla actual.",
         errorPrefix: (msg) => `Error: ${msg}`,
@@ -253,6 +257,10 @@ const ICONS = {
 function getStatusData(status) {
     switch (status) {
         case 'PENDING_TL_CREATION': return { text: bt('statusPending'), class: "status-yellow", aura: "status-yellow-aura" };
+        // Faltava, e o `default` imprimia a constante do banco: o agente lia
+        // "PENDING_TL_DISCARD" no card. Dos dois status pendentes, só um tinha
+        // tradução.
+        case 'PENDING_TL_DISCARD': return { text: bt('statusPendingDiscard'), class: "status-orange", aura: "status-orange-aura" };
         case 'CREATED': return { text: bt('statusApproved'), class: "status-green", aura: "status-green-aura" };
         case 'DISCARDED': return { text: bt('statusDiscarded'), class: "status-red", aura: "status-red-aura" };
         case 'CANCELED_BY_AGENT': return { text: bt('statusCanceled'), class: "status-gray", aura: "" };
@@ -645,6 +653,12 @@ export function initBAUForm() {
 
     function switchView(viewName) {
         currentView = viewName;
+        // Trocar de view fecha os detalhes junto. Sem isto, fechar o módulo com
+        // os detalhes abertos e reabrir deixava dashboard e formulário
+        // invisíveis, com a janela em branco.
+        detailsView.classList.remove('active');
+        detailsView.style.display = 'none';
+        viewContainer.classList.remove('details-open');
         popup.querySelectorAll('.bau-view').forEach(v => v.classList.remove('active'));
         const targetView = popup.querySelector(`#bau-view-${viewName}`);
         if (targetView) targetView.classList.add('active');
@@ -850,6 +864,7 @@ export function initBAUForm() {
         const closeBtn = detailsView.querySelector('.bau-details-close-btn');
         closeBtn.onclick = () => {
             detailsView.classList.remove('active');
+            viewContainer.classList.remove('details-open');
             SoundManager.playSwoosh();
             setTimeout(() => { detailsView.style.display = 'none'; }, 600);
         };
@@ -862,6 +877,10 @@ export function initBAUForm() {
         });
 
         detailsView.style.display = 'flex';
+        // Tira dashboard/formulário da tela enquanto os detalhes estão abertos.
+        // Ficar só escondido atrás de um painel opaco deixava os dois rolando,
+        // alcançáveis por Tab e visíveis para leitor de tela.
+        viewContainer.classList.add('details-open');
         requestAnimationFrame(() => {
             detailsView.classList.add('active');
             SoundManager.playClick();
@@ -910,7 +929,7 @@ export function initBAUForm() {
                     <div class="bau-case-icon">${ICONS.folder}</div>
                     <div class="bau-case-info">
                         <div class="bau-case-header">
-                            <h3 class="bau-case-title">${c?.advName || bt('undefinedName')}</h3>
+                            <h3 class="bau-case-title">${[c?.advName, c?.advLastName].filter(Boolean).join(' ') || bt('undefinedName')}</h3>
                             ${slaBadge}
                             <span class="bau-case-date">${dateStr}</span>
                         </div>
@@ -960,13 +979,20 @@ export function initBAUForm() {
             return;
         }
 
+        // A fila de descarte nao entrava em metrica nenhuma: com 3 casos, os
+        // dois numeros somavam 2 e o terceiro sumia da leitura do agente.
         const pendingCount = safeCases.filter(c => c.status === 'PENDING_TL_CREATION').length;
+        const discardCount = safeCases.filter(c => c.status === 'PENDING_TL_DISCARD').length;
         const createdCount = safeCases.filter(c => c.status === 'CREATED').length;
 
         metricsEl.innerHTML = `
             <div class="bau-metric-card">
                 <span class="bau-metric-value">${pendingCount}</span>
                 <span class="bau-metric-label">${bt('metricAwaitingTl')}</span>
+            </div>
+            <div class="bau-metric-card">
+                <span class="bau-metric-value">${discardCount}</span>
+                <span class="bau-metric-label">${bt('metricAwaitingDiscard')}</span>
             </div>
             <div class="bau-metric-card">
                 <span class="bau-metric-value">${createdCount}</span>
@@ -1228,10 +1254,6 @@ export function initBAUForm() {
     async function populateContextData() {
         const pageData = await getPageData() || {};
 
-        // AM Fallback to internalEmail if missing
-        if (!pageData.amName || pageData.amName === "N/A") {
-            pageData.amName = pageData.internalEmail || "N/A";
-        }
         currentContextData = pageData;
 
         // Render "Captured Data Hero" panel

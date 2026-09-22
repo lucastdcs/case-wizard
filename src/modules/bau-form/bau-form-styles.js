@@ -39,7 +39,13 @@ export const injectStyles = () => {
   style.textContent = `
     /* --- 1. POSICIONAMENTO E ANCORAGEM --- */
     .bau-popup {
-      width: 650px;
+      /* 650px era o mais estreito dos módulos principais (o Email Assistant é
+         850x650, a Personal Library 620x680) e este é o que carrega mais dado
+         por tela: a vista de detalhes tinha 600px de conteúdo abaixo da dobra.
+         Altura fixa junto com a largura porque, sem ela, a janela pulava de
+         466px (escolha do fluxo) para 810px (formulário) a cada passo. */
+      width: 900px;
+      height: 720px;
       max-width: 95vw;
       max-height: 90vh;
       position: fixed;
@@ -65,8 +71,18 @@ export const injectStyles = () => {
       flex: 1;
       position: relative;
       min-height: 400px;
-      overflow: scroll;
+      /* 'scroll' literal punha um segundo contexto de rolagem por cima do
+         .bau-dashboard-content / .bau-details-content, que já rolam sozinhos:
+         rolar um não movia o outro, e a janela de detalhes deslizava para fora
+         do próprio quadro. Quem rola aqui é o painel de dentro. */
+      overflow: hidden;
     }
+
+    /* Enquanto os detalhes estão abertos, as views de baixo saem da tela de
+       verdade. Antes elas só ficavam ESCONDIDAS ATRÁS de um painel opaco:
+       seguiam rolando, recebendo foco por Tab e sendo lidas por leitor de
+       tela. */
+    .bau-view-container.details-open .bau-view { visibility: hidden; }
 
     .bau-view {
       display: none;
@@ -76,7 +92,11 @@ export const injectStyles = () => {
       position: relative;
       box-sizing: border-box;
       overflow: hidden; /* Garante que o conteúdo não vaze */
-      margin-top: 18px;
+      /* Era 'margin-top: 18px', que somado a 'height: 100%' fazia a view
+         ultrapassar o container em exatos 18px — invisível enquanto o
+         container rolava, e 18px decepados agora que ele não rola.
+         Como padding, o respiro é o mesmo e cabe dentro (box-sizing acima). */
+      padding-top: 18px;
     }
     .bau-view.active { display: flex; }
     @keyframes bauFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -237,6 +257,7 @@ export const injectStyles = () => {
 
     /* Aura Status Overrides */
     .bau-case-card.status-yellow-aura { background: linear-gradient(135deg, rgba(249, 171, 0, 0.1) 0%, rgba(249, 171, 0, 0.05) 100%); border-color: rgba(249, 171, 0, 0.2); }
+    .bau-case-card.status-orange-aura { background: linear-gradient(135deg, rgba(230, 81, 0, 0.09) 0%, rgba(230, 81, 0, 0.04) 100%); border-color: rgba(230, 81, 0, 0.2); }
     .bau-case-card.status-green-aura { background: linear-gradient(135deg, rgba(30, 142, 62, 0.1) 0%, rgba(30, 142, 62, 0.05) 100%); border-color: rgba(30, 142, 62, 0.2); }
     .bau-case-card.status-red-aura { background: linear-gradient(135deg, rgba(217, 48, 37, 0.1) 0%, rgba(217, 48, 37, 0.05) 100%); border-color: rgba(217, 48, 37, 0.2); }
 
@@ -259,6 +280,12 @@ export const injectStyles = () => {
     .bau-case-status-badge.status-green { background: rgba(30, 142, 62, 0.2); color: #1E8E3E; }
     .bau-case-status-badge.status-red { background: rgba(217, 48, 37, 0.2); color: #D93025; }
     .bau-case-status-badge.status-gray { background: rgba(128, 134, 139, 0.2); color: #5F6368; }
+    /* Descarte pendente. Laranja, e nao o amarelo da criacao pendente: os dois
+       esperam o TL, mas pedem o OPOSTO um do outro (abrir x fechar um caso), e
+       compartilhar cor apagava a distincao justamente na lista onde os dois
+       aparecem lado a lado. Nao e o vermelho do descarte JA feito: aqui ainda
+       nao ha desfecho. */
+    .bau-case-status-badge.status-orange { background: rgba(230, 81, 0, 0.18); color: #E65100; }
 
     .bau-case-edit-btn {
       background: transparent;
@@ -922,12 +949,16 @@ export const injectStyles = () => {
     @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(217, 48, 37, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 48, 37, 0); } }
 
     /* --- BAU DETAILS INTERNAL VIEW (Standard Regular Material) --- */
+    /* Cobre o container inteiro. O 'top: 56px' anterior descontava um header
+       que NÃO é ancestral daqui — o header padrão é irmão de
+       .bau-view-container, não filho —, então a janela de detalhes nascia 56px
+       baixo demais e deixava uma faixa do dashboard aparecendo por cima dela. */
     .bau-details-view {
         position: absolute;
-        top: 56px;
+        top: 0;
         left: 0;
         width: 100%;
-        height: calc(100% - 56px);
+        height: 100%;
         background: #F8F9FA;
         z-index: 200;
         display: none;
@@ -1021,6 +1052,9 @@ export const injectStyles = () => {
         gap: 4px;
         position: relative;
     }
+    /* Numa coluna flex o padrão é esticar, e o selo de status virava uma barra
+       de 258px atravessando o card em vez de uma pílula do tamanho do texto. */
+    .bau-details-row .bau-case-status-badge { align-self: flex-start; }
     .bau-details-card.full-width { grid-column: 1 / -1; }
 
     .bau-details-label {

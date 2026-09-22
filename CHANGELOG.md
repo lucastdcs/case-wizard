@@ -8,7 +8,42 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **A janela do BAU Form cresceu para 900x720, com altura fixa.** Era 650px — a
+  mais estreita dos módulos principais (o Email Assistant é 850x650) — no módulo
+  que carrega mais dado por tela: a vista de detalhes tinha **600px de conteúdo
+  abaixo da dobra**. A altura fixa resolve o pulo: a janela ia de 466px (escolha
+  do fluxo) para 810px (formulário) a cada passo.
+
 ### Fixed
+- **A vista de detalhes do caso abria desalinhada, com o dashboard aparecendo
+  por trás.** `.bau-details-view` usava `top: 56px` para descontar um header que
+  **não é ancestral dela** — o header padrão é irmão do container, não filho —,
+  então o painel nascia 38px baixo demais e deixava uma faixa do dashboard
+  visível por cima. Junto, três defeitos de rolagem no mesmo lugar:
+  `.bau-view-container` tinha `overflow: scroll` literal, criando um segundo
+  contexto de rolagem por cima dos painéis que já rolam sozinhos (rolar um não
+  movia o outro, e o painel de detalhes deslizava para fora do próprio quadro);
+  e `.bau-view` somava `margin-top: 18px` a `height: 100%`, ultrapassando o
+  container em exatos 18px. O dashboard também **não era escondido**: seguia
+  rolando, alcançável por Tab e visível para leitor de tela atrás de um painel
+  opaco.
+- **O status "descarte em avaliação" aparecia cru para o agente.**
+  `getStatusData()` mapeava quatro status e caía no `default`, que imprime a
+  constante do banco: o card mostrava `PENDING_TL_DISCARD`. Dos dois status
+  pendentes, só um tinha tradução. Ganhou rótulo e cor própria (laranja) — os
+  dois esperam o TL, mas pedem o oposto um do outro, e compartilhar o amarelo
+  apagaria a distinção na lista onde aparecem lado a lado.
+- **As métricas do dashboard ignoravam a fila de descarte.** Contavam
+  `PENDING_TL_CREATION` e `CREATED`; um caso aguardando descarte não entrava em
+  nenhum dos dois números e sumia da leitura do agente.
+- **O sobrenome do anunciante sumia no card e reaparecia no detalhe.** O card
+  mostrava só `advName`; a vista de detalhes já juntava nome e sobrenome.
+- **O selo de status esticava pelo card inteiro** na vista de detalhes (258px de
+  barra em vez de uma pílula do tamanho do texto): numa coluna flex o padrão é
+  esticar.
+- **Código morto:** o fallback `amName = internalEmail` em `populateContextData`
+  virou no-op quando os dois passaram a sair da mesma resolução (v6.3.3).
 - **O AM do caso ANTERIOR chegava no formulário do caso seguinte.** Relatado
   como "abro um caso, ele puxa o AM; fecho, abro outro, e vem o mesmo AM do caso
   já fechado" — e seguia acontecendo depois da v6.3.3, que consertou outra coisa
