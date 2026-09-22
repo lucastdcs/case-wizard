@@ -1,3 +1,22 @@
+import { TASKS_DB } from "../notes/data/notes-data.js";
+
+// As tasks do form saem do MESMO catálogo do assistente de notas — o que a
+// Central de Conteúdo publica no módulo `task_screenshots` e que o
+// notes/data/tasks-service.js reescreve por cima do TASKS_DB no boot. Manter a
+// lista duplicada aqui era o que fazia o form oferecer nomes que a Central não
+// conhecia (e vice-versa), sem ninguém ter decidido isso.
+//
+// Daqui só interessa o NOME: o form não pede screenshot nenhum, quem usa a
+// lista de evidências do Win Criteria é a nota.
+//
+// É função, e não array: o TASKS_DB é reescrito DEPOIS que este módulo é
+// importado (o conteúdo publicado chega por JSONP), então uma cópia congelada
+// no import valeria sempre o catálogo embutido.
+export function bauTaskOptions() {
+    return Object.values(TASKS_DB)
+        .map(t => String(t?.name || '').trim())
+        .filter(Boolean);
+}
 
 // Valores idênticos aos que defaultLanguageForSegment() produz no backend
 // (gas-backend/Código.js) — é o que o perfil do agente devolve em
@@ -145,13 +164,10 @@ export const FORM_CONFIG = {
                     label: 'Tasks para BAU (Selecione 1 ou mais)',
                     type: 'checkbox-grid',
                     required: true,
-                    tooltip: 'Selecione os tipos de implementação técnica',
-                    options: [
-                        'Ads Conversion Tracking', 'Ads Dynamic Remarketing', 'Ads Enhanced Conversions', 'Ads Website Call Conversion',
-                        'Ads Remarketing', 'Analytics Cross Domain Tracking', 'Analytics E-Commerce Tracking', 'Analytics Enhanced E-Commerce Tracking',
-                        'Analytics Event Tracking', 'Analytics Health Check', 'Analytics Remarketing', 'Analytics Setup',
-                        'Fix GA4 implementation', 'Consent Mode', 'Fix Sitewide Tagging (OGT & CT)', 'Google Tag Manager Installation', 'Customer Match'
-                    ]
+                    tooltip: 'Selecione os tipos de implementação técnica'
+                    // Sem `options`: a lista vem de bauTaskOptions() no momento
+                    // de desenhar a grade, porque o catálogo publicado chega
+                    // depois deste módulo ser importado.
                 }
             ]
         },

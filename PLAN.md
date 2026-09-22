@@ -122,6 +122,17 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [x] **As tasks do form BAU não vinham da Central.** Verificado: não vinham —
+      o `bau-form-config.js` tinha uma lista de 17 nomes escrita à mão, de antes
+      da Central existir, e ela já divergia do catálogo publicado em três eixos
+      (5 tasks só no form, 1 só na Central, 8 com nome diferente para a mesma
+      coisa). A grade passa a sair do mesmo `TASKS_DB` que a Central reescreve, e
+      só o **nome** — o form não pede screenshot, isso é da nota. **ADR-0014**
+      registra a consequência aceita: as 5 órfãs somem da grade, e voltar com
+      qualquer uma delas é criar pela tela da Central. Caso pendente gravado com
+      nome antigo não perde a task ao ser editado (volta marcada). Testes:
+      `test:tasks` (+4) e o novo `smoke:bau-tasks`.
+
 - [x] **v6.3.3 cortada e promovida.** Fecha o `[Unreleased]` do CHANGELOG, alinha
       as quatro fontes de versão (`package.json`, `APP_VERSION`,
       `RELEASE_NOTES.version` e `CW_DASH_RELEASE_NOTES.version`) e reescreve os

@@ -9,6 +9,19 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **As tasks do form BAU passam a vir da Central de Conteúdo.** O formulário
+  oferecia uma lista de 17 nomes escrita à mão no `bau-form-config.js`, de antes
+  da Central existir, e ela divergiu em silêncio do catálogo publicado: 5 tasks
+  só existiam no form, 1 (UPD for GA4) só na Central, e 8 eram a mesma task com
+  nome diferente ("Google Tag Manager Installation" contra "GTM Installation").
+  Nada quebrava — só a coluna `Task_BAU` guardava um vocabulário que o resto do
+  sistema não reconhece, e uma task publicada pelo SME nunca chegava à
+  escalação. Agora a grade sai do mesmo `TASKS_DB` que a Central reescreve, e
+  consome **apenas o nome**: o form não pede evidência nenhuma. As 5 tasks sem
+  correspondência somem da grade — quem precisar de uma delas a cria pela tela da
+  Central. Caso pendente gravado com um nome antigo não perde a task ao ser
+  editado: ela volta para a grade já marcada. Ver
+  `docs/decisions/0014-tasks-do-form-bau-vem-da-central.md`.
 - **A janela do BAU Form cresceu para 900x720, com altura fixa.** Era 650px — a
   mais estreita dos módulos principais (o Email Assistant é 850x650) — no módulo
   que carrega mais dado por tela: a vista de detalhes tinha **600px de conteúdo

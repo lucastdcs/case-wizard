@@ -8,7 +8,8 @@ import { lockBodyScroll, unlockBodyScroll } from '../shared/dom-utils.js';
 import { sendBAUEscalation, readAgentBAU, updateBAUEscalation } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
 import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.js';
-import { FORM_CONFIG } from './bau-form-config.js';
+import { FORM_CONFIG, bauTaskOptions } from './bau-form-config.js';
+import { loadTasks } from '../notes/data/tasks-service.js';
 import { bft, bfOptionText } from './bau-form-i18n.js';
 import { getLanguage, onLanguageChange } from '../shared/i18n.js';
 import { TIMEZONE_HUBS, DEFAULT_TIMEZONE, withZoneOffset, offsetMinutesForWallTime, formatOffset, zoneFromCrmValue } from '../shared/timezones.js';
@@ -268,6 +269,57 @@ function getStatusData(status) {
     }
 }
 
+// A grade de tasks é repintada em três momentos — no boot, quando o catálogo
+// publicado chega, e ao abrir um caso para edição —, então montar o item é uma
+// função só em vez de um laço solto dentro do createField.
+function createTaskItem(nome, fieldName, marcada) {
+    const item = document.createElement('label');
+    item.className = 'bau-task-item';
+    item.classList.toggle('active', marcada);
+    item.innerHTML = `<input type="checkbox" name="${fieldName}" value="${nome}"><span>${nome}</span>`;
+    item.querySelector('input').checked = marcada;
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const chk = item.querySelector('input');
+        chk.checked = !chk.checked;
+        item.classList.toggle('active', chk.checked);
+        SoundManager.playClick();
+    });
+    return item;
+}
+
+// Repinta a grade com o catálogo ATUAL (ver bauTaskOptions), preservando o que
+// já estava marcado.
+//
+// `extras` são tasks marcadas que o catálogo não tem mais — tipicamente um caso
+// antigo aberto para edição, gravado quando o nome da task era outro. Elas
+// entram no fim, já marcadas: deixá-las cair fora da grade apagaria em silêncio
+// uma task que o TL já leu no caso, e o agente só descobriria ao reenviar. Mesma
+// regra do seletor de tasks da nota (notes/components/step-tasks.js).
+function renderTaskGrid(grid, extras = []) {
+    const fieldName = grid.dataset.fieldName || 'taskType';
+
+    const marcadas = new Set(
+        Array.from(grid.querySelectorAll('input:checked')).map(i => i.value)
+    );
+    extras.map(t => String(t || '').trim()).filter(Boolean).forEach(t => marcadas.add(t));
+
+    const nomes = bauTaskOptions();
+    marcadas.forEach(nome => { if (!nomes.includes(nome)) nomes.push(nome); });
+
+    grid.innerHTML = '';
+    nomes.forEach(nome => grid.appendChild(createTaskItem(nome, fieldName, marcadas.has(nome))));
+}
+
+// Zera a seleção e repinta. É o que se usa quando a grade passa a representar
+// OUTRO caso (um novo, ou um aberto para edição): sem zerar, o que estava
+// marcado antes viaja junto — inclusive as tasks fora de catálogo que uma
+// edição anterior tenha injetado.
+function resetTaskGrid(grid, extras = []) {
+    grid.querySelectorAll('input:checked').forEach(i => { i.checked = false; });
+    renderTaskGrid(grid, extras);
+}
+
 function createField(fieldConfig) {
     const wrapper = document.createElement('div');
     wrapper.className = 'bau-dynamic-input';
@@ -319,19 +371,8 @@ function createField(fieldConfig) {
         case 'checkbox-grid':
             input = document.createElement('div');
             input.className = 'bau-tasks-grid';
-            fieldConfig.options.forEach(task => {
-                const item = document.createElement('label');
-                item.className = 'bau-task-item';
-                item.innerHTML = `<input type="checkbox" name="${fieldConfig.name}" value="${task}"><span>${task}</span>`;
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const chk = item.querySelector('input');
-                    chk.checked = !chk.checked;
-                    item.classList.toggle('active', chk.checked);
-                    SoundManager.playClick();
-                });
-                input.appendChild(item);
-            });
+            input.dataset.fieldName = fieldConfig.name;
+            renderTaskGrid(input);
             wrapper.appendChild(input);
             return wrapper; 
 
@@ -650,6 +691,15 @@ export function initBAUForm() {
     `;
     viewContainer.appendChild(successView);
     document.body.appendChild(popup);
+
+    // A grade nasce do catálogo embutido (ou do cache, se o assistente de notas
+    // já o aplicou) e é repintada quando o conteúdo publicado chega. Sem isto o
+    // agente veria a lista embutida até recarregar a página — e o form volta a
+    // divergir da Central, que é justamente o que se veio corrigir.
+    loadTasks(() => {
+        const grade = form.querySelector('.bau-tasks-grid');
+        if (grade) renderTaskGrid(grade);
+    });
 
     function switchView(viewName) {
         currentView = viewName;
@@ -1693,6 +1743,13 @@ export function initBAUForm() {
         // Populate fields
         const availabilitySlots = c.availability ? c.availability.split('|').map(s => s.trim()) : [];
 
+        // O caso pode ter sido gravado quando o catálogo era outro. A grade
+        // ganha as tasks que faltam ANTES do laço abaixo, senão o `input` delas
+        // não existe e a seleção some sem aviso na hora de reenviar.
+        const tasksDoCaso = (c.task || c.taskType || "").split(',').map(t => t.trim()).filter(Boolean);
+        const grade = form.querySelector('.bau-tasks-grid');
+        if (grade) resetTaskGrid(grade, tasksDoCaso);
+
         form.querySelectorAll('input, select, textarea').forEach(input => {
             const fieldName = input.name;
 
@@ -1898,7 +1955,12 @@ export function initBAUForm() {
         isEditing = false;
         editingCaseId = null;
         updateWizardState();
-        form.querySelectorAll('.bau-task-item.active').forEach(item => item.classList.remove('active'));
+
+        // `form.reset()` desmarca, mas não desfaz as tasks fora de catálogo que
+        // uma edição anterior injetou na grade — elas ficariam oferecidas para
+        // um caso novo.
+        const grade = form.querySelector('.bau-tasks-grid');
+        if (grade) resetTaskGrid(grade);
     }
 
     popup.querySelector('#bau-new-case-btn').addEventListener('click',() => {

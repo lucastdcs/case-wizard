@@ -12,6 +12,35 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Conteúdo que vira gerenciável: migre TODOS os consumidores, não só o que motivou a migração
+
+**Why**: o ADR-0012 levou o catálogo de tasks para a Central e migrou o
+consumidor óbvio — o seletor de tasks do Case Notes, que era quem precisava dos
+screenshots. O **form BAU** também escolhe tasks, e ficou para trás com uma lista
+de 17 nomes escrita à mão no `bau-form-config.js`. Ninguém percebeu porque nada
+quebra: a grade continua desenhando, o agente continua marcando, a planilha
+continua gravando. O que apodrece é invisível — 5 tasks que só existiam no form,
+1 publicada que nunca chegou lá, e 8 escritas com outro nome ("Google Tag Manager
+Installation" contra "GTM Installation"). A coluna `Task_BAU` estava guardando um
+vocabulário que o resto do sistema não reconhece, e a promessa "o SME publica e o
+agente vê" valia em metade dos lugares.
+
+O sintoma de uma lista de negócio duplicada é ela ser **plausível**: se as duas
+cópias fossem obviamente diferentes, alguém teria reclamado no primeiro dia.
+
+**When to apply**: ao mover qualquer conteúdo do bundle para a Central (ou de um
+lugar para outro), antes de fechar a migração, procure as outras cópias pelo
+**conteúdo**, não pelo nome da variável:
+
+```bash
+# um valor característico da lista, não o nome do array
+grep -rn "Ads Conversion Tracking" --include=*.js src gas-backend
+```
+
+E deixe um teste que compare as duas pontas (o que a Central publica × o que a
+tela oferece). Sem ele a divergência volta na próxima lista escrita à mão —
+foi exatamente assim que `test:tasks` ganhou a seção da grade do BAU.
+
 ## Raspagem de SPA: escope ao container ATIVO, nunca ao `document`
 
 **Why**: o AM do caso anterior chegava no formulário do caso seguinte, e o

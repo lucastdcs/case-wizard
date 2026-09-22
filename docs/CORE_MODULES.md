@@ -46,7 +46,7 @@ A "Pílula" flutuante.
 * Gerencia o estado de "Processamento" (animação das bolinhas do Google) quando uma automação longa está rodando.
 
 ## 5. BAU Central (`src/modules/bau-form/`)
-Wizard de escalação de caso para BAU. `bau-form-config.js` declara os passos e campos do formulário como dados (`FORM_CONFIG`), e `bau-form-assistant.js` monta o DOM a partir dessa config — inclui dashboard dos próprios casos, fluxo de edição e ramificação Abertura vs. Descarte. Consome `sendBAUEscalation`/`readAgentBAU`/`updateBAUEscalation` de `shared/data-service.js`. Ver `specs/workflow/bau-lifecycle.md` para as regras de status.
+Wizard de escalação de caso para BAU. `bau-form-config.js` declara os passos e campos do formulário como dados (`FORM_CONFIG`), e `bau-form-assistant.js` monta o DOM a partir dessa config — inclui dashboard dos próprios casos, fluxo de edição e ramificação Abertura vs. Descarte. Consome `sendBAUEscalation`/`readAgentBAU`/`updateBAUEscalation` de `shared/data-service.js`. A grade de tasks do passo 2 **não** tem lista própria: ela sai do `TASKS_DB` que a Central de Conteúdo reescreve (`notes/data/tasks-service.js`), e só o nome — evidência do Win Criteria é assunto da nota (ADR-0014). Ver `specs/workflow/bau-lifecycle.md` para as regras de status.
 
 ## 6. Minha Biblioteca (`src/modules/personal-library/`)
 Snippets pessoais (notas, e-mails, textos gerais). `snippet-service.js` usa uma estratégia *cache-first*: lê do `localStorage` imediatamente e sincroniza com a planilha em segundo plano, com uma trava (`isMutating`) para evitar sobrescrever uma edição em andamento.
