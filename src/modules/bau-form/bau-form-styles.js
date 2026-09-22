@@ -194,6 +194,50 @@ export const injectStyles = () => {
 
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+    /* Tremor de erro. E bounce AMORTECIDO, e a metafora e "nao passa daqui":
+       espacial (translateX), dois ciclos, amplitude caindo. Nunca em cor ou
+       opacidade — overshoot ali vira piscada. */
+    @keyframes bauShake {
+      0%, 100% { transform: translateX(0); }
+      20%      { transform: translateX(-6px); }
+      40%      { transform: translateX(6px); }
+      60%      { transform: translateX(-3px); }
+      80%      { transform: translateX(3px); }
+    }
+    .bau-shake { animation: bauShake 300ms cubic-bezier(.36, .07, .19, .97); }
+
+    /* --- ELASTICO, SO ONDE A ANALISE APROVOU -------------------------------
+       Propriedades ESPACIAIS (scale, translate) podem passar do alvo e voltar;
+       cor e opacidade nunca. Orcamento: no maximo um overshoot visivel por
+       transicao — dois elasticos simultaneos se cancelam e a tela parece
+       instavel em vez de viva. */
+
+    /* O gesto mais clicado da tela: afunda no toque e volta com sobra, que e o
+       que da sensacao de botao fisico. A curva vive na regra completa do FAB
+       mais abaixo — declarar transition aqui perdia para ela na cascata. */
+    .bau-dashboard-fab:active { transform: scale(0.94); }
+
+    /* Minimo de proposito: 1.5% confirma "foi este" sem empurrar os vizinhos
+       da lista. */
+    @keyframes bauCardPick {
+      0%   { transform: scale(1); }
+      55%  { transform: scale(1.015); }
+      100% { transform: scale(1); }
+    }
+    .bau-case-card.is-selected { animation: bauCardPick 200ms cubic-bezier(.34, 1.4, .64, 1); }
+
+    /* Botoes de acao: afundam no toque, sem sobra na volta (sao pequenos e
+       frequentes — sobra aqui vira tique). */
+    .bau-mini-btn-input:active,
+    .bau-md-copy:active,
+    .bau-rescan-btn:active,
+    .bau-case-edit-btn:active { transform: scale(0.92); }
+    .bau-mini-btn-input, .bau-md-copy, .bau-rescan-btn, .bau-case-edit-btn {
+      transition-property: transform, background-color, color, opacity;
+      transition-duration: 120ms;
+      transition-timing-function: ${EASE};
+    }
+
     /* Sem borda E sem caixa. A hierarquia que a pesquisa recomenda comeca por
        ESPACO EM BRANCO — so depois tom, so depois elevacao, e borda apenas se
        os tres falharem. Para tres numeros com rotulo, o espaco e o degrau
@@ -501,7 +545,11 @@ export const injectStyles = () => {
       gap: 10px;
       cursor: pointer;
       box-shadow: 0 6px 16px rgba(26,115,232,0.4);
-      transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      /* So o TRANSFORM leva a curva com sobra — cor e sombra sao efeito e
+         precisam chegar sem ultrapassar. */
+      transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  transform 320ms cubic-bezier(.34, 1.56, .64, 1),
+                  box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 10;
     }
     .bau-dashboard-fab:hover {
@@ -1223,6 +1271,16 @@ export const injectStyles = () => {
          sem o deslize: sumir/aparecer num quadro tambem desorienta. */
       .bau-md { transition-timing-function: linear; }
       .bau-md.is-open .bau-md-detail { animation: none; }
+
+      /* Todo overshoot cai; o que sobra e transicao linear de mesma duracao. */
+      .bau-shake,
+      .bau-case-card.is-selected { animation: none !important; }
+      .bau-dashboard-fab { transition-timing-function: linear !important; }
+      .bau-dashboard-fab:active,
+      .bau-mini-btn-input:active,
+      .bau-md-copy:active,
+      .bau-rescan-btn:active,
+      .bau-case-edit-btn:active { transform: none !important; }
 
       /* Auras/pulsos puramente decorativos - infinitos, sem função de status.
          Spinners (.bau-spinner, .bau-metrics-refresh-btn.spinning svg) e o

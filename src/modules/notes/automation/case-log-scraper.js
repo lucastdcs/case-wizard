@@ -1,5 +1,5 @@
 // src/modules/notes/automation/case-log-scraper.js
-import { showToast } from '../../shared/utils.js';
+import { showToast, vibrar } from '../../shared/utils.js';
 import { SoundManager } from '../../shared/sound-manager.js';
 import { ensureOriginalLanguage } from '../../shared/page-data.js';
 import { esperar, simularClique } from '../../shared/dom-utils.js';
@@ -238,7 +238,12 @@ export async function fetchAndInsertSpeakeasyId(alvo) {
                 inputWidget.dispatchEvent(new Event('input', { bubbles: true }));
                 inputWidget.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                SoundManager.playSuccess();
+                // playReady, nao playSuccess. Achar o SE ID e uma etapa, nao o
+                // fim do trabalho — e playSuccess dispara no ENVIO do caso. Dois
+                // momentos com o mesmo som apagam a distincao justamente do que
+                // deveria ser o pico da sessao.
+                SoundManager.playReady();
+                vibrar('confirma');
                 showToast(cls('idFound')(idEncontrado));
 
                 // Flash Verde de Sucesso
@@ -248,6 +253,7 @@ export async function fetchAndInsertSpeakeasyId(alvo) {
 
             } else {
                 SoundManager.playError();
+                vibrar('erro');
                 showToast(cls('noIdFound'), { error: true });
                 inputWidget.placeholder = cls('notFound');
                 

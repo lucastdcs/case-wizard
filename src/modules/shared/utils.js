@@ -270,6 +270,37 @@ export function initGlobalStylesAndFont() {
     document.head.appendChild(style);
 }
 
+// --- RETORNO TATIL ---------------------------------------------------------
+//
+// O terceiro canal que o design-system exige para todo gesto de resultado
+// invisivel (os outros dois sao o visual no proprio controle e o som).
+//
+// Tres padroes, e nao um: a mao distingue duracao e ritmo, nao intensidade.
+//   confirma  10ms        — um toque seco: "recebi"
+//   erro      10-40-10    — dois toques: o "nao" universal
+//   concluido 10-30-10    — dois toques mais juntos, sem a pausa do erro
+//
+// Sempre atras da guarda. A Vibration API e efetivamente so Chromium: o Safari
+// nunca implementou e o Firefox removeu. E progressive enhancement — nada aqui
+// pode depender dela para funcionar. O navegador tambem so honra o vibrate
+// depois de uma interacao do usuario na pagina, o que e exatamente o nosso
+// caso (todo chamador abaixo esta dentro de um handler de clique).
+const PADROES_TATEIS = {
+    confirma: 10,
+    erro: [10, 40, 10],
+    concluido: [10, 30, 10],
+};
+
+export function vibrar(padrao = 'confirma') {
+    if (!navigator.vibrate) return false;
+    try {
+        return navigator.vibrate(PADROES_TATEIS[padrao] ?? PADROES_TATEIS.confirma);
+    } catch (e) {
+        // Alguns navegadores lancam quando a aba nao esta visivel.
+        return false;
+    }
+}
+
 export function showToast(message, opts = {}) {
   const toast = document.createElement("div");
 

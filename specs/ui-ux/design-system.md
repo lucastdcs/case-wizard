@@ -149,6 +149,30 @@ vem do tamanho e da cor, não da gordura da letra. Título de card: 500.
 - **`transition` nomeia as propriedades.** `transition: all` anima o que você não
   pretendia e custa o que você não mediu.
 
+## Movimento: elástico só no espacial
+
+A regra, em uma linha: **propriedade espacial pode passar do alvo e voltar;
+propriedade de efeito, nunca.**
+
+- **Pode** — `transform` (translate/scale/rotate), `border-radius`, altura. O
+  olho aceita a sobra porque ela imita massa.
+- **Não pode** — `opacity`, `background-color`, `color`, `box-shadow`.
+  Overshoot aqui faz a cor *ultrapassar* o valor e voltar: lê-se como defeito de
+  render, não como física.
+
+Numa transição com várias propriedades, isso significa declarar a curva **por
+propriedade**, não no atalho: o FAB leva `cubic-bezier(.34,1.56,.64,1)` só no
+`transform`, e cor e sombra ficam na curva padrão.
+
+**Orçamento: no máximo um overshoot visível por transição.** Dois elásticos
+simultâneos se cancelam — o olho perde qual é o importante e a tela parece
+instável em vez de viva. Rotação de spinner é a exceção que confirma: é
+espacial, mas `linear` é o ponto (bounce ali lê-se como travamento).
+
+`@media (prefers-reduced-motion: reduce)` derruba **todo** overshoot, mantendo a
+duração: some com a sobra e com o deslize, não com a transição — sumir num
+quadro também desorienta.
+
 ## Acessibilidade (piso, não extra)
 
 - Todo controle é `<button>`/`<a>` — nunca `<div>` com `onclick`, que o teclado

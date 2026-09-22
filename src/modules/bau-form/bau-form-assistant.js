@@ -2,7 +2,7 @@
 import { injectStyles, COLORS } from './bau-form-styles.js';
 import { createStandardHeader } from '../shared/header-factory.js';
 import { toggleGenieAnimation, isModuleOpen } from '../shared/animations.js';
-import { showToast, formatToLocalUserDate, confirmDialog } from '../shared/utils.js';
+import { showToast, formatToLocalUserDate, confirmDialog, vibrar } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { lockBodyScroll, unlockBodyScroll } from '../shared/dom-utils.js';
 import { sendBAUEscalation, readAgentBAU, updateBAUEscalation } from '../shared/data-service.js';
@@ -1173,6 +1173,21 @@ export function initBAUForm() {
         return true;
     }
 
+    // O design-system pede retorno no PROPRIO controle. Um toast no canto
+    // oposto conta o que houve, mas nao diz QUAL campo — com sete campos na
+    // tela, isso e uma busca visual por erro.
+    function sinalizarErroNoCampo(input) {
+        vibrar('erro');
+        if (!input) return;
+        input.classList.remove('bau-shake');
+        // Reflow forcado: sem ele, remover e readicionar na mesma tarefa nao
+        // reinicia a animacao, e o segundo erro seguido nao treme.
+        void input.offsetWidth;
+        input.classList.add('bau-shake');
+        input.addEventListener('animationend', () => input.classList.remove('bau-shake'), { once: true });
+        if (typeof input.focus === 'function') input.focus({ preventScroll: false });
+    }
+
     function validateRequiredFields(step) {
         const stepEl = form.querySelector(`#bau-step-${step}`);
         if (!stepEl) return false;
@@ -1210,6 +1225,7 @@ export function initBAUForm() {
                     if (!dataInput.value.trim() || !horaInput || !horaInput.value.trim()) {
                         failureReason = "Datetime group first field is empty";
                         SoundManager.playError();
+                        sinalizarErroNoCampo(dataInput);
                         showToast(bt('fieldRequiredDouble')(bft(fieldConfig.fields[0], 'label')), { error: true });
                         isFieldValid = false;
                     }
@@ -1221,6 +1237,7 @@ export function initBAUForm() {
                     if (!input.value.trim()) {
                         failureReason = "Field is empty";
                         SoundManager.playError();
+                        sinalizarErroNoCampo(input);
                         showToast(bt('fieldRequiredSingle')(bft(fieldConfig, 'label')), { error: true });
                         isFieldValid = false;
                     }
@@ -1419,7 +1436,7 @@ export function initBAUForm() {
         btn.classList.add('is-done');
         btn.innerHTML = ICONS.check || ICONS.wand;
         SoundManager.playClick();
-        if (navigator.vibrate) navigator.vibrate(10);
+        vibrar('confirma');
         showToast(bt('copiedToClipboard'));
         setTimeout(() => {
             btn.classList.remove('is-done');
@@ -1922,6 +1939,7 @@ export function initBAUForm() {
             }
 
             SoundManager.playSuccess();
+            vibrar('concluido');
 
             // Dynamic Success Message
             const successTitle = popup.querySelector('.bau-success-title');

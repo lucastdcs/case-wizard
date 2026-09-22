@@ -8,6 +8,31 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Camada sensorial do BAU Form.** Retorno nos três canais que o
+  `design-system.md` exige, colocado onde ele significa alguma coisa — e
+  **calado onde não significa**. A pesquisa que embasou isso é explícita: em
+  ferramenta de produtividade, som demais vira fadiga em uma semana e o agente
+  desliga tudo, perdendo junto os avisos que importam.
+  - **Tátil** (`vibrar()`, em `shared/utils.js`): três padrões, porque a mão
+    distingue ritmo e não intensidade — `confirma` (10ms), `erro` (10-40-10, o
+    "não" universal) e `concluido` (10-30-10). Sempre atrás de
+    `if (navigator.vibrate)`: a API é efetivamente só Chromium.
+  - **Erro de validação passou a aparecer onde a mão está.** Antes era só um
+    toast no canto oposto, que conta o que houve mas não diz **qual** campo —
+    com sete campos na tela, isso é uma busca visual. Agora o campo treme
+    (bounce amortecido, `±6px`, 300ms), recebe foco e dispara o padrão tátil de
+    erro.
+  - **Hierarquia do som corrigida:** achar o SE ID tocava `playSuccess`, o mesmo
+    som do **envio do caso**. Dois momentos com o mesmo som apagam a distinção
+    justamente do que deveria ser o pico da sessão. A busca passou a
+    `playReady`; `playSuccess` ficou exclusivo do envio.
+  - **Elástico só no espacial**, conforme a análise: FAB afunda e volta com
+    sobra (`cubic-bezier(.34,1.56,.64,1)` **só no `transform`** — cor e sombra
+    ficam na curva padrão), card selecionado dá 1,5% de escala, botões de ação
+    afundam sem sobra. `prefers-reduced-motion` derruba todo overshoot mantendo
+    a duração. A regra foi escrita em `specs/ui-ux/design-system.md`.
+
 ### Fixed
 - **O botão de busca do SE ID saía sem formatação e fora do campo.** As regras
   `.bau-input-group`, `.bau-input-group > .bau-input` e `.bau-mini-btn-input`
