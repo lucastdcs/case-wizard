@@ -235,6 +235,10 @@ export const injectStyles = () => {
       overflow: hidden;
     }
 
+    /* Tom neutro, nao tingido por status. O que pesava era a SEGUNDA camada de
+       cor: o ponto do selo ja diz o estado, e lavar o card inteiro na mesma cor
+       repetia a informacao. Mas branco puro sobre fundo branco apaga o card
+       como unidade — o degrau de ~3% e o minimo para ele existir sem moldura. */
     .bau-case-card {
       background: #F8F9FA;
       border: none;
@@ -253,16 +257,12 @@ export const injectStyles = () => {
       /* Sem transform no próprio card: hit-box parado evita o flicker
          hover-liga/desliga perto da borda superior quando ele "sobe". A
          elevação vem só da sombra crescendo. */
-      box-shadow: 0 2px 8px rgba(60,64,67,0.12);
+      box-shadow: 0 1px 6px rgba(60,64,67,0.10);
       background: #F1F3F4;
       background: #F1F3F4;
     }
 
     /* Aura Status Overrides */
-    .bau-case-card.status-yellow-aura { background: linear-gradient(135deg, rgba(249, 171, 0, 0.1) 0%, rgba(249, 171, 0, 0.05) 100%); border-color: rgba(249, 171, 0, 0.2); }
-    .bau-case-card.status-orange-aura { background: linear-gradient(135deg, rgba(230, 81, 0, 0.09) 0%, rgba(230, 81, 0, 0.04) 100%); border-color: rgba(230, 81, 0, 0.2); }
-    .bau-case-card.status-green-aura { background: linear-gradient(135deg, rgba(30, 142, 62, 0.1) 0%, rgba(30, 142, 62, 0.05) 100%); border-color: rgba(30, 142, 62, 0.2); }
-    .bau-case-card.status-red-aura { background: linear-gradient(135deg, rgba(217, 48, 37, 0.1) 0%, rgba(217, 48, 37, 0.05) 100%); border-color: rgba(217, 48, 37, 0.2); }
 
     .bau-case-main { display: flex; align-items: flex-start; gap: 12px; }
     .bau-case-icon { color: #5F6368; margin-top: 2px; }
@@ -346,7 +346,7 @@ export const injectStyles = () => {
       height: 100%;
     }
     .bau-empty-state svg { margin-bottom: 16px; opacity: 0.5; }
-    .bau-empty-title { font-size: 16px; font-weight: 600; color: #202124; margin: 0 0 4px 0; }
+    .bau-empty-title { font-size: 16px; font-weight: 500; color: #202124; margin: 0 0 4px 0; }
 
     .bau-success-view {
         display: none;
@@ -450,7 +450,7 @@ export const injectStyles = () => {
 
     .bau-success-view.active .bau-success-title {
         font-size: 24px;
-        font-weight: 700;
+        font-weight: 500;
         color: #202124;
         margin: 0 0 8px 0;
         opacity: 0;
@@ -495,7 +495,7 @@ export const injectStyles = () => {
       border-radius: 100px;
       padding: 14px 24px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -521,7 +521,7 @@ export const injectStyles = () => {
 
     .bau-progress-indicator { display: flex; justify-content: space-between; margin-bottom: 24px; position: relative; }
     .bau-progress-indicator::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #DADCE0; z-index: 1; transform: translateY(-50%); }
-    .bau-progress-step { width: 28px; height: 28px; border-radius: 50%; background: #FFFFFF; border: 2px solid #DADCE0; color: #5F6368; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; position: relative; z-index: 2; transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease; }
+    .bau-progress-step { width: 28px; height: 28px; border-radius: 50%; background: #F1F3F4; border: none; color: #5F6368; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; position: relative; z-index: 2; transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease; }
     .bau-progress-step.active { border-color: #1A73E8; background: #1A73E8; color: #FFFFFF; }
     .bau-progress-step.completed { border-color: #1E8E3E; background: #1E8E3E; color: #FFFFFF; }
 
@@ -541,7 +541,7 @@ export const injectStyles = () => {
     .bau-branching-card {
       background: rgba(255, 255, 255, 0.7);
       backdrop-filter: blur(12px);
-      border: 1px solid rgba(218, 220, 224, 0.5);
+      border: none;
       border-radius: 16px;
       padding: 32px 24px;
       display: flex;
@@ -598,7 +598,7 @@ export const injectStyles = () => {
 
     .bau-branching-title {
       font-size: 16px;
-      font-weight: 700;
+      font-weight: 500;
       color: #202124;
       margin-bottom: 8px;
     }
@@ -614,7 +614,7 @@ export const injectStyles = () => {
     }
 
     /* FORM INPUTS - GEMINI SYSTEM */
-    .bau-card { background: #F8F9FA; border: 1px solid #DADCE0; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .bau-card { background: #F8F9FA; border: none; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
 
     .bau-highlight-panel {
       display: grid;
@@ -624,7 +624,7 @@ export const injectStyles = () => {
       background: linear-gradient(135deg, #F8F9FA 0%, #F1F3F4 100%);
       backdrop-filter: blur(12px);
       border-radius: 12px;
-      border: 1px solid #DADCE0;
+      border: none;
       margin-bottom: 24px;
       position: relative;
       overflow: hidden;
@@ -692,26 +692,59 @@ export const injectStyles = () => {
     .bau-rescan-btn.spinning { cursor: default; color: ${COLORS.blue}; }
     .bau-rescan-btn.spinning svg { animation: rotate 1s linear infinite; }
 
-    .bau-label { display: block; font-size: 13px; font-weight: 600; color: #202124; margin-top: 20px; margin-bottom: 8px; }
+    .bau-label { display: block; font-size: 13px; font-weight: 500; color: #202124; margin-top: 20px; margin-bottom: 8px; }
     
+    /* Campo sobre tom, sem moldura cinza: mesma ordem de separacao do resto da
+       tela. A borda aparece so no foco, onde ela TEM funcao. */
     .bau-input, .bau-select, .bau-textarea {
       width: 100%;
-      background: #FFFFFF;
-      border: 1px solid #DADCE0;
+      background: #F1F3F4;
+      border: none;
       border-radius: 8px;
       padding: 12px 16px;
       color: #202124;
       font-size: 14px;
-      transition: border-color 0.2s ease, background-color 0.2s ease;
+      font-family: inherit;
+      transition: background-color 0.2s ease, box-shadow 0.2s ease;
       box-sizing: border-box;
     }
 
     .bau-input:focus, .bau-select:focus, .bau-textarea:focus {
-      border-color: #1A73E8;
       background: #FFFFFF;
       outline: none;
-      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+      box-shadow: inset 0 0 0 2px ${COLORS.blue};
     }
+
+    /* --- CAMPO COM BOTAO ACOPLADO (busca do SE ID) ------------------------
+       Estas tres regras existiam e EU as apaguei junto com o bloco do painel
+       sobreposto, no commit do mestre-detalhe: a heuristica que achava o fim
+       daquele bloco passou do ponto e levou o que vinha depois. O resultado e
+       o que o Lucas viu — botao cru do navegador, fora do campo, "como se o
+       CSS nao o atingisse". Voltam no registro novo, sem moldura. */
+    .bau-input-group {
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+      width: 100%;
+    }
+    .bau-input-group > .bau-input { flex: 1; min-width: 0; }
+
+    .bau-mini-btn-input {
+      flex-shrink: 0;
+      width: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      background: #F1F3F4;
+      border: none;
+      border-radius: 8px;
+      color: #5F6368;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .bau-mini-btn-input svg { width: 18px; height: 18px; }
+    .bau-mini-btn-input:focus-visible { outline: 2px solid ${COLORS.blue}; outline-offset: 2px; }
 
     .bau-tasks-grid {
       display: grid;
@@ -721,7 +754,7 @@ export const injectStyles = () => {
     }
     .bau-task-item {
       background: #F8F9FA;
-      border: 1px solid #DADCE0;
+      border: none;
       border-radius: 8px;
       padding: 12px;
       cursor: pointer;
@@ -784,12 +817,12 @@ export const injectStyles = () => {
 
     .bau-timezone-link {
       background: #FFFFFF;
-      border: 1px solid #DADCE0;
+      border: none;
       color: #1A73E8;
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -819,7 +852,7 @@ export const injectStyles = () => {
     }
     .bau-context-badge {
       background: #F8F9FA;
-      border: 1px solid #DADCE0;
+      border: none;
       border-radius: 6px;
       padding: 4px 10px;
       display: flex;
@@ -853,7 +886,7 @@ export const injectStyles = () => {
       padding: 10px 14px;
       background: #F8F9FA;
       border-radius: 10px;
-      border: 1px solid #DADCE0;
+      border: none;
       transition: background-color 0.2s ease, border-color 0.2s ease;
       position: relative;
     }
@@ -869,7 +902,7 @@ export const injectStyles = () => {
       color: #1A73E8;
       text-transform: uppercase;
       letter-spacing: 0.8px;
-      font-weight: 700;
+      font-weight: 500;
       margin-bottom: 2px;
     }
     .bau-confirm-value-input {
@@ -930,7 +963,7 @@ export const injectStyles = () => {
       border-radius: 8px;
       padding: 10px 24px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
       transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
       display: flex;
@@ -942,12 +975,12 @@ export const injectStyles = () => {
 
     .bau-btn-secondary {
       background: transparent;
-      border: 1px solid #DADCE0;
+      border: none;
       color: #5F6368;
       border-radius: 8px;
       padding: 10px 24px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
       transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
     }
@@ -973,10 +1006,23 @@ export const injectStyles = () => {
        Lista e detalhe lado a lado. Substitui o painel sobreposto: nao ha mais
        nada absoluto por cima de nada, entao offset, z-index e rolagem dupla
        deixam de ser possiveis. */
+    /* O detalhe e um TOGGLE: sem caso escolhido a coluna nao existe, e a lista
+       ocupa a largura toda. Um painel vazio permanente e area morta — pior, le
+       como parte quebrada da tela.
+       A abertura anima a COLUNA (grid-template-columns e o gap), que e
+       propriedade espacial: por isso pode ter uma sobra minima no fim. A
+       opacidade do conteudo acompanha SEM sobra, porque e efeito — overshoot em
+       opacidade vira piscada. Ver a analise de elastico no PLAN. */
     .bau-md {
       flex: 1;
       min-height: 0;
       display: grid;
+      grid-template-columns: minmax(0, 1fr) 0fr;
+      gap: 0;
+      transition: grid-template-columns 260ms cubic-bezier(.34, 1.12, .64, 1),
+                  gap 260ms cubic-bezier(.34, 1.12, .64, 1);
+    }
+    .bau-md.is-open {
       grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
       gap: 16px;
     }
@@ -1000,15 +1046,16 @@ export const injectStyles = () => {
     .bau-md-list,
     .bau-md-detail { padding-bottom: 88px; }
 
-    /* Na coluna do mestre o card tem ~380px, nao os 850 de antes. Em linha
-       unica o titulo sobrava com 145px e quebrava em tres linhas enquanto data
-       e selo dividiam o resto. Empilhado, o titulo ganha a largura toda. */
-    .bau-md-list .bau-case-card { flex-direction: column; align-items: stretch; gap: 12px; }
-    .bau-md-list .bau-case-header { flex-wrap: wrap; gap: 4px 8px; }
-    .bau-md-list .bau-case-title { flex: 1 1 100%; }
+    /* Empilhar so vale na coluna ESTREITA (~380px) do detalhe aberto: em linha
+       unica ali o titulo sobrava com 145px e quebrava em tres linhas. Com o
+       detalhe fechado a lista tem 850px e o layout em linha e o certo — senao
+       as acoes ficam isoladas no canto direito, com um vao no meio. */
+    .bau-md.is-open .bau-md-list .bau-case-card { flex-direction: column; align-items: stretch; gap: 12px; }
+    .bau-md.is-open .bau-md-list .bau-case-header { flex-wrap: wrap; gap: 4px 8px; }
+    .bau-md.is-open .bau-md-list .bau-case-title { flex: 1 1 100%; }
     /* Fora do mestre (largura cheia) segue empilhado a direita, como era. */
     .bau-case-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-    .bau-md-list .bau-case-actions { flex-direction: row; align-items: center; justify-content: flex-end; }
+    .bau-md.is-open .bau-md-list .bau-case-actions { flex-direction: row; align-items: center; justify-content: flex-end; }
 
     /* Zona de leitura: recuada (tonal, sem sombra), como manda o design-system
        para "material de referencia, o que a pessoa le". A sombra fica para o
@@ -1018,20 +1065,26 @@ export const injectStyles = () => {
       background: #F8F9FA;
       border: none;
       border-radius: 12px;
+      padding: 0;
+      opacity: 0;
+      /* Fechado o painel tem largura zero: sem isto o conteudo vazaria para
+         fora da coluna enquanto ela encolhe. */
+      overflow: hidden;
+      transition: opacity 180ms ease, padding 260ms cubic-bezier(.34, 1.12, .64, 1);
+    }
+    .bau-md.is-open .bau-md-detail {
+      opacity: 1;
       padding: 16px;
+      overflow-y: auto;
+      /* O conteudo entra deslizando 12px da direita — espacial, curto, uma vez
+         por selecao. O atraso deixa a coluna abrir primeiro: o olho segue a
+         moldura e so entao le o conteudo. */
+      animation: bauDetailIn 260ms cubic-bezier(.34, 1.12, .64, 1) 60ms both;
     }
-
-    .bau-md-empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 48px 16px;
-      color: #5F6368;
+    @keyframes bauDetailIn {
+      from { transform: translateX(12px); }
+      to   { transform: translateX(0); }
     }
-    .bau-md-empty svg { width: 48px; height: 48px; opacity: 0.4; }
-    .bau-md-empty-text { margin: 0; font-size: 13px; text-align: center; max-width: 240px; }
 
     .bau-md-head { margin-bottom: 16px; }
     .bau-md-title {
@@ -1119,9 +1172,10 @@ export const injectStyles = () => {
     /* Abaixo de 900px a janela encolhe (max-width: 95vw) e duas colunas viram
        duas colunas espremidas. Empilha: o detalhe vai para baixo da lista. */
     @media (max-width: 900px) {
-      .bau-md { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+      .bau-md { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 0fr;
+                transition: grid-template-rows 260ms cubic-bezier(.34, 1.12, .64, 1), gap 260ms ease; }
+      .bau-md.is-open { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
     }
-
 
     /* --- LOADING OVERLAY --- */
     .bau-form-loading-overlay {
@@ -1157,19 +1211,19 @@ export const injectStyles = () => {
 
     .bau-loading-text {
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
       color: #1A73E8;
       letter-spacing: 0.3px;
     }
 
-    .bau-mini-btn-input:hover {
-      background: #F1F3F4;
-      color: #202124;
-      border-color: #5F6368;
-      z-index: 1;
-    }
+    .bau-mini-btn-input:hover { background: #E8F0FE; color: ${COLORS.blue}; }
 
     @media (prefers-reduced-motion: reduce) {
+      /* A abertura do detalhe continua acontecendo, mas sem a sobra da curva e
+         sem o deslize: sumir/aparecer num quadro tambem desorienta. */
+      .bau-md { transition-timing-function: linear; }
+      .bau-md.is-open .bau-md-detail { animation: none; }
+
       /* Auras/pulsos puramente decorativos - infinitos, sem função de status.
          Spinners (.bau-spinner, .bau-metrics-refresh-btn.spinning svg) e o
          .bau-shimmer de skeleton ficam de fora: carregam estado de "carregando"

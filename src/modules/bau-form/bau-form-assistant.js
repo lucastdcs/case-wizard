@@ -109,7 +109,6 @@ const BAU_DICT = {
         createdApproved: "Criados / Aprovados",
         refreshDashboard: "Atualizar Dashboard",
         statusPendingDiscard: "Descarte em avaliação",
-        selectACase: "Escolha um caso na lista para ver os detalhes.",
         copyFieldAria: (campo) => `Copiar ${campo} para a área de transferência`,
         metricAwaitingDiscard: "Descarte em avaliação",
         rescanTitle: "Recapturar os dados desta tela",
@@ -216,7 +215,6 @@ const BAU_DICT = {
         createdApproved: "Creados / Aprobados",
         refreshDashboard: "Actualizar Panel",
         statusPendingDiscard: "Descarte en evaluación",
-        selectACase: "Elige un caso de la lista para ver los detalles.",
         copyFieldAria: (campo) => `Copiar ${campo} al portapapeles`,
         metricAwaitingDiscard: "Descarte en evaluación",
         rescanTitle: "Recapturar los datos de esta pantalla",
@@ -800,15 +798,10 @@ export function initBAUForm() {
         const painel = popup.querySelector('#bau-md-detail');
         if (!painel) return;
 
-        if (!c) {
-            painel.innerHTML = `
-                <div class="bau-md-empty">
-                    ${ICONS.empty}
-                    <p class="bau-md-empty-text">${bt('selectACase')}</p>
-                </div>
-            `;
-            return;
-        }
+        // Sem estado vazio: fechado, o painel nao ocupa coluna nenhuma (ver o
+        // toggle em .bau-md). A guarda existe so para nao renderizar lixo se
+        // um caso sumir da lista entre o clique e o render.
+        if (!c) return;
 
         const statusData = getStatusData(c.status);
         const ou = (v) => v || '---';
@@ -941,13 +934,33 @@ export function initBAUForm() {
     // Selecao no mestre-detalhe. O card selecionado fica marcado na lista: sem
     // isso o agente perde de vista QUAL caso o painel da direita esta mostrando
     // assim que a lista rola.
+    let casoAberto = null;
+    function fecharDetalhe() {
+        casoAberto = null;
+        popup.querySelector('.bau-md')?.classList.remove('is-open');
+        popup.querySelectorAll('#bau-case-list-container .bau-case-card').forEach((el) => {
+            el.classList.remove('is-selected');
+            el.setAttribute('aria-expanded', 'false');
+        });
+    }
+
     function selecionarCaso(cardEl, caseItem) {
+        // Toggle de verdade: reclicar o caso ABERTO fecha o painel. Sem isso o
+        // agente abre um detalhe e nao tem como voltar a lista inteira sem
+        // recarregar o dashboard.
+        if (casoAberto === caseItem?.id) {
+            fecharDetalhe();
+            SoundManager.playSwoosh();
+            return;
+        }
+        casoAberto = caseItem?.id || null;
         popup.querySelectorAll('#bau-case-list-container .bau-case-card').forEach((el) => {
             const eu = el === cardEl;
             el.classList.toggle('is-selected', eu);
-            el.setAttribute('aria-current', eu ? 'true' : 'false');
+            el.setAttribute('aria-expanded', eu ? 'true' : 'false');
         });
         renderCaseDetail(caseItem);
+        popup.querySelector('.bau-md')?.classList.add('is-open');
         SoundManager.playClick();
     }
 
@@ -1010,10 +1023,10 @@ export function initBAUForm() {
         });
 
         listEl.innerHTML = '';
-        // Estado vazio do painel da direita. Sem isto o mestre-detalhe abria com
-        // um retangulo cinza mudo, que le como area quebrada e nao como "escolha
-        // um caso".
-        renderCaseDetail(null);
+        // Recarregar a lista fecha o painel: o caso que estava aberto pode nao
+        // existir mais, e um detalhe apontando para um card que sumiu e pior
+        // que nenhum detalhe.
+        fecharDetalhe();
         const recentCases = safeCases.slice(0, 5);
         const olderCases = safeCases.slice(5);
 
@@ -1380,6 +1393,15 @@ export function initBAUForm() {
     // toast no canto oposto), sonoro e tatil. O vibrate fica atras da guarda
     // porque nao existe em desktop nem no Safari — e progressive enhancement,
     // nunca dependencia.
+    // Esc fecha o detalhe. So quando ele esta aberto, para nao roubar o Esc de
+    // quem esta no formulario.
+    popup.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || !casoAberto) return;
+        e.stopPropagation();
+        fecharDetalhe();
+        SoundManager.playSwoosh();
+    });
+
     popup.addEventListener('click', async (e) => {
         const btn = e.target.closest('.bau-md-copy');
         if (!btn) return;

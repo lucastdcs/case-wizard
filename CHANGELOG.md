@@ -8,7 +8,30 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **O botão de busca do SE ID saía sem formatação e fora do campo.** As regras
+  `.bau-input-group`, `.bau-input-group > .bau-input` e `.bau-mini-btn-input`
+  **foram apagadas por engano** no commit do mestre-detalhe: a heurística que
+  achava o fim do bloco do painel sobreposto passou do ponto e levou junto o que
+  vinha depois. Sem regra base, o botão renderizava como botão cru do navegador
+  e o grupo perdia o `display: flex`, jogando-o para fora do campo. Restauradas
+  no registro novo (sem moldura, 44px, acopladas ao campo).
+
 ### Changed
+- **O painel de detalhe virou toggle.** Sem caso escolhido a coluna não existe e
+  a lista ocupa a largura toda; reclicar o caso aberto fecha, e `Esc` também. Um
+  painel vazio permanente é área morta — pior, lê como parte quebrada da tela. A
+  abertura anima `grid-template-columns` e o `gap` (propriedade **espacial**,
+  logo com sobra mínima na curva), e a opacidade do conteúdo acompanha **sem**
+  sobra, porque é efeito. Com o detalhe fechado o card volta ao layout em linha:
+  empilhado só faz sentido na coluna estreita.
+- **Os cards da lista ficaram mais leves.** Sai a lavagem de cor por status — o
+  ponto do selo já diz o estado, e tingir o card inteiro repetia a informação.
+  Fica um tom neutro de ~3%, que é o mínimo para o card existir como unidade sem
+  moldura (branco puro sobre branco apagava o card).
+- **Varredura no resto do módulo:** mais 6 bordas `1px solid #DADCE0` viraram
+  tom, e os 11 pesos `600`/`700` restantes viraram `500`. A borda da janela
+  contra a página do CRM permanece — ali ela tem função.
 - **A tela inicial do BAU perdeu a cara de sistema antigo.** Auditada em
   navegador e reestruturada contra três tells medidos: **dez bordas
   `1px solid #DADCE0`** (a separação passa a vir de espaço em branco → degrau de
