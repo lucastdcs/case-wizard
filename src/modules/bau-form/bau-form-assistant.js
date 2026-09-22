@@ -107,6 +107,8 @@ const BAU_DICT = {
         casesWillAppear: "Seus casos BAU aparecerão aqui",
         createdApproved: "Criados / Aprovados",
         refreshDashboard: "Atualizar Dashboard",
+        rescanTitle: "Recapturar os dados desta tela",
+        rescanDone: "Dados recapturados da tela atual.",
         errorPrefix: (msg) => `Erro: ${msg}`,
         selectAtLeastOne: (label) => `Erro: Selecione pelo menos uma opção para "${label}".`,
         fieldRequiredDouble: (label) => `Erro: O campo "${label}" é obrigatório.`,
@@ -208,6 +210,8 @@ const BAU_DICT = {
         casesWillAppear: "Tus casos BAU aparecerán aquí",
         createdApproved: "Creados / Aprobados",
         refreshDashboard: "Actualizar Panel",
+        rescanTitle: "Recapturar los datos de esta pantalla",
+        rescanDone: "Datos recapturados de la pantalla actual.",
         errorPrefix: (msg) => `Error: ${msg}`,
         selectAtLeastOne: (label) => `Error: Selecciona al menos una opción para "${label}".`,
         fieldRequiredDouble: (label) => `Error: El campo "${label}" es obligatorio.`,
@@ -1245,6 +1249,10 @@ export function initBAUForm() {
                 { label: "Case ID", value: pageData.caseId }
             ];
 
+            // O botão entra no mesmo innerHTML dos vitais porque este painel é
+            // reescrito inteiro a cada recaptura — deixá-lo fora seria apagá-lo
+            // no primeiro clique. Quem ouve o clique é o listener delegado lá
+            // embaixo, então não há listener órfão a cada re-render.
             container.innerHTML = vitals.map(v => {
                 const displayValue = (v.value && v.value !== "N/A" && v.value !== "undefined" && v.value !== "null") ? v.value : bt('notCaptured');
                 return `
@@ -1253,7 +1261,11 @@ export function initBAUForm() {
                         <span class="bau-highlight-value">${displayValue}</span>
                     </div>
                 `;
-            }).join('');
+            }).join('') + `
+                <button type="button" class="bau-rescan-btn" title="${bt('rescanTitle')}" aria-label="${bt('rescanTitle')}">
+                    ${ICONS.refresh}
+                </button>
+            `;
         });
 
         // Smart Rendering Logic
@@ -1339,6 +1351,38 @@ export function initBAUForm() {
             `;
         });
     }
+
+    // Recaptura sob demanda, no molde do botão do call script: o agente troca
+    // de caso no CRM sem que a janela do módulo feche, e a raspagem só
+    // acontecia no clique de "Novo Caso". Quem já estava com o formulário
+    // aberto seguia vendo o contexto do caso ANTERIOR — foi assim que o AM de
+    // um caso já fechado chegava no formulário do caso seguinte.
+    //
+    // Sob demanda, e não num setInterval como o call script: lá o monitor lê
+    // três campos de texto; aqui getPageData() clica no unmask do telefone,
+    // pode expandir mensagens do log e faz JSONP do perfil. Repetir isso de
+    // dois em dois segundos mexeria na tela embaixo do agente enquanto ele
+    // digita.
+    popup.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.bau-rescan-btn');
+        if (!btn || btn.classList.contains('spinning')) return;
+        e.preventDefault();
+        btn.classList.add('spinning');
+        SoundManager.playClick();
+        try {
+            await populateContextData();
+            showToast(bt('rescanDone'));
+        } catch (err) {
+            console.warn('Falha ao recapturar o contexto:', err);
+            SoundManager.playError();
+            showToast(bt('genericErrorTitle'), { error: true });
+        } finally {
+            // O painel foi reescrito por populateContextData(), então este nó
+            // pode já não estar na tela: limpa o estado no que existir agora.
+            popup.querySelectorAll('.bau-rescan-btn.spinning')
+                .forEach((b) => b.classList.remove('spinning'));
+        }
+    });
 
     // Delegado, e resolvendo o input pelo IRMÃO do botão clicado — não por id.
     // O campo seId existe em dois passos (1, abertura; 5, descarte) e os dois

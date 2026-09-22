@@ -8,7 +8,31 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **O AM do caso ANTERIOR chegava no formulário do caso seguinte.** Relatado
+  como "abro um caso, ele puxa o AM; fecho, abro outro, e vem o mesmo AM do caso
+  já fechado" — e seguia acontecendo depois da v6.3.3, que consertou outra coisa
+  (o fallback do `<internal-user-info>`). A causa é outra e está a montante:
+  `mensagensDoLog()` varria `document.querySelectorAll('case-message-view')`, o
+  **documento inteiro**. O CRM mantém mais de um container de case log no DOM e
+  marca o do caso em foco com `.active-case-log-container`; ao trocar de caso, o
+  log do anterior continua pendurado ali, e quando o do caso novo ainda não
+  renderizou ele é o **único** com e-mail — então a raspagem devolvia o AM do
+  caso fechado com cara de acerto (origem `case-log-visivel`, e às vezes até
+  `contact-us-form`). A varredura passa a ser escopada ao log ativo, com
+  fallback para o documento onde a classe não existe. Reproduzido contra uma
+  captura real da tela e travado em `test:scraping` (+4 asserções, 62 no total).
+
 ### Added
+- **Botão de recaptura no formulário BAU.** No molde do botão do call script: um
+  clique e a raspagem roda de novo **na tela que está na frente**. A janela do
+  módulo não fecha quando o agente troca de caso no CRM, e a captura só
+  acontecia no clique de "Novo Caso" — quem já estava com o formulário aberto
+  seguia vendo o contexto do caso anterior. Sob demanda, e não num `setInterval`
+  como o call script: lá o monitor lê três campos de texto; aqui `getPageData()`
+  clica no unmask do telefone, pode expandir mensagens do log e faz JSONP do
+  perfil, e repetir isso a cada 2s mexeria na tela embaixo de quem está
+  digitando.
 - **Busca automática do SE ID no fluxo de descarte.** O botão que varre o case
   log atrás do Speakeasy ID existia só no passo de abertura. No de descarte —
   onde o campo é **obrigatório**, e no de abertura não é — o agente tinha que

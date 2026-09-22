@@ -172,6 +172,34 @@ const CENARIOS_AM = [
         esperado: { email: null, origem: 'nao-resolvido' },
     },
     {
+        nome: 'am.escopo/log-do-caso-anterior-ainda-no-dom',
+        // O agente troca de caso e o CRM deixa o container do log ANTERIOR no
+        // DOM, sem a classe de ativo. Varrer o document inteiro devolvia o AM
+        // do caso que o agente acabou de fechar — relatado em 2026-09-22 como
+        // "abro outro caso e vem o AM do caso já fechado". O log ativo aqui
+        // segue intacto, então a resposta certa é o AM DELE.
+        mutacao: `const ativo = document.querySelector('.active-case-log-container');
+                  const anterior = ativo.cloneNode(true);
+                  anterior.classList.remove('active-case-log-container');
+                  anterior.innerHTML = anterior.innerHTML.replace(/bianca\\.alves@google\\.com/g, 'outro.am@google.com');
+                  ativo.parentElement.insertBefore(anterior, ativo);`,
+        esperado: { email: 'bianca.alves@google.com', origem: 'case-log-visivel' },
+    },
+    {
+        nome: 'am.escopo/anterior-no-dom-e-atual-ainda-vazio',
+        // Pior variante: o log do caso novo ainda não renderizou. Sem escopo, o
+        // único log com e-mail é o do caso anterior, e a raspagem o entregava
+        // com cara de acerto. Com escopo, não há candidato no log ATIVO — e o
+        // contrato da ADR-0011 manda devolver null em vez de chutar.
+        mutacao: `const ativo = document.querySelector('.active-case-log-container');
+                  const anterior = ativo.cloneNode(true);
+                  anterior.classList.remove('active-case-log-container');
+                  anterior.innerHTML = anterior.innerHTML.replace(/bianca\\.alves@google\\.com/g, 'outro.am@google.com');
+                  ativo.parentElement.insertBefore(anterior, ativo);
+                  ativo.querySelectorAll('case-message-view').forEach(m => m.remove());`,
+        esperado: { email: null, origem: 'nao-resolvido' },
+    },
+    {
         nome: 'am.fallback/contato-interno-unico',
         // Um único contato interno na tela: aí não há o que chutar, e o
         // fallback continua valendo.

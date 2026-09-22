@@ -15,12 +15,15 @@ This file differs from the long-term roadmap: it describes what is happening **n
          fluxo que não pergunta nenhum dos dois. Ver CHANGELOG `[Unreleased]`.
          Travado em `test:tl-decision` (+7); nos dois primeiros o código anterior
          falha, e os de campo nem carregam.
-      2. [ ] **AM sempre igual, mesmo depois da v6.3.3.** O conserto de `ad217a4`
-         estreitou o fallback do `<internal-user-info>`, mas o sintoma continua:
-         o Lucas relata `noguti@google.com` em todo caso, rodando a v6.3.3.
-         **Confirmado que NÃO está fixo no código** (`grep` no working tree e em
-         todo o histórico: zero ocorrências) — entra em tempo de execução.
-         Duas hipóteses abertas, ver "Waiting / blocked".
+      2. [x] **AM sempre igual, mesmo depois da v6.3.3 — RESOLVIDO.** Não era a
+         lista dos 50 nem autofill do Chrome: era **resto de DOM**. O relato
+         decisivo foi "abro outro caso e vem o AM do caso já FECHADO" — dado do
+         caso anterior, não constante. `mensagensDoLog()` varria o `document`
+         inteiro, e o CRM mantém o container do log anterior no DOM. Escopado a
+         `.active-case-log-container`; reproduzido contra a captura real do CRM
+         (o código antigo devolve o AM do caso anterior nos dois cenários) e
+         travado em `test:scraping` (`am.escopo/*`, +4 asserções). Junto: botão
+         de recaptura no formulário, no molde do call script.
       3. [ ] **Repaginação da tela do BAU Form.** Diagnóstico estrutural já
          feito em navegador real (1440x900), causas identificadas:
          `.bau-details-view` usa `top: 56px` supondo um header que é **irmão** do
@@ -370,28 +373,11 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
       esperando `.cw-sc-add` — o botão não existe mais ou mudou de seletor).
       Escopo próprio: não misturar com a repaginação do BAU.
 
-- [ ] **AM sempre igual — falta a saída do diagnóstico no CRM real.** Bloqueado
-      em dado, não em código. `noguti@google.com` não está em lugar nenhum do
-      repositório (working tree e histórico), então entra pelo runtime. Duas
-      hipóteses, e o fixture não separa as duas porque só existe **um caso real**
-      em `specs/fixtures/` (em duas variantes de idioma) — a suíte é
-      estruturalmente incapaz de pegar "o mesmo AM em casos diferentes":
-      1. **Autofill do Chrome.** O `<input name="amName">` não tem
-         `autocomplete="off"` (nem o campo, nem o `<form>`), e a v6.3.3 fez o
-         `resolveAM()` devolver `null` com mais frequência **de propósito** — mais
-         campo vazio e visível é mais oportunidade de o navegador sugerir o
-         último valor digitado. O conserto pode ter piorado o sintoma percebido
-         sem piorar o dado.
-      2. **O log resolve para uma constante.** Se `noguti@` aparece no corpo de
-         toda mensagem (assinatura, rodapé de template do `ads-support`, CC fixo
-         da fila), `candidatos()` o devolve em todo caso. A v6.3.3 **não tocou**
-         nesse ramo — ela estreitou só o fallback do `<internal-user-info>`.
-      Instrumento pronto (`diagnostico-am.js`, colado no console do CRM em dois
-      casos diferentes): se `candidatosAposFiltro` vier igual nos dois, é (2).
-      **Lacuna de observabilidade que vale fechar de qualquer jeito:** `amOrigem`
-      é calculado, entra no `pageData` e **nunca é usado** — nem tela, nem log,
-      nem planilha. O sistema sabe qual estratégia resolveu o AM e não conta a
-      ninguém, que é por que este diagnóstico virou trabalho manual.
+- [ ] **Expor `amOrigem` na tela.** Segue calculado, entrando no `pageData` e
+      **nunca usado** — nem tela, nem log, nem planilha. Foi a lacuna que fez o
+      diagnóstico do AM virar trabalho manual em duas sessões: o sistema sabe
+      qual estratégia resolveu o campo e não conta a ninguém. No mínimo um
+      `console.info` e o rótulo de origem ao lado do campo no formulário.
 
 - [ ] **Publicar a tag `v6.3.2`.** A v6.3.2 já está em produção; a tag só publica
       as notas do GitHub Release (o `release.yml` não faz deploy). O push de tag

@@ -619,6 +619,31 @@ export const injectStyles = () => {
     .bau-highlight-label { font-size: 11px; color: #5F6368; text-transform: uppercase; letter-spacing: 0.5px; }
     .bau-highlight-value { font-size: 14px; font-weight: 500; color: #202124; }
 
+    /* Recaptura do contexto. Posicionado por cima da grade (o painel já é
+       position: relative) para não ocupar uma célula e desalinhar os vitais. */
+    .bau-rescan-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 1px solid #DADCE0;
+      border-radius: 50%;
+      background: #FFFFFF;
+      color: #5F6368;
+      cursor: pointer;
+      transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .bau-rescan-btn svg { width: 16px; height: 16px; }
+    .bau-rescan-btn:hover { color: ${COLORS.blue}; border-color: ${COLORS.blue}; box-shadow: 0 1px 3px rgba(60,64,67,0.25); }
+    .bau-rescan-btn:focus-visible { outline: 2px solid ${COLORS.blue}; outline-offset: 2px; }
+    .bau-rescan-btn.spinning { cursor: default; color: ${COLORS.blue}; }
+    .bau-rescan-btn.spinning svg { animation: rotate 1s linear infinite; }
+
     .bau-label { display: block; font-size: 13px; font-weight: 600; color: #202124; margin-top: 20px; margin-bottom: 8px; }
     
     .bau-input, .bau-select, .bau-textarea {

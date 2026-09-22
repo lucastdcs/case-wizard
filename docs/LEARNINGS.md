@@ -12,6 +12,47 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Raspagem de SPA: escope ao container ATIVO, nunca ao `document`
+
+**Why**: o AM do caso anterior chegava no formulário do caso seguinte, e o
+conserto anterior (v6.3.3, que estreitou o fallback do `<internal-user-info>`)
+não resolveu porque a causa era outra e estava a montante. `mensagensDoLog()`
+fazia `document.querySelectorAll('case-message-view')` — o documento **inteiro**.
+
+O CRM é uma SPA e mantém **mais de um container de case log no DOM**, marcando o
+do caso em foco com `.active-case-log-container`. Ao trocar de caso, o log do
+anterior continua pendurado. Pior: enquanto o log do caso novo ainda não
+renderizou, o do caso anterior é o **único com e-mail**, então a raspagem o
+devolvia com origem `case-log-visivel` — e, com dois candidatos, chegava a
+carimbar `contact-us-form`. Um valor errado com aparência de alta confiança.
+
+Foi reproduzido clonando o container ativo de uma captura real, removendo a
+classe de ativo e trocando o AM dentro dele: o código anterior devolvia o AM do
+clone nos dois cenários. Isso é o que `am.escopo/*` trava em `test:scraping`.
+
+```js
+// Em vez de varrer o documento:
+function raizDoLog() {
+    return document.querySelector('.active-case-log-container') || document;
+}
+```
+
+**When to apply**: ao ler QUALQUER coisa do CRM que pertença a um caso
+específico — log, mensagens, anexos, histórico. Antes de escrever
+`document.querySelectorAll(...)`, pergunte: *este elemento pode existir mais de
+uma vez, um por caso aberto?* Se puder, ache o marcador de "ativo" e escope.
+A pista de que isso está acontecendo é um dado **do caso anterior** aparecendo
+no atual — nunca um erro, sempre um valor plausível e errado.
+
+**Corolário de diagnóstico**: "o campo sempre vem igual" tem duas causas de
+formatos muito diferentes — uma **constante** (uma lista cuja ordem não muda,
+que foi o defeito da v6.3.3) e um **resto** (dado do caso anterior ainda no
+DOM). As duas se parecem no relato do usuário. O que as separa é a pergunta
+"igual ao quê?": igual entre casos diferentes é constante; igual ao caso
+anterior é resto. Perguntar isso cedo teria economizado um ciclo inteiro.
+
+---
+
 ## Passo de release que não quebra nada quando falha some do processo
 
 **Why**: ao cortar a v6.3.3 o push da tag falhou, e ao conferir o repositório
