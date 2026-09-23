@@ -33,6 +33,9 @@ O Back-end e o TL Dashboard devem rotear e exibir as informações estritamente 
   tanto aprova uma criação quanto nega um descarte. Quem decide se a justificativa
   é exigida é sempre `Processed_Action` (`decisionRequiresJustification`), nunca
   o `Status` — vale para o servidor e para a tela.
+- **O badge do agente também lê a ação.** `getAgentCases` devolve
+  `processedAction`, e um `CREATED` com `KEPT_ACTIVE` aparece como "Mantido ativo
+  pelo TL" — não como "Aprovado / Criado".
 - A justificativa vai para o **e-mail do agente** (`AGENT_CREATION_REJECTED` e
   `AGENT_DISCARD_DENIED`) e fica visível no histórico junto com a decisão.
 
