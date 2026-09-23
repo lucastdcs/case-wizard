@@ -95,7 +95,11 @@ function getAgentCases(ss, userEmail) {
       // formulário de edição nunca consegue pré-preencher o dropdown de motivo
       // e acaba jogando a string inteira ("Motivo | Descrição") no campo de texto.
       const rawDescription = celulaTexto(row[16]);
-      const isDiscardFlow = status === 'PENDING_TL_DISCARD' || status === 'DISCARDED';
+      const processedAction = celulaTexto(row[20]);
+      // Abertura recusada também termina em DISCARDED, mas nasceu no fluxo BAU
+      // e tem a descrição mesclada.
+      const isDiscardFlow = status === 'PENDING_TL_DISCARD'
+        || (status === 'DISCARDED' && processedAction !== 'REJECTED_CREATION');
       let nonImplementationReason = "";
       let description = rawDescription;
 
@@ -130,10 +134,10 @@ function getAgentCases(ss, userEmail) {
         // Faltava aqui, e por isso o form de edição abria sempre no padrão do
         // <select> ("Não") em vez do que está gravado. Mesma coluna que o TL lê.
         suggestDiscard: celulaTexto(row[21]),
-        // Um descarte negado volta para CREATED, o mesmo status de uma criação
-        // aprovada. Sem a ação, o card dizia "Aprovado / Criado" para um caso
-        // que só continuou ativo (o e-mail, que já lia a ação, estava certo).
-        processedAction: celulaTexto(row[20])
+        // O status é ambíguo: CREATED também é descarte negado e DISCARDED
+        // também é abertura recusada. Sem a ação, o card dizia "Aprovado /
+        // Criado" ou "Descartado" errado (o e-mail, que já lia a ação, acertava).
+        processedAction: processedAction
       });
 
       if (myCases.length >= 30) break;

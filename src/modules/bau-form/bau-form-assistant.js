@@ -31,6 +31,7 @@ const BAU_DICT = {
         statusApproved: "Aprovado / Criado",
         statusKeptActive: "Mantido ativo pelo TL",
         statusDiscarded: "Descartado pelo TL",
+        statusCreationRejected: "Recusado pelo TL",
         statusCanceled: "Cancelado",
         statusDefault: "Pendente",
         timezoneWarningStrong: "Atenção:",
@@ -138,6 +139,7 @@ const BAU_DICT = {
         statusApproved: "Aprobado / Creado",
         statusKeptActive: "Mantenido activo por el TL",
         statusDiscarded: "Descartado por el TL",
+        statusCreationRejected: "Rechazado por el TL",
         statusCanceled: "Cancelado",
         statusDefault: "Pendiente",
         timezoneWarningStrong: "Atención:",
@@ -260,10 +262,13 @@ const ICONS = {
 };
 
 function getStatusData(status, processedAction) {
-    // CREATED sozinho não distingue criação aprovada de descarte negado — ver
-    // processedAction em getAgentCases (BAU_API.js).
+    // O status sozinho é ambíguo: CREATED também é descarte negado e DISCARDED
+    // também é abertura recusada — ver processedAction em getAgentCases (BAU_API.js).
     if (status === 'CREATED' && processedAction === 'KEPT_ACTIVE') {
         return { text: bt('statusKeptActive'), class: "status-green", aura: "status-green-aura" };
+    }
+    if (status === 'DISCARDED' && processedAction === 'REJECTED_CREATION') {
+        return { text: bt('statusCreationRejected'), class: "status-red", aura: "status-red-aura" };
     }
     switch (status) {
         case 'PENDING_TL_CREATION': return { text: bt('statusPending'), class: "status-yellow", aura: "status-yellow-aura" };
