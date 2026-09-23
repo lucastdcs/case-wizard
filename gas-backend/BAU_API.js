@@ -129,7 +129,11 @@ function getAgentCases(ss, userEmail) {
         availability: row[17] instanceof Date ? row[17].toISOString() : celulaTexto(row[17]),
         // Faltava aqui, e por isso o form de edição abria sempre no padrão do
         // <select> ("Não") em vez do que está gravado. Mesma coluna que o TL lê.
-        suggestDiscard: celulaTexto(row[21])
+        suggestDiscard: celulaTexto(row[21]),
+        // Um descarte negado volta para CREATED, o mesmo status de uma criação
+        // aprovada. Sem a ação, o card dizia "Aprovado / Criado" para um caso
+        // que só continuou ativo (o e-mail, que já lia a ação, estava certo).
+        processedAction: celulaTexto(row[20])
       });
 
       if (myCases.length >= 30) break;

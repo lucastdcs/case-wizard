@@ -34,6 +34,10 @@ versions follow [Semantic Versioning](https://semver.org/).
     a duração. A regra foi escrita em `specs/ui-ux/design-system.md`.
 
 ### Fixed
+- **Descarte negado aparecia como "Aprovado / Criado" no BAU Central do
+  agente.** O descarte negado volta ao status `CREATED`, igual a uma criação
+  aprovada; o card agora lê `Processed_Action` e mostra "Mantido ativo pelo TL"
+  (o e-mail `AGENT_DISCARD_DENIED` já estava certo).
 - **O botão de busca do SE ID saía sem formatação e fora do campo.** As regras
   `.bau-input-group`, `.bau-input-group > .bau-input` e `.bau-mini-btn-input`
   **foram apagadas por engano** no commit do mestre-detalhe: a heurística que

@@ -29,6 +29,7 @@ const BAU_DICT = {
     pt: {
         statusPending: "Aguardando TL",
         statusApproved: "Aprovado / Criado",
+        statusKeptActive: "Mantido ativo pelo TL",
         statusDiscarded: "Descartado pelo TL",
         statusCanceled: "Cancelado",
         statusDefault: "Pendente",
@@ -135,6 +136,7 @@ const BAU_DICT = {
     es: {
         statusPending: "Esperando al TL",
         statusApproved: "Aprobado / Creado",
+        statusKeptActive: "Mantenido activo por el TL",
         statusDiscarded: "Descartado por el TL",
         statusCanceled: "Cancelado",
         statusDefault: "Pendiente",
@@ -257,7 +259,12 @@ const ICONS = {
     edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`
 };
 
-function getStatusData(status) {
+function getStatusData(status, processedAction) {
+    // CREATED sozinho não distingue criação aprovada de descarte negado — ver
+    // processedAction em getAgentCases (BAU_API.js).
+    if (status === 'CREATED' && processedAction === 'KEPT_ACTIVE') {
+        return { text: bt('statusKeptActive'), class: "status-green", aura: "status-green-aura" };
+    }
     switch (status) {
         case 'PENDING_TL_CREATION': return { text: bt('statusPending'), class: "status-yellow", aura: "status-yellow-aura" };
         // Faltava, e o `default` imprimia a constante do banco: o agente lia
@@ -803,7 +810,7 @@ export function initBAUForm() {
         // um caso sumir da lista entre o clique e o render.
         if (!c) return;
 
-        const statusData = getStatusData(c.status);
+        const statusData = getStatusData(c.status, c.processedAction);
         const ou = (v) => v || '---';
 
         // Zona 3: o que a pessoa leva para outro sistema. So isto ganha copia.
@@ -867,7 +874,7 @@ export function initBAUForm() {
     function renderCaseCard(c) {
         if (!c) return '';
 
-        const statusData = getStatusData(c?.status);
+        const statusData = getStatusData(c?.status, c?.processedAction);
         const dateStr = formatToLocalUserDate(c?.date);
 
         let slaBadge = '';
