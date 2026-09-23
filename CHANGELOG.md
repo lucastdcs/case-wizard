@@ -38,6 +38,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   agente.** O descarte negado volta ao status `CREATED`, igual a uma criação
   aprovada; o card agora lê `Processed_Action` e mostra "Mantido ativo pelo TL"
   (o e-mail `AGENT_DISCARD_DENIED` já estava certo).
+- **Abertura recusada aparecia como "Descartado pelo TL".** Mesmo problema no
+  outro sentido: a recusa termina em `DISCARDED`. Agora o card mostra "Recusado
+  pelo TL", e o painel de detalhe separa de novo "Motivo | Descrição" desses
+  casos (antes a string mesclada ia inteira para a descrição).
 - **O botão de busca do SE ID saía sem formatação e fora do campo.** As regras
   `.bau-input-group`, `.bau-input-group > .bau-input` e `.bau-mini-btn-input`
   **foram apagadas por engano** no commit do mestre-detalhe: a heurística que
