@@ -1065,10 +1065,16 @@ export const injectStyles = () => {
       flex: 1;
       min-height: 0;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 0fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
       gap: 0;
-      transition: grid-template-columns 260ms cubic-bezier(.34, 1.12, .64, 1),
-                  gap 260ms cubic-bezier(.34, 1.12, .64, 1);
+      /* Curva DESACELERANTE, sem sobra. grid-template-columns e propriedade de
+         LAYOUT: passar do alvo faz o texto refluir na largura errada e refluir
+         de novo na certa, duas vezes em 260ms. Isso nao le como mola, le como
+         tremor — foi medido em 49px (10,9%) de sobra, contra os 3% que a regra
+         previa. Sobra em layout nunca compensa; o carater do movimento fica por
+         conta do deslize do conteudo, que e transform e nao reflui nada. */
+      transition: grid-template-columns 260ms cubic-bezier(.2, 0, 0, 1),
+                  gap 260ms cubic-bezier(.2, 0, 0, 1);
     }
     .bau-md.is-open {
       grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
@@ -1118,19 +1124,22 @@ export const injectStyles = () => {
       /* Fechado o painel tem largura zero: sem isto o conteudo vazaria para
          fora da coluna enquanto ela encolhe. */
       overflow: hidden;
-      transition: opacity 180ms ease, padding 260ms cubic-bezier(.34, 1.12, .64, 1);
+      transition: opacity 180ms ease, padding 260ms cubic-bezier(.2, 0, 0, 1);
     }
     .bau-md.is-open .bau-md-detail {
       opacity: 1;
       padding: 16px;
       overflow-y: auto;
-      /* O conteudo entra deslizando 12px da direita — espacial, curto, uma vez
-         por selecao. O atraso deixa a coluna abrir primeiro: o olho segue a
-         moldura e so entao le o conteudo. */
-      animation: bauDetailIn 260ms cubic-bezier(.34, 1.12, .64, 1) 60ms both;
+      /* O conteudo entra deslizando 8px da direita. E transform: nao reflui,
+         entao e o unico lugar desta transicao onde sobra seria segura — mas
+         aqui ela tambem sai. O painel abre a cada clique de caso, e o proprio
+         estudo dizia "espacial e frequente: muito bounce enjoa rapido". O que
+         da carater e a COREOGRAFIA (a moldura abre, o conteudo entra 60ms
+         depois), nao a sobra. */
+      animation: bauDetailIn 260ms cubic-bezier(.2, 0, 0, 1) 60ms both;
     }
     @keyframes bauDetailIn {
-      from { transform: translateX(12px); }
+      from { transform: translateX(8px); }
       to   { transform: translateX(0); }
     }
 
@@ -1221,7 +1230,7 @@ export const injectStyles = () => {
        duas colunas espremidas. Empilha: o detalhe vai para baixo da lista. */
     @media (max-width: 900px) {
       .bau-md { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 0fr;
-                transition: grid-template-rows 260ms cubic-bezier(.34, 1.12, .64, 1), gap 260ms ease; }
+                transition: grid-template-rows 260ms cubic-bezier(.2, 0, 0, 1), gap 260ms ease; }
       .bau-md.is-open { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
     }
 

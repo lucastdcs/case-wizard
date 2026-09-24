@@ -164,6 +164,17 @@ Numa transição com várias propriedades, isso significa declarar a curva **por
 propriedade**, não no atalho: o FAB leva `cubic-bezier(.34,1.56,.64,1)` só no
 `transform`, e cor e sombra ficam na curva padrão.
 
+**Propriedade de layout nunca leva sobra** (`grid-template-*`, `width`,
+`height`, `padding`, `gap`): passar do alvo faz o conteúdo refluir na largura
+errada e refluir de novo na certa. Não lê como mola, lê como tremor. Sobra vive
+em `transform`, que não reflui. E numa trilha `fr` a sobra nem chega aos pixels —
+a resolução por proporção satura antes do fim.
+
+**Ao animar `grid-template-columns`/`rows`, os dois estados declaram cada trilha
+da MESMA forma.** `0fr` num estado e `minmax(0, 6fr)` no outro são tipos
+diferentes e não interpolam: o resultado estoura o alvo independentemente da
+curva (medido: 12% de sobra). Ver `docs/LEARNINGS.md`.
+
 **Orçamento: no máximo um overshoot visível por transição.** Dois elásticos
 simultâneos se cancelam — o olho perde qual é o importante e a tela parece
 instável em vez de viva. Rotação de spinner é a exceção que confirma: é
