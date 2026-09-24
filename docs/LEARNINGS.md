@@ -12,6 +12,51 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Animar `grid-template-columns`: os dois estados declaram a trilha da MESMA forma
+
+**Why**: o painel lateral do BAU abria com um tremor. A suspeita óbvia era a
+curva com sobra (`cubic-bezier(.34, 1.12, .64, 1)`), e ela estava mesmo fora do
+orçamento que a própria regra previa (≤3%): medindo quadro a quadro, a coluna ia
+de 454,9px a **504,3px — 10,9% de sobra**.
+
+Mas trocar a curva por uma desacelerante **não resolveu** — a sobra subiu para
+12,1%. A causa estava nos dois estados:
+
+```css
+/* fechado */ grid-template-columns: minmax(0, 1fr) 0fr;
+/* aberto  */ grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+```
+
+A segunda trilha é `0fr` (valor flexível puro) num estado e `minmax(0, 6fr)`
+(função) no outro. **Tipos diferentes não interpolam como o mesmo tipo**, e a
+resolução sai errática e estoura o alvo. Igualando a forma (`minmax(0, 0fr)` no
+fechado), a sobra medida foi a **0,0%** — sem tocar na curva.
+
+O agravante de ser propriedade de **layout**: passar do alvo faz o texto refluir
+na largura errada e refluir de novo na certa, duas vezes em 260ms. Não lê como
+mola, lê como tremor.
+
+**Descoberta colateral**: com os tipos iguais, *até a curva com sobra* produz
+0,1px de overshoot visível. A resolução por proporção do `fr` (`6t / (1 + 10t)`)
+satura antes do fim, então a sobra da curva nunca chega aos pixels. **Curva de
+mola em trilha `fr` não faz nada** — se quiser caráter elástico, ponha num
+`transform`, que não reflui.
+
+**When to apply**: ao animar `grid-template-columns` ou `grid-template-rows`.
+Antes de culpar a curva, compare os dois estados declaração por declaração — toda
+trilha tem que usar a mesma forma nos dois. E **meça**: amostrar
+`getBoundingClientRect().width` dentro de um `requestAnimationFrame` mostra a
+sobra real em três linhas, e foi o que separou a causa verdadeira da suposta.
+
+```js
+const s=[]; const t0=performance.now();
+const tick=()=>{ s.push([Math.round(performance.now()-t0), el.getBoundingClientRect().width]);
+                 requestAnimationFrame(tick); };
+requestAnimationFrame(tick);
+```
+
+---
+
 ## Conteúdo que vira gerenciável: migre TODOS os consumidores, não só o que motivou a migração
 
 **Why**: o ADR-0012 levou o catálogo de tasks para a Central e migrou o
