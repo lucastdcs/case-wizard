@@ -410,5 +410,113 @@ check('a lista do agente devolve o campo, senão a edição abre no padrão', ()
     igual(caso.suggestDiscard, 'Sim', 'com a sugestão gravada');
 });
 
+// ---- O e-mail do PEDIDO de descarte -----------------------------------
+//
+// Relatado assim: "o e-mail do descarte parece que estou abrindo um caso, e
+// ainda tem um campo de horário que não existe". Eram dois defeitos, e o
+// segundo só aparece depois de consertar o primeiro.
+//
+// handleBAUEscalation escolhia o STATUS pelo requestType e o TIPO DE E-MAIL
+// não: descarte aberto direto pelo passo 0 gravava PENDING_TL_DISCARD e
+// mandava AGENT_BAU_SENT. O caminho de EDIÇÃO já acertava, e é por isso que
+// passou — só quem começa pelo descarte via o defeito.
+
+function abrir(payload) {
+    montar([]);
+    return api.handleBAUEscalation(SS, Object.assign({
+        user: 'agente@google.com',
+        advName: 'Anunciante Teste',
+        caseId: '4-1234567890123',
+        cid: '123-456-7890',
+        website: 'exemplo.com',
+        reason: 'Motivo do pedido'
+    }, payload));
+}
+
+check('descarte aberto do zero manda o e-mail de DESCARTE, não o de abertura', () => {
+    abrir({ requestType: 'DISCARD' });
+    igual(EMAILS.length, 1, 'um e-mail para o agente');
+    igual(EMAILS[0].tipo, 'AGENT_DISCARD_SENT', 'tipo do e-mail');
+});
+
+check('abertura de caso segue mandando o e-mail de abertura', () => {
+    abrir({ requestType: 'BAU', taskType: 'Consent Mode', availability: '2026-09-24T14:00-03:00' });
+    igual(EMAILS[0].tipo, 'AGENT_BAU_SENT', 'tipo do e-mail');
+});
+
+check('o tipo do e-mail e o status gravado contam a MESMA história', () => {
+    // O defeito era exatamente os dois discordarem: status de descarte com
+    // e-mail de abertura. Amarra um no outro para não voltarem a divergir.
+    const pares = [
+        ['DISCARD', 'PENDING_TL_DISCARD', 'AGENT_DISCARD_SENT'],
+        ['BAU', 'PENDING_TL_CREATION', 'AGENT_BAU_SENT'],
+    ];
+    pares.forEach(([requestType, statusEsperado, tipoEsperado]) => {
+        abrir({ requestType });
+        const gravado = String(sheet._data[1][3]);
+        igual(gravado, statusEsperado, 'status de ' + requestType);
+        igual(EMAILS[0].tipo, tipoEsperado, 'e-mail de ' + requestType);
+    });
+});
+
+// ---- Os campos que o e-mail de descarte NÃO deve mostrar ----------------
+const ctxCampos = {};
+vm.createContext(ctxCampos);
+vm.runInContext(
+    extrairDeclaracao(ler('gas-backend/EmailEngine.js'), 'ehFluxoDeDescarte') + '\n\n' +
+    extrairDeclaracao(ler('gas-backend/EmailEngine.js'), 'camposDetalheDoEmail') +
+    '\n;globalThis.__campos = camposDetalheDoEmail;', ctxCampos);
+const campos = ctxCampos.__campos;
+
+const L_CAMPOS = {
+    labelDomain: 'Domínio final', labelSchedule: 'Agendamento (SLA)',
+    labelTask: 'Procedimento', labelChildCase: 'Caso BAU gerado'
+};
+const V_DESCARTE = {
+    caseId: '4-111', cid: '111-111-1111', site: 'exemplo.com',
+    // É isto que saía impresso no e-mail de descarte: o formulário de descarte
+    // não pergunta horário nem task, então os dois chegam no fallback.
+    availability: 'Data não disponível', task: 'N/A'
+};
+const rotulos = (lista) => lista.map((c) => c.label);
+
+check('o e-mail de descarte não mostra Agendamento nem Procedimento', () => {
+    ['AGENT_DISCARD_SENT', 'AGENT_DISCARD_DONE', 'AGENT_DISCARD_DENIED'].forEach((tipo) => {
+        const r = rotulos(campos(L_CAMPOS, V_DESCARTE, tipo, { caseLink: '<a>4-111</a>' }));
+        verdade(r.indexOf('Agendamento (SLA)') === -1, 'sem agendamento em ' + tipo);
+        verdade(r.indexOf('Procedimento') === -1, 'sem procedimento em ' + tipo);
+        verdade(r.indexOf('Case Connect') !== -1, 'mas o caso continua identificado em ' + tipo);
+    });
+});
+
+check('os e-mails de ABERTURA continuam mostrando os dois campos', () => {
+    // AGENT_CREATION_REJECTED também é uma negativa, mas de um caso que nunca
+    // existiu — lá o agendamento pedido ainda é a informação que importa.
+    ['AGENT_BAU_SENT', 'LEADERSHIP_BAU_RECEIVED', 'AGENT_BAU_CREATED', 'AGENT_CREATION_REJECTED'].forEach((tipo) => {
+        const r = rotulos(campos(L_CAMPOS, V_DESCARTE, tipo, { caseLink: '<a>4-111</a>' }));
+        verdade(r.indexOf('Agendamento (SLA)') !== -1, 'com agendamento em ' + tipo);
+        verdade(r.indexOf('Procedimento') !== -1, 'com procedimento em ' + tipo);
+    });
+});
+
+check('o caso filho entra nos dois fluxos, com texto puro próprio', () => {
+    const comFilho = campos(L_CAMPOS, V_DESCARTE, 'AGENT_DISCARD_DONE',
+        { caseLink: '<a>4-111</a>', childCaseId: '4-999', childLink: '<a>4-999</a>' });
+    const filho = comFilho.find((c) => c.label === 'Caso BAU gerado');
+    verdade(filho !== undefined, 'a linha existe');
+    igual(filho.plain, '4-999', 'a versão texto imprime o ID, não a marcação');
+});
+
+check('toda linha sabe se imprimir em texto puro', () => {
+    // A lista de texto puro era uma cópia manual da de HTML. Agora ela é
+    // derivada, e o que garante isso é todo valor com marcação ter `plain`.
+    const todos = campos(L_CAMPOS, V_DESCARTE, 'AGENT_BAU_SENT',
+        { caseLink: '<a>4-111</a>', childCaseId: '4-999', childLink: '<a>4-999</a>' });
+    todos.forEach((c) => {
+        const temMarcacao = String(c.value).indexOf('<') !== -1;
+        verdade(!temMarcacao || c.plain !== undefined, 'linha "' + c.label + '" com link precisa de plain');
+    });
+});
+
 console.log(fail === 0 ? '\n✅ Decisões do TL: tudo certo.\n' : `\n❌ ${fail} falha(s).\n`);
 process.exit(fail === 0 ? 0 : 1);

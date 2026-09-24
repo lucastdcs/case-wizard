@@ -7,6 +7,50 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Revisão do fluxo de descarte do BAU Form (2026-09-21).** Três frentes
+      levantadas pelo Lucas. A primeira saiu; as outras duas estão abertas.
+      1. [x] **E-mail do descarte** — dois defeitos, ambos silenciosos: descarte
+         aberto do zero mandava `AGENT_BAU_SENT` (o texto de abertura de caso), e
+         a seção de detalhes imprimia "Agendamento (SLA)" e "Procedimento" num
+         fluxo que não pergunta nenhum dos dois. Ver CHANGELOG `[Unreleased]`.
+         Travado em `test:tl-decision` (+7); nos dois primeiros o código anterior
+         falha, e os de campo nem carregam.
+      2. [x] **AM sempre igual, mesmo depois da v6.3.3 — RESOLVIDO.** Não era a
+         lista dos 50 nem autofill do Chrome: era **resto de DOM**. O relato
+         decisivo foi "abro outro caso e vem o AM do caso já FECHADO" — dado do
+         caso anterior, não constante. `mensagensDoLog()` varria o `document`
+         inteiro, e o CRM mantém o container do log anterior no DOM. Escopado a
+         `.active-case-log-container`; reproduzido contra a captura real do CRM
+         (o código antigo devolve o AM do caso anterior nos dois cenários) e
+         travado em `test:scraping` (`am.escopo/*`, +4 asserções). Junto: botão
+         de recaptura no formulário, no molde do call script.
+      3. [~] **Repaginação da tela do BAU Form — camada estrutural entregue.**
+         As quebras diagnosticadas em navegador real foram consertadas e estão
+         no CHANGELOG `[Unreleased]`: o `top: 56px` da vista de detalhes (que
+         descontava um header não-ancestral), os três contextos de rolagem
+         aninhados, o `margin-top` que estourava o container, o dashboard que
+         nunca era escondido, a janela de 650px (agora 900x720, com altura
+         fixa), o `PENDING_TL_DISCARD` cru, a fila de descarte fora das
+         métricas, o sobrenome sumido no card e o selo de status esticado.
+         **Falta a camada sensorial (3b)** e duas decisões com o Lucas:
+         - **mestre-detalhe vs. painel sobreposto.** Com 900px cabe lista à
+           esquerda + detalhe à direita, sem troca de tela. Mata a classe
+           inteira de bugs de sobreposição, mas é reescrita da view, não
+           conserto — por isso não entrou aqui.
+         - **Material + feedback tátil/sonoro**: elevação com significado na
+           transição dashboard→detalhes, som nas transições de status,
+           micro-recompensa no envio. É o "dopaminérgico" do `VISION.md`.
+         Dois itens de acabamento que ficaram de fora por serem escopo próprio:
+         - o FAB "Novo Caso BAU" cobre 7px do acordeão "mostrar casos antigos"
+           quando a lista rola pouco. É comportamento padrão de FAB (Material
+           manda flutuar sobre o conteúdo, com `padding-bottom` na área
+           rolável, que já existe), mas o Material também diz que um FAB não
+           deve obstruir controle interativo. Conserto de verdade é tirar o FAB
+           do fluxo de rolagem, e isso é decisão de layout.
+         - ainda há ~400px de conteúdo abaixo da dobra na vista de detalhes,
+           agora numa rolagem só. Menos que os 600px de antes; some de vez com
+           o mestre-detalhe.
+
 - [~] **Tasks e screenshots do Win Criteria na Central** (módulo
       `task_screenshots`, aba "Tasks") — entregue, aguardando revisão do PR e a
       semeadura na planilha real. As 13 tasks e os 126 rótulos de evidência
@@ -77,6 +121,25 @@ This file differs from the long-term roadmap: it describes what is happening **n
       do Apps Script — o gatilho ainda não existe (mesma nota do `Backup.js`).
 
 ## Done (esta sessão)
+
+- [x] **Release v6.4.0 (2026-09-24).** Os 13 commits acumulados em
+      `refactor-structure` desde a v6.3.3 — com o conserto do AM do caso
+      anterior à frente — fechados no CHANGELOG, versões alinhadas e notas dos
+      dois modais (agente e TL) reescritas. Suíte rodada antes do merge: todos
+      os `test:*` verdes, `test:scraping` 62/62, e os smokes verdes exceto
+      `smoke:shortcuts` (2 falhas na lista de Configurações que **já existem na
+      v6.3.3** — reproduzidas na `main` — e não vieram desta release). Tag
+      pendente, ver "Waiting / blocked".
+- [x] **As tasks do form BAU não vinham da Central.** Verificado: não vinham —
+      o `bau-form-config.js` tinha uma lista de 17 nomes escrita à mão, de antes
+      da Central existir, e ela já divergia do catálogo publicado em três eixos
+      (5 tasks só no form, 1 só na Central, 8 com nome diferente para a mesma
+      coisa). A grade passa a sair do mesmo `TASKS_DB` que a Central reescreve, e
+      só o **nome** — o form não pede screenshot, isso é da nota. **ADR-0014**
+      registra a consequência aceita: as 5 órfãs somem da grade, e voltar com
+      qualquer uma delas é criar pela tela da Central. Caso pendente gravado com
+      nome antigo não perde a task ao ser editado (volta marcada). Testes:
+      `test:tasks` (+4) e o novo `smoke:bau-tasks`.
 
 - [x] **v6.3.3 cortada e promovida.** Fecha o `[Unreleased]` do CHANGELOG, alinha
       as quatro fontes de versão (`package.json`, `APP_VERSION`,
@@ -312,12 +375,47 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
+- [ ] **Empurrar a tag `v6.4.0`** de um checkout local (o proxy da sessão web
+      recusa push de tag — `RELEASE.md` → Known fragilities):
+      `git fetch origin main && git tag -a v6.4.0 origin/main -m "v6.4.0" && git push origin v6.4.0`
+- [ ] **`smoke:shortcuts` vermelho desde a v6.3.3** — "a lista de Configurações
+      segue a mesma ordem do Ctrl+K" e "o construtor de Configurações só oferece
+      cenários do substatus escolhido". Investigar à parte.
+
 > **Correção de rota (2026-09-16):** vários itens abaixo e acima diziam "falta o
 > `clasp deploy` manual de produção". Não falta: o `deploy.yml` tem um passo
 > **"Promover implantação de produção"** que roda sozinho no merge para a `main`,
 > quando o commit toca em `gas-backend/`. Conferido no run 1052 da v6.3.2, que
 > promoveu produção sem intervenção nenhuma. O que exige mão continua sendo o que
 > roda DENTRO da planilha (semeaduras e gatilhos), listado abaixo.
+
+- [ ] **Ids de campo duplicados entre passos do BAU Form.** `createField()` faz
+      `input.id = \`bau-form-${fieldConfig.id}\``, e três campos existem em dois
+      passos com o mesmo `id`: `seId`, `language` e `description`. A tela
+      renderiza ids repetidos (HTML inválido) e todo `getElementById` cai sempre
+      no primeiro. O `seId` já mordeu — ver o botão de busca do descarte, onde o
+      conserto foi parar de resolver por id. Os outros dois são **latentes**:
+      hoje ninguém os alcança por id (o Smart Rendering busca por
+      `#bau-step-N [name=...]`, que é escopado e correto). Conserto de verdade:
+      `createField` receber o passo e compor `bau-form-<passo>-<id>` — mas isso
+      toca todos os campos de uma vez e merece PR próprio, junto da repaginação.
+
+- [ ] **Duas falhas reais em `smoke:shortcuts`, escondidas pelo ferramental.**
+      Apareceram no minuto em que o script passou a rodar (antes ele morria no
+      launch do browser, e o ambiente lia isso como "suíte verde"). **Não são
+      regressão do commit que as revelou** — conferido rodando o smoke corrigido
+      contra o commit anterior. As duas são na tela de Configurações:
+      `a lista de Configurações segue a mesma ordem do Ctrl+K` (a tela mostrou só
+      `["Teste"]`, ou seja, a lista está incompleta, não só fora de ordem) e
+      `o construtor só oferece cenários do substatus escolhido` (timeout de 30s
+      esperando `.cw-sc-add` — o botão não existe mais ou mudou de seletor).
+      Escopo próprio: não misturar com a repaginação do BAU.
+
+- [ ] **Expor `amOrigem` na tela.** Segue calculado, entrando no `pageData` e
+      **nunca usado** — nem tela, nem log, nem planilha. Foi a lacuna que fez o
+      diagnóstico do AM virar trabalho manual em duas sessões: o sistema sabe
+      qual estratégia resolveu o campo e não conta a ninguém. No mínimo um
+      `console.info` e o rótulo de origem ao lado do campo no formulário.
 
 - [ ] **Publicar a tag `v6.3.2`.** A v6.3.2 já está em produção; a tag só publica
       as notas do GitHub Release (o `release.yml` não faz deploy). O push de tag

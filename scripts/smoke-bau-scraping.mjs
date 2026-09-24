@@ -57,7 +57,11 @@ function igual(atual, esperado, oque) {
     if (atual !== esperado) throw new Error(`${oque}: esperado ${JSON.stringify(esperado)}, veio ${JSON.stringify(atual)}`);
 }
 
-const browser = await chromium.launch({ headless: true });
+// Mesmo gancho de test-scraping.mjs e smoke-tl-dashboard.mjs: num ambiente
+// que ja tem Chromium mas nao o build exato que o Playwright fixa, e o que
+// permite rodar o smoke em vez de pular. Vazio, o Playwright resolve sozinho.
+const executablePath = process.env.CW_CHROMIUM || undefined;
+const browser = await chromium.launch({ headless: true, executablePath });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 await page.route('**script.google.com/**', (route) => route.abort());
 page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });

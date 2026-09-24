@@ -8,6 +8,197 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.4.0] - 2026-09-24
+
+### Added
+- **Camada sensorial do BAU Form.** Retorno nos três canais que o
+  `design-system.md` exige, colocado onde ele significa alguma coisa — e
+  **calado onde não significa**. A pesquisa que embasou isso é explícita: em
+  ferramenta de produtividade, som demais vira fadiga em uma semana e o agente
+  desliga tudo, perdendo junto os avisos que importam.
+  - **Tátil** (`vibrar()`, em `shared/utils.js`): três padrões, porque a mão
+    distingue ritmo e não intensidade — `confirma` (10ms), `erro` (10-40-10, o
+    "não" universal) e `concluido` (10-30-10). Sempre atrás de
+    `if (navigator.vibrate)`: a API é efetivamente só Chromium.
+  - **Erro de validação passou a aparecer onde a mão está.** Antes era só um
+    toast no canto oposto, que conta o que houve mas não diz **qual** campo —
+    com sete campos na tela, isso é uma busca visual. Agora o campo treme
+    (bounce amortecido, `±6px`, 300ms), recebe foco e dispara o padrão tátil de
+    erro.
+  - **Hierarquia do som corrigida:** achar o SE ID tocava `playSuccess`, o mesmo
+    som do **envio do caso**. Dois momentos com o mesmo som apagam a distinção
+    justamente do que deveria ser o pico da sessão. A busca passou a
+    `playReady`; `playSuccess` ficou exclusivo do envio.
+  - **Elástico só no espacial**, conforme a análise: FAB afunda e volta com
+    sobra (`cubic-bezier(.34,1.56,.64,1)` **só no `transform`** — cor e sombra
+    ficam na curva padrão), card selecionado dá 1,5% de escala, botões de ação
+    afundam sem sobra. `prefers-reduced-motion` derruba todo overshoot mantendo
+    a duração. A regra foi escrita em `specs/ui-ux/design-system.md`.
+- **Botão de recaptura no formulário BAU.** No molde do botão do call script: um
+  clique e a raspagem roda de novo **na tela que está na frente**. A janela do
+  módulo não fecha quando o agente troca de caso no CRM, e a captura só
+  acontecia no clique de "Novo Caso" — quem já estava com o formulário aberto
+  seguia vendo o contexto do caso anterior. Sob demanda, e não num `setInterval`
+  como o call script: lá o monitor lê três campos de texto; aqui `getPageData()`
+  clica no unmask do telefone, pode expandir mensagens do log e faz JSONP do
+  perfil, e repetir isso a cada 2s mexeria na tela embaixo de quem está
+  digitando.
+- **Busca automática do SE ID no fluxo de descarte.** O botão que varre o case
+  log atrás do Speakeasy ID existia só no passo de abertura. No de descarte —
+  onde o campo é **obrigatório**, e no de abertura não é — o agente tinha que
+  garimpar o ID à mão para conseguir enviar. Na mesma mudança, o alvo da busca
+  deixou de ser resolvido por `getElementById`: os dois passos renderizam
+  `id="bau-form-seId"`, então o botão novo escreveria no campo do passo 1
+  (invisível na hora) e deixaria o obrigatório vazio, sem erro na tela. O
+  listener passou a resolver o input pelo irmão do botão clicado.
+
+### Changed
+- **O painel de detalhe virou toggle.** Sem caso escolhido a coluna não existe e
+  a lista ocupa a largura toda; reclicar o caso aberto fecha, e `Esc` também. Um
+  painel vazio permanente é área morta — pior, lê como parte quebrada da tela. A
+  abertura anima `grid-template-columns` e o `gap` (propriedade **espacial**,
+  logo com sobra mínima na curva), e a opacidade do conteúdo acompanha **sem**
+  sobra, porque é efeito. Com o detalhe fechado o card volta ao layout em linha:
+  empilhado só faz sentido na coluna estreita.
+- **Os cards da lista ficaram mais leves.** Sai a lavagem de cor por status — o
+  ponto do selo já diz o estado, e tingir o card inteiro repetia a informação.
+  Fica um tom neutro de ~3%, que é o mínimo para o card existir como unidade sem
+  moldura (branco puro sobre branco apagava o card).
+- **Varredura no resto do módulo:** mais 6 bordas `1px solid #DADCE0` viraram
+  tom, e os 11 pesos `600`/`700` restantes viraram `500`. A borda da janela
+  contra a página do CRM permanece — ali ela tem função.
+- **A tela inicial do BAU perdeu a cara de sistema antigo.** Auditada em
+  navegador e reestruturada contra três tells medidos: **dez bordas
+  `1px solid #DADCE0`** (a separação passa a vir de espaço em branco → degrau de
+  luminosidade → elevação, e borda só se os três falharem), **peso 700 em selo
+  de 11px e em métrica** e 600 em título (produto Google usa 400/500 — peso alto
+  em corpo pequeno é assinatura de painel administrativo), e **maiúsculas com
+  `letter-spacing`** em rótulo, que o próprio `design-system.md` já proibia.
+  Os **selos de status viraram texto com ponto na cor semântica**, que é o que o
+  spec manda desde sempre ("pílula em maiúsculas com status decorativo" está na
+  lista de proibições). As métricas perderam a caixa: três caixas tonais
+  idênticas em fila são o mesmo tell da borda com outra roupa. O card
+  selecionado ganhou acento numa aresta em vez de moldura em volta. A regra foi
+  escrita em `specs/ui-ux/design-system.md` para não voltar.
+- **As tasks do form BAU passam a vir da Central de Conteúdo.** O formulário
+  oferecia uma lista de 17 nomes escrita à mão no `bau-form-config.js`, de antes
+  da Central existir, e ela divergiu em silêncio do catálogo publicado: 5 tasks
+  só existiam no form, 1 (UPD for GA4) só na Central, e 8 eram a mesma task com
+  nome diferente ("Google Tag Manager Installation" contra "GTM Installation").
+  Nada quebrava — só a coluna `Task_BAU` guardava um vocabulário que o resto do
+  sistema não reconhece, e uma task publicada pelo SME nunca chegava à
+  escalação. Agora a grade sai do mesmo `TASKS_DB` que a Central reescreve, e
+  consome **apenas o nome**: o form não pede evidência nenhuma. As 5 tasks sem
+  correspondência somem da grade — quem precisar de uma delas a cria pela tela da
+  Central. Caso pendente gravado com um nome antigo não perde a task ao ser
+  editado: ela volta para a grade já marcada. Ver
+  `docs/decisions/0014-tasks-do-form-bau-vem-da-central.md`.
+- **O dashboard do BAU virou mestre-detalhe.** A lista e o detalhe do caso
+  convivem lado a lado; abrir um caso deixou de ser troca de tela. O agente não
+  perde de vista onde estava na fila, e a classe inteira de bugs de sobreposição
+  (offset, z-index, rolagem dupla) deixa de existir porque **não há mais nada
+  sobreposto** — o painel absoluto `.bau-details-view` foi removido. Cada coluna
+  rola no próprio eixo: uma rolagem só para as duas obrigaria a descer a lista
+  para ler o fim do detalhe.
+- **A vista de detalhe seguiu as três zonas do `design-system.md`** (as mesmas
+  do modal do TL — ADR-0015): cabeçalho, briefing, dados. A versão anterior era
+  uma grade de **sete** `.bau-details-card`, ou seja caixa dentro de caixa, que o
+  próprio spec proíbe; e tinha botão de copiar em todo campo, inclusive em
+  justificativa e fuso. O spec é explícito: o botão de copiar significa "isto vai
+  para o outro sistema", e espalhá-lo por todo campo esvazia o sinal — agora ele
+  existe só na zona de dados, aparece no hover/foco da linha, e confirma nos três
+  canais (visual no próprio controle, som e `navigator.vibrate(10)` atrás da
+  guarda de suporte).
+- **A janela do BAU Form cresceu para 900x720, com altura fixa.** Era 650px — a
+  mais estreita dos módulos principais (o Email Assistant é 850x650) — no módulo
+  que carrega mais dado por tela: a vista de detalhes tinha **600px de conteúdo
+  abaixo da dobra**. A altura fixa resolve o pulo: a janela ia de 466px (escolha
+  do fluxo) para 810px (formulário) a cada passo.
+- **Todo script de Playwright passa a honrar `CW_CHROMIUM`** (interno). Antes
+  só alguns liam a variável; os outros morriam no launch em ambientes sem o build
+  exato que o Playwright fixa — e uma falha de launch lida como "suíte verde" se
+  só se olha a saída dos testes node. Novo `npm run smoke:bau-tasks`.
+
+### Fixed
+- **O AM do caso ANTERIOR chegava no formulário do caso seguinte.** Relatado
+  como "abro um caso, ele puxa o AM; fecho, abro outro, e vem o mesmo AM do caso
+  já fechado" — e seguia acontecendo depois da v6.3.3, que consertou outra coisa
+  (o fallback do `<internal-user-info>`). A causa é outra e está a montante:
+  `mensagensDoLog()` varria `document.querySelectorAll('case-message-view')`, o
+  **documento inteiro**. O CRM mantém mais de um container de case log no DOM e
+  marca o do caso em foco com `.active-case-log-container`; ao trocar de caso, o
+  log do anterior continua pendurado ali, e quando o do caso novo ainda não
+  renderizou ele é o **único** com e-mail — então a raspagem devolvia o AM do
+  caso fechado com cara de acerto (origem `case-log-visivel`, e às vezes até
+  `contact-us-form`). A varredura passa a ser escopada ao log ativo, com
+  fallback para o documento onde a classe não existe. Reproduzido contra uma
+  captura real da tela e travado em `test:scraping` (+4 asserções, 62 no total).
+- **Descarte negado aparecia como "Aprovado / Criado" no BAU Central do
+  agente.** O descarte negado volta ao status `CREATED`, igual a uma criação
+  aprovada; o card agora lê `Processed_Action` e mostra "Mantido ativo pelo TL"
+  (o e-mail `AGENT_DISCARD_DENIED` já estava certo).
+- **Abertura recusada aparecia como "Descartado pelo TL".** Mesmo problema no
+  outro sentido: a recusa termina em `DISCARDED`. Agora o card mostra "Recusado
+  pelo TL", e o painel de detalhe separa de novo "Motivo | Descrição" desses
+  casos (antes a string mesclada ia inteira para a descrição).
+- **O botão de busca do SE ID saía sem formatação e fora do campo.** As regras
+  `.bau-input-group`, `.bau-input-group > .bau-input` e `.bau-mini-btn-input`
+  **foram apagadas por engano** no commit do mestre-detalhe: a heurística que
+  achava o fim do bloco do painel sobreposto passou do ponto e levou junto o que
+  vinha depois. Sem regra base, o botão renderizava como botão cru do navegador
+  e o grupo perdia o `display: flex`, jogando-o para fora do campo. Restauradas
+  no registro novo (sem moldura, 44px, acopladas ao campo).
+- **A vista de detalhes do caso abria desalinhada, com o dashboard aparecendo
+  por trás.** `.bau-details-view` usava `top: 56px` para descontar um header que
+  **não é ancestral dela** — o header padrão é irmão do container, não filho —,
+  então o painel nascia 38px baixo demais e deixava uma faixa do dashboard
+  visível por cima. Junto, três defeitos de rolagem no mesmo lugar:
+  `.bau-view-container` tinha `overflow: scroll` literal, criando um segundo
+  contexto de rolagem por cima dos painéis que já rolam sozinhos (rolar um não
+  movia o outro, e o painel de detalhes deslizava para fora do próprio quadro);
+  e `.bau-view` somava `margin-top: 18px` a `height: 100%`, ultrapassando o
+  container em exatos 18px. O dashboard também **não era escondido**: seguia
+  rolando, alcançável por Tab e visível para leitor de tela atrás de um painel
+  opaco.
+- **O status "descarte em avaliação" aparecia cru para o agente.**
+  `getStatusData()` mapeava quatro status e caía no `default`, que imprime a
+  constante do banco: o card mostrava `PENDING_TL_DISCARD`. Dos dois status
+  pendentes, só um tinha tradução. Ganhou rótulo e cor própria (laranja) — os
+  dois esperam o TL, mas pedem o oposto um do outro, e compartilhar o amarelo
+  apagaria a distinção na lista onde aparecem lado a lado.
+- **As métricas do dashboard ignoravam a fila de descarte.** Contavam
+  `PENDING_TL_CREATION` e `CREATED`; um caso aguardando descarte não entrava em
+  nenhum dos dois números e sumia da leitura do agente.
+- **O sobrenome do anunciante sumia no card e reaparecia no detalhe.** O card
+  mostrava só `advName`; a vista de detalhes já juntava nome e sobrenome.
+- **O selo de status esticava pelo card inteiro** na vista de detalhes (258px de
+  barra em vez de uma pílula do tamanho do texto): numa coluna flex o padrão é
+  esticar.
+- **Código morto:** o fallback `amName = internalEmail` em `populateContextData`
+  virou no-op quando os dois passaram a sair da mesma resolução (v6.3.3).
+- **Pedir descarte disparava o e-mail de abertura de caso.** Quem começava pelo
+  "Solicitar Descarte" no passo 0 do formulário recebia "Caso na fila BAU — a
+  solicitação foi registrada e aguarda análise da liderança": o texto de um caso
+  sendo **aberto**, para um pedido de **fechar** um caso que já existe.
+  `handleBAUEscalation()` escolhia o `Status` pelo `requestType` (gravava
+  `PENDING_TL_DISCARD`, correto) e o tipo do e-mail não — mandava
+  `AGENT_BAU_SENT` fixo. O `AGENT_DISCARD_SENT`, que existe e está certo desde
+  agosto, só disparava no caminho de **edição** (um caso já criado transicionando
+  para descarte), e é por isso que o defeito sobreviveu: só aparece para quem
+  começa pelo descarte. Agora o status e o e-mail saem do mesmo campo, amarrados
+  num teste.
+- **O e-mail de descarte anunciava um horário que não existe.** A seção "Detalhes
+  do caso" era a mesma para os sete tipos de e-mail, então um pedido de descarte
+  — fluxo que nem pergunta agendamento nem task — imprimia "Agendamento (SLA):
+  Data indisponível" e "Procedimento: N/A". Os dois campos agora só aparecem nos
+  fluxos de **abertura**. `AGENT_CREATION_REJECTED` continua mostrando os dois: é
+  uma negativa, mas de um caso que nunca existiu, e ali o agendamento pedido
+  ainda é a informação relevante.
+- **A versão em texto puro do e-mail era uma cópia manual da versão HTML.** Toda
+  regra de campo precisava ser lembrada duas vezes, e as duas listas divergiriam
+  em silêncio na primeira que alguém esquecesse. A lista de texto passa a ser
+  derivada da mesma estrutura que gera o HTML.
+
 ## [6.3.3] - 2026-09-16
 
 ### Fixed
@@ -797,7 +988,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.4.0...HEAD
+[6.4.0]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...v6.4.0
 [6.3.3]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...v6.3.3
 [6.3.2]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...v6.3.2
 [6.3.1]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...v6.3.1

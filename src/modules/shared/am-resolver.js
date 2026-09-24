@@ -55,8 +55,20 @@ export function ldapLogado() {
     return foto?.match(/\/photos\/([^?/]+)/)?.[1]?.toLowerCase() || null;
 }
 
+// O case log do caso ABERTO. O CRM mantém mais de um container de log no DOM
+// e marca o do caso em foco com `.active-case-log-container` — varrer o
+// `document` inteiro é o que deixa a raspagem ler o log de um caso que o
+// agente já trocou, e devolver o AM do caso anterior.
+//
+// Fallback para o documento quando a classe não existe (telas antigas e o
+// mock-crm.html, que não reproduz o container): perder o escopo é pior que
+// não raspar nada, mas não raspar nada é pior que os dois.
+function raizDoLog() {
+    return document.querySelector('.active-case-log-container') || document;
+}
+
 function mensagensDoLog() {
-    return Array.from(document.querySelectorAll('case-message-view'));
+    return Array.from(raizDoLog().querySelectorAll('case-message-view'));
 }
 
 // Candidatos a AM no que está visível: e-mails @google.com do log, menos os
@@ -109,7 +121,9 @@ function contatoInternoUnico() {
 // Expande as mensagens de e-mail do log para revelar os cabeçalhos
 // From/To, onde o AM aparece. Só é chamado quando o passo barato falhou.
 async function expandirEmails() {
-    const fechados = Array.from(document.querySelectorAll('.message-header'))
+    // Mesmo escopo de mensagensDoLog(): expandir cabeçalho de um log inativo
+    // custa cliques na tela do agente e só pode revelar o AM do caso errado.
+    const fechados = Array.from(raizDoLog().querySelectorAll('.message-header'))
         .filter((h) => h.getAttribute('aria-expanded') === 'false');
 
     for (const header of fechados) {

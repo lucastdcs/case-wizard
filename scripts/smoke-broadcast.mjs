@@ -119,7 +119,11 @@ const disponibilidade = (segments, updatedAt = '2026-08-31T08:00:00') => ({
     value: JSON.stringify({ updatedAt, author: 'wfm1', note: '', segments }),
 });
 
-const browser = await chromium.launch({ headless: true });
+// Mesmo gancho de test-scraping.mjs e smoke-tl-dashboard.mjs: num ambiente
+// que ja tem Chromium mas nao o build exato que o Playwright fixa, e o que
+// permite rodar o smoke em vez de pular. Vazio, o Playwright resolve sozinho.
+const executablePath = process.env.CW_CHROMIUM || undefined;
+const browser = await chromium.launch({ headless: true, executablePath });
 
 async function novaPagina(config, storage = {}, { relogio = false } = {}) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });

@@ -99,7 +99,11 @@ function igual(atual, esperado, oque) {
     if (a !== b) throw new Error(`${oque}: esperado ${b}, veio ${a}`);
 }
 
-const browser = await chromium.launch({ headless: true });
+// Mesmo gancho de test-scraping.mjs e smoke-tl-dashboard.mjs: num ambiente
+// que ja tem Chromium mas nao o build exato que o Playwright fixa, e o que
+// permite rodar o smoke em vez de pular. Vazio, o Playwright resolve sozinho.
+const executablePath = process.env.CW_CHROMIUM || undefined;
+const browser = await chromium.launch({ headless: true, executablePath });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 
 // Dublê de JSONP. A resposta real é um `<script>` que CHAMA a função de callback

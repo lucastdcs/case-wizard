@@ -88,26 +88,49 @@ export function applyTaskContent(items) {
     return true;
 }
 
-// `aoAplicar` é chamado a CADA aplicação, e não uma vez no fim, porque são dois
-// momentos diferentes: o cache chega na hora e a rede chega depois. Repintar só
-// no fim faria o agente olhar para o catálogo embutido enquanto o JSONP viaja —
-// justamente o cenário em que o cache existe para ajudar.
-export async function loadTasks(aoAplicar) {
-    const avisar = () => { if (aoAplicar) aoAplicar(); };
+// Duas telas leem o MESMO catálogo: o seletor de tasks da nota e a grade de
+// tasks do form BAU. As duas se inscrevem aqui, e a busca é uma só — o lote do
+// app.js ainda está em voo quando os módulos inicializam, então o cache de
+// sessão do DataService não pegaria a segunda ida, e o agente gastaria duas
+// execuções do Apps Script pelo mesmo conteúdo.
+const assinantes = new Set();
+let emVoo = null;
 
+function avisarTodos() {
+    for (const fn of assinantes) {
+        try {
+            fn();
+        } catch (e) {
+            // Uma tela que falha ao repintar não pode impedir a outra de repintar.
+            console.warn('Assinante do catálogo de tasks falhou.', e);
+        }
+    }
+}
+
+// Avisa a CADA aplicação, e não uma vez no fim, porque são dois momentos
+// diferentes: o cache chega na hora e a rede chega depois. Repintar só no fim
+// faria o agente olhar para o catálogo embutido enquanto o JSONP viaja —
+// justamente o cenário em que o cache existe para ajudar.
+async function buscarCatalogo() {
     const cached = DataService.getCachedContent('task_screenshots');
     let aplicado = applyTaskContent(cached);
-    if (aplicado) avisar();
+    if (aplicado) avisarTodos();
 
     try {
         const items = await DataService.fetchContentModule('task_screenshots');
         if (applyTaskContent(items)) {
             aplicado = true;
-            avisar();
+            avisarTodos();
         }
     } catch (e) {
         console.warn('Catálogo de tasks indisponível; usando o embutido.', e);
     }
 
     return aplicado;
+}
+
+export function loadTasks(aoAplicar) {
+    if (aoAplicar) assinantes.add(aoAplicar);
+    if (!emVoo) emVoo = buscarCatalogo();
+    return emVoo;
 }

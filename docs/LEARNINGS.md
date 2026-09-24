@@ -12,6 +12,108 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Conteúdo que vira gerenciável: migre TODOS os consumidores, não só o que motivou a migração
+
+**Why**: o ADR-0012 levou o catálogo de tasks para a Central e migrou o
+consumidor óbvio — o seletor de tasks do Case Notes, que era quem precisava dos
+screenshots. O **form BAU** também escolhe tasks, e ficou para trás com uma lista
+de 17 nomes escrita à mão no `bau-form-config.js`. Ninguém percebeu porque nada
+quebra: a grade continua desenhando, o agente continua marcando, a planilha
+continua gravando. O que apodrece é invisível — 5 tasks que só existiam no form,
+1 publicada que nunca chegou lá, e 8 escritas com outro nome ("Google Tag Manager
+Installation" contra "GTM Installation"). A coluna `Task_BAU` estava guardando um
+vocabulário que o resto do sistema não reconhece, e a promessa "o SME publica e o
+agente vê" valia em metade dos lugares.
+
+O sintoma de uma lista de negócio duplicada é ela ser **plausível**: se as duas
+cópias fossem obviamente diferentes, alguém teria reclamado no primeiro dia.
+
+**When to apply**: ao mover qualquer conteúdo do bundle para a Central (ou de um
+lugar para outro), antes de fechar a migração, procure as outras cópias pelo
+**conteúdo**, não pelo nome da variável:
+
+```bash
+# um valor característico da lista, não o nome do array
+grep -rn "Ads Conversion Tracking" --include=*.js src gas-backend
+```
+
+E deixe um teste que compare as duas pontas (o que a Central publica × o que a
+tela oferece). Sem ele a divergência volta na próxima lista escrita à mão —
+foi exatamente assim que `test:tasks` ganhou a seção da grade do BAU.
+
+## Raspagem de SPA: escope ao container ATIVO, nunca ao `document`
+
+**Why**: o AM do caso anterior chegava no formulário do caso seguinte, e o
+conserto anterior (v6.3.3, que estreitou o fallback do `<internal-user-info>`)
+não resolveu porque a causa era outra e estava a montante. `mensagensDoLog()`
+fazia `document.querySelectorAll('case-message-view')` — o documento **inteiro**.
+
+O CRM é uma SPA e mantém **mais de um container de case log no DOM**, marcando o
+do caso em foco com `.active-case-log-container`. Ao trocar de caso, o log do
+anterior continua pendurado. Pior: enquanto o log do caso novo ainda não
+renderizou, o do caso anterior é o **único com e-mail**, então a raspagem o
+devolvia com origem `case-log-visivel` — e, com dois candidatos, chegava a
+carimbar `contact-us-form`. Um valor errado com aparência de alta confiança.
+
+Foi reproduzido clonando o container ativo de uma captura real, removendo a
+classe de ativo e trocando o AM dentro dele: o código anterior devolvia o AM do
+clone nos dois cenários. Isso é o que `am.escopo/*` trava em `test:scraping`.
+
+```js
+// Em vez de varrer o documento:
+function raizDoLog() {
+    return document.querySelector('.active-case-log-container') || document;
+}
+```
+
+**When to apply**: ao ler QUALQUER coisa do CRM que pertença a um caso
+específico — log, mensagens, anexos, histórico. Antes de escrever
+`document.querySelectorAll(...)`, pergunte: *este elemento pode existir mais de
+uma vez, um por caso aberto?* Se puder, ache o marcador de "ativo" e escope.
+A pista de que isso está acontecendo é um dado **do caso anterior** aparecendo
+no atual — nunca um erro, sempre um valor plausível e errado.
+
+**Corolário de diagnóstico**: "o campo sempre vem igual" tem duas causas de
+formatos muito diferentes — uma **constante** (uma lista cuja ordem não muda,
+que foi o defeito da v6.3.3) e um **resto** (dado do caso anterior ainda no
+DOM). As duas se parecem no relato do usuário. O que as separa é a pergunta
+"igual ao quê?": igual entre casos diferentes é constante; igual ao caso
+anterior é resto. Perguntar isso cedo teria economizado um ciclo inteiro.
+
+---
+
+## Passo de release que não quebra nada quando falha some do processo
+
+**Why**: ao cortar a v6.3.3 o push da tag falhou, e ao conferir o repositório
+apareceu o quadro real: **uma única tag, `v6.0.0`**, de agosto, com cinco
+releases promovidas depois dela (v6.1.0, v6.2.0, v6.3.0, v6.3.1, v6.3.2). O
+passo 4 do `RELEASE.md` vinha sendo pulado há meses sem ninguém notar.
+
+Notar era difícil por construção: a tag é **bookkeeping, não deploy** — o merge
+em `main` é o portão de produção e ele funcionou todas as vezes. Nada fica
+vermelho, nenhum agente reclama. O que se perde só aparece quando alguém procura:
+não há GitHub Release publicada, e todos os link refs do rodapé do CHANGELOG
+apontam para tags inexistentes (`compare/v6.3.2...v6.3.3` → 404).
+
+O mesmo padrão dos itens pendentes que o `PLAN.md` chama de "falta rodar na
+planilha": passo manual, fora do caminho que dá erro, com resultado que ninguém
+consulta no dia seguinte.
+
+**When to apply**: ao terminar uma release, e ao escrever qualquer runbook com
+passo manual depois do passo que de fato entrega.
+
+```bash
+# Não confie no `git tag` local: a tag só existe depois do push dela.
+git ls-remote --tags origin | tail -5
+```
+
+Quando um passo do runbook não tem como falhar ruidosamente, ele precisa de uma
+verificação explícita escrita ao lado — ou de alguém que confira o efeito, não o
+comando. "Rodei o comando" e "o efeito existe no servidor" são afirmações
+diferentes, e aqui elas divergiram por cinco releases.
+
+---
+
 ## Campo gravado fora do bloco contíguo: procure os TRÊS caminhos, não um
 
 **Why**: a sugestão de descarte (coluna 21) era editável no bookmarklet e a

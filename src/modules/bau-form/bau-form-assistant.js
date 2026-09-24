@@ -2,13 +2,14 @@
 import { injectStyles, COLORS } from './bau-form-styles.js';
 import { createStandardHeader } from '../shared/header-factory.js';
 import { toggleGenieAnimation, isModuleOpen } from '../shared/animations.js';
-import { showToast, formatToLocalUserDate, confirmDialog } from '../shared/utils.js';
+import { showToast, formatToLocalUserDate, confirmDialog, vibrar } from '../shared/utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { lockBodyScroll, unlockBodyScroll } from '../shared/dom-utils.js';
 import { sendBAUEscalation, readAgentBAU, updateBAUEscalation } from '../shared/data-service.js';
 import { getPageData } from '../shared/page-data.js';
 import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.js';
-import { FORM_CONFIG } from './bau-form-config.js';
+import { FORM_CONFIG, bauTaskOptions } from './bau-form-config.js';
+import { loadTasks } from '../notes/data/tasks-service.js';
 import { bft, bfOptionText } from './bau-form-i18n.js';
 import { getLanguage, onLanguageChange } from '../shared/i18n.js';
 import { TIMEZONE_HUBS, DEFAULT_TIMEZONE, withZoneOffset, offsetMinutesForWallTime, formatOffset, zoneFromCrmValue } from '../shared/timezones.js';
@@ -28,7 +29,9 @@ const BAU_DICT = {
     pt: {
         statusPending: "Aguardando TL",
         statusApproved: "Aprovado / Criado",
+        statusKeptActive: "Mantido ativo pelo TL",
         statusDiscarded: "Descartado pelo TL",
+        statusCreationRejected: "Recusado pelo TL",
         statusCanceled: "Cancelado",
         statusDefault: "Pendente",
         timezoneWarningStrong: "Atenção:",
@@ -107,6 +110,11 @@ const BAU_DICT = {
         casesWillAppear: "Seus casos BAU aparecerão aqui",
         createdApproved: "Criados / Aprovados",
         refreshDashboard: "Atualizar Dashboard",
+        statusPendingDiscard: "Descarte em avaliação",
+        copyFieldAria: (campo) => `Copiar ${campo} para a área de transferência`,
+        metricAwaitingDiscard: "Descarte em avaliação",
+        rescanTitle: "Recapturar os dados desta tela",
+        rescanDone: "Dados recapturados da tela atual.",
         errorPrefix: (msg) => `Erro: ${msg}`,
         selectAtLeastOne: (label) => `Erro: Selecione pelo menos uma opção para "${label}".`,
         fieldRequiredDouble: (label) => `Erro: O campo "${label}" é obrigatório.`,
@@ -129,7 +137,9 @@ const BAU_DICT = {
     es: {
         statusPending: "Esperando al TL",
         statusApproved: "Aprobado / Creado",
+        statusKeptActive: "Mantenido activo por el TL",
         statusDiscarded: "Descartado por el TL",
+        statusCreationRejected: "Rechazado por el TL",
         statusCanceled: "Cancelado",
         statusDefault: "Pendiente",
         timezoneWarningStrong: "Atención:",
@@ -208,6 +218,11 @@ const BAU_DICT = {
         casesWillAppear: "Tus casos BAU aparecerán aquí",
         createdApproved: "Creados / Aprobados",
         refreshDashboard: "Actualizar Panel",
+        statusPendingDiscard: "Descarte en evaluación",
+        copyFieldAria: (campo) => `Copiar ${campo} al portapapeles`,
+        metricAwaitingDiscard: "Descarte en evaluación",
+        rescanTitle: "Recapturar los datos de esta pantalla",
+        rescanDone: "Datos recapturados de la pantalla actual.",
         errorPrefix: (msg) => `Error: ${msg}`,
         selectAtLeastOne: (label) => `Error: Selecciona al menos una opción para "${label}".`,
         fieldRequiredDouble: (label) => `Error: El campo "${label}" es obligatorio.`,
@@ -246,14 +261,77 @@ const ICONS = {
     edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`
 };
 
-function getStatusData(status) {
+function getStatusData(status, processedAction) {
+    // O status sozinho é ambíguo: CREATED também é descarte negado e DISCARDED
+    // também é abertura recusada — ver processedAction em getAgentCases (BAU_API.js).
+    if (status === 'CREATED' && processedAction === 'KEPT_ACTIVE') {
+        return { text: bt('statusKeptActive'), class: "status-green", aura: "status-green-aura" };
+    }
+    if (status === 'DISCARDED' && processedAction === 'REJECTED_CREATION') {
+        return { text: bt('statusCreationRejected'), class: "status-red", aura: "status-red-aura" };
+    }
     switch (status) {
         case 'PENDING_TL_CREATION': return { text: bt('statusPending'), class: "status-yellow", aura: "status-yellow-aura" };
+        // Faltava, e o `default` imprimia a constante do banco: o agente lia
+        // "PENDING_TL_DISCARD" no card. Dos dois status pendentes, só um tinha
+        // tradução.
+        case 'PENDING_TL_DISCARD': return { text: bt('statusPendingDiscard'), class: "status-orange", aura: "status-orange-aura" };
         case 'CREATED': return { text: bt('statusApproved'), class: "status-green", aura: "status-green-aura" };
         case 'DISCARDED': return { text: bt('statusDiscarded'), class: "status-red", aura: "status-red-aura" };
         case 'CANCELED_BY_AGENT': return { text: bt('statusCanceled'), class: "status-gray", aura: "" };
         default: return { text: status || bt('statusDefault'), class: "status-gray", aura: "" };
     }
+}
+
+// A grade de tasks é repintada em três momentos — no boot, quando o catálogo
+// publicado chega, e ao abrir um caso para edição —, então montar o item é uma
+// função só em vez de um laço solto dentro do createField.
+function createTaskItem(nome, fieldName, marcada) {
+    const item = document.createElement('label');
+    item.className = 'bau-task-item';
+    item.classList.toggle('active', marcada);
+    item.innerHTML = `<input type="checkbox" name="${fieldName}" value="${nome}"><span>${nome}</span>`;
+    item.querySelector('input').checked = marcada;
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const chk = item.querySelector('input');
+        chk.checked = !chk.checked;
+        item.classList.toggle('active', chk.checked);
+        SoundManager.playClick();
+    });
+    return item;
+}
+
+// Repinta a grade com o catálogo ATUAL (ver bauTaskOptions), preservando o que
+// já estava marcado.
+//
+// `extras` são tasks marcadas que o catálogo não tem mais — tipicamente um caso
+// antigo aberto para edição, gravado quando o nome da task era outro. Elas
+// entram no fim, já marcadas: deixá-las cair fora da grade apagaria em silêncio
+// uma task que o TL já leu no caso, e o agente só descobriria ao reenviar. Mesma
+// regra do seletor de tasks da nota (notes/components/step-tasks.js).
+function renderTaskGrid(grid, extras = []) {
+    const fieldName = grid.dataset.fieldName || 'taskType';
+
+    const marcadas = new Set(
+        Array.from(grid.querySelectorAll('input:checked')).map(i => i.value)
+    );
+    extras.map(t => String(t || '').trim()).filter(Boolean).forEach(t => marcadas.add(t));
+
+    const nomes = bauTaskOptions();
+    marcadas.forEach(nome => { if (!nomes.includes(nome)) nomes.push(nome); });
+
+    grid.innerHTML = '';
+    nomes.forEach(nome => grid.appendChild(createTaskItem(nome, fieldName, marcadas.has(nome))));
+}
+
+// Zera a seleção e repinta. É o que se usa quando a grade passa a representar
+// OUTRO caso (um novo, ou um aberto para edição): sem zerar, o que estava
+// marcado antes viaja junto — inclusive as tasks fora de catálogo que uma
+// edição anterior tenha injetado.
+function resetTaskGrid(grid, extras = []) {
+    grid.querySelectorAll('input:checked').forEach(i => { i.checked = false; });
+    renderTaskGrid(grid, extras);
 }
 
 function createField(fieldConfig) {
@@ -307,19 +385,8 @@ function createField(fieldConfig) {
         case 'checkbox-grid':
             input = document.createElement('div');
             input.className = 'bau-tasks-grid';
-            fieldConfig.options.forEach(task => {
-                const item = document.createElement('label');
-                item.className = 'bau-task-item';
-                item.innerHTML = `<input type="checkbox" name="${fieldConfig.name}" value="${task}"><span>${task}</span>`;
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const chk = item.querySelector('input');
-                    chk.checked = !chk.checked;
-                    item.classList.toggle('active', chk.checked);
-                    SoundManager.playClick();
-                });
-                input.appendChild(item);
-            });
+            input.dataset.fieldName = fieldConfig.name;
+            renderTaskGrid(input);
             wrapper.appendChild(input);
             return wrapper; 
 
@@ -462,18 +529,24 @@ export function initBAUForm() {
     viewContainer.className = 'bau-view-container';
     popup.appendChild(viewContainer);
 
-    const detailsView = document.createElement('div');
-    detailsView.id = 'bau-view-details';
-    detailsView.className = 'bau-details-view';
-    viewContainer.appendChild(detailsView);
-
     const dashboardView = document.createElement('div');
     dashboardView.id = 'bau-view-dashboard';
     dashboardView.className = 'bau-view active';
+    // Mestre-detalhe: a lista e o detalhe convivem, em vez de o detalhe abrir
+    // como painel sobreposto. Abrir um caso deixa de ser troca de tela — o
+    // agente nao perde de vista onde estava na fila, e a classe inteira de
+    // bugs de sobreposicao (offset, z-index, rolagem dupla) deixa de existir
+    // porque nao ha mais nada sobreposto.
     dashboardView.innerHTML = `
         <div class="bau-dashboard-content">
             <div class="bau-dashboard-metrics" id="bau-dashboard-metrics"></div>
-            <ul class="bau-case-list" id="bau-case-list-container"></ul>
+            <div class="bau-md">
+                <div class="bau-md-list">
+                    <ul class="bau-case-list" id="bau-case-list-container"></ul>
+                </div>
+                <section class="bau-md-detail" id="bau-md-detail"
+                         aria-live="polite" aria-label="${bt('caseDetailsTitle')}"></section>
+            </div>
         </div>
         <button class="bau-dashboard-fab" id="bau-new-case-btn">
             ${ICONS.add}
@@ -639,6 +712,15 @@ export function initBAUForm() {
     viewContainer.appendChild(successView);
     document.body.appendChild(popup);
 
+    // A grade nasce do catálogo embutido (ou do cache, se o assistente de notas
+    // já o aplicou) e é repintada quando o conteúdo publicado chega. Sem isto o
+    // agente veria a lista embutida até recarregar a página — e o form volta a
+    // divergir da Central, que é justamente o que se veio corrigir.
+    loadTasks(() => {
+        const grade = form.querySelector('.bau-tasks-grid');
+        if (grade) renderTaskGrid(grade);
+    });
+
     function switchView(viewName) {
         currentView = viewName;
         popup.querySelectorAll('.bau-view').forEach(v => v.classList.remove('active'));
@@ -716,158 +798,88 @@ export function initBAUForm() {
         }
     }
 
-    function openCaseDetails(c) {
+    // Detalhe do caso, nas TRES ZONAS que o design-system define (e que o modal
+    // do TL Dashboard ja segue — ADR-0015): cabecalho, briefing, dados.
+    //
+    // A versao anterior era uma grade de SETE .bau-details-card, ou seja caixa
+    // dentro de caixa, que o proprio spec proibe; e tinha botao de copiar em
+    // todo campo, inclusive em justificativa e fuso. O spec e explicito: o
+    // botao de copiar significa "isto vai para o outro sistema", e espalha-lo
+    // por todo campo esvazia o sinal. Agora ele existe so na zona de dados.
+    function renderCaseDetail(c) {
+        const painel = popup.querySelector('#bau-md-detail');
+        if (!painel) return;
+
+        // Sem estado vazio: fechado, o painel nao ocupa coluna nenhuma (ver o
+        // toggle em .bau-md). A guarda existe so para nao renderizar lixo se
+        // um caso sumir da lista entre o clique e o render.
         if (!c) return;
 
-        const statusData = getStatusData(c.status);
+        const statusData = getStatusData(c.status, c.processedAction);
+        const ou = (v) => v || '---';
 
-        const copyToClipboard = (text, btn) => {
-            navigator.clipboard.writeText(text).then(() => {
-                showToast(bt('copiedToClipboard'));
-                SoundManager.playClick();
-                const originalColor = btn.style.color;
-                btn.style.color = '#1E8E3E';
-                setTimeout(() => { btn.style.color = originalColor; }, 800);
-            });
-        };
+        // Zona 3: o que a pessoa leva para outro sistema. So isto ganha copia.
+        const dados = [
+            { rotulo: bt('cidLabel'), valor: c.cid, mono: true },
+            { rotulo: bt('caseIdLabel'), valor: c.caseId, mono: true },
+            { rotulo: bt('speakeasyId'), valor: c.seId, mono: true },
+            { rotulo: bt('advertiserEmail'), valor: c.advEmail },
+            { rotulo: bt('phone'), valor: c.advPhone, mono: true },
+            { rotulo: bt('site'), valor: c.site },
+            { rotulo: bt('responsibleAm'), valor: c.amName },
+        ];
 
-        detailsView.innerHTML = `
-            <div class="bau-details-header">
-                <h2 class="bau-details-title">${bt('caseDetailsTitle')}</h2>
-                <button class="bau-details-close-btn">
-                    ${ICONS.back}
-                    ${bt('back')}
-                </button>
-            </div>
-            <div class="bau-details-content">
-                <div class="bau-details-grid">
-                    <div class="bau-details-card">
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('advertiser')}</span>
-                            <span class="bau-details-value">${[c.advName, c.advLastName].filter(Boolean).join(' ') || '---'}</span>
-                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
-                        </div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('status')}</span>
-                            <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
-                        </div>
-                    </div>
-                    <div class="bau-details-card">
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('cidLabel')}</span>
-                            <span class="bau-details-value">${c.cid || '---'}</span>
-                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
-                        </div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('caseIdLabel')}</span>
-                            <span class="bau-details-value">${c.caseId || '---'}</span>
-                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
-                        </div>
-                    </div>
+        // Zona 2: contexto que se le, nao se copia.
+        const briefing = [
+            { rotulo: bt('bauReason'), valor: c.reason || bt('notInformed') },
+            { rotulo: bt('requestedTasks'), valor: c.task || c.taskType || bt('none') },
+            { rotulo: bt('justification'), valor: ou(c.nonImplementationReason) },
+            { rotulo: bt('detailedDescription'), valor: ou(c.description) },
+            { rotulo: bt('availability'), valor: formatToLocalUserDate(c.availability) },
+            { rotulo: bt('timezone'), valor: ou(c.timezone) },
+            { rotulo: bt('language'), valor: ou(c.language) },
+            { rotulo: bt('salesProgram'), valor: ou(c.salesProgram) },
+        ];
 
-                    <div class="bau-details-card">
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('speakeasyId')}</span>
-                            <span class="bau-details-value">${c.seId || '---'}</span>
-                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
-                        </div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('advertiserEmail')}</span>
-                            <span class="bau-details-value">${c.advEmail || '---'}</span>
-                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
-                        </div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('phone')}</span>
-                            <span class="bau-details-value">${c.advPhone || '---'}</span>
-                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
-                        </div>
-                    </div>
-                    <div class="bau-details-card">
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('site')}</span>
-                            <span class="bau-details-value">${c.site || '---'}</span>
-                            <button class="bau-copy-btn" title="${bt('copy')}">${ICONS.wand}</button>
-                        </div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('timezone')}</span>
-                            <span class="bau-details-value">${c.timezone || '---'}</span>
-                        </div>
-                    </div>
-
-                    <div class="bau-details-card full-width">
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('language')}</span>
-                            <span class="bau-details-value">${c.language || '---'}</span>
-                        </div>
-                        <div class="bau-details-divider"></div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('responsibleAm')}</span>
-                            <span class="bau-details-value">${c.amName || '---'}</span>
-                        </div>
-                        <div class="bau-details-divider"></div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('salesProgram')}</span>
-                            <span class="bau-details-value">${c.salesProgram || '---'}</span>
-                        </div>
-                    </div>
-
-                    <div class="bau-details-card full-width">
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('bauReason')}</span>
-                            <span class="bau-details-value">${c.reason || bt('notInformed')}</span>
-                        </div>
-                        <div class="bau-details-divider"></div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('requestedTasks')}</span>
-                            <span class="bau-details-value">${c.task || c.taskType || bt('none')}</span>
-                        </div>
-                    </div>
-
-                    <div class="bau-details-card full-width">
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('justification')}</span>
-                            <span class="bau-details-value">${c.nonImplementationReason || '---'}</span>
-                        </div>
-                        <div class="bau-details-divider"></div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('detailedDescription')}</span>
-                            <span class="bau-details-value">${c.description || '---'}</span>
-                        </div>
-                        <div class="bau-details-divider"></div>
-                        <div class="bau-details-row">
-                            <span class="bau-details-label">${bt('availability')}</span>
-                            <span class="bau-details-value">${formatToLocalUserDate(c.availability)}</span>
-                        </div>
-                    </div>
+        painel.innerHTML = `
+            <div class="bau-md-head">
+                <h2 class="bau-md-title">${[c.advName, c.advLastName].filter(Boolean).join(' ') || bt('undefinedName')}</h2>
+                <div class="bau-md-head-meta">
+                    <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
+                    <span class="bau-md-date">${formatToLocalUserDate(c.date)}</span>
                 </div>
             </div>
+
+            <section class="bau-md-briefing" aria-label="${bt('bauReason')}">
+                ${briefing.map((l, i) => `
+                    <div class="bau-md-line${i === briefing.length - 1 ? ' is-last' : ''}">
+                        <span class="bau-md-label">${l.rotulo}</span>
+                        <span class="bau-md-value">${l.valor}</span>
+                    </div>
+                `).join('')}
+            </section>
+
+            <section class="bau-md-data" aria-label="${bt('caseDetailsTitle')}">
+                ${dados.map((l, i) => `
+                    <div class="bau-md-line${i === dados.length - 1 ? ' is-last' : ''}">
+                        <span class="bau-md-label">${l.rotulo}</span>
+                        <span class="bau-md-value${l.mono ? ' is-mono' : ''}">${ou(l.valor)}</span>
+                        ${l.valor ? `
+                            <button type="button" class="bau-md-copy"
+                                    data-valor="${String(l.valor).replace(/"/g, '&quot;')}"
+                                    aria-label="${bt('copyFieldAria')(l.rotulo)}">
+                                ${ICONS.wand}
+                            </button>` : ''}
+                    </div>
+                `).join('')}
+            </section>
         `;
-
-        const closeBtn = detailsView.querySelector('.bau-details-close-btn');
-        closeBtn.onclick = () => {
-            detailsView.classList.remove('active');
-            SoundManager.playSwoosh();
-            setTimeout(() => { detailsView.style.display = 'none'; }, 600);
-        };
-
-        detailsView.querySelectorAll('.bau-copy-btn').forEach(btn => {
-            btn.onclick = (e) => {
-                const value = e.target.closest('.bau-details-row').querySelector('.bau-details-value').textContent;
-                copyToClipboard(value, btn);
-            };
-        });
-
-        detailsView.style.display = 'flex';
-        requestAnimationFrame(() => {
-            detailsView.classList.add('active');
-            SoundManager.playClick();
-        });
     }
 
     function renderCaseCard(c) {
         if (!c) return '';
 
-        const statusData = getStatusData(c?.status);
+        const statusData = getStatusData(c?.status, c?.processedAction);
         const dateStr = formatToLocalUserDate(c?.date);
 
         let slaBadge = '';
@@ -906,7 +918,7 @@ export function initBAUForm() {
                     <div class="bau-case-icon">${ICONS.folder}</div>
                     <div class="bau-case-info">
                         <div class="bau-case-header">
-                            <h3 class="bau-case-title">${c?.advName || bt('undefinedName')}</h3>
+                            <h3 class="bau-case-title">${[c?.advName, c?.advLastName].filter(Boolean).join(' ') || bt('undefinedName')}</h3>
                             ${slaBadge}
                             <span class="bau-case-date">${dateStr}</span>
                         </div>
@@ -918,7 +930,7 @@ export function initBAUForm() {
                         ${hasDataError ? `<div class="bau-data-error-hint">${!c?.caseId || c?.caseId === 'N/A' ? bt('incompleteData') : bt('invalidCid')} - ${bt('contactSupport')}</div>` : ''}
                     </div>
                 </div>
-                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                <div class="bau-case-actions">
                     <span class="bau-case-status-badge ${statusData.class}">${statusData.text}</span>
                     ${c?.status && c.status.includes('PENDING') ? `
                         <button class="bau-case-edit-btn" data-id="${c.id}" title="${bt('editRequest')}">
@@ -929,6 +941,39 @@ export function initBAUForm() {
                 </div>
             </li>
         `;
+    }
+
+    // Selecao no mestre-detalhe. O card selecionado fica marcado na lista: sem
+    // isso o agente perde de vista QUAL caso o painel da direita esta mostrando
+    // assim que a lista rola.
+    let casoAberto = null;
+    function fecharDetalhe() {
+        casoAberto = null;
+        popup.querySelector('.bau-md')?.classList.remove('is-open');
+        popup.querySelectorAll('#bau-case-list-container .bau-case-card').forEach((el) => {
+            el.classList.remove('is-selected');
+            el.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function selecionarCaso(cardEl, caseItem) {
+        // Toggle de verdade: reclicar o caso ABERTO fecha o painel. Sem isso o
+        // agente abre um detalhe e nao tem como voltar a lista inteira sem
+        // recarregar o dashboard.
+        if (casoAberto === caseItem?.id) {
+            fecharDetalhe();
+            SoundManager.playSwoosh();
+            return;
+        }
+        casoAberto = caseItem?.id || null;
+        popup.querySelectorAll('#bau-case-list-container .bau-case-card').forEach((el) => {
+            const eu = el === cardEl;
+            el.classList.toggle('is-selected', eu);
+            el.setAttribute('aria-expanded', eu ? 'true' : 'false');
+        });
+        renderCaseDetail(caseItem);
+        popup.querySelector('.bau-md')?.classList.add('is-open');
+        SoundManager.playClick();
     }
 
     function renderDashboard(cases) {
@@ -956,13 +1001,20 @@ export function initBAUForm() {
             return;
         }
 
+        // A fila de descarte nao entrava em metrica nenhuma: com 3 casos, os
+        // dois numeros somavam 2 e o terceiro sumia da leitura do agente.
         const pendingCount = safeCases.filter(c => c.status === 'PENDING_TL_CREATION').length;
+        const discardCount = safeCases.filter(c => c.status === 'PENDING_TL_DISCARD').length;
         const createdCount = safeCases.filter(c => c.status === 'CREATED').length;
 
         metricsEl.innerHTML = `
             <div class="bau-metric-card">
                 <span class="bau-metric-value">${pendingCount}</span>
                 <span class="bau-metric-label">${bt('metricAwaitingTl')}</span>
+            </div>
+            <div class="bau-metric-card">
+                <span class="bau-metric-value">${discardCount}</span>
+                <span class="bau-metric-label">${bt('metricAwaitingDiscard')}</span>
             </div>
             <div class="bau-metric-card">
                 <span class="bau-metric-value">${createdCount}</span>
@@ -983,6 +1035,10 @@ export function initBAUForm() {
         });
 
         listEl.innerHTML = '';
+        // Recarregar a lista fecha o painel: o caso que estava aberto pode nao
+        // existir mais, e um detalhe apontando para um card que sumiu e pior
+        // que nenhum detalhe.
+        fecharDetalhe();
         const recentCases = safeCases.slice(0, 5);
         const olderCases = safeCases.slice(5);
 
@@ -994,7 +1050,7 @@ export function initBAUForm() {
 
             cardEl.addEventListener('click', (e) => {
                 if (e.target.closest('.bau-case-edit-btn')) return;
-                openCaseDetails(caseItem);
+                selecionarCaso(cardEl, caseItem);
             });
 
             const editBtn = cardEl.querySelector('.bau-case-edit-btn');
@@ -1027,7 +1083,7 @@ export function initBAUForm() {
 
                 cardEl.addEventListener('click', (e) => {
                     if (e.target.closest('.bau-case-edit-btn')) return;
-                    openCaseDetails(caseItem);
+                    selecionarCaso(cardEl, caseItem);
                 });
 
                 const editBtn = cardEl.querySelector('.bau-case-edit-btn');
@@ -1129,6 +1185,21 @@ export function initBAUForm() {
         return true;
     }
 
+    // O design-system pede retorno no PROPRIO controle. Um toast no canto
+    // oposto conta o que houve, mas nao diz QUAL campo — com sete campos na
+    // tela, isso e uma busca visual por erro.
+    function sinalizarErroNoCampo(input) {
+        vibrar('erro');
+        if (!input) return;
+        input.classList.remove('bau-shake');
+        // Reflow forcado: sem ele, remover e readicionar na mesma tarefa nao
+        // reinicia a animacao, e o segundo erro seguido nao treme.
+        void input.offsetWidth;
+        input.classList.add('bau-shake');
+        input.addEventListener('animationend', () => input.classList.remove('bau-shake'), { once: true });
+        if (typeof input.focus === 'function') input.focus({ preventScroll: false });
+    }
+
     function validateRequiredFields(step) {
         const stepEl = form.querySelector(`#bau-step-${step}`);
         if (!stepEl) return false;
@@ -1166,6 +1237,7 @@ export function initBAUForm() {
                     if (!dataInput.value.trim() || !horaInput || !horaInput.value.trim()) {
                         failureReason = "Datetime group first field is empty";
                         SoundManager.playError();
+                        sinalizarErroNoCampo(dataInput);
                         showToast(bt('fieldRequiredDouble')(bft(fieldConfig.fields[0], 'label')), { error: true });
                         isFieldValid = false;
                     }
@@ -1177,6 +1249,7 @@ export function initBAUForm() {
                     if (!input.value.trim()) {
                         failureReason = "Field is empty";
                         SoundManager.playError();
+                        sinalizarErroNoCampo(input);
                         showToast(bt('fieldRequiredSingle')(bft(fieldConfig, 'label')), { error: true });
                         isFieldValid = false;
                     }
@@ -1224,10 +1297,6 @@ export function initBAUForm() {
     async function populateContextData() {
         const pageData = await getPageData() || {};
 
-        // AM Fallback to internalEmail if missing
-        if (!pageData.amName || pageData.amName === "N/A") {
-            pageData.amName = pageData.internalEmail || "N/A";
-        }
         currentContextData = pageData;
 
         // Render "Captured Data Hero" panel
@@ -1245,6 +1314,10 @@ export function initBAUForm() {
                 { label: "Case ID", value: pageData.caseId }
             ];
 
+            // O botão entra no mesmo innerHTML dos vitais porque este painel é
+            // reescrito inteiro a cada recaptura — deixá-lo fora seria apagá-lo
+            // no primeiro clique. Quem ouve o clique é o listener delegado lá
+            // embaixo, então não há listener órfão a cada re-render.
             container.innerHTML = vitals.map(v => {
                 const displayValue = (v.value && v.value !== "N/A" && v.value !== "undefined" && v.value !== "null") ? v.value : bt('notCaptured');
                 return `
@@ -1253,7 +1326,11 @@ export function initBAUForm() {
                         <span class="bau-highlight-value">${displayValue}</span>
                     </div>
                 `;
-            }).join('');
+            }).join('') + `
+                <button type="button" class="bau-rescan-btn" title="${bt('rescanTitle')}" aria-label="${bt('rescanTitle')}">
+                    ${ICONS.refresh}
+                </button>
+            `;
         });
 
         // Smart Rendering Logic
@@ -1340,9 +1417,89 @@ export function initBAUForm() {
         });
     }
 
-    popup.querySelector('#bau-top-se-search')?.addEventListener('click', (e) => {
+    // Retorno de acao nos TRES canais, como o design-system exige para todo
+    // gesto de resultado invisivel: visual no PROPRIO controle (nao so num
+    // toast no canto oposto), sonoro e tatil. O vibrate fica atras da guarda
+    // porque nao existe em desktop nem no Safari — e progressive enhancement,
+    // nunca dependencia.
+    // Esc fecha o detalhe. So quando ele esta aberto, para nao roubar o Esc de
+    // quem esta no formulario.
+    popup.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || !casoAberto) return;
+        e.stopPropagation();
+        fecharDetalhe();
+        SoundManager.playSwoosh();
+    });
+
+    popup.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.bau-md-copy');
+        if (!btn) return;
         e.preventDefault();
-        fetchAndInsertSpeakeasyId("bau-form-seId");
+        const valor = btn.getAttribute('data-valor') || '';
+        if (!valor) return;
+        try {
+            await navigator.clipboard.writeText(valor);
+        } catch (err) {
+            console.warn('Falha ao copiar:', err);
+            SoundManager.playError();
+            showToast(bt('genericErrorTitle'), { error: true });
+            return;
+        }
+        btn.classList.add('is-done');
+        btn.innerHTML = ICONS.check || ICONS.wand;
+        SoundManager.playClick();
+        vibrar('confirma');
+        showToast(bt('copiedToClipboard'));
+        setTimeout(() => {
+            btn.classList.remove('is-done');
+            btn.innerHTML = ICONS.wand;
+        }, 1500);
+    });
+
+    // Recaptura sob demanda, no molde do botão do call script: o agente troca
+    // de caso no CRM sem que a janela do módulo feche, e a raspagem só
+    // acontecia no clique de "Novo Caso". Quem já estava com o formulário
+    // aberto seguia vendo o contexto do caso ANTERIOR — foi assim que o AM de
+    // um caso já fechado chegava no formulário do caso seguinte.
+    //
+    // Sob demanda, e não num setInterval como o call script: lá o monitor lê
+    // três campos de texto; aqui getPageData() clica no unmask do telefone,
+    // pode expandir mensagens do log e faz JSONP do perfil. Repetir isso de
+    // dois em dois segundos mexeria na tela embaixo do agente enquanto ele
+    // digita.
+    popup.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.bau-rescan-btn');
+        if (!btn || btn.classList.contains('spinning')) return;
+        e.preventDefault();
+        btn.classList.add('spinning');
+        SoundManager.playClick();
+        try {
+            await populateContextData();
+            showToast(bt('rescanDone'));
+        } catch (err) {
+            console.warn('Falha ao recapturar o contexto:', err);
+            SoundManager.playError();
+            showToast(bt('genericErrorTitle'), { error: true });
+        } finally {
+            // O painel foi reescrito por populateContextData(), então este nó
+            // pode já não estar na tela: limpa o estado no que existir agora.
+            popup.querySelectorAll('.bau-rescan-btn.spinning')
+                .forEach((b) => b.classList.remove('spinning'));
+        }
+    });
+
+    // Delegado, e resolvendo o input pelo IRMÃO do botão clicado — não por id.
+    // O campo seId existe em dois passos (1, abertura; 5, descarte) e os dois
+    // renderizam id="bau-form-seId": ligar um listener por id atenderia só o
+    // primeiro, e a busca escreveria no campo do passo errado.
+    popup.addEventListener('click', (e) => {
+        const btn = e.target.closest('.bau-mini-btn-input');
+        if (!btn) return;
+        const alvo = btn.closest('.bau-input-group')?.querySelector('input[name="seId"]');
+        if (!alvo) return;
+        e.preventDefault();
+        SoundManager.playClick();
+        fetchAndInsertSpeakeasyId(alvo);
     });
 
     const cidInput = popup.querySelector('#bau-form-cid');
@@ -1618,6 +1775,13 @@ export function initBAUForm() {
         // Populate fields
         const availabilitySlots = c.availability ? c.availability.split('|').map(s => s.trim()) : [];
 
+        // O caso pode ter sido gravado quando o catálogo era outro. A grade
+        // ganha as tasks que faltam ANTES do laço abaixo, senão o `input` delas
+        // não existe e a seleção some sem aviso na hora de reenviar.
+        const tasksDoCaso = (c.task || c.taskType || "").split(',').map(t => t.trim()).filter(Boolean);
+        const grade = form.querySelector('.bau-tasks-grid');
+        if (grade) resetTaskGrid(grade, tasksDoCaso);
+
         form.querySelectorAll('input, select, textarea').forEach(input => {
             const fieldName = input.name;
 
@@ -1787,6 +1951,7 @@ export function initBAUForm() {
             }
 
             SoundManager.playSuccess();
+            vibrar('concluido');
 
             // Dynamic Success Message
             const successTitle = popup.querySelector('.bau-success-title');
@@ -1823,7 +1988,12 @@ export function initBAUForm() {
         isEditing = false;
         editingCaseId = null;
         updateWizardState();
-        form.querySelectorAll('.bau-task-item.active').forEach(item => item.classList.remove('active'));
+
+        // `form.reset()` desmarca, mas não desfaz as tasks fora de catálogo que
+        // uma edição anterior injetou na grade — elas ficariam oferecidas para
+        // um caso novo.
+        const grade = form.querySelector('.bau-tasks-grid');
+        if (grade) resetTaskGrid(grade);
     }
 
     popup.querySelector('#bau-new-case-btn').addEventListener('click',() => {

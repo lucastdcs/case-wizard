@@ -49,6 +49,21 @@ store['cw_content_task_screenshots'] = JSON.stringify(
     }))
 );
 
+async function bundlarFonte(contents, footer) {
+    const out = await build({
+        stdin: { contents, resolveDir: resolve(here, '..'), sourcefile: 'inline.js', loader: 'js' },
+        bundle: true,
+        write: false,
+        format: 'cjs',
+        platform: 'node',
+        logLevel: 'silent',
+        ...(footer ? { footer: { js: footer } } : {}),
+    });
+    const mod = { exports: {} };
+    new Function('module', 'exports', 'require', out.outputFiles[0].text)(mod, mod.exports, require);
+    return mod.exports;
+}
+
 async function bundlar(entry, footer) {
     const out = await build({
         entryPoints: [resolve(here, entry)],
@@ -202,6 +217,68 @@ check('resposta vazia mantém o catálogo embutido', () => {
     if (svc.applyTaskContent([]) !== false) throw new Error('lista vazia foi aplicada');
     if (svc.applyTaskContent(null) !== false) throw new Error('null foi aplicado');
     if (Object.keys(svc.__tasks).length !== antesDoTeste) throw new Error('o catálogo mudou');
+});
+
+// ---------------------------------------------------------------------------
+// A grade de tasks do form BAU
+// ---------------------------------------------------------------------------
+//
+// O form oferecia uma lista PRÓPRIA, escrita à mão no bau-form-config.js, que
+// já não batia com o catálogo: nomes diferentes para a mesma task e opções que
+// a Central nunca conheceu. Agora ele lê o mesmo TASKS_DB, e só o nome — o form
+// não pede screenshot nenhum.
+//
+// Config e serviço precisam compartilhar a MESMA instância do TASKS_DB (o
+// serviço reescreve no lugar), por isso um bundle só com os dois dentro.
+console.log('\n--- Grade de tasks do form BAU ---');
+
+const bau = await bundlarFonte(`
+    export { loadTasks } from './src/modules/notes/data/tasks-service.js';
+    export { bauTaskOptions } from './src/modules/bau-form/bau-form-config.js';
+    export { TASKS_DB } from './src/modules/notes/data/notes-data.js';
+`);
+await bau.loadTasks();
+
+const nomesPublicados = seed.items.map(it => JSON.parse(it.value).name);
+
+check('o form oferece exatamente as tasks da Central, na mesma ordem', () => {
+    const doForm = bau.bauTaskOptions();
+    if (JSON.stringify(doForm) !== JSON.stringify(nomesPublicados)) {
+        throw new Error(
+            `a lista divergiu:\n      central: ${JSON.stringify(nomesPublicados)}\n      form:    ${JSON.stringify(doForm)}`
+        );
+    }
+});
+
+check('o form consome só o nome — nada de screenshots', () => {
+    for (const item of bau.bauTaskOptions()) {
+        if (typeof item !== 'string') throw new Error(`veio um ${typeof item}: ${JSON.stringify(item)}`);
+    }
+});
+
+check('nome vazio não vira caixa de seleção fantasma', () => {
+    // O `value` do checkbox é o nome, e é ele que vai para a coluna Task_BAU:
+    // uma linha sem nome na Central viraria uma opção clicável sem rótulo que
+    // grava string vazia na planilha.
+    const guardado = { ...bau.TASKS_DB };
+    for (const k of Object.keys(bau.TASKS_DB)) delete bau.TASKS_DB[k];
+    Object.assign(bau.TASKS_DB, { a: { name: 'Boa' }, b: { name: '   ' }, c: {} });
+    const doForm = bau.bauTaskOptions();
+    if (JSON.stringify(doForm) !== JSON.stringify(['Boa'])) {
+        throw new Error(`esperava ["Boa"], veio ${JSON.stringify(doForm)}`);
+    }
+    for (const k of Object.keys(bau.TASKS_DB)) delete bau.TASKS_DB[k];
+    Object.assign(bau.TASKS_DB, guardado);
+});
+
+check('nenhum nome repetido no catálogo publicado', () => {
+    // Dois checkboxes com o mesmo `value` é seleção ambígua na edição de um
+    // caso: marcar um marca visualmente o outro.
+    const vistos = new Set();
+    for (const nome of nomesPublicados) {
+        if (vistos.has(nome)) throw new Error(`"${nome}" aparece duas vezes`);
+        vistos.add(nome);
+    }
 });
 
 console.log(

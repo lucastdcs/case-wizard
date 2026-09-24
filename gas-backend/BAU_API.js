@@ -45,10 +45,22 @@ function handleBAUEscalation(ss, p) {
     ensureBAUAdvPhoneColumn(sheet);
     sheet.getRange(sheet.getLastRow(), BAU_ADV_PHONE_COL).setValue(p.advPhone || '');
 
+    // O tipo do e-mail segue o MESMO campo que decidiu o status acima. Antes
+    // daqui, um descarte aberto direto pelo passo 0 do formulário gravava
+    // PENDING_TL_DISCARD e mandava 'AGENT_BAU_SENT' — "a solicitação foi
+    // registrada e aguarda análise", que é o texto de abertura de caso. O
+    // agente pedia para descartar um caso existente e recebia a confirmação
+    // de um caso sendo aberto. O caminho de EDIÇÃO (updateBAUCase) já
+    // escolhia certo, e é por isso que o defeito sobreviveu: só aparece em
+    // quem começa pelo descarte.
+    const tipoEmailAgente = p.requestType === 'DISCARD'
+      ? 'AGENT_DISCARD_SENT'
+      : 'AGENT_BAU_SENT';
+
     let emailSent = false;
     try {
       if (typeof sendDynamicTechSolEmail === "function") {
-        sendDynamicTechSolEmail(userEmail, p, newId, 'AGENT_BAU_SENT', userEmail);
+        sendDynamicTechSolEmail(userEmail, p, newId, tipoEmailAgente, userEmail);
         emailSent = true;
       }
     } catch(e) {
@@ -83,7 +95,11 @@ function getAgentCases(ss, userEmail) {
       // formulário de edição nunca consegue pré-preencher o dropdown de motivo
       // e acaba jogando a string inteira ("Motivo | Descrição") no campo de texto.
       const rawDescription = celulaTexto(row[16]);
-      const isDiscardFlow = status === 'PENDING_TL_DISCARD' || status === 'DISCARDED';
+      const processedAction = celulaTexto(row[20]);
+      // Abertura recusada também termina em DISCARDED, mas nasceu no fluxo BAU
+      // e tem a descrição mesclada.
+      const isDiscardFlow = status === 'PENDING_TL_DISCARD'
+        || (status === 'DISCARDED' && processedAction !== 'REJECTED_CREATION');
       let nonImplementationReason = "";
       let description = rawDescription;
 
@@ -117,7 +133,11 @@ function getAgentCases(ss, userEmail) {
         availability: row[17] instanceof Date ? row[17].toISOString() : celulaTexto(row[17]),
         // Faltava aqui, e por isso o form de edição abria sempre no padrão do
         // <select> ("Não") em vez do que está gravado. Mesma coluna que o TL lê.
-        suggestDiscard: celulaTexto(row[21])
+        suggestDiscard: celulaTexto(row[21]),
+        // O status é ambíguo: CREATED também é descarte negado e DISCARDED
+        // também é abertura recusada. Sem a ação, o card dizia "Aprovado /
+        // Criado" ou "Descartado" errado (o e-mail, que já lia a ação, acertava).
+        processedAction: processedAction
       });
 
       if (myCases.length >= 30) break;
