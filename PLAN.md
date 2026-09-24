@@ -122,6 +122,14 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [x] **Release v6.4.0 (2026-09-24).** Os 13 commits acumulados em
+      `refactor-structure` desde a v6.3.3 — com o conserto do AM do caso
+      anterior à frente — fechados no CHANGELOG, versões alinhadas e notas dos
+      dois modais (agente e TL) reescritas. Suíte rodada antes do merge: todos
+      os `test:*` verdes, `test:scraping` 62/62, e os smokes verdes exceto
+      `smoke:shortcuts` (2 falhas na lista de Configurações que **já existem na
+      v6.3.3** — reproduzidas na `main` — e não vieram desta release). Tag
+      pendente, ver "Waiting / blocked".
 - [x] **As tasks do form BAU não vinham da Central.** Verificado: não vinham —
       o `bau-form-config.js` tinha uma lista de 17 nomes escrita à mão, de antes
       da Central existir, e ela já divergia do catálogo publicado em três eixos
@@ -366,6 +374,13 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 - [ ] ...
 
 ## Waiting / blocked
+
+- [ ] **Empurrar a tag `v6.4.0`** de um checkout local (o proxy da sessão web
+      recusa push de tag — `RELEASE.md` → Known fragilities):
+      `git fetch origin main && git tag -a v6.4.0 origin/main -m "v6.4.0" && git push origin v6.4.0`
+- [ ] **`smoke:shortcuts` vermelho desde a v6.3.3** — "a lista de Configurações
+      segue a mesma ordem do Ctrl+K" e "o construtor de Configurações só oferece
+      cenários do substatus escolhido". Investigar à parte.
 
 > **Correção de rota (2026-09-16):** vários itens abaixo e acima diziam "falta o
 > `clasp deploy` manual de produção". Não falta: o `deploy.yml` tem um passo

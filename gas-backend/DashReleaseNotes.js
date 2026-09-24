@@ -28,23 +28,18 @@
 // conta uma release por vez (o navegador guarda uma única versão vista).
 
 const CW_DASH_RELEASE_NOTES = {
-  version: "6.3.3",
+  version: "6.4.0",
   title: "Novidades do TL Dashboard",
   items: [
     {
-      icon: "flag",
-      title: "A vista de caso agora diz o que o agente pediu que aconteça",
-      text: "Logo no topo do bloco de leitura, uma linha diz \"O caso deve ser descartado pelo TL\" ou \"O caso será implementado pelo agente\". Até aqui isso aparecia só como um selo, e só quando o agente sugeria descarte — então \"o agente vai implementar\" e \"o campo não chegou\" eram a mesma tela em branco, e não dava para saber o que tinha sido pedido. Casos antigos, gravados antes desse campo existir, aparecem como \"não informado\" em vez de inventar uma resposta."
-    },
-    {
-      icon: "sync",
-      title: "Quando o agente corrige essa resposta, você passa a ver a correção",
-      text: "O agente podia alterar a sugestão de descarte ao editar um caso já enviado, mas a mudança nunca chegava aqui: o painel seguia mostrando o que foi gravado no envio original. Agora ela chega. Se você já tinha visto um caso antes desta versão, vale reabrir."
+      icon: "checklist",
+      title: "As tasks dos casos BAU seguem a Central de Conteúdo",
+      text: "O formulário do agente passou a oferecer as tasks do catálogo publicado na Central, com os mesmos nomes (\"GTM Installation\" em vez de \"Google Tag Manager Installation\", por exemplo). Casos novos chegam aqui com esse vocabulário; casos abertos antes desta versão mantêm o nome que foi gravado na época."
     },
     {
       icon: "alternate_email",
-      title: "O AM aparece como e-mail",
-      text: "O campo \"AM Responsável\" passa a trazer o e-mail do Account Manager em vez do nome de exibição — é o que permite acionar a pessoa a partir daqui. O mesmo vale para o resumo copiável. Casos abertos antes desta versão continuam com o nome que foi gravado na época. Quando o assistente do agente não consegue determinar o AM com segurança, o campo agora vem vazio em vez de trazer um nome errado: antes ele caía no primeiro contato da conta, que era o mesmo em todos os casos daquele anunciante."
+      title: "O AM deixa de vir trocado quando o agente muda de caso",
+      text: "A captura do Account Manager podia ler o case log do caso anterior e gravar o AM errado no caso novo. Agora ela lê só o caso aberto — o \"AM Responsável\" que você vê aqui passa a ser o do caso certo."
     }
   ]
 };

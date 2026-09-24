@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.4.0] - 2026-09-24
+
 ### Added
 - **Camada sensorial do BAU Form.** Retorno nos três canais que o
   `design-system.md` exige, colocado onde ele significa alguma coisa — e
@@ -32,23 +34,23 @@ versions follow [Semantic Versioning](https://semver.org/).
     ficam na curva padrão), card selecionado dá 1,5% de escala, botões de ação
     afundam sem sobra. `prefers-reduced-motion` derruba todo overshoot mantendo
     a duração. A regra foi escrita em `specs/ui-ux/design-system.md`.
-
-### Fixed
-- **Descarte negado aparecia como "Aprovado / Criado" no BAU Central do
-  agente.** O descarte negado volta ao status `CREATED`, igual a uma criação
-  aprovada; o card agora lê `Processed_Action` e mostra "Mantido ativo pelo TL"
-  (o e-mail `AGENT_DISCARD_DENIED` já estava certo).
-- **Abertura recusada aparecia como "Descartado pelo TL".** Mesmo problema no
-  outro sentido: a recusa termina em `DISCARDED`. Agora o card mostra "Recusado
-  pelo TL", e o painel de detalhe separa de novo "Motivo | Descrição" desses
-  casos (antes a string mesclada ia inteira para a descrição).
-- **O botão de busca do SE ID saía sem formatação e fora do campo.** As regras
-  `.bau-input-group`, `.bau-input-group > .bau-input` e `.bau-mini-btn-input`
-  **foram apagadas por engano** no commit do mestre-detalhe: a heurística que
-  achava o fim do bloco do painel sobreposto passou do ponto e levou junto o que
-  vinha depois. Sem regra base, o botão renderizava como botão cru do navegador
-  e o grupo perdia o `display: flex`, jogando-o para fora do campo. Restauradas
-  no registro novo (sem moldura, 44px, acopladas ao campo).
+- **Botão de recaptura no formulário BAU.** No molde do botão do call script: um
+  clique e a raspagem roda de novo **na tela que está na frente**. A janela do
+  módulo não fecha quando o agente troca de caso no CRM, e a captura só
+  acontecia no clique de "Novo Caso" — quem já estava com o formulário aberto
+  seguia vendo o contexto do caso anterior. Sob demanda, e não num `setInterval`
+  como o call script: lá o monitor lê três campos de texto; aqui `getPageData()`
+  clica no unmask do telefone, pode expandir mensagens do log e faz JSONP do
+  perfil, e repetir isso a cada 2s mexeria na tela embaixo de quem está
+  digitando.
+- **Busca automática do SE ID no fluxo de descarte.** O botão que varre o case
+  log atrás do Speakeasy ID existia só no passo de abertura. No de descarte —
+  onde o campo é **obrigatório**, e no de abertura não é — o agente tinha que
+  garimpar o ID à mão para conseguir enviar. Na mesma mudança, o alvo da busca
+  deixou de ser resolvido por `getElementById`: os dois passos renderizam
+  `id="bau-form-seId"`, então o botão novo escreveria no campo do passo 1
+  (invisível na hora) e deixaria o obrigatório vazio, sem erro na tela. O
+  listener passou a resolver o input pelo irmão do botão clicado.
 
 ### Changed
 - **O painel de detalhe virou toggle.** Sem caso escolhido a coluna não existe e
@@ -112,8 +114,40 @@ versions follow [Semantic Versioning](https://semver.org/).
   que carrega mais dado por tela: a vista de detalhes tinha **600px de conteúdo
   abaixo da dobra**. A altura fixa resolve o pulo: a janela ia de 466px (escolha
   do fluxo) para 810px (formulário) a cada passo.
+- **Todo script de Playwright passa a honrar `CW_CHROMIUM`** (interno). Antes
+  só alguns liam a variável; os outros morriam no launch em ambientes sem o build
+  exato que o Playwright fixa — e uma falha de launch lida como "suíte verde" se
+  só se olha a saída dos testes node. Novo `npm run smoke:bau-tasks`.
 
 ### Fixed
+- **O AM do caso ANTERIOR chegava no formulário do caso seguinte.** Relatado
+  como "abro um caso, ele puxa o AM; fecho, abro outro, e vem o mesmo AM do caso
+  já fechado" — e seguia acontecendo depois da v6.3.3, que consertou outra coisa
+  (o fallback do `<internal-user-info>`). A causa é outra e está a montante:
+  `mensagensDoLog()` varria `document.querySelectorAll('case-message-view')`, o
+  **documento inteiro**. O CRM mantém mais de um container de case log no DOM e
+  marca o do caso em foco com `.active-case-log-container`; ao trocar de caso, o
+  log do anterior continua pendurado ali, e quando o do caso novo ainda não
+  renderizou ele é o **único** com e-mail — então a raspagem devolvia o AM do
+  caso fechado com cara de acerto (origem `case-log-visivel`, e às vezes até
+  `contact-us-form`). A varredura passa a ser escopada ao log ativo, com
+  fallback para o documento onde a classe não existe. Reproduzido contra uma
+  captura real da tela e travado em `test:scraping` (+4 asserções, 62 no total).
+- **Descarte negado aparecia como "Aprovado / Criado" no BAU Central do
+  agente.** O descarte negado volta ao status `CREATED`, igual a uma criação
+  aprovada; o card agora lê `Processed_Action` e mostra "Mantido ativo pelo TL"
+  (o e-mail `AGENT_DISCARD_DENIED` já estava certo).
+- **Abertura recusada aparecia como "Descartado pelo TL".** Mesmo problema no
+  outro sentido: a recusa termina em `DISCARDED`. Agora o card mostra "Recusado
+  pelo TL", e o painel de detalhe separa de novo "Motivo | Descrição" desses
+  casos (antes a string mesclada ia inteira para a descrição).
+- **O botão de busca do SE ID saía sem formatação e fora do campo.** As regras
+  `.bau-input-group`, `.bau-input-group > .bau-input` e `.bau-mini-btn-input`
+  **foram apagadas por engano** no commit do mestre-detalhe: a heurística que
+  achava o fim do bloco do painel sobreposto passou do ponto e levou junto o que
+  vinha depois. Sem regra base, o botão renderizava como botão cru do navegador
+  e o grupo perdia o `display: flex`, jogando-o para fora do campo. Restauradas
+  no registro novo (sem moldura, 44px, acopladas ao campo).
 - **A vista de detalhes do caso abria desalinhada, com o dashboard aparecendo
   por trás.** `.bau-details-view` usava `top: 56px` para descontar um header que
   **não é ancestral dela** — o header padrão é irmão do container, não filho —,
@@ -142,40 +176,6 @@ versions follow [Semantic Versioning](https://semver.org/).
   esticar.
 - **Código morto:** o fallback `amName = internalEmail` em `populateContextData`
   virou no-op quando os dois passaram a sair da mesma resolução (v6.3.3).
-- **O AM do caso ANTERIOR chegava no formulário do caso seguinte.** Relatado
-  como "abro um caso, ele puxa o AM; fecho, abro outro, e vem o mesmo AM do caso
-  já fechado" — e seguia acontecendo depois da v6.3.3, que consertou outra coisa
-  (o fallback do `<internal-user-info>`). A causa é outra e está a montante:
-  `mensagensDoLog()` varria `document.querySelectorAll('case-message-view')`, o
-  **documento inteiro**. O CRM mantém mais de um container de case log no DOM e
-  marca o do caso em foco com `.active-case-log-container`; ao trocar de caso, o
-  log do anterior continua pendurado ali, e quando o do caso novo ainda não
-  renderizou ele é o **único** com e-mail — então a raspagem devolvia o AM do
-  caso fechado com cara de acerto (origem `case-log-visivel`, e às vezes até
-  `contact-us-form`). A varredura passa a ser escopada ao log ativo, com
-  fallback para o documento onde a classe não existe. Reproduzido contra uma
-  captura real da tela e travado em `test:scraping` (+4 asserções, 62 no total).
-
-### Added
-- **Botão de recaptura no formulário BAU.** No molde do botão do call script: um
-  clique e a raspagem roda de novo **na tela que está na frente**. A janela do
-  módulo não fecha quando o agente troca de caso no CRM, e a captura só
-  acontecia no clique de "Novo Caso" — quem já estava com o formulário aberto
-  seguia vendo o contexto do caso anterior. Sob demanda, e não num `setInterval`
-  como o call script: lá o monitor lê três campos de texto; aqui `getPageData()`
-  clica no unmask do telefone, pode expandir mensagens do log e faz JSONP do
-  perfil, e repetir isso a cada 2s mexeria na tela embaixo de quem está
-  digitando.
-- **Busca automática do SE ID no fluxo de descarte.** O botão que varre o case
-  log atrás do Speakeasy ID existia só no passo de abertura. No de descarte —
-  onde o campo é **obrigatório**, e no de abertura não é — o agente tinha que
-  garimpar o ID à mão para conseguir enviar. Na mesma mudança, o alvo da busca
-  deixou de ser resolvido por `getElementById`: os dois passos renderizam
-  `id="bau-form-seId"`, então o botão novo escreveria no campo do passo 1
-  (invisível na hora) e deixaria o obrigatório vazio, sem erro na tela. O
-  listener passou a resolver o input pelo irmão do botão clicado.
-
-### Fixed
 - **Pedir descarte disparava o e-mail de abertura de caso.** Quem começava pelo
   "Solicitar Descarte" no passo 0 do formulário recebia "Caso na fila BAU — a
   solicitação foi registrada e aguarda análise da liderança": o texto de um caso
@@ -988,7 +988,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.4.0...HEAD
+[6.4.0]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...v6.4.0
 [6.3.3]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...v6.3.3
 [6.3.2]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...v6.3.2
 [6.3.1]: https://github.com/lucastdcs/case-wizard/compare/v6.3.0...v6.3.1

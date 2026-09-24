@@ -15,20 +15,30 @@
 // contar uma release por vez (o localStorage guarda uma única versão vista).
 
 export const RELEASE_NOTES = {
-    version: "v6.3.3",
+    version: "v6.4.0",
 
-    title: "Case Wizard v6.3.3",
+    title: "Case Wizard v6.4.0",
 
     slides: [
         {
             icon: "📧",
-            title: "O AM agora vem como e-mail — e vem vazio quando não dá para ter certeza",
-            text: "O campo Account Manager passou a trazer o e-mail do AM, não o nome: é o que a liderança usa para acionar a pessoa a partir do painel dela, e um nome próprio não diz qual LDAP é. Junto, o assistente parou de chutar: quando o case log não deixa claro quem é o AM, o campo vem em branco em vez de preenchido com o primeiro contato da conta — que era sempre o mesmo em todos os casos daquele anunciante. Se vier vazio, preencha; o campo aceita só e-mail."
+            title: "O AM não vem mais do caso anterior",
+            text: "Ao trocar de caso, o formulário BAU podia trazer o Account Manager do caso que você acabou de fechar: o CRM mantém o case log antigo na tela por um tempo, e a captura lia os dois. Agora ela lê só o log do caso aberto. E se a janela do BAU já estava aberta quando você trocou de caso, o novo botão de recaptura no formulário puxa de novo os dados da tela que está na frente."
         },
         {
-            icon: "💾",
-            title: "Editar a sugestão de descarte agora salva de verdade",
-            text: "No Passo 3, a resposta para \"o caso deve ser descartado pelo TL?\" podia ser alterada na edição de um caso já enviado, mas a mudança não chegava à liderança: o TL continuava vendo o que foi gravado no envio original. Agora ela é gravada, e ao reabrir um caso para editar o campo já vem marcado com o que está valendo."
+            icon: "🗂️",
+            title: "BAU Central de cara nova: lista e detalhe lado a lado",
+            text: "Clicar num caso abre o detalhe ao lado da lista, sem trocar de tela — clique de novo (ou Esc) para fechar. A janela ficou maior, os status aparecem por extenso (inclusive \"descarte em avaliação\", \"Mantido ativo pelo TL\" e \"Recusado pelo TL\", que antes saíam errados) e os casos aguardando descarte entram nas métricas."
+        },
+        {
+            icon: "🗑️",
+            title: "Pedido de descarte com o e-mail certo e busca do SE ID",
+            text: "Quem pedia descarte recebia o e-mail de abertura de caso, com agendamento e procedimento que o fluxo nem pergunta. Agora chega a confirmação de descarte. E o botão que encontra o SE ID no case log também está no passo de descarte, onde o campo é obrigatório."
+        },
+        {
+            icon: "✅",
+            title: "As tasks do formulário são as da Central de Conteúdo",
+            text: "A lista de tasks do BAU passou a vir do mesmo catálogo publicado na Central, com os mesmos nomes. Algumas tasks que só existiam no formulário saíram da grade; um caso antigo que usava uma delas continua com ela marcada ao ser editado."
         }
     ]
 };
