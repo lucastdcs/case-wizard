@@ -8,6 +8,19 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **A abertura do painel lateral do BAU tremia.** A coluna passava de 454,9px
+  para 504,3px — **10,9% de sobra**, contra os ≤3% que a regra de movimento
+  previa — e, por ser propriedade de **layout**, o texto refluía na largura
+  errada e refluía de novo na certa, duas vezes em 260ms. A causa não era a
+  curva: os dois estados declaravam a segunda trilha de formas **diferentes**
+  (`0fr` contra `minmax(0, 6fr)`), que não interpolam como o mesmo tipo. Trocar
+  só a curva não resolveu (a sobra foi a 12,1%); igualar a forma levou a
+  **0,0%**. Medido quadro a quadro, não estimado. A curva passou a
+  desacelerante mesmo assim: numa trilha `fr` a sobra não chega aos pixels, então
+  a curva de mola ali só somava risco. Regra registrada em
+  `specs/ui-ux/design-system.md` e `docs/LEARNINGS.md`.
+
 ## [6.4.0] - 2026-09-24
 
 ### Added
