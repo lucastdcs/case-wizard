@@ -153,6 +153,27 @@
 
         /* Boas-vindas de quem acessou (foto + saudação), compacta dentro da própria nav */
         .tl-welcome { display: flex; align-items: center; gap: 8px; }
+        /* Mesmo controle segmentado do toggle de Configurações no bundle: três
+           opções cabem lado a lado e a escolha fica visível sem abrir nada. O
+           separador é :not(:last-child) — com :first-child o do meio some. */
+        .tl-lang-toggle {
+            display: flex; border: 1px solid var(--nav-border); border-radius: 8px;
+            overflow: hidden; flex-shrink: 0;
+        }
+        .tl-lang-toggle button {
+            border: none; background: var(--nav-surface); padding: 6px 10px;
+            font-size: 11px; font-weight: 700; cursor: pointer;
+            color: var(--nav-text-secondary); font-family: inherit;
+            transition: background-color .2s ease, color .2s ease;
+        }
+        .tl-lang-toggle button:not(:last-child) { border-right: 1px solid var(--nav-border); }
+        .tl-lang-toggle button.active { background: #1A73E8; color: #fff; }
+        .tl-lang-toggle button:hover:not(.active) { background: rgba(255,255,255,.08); }
+        .tl-lang-toggle button:focus-visible { outline: 2px solid #1A73E8; outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) {
+            .tl-lang-toggle button { transition: none; }
+        }
+
         .tl-avatar {
             width: 30px;
             height: 30px;
@@ -1102,6 +1123,11 @@
             </div>
             <div style="width: 1px; height: 24px; background: var(--nav-border);"></div>
             <span id="last-synced-label" style="font-size: 12px; color: var(--nav-text-secondary);"></span>
+            <div class="tl-lang-toggle" id="tl-lang-toggle" role="group" aria-label="Idioma da tela">
+                <button type="button" data-lang="pt">PT</button>
+                <button type="button" data-lang="es">ES</button>
+                <button type="button" data-lang="en">EN</button>
+            </div>
             <button class="btn" id="btn-whats-new" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);"
                     onclick="SoundKit.click(); openReleaseNotes()" data-i18n-aria="whatsNew" aria-label="Novidades desta versão">
                 <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 20px;">campaign</span>
@@ -1570,10 +1596,51 @@
                 noCasesResolved: function (d) { return "No case resolved in the last " + d + " days."; }
             }
         };
-        let TL_LANG = 'pt';
+        // Mesma ordem de resolução do bundle (shared/i18n.js): escolha manual
+        // salva neste navegador > idioma do perfil > 'pt'. Chave própria porque
+        // esta página roda fora do bundle e não compartilha localStorage com ele
+        // em todo ambiente.
+        const TL_LANG_KEY = 'cw_tl_lang';
+        const TL_LANGS = ['pt', 'es', 'en'];
+
+        function tlStoredLang() {
+            try {
+                const raw = localStorage.getItem(TL_LANG_KEY);
+                return TL_LANGS.indexOf(raw) !== -1 ? raw : null;
+            } catch (e) {
+                return null; // aba privada, cookies bloqueados: segue em memória
+            }
+        }
+
+        let TL_LANG_MANUAL = tlStoredLang();
+        let TL_LANG = TL_LANG_MANUAL || 'pt';
+
         function tt(key) {
             const dict = TL_I18N[TL_LANG] || TL_I18N.pt;
             return dict[key] !== undefined ? dict[key] : TL_I18N.pt[key];
+        }
+
+        // Troca na barra. Repinta o texto fixo e re-renderiza os casos, porque
+        // boa parte da tela (linhas, selos, datas) é montada em JS e não passa
+        // pelo laço de data-i18n.
+        function setTlLang(lang) {
+            if (TL_LANGS.indexOf(lang) === -1 || lang === TL_LANG) return;
+            TL_LANG = lang;
+            TL_LANG_MANUAL = lang;
+            try { localStorage.setItem(TL_LANG_KEY, lang); } catch (e) { /* segue em memória */ }
+            applyStaticTexts();
+            syncTlLangToggle();
+            if (typeof allCases !== 'undefined' && allCases.length > 0) renderCases();
+        }
+
+        function syncTlLangToggle() {
+            const host = document.getElementById('tl-lang-toggle');
+            if (!host) return;
+            host.querySelectorAll('button').forEach(btn => {
+                const ativo = btn.dataset.lang === TL_LANG;
+                btn.classList.toggle('active', ativo);
+                btn.setAttribute('aria-pressed', String(ativo));
+            });
         }
 
         // Preenche todo elemento marcado com data-i18n. Chamado no boot e de
@@ -1595,6 +1662,8 @@
             // As <option> do período são texto gerado a partir do próprio value
             // ("Últimos 30 dias"), então não cabem no laço de data-i18n acima —
             // ficariam três chaves de dicionário dizendo a mesma frase.
+            syncTlLangToggle();
+
             document.querySelectorAll('#history-period option').forEach(opt => {
                 opt.textContent = tt('historyPeriodOption')(opt.value);
             });
@@ -1614,11 +1683,20 @@
         // loadCases() direto, sem depender de load nenhum - só reproduzindo esse
         // mesmo comportamento aqui.
         document.addEventListener('DOMContentLoaded', () => {
-            // No boot é no-op (o HTML já nasce em PT); o que importa é que o
-            // mecanismo seja o mesmo caminho usado quando o profile chega em
-            // ES — assim um texto novo marcado com data-i18n nunca fica de
-            // fora por esquecimento.
+            // No boot sem escolha salva é no-op (o HTML já nasce em PT); com
+            // escolha salva, é ela que repinta a tela antes do profile chegar.
+            // De todo modo é o mesmo caminho usado quando o profile responde —
+            // assim um texto novo marcado com data-i18n nunca fica de fora por
+            // esquecimento.
             applyStaticTexts();
+
+            const langToggle = document.getElementById('tl-lang-toggle');
+            if (langToggle) {
+                langToggle.querySelectorAll('button').forEach(btn => {
+                    btn.onclick = () => { SoundKit.click(); setTlLang(btn.dataset.lang); };
+                });
+                syncTlLangToggle();
+            }
 
             // Esc fecha o modal aberto. O de confirmação vem primeiro: quando os
             // dois estão na tela, ele é o que está por cima.
@@ -1675,7 +1753,10 @@
                     // carrega o idioma — sem requisição extra. A saudação é
                     // montada DEPOIS de trocar o idioma pra já nascer certa.
                     const lang = { 'ES': 'es', 'EN': 'en' }[String(profile.defaultLanguage).toUpperCase()];
-                    if (lang) {
+                    // Escolha manual salva vence o perfil — senão o seletor da
+                    // barra só valeria até o profile responder, e a tela voltaria
+                    // sozinha para o idioma do segmento.
+                    if (lang && !TL_LANG_MANUAL) {
                         TL_LANG = lang;
                         applyStaticTexts();
                         // Os casos já podem estar na tela (loadCases roda em

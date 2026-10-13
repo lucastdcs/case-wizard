@@ -208,7 +208,7 @@ const HISTORICO = {
 
 const PERFIL = { ldap: 'tlpessoa', role: 'TL', defaultLanguage: 'PT-BR' };
 
-async function abrirPagina(browser, { idiomaDoTL, versaoJaVista } = {}) {
+async function abrirPagina(browser, { idiomaDoTL, versaoJaVista, idiomaSalvo } = {}) {
     const page = await browser.newPage();
     page.on('pageerror', (e) => { console.log('      [erro na página] ' + e.message); });
 
@@ -248,6 +248,12 @@ async function abrirPagina(browser, { idiomaDoTL, versaoJaVista } = {}) {
         await page.addInitScript((v) => {
             try { localStorage.setItem('cw_tl_seen_version', v); } catch (e) { /* ignora */ }
         }, versaoJaVista);
+    }
+
+    if (idiomaSalvo) {
+        await page.addInitScript((v) => {
+            try { localStorage.setItem('cw_tl_lang', v); } catch (e) { /* ignora */ }
+        }, idiomaSalvo);
     }
 
     await page.goto('file://' + ARQUIVO, { waitUntil: 'domcontentloaded' });
@@ -696,6 +702,89 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
         verdade(await page.evaluate(() => document.getElementById('releaseModal').classList.contains('active')),
             'reabriu pelo botão');
     });
+    await page.close();
+}
+
+// ------------------------------------------------ seletor de idioma da tela
+//
+// O idioma do TL vinha SÓ do segmento na planilha People: quem não se
+// encaixasse não tinha como trocar. Com três idiomas isso passa a doer, então a
+// barra ganhou o mesmo controle segmentado que o agente tem em Configurações.
+{
+    const page = await abrirPagina(browser);
+
+    await check('a barra oferece os três idiomas, com o atual marcado', async () => {
+        const estado = await page.evaluate(() => ({
+            langs: Array.from(document.querySelectorAll('#tl-lang-toggle button')).map((b) => b.dataset.lang),
+            ativo: document.querySelector('#tl-lang-toggle button.active')?.dataset.lang,
+            pressed: document.querySelector('#tl-lang-toggle button.active')?.getAttribute('aria-pressed'),
+        }));
+        igual(estado.langs.join(','), 'pt,es,en', 'idiomas oferecidos');
+        igual(estado.ativo, 'pt', 'idioma marcado');
+        igual(estado.pressed, 'true', 'aria-pressed do ativo');
+    });
+
+    await check('clicar em EN traduz a tela sem recarregar', async () => {
+        await page.click('#tl-lang-toggle button[data-lang="en"]');
+        await page.waitForTimeout(150);
+        const t = await page.evaluate(() => ({
+            aba: document.querySelector('[data-i18n="tabCreation"]')?.textContent.trim(),
+            sync: document.querySelector('[data-i18n="sync"]')?.textContent.trim(),
+            ativo: document.querySelector('#tl-lang-toggle button.active')?.dataset.lang,
+        }));
+        igual(t.aba, 'Creation Approval', 'rótulo da aba');
+        igual(t.sync, 'Sync', 'botão de sincronizar');
+        igual(t.ativo, 'en', 'botão marcado');
+    });
+
+    await check('as LINHAS dos casos também seguem o idioma novo', async () => {
+        // Os cabeçalhos de coluna são data-i18n e sairiam de graça. O que prova
+        // o re-render é o conteúdo das linhas, montado em JS: sem ele a moldura
+        // ficaria em inglês e a lista em português.
+        const texto = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('.case-row')).map((e) => e.textContent).join(' '));
+        if (!/BAU Creation/.test(texto)) {
+            throw new Error('o fluxo das linhas não acompanhou: ' + texto.slice(0, 160));
+        }
+        if (/Criação de BAU/.test(texto)) {
+            throw new Error('sobrou texto em português nas linhas');
+        }
+    });
+
+    await page.close();
+}
+
+{
+    // A escolha tem de sobreviver ao reload E vencer o perfil: senão ela valeria
+    // só até o profile responder, e a tela voltaria sozinha para o segmento.
+    const page = await abrirPagina(browser, { idiomaSalvo: 'en', idiomaDoTL: 'PT-BR' });
+
+    await check('a escolha salva sobrevive ao reload e vence o perfil', async () => {
+        const t = await page.evaluate(() => ({
+            aba: document.querySelector('[data-i18n="tabCreation"]')?.textContent.trim(),
+            ativo: document.querySelector('#tl-lang-toggle button.active')?.dataset.lang,
+        }));
+        igual(t.aba, 'Creation Approval', 'rótulo da aba');
+        igual(t.ativo, 'en', 'botão marcado');
+    });
+
+    await page.close();
+}
+
+{
+    // Sem escolha salva, o perfil continua mandando — é o caso de 99% dos TLs,
+    // que nunca vão tocar no seletor.
+    const page = await abrirPagina(browser, { idiomaDoTL: 'EN' });
+
+    await check('sem escolha salva, o idioma do perfil continua mandando', async () => {
+        const t = await page.evaluate(() => ({
+            aba: document.querySelector('[data-i18n="tabCreation"]')?.textContent.trim(),
+            ativo: document.querySelector('#tl-lang-toggle button.active')?.dataset.lang,
+        }));
+        igual(t.aba, 'Creation Approval', 'rótulo da aba');
+        igual(t.ativo, 'en', 'botão marcado');
+    });
+
     await page.close();
 }
 
