@@ -7,7 +7,10 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
-import { getLanguage, setLanguage, onLanguageChange, createTranslator } from "../shared/i18n.js";
+import {
+    getLanguage, setLanguage, onLanguageChange, createTranslator,
+    getOutputLanguage, setOutputLanguage, onOutputLanguageChange,
+} from "../shared/i18n.js";
 import { createShortcutsSection } from "./shortcuts-section.js";
 import { FEEDBACK_FORM_URL } from "../shared/config.js";
 
@@ -24,6 +27,8 @@ const CONFIGS_DICT = {
         langSectionTitle: "Idioma da Interface",
         langLabel: "Idioma",
         langDesc: "Escolha o idioma dos menus, botões e mensagens do Case Wizard.",
+        outLangLabel: "Idioma do Atendimento",
+        outLangDesc: "Idioma do case note, do e-mail e do roteiro de chamada. É o idioma do anunciante, não o seu.",
         supportSectionTitle: "Suporte & Feedback",
         reportBug: "Reportar Bug/Sugestões",
         diagSectionTitle: "Diagnóstico",
@@ -72,6 +77,8 @@ const CONFIGS_DICT = {
         langSectionTitle: "Idioma de la Interfaz",
         langLabel: "Idioma",
         langDesc: "Elige el idioma de los menús, botones y mensajes del Case Wizard.",
+        outLangLabel: "Idioma de la Atención",
+        outLangDesc: "Idioma del case note, del correo y del guion de llamada. Es el idioma del anunciante, no el tuyo.",
         supportSectionTitle: "Soporte y Comentarios",
         reportBug: "Reportar error o sugerencia",
         diagSectionTitle: "Diagnóstico",
@@ -107,6 +114,56 @@ const CONFIGS_DICT = {
         scSaving: "Guardando…",
         scSaved: "¡Atajo guardado!",
         scSavedLocal: "Atajo guardado en este navegador (sin conexión con la nube).",
+    },
+    en: {
+        title: "Settings",
+        headerDesc: "Customize your experience and preferences.",
+        profileNotFound: "Profile not found in the database.",
+        consultant: "Consultant",
+        overheadBadge: "Management / Overhead",
+        soundSectionTitle: "Sound Preferences",
+        soundLabel: "Sound Effects",
+        soundDesc: "Turn interface sounds on or off.",
+        langSectionTitle: "Interface Language",
+        langLabel: "Language",
+        langDesc: "Choose the language of Case Wizard's menus, buttons and messages.",
+        outLangLabel: "Case Language",
+        outLangDesc: "Language of the case note, the email and the call script. This is the advertiser's language, not yours.",
+        supportSectionTitle: "Support & Feedback",
+        reportBug: "Report a Bug/Suggestion",
+        diagSectionTitle: "Diagnostics",
+        diagLabel: "Backend environment",
+        diagDesc: "Which Apps Script deployment this bundle uses. The suffix must match the dashboard's.",
+        scSectionTitle: "My Shortcuts (Ctrl+K)",
+        scSortLabel: "Sort by usage frequency",
+        scSortDesc: "Turn this off to set the order yourself by dragging the shortcuts.",
+        scEmpty: "You don\u2019t have any shortcuts yet. Create one here, or build a note in Case Notes and click \u201cSave as shortcut\u201d.",
+        scAdd: "+ Create shortcut",
+        scLimit: "Limit of {max} shortcuts reached",
+        scEdit: "Edit shortcut",
+        scDelete: "Delete shortcut",
+        scReorder: "Reorder (drag or use the arrows)",
+        scDeleteConfirm: "Delete the shortcut \u201c{name}\u201d?",
+        scBroken: "\u26a0 scenario unavailable",
+        scOneScenario: "1 scenario",
+        scNScenarios: "{n} scenarios",
+        scName: "Name",
+        scNamePlaceholder: "e.g.: End of 2 Day Rule",
+        scAlias: "Search alias",
+        scAliasPlaceholder: "e.g.: 2day",
+        scAliasDesc: "A word that finds this shortcut in Ctrl+K, in addition to the name.",
+        scFlow: "Flow",
+        scStatus: "Status",
+        scSubStatus: "Substatus",
+        scScenarios: "Scenarios",
+        scScenariosDesc: "Optional: with none selected, the shortcut just opens the note already on the right substatus.",
+        scPickSubStatus: "Choose a substatus first.",
+        scNoScenarios: "No scenario available for this combination.",
+        scCancel: "Cancel",
+        scSave: "Save",
+        scSaving: "Saving\u2026",
+        scSaved: "Shortcut saved!",
+        scSavedLocal: "Shortcut saved in this browser (no cloud connection).",
     },
 };
 
@@ -358,6 +415,18 @@ export function initConfigsAssistant() {
                 <div class="cw-lang-toggle" id="cw-config-lang-toggle" role="group">
                     <button type="button" data-lang="pt">PT</button>
                     <button type="button" data-lang="es">ES</button>
+                    <button type="button" data-lang="en">EN</button>
+                </div>
+            </div>
+            <div class="cw-configs-row">
+                <div>
+                    <div class="cw-configs-label js-outlang-label"></div>
+                    <div class="cw-configs-desc js-outlang-desc"></div>
+                </div>
+                <div class="cw-lang-toggle" id="cw-config-outlang-toggle" role="group">
+                    <button type="button" data-lang="pt">PT</button>
+                    <button type="button" data-lang="es">ES</button>
+                    <button type="button" data-lang="en">EN</button>
                 </div>
             </div>
         </div>
@@ -371,22 +440,36 @@ export function initConfigsAssistant() {
                 border: none; background: white; padding: 8px 14px; font-size: 12px; font-weight: 700;
                 cursor: pointer; color: ${COLORS.textSub}; font-family: inherit; transition: all 0.2s;
             }
-            .cw-lang-toggle button:first-child { border-right: 1px solid ${COLORS.border}; }
+            .cw-lang-toggle button:not(:last-child) { border-right: 1px solid ${COLORS.border}; }
             .cw-lang-toggle button.active { background: ${COLORS.primary}; color: #fff; }
             .cw-lang-toggle button:hover:not(.active) { background: #f1f3f4; }
         `;
         document.head.appendChild(langStyle);
     }
     const langToggle = langSection.querySelector("#cw-config-lang-toggle");
+    const outLangToggle = langSection.querySelector("#cw-config-outlang-toggle");
+
+    // Os dois grupos lêem knobs diferentes de shared/i18n.js de propósito:
+    // interface (quem opera) e saída (quem é atendido) são independentes.
     function syncLangToggleButtons() {
         langToggle.querySelectorAll("button").forEach(btn => {
             btn.classList.toggle("active", btn.dataset.lang === getLanguage());
+        });
+        outLangToggle.querySelectorAll("button").forEach(btn => {
+            btn.classList.toggle("active", btn.dataset.lang === getOutputLanguage());
         });
     }
     syncLangToggleButtons();
     langToggle.querySelectorAll("button").forEach(btn => {
         btn.onclick = () => {
             setLanguage(btn.dataset.lang);
+            SoundManager.playClick();
+        };
+    });
+    outLangToggle.querySelectorAll("button").forEach(btn => {
+        btn.onclick = () => {
+            setOutputLanguage(btn.dataset.lang);
+            syncLangToggleButtons();
             SoundManager.playClick();
         };
     });
@@ -491,6 +574,8 @@ export function initConfigsAssistant() {
         langSection.querySelector(".js-lang-section-title").textContent = t('langSectionTitle');
         langSection.querySelector(".js-lang-label").textContent = t('langLabel');
         langSection.querySelector(".js-lang-desc").textContent = t('langDesc');
+        langSection.querySelector(".js-outlang-label").textContent = t('outLangLabel');
+        langSection.querySelector(".js-outlang-desc").textContent = t('outLangDesc');
         syncLangToggleButtons();
 
         shortcutsSection.applyTexts();
@@ -514,6 +599,9 @@ export function initConfigsAssistant() {
     }
     applyTexts();
     onLanguageChange(applyTexts);
+    // Troca de idioma de saída feita em outro módulo (o seletor do Case
+    // Notes escreve o mesmo knob) tem de refletir aqui.
+    onOutputLanguageChange(syncLangToggleButtons);
 
     function toggleVisibility() {
         visible = !isModuleOpen(popup);
