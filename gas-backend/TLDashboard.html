@@ -1631,6 +1631,10 @@
             applyStaticTexts();
             syncTlLangToggle();
             if (typeof allCases !== 'undefined' && allCases.length > 0) renderCases();
+            // Não há o que repintar no modal de novidades: ele cobre a tela
+            // inteira (.modal-overlay, z-index 1000) e deixa o seletor da barra
+            // inalcançável, então os dois nunca estão abertos ao mesmo tempo.
+            // `renderReleaseNotes()` já lê TL_LANG na hora de abrir.
         }
 
         function syncTlLangToggle() {
@@ -2405,15 +2409,24 @@
             try { localStorage.setItem(RELEASE_SEEN_KEY, RELEASE_NOTES.version); } catch (e) { /* sem persistência: reabre na próxima */ }
         }
 
+        // As notas trazem os três idiomas por campo. Seguem a TELA (TL_LANG) e
+        // não o atendimento: o modal fala sobre o dashboard, não sobre o caso.
+        // Campo sem tradução cai no PT — nota em branco é pior que nota no
+        // idioma errado.
+        function notaNoIdioma(campo) {
+            if (typeof campo === 'string') return campo; // formato antigo
+            return (campo && (campo[TL_LANG] || campo.pt)) || '';
+        }
+
         function renderReleaseNotes() {
-            document.getElementById('release-title').textContent = RELEASE_NOTES.title;
+            document.getElementById('release-title').textContent = notaNoIdioma(RELEASE_NOTES.title);
             document.getElementById('release-version').textContent = 'v' + RELEASE_NOTES.version;
             document.getElementById('release-body').innerHTML = (RELEASE_NOTES.items || []).map(item => `
                 <div class="release-item">
                     <span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(item.icon)}</span>
                     <div>
-                        <div class="release-item-title">${escapeHtml(item.title)}</div>
-                        <div class="release-item-text">${escapeHtml(item.text)}</div>
+                        <div class="release-item-title">${escapeHtml(notaNoIdioma(item.title))}</div>
+                        <div class="release-item-text">${escapeHtml(notaNoIdioma(item.text))}</div>
                     </div>
                 </div>`).join('');
         }

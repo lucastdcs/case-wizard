@@ -11,10 +11,9 @@ import { getLanguage } from "../shared/i18n.js";
 
 const LAST_VERSION_KEY = "cw_last_version";
 
-// O conteúdo de cada release (RELEASE_NOTES) ainda é só PT — texto editorial
-// por versão, deliberadamente fora do escopo da rodada de i18n (vai junto com
-// a tradução do conteúdo do Notes numa fase seguinte). Só o texto fixo do
-// wizard em si é traduzido aqui; o resto da casca traduz a si mesma.
+// O conteúdo de cada release vem de RELEASE_NOTES com os três idiomas por
+// campo; `slidesNoIdioma()` abaixo resolve. Segue a INTERFACE e não o
+// atendimento: este modal fala sobre a ferramenta, não vai no caso.
 const CHANGELOG_DICT = {
     pt: {
         updateBadge: (version) => `Atualização ${version}`,
@@ -76,13 +75,26 @@ export function checkAndShowChangelog(currentAppVersion) {
     initChangelogModal(currentAppVersion);
 }
 
+// Achata os slides para o idioma ativo. Campo sem tradução cai no PT em vez de
+// sumir: um slide em branco é pior que um slide no idioma errado.
+function slidesNoIdioma() {
+    const lang = getLanguage();
+    const pick = (campo) => campo?.[lang] ?? campo?.pt ?? "";
+
+    return (RELEASE_NOTES.slides || []).map((slide) => ({
+        ...slide,
+        title: pick(slide.title),
+        text: pick(slide.text),
+    }));
+}
+
 function initChangelogModal(version) {
     // A versão só é gravada no fechamento: se a pessoa fechar a aba no meio,
     // ela merece rever o que mudou no próximo boot. É o oposto da regra do
     // Onboarding (que grava na abertura) e de propósito - aqui o conteúdo é
     // informação que se perde, lá é uma apresentação que cansa se repetir.
     openWizardShell({
-        slides: RELEASE_NOTES.slides,
+        slides: slidesNoIdioma(),
         idPrefix: "cw-changelog",
         badge: ct("updateBadge")(version),
         nextLabel: ct("nextBtn"),

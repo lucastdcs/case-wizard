@@ -672,7 +672,8 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
             gravado: localStorage.getItem('cw_tl_seen_version'),
         }));
         igual(visto.versao, 'v' + NOTAS.version, 'versão exibida');
-        igual(visto.titulo, NOTAS.title, 'título');
+        // As notas trazem os três idiomas por campo; a tela nasce em PT.
+        igual(visto.titulo, NOTAS.title.pt, 'título');
         igual(visto.itens, NOTAS.items.length, 'itens renderizados');
         igual(visto.gravado, NOTAS.version, 'versão marcada como vista');
     });
@@ -783,6 +784,34 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
         }));
         igual(t.aba, 'Creation Approval', 'rótulo da aba');
         igual(t.ativo, 'en', 'botão marcado');
+    });
+
+    await page.close();
+}
+
+{
+    // As notas de versão eram PT-only até a v6.4.0: um TL com a tela em espanhol
+    // lia botão traduzido e novidade em português. Agora elas seguem TL_LANG.
+    const page = await abrirPagina(browser, { idiomaSalvo: 'en' });
+
+    await check('as novidades saem no idioma da tela', async () => {
+        await page.click('#btn-whats-new');
+        await page.waitForTimeout(150);
+        const titulo = await page.evaluate(() =>
+            document.getElementById('release-title')?.textContent.trim());
+        igual(titulo, NOTAS.title.en, 'título das novidades');
+    });
+
+    await check('o modal cobre a barra, então o seletor não fica meio acessível', async () => {
+        // Não é limitação, é o que torna desnecessário repintar o modal numa
+        // troca de idioma: os dois nunca estão disponíveis ao mesmo tempo.
+        const coberto = await page.evaluate(() => {
+            const b = document.querySelector('#tl-lang-toggle button');
+            const r = b.getBoundingClientRect();
+            const alvo = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return !b.contains(alvo) && alvo !== b;
+        });
+        if (!coberto) throw new Error('o seletor ficou clicável por cima do modal');
     });
 
     await page.close();

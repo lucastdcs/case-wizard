@@ -136,6 +136,10 @@ This file differs from the long-term roadmap: it describes what is happening **n
         (`if ES … else base`): a linha EN sobrescrevia o cenário PT em
         `note-templates-service`, e duplicava os modelos de e-mail sem
         placeholders. Regra em `docs/LEARNINGS.md`.
+      - **TL Dashboard**: além do dicionário EN, ganhou seletor PT/ES/EN na
+        barra — antes o idioma vinha só do segmento, sem como trocar.
+      - **Notas de versão dos dois modais** (agente e TL) passaram a carregar os
+        três idiomas; eram PT-only, com botão traduzido e slide em português.
       - **Cobertura nova**: `test:i18n` (paridade dos dicionários) e
         `smoke:i18n` (qual knob cada lugar lê, com os knobs divergentes).
       - Suíte: 15/15 `test:*` verdes, `test:scraping` 62/62, smokes verdes
@@ -273,6 +277,21 @@ This file differs from the long-term roadmap: it describes what is happening **n
       Travado por `npm run test:scraping` (8/20 → 46/46 asserções).
 
 ## Up next
+
+- [ ] **Central de Conteúdo em PT/ES/EN (decidido em 2026-10-13).** A rodada do
+      inglês cobriu a dimensão de CONTEÚDO da Central (seletor de idioma dos
+      modelos, coluna de tradução das evidências, EN na prévia "como o agente
+      vê"), mas **o cromo da própria Central segue 100% em português** — e nunca
+      teve espanhol tampouco. São várias centenas de strings cravadas em
+      template literals nos 4 HTMLs, sem `t()` e sem dicionário: diferente do
+      bundle, onde a estrutura `{pt, es}` já existia, aqui ela precisa ser criada
+      antes de traduzir qualquer coisa.
+      Ficou fora da v6.5.0 de propósito: o público é SME/maintainer, pequeno e
+      interno, enquanto o agente e o TL são a operação. Alvo acordado: **PT + ES
+      + EN**, para não deixar o SME espanhol de fora numa segunda passada.
+      Ordem sugerida: infra de `t()` compartilhada entre os 4 arquivos →
+      extração das strings → tradução → controle de idioma na barra, no molde do
+      que o TL Dashboard acabou de ganhar.
 
 - [ ] **Consumir `appointmentTasks`.** Já exposto no `pageData` (multivalorado),
       sem consumidor. A ideia mais valiosa é usá-lo para pré-selecionar script

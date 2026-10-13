@@ -52,22 +52,36 @@ const codigo = ler('gas-backend/Código.js');
 
 console.log('\n--- Notas de versão dos dashboards ---\n');
 
+// Os três idiomas que o dashboard sabe mostrar. Uma nota publicada só em PT
+// chega ao TL espanhol ou inglês como texto em português — o render cai no PT
+// de propósito, mas isso é rede de segurança, não o estado desejado.
+const LANGS = ['pt', 'es', 'en'];
+
 check('a versão das notas é a mesma do package.json', () => {
     igual(notas.version, pkg.version,
         'CW_DASH_RELEASE_NOTES.version x package.json. Ao subir a versão, os dois sobem juntos');
 });
 
 check('as notas têm título e pelo menos um item', () => {
-    verdade(notas.title && notas.title.trim(), 'título vazio');
+    LANGS.forEach((l) => {
+        verdade(notas.title && String(notas.title[l] || '').trim(), `título vazio em ${l}`);
+    });
     verdade(Array.isArray(notas.items) && notas.items.length > 0,
         'nenhum item — um modal vazio é pior que nenhum modal');
 });
 
-check('todo item tem ícone, título e texto', () => {
+check('todo item tem ícone, e título e texto nos três idiomas', () => {
     notas.items.forEach((item, i) => {
-        ['icon', 'title', 'text'].forEach((campo) => {
-            verdade(item[campo] && String(item[campo]).trim(),
-                `item ${i}: campo "${campo}" vazio — o render conta com os três`);
+        verdade(item.icon && String(item.icon).trim(),
+            `item ${i}: campo "icon" vazio — o render conta com ele`);
+
+        ['title', 'text'].forEach((campo) => {
+            verdade(item[campo] && typeof item[campo] === 'object',
+                `item ${i}: "${campo}" precisa ser { pt, es, en }`);
+            LANGS.forEach((l) => {
+                verdade(String(item[campo][l] || '').trim(),
+                    `item ${i}: "${campo}" vazio em ${l} — o TL daquele idioma leria em português`);
+            });
         });
     });
 });

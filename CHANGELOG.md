@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.5.0] - 2026-10-13
+
 ### Added
 - **Inglês em todo o produto, como terceiro idioma.** O `SUPPORTED_LANGS` já
   previa a entrada num comentário, e `CONTENT_LANGS`, `profile.defaultLanguage`
@@ -42,6 +44,15 @@ versions follow [Semantic Versioning](https://semver.org/).
   porque ali alguém já está cuidando dele pela tela. Módulos que guardam a
   tradução dentro do valor (`links`) são relatados como pulados, com motivo, em
   vez de dar um no-op silencioso.
+- **Seletor de idioma na barra do TL Dashboard.** O idioma da tela vinha só do
+  segmento na planilha People, sem como trocar. Agora há PT/ES/EN na barra, com
+  a mesma precedência do bundle: escolha manual salva vence o perfil. A troca
+  re-renderiza os casos, porque metade da tela é montada em JS e não passa pelo
+  laço de `data-i18n`.
+- **As notas de versão dos dois modais passam a ter os três idiomas.** Eram
+  PT-only: um agente com o app em espanhol lia botão traduzido e slide em
+  português, e o mesmo valia para o TL. `test:dash-changelog` agora reprova nota
+  publicada sem as três línguas.
 - `npm run test:i18n` (paridade dos dicionários nas três línguas) e
   `npm run smoke:i18n` (qual knob cada lugar lê, no navegador real).
 
@@ -1059,7 +1070,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.4.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.5.0...HEAD
+[6.5.0]: https://github.com/lucastdcs/case-wizard/compare/v6.4.0...v6.5.0
 [6.4.0]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...v6.4.0
 [6.3.3]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...v6.3.3
 [6.3.2]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...v6.3.2
