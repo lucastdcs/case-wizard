@@ -103,6 +103,16 @@ async function novaPagina(opcoes = {}) {
     return page;
 }
 
+// Abre o onboarding e atravessa o seletor de idioma até os slides. Os
+// blocos que medem layout/movimento querem os slides na tela; quem testa o
+// seletor em si o faz explicitamente, no primeiro bloco.
+async function abrirSlides(page, lang = 'pt') {
+    await page.evaluate((l) => window.__cw.onboarding(l), lang);
+    await page.waitForSelector('.cw-ob-lang-overlay.open');
+    await page.click(`.cw-ob-lang-btn[data-lang="${lang}"]`);
+    await page.waitForSelector('.cw-wiz-overlay.open');
+}
+
 const slideAtivo = (page) => page.evaluate(() =>
     Array.from(document.querySelectorAll('.cw-wiz-dot')).findIndex((d) => d.classList.contains('active')));
 
@@ -115,8 +125,51 @@ console.log('\n--- Smoke: wizards de onboarding e changelog ---');
     page.on('console', (m) => { if (m.type() === 'warning') avisos.push(m.text()); });
 
     await page.evaluate(() => window.__cw.onboarding());
+
+    // Desde a entrada do inglês o onboarding abre pelo seletor de idioma, e
+    // só então monta os slides: a casca lê o idioma uma vez na montagem
+    // (shared/wizard-shell.js), então escolher depois não re-renderizaria os
+    // botões. Os slides abaixo são, portanto, consequência deste clique.
+    await page.waitForSelector('.cw-ob-lang-overlay.open');
+
+    await check('abre pedindo o idioma, antes de qualquer slide', async () => {
+        const slides = await page.locator('.cw-wiz-overlay').count();
+        if (slides) throw new Error('slides montados antes da escolha de idioma');
+        const n = await page.locator('.cw-ob-lang-btn').count();
+        igual(n, 3, 'opções de idioma');
+    });
+
+    await check('oferece os três idiomas suportados', async () => {
+        const langs = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('.cw-ob-lang-btn')).map((b) => b.dataset.lang));
+        igual(langs.join(','), 'pt,es,en', 'idiomas oferecidos');
+    });
+
+    await check('a escolha de idioma entra com foco, navegável por teclado', async () => {
+        const cls = await page.evaluate(() => document.activeElement?.className || '');
+        if (!cls.includes('cw-ob-lang-btn')) throw new Error('foco em ' + cls);
+        await page.keyboard.press('ArrowDown');
+        const lang = await page.evaluate(() => document.activeElement?.dataset?.lang);
+        igual(lang, 'es', 'foco após ArrowDown');
+    });
+
+    // Escolhe EN: é o idioma que esta tela existe para tornar alcançável, e
+    // assim os slides seguintes também cobrem o dicionário novo.
+    await page.click('.cw-ob-lang-btn[data-lang="en"]');
     await page.waitForSelector('.cw-wiz-overlay.open');
     await page.waitForTimeout(500);
+
+    await check('a escolha some depois de escolhida', async () =>
+        igual(await page.locator('.cw-ob-lang-overlay').count(), 0, 'overlays de idioma'));
+
+    await check('os slides vêm no idioma escolhido', async () => {
+        const txt = await page.evaluate(() => document.querySelector('.cw-wiz-card')?.textContent || '');
+        if (!txt.includes('Welcome to Case Wizard')) {
+            throw new Error('slide não está em inglês: ' + txt.slice(0, 80));
+        }
+        const btn = await page.evaluate(() => document.querySelector('.cw-wiz-btn-primary')?.textContent || '');
+        igual(btn.trim(), 'Next', 'rótulo do botão principal');
+    });
 
     await check('abre com mais de um slide', async () => {
         const n = await page.locator('.cw-wiz-dot').count();
@@ -158,7 +211,12 @@ console.log('\n--- Smoke: wizards de onboarding e changelog ---');
 
     await check('região aria-live anuncia o slide', async () => {
         const texto = await page.evaluate(() => document.querySelector('.cw-wiz-live').textContent);
-        if (!/^Slide \d+ de \d+: .+/.test(texto)) throw new Error('aria-live: ' + JSON.stringify(texto));
+        // A casca anuncia no idioma ativo ("Slide 1 de 6" / "... of 6" /
+        // "Diapositiva 1 de 6"), então o padrão aceita as três formas: o que
+        // se testa aqui é que a região é preenchida, não a redação.
+        if (!/^(Slide|Diapositiva) \d+ (de|of) \d+: .+/.test(texto)) {
+            throw new Error('aria-live: ' + JSON.stringify(texto));
+        }
     });
 
     await check('"Pular" some no último slide', async () => {
@@ -201,6 +259,15 @@ console.log('\n--- Smoke: wizards de onboarding e changelog ---');
 {
     const page = await novaPagina();
     await page.evaluate(() => window.__cw.onboarding('es'));
+    await page.waitForSelector('.cw-ob-lang-overlay.open');
+
+    // O seletor não zera o que o perfil já disse: ele chega com o idioma do
+    // segmento em foco, então confirmar é um Enter. É o que mantém o caso
+    // comum (agente ES que só quer começar) em um toque.
+    await check('o idioma do perfil chega pré-selecionado no seletor', async () =>
+        igual(await page.evaluate(() => document.activeElement?.dataset?.lang), 'es', 'botão em foco'));
+
+    await page.click('.cw-ob-lang-btn[data-lang="es"]');
     await page.waitForSelector('.cw-wiz-overlay.open');
     await page.waitForTimeout(500);
 
@@ -283,6 +350,16 @@ console.log('\n--- Smoke: wizards de onboarding e changelog ---');
 {
     const page = await novaPagina({ reducedMotion: 'reduce' });
     await page.evaluate(() => window.__cw.onboarding());
+    // Atravessa o seletor de idioma para chegar nos slides, que é o que este
+    // bloco mede.
+    await page.waitForSelector('.cw-ob-lang-overlay.open');
+
+    await check('o seletor de idioma também respeita reduced-motion', async () =>
+        igual(await page.evaluate(() =>
+            getComputedStyle(document.querySelector('.cw-ob-lang-overlay')).transitionProperty), 'none',
+        'transição do overlay de idioma'));
+
+    await page.click('.cw-ob-lang-btn[data-lang="pt"]');
     await page.waitForSelector('.cw-wiz-overlay.open');
     await page.waitForTimeout(400);
 
@@ -307,8 +384,7 @@ console.log('\n--- Smoke: wizards de onboarding e changelog ---');
 // -------------------------------------------------------------- layout apertado
 {
     const page = await novaPagina({ viewport: { width: 900, height: 520 } });
-    await page.evaluate(() => window.__cw.onboarding());
-    await page.waitForSelector('.cw-wiz-overlay.open');
+    await abrirSlides(page);
     await page.waitForTimeout(400);
 
     await check('card cabe numa viewport baixa (900x520)', async () => {
@@ -324,8 +400,7 @@ console.log('\n--- Smoke: wizards de onboarding e changelog ---');
 
 {
     const page = await novaPagina({ viewport: { width: 380, height: 700 } });
-    await page.evaluate(() => window.__cw.onboarding());
-    await page.waitForSelector('.cw-wiz-overlay.open');
+    await abrirSlides(page);
     await page.waitForTimeout(400);
 
     await check('sem scroll horizontal numa viewport estreita (380px)', async () => {
