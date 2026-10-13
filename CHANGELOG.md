@@ -8,7 +8,48 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Inglês em todo o produto, como terceiro idioma.** O `SUPPORTED_LANGS` já
+  previa a entrada num comentário, e `CONTENT_LANGS`, `profile.defaultLanguage`
+  e a coluna `Idioma` já aceitavam `EN` — faltava o dicionário e a operação.
+  Agora: os ~21 dicionários de interface, os 26 cenários rápidos, os 8 modelos
+  de e-mail, os 42 passos de call script (`EN BAU` / `EN LT`), os rótulos de
+  evidência, as descrições dos 60 links, a tela do TL e o e-mail automático.
+  `BAU_SEGMENTS` ganha `EN`, então a disponibilidade BAU passa a ter a terceira
+  linha e o aviso segmentado chega a quem atende em inglês.
+- **O idioma da interface deixa de arrastar o idioma do caso.** São dois knobs
+  independentes: um agente pode pôr a ferramenta em inglês por preferência e
+  continuar escrevendo case notes e e-mails em português. Com PT/ES a
+  coincidência era inofensiva; com EN, o primeiro idioma que alguém escolhe por
+  conforto e não por segmento, ela viraria nota em inglês em caso PT/ES sem
+  nenhum aviso. Ver `docs/decisions/0016-idioma-da-interface-separado-do-idioma-da-saida.md`.
+  O card de idioma em Configurações agora tem as duas linhas.
+- **O primeiro boot pergunta o idioma.** Antes ele vinha só do segmento da
+  planilha People e nunca era confirmado: quem não se encaixava só descobria o
+  seletor se fosse procurar em Configurações. O idioma do perfil chega
+  pré-selecionado, então confirmar é um Enter.
+- **O SME pode traduzir as evidências para EN na Central.** O editor de tasks
+  ganha uma coluna por idioma, com cobertura contada separadamente
+  ("Implementação: 12 (ES ok, EN 5/12)") — somar os dois esconderia o que falta.
+  A prévia "como o agente vê" aceita EN e diz qual linha caiu no texto base.
+- `npm run test:i18n` (paridade dos dicionários nas três línguas) e
+  `npm run smoke:i18n` (qual knob cada lugar lê, no navegador real).
+
 ### Fixed
+- **Linha em idioma novo contaminava o conteúdo base.** Duas hidratações
+  roteavam por "se é ES, tradução; **senão**, base". Como a linha EN tem o mesmo
+  `key` da PT, ela caía no senão: em `note-templates-service` **sobrescrevia o
+  cenário português pelo inglês** (o agente PT abriria o chip e leria inglês), e
+  em `email-data` entrava na lista base, duplicando os 8 modelos no assistente —
+  com as cópias sem `placeholders`, porque uma tradução só carrega rótulos.
+  Nenhum dos dois dava erro. Agora o roteamento é por idioma explícito e idioma
+  desconhecido é ignorado em vez de virar conteúdo base.
+- **A troca de segmento do Central de Avisos assumia exatamente dois.**
+  `codes.find(c => c !== preferido)` devolve sempre o mesmo vizinho, então com a
+  entrada do EN o terceiro segmento ficaria inalcançável. Agora cicla.
+- **O seletor de idioma do onboarding ignorava o idioma do perfil.** O foco
+  inicial usava `find(...)?.focus() ?? buttons[0].focus()`, e como `focus()`
+  devolve `undefined` o fallback rodava **sempre**.
 - **A abertura do painel lateral do BAU tremia.** A coluna passava de 454,9px
   para 504,3px — **10,9% de sobra**, contra os ≤3% que a regra de movimento
   previa — e, por ser propriedade de **layout**, o texto refluía na largura

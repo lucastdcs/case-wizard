@@ -122,6 +122,26 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [x] **Inglês de ponta a ponta (2026-10-13).** Terceiro idioma em toda a
+      cadeia: os ~21 dicionários de interface, 76 linhas de conteúdo operacional
+      (26 cenários, 8 modelos de e-mail, 42 passos de call script), rótulos de
+      evidência, descrições de link, tela do TL, e-mail automático do Apps
+      Script e os cinco HTMLs da Central. `BAU_SEGMENTS` ganhou `EN`, então a
+      operação BAU em inglês existe de fato.
+      - **Decisão estrutural**: idioma da interface e idioma do atendimento
+        viraram knobs independentes (ADR-0016), desfazendo em parte a unificação
+        do ADR-0001. Sem isso, pôr a ferramenta em inglês passaria a gravar case
+        notes em inglês em casos PT/ES, em silêncio.
+      - **Dois defeitos reais** achados pelos testes, do mesmo formato
+        (`if ES … else base`): a linha EN sobrescrevia o cenário PT em
+        `note-templates-service`, e duplicava os modelos de e-mail sem
+        placeholders. Regra em `docs/LEARNINGS.md`.
+      - **Cobertura nova**: `test:i18n` (paridade dos dicionários) e
+        `smoke:i18n` (qual knob cada lugar lê, com os knobs divergentes).
+      - Suíte: 15/15 `test:*` verdes, `test:scraping` 62/62, smokes verdes
+        exceto as 2 falhas de `smoke:shortcuts` já conhecidas desde a v6.3.3
+        (reproduzidas na branch limpa antes de começar — não são desta mudança).
+
 - [x] **Release v6.4.0 (2026-09-24).** Os 13 commits acumulados em
       `refactor-structure` desde a v6.3.3 — com o conserto do AM do caso
       anterior à frente — fechados no CHANGELOG, versões alinhadas e notas dos
@@ -378,6 +398,21 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 - [ ] **Empurrar a tag `v6.4.0`** de um checkout local (o proxy da sessão web
       recusa push de tag — `RELEASE.md` → Known fragilities):
       `git fetch origin main && git tag -a v6.4.0 origin/main -m "v6.4.0" && git push origin v6.4.0`
+- [ ] **Semear o conteúdo EN na planilha.** O código já traz o EN como fallback
+      embutido, mas a Central só passa a servi-lo depois de rodar os seeds
+      regenerados: `seedNoteTemplatesNow()`, `seedEmailsNow()`,
+      `seedCallScriptNow()` e `seedLinksNow()` no editor do Apps Script. Até lá
+      o agente EN vê o conteúdo do bundle, que está correto — o que falta é a
+      Central poder editá-lo. Mesmo padrão dos "falta rodar na planilha" abaixo:
+      passo manual, fora do caminho que dá erro.
+- [ ] **Publicar a disponibilidade BAU do segmento EN.** `BAU_SEGMENTS` aceita
+      `EN` e o editor da Central já mostra o terceiro campo, mas enquanto
+      ninguém publicar datas para ele o painel do agente EN cai no primeiro
+      segmento que tiver — rotulado, mas não é o dele.
+- [ ] **Traduzir para EN as evidências das tasks publicadas.** O editor da
+      Central ganhou a coluna e a contagem de cobertura por idioma; as tasks já
+      publicadas nascem com `EN 0/n` até alguém preencher. O mapa embutido cobre
+      o catálogo do bundle, não o que já foi publicado.
 - [ ] **`smoke:shortcuts` vermelho desde a v6.3.3** — "a lista de Configurações
       segue a mesma ordem do Ctrl+K" e "o construtor de Configurações só oferece
       cenários do substatus escolhido". Investigar à parte.

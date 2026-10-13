@@ -12,6 +12,90 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Idioma novo: roteie por idioma EXPLÍCITO, nunca por "senão, é a base"
+
+**Why**: a entrada do inglês quebrou duas hidratações ao mesmo tempo, as duas
+escritas no mesmo formato:
+
+```js
+if (String(item.lang).toUpperCase() === 'ES') { overlay[id] = ...; }
+else { base[id] = ...; }   // <- a linha EN cai aqui
+```
+
+Enquanto só existiam dois idiomas isso estava certo por acidente: tudo que não
+era ES realmente era a base. Com a terceira linha publicada — e **o mesmo `key`
+da PT**, porque as três são o mesmo template — o `else` virou um ralo:
+
+- em `note-templates-service.js`, `base[id] = ...` **sobrescreveu o cenário
+  português pelo inglês**. O agente PT abriria o chip e receberia texto em
+  inglês, sem erro nenhum;
+- em `email-data.js`, as linhas EN entraram na lista base e **duplicaram os 8
+  modelos** no assistente, com as cópias sem `placeholders` — uma tradução só
+  carrega rótulos — então o preenchimento automático silenciosamente não achava
+  os tokens.
+
+Nenhum dos dois lança exceção. O que pegou foram testes que comparavam o
+resultado contra o **seed em PT**, não contra "não quebrou".
+
+**When to apply**: ao acrescentar um idioma, um segmento, um tipo ou qualquer
+valor a uma coluna que já tem um `if (x === 'A') … else …`. Antes de publicar a
+linha nova, procure os roteamentos pelo **else**, não pelo nome do idioma:
+
+```bash
+grep -rn "=== 'ES'\|=== \"ES\"" src/ gas-backend/
+```
+
+E troque por um mapa, que falha para o lado seguro:
+
+```js
+const overlay = { ES: {}, EN: {} }[lang];
+if (overlay) { /* tradução */ }
+else if (lang === 'PT' || !lang) { /* base */ }
+// idioma desconhecido: ignorado, nunca promovido a base
+```
+
+**Corolário**: a pergunta que separa os dois casos é "esta linha tem a mesma
+chave da linha base?". Se tiver, um roteamento errado não cria lixo visível —
+ele **substitui** conteúdo bom por conteúdo do idioma errado, que é o defeito
+mais caro de perceber.
+
+---
+
+## Texto tem dono: pergunte "sai no caso ou fica na tela?", não "em que arquivo mora?"
+
+**Why**: até o inglês, idioma da interface e idioma do atendimento eram o mesmo
+valor, e a coincidência era inofensiva — um agente PT opera em português e
+atende em português. O inglês é o primeiro idioma que alguém escolhe por
+**preferência de ferramenta**, e aí o acoplamento vira defeito: trocar a
+interface passaria a gravar case notes e disparar e-mails em inglês para
+anunciantes PT/ES.
+
+Separar os dois knobs foi a parte fácil. A parte difícil foi descobrir que a
+fronteira **não é o arquivo** — vários módulos leem o MESMO dicionário pelos
+dois lados:
+
+- `form-builder.js`: o rótulo do campo segue o atendimento (ele é literalmente o
+  texto impresso na nota), mas o botão de auto-busca e o diálogo de remover
+  campo seguem a interface;
+- `email-automation-service.js`: os toasts seguem a interface, mas
+  `fallbackClient`/`fallbackSite` seguem o atendimento — eles entram no **corpo
+  do e-mail** quando a raspagem falha;
+- `call-script-assistant.js`: títulos e tooltips pela interface; a mensagem para
+  o AM e o `dateLocale` dela pela saída.
+
+O primeiro corte errou justamente o botão de auto-busca, porque ele mora
+*dentro* do rótulo do campo. Quem pegou foi um smoke rodando no pior cenário
+possível: interface EN com atendimento PT.
+
+**When to apply**: ao mover uma string para um dicionário, ou ao acrescentar
+uma chave num módulo que já tem texto dos dois tipos. A pergunta é sobre o
+**destino**: *este texto sai gravado no caso / vai para o anunciante, ou fica
+na tela do agente?* Saída → `getOutputLanguage()`. Tela → `getLanguage()`.
+
+E teste com os dois knobs **divergentes**. Com os dois no mesmo valor — que é o
+estado de 99% dos usuários — qualquer religação errada passa despercebida, que
+é exatamente por que o acoplamento sobreviveu dois idiomas.
+
 ## Animar `grid-template-columns`: os dois estados declaram a trilha da MESMA forma
 
 **Why**: o painel lateral do BAU abria com um tremor. A suspeita óbvia era a

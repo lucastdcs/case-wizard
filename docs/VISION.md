@@ -5,11 +5,11 @@
 
 ## Goal
 
-Give TechSol's CRM support agents (working BAU/LM cases in PT/ES) a single productivity overlay — "TechSol Operations Assistant" — that standardizes and speeds up the repetitive parts of casework: writing case notes, drafting/cleaning up emails, running call scripts, escalating to BAU, and tracking timezones for customer meetings. It runs as a JavaScript bookmarklet injected on top of the real CRM (no browser extension, no separate app to install), so agents adopt it with a single click.
+Give TechSol's CRM support agents (working BAU/LM cases in PT/ES/EN) a single productivity overlay — "TechSol Operations Assistant" — that standardizes and speeds up the repetitive parts of casework: writing case notes, drafting/cleaning up emails, running call scripts, escalating to BAU, and tracking timezones for customer meetings. It runs as a JavaScript bookmarklet injected on top of the real CRM (no browser extension, no separate app to install), so agents adopt it with a single click.
 
 ## Users / personas
 
-- **Support/BAU agents** working cases in the CRM day-to-day (PT/ES, with EN call scripts also supported) — the primary users of Case Notes, Email Assistant, Call Script, Timezone, and BAU Central.
+- **Support/BAU agents** working cases in the CRM day-to-day (PT/ES/EN) — the primary users of Case Notes, Email Assistant, Call Script, Timezone, and BAU Central. The language of the tool and the language of the case they are working are set independently (ADR-0016), so an agent can run the overlay in English while writing a Portuguese case note.
 - **Team leads (TL)** — consume the BAU escalation dashboard (`gas-backend/TLDashboard.html`) to review and approve/discard escalated cases.
 - **The maintainer** (Lucas Teixeira / TechSol team) — owns the bookmarklet, the Apps Script backend, and the CI/CD pipeline.
 
@@ -28,7 +28,7 @@ Give TechSol's CRM support agents (working BAU/LM cases in PT/ES) a single produ
 - Becoming a browser extension or standalone app — staying a bookmarklet-injected overlay is a deliberate choice, not a stopgap.
 - Replacing the CRM itself or its data model — this is strictly an overlay/automation layer on top of an existing third-party CRM.
 - A traditional backend/database — Google Apps Script + Google Sheets is the accepted architecture, not an interim one.
-- Formal i18n tooling — PT/ES/EN content is handled as data-driven template strings, not a framework-level i18n system.
+- Formal i18n tooling — PT/ES/EN content is handled as data-driven template strings and parallel id-keyed maps, not a framework-level i18n system. Parity is enforced by `npm run test:i18n` rather than by a library.
 
 ## V1 acceptance criteria
 

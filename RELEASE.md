@@ -107,6 +107,7 @@ backend is the exact state this ordering exists to prevent.
 - [ ] There is no automated lint/test suite today (see `README.md` → Testing) — verify manually: load the Dev bookmarklet against the real CRM and exercise the changed module(s).
 - [ ] **Capture before shipping** (cf. `CLAUDE.md` → "Capture at checkpoints"): anything **decided** → an ADR, **learned / blocked** → `docs/LEARNINGS.md`, an **agent mistake/drift** → `docs/AGENT-EVALS.md`. A push/merge-to-main is the most reliable capture moment.
 - [ ] If `gas-backend/` changed: confirm the payload contract in `specs/data-models/api-payloads.md` still matches — more than one frontend module depends on it.
+- [ ] **If a `gas-backend/ContentSeed_*.js` changed, run its seeder in the Apps Script editor** (`seedNoteTemplatesNow()`, `seedEmailsNow()`, `seedCallScriptNow()`, `seedLinksNow()`, `seedTasksNow()`). The regenerated file ships with the deploy, but nothing runs it: the Central keeps serving the previous rows and the bundle's embedded fallback masks the gap, so **nothing turns red**. Same failure shape as the skipped tag step below — a manual step off the path that errors, with a result nobody checks the next day.
 - [ ] Confirm the GitHub Actions secret `CLASPRC_JSON` is still valid (CI fails fast at "Validar integridade do JSON" if not).
 
 ## Secrets & configuration
