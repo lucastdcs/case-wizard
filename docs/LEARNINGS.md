@@ -47,6 +47,12 @@ for (const [lang, alvo] of [['ES', SCENARIO_ES], ['EN', SCENARIO_EN]]) {
 }
 ```
 
+**O que fechou o buraco**: `seedMissingLangsNow()`, que insere só os idiomas
+ausentes e pula por inteiro qualquer idioma que já tenha uma linha no ar — em
+`note_template` e `call_script` várias linhas dividem `(key, field, lang)`, então
+não há identidade por linha para casar "esta falta", e comparar por conteúdo
+faria um passo reescrito pela tela voltar duplicado.
+
 **When to apply**: sempre que uma entrega depender de "rodar o seeder". Antes de
 escrever isso num PR ou num runbook, abra `seedContentModule()` e confirme em
 que estado ele realmente escreve. E ao acrescentar um idioma/variante a um

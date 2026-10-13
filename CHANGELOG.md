@@ -32,6 +32,16 @@ versions follow [Semantic Versioning](https://semver.org/).
   ganha uma coluna por idioma, com cobertura contada separadamente
   ("Implementação: 12 (ES ok, EN 5/12)") — somar os dois esconderia o que falta.
   A prévia "como o agente vê" aceita EN e diz qual linha caiu no texto base.
+- **`seedMissingLangsNow()`** — leva um idioma novo para a planilha sem tocar
+  no que já está no ar. `seedContentModule()` é migração de primeira vez e pula
+  módulo já semeado, então até aqui acrescentar um idioma a um módulo em
+  produção não tinha caminho nenhum além de publicar item a item pela Central.
+  A unidade é o idioma inteiro, não a linha: em `note_template` e `call_script`
+  várias linhas dividem `(key, field, lang)`, então não existe identidade por
+  linha para casar "esta falta" — idioma com qualquer linha no ar é pulado,
+  porque ali alguém já está cuidando dele pela tela. Módulos que guardam a
+  tradução dentro do valor (`links`) são relatados como pulados, com motivo, em
+  vez de dar um no-op silencioso.
 - `npm run test:i18n` (paridade dos dicionários nas três línguas) e
   `npm run smoke:i18n` (qual knob cada lugar lê, no navegador real).
 

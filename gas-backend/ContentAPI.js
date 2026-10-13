@@ -3487,3 +3487,159 @@ function seedContentModule(payloadJson) {
   logContentEvent_(session.ldap, 'seed', { module: module }, rows.length + ' itens');
   return { status: 'success', seeded: rows.length };
 }
+
+/**
+ * Semeia APENAS os idiomas que o módulo ainda não tem no ar.
+ *
+ * `seedContentModule()` acima é migração de primeira vez: num módulo já
+ * semeado ele devolve `skipped`. Isso é correto para o que ele faz — escrever
+ * em cima de conteúdo vivo apagaria o que foi editado pela tela desde a
+ * migração — mas deixa um buraco: ao acrescentar um IDIOMA a um módulo que já
+ * está no ar (foi o caso do inglês), não havia caminho nenhum para a planilha
+ * além de publicar item a item pela Central.
+ *
+ * A unidade de trabalho é o IDIOMA INTEIRO, não a linha, e isso é deliberado:
+ * em `note_template` e `call_script` várias linhas compartilham
+ * (key, field, lang) — 21 passos de roteiro dividem a mesma chave — então não
+ * existe identidade por linha para casar "esta linha falta". Comparar por
+ * conteúdo seria pior: um passo reescrito pela tela viraria "ausente" e
+ * entraria de novo, duplicado.
+ *
+ * Por isso a regra é conservadora: **idioma com QUALQUER linha no ar é pulado
+ * por inteiro**. Se EN tem 1 linha, alguém já está cuidando dele pela tela, e
+ * esta função sai do caminho. Ela resolve "o idioma não existe", não "o idioma
+ * está pela metade" — para esse segundo caso a tela da Central é o lugar.
+ *
+ * Em módulos cuja tradução vive DENTRO do valor (`links`, `task_screenshots`,
+ * todos em `lang: 'ALL'`), não há idioma ausente a inserir: uma linha nova
+ * duplicaria o link em vez de traduzi-lo. A função detecta isso e diz, em vez
+ * de dar um no-op silencioso.
+ *
+ * payload: o mesmo dos ContentSeed_*.js — { module, items: [...] }
+ */
+function seedMissingLangs_(payloadJson) {
+  const session = assertContentRole_('approve', null);
+  const payload = (typeof payloadJson === 'string') ? JSON.parse(payloadJson) : payloadJson;
+  const module = String(payload.module || "").trim();
+
+  assertValidModule_(module);
+  assertContentRole_(
+    CONTENT_DIRECT_PUBLISH_MODULES.indexOf(module) !== -1 ? 'publish' : 'propose',
+    module
+  );
+
+  const items = payload.items || [];
+  if (!items.length) {
+    return { status: 'skipped', reason: 'Payload sem itens.' };
+  }
+
+  // Idiomas que o módulo JÁ tem no ar.
+  const noAr = {};
+  readContentRows_(SHEET_CONTENT_ITEMS).forEach(function (r) {
+    if (String(r.Module).trim() !== module) return;
+    if (String(r.Status).trim() !== CONTENT_STATUS.LIVE) return;
+    noAr[String(r.Lang || 'ALL').trim().toUpperCase()] = true;
+  });
+
+  // Nada no ar: é o caso do seedContentModule, não deste. Encaminhar em vez de
+  // fazer a mesma coisa por outro nome mantém um caminho só para a migração.
+  if (!Object.keys(noAr).length) {
+    return {
+      status: 'skipped',
+      reason: 'Módulo vazio — use seedContentModule() para a semeadura inicial.'
+    };
+  }
+
+  const porIdioma = {};
+  const ordem = [];
+  items.forEach(function (it) {
+    const lang = String(it.lang || 'ALL').trim().toUpperCase();
+    if (!porIdioma[lang]) { porIdioma[lang] = []; ordem.push(lang); }
+    porIdioma[lang].push(it);
+  });
+
+  const ausentes = ordem.filter(function (lang) { return !noAr[lang]; });
+  const pulados = ordem.filter(function (lang) { return noAr[lang]; });
+
+  if (!ausentes.length) {
+    const soAll = ordem.length === 1 && ordem[0] === 'ALL';
+    return {
+      status: 'skipped',
+      reason: soAll
+        ? 'Este módulo guarda a tradução dentro do valor (lang ALL): não há ' +
+          'idioma a inserir. Traduza pela tela da Central.'
+        : 'Todos os idiomas do payload já têm linhas no ar: ' + pulados.join(', ') + '.',
+      skipped: pulados
+    };
+  }
+
+  const sheet = getContentSheet_(SHEET_CONTENT_ITEMS);
+  const now = contentNow_();
+  const rows = [];
+
+  ausentes.forEach(function (lang) {
+    porIdioma[lang].forEach(function (it, idx) {
+      const id = newContentId_('itm');
+      rows.push([
+        id,
+        module,
+        String(it.key || ""),
+        String(it.field || ""),
+        lang,
+        String(it.label || ""),
+        String(it.value || ""),
+        1,
+        CONTENT_STATUS.LIVE,
+        session.ldap,
+        now,
+        Number(it.sortOrder) || idx,
+        id // Cada item inaugura a própria linhagem, igual à semeadura.
+      ]);
+    });
+  });
+
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, CONTENT_ITEMS_HEADERS.length)
+    .setValues(rows);
+  invalidateContentCache_(module);
+
+  logContentEvent_(
+    session.ldap, 'seed_missing_langs', { module: module },
+    rows.length + ' itens em ' + ausentes.join(', ')
+  );
+
+  return {
+    status: 'success',
+    seeded: rows.length,
+    languages: ausentes,
+    skipped: pulados
+  };
+}
+
+/**
+ * Roda `seedMissingLangs_` nos quatro módulos de conteúdo operacional e
+ * devolve um relatório por módulo. É o que se chama do editor do Apps Script
+ * depois de um deploy que acrescenta um idioma.
+ *
+ * Seguro de rodar mais de uma vez: a segunda chamada encontra o idioma no ar
+ * e pula.
+ */
+function seedMissingLangsNow() {
+  const alvos = [
+    ['note_template', CONTENT_SEED_NOTE_TEMPLATES],
+    ['email_template', CONTENT_SEED_EMAILS],
+    ['call_script', CONTENT_SEED_CALL_SCRIPT],
+    ['links', CONTENT_SEED_LINKS]
+  ];
+
+  const relatorio = {};
+  alvos.forEach(function (par) {
+    try {
+      relatorio[par[0]] = seedMissingLangs_(par[1]);
+    } catch (e) {
+      relatorio[par[0]] = { status: 'error', reason: e.message };
+    }
+  });
+
+  Logger.log(JSON.stringify(relatorio, null, 2));
+  return relatorio;
+}
