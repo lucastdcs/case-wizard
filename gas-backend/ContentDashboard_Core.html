@@ -27,15 +27,15 @@
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
-        // O valor de um link é JSON no campo `value`: assim name/url/desc/desc_es
+        // O valor de um link é JSON no `value`: assim name/url/desc/desc_<lang>
         // viajam como um item só e o par PT/ES fica junto do link que descreve,
         // em vez de num mapa paralelo como o LINK_DESC_ES de hoje.
         function parseLinkValue(raw) {
             try {
                 var v = JSON.parse(raw || '{}');
-                return { name: v.name || '', url: v.url || '', desc: v.desc || '', desc_es: v.desc_es || '' };
+                return { name: v.name || '', url: v.url || '', desc: v.desc || '', desc_es: v.desc_es || '', desc_en: v.desc_en || '' };
             } catch (e) {
-                return { name: '', url: '', desc: '', desc_es: '' };
+                return { name: '', url: '', desc: '', desc_es: '', desc_en: '' };
             }
         }
 
@@ -281,7 +281,7 @@
             if (isNaN(d.getTime())) return String(iso);
             // Intl no idioma da interface, não formato fixo — mesma regra do
             // resto do produto (specs/ui-ux/design-system.md).
-            return d.toLocaleString(idiomaAtual() === 'ES' ? 'es' : 'pt-BR',
+            return d.toLocaleString({ ES: 'es', EN: 'en-US' }[idiomaAtual()] || 'pt-BR',
                 { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
 
@@ -647,7 +647,9 @@
             if (item.module === 'links') {
                 // O agente lê a descrição no SEU idioma. É o campo que mais
                 // silenciosamente fica em português dentro do bloco ES.
-                var desc = idioma === 'ES' ? (v.desc_es || '') : (v.desc || '');
+                var desc = (idioma && idioma !== 'PT')
+                    ? (v['desc_' + String(idioma).toLowerCase()] || '')
+                    : (v.desc || '');
                 corpo =
                     '<div class="ag-cartao">' +
                     '<div class="ag-titulo">' + esc(v.name || item.label) + '</div>' +
@@ -707,17 +709,21 @@
         // A task como o agente a recebe: um cartão por modo, com as legendas dos
         // campos de link na ORDEM em que ele vai preenchê-las.
         //
-        // A regra do idioma é a mesma do bundle (getTaskScreenshots): a linha de
-        // ES traduz o screenshot da mesma posição e, em branco, o agente ES lê o
-        // texto original. Dizer QUAL linha caiu no original é o ponto — é o que
-        // não se enxerga revisando as duas caixas do editor.
+        // A regra do idioma é a mesma do bundle (getTaskScreenshots): a linha
+        // traduzida vale para o screenshot da mesma posição e, em branco, o
+        // agente daquele idioma lê o texto original. Dizer QUAL linha caiu no
+        // original é o ponto — é o que não se enxerga revisando as caixas do
+        // editor lado a lado.
         function previaDaTask(v, idioma) {
             var modos = [
                 { key: 'implementation', label: 'Implementação' },
                 { key: 'education', label: 'Educação' }
             ];
             var listas = v.screenshots || {};
-            var trad = v.screenshots_es || {};
+            // PT é a base e não tem campo próprio; os demais leem o seu.
+            var trad = (idioma && idioma !== 'PT')
+                ? (v['screenshots_' + String(idioma).toLowerCase()] || {})
+                : {};
 
             var cartoes = modos.map(function (m) {
                 var base = Array.isArray(listas[m.key]) ? listas[m.key] : [];
@@ -727,16 +733,17 @@
                         'o agente não vê cartão neste modo</em></div></div>';
                 }
 
-                var es = Array.isArray(trad[m.key]) ? trad[m.key] : null;
+                var traduzidas = Array.isArray(trad[m.key]) ? trad[m.key] : null;
                 var linhas = base.map(function (rotulo, i) {
                     var texto = rotulo;
                     var falta = '';
-                    if (idioma === 'ES') {
-                        var traduzido = es ? String(es[i] == null ? '' : es[i]).trim() : '';
+                    if (idioma && idioma !== 'PT') {
+                        var traduzido = traduzidas
+                            ? String(traduzidas[i] == null ? '' : traduzidas[i]).trim() : '';
                         if (traduzido) {
                             texto = traduzido;
                         } else {
-                            falta = ' <em class="ag-falta">(sem ES — sai assim)</em>';
+                            falta = ' <em class="ag-falta">(sem ' + esc(idioma) + ' — sai assim)</em>';
                         }
                     }
                     return '<li>' + esc(texto) + falta + '</li>';
@@ -1076,6 +1083,7 @@
                 '<label class="fld" for="vc-idioma">Idioma do conteúdo</label>' +
                 '<select id="vc-idioma">' +
                 '<option value="PT">Português</option><option value="ES">Español</option>' +
+                '<option value="EN">English</option>' +
                 '</select>' +
                 '<div class="modal-actions">' +
                 '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +

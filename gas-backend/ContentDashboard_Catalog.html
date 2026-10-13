@@ -261,6 +261,8 @@
                 '<input type="text" id="lnk-desc" value="' + esc(v.desc) + '"></div>' +
                 '<div><label class="fld" for="lnk-desc-es">Descrição (ES)</label>' +
                 '<input type="text" id="lnk-desc-es" value="' + esc(v.desc_es) + '"></div>' +
+                '<div><label class="fld" for="lnk-desc-en">Descrição (EN)</label>' +
+                '<input type="text" id="lnk-desc-en" value="' + esc(v.desc_en) + '"></div>' +
                 '</div>' +
                 '<label class="fld" for="lnk-cat">Categoria</label>' +
                 '<select id="lnk-cat">' + catOptions + '</select>' +
@@ -299,7 +301,8 @@
                     name: name,
                     url: url,
                     desc: document.getElementById('lnk-desc').value.trim(),
-                    desc_es: document.getElementById('lnk-desc-es').value.trim()
+                    desc_es: document.getElementById('lnk-desc-es').value.trim(),
+                    desc_en: document.getElementById('lnk-desc-en').value.trim()
                 })
             };
 
@@ -820,6 +823,14 @@
             { key: 'education', label: 'Educação', ajuda: 'quando o agente ensina o anunciante a implementar' }
         ];
 
+        // Idiomas que traduzem as evidências. PT é a base e não aparece aqui.
+        // Acrescentar um idioma é acrescentar uma entrada: o editor, as
+        // contagens e o payload saem dela.
+        var TSK_TRAD_LANGS = [
+            { code: 'es', label: 'ES' },
+            { code: 'en', label: 'EN' }
+        ];
+
         function loadTaskCatalog() {
             google.script.run
                 .withSuccessHandler(function (items) {
@@ -848,29 +859,33 @@
             var v;
             try { v = JSON.parse(raw || '{}'); } catch (e) { v = {}; }
             var s = v.screenshots || {};
-            var es = v.screenshots_es || {};
-            return {
+            var out = {
                 name: v.name || '',
                 popular: v.popular === true,
                 screenshots: {
                     implementation: Array.isArray(s.implementation) ? s.implementation : [],
                     education: Array.isArray(s.education) ? s.education : []
                 },
-                // `null` quando o modo não tem tradução própria: é diferente de
-                // "traduzido para lista vazia", e é o que faz o agente ES cair no
-                // texto base em vez de ficar sem campo.
-                screenshots_es: {
-                    implementation: Array.isArray(es.implementation) ? es.implementation : null,
-                    education: Array.isArray(es.education) ? es.education : null
-                }
+                traducoes: {}
             };
+            // `null` quando o modo não tem tradução própria: é diferente de
+            // "traduzido para lista vazia", e é o que faz o agente cair no
+            // texto base em vez de ficar sem campo.
+            TSK_TRAD_LANGS.forEach(function (l) {
+                var t = v['screenshots_' + l.code] || {};
+                out.traducoes[l.code] = {
+                    implementation: Array.isArray(t.implementation) ? t.implementation : null,
+                    education: Array.isArray(t.education) ? t.education : null
+                };
+            });
+            return out;
         }
 
-        // Quantas linhas já têm redação própria em ES. É a informação que decide
-        // se vale abrir a task: "12 screenshots, 5 traduzidos" é trabalho
+        // Quantas linhas já têm redação própria num idioma. É a informação que
+        // decide se vale abrir a task: "12 screenshots, 5 traduzidos" é trabalho
         // pendente, e sem isso ele fica invisível até alguém abrir uma por uma.
-        function tskTraduzidos(v, modo) {
-            var lista = v.screenshots_es[modo];
+        function tskTraduzidos(v, modo, lang) {
+            var lista = v.traducoes[lang][modo];
             if (!lista) return 0;
             var n = 0;
             for (var i = 0; i < lista.length; i++) {
@@ -919,9 +934,11 @@
                     var partes = TSK_MODOS.map(function (m) {
                         var total = v.screenshots[m.key].length;
                         if (!total) return m.label + ': nenhum';
-                        var traduzidos = tskTraduzidos(v, m.key);
-                        return m.label + ': ' + total +
-                            (traduzidos === total ? ' (ES ok)' : ' (ES ' + traduzidos + '/' + total + ')');
+                        var porIdioma = TSK_TRAD_LANGS.map(function (l) {
+                            var n = tskTraduzidos(v, m.key, l.code);
+                            return n === total ? l.label + ' ok' : l.label + ' ' + n + '/' + total;
+                        }).join(', ');
+                        return m.label + ': ' + total + ' (' + porIdioma + ')';
                     });
 
                     var descarte = (d && d.status === 'draft' && !travadoPorOutro(d))
@@ -974,9 +991,9 @@
         // lista deslocaria todas as traduções seguintes em silêncio. Linha de ES
         // que não pareia com nenhum screenshot é ERRO, e não texto descartado:
         // quem escreveu ali acha que traduziu algo.
-        function tskPares(textoPt, textoEs) {
+        function tskPares(textoPt, textoTrad) {
             var pt = String(textoPt || '').split('\n');
-            var es = String(textoEs || '').split('\n');
+            var es = String(textoTrad || '').split('\n');
 
             var base = [];
             var trad = [];
@@ -997,9 +1014,9 @@
             return { base: base, trad: trad, orfas: orfas };
         }
 
-        // Editor. O nome é UM para os dois idiomas (como hoje: o catálogo do
-        // agente nunca traduziu nome de task); o que tem par PT/ES é a lista de
-        // evidências, lado a lado, linha a linha.
+        // Editor. O nome é UM para todos os idiomas (como hoje: o catálogo do
+        // agente nunca traduziu nome de task); o que tem coluna por idioma é a
+        // lista de evidências, lado a lado, linha a linha.
         function openTaskEditor(itemId) {
             var item = null;
             for (var i = 0; i < TSK_ITEMS.length; i++) {
@@ -1013,11 +1030,22 @@
 
             var blocos = TSK_MODOS.map(function (m) {
                 var base = v.screenshots[m.key];
-                var trad = v.screenshots_es[m.key] || [];
-                // A tradução é POSICIONAL: linha 3 do ES traduz o screenshot 3.
-                // Preenchida até o tamanho da base para as duas caixas nascerem
-                // com o mesmo número de linhas — é a leitura que o SME faz.
-                var linhasEs = base.map(function (_, i) { return String(trad[i] || ''); });
+
+                // A tradução é POSICIONAL: linha 3 traduz o screenshot 3.
+                // Preenchida até o tamanho da base para todas as caixas
+                // nascerem com o mesmo número de linhas — é a leitura que o
+                // SME faz, e o desalinhamento é invisível sem isso.
+                var colunas = TSK_TRAD_LANGS.map(function (l) {
+                    var trad = v.traducoes[l.code][m.key] || [];
+                    var linhas = base.map(function (_, i) { return String(trad[i] || ''); });
+                    return '<div>' +
+                        '<label class="fld" for="tsk-' + l.code + '-' + m.key + '">Tradução (' +
+                        esc(l.label) + ') — mesma ordem</label>' +
+                        '<textarea id="tsk-' + l.code + '-' + m.key + '" class="tsk-lista" ' +
+                        'placeholder="deixe a linha em branco para manter o texto em PT">' +
+                        esc(linhas.join('\n')) + '</textarea>' +
+                        '</div>';
+                }).join('');
 
                 return '<div class="tsk-modo">' +
                     '<div class="cat-head" style="margin-top:22px">' + esc(m.label) +
@@ -1029,12 +1057,7 @@
                     'placeholder="ex.: Tag criada&#10;Teste GTM&#10;Versão Publicada">' +
                     esc(base.join('\n')) + '</textarea>' +
                     '</div>' +
-                    '<div>' +
-                    '<label class="fld" for="tsk-es-' + m.key + '">Tradução (ES) — mesma ordem</label>' +
-                    '<textarea id="tsk-es-' + m.key + '" class="tsk-lista" ' +
-                    'placeholder="deixe a linha em branco para manter o texto em PT">' +
-                    esc(linhasEs.join('\n')) + '</textarea>' +
-                    '</div>' +
+                    colunas +
                     '</div>' +
                     '<p class="card-sub tsk-contagem" id="tsk-contagem-' + m.key + '"></p>' +
                     '</div>';
@@ -1090,10 +1113,12 @@
             }
 
             TSK_MODOS.forEach(function (m) {
-                var pt = document.getElementById('tsk-pt-' + m.key);
-                var es = document.getElementById('tsk-es-' + m.key);
-                pt.addEventListener('input', function () { atualizarContagemTask(m.key); });
-                es.addEventListener('input', function () { atualizarContagemTask(m.key); });
+                document.getElementById('tsk-pt-' + m.key)
+                    .addEventListener('input', function () { atualizarContagemTask(m.key); });
+                TSK_TRAD_LANGS.forEach(function (l) {
+                    document.getElementById('tsk-' + l.code + '-' + m.key)
+                        .addEventListener('input', function () { atualizarContagemTask(m.key); });
+                });
                 atualizarContagemTask(m.key);
             });
 
@@ -1107,36 +1132,45 @@
         }
 
         // A contagem existe porque o desalinhamento é invisível: uma linha a mais
-        // no ES desloca todas as traduções seguintes, e o agente ES passa a ver a
-        // legenda de outra evidência sem nada dar erro.
+        // numa tradução desloca todas as seguintes, e o agente daquele idioma
+        // passa a ver a legenda de outra evidência sem nada dar erro.
         function atualizarContagemTask(modo) {
             var alvo = document.getElementById('tsk-contagem-' + modo);
             if (!alvo) return;
 
-            var par = tskPares(
-                document.getElementById('tsk-pt-' + modo).value,
-                document.getElementById('tsk-es-' + modo).value
-            );
+            var textoPt = document.getElementById('tsk-pt-' + modo).value;
+            var pares = TSK_TRAD_LANGS.map(function (l) {
+                return {
+                    lang: l,
+                    par: tskPares(textoPt, document.getElementById('tsk-' + l.code + '-' + modo).value)
+                };
+            });
 
-            if (par.orfas.length) {
-                alvo.textContent = 'A linha ' + par.orfas.join(', ') +
-                    ' da coluna em ES não fica ao lado de nenhum screenshot — ' +
-                    'a tradução vai sair deslocada.';
+            var comOrfas = pares.filter(function (x) { return x.par.orfas.length; });
+            if (comOrfas.length) {
+                alvo.textContent = comOrfas.map(function (x) {
+                    return 'A linha ' + x.par.orfas.join(', ') + ' da coluna em ' + x.lang.label +
+                        ' não fica ao lado de nenhum screenshot';
+                }).join('; ') + ' — a tradução vai sair deslocada.';
                 alvo.classList.add('erro');
                 return;
             }
 
             alvo.classList.remove('erro');
 
-            if (!par.base.length) {
+            var base = pares[0].par.base;
+            if (!base.length) {
                 alvo.textContent = 'Nenhum screenshot neste modo — o agente não vê cartão para ele.';
                 return;
             }
 
-            var traduzidos = par.trad.filter(function (t) { return t.length > 0; }).length;
-            alvo.textContent = par.base.length + ' screenshot' + (par.base.length === 1 ? '' : 's') +
-                ' · ' + traduzidos + ' com redação em ES' +
-                (traduzidos < par.base.length ? ' (o resto sai em PT para o agente ES)' : '');
+            var resumo = pares.map(function (x) {
+                var n = x.par.trad.filter(function (t) { return t.length > 0; }).length;
+                return n + ' em ' + x.lang.label + (n < base.length ? ' (resto sai em PT)' : '');
+            }).join(' · ');
+
+            alvo.textContent = base.length + ' screenshot' + (base.length === 1 ? '' : 's') +
+                ' · ' + resumo;
         }
 
         function submitTask(itemId, draftId, src, btn, apenasRascunho) {
@@ -1149,30 +1183,38 @@
             }
 
             var screenshots = {};
-            var traducao = {};
+            var traducoes = {};
+            TSK_TRAD_LANGS.forEach(function (l) { traducoes[l.code] = {}; });
             var total = 0;
 
             for (var i = 0; i < TSK_MODOS.length; i++) {
                 var modo = TSK_MODOS[i].key;
-                var par = tskPares(
-                    document.getElementById('tsk-pt-' + modo).value,
-                    document.getElementById('tsk-es-' + modo).value
-                );
+                var baseModo = null;
 
-                if (par.orfas.length) {
-                    return toast('Em "' + TSK_MODOS[i].label + '", a linha ' + par.orfas.join(', ') +
-                        ' da coluna em ES não fica ao lado de nenhum screenshot.', true);
+                for (var j = 0; j < TSK_TRAD_LANGS.length; j++) {
+                    var lang = TSK_TRAD_LANGS[j];
+                    var par = tskPares(
+                        document.getElementById('tsk-pt-' + modo).value,
+                        document.getElementById('tsk-' + lang.code + '-' + modo).value
+                    );
+
+                    if (par.orfas.length) {
+                        return toast('Em "' + TSK_MODOS[i].label + '", a linha ' + par.orfas.join(', ') +
+                            ' da coluna em ' + lang.label + ' não fica ao lado de nenhum screenshot.', true);
+                    }
+
+                    baseModo = par.base;
+
+                    // A tradução viaja com as linhas em branco: é a POSIÇÃO que
+                    // casa cada uma com o screenshot que ela traduz, e branco
+                    // quer dizer "mantém o texto de PT".
+                    if (par.trad.some(function (t) { return t.length > 0; })) {
+                        traducoes[lang.code][modo] = par.trad;
+                    }
                 }
 
-                screenshots[modo] = par.base;
-                total += par.base.length;
-
-                // A tradução viaja com as linhas em branco: é a POSIÇÃO que casa
-                // cada uma com o screenshot que ela traduz, e branco quer dizer
-                // "mantém o texto de PT".
-                if (par.trad.some(function (t) { return t.length > 0; })) {
-                    traducao[modo] = par.trad;
-                }
+                screenshots[modo] = baseModo || [];
+                total += screenshots[modo].length;
             }
 
             if (!total) {
@@ -1181,7 +1223,11 @@
 
             var value = { name: nome, popular: document.getElementById('tsk-f-popular').checked,
                           screenshots: screenshots };
-            if (Object.keys(traducao).length) value.screenshots_es = traducao;
+            TSK_TRAD_LANGS.forEach(function (l) {
+                if (Object.keys(traducoes[l.code]).length) {
+                    value['screenshots_' + l.code] = traducoes[l.code];
+                }
+            });
 
             (apenasRascunho ? salvarRascunho : enviarProposta)({
                 draftId: draftId || '',

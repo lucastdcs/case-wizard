@@ -580,6 +580,50 @@ const SCREENSHOT_LABEL_ES = {
     '5. O gclid foi passado para a página de conversão?': '5. ¿El gclid fue pasado a la página de conversión?',
 };
 
+// Espelho em inglês. Mesma regra do ES acima: rótulo ausente cai no texto
+// base, que para boa parte destes já está em inglês no TASKS_DB.
+const SCREENSHOT_LABEL_EN = {
+    'GTM Instalado': 'GTM Installed',
+    'Vinculador de conversões': 'Conversion Linker',
+    'Tag criada': 'Tag created',
+    'Teste GTM': 'GTM test',
+    'Teste Ads': 'Ads test',
+    'Versão Publicada': 'Published Version',
+    'Status Ads': 'Ads Status',
+    'Termos aceitos no Ads': 'Terms accepted in Ads',
+    'Tag implementada': 'Tag implemented',
+    'Painel do Ads (após 7 dias)': 'Ads dashboard (after 7 days)',
+    'Tag do evento GA4 implementado no GTM': 'GA4 event tag implemented in GTM',
+    'Teste GTM (tagassistant.google.com)': 'GTM test (tagassistant.google.com)',
+    'Teste GA4 (DebugView - tagassistant.google.com)': 'GA4 test (DebugView - tagassistant.google.com)',
+    'Versão publicada no GTM': 'Version published in GTM',
+    '(Se houver parâmetros) Dimensões customizadas criadas no GA4': '(If there are parameters) Custom dimensions created in GA4',
+    'Evento marcado como principal no GA4': 'Event marked as key event in GA4',
+    'GA4 e Google Ads vinculados corretamente': 'GA4 and Google Ads linked correctly',
+    'Evento principal GA4 importado no Google Ads (como secundário)': 'GA4 key event imported into Google Ads (as secondary)',
+    'Métricas app & web ativadas no Google Ads': 'App & web metrics enabled in Google Ads',
+    '(Opcional) Teste no Relatório do Tempo Real (GA4)': '(Optional) Test in the Realtime report (GA4)',
+    'Validação: Conta GA4 (somente fluxo web, não é setor de saúde)': 'Validation: GA4 account (web stream only, not healthcare)',
+    '"Coleta de dados fornecidos pelo usuário" habilitado no GA4 (Admin > Coleta de Dados)': '"User-provided data collection" enabled in GA4 (Admin > Data Collection)',
+    'Confirmação de coleta de dados (UI)': 'Data collection confirmation (UI)',
+    'Tag do evento GA4 otimizado (UPD) implementado no GTM': 'Optimized GA4 event tag (UPD) implemented in GTM',
+    "Teste GTM (tagassistant - parâmetro 'em' sem erro)": "GTM test (tagassistant - 'em' parameter with no error)",
+    'Teste GA4 (DebugView - tagassistant)': 'GA4 test (DebugView - tagassistant)',
+    '(Treinamento) Evento principal importado no Google Ads como secundário': '(Training) Key event imported into Google Ads as secondary',
+    'Tag implementado no GTM': 'Tag implemented in GTM',
+    'Teste do disparo da etiqueta de configuração no tag assistant em mais de uma página, mostrando ID e rótulo': 'Test of the configuration tag firing in tag assistant on more than one page, showing ID and label',
+    'Teste usando o #google-wcc-debug': 'Test using #google-wcc-debug',
+    'Mudança do status da conversão no Google Ads [Aguardar alguns minutos]': 'Change of the conversion status in Google Ads [Wait a few minutes]',
+    '1. OGT (gTag/GTM com tag de vinculador de conversão) adicionado em todas as páginas': '1. OGT (gTag/GTM with Conversion Linker tag) added on all pages',
+    '2. A codificação automática (auto tagging) está habilitada no Google Ads (Admin > Config. da Conta)': '2. Auto tagging is enabled in Google Ads (Admin > Account Settings)',
+    '3. [Se for GTM] O vinculador de conversão está presente e o acionador definido para disparar em "Todas as Páginas".': '3. [If GTM] The Conversion Linker is present and the trigger set to fire on "All Pages".',
+    '4. O gclid está sendo mantido sem redirecionamentos e armazenado no cookie _gcl_aw na landing page?': '4. Is the gclid being kept without redirects and stored in the _gcl_aw cookie on the landing page?',
+    '5. O gclid foi passado para a página de conversão?': '5. Was the gclid passed to the conversion page?',
+};
+
+// Mapas embutidos por idioma. Acrescentar um idioma é acrescentar uma entrada.
+const SCREENSHOT_LABELS = { es: SCREENSHOT_LABEL_ES, en: SCREENSHOT_LABEL_EN };
+
 // Rótulos de screenshot de uma task no idioma ativo.
 //
 // Três fontes, nesta ordem: a tradução publicada na Central (`screenshots_es`,
@@ -593,9 +637,10 @@ const SCREENSHOT_LABEL_ES = {
 // em vez de o agente ES ver um campo a menos que o agente PT.
 export function getTaskScreenshots(task, mode, lang) {
     const labels = task?.screenshots?.[mode] || [];
-    if (lang !== 'es') return labels;
+    const embutido = SCREENSHOT_LABELS[lang];
+    if (!embutido) return labels;
 
-    const publicada = task?.screenshots_es?.[mode];
+    const publicada = task?.[`screenshots_${lang}`]?.[mode];
     const traduzida = (i) => String(publicada?.[i] == null ? '' : publicada[i]).trim();
 
     // Task publicada na Central é AUTOSSUFICIENTE: o mapa embutido não entra
@@ -609,9 +654,9 @@ export function getTaskScreenshots(task, mode, lang) {
     }
 
     if (Array.isArray(publicada)) {
-        return labels.map((l, i) => traduzida(i) || SCREENSHOT_LABEL_ES[l] || l);
+        return labels.map((l, i) => traduzida(i) || embutido[l] || l);
     }
-    return labels.map(l => SCREENSHOT_LABEL_ES[l] || l);
+    return labels.map(l => embutido[l] || l);
 }
 
 // Prefixo de campo do template no idioma ativo (fieldPrefixes_<lang> sobrescreve

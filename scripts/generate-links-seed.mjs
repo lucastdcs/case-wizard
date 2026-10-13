@@ -2,7 +2,7 @@
 //
 // Gera o payload de semeadura do módulo "links" a partir do LINKS_DB que hoje
 // está embutido em src/modules/links/links-assistant.js, já casando cada
-// descrição com a tradução correspondente em LINK_DESC_ES.
+// descrição com as traduções correspondentes em LINK_DESC_ES/LINK_DESC_EN.
 //
 // Por que ler o arquivo em vez de importar o módulo: links-assistant.js importa
 // utilitários que tocam `document` no topo, e não roda fora do navegador. Extrair
@@ -64,6 +64,7 @@ function extractObjectLiteral(name) {
 const LINKS_DB = eval(`(${extractObjectLiteral('LINKS_DB')})`);
 // eslint-disable-next-line no-eval
 const LINK_DESC_ES = eval(`(${extractObjectLiteral('LINK_DESC_ES')})`);
+const LINK_DESC_EN = eval(`(${extractObjectLiteral('LINK_DESC_EN')})`);
 
 const items = [];
 let order = 0;
@@ -78,9 +79,10 @@ for (const [category, group] of Object.entries(LINKS_DB)) {
                 name: link.name,
                 url: link.url,
                 desc: link.desc || '',
-                // A tradução vem do mapa que hoje é global; ao migrar, ela passa
-                // a morar junto do link e vira editável pela tela.
-                desc_es: LINK_DESC_ES[link.desc] || ''
+                // As traduções vêm dos mapas que hoje são globais; ao migrar,
+                // elas passam a morar junto do link e viram editáveis pela tela.
+                desc_es: LINK_DESC_ES[link.desc] || '',
+                desc_en: LINK_DESC_EN[link.desc] || ''
             }),
             sortOrder: order++
         });
@@ -88,6 +90,7 @@ for (const [category, group] of Object.entries(LINKS_DB)) {
 }
 
 const missingEs = items.filter(i => !JSON.parse(i.value).desc_es).length;
+const missingEn = items.filter(i => !JSON.parse(i.value).desc_en).length;
 const payload = { module: 'links', items };
 
 // 1) JSON, para inspecionar o conteúdo pelo GitHub sem precisar de checkout.
@@ -123,6 +126,7 @@ writeFileSync(resolve(here, '../gas-backend/ContentSeed_Links.js'), gasFile);
 
 process.stdout.write(
     `${items.length} links em ${Object.keys(LINKS_DB).length} categorias` +
-    (missingEs ? ` · ${missingEs} sem tradução ES` : '') + '\n' +
+    (missingEs ? ` · ${missingEs} sem tradução ES` : '') +
+    (missingEn ? ` · ${missingEn} sem tradução EN` : '') + '\n' +
     'Gerados: gas-backend/seeds/links-seed.json e gas-backend/ContentSeed_Links.js\n'
 );
