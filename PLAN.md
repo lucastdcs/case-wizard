@@ -414,10 +414,19 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
-- [ ] **Empurrar a tag `v6.4.0`** de um checkout local (o proxy da sessão web
-      recusa push de tag — `RELEASE.md` → Known fragilities):
-      `git fetch origin main && git tag -a v6.4.0 origin/main -m "v6.4.0" && git push origin v6.4.0`
-- [ ] **Rodar `seedMissingLangsNow()` no editor do Apps Script.** É o que leva
+- [ ] **Empurrar as tags `v6.4.0` e `v6.5.0`** de um checkout local (o proxy da
+      sessão web recusa push de tag — `RELEASE.md` → Known fragilities;
+      confirmado de novo na v6.5.0: `HTTP 403` no `git push origin v6.5.0`):
+      ```
+      git fetch origin main
+      git tag -a v6.4.0 <sha da release v6.4.0> -m "v6.4.0"
+      git tag -a v6.5.0 5193275 -m "v6.5.0"
+      git push origin v6.4.0 v6.5.0
+      ```
+      Sem isso os link refs do rodapé do CHANGELOG (`compare/v6.4.0...v6.5.0`)
+      continuam apontando para tags que não existem.
+- [ ] **Rodar `seedMissingLangsNow()` no editor do Apps Script** (a v6.5.0 já
+      está em produção, então o arquivo já está lá — falta executá-lo). É o que leva
       as 76 linhas EN para a planilha. NÃO use os `seed*Now()` de sempre:
       `seedContentModule()` é semeadura de primeira vez e, num módulo já no ar,
       devolve `{status:'skipped'}` sem escrever nada.
