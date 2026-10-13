@@ -47,6 +47,17 @@ const EMAIL_DICT = {
         fillErrorToast: "Error al completar el email",
         smartCrErrorToast: "Error al aplicar Smart CR",
     },
+    en: {
+        headerTitle: "Email Assistant",
+        headerDesc: "A complete rebuild of the email module for a modern, efficient experience.",
+        searchPlaceholder: "Search templates...",
+        previewTitle: "Email Preview",
+        noSubject: "No Subject",
+        emailCopiedToast: "Email copied successfully!",
+        copyErrorToast: "Error copying the email",
+        fillErrorToast: "Error filling in the email",
+        smartCrErrorToast: "Error applying Smart CR",
+    },
 };
 function et(key) {
     const lang = getLanguage();

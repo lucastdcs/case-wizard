@@ -79,6 +79,36 @@ const CSA_DICT = {
             `E-mail: ${data.clientEmail || "---"}`,
         dateLocale: "es-ES",
     },
+    en: {
+        headerTitle: "Call Script",
+        headerDesc: "Interactive guide for running calls.",
+        loading: "Loading...",
+        unknownClient: "Unknown Customer",
+        notFound: "Not found",
+        activeMonitoring: "Active Monitoring",
+        cidLabel: "CID (Account)",
+        emailLabel: "Contact Email",
+        copied: "Copied!",
+        amMessageTitle: "AM Message",
+        amMessageSub: "Generate a failed-contact notice",
+        copyFinalMessage: "Copy Final Message",
+        resize: "Resize",
+        resetScript: "Reset Script",
+        resetConfirm: "Reset all script progress? This action cannot be undone.",
+        resetConfirmBtn: "Reset",
+        scriptNotConfigured: "Script not configured.",
+        messageCopiedToast: "Message copied!",
+        amMessage: (data, today) =>
+            `Hello. Good morning!\n\n` +
+            `I have a case for your client (${data.advertiserName || "Customer"}) in progress today (${today}). I made the first contact attempt a moment ago, but was unsuccessful.\n\n` +
+            `I will make another attempt in a few minutes. If they do not answer again, I will proceed with the standard rescheduling/no-show email and keep you posted.\n\n` +
+            `Case details for your records:\n\n` +
+            `Customer: ${data.advertiserName || "---"}\n` +
+            `CID: ${data.cid || "---"}\n` +
+            `Case ID: ${data.caseId || "---"}\n` +
+            `Email: ${data.clientEmail || "---"}`,
+        dateLocale: "en-US",
+    },
 };
 function csaLangKey() {
     return getLanguage() === 'es' ? 'ES' : 'PT';

@@ -28,6 +28,12 @@ const CHANGELOG_DICT = {
         doneBtn: "¡Entendido, vamos! 👍",
         updatedToast: (version) => `¡Case Wizard actualizado a ${version}!`,
     },
+    en: {
+        updateBadge: (version) => `Update ${version}`,
+        nextBtn: "Next",
+        doneBtn: "Got it, let\u2019s go! 👍",
+        updatedToast: (version) => `Case Wizard updated to ${version}!`,
+    },
 };
 
 function ct(key) {

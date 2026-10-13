@@ -119,6 +119,21 @@ const LINKS_DICT = {
         copyFailedToast: "No se pudo copiar el enlace.",
         categoryLabels: { tasks: "Tareas", ads: "Ads", analytics: "GA4", shopping: "Shop", tech: "Tech", hr: "RRHH", lm: "Forms", qa: "QA", suporte: "Ayuda" },
     },
+    en: {
+        headerTitle: "Links Central",
+        headerDesc: "Browse the categories or use the search.",
+        searchPlaceholder: "Search for a tool or SOP...",
+        recent: "Recent",
+        nothingHereYet: "Nothing here yet",
+        nothingHereSub: "The links you open show up here for quick access later.",
+        searchResults: "Search results",
+        nothingFound: "Nothing found",
+        noLinkMatches: (term) => `No link matches "${term}".`,
+        copyUrl: "Copy URL",
+        linkCopiedToast: "Link copied!",
+        copyFailedToast: "Could not copy the link.",
+        categoryLabels: { tasks: "Tasks", ads: "Ads", analytics: "GA4", shopping: "Shop", tech: "Tech", hr: "HR", lm: "Forms", qa: "QA", suporte: "Help" },
+    },
 };
 function lt(key) {
     const lang = getLanguage();

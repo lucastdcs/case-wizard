@@ -34,6 +34,18 @@ const EAS_DICT = {
         fallbackClient: "Cliente",
         fallbackSite: "su sitio",
     },
+    en: {
+        emailButtonNotFound: "Error: email button not found.",
+        clearingOldDraft: "Clearing the old draft...",
+        editorNotLoaded: "Error: the editor did not load.",
+        cannedResponseApplied: "Canned Response applied!",
+        cannedResponseTimeout: (name) => `Timed out: template '${name}' did not load.`,
+        cannedResponseButtonNotFound: "Canned Response button not found.",
+        emailFilledSuccess: "Email filled in successfully!",
+        editorFocusError: "Error focusing the editor.",
+        fallbackClient: "Customer",
+        fallbackSite: "your site",
+    },
 };
 function eat(key) {
     const lang = getLanguage();

@@ -8,6 +8,7 @@ import { AUTHOR_CREDIT } from "../../shared/config.js";
 export const HEADER_DESC = {
     pt: "Gera notas padronizadas com excelência visual.",
     es: "Genera notas estandarizadas con excelencia visual.",
+    en: "Builds standardized notes with visual polish.",
 };
 
 export function createNotesPopup(version, onToggleVisibility) {
