@@ -516,8 +516,15 @@ check('seedCallScriptNow() popula o roteiro numa planilha zerada', () => {
   // grudados numa chave só ("PT BAU") e passam a ser colunas separadas.
   const langs = new Set(live.map(i => i.lang));
   const flows = new Set(live.map(i => i.key));
-  eq([...langs].sort(), ['ES', 'PT']);
+  eq([...langs].sort(), ['EN', 'ES', 'PT']);
   eq([...flows].sort(), ['BAU', 'LT']);
+
+  // Cada idioma tem de trazer os dois fluxos: um roteiro semeado só em BAU
+  // deixaria o agente de LT daquele idioma sem script, sem erro nenhum.
+  [...langs].forEach(l => {
+    const seus = new Set(live.filter(i => i.lang === l).map(i => i.key));
+    eq([...seus].sort(), ['BAU', 'LT'], `fluxos de ${l}:`);
+  });
 
   const groups = new Set(live.map(i => i.field));
   [...groups].forEach(g => {

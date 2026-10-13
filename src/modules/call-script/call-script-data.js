@@ -13,6 +13,16 @@ const TAG_SUPPORT_STEPS_PT = [
     "[Caso Recuse] Seguir com Compartilhamento de Tela"
 ];
 
+// Espelho em inglês da constante acima, pelo mesmo motivo: BAU e LT usam a
+// seção palavra por palavra, e duas cópias divergiriam na primeira edição.
+const TAG_SUPPORT_STEPS_EN = [
+    "Offer implementation via Tag Support (Temporary Access)",
+    "Send and walk through acceptance of the 'Consent and authorization...' email",
+    "Confirm the access was received",
+    "Start the setup (warn about ~10min of silence)",
+    "[If declined] Continue with Screen Sharing"
+];
+
 export const csaChecklistData = {
     "PT BAU": {
         inicio: [
@@ -72,6 +82,54 @@ export const csaChecklistData = {
     "ES LT": {
         inicio: ["Presentación (Nombre y equipo).", "Informar al cliente sobre la llamada grabada.", "Tiempo de duración de la llamada.", "Solicitar al anunciante que confirme lo siguiente: \n A) 10 dígitos de la cuenta \n B) Correo electrónico \n C) Número de teléfono y \n D) Nombre del sitio web.", "autenticar la cuenta del anunciante en el cases, si corresponde.", "Términos y condiciones.", "Informar las Task solicitadas y AM.", "Cerrar contenido sensible.", "Confirmación de copia de seguridad y acceso de administrador a las herramientas.", "Resumen de llamada."],
         fim: ["Ofrecer ayuda adicional.", "Dejar de compartir la pantalla.", "Pasos siguientes (Si se le hará seguimiento al caso).", "Encuesta de Satisfacción.", "Informar al cliente que el equipo de QA irá a realizar pruebas en los siguientes días."]
+    },
+    // EN tem a seção `meio` que falta ao ES porque aqui ela é TRADUÇÃO do
+    // roteiro PT, que existe e está aprovado — não conteúdo novo inventado.
+    "EN BAU": {
+        inicio: [
+            "Introduction (Name and Team)",
+            "Recording notice and Privacy Policy",
+            "Confirm the CID and the email",
+            "(Optional) Validate the account authentication via link",
+            "Confirm the Task and the AM",
+            "State the call duration (30-45 min)",
+            "Ask them to close sensitive content (before sharing)",
+            "Validate the backup and admin access"
+        ],
+        meio: TAG_SUPPORT_STEPS_EN,
+        fim: [
+            "Call summary (what was done and how it works)",
+            "Offer further help / Open the floor for questions",
+            "Ask them to stop sharing their screen",
+            "Next steps (Follow-up for XX days)",
+            "Ask for consent for the QA test",
+            "Align on scope (Technical vs. Account Manager)",
+            "Satisfaction Survey (and confirm the email to send it to)",
+            "Sign-off"
+        ]
+    },
+    "EN LT": {
+        inicio: [
+            "Hello [...], I am [...], and I am part of the Google Technical Solutions Team. How are you?",
+            "Our call may be recorded for training, quality and service improvement purposes, in line with our Privacy Policy.",
+            "For security reasons, I need you to give me your email and the CID (or number) of the Ads account, please",
+            "Confirm the Task and the AM",
+            "The consultation lasts around 30 to 45 minutes.",
+            "Please share your screen using the \u201cFull Screen\u201d option",
+            "Please close any and all confidential and sensitive content (conversations, important personal data, etc).",
+            "Do you have a backup of your site and all the access to the Google tools?"
+        ],
+        meio: TAG_SUPPORT_STEPS_EN,
+        fim: [
+            "Call summary (what was done and how it works)",
+            "Offer further help / Open the floor for questions",
+            "Ask them to stop sharing their screen",
+            "Next steps (Follow-up for XX days)",
+            "During that time, our quality team may run a conversion test to validate the implementation. Do you agree to that test so we can confirm the implementation is effective?",
+            "Align on scope (Technical vs. Account Manager)",
+            "Satisfaction Survey (and confirm the email to send it to)",
+            "Sign-off"
+        ]
     }
 };
 

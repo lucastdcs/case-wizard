@@ -62,15 +62,19 @@ function extractLiteral(name, open, close) {
     throw new Error(`Literal de ${name} não fecha`);
 }
 
-// O objeto referencia TAG_SUPPORT_STEPS_PT (a seção de Tag Support é
-// compartilhada entre BAU e LT em PT), então essa const precisa existir no
-// escopo do eval - senão o literal não resolve.
-const tagSupportLiteral = extractLiteral('TAG_SUPPORT_STEPS_PT', '[', ']');
+// O objeto referencia as constantes de Tag Support (a seção é compartilhada
+// entre BAU e LT dentro de cada idioma), então elas precisam existir no
+// escopo do eval - senão o literal não resolve. Um idioma novo que
+// compartilhe sua seção entra nesta lista.
+const TAG_SUPPORT_CONSTS = ['TAG_SUPPORT_STEPS_PT', 'TAG_SUPPORT_STEPS_EN'];
+const preludio = TAG_SUPPORT_CONSTS
+    .map((nome) => `const ${nome} = ${extractLiteral(nome, '[', ']')};`)
+    .join('\n');
 const dataLiteral = extractLiteral('csaChecklistData', '{', '}').replace(/^export\s+/, '');
 
 // eslint-disable-next-line no-new-func
 const csaChecklistData = new Function(
-    `const TAG_SUPPORT_STEPS_PT = ${tagSupportLiteral};\nreturn (${dataLiteral});`
+    `${preludio}\nreturn (${dataLiteral});`
 )();
 
 const GROUPS = ['inicio', 'meio', 'fim'];

@@ -614,25 +614,25 @@ export function getTaskScreenshots(task, mode, lang) {
     return labels.map(l => SCREENSHOT_LABEL_ES[l] || l);
 }
 
-// Prefixo de campo do template no idioma ativo (fieldPrefixes_es sobrescreve
+// Prefixo de campo do template no idioma ativo (fieldPrefixes_<lang> sobrescreve
 // fieldPrefixes quando existe).
 export function getFieldPrefix(templateDef, fieldKey, lang) {
-    if (lang === 'es' && templateDef?.fieldPrefixes_es?.[fieldKey]) {
-        return templateDef.fieldPrefixes_es[fieldKey];
-    }
+    const override = templateDef?.[`fieldPrefixes_${lang}`]?.[fieldKey];
+    if (override) return override;
     return templateDef?.fieldPrefixes?.[fieldKey] || "";
 }
 
 // Campos de um cenário rápido no idioma ativo. O espanhol vive num mapa
-// próprio (SCENARIO_ES, no fim deste arquivo) em vez de um bloco `es`
+// próprio (SCENARIO_ES/SCENARIO_EN, no fim deste arquivo) em vez de um bloco
 // dentro de cada snippet: mantém scenarioSnippets — a fonte da verdade
 // operacional, cheia de comentários de decisão do time — intocada, e deixa
 // o espanhol num único bloco revisável de uma vez por um falante nativo.
 // Só os campos de texto são sobrescritos; metadados (type/substatus/
 // linkedTask) continuam vindo da definição base, sem duplicação.
 export function getScenarioFields(snippet, lang, scenarioId) {
-    if (lang !== 'es') return snippet;
-    const overrides = SCENARIO_ES[scenarioId];
+    const mirror = { es: SCENARIO_ES, en: SCENARIO_EN }[lang];
+    if (!mirror) return snippet;
+    const overrides = mirror[scenarioId];
     if (!overrides) return snippet;
     return { ...snippet, ...overrides };
 }
@@ -721,6 +721,10 @@ export const SUBSTATUS_TEMPLATES = {
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Caso Reprogramado.'
         }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Case Rescheduled.'
+        }
     },
     'AS_Acceptable_Reschedule': { 
         status: 'AS', 
@@ -732,6 +736,10 @@ export const SUBSTATUS_TEMPLATES = {
         },
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Reprogramación aceptable.'
+        }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Acceptable rescheduling.'
         }
     },
 
@@ -758,6 +766,10 @@ export const SUBSTATUS_TEMPLATES = {
         },
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Esperando Validaciones en Google Ads.'
+        }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Awaiting Validations in Google Ads.'
         }
     },
     'NI_Attempted_Contact': {
@@ -839,6 +851,10 @@ export const SUBSTATUS_TEMPLATES = {
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Tarea implementada con éxito.'
         }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Task implemented successfully.'
+        }
     },
     'SO_Education_Only': {
         status: 'SO',
@@ -852,6 +868,10 @@ export const SUBSTATUS_TEMPLATES = {
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Consultoría utilizada para resolver dudas del anunciante.'
         }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Consultation used to answer the advertiser\u2019s questions.'
+        }
     },
     'SO_Troubleshooting_Only': {
         status: 'SO', 
@@ -863,6 +883,10 @@ export const SUBSTATUS_TEMPLATES = {
         },
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Consultoría utilizada para probar y solucionar problemas de la conversión.'
+        }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Consultation used to test and troubleshoot the conversion.'
         }
     },
     'DC_Other': {
@@ -1383,5 +1407,150 @@ export const SCENARIO_ES = {
     'quickfill-dc-lm-incomplete': {
         'field-REASON_COMMENTS': "Nada fue implementado durante la consultoría (tiempo insuficiente, límite de reprogramación excedido)",
         'field-COMENTARIOS': "No pudimos implementar nada durante la consultoría, pues no hubo tiempo suficiente para terminar la tarea relacionada y el límite de reprogramaciones ya fue alcanzado.\n\nAbriré un caso en BAU para el día solicitado y pediré la inactivación del mismo."
+    },
+};
+
+// ==================================================================
+// Mesmo espelho de scenarioSnippets, agora em inglês. Vale aqui tudo o
+// que vale para SCENARIO_ES acima: só campos de TEXTO, chaves 1:1, e um
+// cenário sem entrada cai no português em vez de quebrar.
+//
+// Os marcadores entre colchetes ([describe...]) e o placeholder {DIA}
+// são preservados — o resto do código depende deles — e "N/A" fica "N/A"
+// nos três idiomas, porque é o que vai literalmente para a nota.
+export const SCENARIO_EN = {
+    // --- SO_Implementation_Only ---
+    'quickfill-gtm-install': {
+        'field-REASON_COMMENTS': "GTM installation completed.",
+        'field-TASKS_SOLICITADAS': "• GTM Installation",
+        'field-PASSOS_EXECUTADOS': "• We created the account inside GTM\n• We installed it inside the CMS/Hosting.\n• We created the Conversion Linker.",
+        'field-RESULTADO': "• I validated the installation."
+    },
+    'quickfill-whatsapp': {
+        'field-REASON_COMMENTS': "Ads Conversion Tracking installation for WhatsApp completed.",
+        'field-TASKS_SOLICITADAS': "• Conversion creation for WHATSAPP",
+        'field-PASSOS_EXECUTADOS': "• We created the conversion in Ads.\n• We created the Tag in GTM for the WhatsApp buttons.\n• We ran the tests and validated that it works.",
+        'field-RESULTADO': "• Task implemented successfully. I am closing the case with no follow-up."
+    },
+    'quickfill-form': {
+        'field-REASON_COMMENTS': "Ads Conversion Tracking installation for Form completed.",
+        'field-TASKS_SOLICITADAS': "• Conversion creation for FORM (standard, not optimized).",
+        'field-PASSOS_EXECUTADOS': "• We created the conversion in Ads.\n• We created the Tag in GTM.\n• We ran the tests and validated that it works.",
+        'field-RESULTADO': "• Task implemented successfully. I am closing the case with no follow-up."
+    },
+    'quickfill-ecw4-close': {
+        'field-REASON_COMMENTS': "End of the EC follow-up.",
+        'field-TASKS_SOLICITADAS': "• Follow-up of the optimized conversion (ECW4).",
+        'field-PASSOS_EXECUTADOS': "• After the follow-up period, I checked the Ads dashboard.\n• The conversion is being recorded correctly.",
+        'field-RESULTADO': "• I confirm the optimized conversion is working.\n• I am therefore closing the case."
+    },
+    'quickfill-ga4-event-close': {
+        'field-REASON_COMMENTS': "End of the GA4 follow-up.",
+        'field-TASKS_SOLICITADAS': "• GA4 Events follow-up after 48h.",
+        'field-PASSOS_EXECUTADOS': "• After the 48h follow-up period, I checked the dashboard.\n• The event is being recorded correctly.",
+        'field-RESULTADO': "• I confirm the event tracking is working.\n• I am therefore closing the case."
+    },
+
+    // --- NI_Awaiting_Inputs ---
+    'quickfill-ni-inicio-manual': {
+        'field-REASON_COMMENTS': "Awaiting information from the advertiser (Start 2/6)"
+    },
+    'quickfill-ni-cms-access': {
+        'field-REASON_COMMENTS': "Awaiting information from the advertiser (Start 2/6 - No CMS Access)",
+        'field-TASKS_SOLICITADAS': "• GTM Installation\n• Conversion setup",
+        'field-CONTEXTO_CALL': "• I noticed the advertiser did not have GTM installed.\n• We went ahead with creating the GTM account.\n• However, the account used to access the site's panel (e.g.: WordPress) did not have permission to install plugins or edit the code.",
+        'field-IMPEDIMENTO_CLIENTE': "• The advertiser needs to obtain administrator access to the site's panel.\n• OR\n• The advertiser needs to contact their developer so that they install GTM.",
+        'field-MINHA_ACAO': "• I am placing the case in 2/6.\n• As soon as the advertiser has access or the installation is done, I will open a BAU case to continue.",
+        'field-SCREENSHOTS': "• Screenshot of the CMS panel showing the missing permission (optional)."
+    },
+    'quickfill-ni-lack-of-access': {
+        'field-REASON_COMMENTS': "Awaiting information from the advertiser (Missing required access)",
+        'field-CONTEXTO_CALL': "• During the call we identified that the access required to proceed with the implementation was not available.\n• I walked the advertiser through which access is required and how to obtain it.",
+        'field-IMPEDIMENTO_CLIENTE': "• The advertiser needs to arrange the required access (e.g.: site panel, ads platform, or contact with their developer) so the implementation can be completed."
+        ,
+        'field-MINHA_ACAO': "• I am placing the case in 2/6.\n• As soon as the advertiser obtains the access, I will open a BAU case to continue."
+    },
+    'quickfill-ni-awaiting-ecw4': {
+        'field-REASON_COMMENTS': "Awaiting data validation (ECW4 - 7 Days)",
+        'field-TASKS_SOLICITADAS': "• Enhanced Conversions implementation (ECW4)",
+        'field-CONTEXTO_CALL': "• We created the conversion in Google Ads.\n• We set up the tag firing via GTM.\n• We added the UPD (User Provided Data) tag.\n• We tested together and validated that it works.",
+        'field-MINHA_ACAO': "• I am moving the case to Awaiting Validation for a 7-day follow-up."
+    },
+    'quickfill-ni-awaiting-ga4': {
+        'field-REASON_COMMENTS': "Awaiting data validation (GA4 Event - 48h)",
+        'field-TASKS_SOLICITADAS': "• GA4 Events implementation",
+        'field-CONTEXTO_CALL': "• We created the event in GA4.\n• We set up the tag firing via GTM.\n• We tested together and validated that it works.",
+        'field-MINHA_ACAO': "• I am moving the case to Awaiting Validation for a 48h follow-up."
+    },
+    'quickfill-ni-followup-bau': {
+        'field-REASON_COMMENTS': "Awaiting information from the advertiser (BAU Follow-up 2/6)",
+        'field-CONTEXTO_CALL': "• On day {DIA} of the 2/6 I made two consecutive contact attempts with no answer. I am sending the email for that day next.",
+        'field-SCREENSHOTS': "• Attempt 1 - \n• Attempt 2 - "
+    },
+    'quickfill-ni-followup-lm': {
+        'field-REASON_COMMENTS': "Contact attempt unsuccessful (LM Follow-up 2/6)",
+        'field-CONTEXTO_CALL': "• On day {DIA} of the 2/6 I sent a follow-up email (LM case, no call attempts) with no answer.",
+        'field-SCREENSHOTS': "• Follow-up email sent (LM) - "
+    },
+    'quickfill-ni-attempted-2day': {
+        'field-REASON_COMMENTS': "Attempted Contact (Start 2 Day Rule)",
+        'field-CONTEXTO_CALL': "• I made the first call attempt, with no success.\n• I sent a chat message to the AM.\n• I waited 5 minutes and made the second call attempt, again with no success.\n• I waited another 5 minutes and will now proceed with the 2 Day Rule follow-up.",
+        'field-SCREENSHOTS': "• MSG AM - \n• Attempt 1 - \n• Attempt 2 - "
+    },
+    'quickfill-in-nrp-bau': {
+        'field-REASON_COMMENTS': "NRP (BAU - 3 attempts)",
+        'field-COMENTARIOS': "• Two consecutive calls, the \"Before the 10 minutes\" email and a third and final call attempt.\n• There was no answer to the call attempts or the email, so the case will be inactivated.",
+        'field-SCREENSHOTS': "• Attempt 1 - \n• Attempt 2 - \n• Attempt 3 - "
+    },
+    'quickfill-in-no-show-bau': {
+        'field-REASON_COMMENTS': "No answer to the 2 Day Rule.",
+        'field-COMENTARIOS': "• The case was created and I joined the call at the scheduled time.\n• The advertiser did not attend the meeting.\n• I followed the waiting protocol (BAU): I made two call attempts, with no success.\n• Neither call was answered (e.g.: voicemail).\n• Case inactivated after the 2 Day Rule."
+    },
+    'quickfill-in-2-6-final': {
+        'field-REASON_COMMENTS': "Closure (2/6)",
+        'field-COMENTARIOS': "• Day 9, closure of the 2/6. There was no response from the advertiser during the follow-up period, so the case will be closed."
+    },
+    'quickfill-in-not-reachable-no-return': {
+        'field-REASON_COMMENTS': "Inactivation due to no response from the advertiser",
+        'field-COMENTARIOS': "The advertiser did not attend the consultation. I made the call attempts but got no response.\n\nI will request the inactivation of the case, taking the lack of contact into account."
+    },
+    'quickfill-in-not-ready-lack-of-access': {
+        'field-REASON_COMMENTS': "Inactivation due to missing access (Rescheduling requested)",
+        'field-COMENTARIOS': "We were unable to implement anything during the consultation, as the advertiser did not have the required access.\n\nI will open a BAU case for the requested day and ask for it to be inactivated, taking into account the missing access and the rescheduling request."
+    },
+    'quickfill-in-infeasible': {
+        'field-REASON_COMMENTS': "Inactivation due to technical infeasibility",
+        'field-COMENTARIOS': "• We assessed the requested implementation and found that it cannot be carried out due to the technical complexity/structure of the site (e.g.: [describe the limitation found]).\n• This is not a Google limitation, but the current structure of the advertiser's site/platform.\n• I walked the advertiser through the available options (e.g.: changing platform, support from a specialized developer)."
+    },
+    'quickfill-in-not-interested': {
+        'field-REASON_COMMENTS': "Inactivation due to lack of advertiser interest",
+        'field-COMENTARIOS': "• The advertiser said they are not interested in proceeding with the consultation at this time.\n• [Or] The contact was limited to general questions, with no intention of carrying out the implementation.\n• There are no further actions pending on our side; case closed at the advertiser's request."
+    },
+    'quickfill-in-troubleshooting-transferred': {
+        'field-REASON_COMMENTS': "Inactivation - Troubleshooting unsuccessful, case transferred",
+        'field-COMENTARIOS': "• We ran the standard troubleshooting steps for the reported problem (e.g.: [list the tests/checks performed]).\n• The steps did not resolve the problem.\n• I am forwarding the case to the responsible team ([team name]) to continue."
+    },
+    'quickfill-in-manual': {
+        'field-REASON_COMMENTS': "Other (Manual)"
+    },
+
+    // --- AS ---
+    'quickfill-as-no-show': {
+        'field-MOTIVO_REAGENDAMENTO': '• We need to reschedule the case, as the advertiser did not attend the meet but replied to the email asking to reschedule'
+    },
+    'quickfill-as-insufficient-time': {
+        'field-MOTIVO_REAGENDAMENTO': '• We need to reschedule the case, as there was not enough time to finish the Tasks\n• We implemented [describe what was done]'
+    },
+    'quickfill-as-no-access': {
+        'field-MOTIVO_REAGENDAMENTO': '• We need to reschedule the case, as the advertiser did not have access to the site, the code or the CMS required to install Google Tag Manager'
+    },
+    'quickfill-as-force-majeure': {
+        'field-MOTIVO_REAGENDAMENTO': '• Rescheduling due to force majeure outside the advertiser\'s control (e.g.: no internet/power, health reasons) - within the acceptable rescheduling criteria.\n• [Detail the specific factor reported by the advertiser]'
+    },
+
+    // --- DC ---
+    'quickfill-dc-lm-incomplete': {
+        'field-REASON_COMMENTS': "Nothing was implemented during the consultation (insufficient time, rescheduling limit exceeded)",
+        'field-COMENTARIOS': "We were unable to implement anything during the consultation, as there was not enough time to finish the related task and the rescheduling limit has already been reached.\n\nI will open a BAU case for the requested day and ask for it to be inactivated."
     },
 };

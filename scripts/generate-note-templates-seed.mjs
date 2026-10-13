@@ -59,6 +59,11 @@ const scenarioSnippets = evalLiteral(
     extractLiteral('export const scenarioSnippets = {', '{', '}')
 );
 const SCENARIO_ES = evalLiteral(extractLiteral('const SCENARIO_ES = {', '{', '}'));
+const SCENARIO_EN = evalLiteral(extractLiteral('const SCENARIO_EN = {', '{', '}'));
+
+// Um espelho por idioma. Acrescentar um idioma aqui é acrescentar a linha
+// correspondente na planilha, sem mexer no laço abaixo.
+const ESPELHOS = { ES: SCENARIO_ES, EN: SCENARIO_EN };
 const SUBSTATUS_TEMPLATES = evalLiteral(
     extractLiteral('export const SUBSTATUS_TEMPLATES = {', '{', '}')
 );
@@ -156,17 +161,21 @@ for (const [id, snip] of Object.entries(scenarioSnippets)) {
             sortOrder: order++,
         });
 
-        // SCENARIO_ES sobrescreve só os campos de texto; metadados seguem os de
-        // PT, então a linha ES carrega apenas os campos.
-        const es = SCENARIO_ES[id];
-        if (es) {
-            const camposEs = filtrarPeloTemplate(extrairCampos({ ...snip, ...es }), tpl, id + ' [ES]', sub);
+        // Os espelhos sobrescrevem só os campos de texto; metadados seguem os
+        // de PT, então a linha traduzida carrega apenas os campos.
+        for (const [lang, espelho] of Object.entries(ESPELHOS)) {
+            const tr = espelho[id];
+            if (!tr) continue;
+
+            const campos = filtrarPeloTemplate(
+                extrairCampos({ ...snip, ...tr }), tpl, `${id} [${lang}]`, sub
+            );
             items.push({
                 key: sub,
                 field: snip.type || 'all',
-                lang: 'ES',
+                lang,
                 label: nomeLegivel(id),
-                value: JSON.stringify({ fields: camposEs, ...meta }),
+                value: JSON.stringify({ fields: campos, ...meta }),
                 sortOrder: order++,
             });
         }
