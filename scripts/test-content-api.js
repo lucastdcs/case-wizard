@@ -1276,12 +1276,26 @@ check('publicação sem nenhuma data é recusada', () => {
   );
 });
 
-check('segmento fora de PT/ES é recusado', () => {
+// EN deixou de ser exemplo de segmento inválido quando a operação em inglês
+// passou a existir (BAU_SEGMENTS em ContentAPI.js). O par abaixo trava os
+// dois lados: EN entra, e um segmento que não existe continua sendo recusado.
+check('EN é segmento válido de disponibilidade BAU', () => {
+  api.publishContentDirect({
+    module: 'bau_availability',
+    label: 'X',
+    value: bau({ EN: { attention: '2026-09-15', full: '2026-09-22' } })
+  });
+  const publicado = JSON.parse(api.listContentItems('bau_availability')[0].value);
+  eq(publicado.segments.EN.attention, '2026-09-15', 'atenção EN:');
+  eq(publicado.segments.EN.full, '2026-09-22', 'total EN:');
+});
+
+check('segmento fora dos atendidos é recusado', () => {
   throws(
     () => api.publishContentDirect({
       module: 'bau_availability',
       label: 'X',
-      value: bau({ EN: { attention: '2026-09-15', full: '' } })
+      value: bau({ FR: { attention: '2026-09-15', full: '' } })
     }),
     /Segmento desconhecido/
   );

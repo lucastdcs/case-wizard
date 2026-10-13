@@ -1378,9 +1378,8 @@ function checkBroadcast(rawValue) {
 // ---------------------------------------------------------
 
 // Segmentos atendidos. Espelha os idiomas que o app tem dicionário para
-// (src/modules/shared/i18n.js) - EN existe em CONTENT_LANGS mas não há
-// operação BAU em inglês hoje.
-const BAU_SEGMENTS = ['PT', 'ES'];
+// (src/modules/shared/i18n.js), hoje os três de CONTENT_LANGS.
+const BAU_SEGMENTS = ['PT', 'ES', 'EN'];
 
 // Datas em ISO (YYYY-MM-DD) e não no "15/09" que chega no aviso: ISO ordena e
 // compara como string, sem ambiguidade de dia/mês e sem depender do ano
@@ -1433,7 +1432,7 @@ function assertValidBauAvailability_(rawValue) {
     return BAU_SEGMENTS.indexOf(s) === -1;
   });
   if (unknown.length) {
-    throw new Error("Segmento desconhecido: " + unknown.join(', ') + ". Use PT ou ES.");
+    throw new Error("Segmento desconhecido: " + unknown.join(', ') + ". Use " + BAU_SEGMENTS.join(', ') + ".");
   }
 
   const normalized = {};

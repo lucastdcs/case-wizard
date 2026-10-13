@@ -1207,7 +1207,7 @@
 
     <script>
         // =====================================================
-        //                     IDIOMA (PT/ES)
+        //                  IDIOMA DA TELA (PT/ES/EN)
         // =====================================================
         // Esta página roda fora do bundle do bookmarklet, então não dá pra
         // usar shared/i18n.js — o dicionário é replicado aqui, mesma ideia
@@ -1217,7 +1217,7 @@
         // O idioma vem do MESMO profile que a faixa de boas-vindas já
         // busca (getCurrentTLProfile → getUserProfileByLdap → planilha
         // People), então não há requisição extra. Como esse profile chega
-        // async, a página nasce em PT e troca pra ES quando ele responde —
+        // async, a página nasce em PT e troca quando ele responde —
         // applyStaticTexts() cuida do texto fixo e o re-render dos casos
         // cuida do resto.
         const TL_I18N = {
@@ -1452,6 +1452,122 @@
                 historyLoadError: "No fue posible cargar el historial.",
                 noSubmissionsPeriod: "Sin envíos en el período.",
                 noCasesResolved: function (d) { return "Ningún caso resuelto en los últimos " + d + " días."; }
+            },
+            en: {
+                confirmTitle: "Confirm Action",
+                confirmMessage: "Are you sure you want to proceed with this action?",
+                caseSummary: "Case Summary",
+                cancel: "Cancel",
+                confirm: "Confirm",
+                sync: "Sync",
+                tabCreation: "Creation Approval",
+                tabDiscard: "Discard Approval",
+                colAdvertiser: "ADVERTISER & ID",
+                colRequest: "REQUEST & REFERENCE",
+                colSchedule: "SCHEDULING",
+                colAction: "ACTION",
+                loading: "Accessing the database...",
+                syncedNow: "Synced just now",
+                syncedSec: function (s) { return "Synced " + s + "s ago"; },
+                syncedMin: function (m) { return "Synced " + m + "min ago"; },
+                loadError: "Could not load the cases",
+                emptyState: "There are no pending requests in this category.",
+                notInformed: "Not provided",
+                flowDiscard: "Discard Request",
+                flowCreation: "BAU Creation",
+                keepActive: "Keep Case Active",
+                rejectRequest: "Reject Request",
+                confirmDiscard: "Confirm Discard",
+                approveNotify: "Approve and Notify",
+                approve: "Approve",
+                rowAdvertiser: "Advertiser",
+                rowTask: "Task",
+                rowAdvEmail: "Advertiser Email",
+                rowSuggestDiscard: "Agent Suggestion",
+                suggestDiscardBadge: "Agent suggests a discard",
+                outcomeDiscard: "The case should be discarded by the TL",
+                outcomeImplement: "The case will be implemented by the agent",
+                outcomeUnknown: "The agent did not say whether the case should be discarded",
+                rowLanguage: "Language",
+                rowAm: "Responsible AM",
+                rowSalesProgram: "Sales Program",
+                rowSite: "Site",
+                rowSchedule: "Scheduling",
+                rowAgent: "Agent",
+                rowWhatToDo: "What must be done",
+                rowJustification: "Justification / Details",
+                rowCaseSummary: "Summary for the BAU case",
+                rowAdvLastName: "Advertiser Last Name",
+                rowReasonNotImpl: "Reason for non-implementation",
+                dataTitle: "Case data",
+                submittedBy: "Submitted by",
+                closeDetails: "Close the request details",
+                copyField: "Copy",
+                copySummary: "Copy summary",
+                decisionTitle: "Decision",
+                decidedBy: "Decided by",
+                decidedAt: "Decided on",
+                tlJustification: "Leadership justification",
+                outcomeAPPROVED_CREATION: "Creation approved",
+                outcomeREJECTED_CREATION: "Creation rejected",
+                outcomeCONFIRMED_DISCARD: "Discard confirmed",
+                outcomeKEPT_ACTIVE: "Case kept active",
+                justificationLabel: "Justification for the agent",
+                justificationPlaceholder: "Why was this request not accepted?",
+                justificationRequired: "Write the justification \u2014 it goes in the agent's email.",
+                whatsNew: "What's new in this version",
+                closeWhatsNew: "Close what's new",
+                confirmKeepTitle: "Keep Case Active",
+                confirmDiscardTitle: "Confirm Discard",
+                confirmKeepMsg: "The case will stay active and the agent will be told the discard request was not accepted.",
+                confirmDiscardMsg: "On confirmation the agent is notified and the case is marked as discarded. This action is irreversible.",
+                confirmApproveTitle: "Confirm Approval",
+                confirmRejectTitle: "Confirm Rejection",
+                confirmApproveMsg: "On approval the agent receives a notification and the case moves to the next stage.",
+                confirmRejectMsg: "You are about to reject this request. This action is irreversible.",
+                toastApproved: "Request approved successfully",
+                toastRejected: "Request rejected",
+                toastEmailFailed: "Action recorded, but the confirmation email to the agent failed.",
+                toastActionFailed: "Could not process the action. Try again.",
+                toastCopied: "Copied to the clipboard",
+                greetHello: "Hello", greetMorning: "Good morning", greetAfternoon: "Good afternoon", greetEvening: "Good evening",
+                phrasesWeekend: ["Thanks for taking a look even on the weekend.", "Your dedication does not go unnoticed."],
+                phrasesDawn: ["Reviewing at dawn \u2014 respect.", "Let's keep the queue current."],
+                phrasesMonday: ["Let's start the week by clearing the queue.", "New week, empty queue."],
+                phrasesDefault: ["Let's keep the queue current.", "All under control here.", "Time to review the requests."],
+                dateAt: " at ",
+                tabHistory: "History",
+                searchPlaceholder: "Search by advertiser, CID, case or agent...",
+                clearSearch: "Clear search",
+                statApproved: function (d) { return "Approved (" + d + "d)"; },
+                statDiscarded: function (d) { return "Discarded (" + d + "d)"; },
+                statAvgTime: "Average approval time",
+                topAgents: function (d) { return "Who opened the most cases (" + d + "d)"; },
+                historyPeriodAria: "History period",
+                historyPeriodOption: function (d) { return "Last " + d + " days"; },
+                historyHorizon: "Finished cases stay in this list. The weekly backup copies, it does not remove.",
+                clientTimeSuffix: "(customer)",
+                childCaseLabel: "ID of the BAU case created",
+                childCasePlaceholder: "0-0000000000000",
+                childCaseRequired: "Provide the ID of the created case to approve.",
+                childCaseHistory: "Case created:",
+                rowAdvPhone: "Phone",
+                activeNow: "Active now",
+                recentActivity: "Recent activity",
+                nothingFoundFor: function (q) { return 'Nothing found for "' + q + '"'; },
+                tryAnotherTerm: "Try another term or ",
+                clearSearchLink: "clear the search",
+                connectionFailed: "Could not connect to the server. Try syncing again.",
+                queueClear: "Queue clear",
+                onlyYou: "Just you, for now.",
+                minAgo: function (n) { return n + "min ago"; },
+                hourAgo: function (n) { return n + "h ago"; },
+                dayAgo: function (n) { return n + "d ago"; },
+                noActivityYet: "No action recorded yet.",
+                someone: "someone",
+                historyLoadError: "Could not load the history.",
+                noSubmissionsPeriod: "No submissions in the period.",
+                noCasesResolved: function (d) { return "No case resolved in the last " + d + " days."; }
             }
         };
         let TL_LANG = 'pt';
@@ -1558,8 +1674,9 @@
                     // Mesmo profile que já vinha pra faixa de boas-vindas
                     // carrega o idioma — sem requisição extra. A saudação é
                     // montada DEPOIS de trocar o idioma pra já nascer certa.
-                    if (String(profile.defaultLanguage) === 'ES') {
-                        TL_LANG = 'es';
+                    const lang = { 'ES': 'es', 'EN': 'en' }[String(profile.defaultLanguage).toUpperCase()];
+                    if (lang) {
+                        TL_LANG = lang;
                         applyStaticTexts();
                         // Os casos já podem estar na tela (loadCases roda em
                         // paralelo): re-renderiza pra pegar o novo idioma.
@@ -2452,7 +2569,7 @@
         function formatSubmittedAt(iso) {
             const d = new Date(iso);
             if (isNaN(d.getTime())) return tt('notInformed');
-            return new Intl.DateTimeFormat(TL_LANG === 'es' ? 'es-ES' : 'pt-BR', {
+            return new Intl.DateTimeFormat({ es: 'es-ES', en: 'en-US' }[TL_LANG] || 'pt-BR', {
                 day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
             }).format(d);
         }

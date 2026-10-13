@@ -457,7 +457,7 @@ export function setUserProfile(profile) {
 // em i18n.js, que manda EN para o dicionário PT por não existir tradução.
 export function getAgentSegment() {
     const raw = String(cachedUserProfile?.defaultLanguage || "").toUpperCase();
-    return raw === 'ES' ? 'ES' : 'PT';
+    return { 'ES': 'ES', 'EN': 'EN' }[raw] || 'PT';
 }
 
 // --- 9. COMPILADOR DE DADOS DA PÁGINA ---

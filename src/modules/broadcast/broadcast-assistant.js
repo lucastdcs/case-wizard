@@ -161,6 +161,10 @@ const SEGMENTS = {
     ES: {
         label: "ES",
         flag: `<svg class="cw-bc-bau-flag" viewBox="0 0 21 15" aria-hidden="true"><rect width="21" height="15" fill="#AA151B"/><rect y="3.75" width="21" height="7.5" fill="#F1BF00"/></svg>`
+    },
+    EN: {
+        label: "EN",
+        flag: `<svg class="cw-bc-bau-flag" viewBox="0 0 21 15" aria-hidden="true"><rect width="21" height="15" fill="#012169"/><path d="M0 0l21 15M21 0L0 15" stroke="#FFF" stroke-width="3"/><path d="M0 0l21 15M21 0L0 15" stroke="#C8102E" stroke-width="2"/><path d="M10.5 0v15M0 7.5h21" stroke="#FFF" stroke-width="5"/><path d="M10.5 0v15M0 7.5h21" stroke="#C8102E" stroke-width="3"/></svg>`
     }
 };
 
@@ -439,7 +443,7 @@ function injectStyles() {
 
 // Formata no idioma da interface, e não sempre em pt-BR como antes: quem
 // atende ES via a interface em espanhol e as datas em português.
-const DATE_LOCALE = { pt: 'pt-BR', es: 'es-ES' };
+const DATE_LOCALE = { pt: 'pt-BR', es: 'es-ES', en: 'en-US' };
 
 function formatFriendlyDate(dateInput) {
     if (!dateInput) return "";
@@ -905,9 +909,11 @@ export function initBroadcastAssistant() {
           datas.full ? linha('full', datas.full) : ''
       ].join('');
 
-      // O botão de troca só existe quando há de fato outro segmento para ver.
-      const outro = codes.find(c => c !== preferido);
-      const swapHTML = outro
+      // O botão de troca CICLA pelos segmentos publicados, em vez de alternar
+      // entre dois: com a entrada do EN, `find(c => c !== preferido)` passaria
+      // a devolver sempre o mesmo vizinho e o terceiro ficaria inalcançável.
+      const outro = codes[(codes.indexOf(preferido) + 1) % codes.length];
+      const swapHTML = (outro && outro !== preferido)
           ? `<button class="cw-bc-bau-swap" type="button"
                      aria-label="${bt('swapTo')(SEGMENTS[outro].label)}"
                      title="${bt('swapTo')(SEGMENTS[outro].label)}">${SWAP_ICON}</button>`
