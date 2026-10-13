@@ -255,7 +255,7 @@ function askLanguage() {
             // Só o idioma da INTERFACE. O idioma da saída é o do anunciante
             // e continua vindo do segmento do perfil — deduzi-lo de uma
             // preferência de tela é exatamente o acoplamento que o
-            // ADR-0014 desfez.
+            // ADR-0016 desfez.
             setLanguage(lang);
             document.removeEventListener("keydown", onKeydown, true);
             overlay.classList.remove("open");

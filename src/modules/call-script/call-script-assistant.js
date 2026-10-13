@@ -15,7 +15,10 @@ import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { getPageData } from "../shared/page-data.js";
 
 import { csaChecklistData, hydrateCallScriptFromContentCentral } from "./call-script-data.js";
-import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import {
+    getLanguage, onLanguageChange,
+    getOutputLanguage, onOutputLanguageChange,
+} from "../shared/i18n.js";
 import { AUTHOR_CREDIT } from "../shared/config.js";
 
 const CSA_DICT = {
@@ -110,11 +113,21 @@ const CSA_DICT = {
         dateLocale: "en-US",
     },
 };
+// Qual roteiro buscar na Central. É o idioma do ATENDIMENTO: o agente lê
+// esse texto para o anunciante, então quem manda é o idioma do caso, não o
+// da ferramenta.
 function csaLangKey() {
-    return getLanguage() === 'es' ? 'ES' : 'PT';
+    return { es: 'ES', en: 'EN' }[getOutputLanguage()] || 'PT';
 }
+// Cromo do módulo (títulos, botões, tooltips): segue a interface.
 function ct(key) {
     const lang = getLanguage();
+    return CSA_DICT[lang]?.[key] ?? CSA_DICT.pt[key];
+}
+// Texto que SAI do módulo — a mensagem para o AM e o formato de data dentro
+// dela. Mesmo dicionário, outro knob.
+function cto(key) {
+    const lang = getOutputLanguage();
     return CSA_DICT[lang]?.[key] ?? CSA_DICT.pt[key];
 }
 
@@ -373,11 +386,11 @@ export function initCallScriptAssistant() {
 
   function populateMessageArea() {
     getPageData().then(data => {
-      const today = new Date().toLocaleDateString(ct('dateLocale'));
+      const today = new Date().toLocaleDateString(cto('dateLocale'));
       const area = csaPopup.querySelector('#cw-am-message-area');
       const container = csaPopup.querySelector('#cw-am-review-container');
 
-      let message = ct('amMessage')(data, today);
+      let message = cto('amMessage')(data, today);
 
       if (area) area.value = message;
       if (container) {
@@ -580,10 +593,14 @@ export function initCallScriptAssistant() {
       };
   });
 
-  // O idioma do script (PT/ES) segue o idioma global da interface, trocado
-  // em Configurações — não tem mais seletor próprio aqui.
-  onLanguageChange(() => {
+  // O conteúdo do roteiro segue o idioma do ATENDIMENTO; o cromo segue a
+  // interface. Os dois são trocados em Configurações e re-renderizam aqui.
+  onOutputLanguageChange(() => {
       csaCurrentLang = csaLangKey();
+      csaBuildChecklist();
+  });
+
+  onLanguageChange(() => {
       if (csaHeaderTitleEl) csaHeaderTitleEl.textContent = ct('headerTitle');
       const helpTitleEl = csaPopup.querySelector('.cw-help-title');
       if (helpTitleEl) helpTitleEl.textContent = ct('headerTitle');

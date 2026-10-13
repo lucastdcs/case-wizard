@@ -30,6 +30,7 @@
     "test:dash-changelog": "node scripts/test-dash-changelog.mjs",
     "test:tl-decision": "node scripts/test-tl-decision.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
+    "smoke:i18n": "node scripts/smoke-i18n.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:bau-scraping": "node scripts/smoke-bau-scraping.mjs",
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",

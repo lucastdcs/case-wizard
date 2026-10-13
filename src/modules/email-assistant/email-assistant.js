@@ -18,7 +18,10 @@ import { runQuickEmail, runEmailAutomation } from "./email-automation-service.js
 import { triggerProcessingAnimation } from "../shared/command-center.js";
 import { SUBSTATUS_SHORTCODES } from '../notes/data/notes-data.js';
 import { SnippetService } from "../personal-library/snippet-service.js";
-import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import {
+    getLanguage, onLanguageChange,
+    getOutputLanguage, onOutputLanguageChange,
+} from "../shared/i18n.js";
 
 // O conteúdo dos templates de e-mail em si (EMAIL_TEMPLATES, em email-data.js)
 // continua só em PT por ora — são os corpos reais enviados a clientes
@@ -238,7 +241,8 @@ function getFilteredTemplates(templates, searchTerm) {
     // Localiza ANTES de filtrar pra busca funcionar sobre o texto que o
     // agente está vendo (buscar "programación" tem que achar o template).
     return templates
-        .map(t => getEmailTemplate(t, getLanguage()))
+        // O corpo do template vai para o anunciante: idioma do atendimento.
+        .map(t => getEmailTemplate(t, getOutputLanguage()))
         .filter(t =>
             t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             t.category.toLowerCase().includes(searchTerm.toLowerCase())

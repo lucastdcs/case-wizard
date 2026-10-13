@@ -12,7 +12,7 @@
 // era inofensiva — quase todo agente PT atende em PT. Com EN deixa de ser:
 // um agente que põe a interface em inglês por preferência passaria a gravar
 // notas e mandar e-mails em inglês para anunciantes PT/ES, sem aviso. Ver
-// docs/decisions/0014-idioma-da-interface-separado-do-idioma-da-saida.md.
+// docs/decisions/0016-idioma-da-interface-separado-do-idioma-da-saida.md.
 //
 // Ordem de resolução, idêntica para os dois:
 //   1. Override manual salvo neste navegador

@@ -4,7 +4,7 @@ import { getPageData } from '../shared/page-data.js';
 import { getAgentName } from '../shared/page-data.js';
 import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
-import { getLanguage } from '../shared/i18n.js';
+import { getLanguage, getOutputLanguage } from '../shared/i18n.js';
 import { Z } from '../shared/z-layers.js';
 
 const EAS_DICT = {
@@ -47,8 +47,16 @@ const EAS_DICT = {
         fallbackSite: "your site",
     },
 };
+// Toasts e mensagens de erro: tela do agente, idioma da interface.
 function eat(key) {
     const lang = getLanguage();
+    return EAS_DICT[lang]?.[key] ?? EAS_DICT.pt[key];
+}
+// `fallbackClient`/`fallbackSite` entram no CORPO do e-mail quando a
+// raspagem não acha o dado, então seguem o idioma do atendimento: um
+// "Customer" em e-mail português é mais visível que qualquer toast.
+function eao(key) {
+    const lang = getOutputLanguage();
     return EAS_DICT[lang]?.[key] ?? EAS_DICT.pt[key];
 }
 
@@ -532,7 +540,7 @@ export async function runEmailAutomation(cannedResponseText) {
 
                     // Substituição do ID estranho do site
                     if (html.includes('{%^79285%}')) {
-                        html = html.replace(/{%\^79285%}/g, pageData.websiteUrl || eat('fallbackSite'));
+                        html = html.replace(/{%\^79285%}/g, pageData.websiteUrl || eao('fallbackSite'));
                     }
 
                     // Aplica de volta ao editor
@@ -619,9 +627,9 @@ export async function runQuickEmail(template) {
         const dataFormatada = date.toLocaleDateString('pt-BR');
         
         let finalBody = template.body;
-        finalBody = finalBody.replace(/\[Nome do Cliente\]/g, pageData.advertiserName || eat('fallbackClient'));
-        finalBody = finalBody.replace(/\[INSERIR URL\]/g, pageData.websiteUrl || eat('fallbackSite'));
-        finalBody = finalBody.replace(/\[URL\]/g, pageData.websiteUrl || eat('fallbackSite'));
+        finalBody = finalBody.replace(/\[Nome do Cliente\]/g, pageData.advertiserName || eao('fallbackClient'));
+        finalBody = finalBody.replace(/\[INSERIR URL\]/g, pageData.websiteUrl || eao('fallbackSite'));
+        finalBody = finalBody.replace(/\[URL\]/g, pageData.websiteUrl || eao('fallbackSite'));
         finalBody = finalBody.replace(/\[Seu Nome\]/g, agentName); 
         finalBody = finalBody.replace(/\[MM\/DD\/YYYY\]/g, dataFormatada);
 

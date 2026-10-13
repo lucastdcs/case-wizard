@@ -5,6 +5,20 @@ import { enableAutoBullet } from "../components/bullet-editor.js";
 import { COLORS, RADIUS, SHADOW, EASE } from "../notes-styles.js";
 import { SoundManager } from "../../shared/sound-manager.js";
 import { confirmDialog } from "../../shared/utils.js";
+import { getLanguage } from "../../shared/i18n.js";
+
+// Duas leituras do MESMO dicionário, por knobs diferentes.
+//
+// O rótulo de um campo é, literalmente, o texto que sai impresso na nota
+// ("🎯 Task(s) solicitada(s):"), então segue o idioma do ATENDIMENTO — o
+// agente precisa ver na tela o que vai gravar no caso.
+const fieldT = (state, key) =>
+    translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
+
+// Já os controles em volta (o botão de auto-busca, o diálogo de remover um
+// campo) são da ferramenta e nunca saem no texto: seguem a INTERFACE.
+const uiT = (key) =>
+    translations[getLanguage()]?.[key] || translations["pt"]?.[key] || key;
 
 export function buildDynamicForm(subStatusKey, container, state) {
     container.innerHTML = "";
@@ -18,7 +32,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
 
         const fieldId = `field-${fieldName}`;
         const label = document.createElement("label");
-        const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
+        const t = (key) => fieldT(state, key);
         label.textContent = t(fieldName.toLowerCase()) !== fieldName.toLowerCase() ? t(fieldName.toLowerCase()) : fieldName.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) + ":";
         Object.assign(label.style, { display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", color: COLORS.textSub, marginBottom: "8px", marginTop: "24px", textTransform: "uppercase", letterSpacing: "0.5px" });
         const isRequired = requiredNow.includes(fieldName);
@@ -35,7 +49,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
 
         if (fieldName === "SPEAKEASY_ID") {
             const btnSearch = document.createElement('button');
-            btnSearch.innerHTML = t('auto_busca');
+            btnSearch.innerHTML = uiT('auto_busca');
             btnSearch.style.cssText = `font-size: 11px; font-weight: 700; color: ${COLORS.primary}; background-color: ${COLORS.primaryBg}; border: none; border-radius: ${RADIUS.pill}; padding: 6px 14px; margin-left: 10px; cursor: pointer; transition: all 0.2s ${EASE};`;
             btnSearch.onmouseenter = () => btnSearch.style.backgroundColor = "#d2e3fc";
             btnSearch.onmouseleave = () => btnSearch.style.backgroundColor = COLORS.primaryBg;
@@ -53,7 +67,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
                 e.preventDefault();
                 SoundManager.playClick();
                 const fieldLabel = labelText.textContent.replace(/:\s*$/, "").trim();
-                const confirmed = await confirmDialog(t('remover_campo_confirm').replace('{campo}', fieldLabel), { danger: true, confirmText: t('remover') });
+                const confirmed = await confirmDialog(uiT('remover_campo_confirm').replace('{campo}', fieldLabel), { danger: true, confirmText: uiT('remover') });
                 if (!confirmed) return;
                 state.removeField(fieldName);
                 buildDynamicForm(subStatusKey, container, state);
@@ -79,7 +93,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
 
     // Handle CONSENTIU_GRAVACAO specifically if it's in activeFields
     if (state.activeFields.includes("CONSENTIU_GRAVACAO")) {
-        const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
+        const t = (key) => fieldT(state, key);
         const consentLabel = document.createElement("label");
         consentLabel.textContent = t('consentiu_gravacao');
         Object.assign(consentLabel.style, { display: "block", fontSize: "13px", fontWeight: "700", color: COLORS.textSub, marginBottom: "8px", marginTop: "24px", textTransform: "uppercase", letterSpacing: "0.5px" });
@@ -106,7 +120,7 @@ export function buildDynamicForm(subStatusKey, container, state) {
         (fieldName) => !requiredNow.includes(fieldName) && !state.activeFields.includes(fieldName)
     );
     if (hiddenOptional.length > 0) {
-        const t = (key) => translations[state.currentLang]?.[key] || translations["pt"]?.[key] || key;
+        const t = (key) => fieldT(state, key);
         const addWrap = document.createElement("div");
         Object.assign(addWrap.style, { display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "24px" });
 

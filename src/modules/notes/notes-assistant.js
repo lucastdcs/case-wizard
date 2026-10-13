@@ -17,7 +17,10 @@ import { DraftService } from "./drafts/draft-service.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { enableFilledCheck, lockBodyScroll, unlockBodyScroll, markPendingField } from "../shared/dom-utils.js";
 import { getPageData } from "../shared/page-data.js";
-import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import {
+    getLanguage, onLanguageChange,
+    getOutputLanguage, onOutputLanguageChange,
+} from "../shared/i18n.js";
 import { ShortcutService, resolveScenarioId, MAX_SHORTCUTS, newShortcutId } from "../shared/shortcut-service.js";
 import {
     SUBSTATUS_TEMPLATES,
@@ -1112,8 +1115,14 @@ export function initCaseNotesAssistant() {
         };
     }
 
+    // Cromo do módulo (Fluxo, Status, Copiar, Limpar, títulos das gavetas):
+    // idioma da INTERFACE. Os rótulos dos CAMPOS vêm do mesmo dicionário mas
+    // por outro caminho — form-builder e output-generator leem
+    // notesState.currentLang, que é o idioma do atendimento — porque o rótulo
+    // do campo na tela é literalmente o que vai impresso na nota, e o agente
+    // precisa ver o que vai gravar.
     function t(key) {
-        return translations[notesState.currentLang]?.[key] || translations['pt']?.[key] || key;
+        return translations[getLanguage()]?.[key] || translations['pt']?.[key] || key;
     }
 
     function createSplitToggleButton() {
@@ -1222,19 +1231,25 @@ export function initCaseNotesAssistant() {
     actionsSection.style.display = "none";
 
     // Initialize with defaults
-    notesState.setLanguage(getLanguage());
+    // A nota é escrita PARA o anunciante, então seu idioma é o do
+    // atendimento — não o da ferramenta. Ver ADR-0016.
+    notesState.setLanguage(getOutputLanguage());
     notesState.setCaseType("bau");
 
-    // O idioma da nota acompanha o idioma global da interface (trocado em
-    // Configurações). Se houver uma nota em andamento, regenera a saída
-    // já traduzida, igual ao antigo seletor PT/ES fazia ao clicar.
-    onLanguageChange((lang) => {
+    // Troca do idioma do atendimento: muda o que vai ser GRAVADO. Regenera a
+    // saída e os rótulos dos campos, igual ao antigo seletor PT/ES fazia.
+    onOutputLanguageChange((lang) => {
         notesState.setLanguage(lang);
-        const helpDescEl = popup.querySelector('.cw-help-description');
-        if (helpDescEl) helpDescEl.textContent = HEADER_DESC[lang] || HEADER_DESC.pt;
         if (notesState.currentSubStatus) {
             onSubStatusChange(notesState.currentSubStatus);
         }
+    });
+
+    // Troca do idioma da interface: muda só o cromo à volta da nota.
+    onLanguageChange((lang) => {
+        const helpDescEl = popup.querySelector('.cw-help-description');
+        if (helpDescEl) helpDescEl.textContent = HEADER_DESC[lang] || HEADER_DESC.pt;
+        updateUIFromState(notesState);
     });
 
     // Initial Badge Check
