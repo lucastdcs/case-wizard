@@ -184,5 +184,25 @@ check('nenhum modelo publicado ficaria com placeholder inconsistente', () => {
     }
 });
 
+// --- A planilha real ainda não tem as linhas EN ---
+//
+// `seedContentModule` só semeia módulo vazio, então a Central segue servindo
+// PT/ES até alguém traduzir pela tela. Nesse estado o overlay EN embutido tem
+// de sobreviver à hidratação, senão o agente EN recebe o modelo em português
+// com a Central no ar — e nada fica vermelho.
+check('Central sem linhas EN não derruba o overlay EN embutido', () => {
+    const semEn = asServed.filter((it) => String(it.lang).toUpperCase() !== 'EN');
+    applyEmailContent(semEn);
+
+    for (const orig of originalEnView) {
+        const base = EMAIL_TEMPLATES.find((t) => t.id === orig.id);
+        if (!base) throw new Error('sumiu o modelo ' + orig.id);
+        const visao = getEmailTemplate(base, 'en');
+        if (visao.subject !== orig.subject) {
+            throw new Error(`${orig.id}: a visão EN caiu para outro idioma sem linha EN publicada`);
+        }
+    }
+});
+
 console.log('\n' + (fail ? '✗' : '✓') + ` round-trip de ${EMAIL_TEMPLATES.length} modelos (PT + ES + EN), ${fail} falhas\n`);
 process.exit(fail ? 1 : 0);

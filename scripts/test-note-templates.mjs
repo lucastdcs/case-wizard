@@ -222,6 +222,61 @@ check('nenhum cenário preenche campo que o substatus não tem', () => {
     }
 });
 
+// --- A planilha real ainda não tem as linhas EN ---
+//
+// `seedContentModule` é semeadura de PRIMEIRA VEZ: num módulo que já tem itens
+// no ar ele devolve `skipped`. Então, publicada a versão com EN, a Central
+// segue servindo só PT/ES por um tempo indeterminado — e é nesse estado que o
+// agente EN vive até alguém traduzir pela tela.
+//
+// Zerar o espelho nesse caso derrubaria o fallback embutido e o agente EN
+// leria tudo em português, sem erro nenhum.
+{
+    for (const k of Object.keys(store)) delete store[k];
+    store['cw_content_note_template'] = JSON.stringify(
+        seed.items
+            .filter((it) => it.lang !== 'EN')
+            .map((it, idx) => ({
+                id: 'itm_' + idx, key: it.key, field: it.field, lang: it.lang,
+                label: it.label, value: it.value, sortOrder: it.sortOrder ?? idx,
+            }))
+    );
+
+    const semEnBundle = await build({
+        entryPoints: [resolve(here, '../src/modules/notes/data/note-templates-service.js')],
+        bundle: true,
+        write: false,
+        format: 'cjs',
+        platform: 'node',
+        logLevel: 'silent',
+        footer: { js: 'module.exports.__en = SCENARIO_EN; module.exports.__es = SCENARIO_ES;' },
+    });
+    const semEnMod = { exports: {} };
+    // eslint-disable-next-line no-new-func
+    new Function('module', 'exports', 'require', semEnBundle.outputFiles[0].text)(semEnMod, semEnMod.exports, require);
+
+    const enAntes = Object.keys(semEnMod.exports.__en).length;
+    await semEnMod.exports.loadNoteTemplates();
+
+    check('Central sem linhas EN não derruba o EN embutido', () => {
+        const depoisEnSemCentral = Object.keys(semEnMod.exports.__en).length;
+        if (depoisEnSemCentral !== enAntes) {
+            throw new Error(
+                `o fallback EN foi de ${enAntes} para ${depoisEnSemCentral} cenários — ` +
+                'o agente EN cairia no português'
+            );
+        }
+    });
+
+    check('mas o ES publicado continua vencendo o embutido', () => {
+        // O contrário também tem de valer: idioma que a Central SERVE manda,
+        // senão uma correção publicada nunca chegaria ao agente.
+        if (!Object.keys(semEnMod.exports.__es).length) {
+            throw new Error('o espelho ES ficou vazio com linhas ES publicadas');
+        }
+    });
+}
+
 console.log(
     '\n' + (fail ? '✗' : '✓') +
     ` ${Object.keys(originais).length} cenários embutidos -> ${Object.keys(depois).length} publicados, ${fail} falhas\n`

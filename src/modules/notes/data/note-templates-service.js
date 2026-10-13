@@ -86,7 +86,13 @@ export function applyNoteTemplateContent(items) {
     for (const k of Object.keys(scenarioSnippets)) delete scenarioSnippets[k];
     Object.assign(scenarioSnippets, pt);
 
+    // Espelho que a Central não serviu NÃO é espelho vazio: é a Central não
+    // tendo nada a dizer sobre aquele idioma. Zerar nesse caso derrubaria o
+    // fallback embutido e o agente daquele idioma leria tudo em português —
+    // sem erro, como de hábito. Mesma regra que o `if (!pt.length) return
+    // false` acima já aplica à base.
     for (const [lang, alvo] of [['ES', SCENARIO_ES], ['EN', SCENARIO_EN]]) {
+        if (!Object.keys(espelhos[lang]).length) continue;
         for (const k of Object.keys(alvo)) delete alvo[k];
         Object.assign(alvo, espelhos[lang]);
     }

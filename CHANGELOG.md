@@ -47,6 +47,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **A troca de segmento do Central de Avisos assumia exatamente dois.**
   `codes.find(c => c !== preferido)` devolve sempre o mesmo vizinho, então com a
   entrada do EN o terceiro segmento ficaria inalcançável. Agora cicla.
+- **Idioma sem linhas publicadas perdia o fallback embutido.** A hidratação
+  limpava o espelho do idioma e reatribuía o que a Central servisse; com zero
+  linhas daquele idioma, limpava e não repunha. Como a planilha só passa a ter
+  linhas EN quando alguém as publicar — `seedContentModule()` é semeadura de
+  primeira vez e pula módulo já semeado —, o agente EN leria tudo em português
+  com a Central no ar. Agora espelho que a Central não serviu é tratado como
+  "nada a dizer", não como "vazio", igual à regra que a lista base já tinha.
 - **O seletor de idioma do onboarding ignorava o idioma do perfil.** O foco
   inicial usava `find(...)?.focus() ?? buttons[0].focus()`, e como `focus()`
   devolve `undefined` o fallback rodava **sempre**.

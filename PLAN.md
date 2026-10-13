@@ -398,13 +398,25 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 - [ ] **Empurrar a tag `v6.4.0`** de um checkout local (o proxy da sessão web
       recusa push de tag — `RELEASE.md` → Known fragilities):
       `git fetch origin main && git tag -a v6.4.0 origin/main -m "v6.4.0" && git push origin v6.4.0`
-- [ ] **Semear o conteúdo EN na planilha.** O código já traz o EN como fallback
-      embutido, mas a Central só passa a servi-lo depois de rodar os seeds
-      regenerados: `seedNoteTemplatesNow()`, `seedEmailsNow()`,
-      `seedCallScriptNow()` e `seedLinksNow()` no editor do Apps Script. Até lá
-      o agente EN vê o conteúdo do bundle, que está correto — o que falta é a
-      Central poder editá-lo. Mesmo padrão dos "falta rodar na planilha" abaixo:
-      passo manual, fora do caminho que dá erro.
+- [ ] **Levar o conteúdo EN para a Central — e NÃO é rodando os seeders.**
+      `seedContentModule()` é semeadura de primeira vez: num módulo que já tem
+      itens no ar ele devolve `{status:'skipped'}` e não escreve nada. Como a
+      planilha já está semeada em PT/ES, os quatro `seed*Now()` vão pular. Não
+      há caminho de force, e criar um seria escrever direto em cima de conteúdo
+      vivo (incluindo edições feitas pela tela desde a semeadura) — decisão do
+      Lucas, não minha.
+      Enquanto isso **não é um bloqueio**: o bundle traz o EN embutido e a
+      hidratação foi consertada para não derrubá-lo quando a Central não serve
+      linhas daquele idioma (travado em `test:note-templates` e `test:emails`).
+      O agente EN já funciona; o que falta é o conteúdo virar editável pelo SME.
+      Três saídas possíveis, em ordem de risco:
+      1. publicar os itens EN pela tela da Central, modelo a modelo (76 itens —
+         viável para os 8 e-mails, pesado para os 42 passos de call script);
+      2. arquivar o módulo e re-semear (perde o que foi editado pela tela desde
+         a semeadura original — só se ninguém tiver editado);
+      3. acrescentar um `seedMissingLangs_()` que insere só as linhas de idioma
+         ausente, sem tocar no que está no ar. É o certo a médio prazo e não
+         entrou neste PR por ser mudança de escrita em produção.
 - [ ] **Publicar a disponibilidade BAU do segmento EN.** `BAU_SEGMENTS` aceita
       `EN` e o editor da Central já mostra o terceiro campo, mas enquanto
       ninguém publicar datas para ele o painel do agente EN cai no primeiro

@@ -12,6 +12,49 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Semear não é sincronizar: `seedContentModule()` só escreve em módulo vazio
+
+**Why**: ao entregar o inglês eu escrevi, no PR e no `PLAN.md`, "rode
+`seedNoteTemplatesNow()`, `seedEmailsNow()`, `seedCallScriptNow()` e
+`seedLinksNow()`". Estava errado, e só apareceu porque o Lucas perguntou **qual**
+seed rodar:
+
+```js
+if (existing.length) {
+  return { status: 'skipped', reason: 'Módulo já semeado (N itens no ar).' };
+}
+```
+
+Os seeders são ferramenta de **migração**, não de publicação. Numa planilha já
+semeada os quatro devolvem `skipped` e não escrevem nada — sem erro, sem log
+vermelho, com um `status` que ninguém lê porque roda no editor do Apps Script.
+
+O agravante estava a jusante. A hidratação limpava o espelho do idioma e
+reatribuía o que veio da Central; com zero linhas EN publicadas, ela **limpava e
+não repunha**, derrubando o fallback embutido de 27 cenários para 0. Ou seja: o
+conteúdo EN existia no bundle, a Central não tinha nada a dizer sobre ele, e o
+resultado era o agente EN lendo tudo em português. Medido, não suposto.
+
+O conserto é a mesma regra que a base já aplicava (`if (!pt.length) return
+false` — "melhor manter os embutidos"): **espelho que a Central não serviu não é
+espelho vazio**.
+
+```js
+for (const [lang, alvo] of [['ES', SCENARIO_ES], ['EN', SCENARIO_EN]]) {
+    if (!Object.keys(espelhos[lang]).length) continue; // <- a linha que faltava
+    for (const k of Object.keys(alvo)) delete alvo[k];
+    Object.assign(alvo, espelhos[lang]);
+}
+```
+
+**When to apply**: sempre que uma entrega depender de "rodar o seeder". Antes de
+escrever isso num PR ou num runbook, abra `seedContentModule()` e confirme em
+que estado ele realmente escreve. E ao acrescentar um idioma/variante a um
+módulo já no ar, teste a hidratação **no estado real da planilha** — a de hoje,
+sem as linhas novas — e não só no estado ideal pós-semeadura. O cenário "a
+Central está no ar mas não conhece esta variante" é o que vai rodar em produção
+por dias ou semanas, e era o único que eu não tinha testado.
+
 ## Idioma novo: roteie por idioma EXPLÍCITO, nunca por "senão, é a base"
 
 **Why**: a entrada do inglês quebrou duas hidratações ao mesmo tempo, as duas

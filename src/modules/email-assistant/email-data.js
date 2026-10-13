@@ -328,7 +328,11 @@ export function applyEmailContent(items) {
     EMAIL_TEMPLATES.length = 0;
     EMAIL_TEMPLATES.push(...pt);
 
+    // Overlay que a Central não serviu não é overlay vazio — ver a mesma
+    // regra em note-templates-service.js. Zerar aqui mandaria o agente EN
+    // receber o modelo em português com a Central no ar e sem linha EN.
     for (const [lang, alvo] of [['ES', EMAIL_TEMPLATES_ES], ['EN', EMAIL_TEMPLATES_EN]]) {
+        if (!Object.keys(overlays[lang]).length) continue;
         for (const key of Object.keys(alvo)) delete alvo[key];
         Object.assign(alvo, overlays[lang]);
     }
