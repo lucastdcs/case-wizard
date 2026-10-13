@@ -9,6 +9,7 @@
     "portfolio": "python3 generate-portfolio.py",
     "wiki:build": "node scripts/build-wiki.mjs",
     "test:content": "node scripts/test-content-api.js",
+    "test:i18n": "node scripts/test-i18n.mjs",
     "test:call-script": "node scripts/test-call-script-roundtrip.mjs",
     "seed:links": "node scripts/generate-links-seed.mjs",
     "seed:call-script": "node scripts/generate-call-script-seed.mjs",
