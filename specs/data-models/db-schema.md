@@ -21,7 +21,7 @@
 | `8` | Adv_Email | `advEmail` | Prioriza input editado, fallback pro scraping |
 | `9` | Adv_Site | `website` | **CRÍTICO:** Unificar chave (não usar `site`) |
 | `10` | Fuso_Horario | `timezone` | |
-| `11` | Idioma | `language` | Deve vir de `profile.defaultLanguage` (`PT-BR` \| `ES` \| `EN`), **não** do "Business language" do anunciante que a página do CRM exibe. O formulário mostra um `select` já na opção do segmento de quem atende, e permite trocar — existe caso que foge da regra. |
+| `11` | Idioma | `language` | Deve vir do **idioma do atendimento** (`getOutputLanguage()`, semeado por `profile.defaultLanguage`: `PT-BR` \| `ES` \| `EN`), **não** do idioma da interface nem do "Business language" do anunciante que a página do CRM exibe. O formulário mostra um `select` já na opção certa, e permite trocar — existe caso que foge da regra. |
 | `12` | AM_Nome | `amName` | **Sempre o e-mail do AM**, nunca o nome de exibição do CRM — apesar do header histórico dizer "Nome". O nome vinha de `<internal-user-info>`, que é texto traduzível e não diz qual LDAP é a pessoa: a liderança lia "Bianca Alves" no TL Dashboard e não tinha como acionar ninguém. O campo do formulário valida formato de e-mail. Linhas gravadas antes desta regra continuam com nome e não são reescritas. |
 | `13` | Sales_Program | `salesProgram` | |
 | `14` | Motivo_Abertura | `reason` | Campo principal de categorização |
@@ -119,13 +119,16 @@ Ver `docs/decisions/0002-atalhos-ctrl-k-por-agente.md`.
 - **Papel no sistema:** é a fonte de autorização, não um cadastro informativo.
   `getUserProfileByLdap()` a lê para derivar **quem abre o TL Dashboard** e **em
   que idioma o app abre**. Tratar como conteúdo comum é o erro a evitar.
+  O idioma derivado daqui semeia **os dois** knobs do app — interface e
+  atendimento (ADR-0016) — mas só enquanto a pessoa não tiver trocado nenhum
+  deles à mão: escolha manual salva no navegador vence o perfil.
 
 | Índice | Nome da Coluna (Header) | Chave do Payload | Notas |
 | :--- | :--- | :--- | :--- |
 | `0` | LDAP | `ldap` | Chave da linha. Só o usuário, sem `@`, minúsculo, sem espaço — validado por `PEOPLE_LDAP_RE`. |
 | `1` | Role | `role` | Cargo exibido (texto livre). Não tem efeito de permissão. |
 | `2` | Role_Category | `roleCategory` | **Decide a permissão.** Ver regra de `isOverhead` abaixo. |
-| `3` | Segment | `segment` | O "fluxo" da pessoa. **Decide o idioma.** Ver regra abaixo. |
+| `3` | Segment | `segment` | O "fluxo" da pessoa (`pt` \| `es` \| `en`). **Decide o idioma inicial** da interface e do atendimento, e o segmento de disponibilidade BAU que ela enxerga. Ver regra abaixo. |
 
 A leitura é **por índice** (`data[i][0..3]`), no `Código.gs` e no `PeopleAPI.gs`.
 O cabeçalho existe para quem abre a planilha; não reordene as colunas.

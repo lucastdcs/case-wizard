@@ -12,7 +12,7 @@
 // agente vê exatamente o que via antes.
 
 import { DataService } from "../../shared/data-service.js";
-import { scenarioSnippets, SCENARIO_ES } from "./notes-data.js";
+import { scenarioSnippets, SCENARIO_ES, SCENARIO_EN } from "./notes-data.js";
 
 // Um id estável por modelo, derivado de substatus + nome. Precisa ser estável
 // porque o chip usa `data-id` e o openWithPreset() procura o chip por ele; e
@@ -43,7 +43,7 @@ export function applyNoteTemplateContent(items) {
     if (!Array.isArray(items) || !items.length) return false;
 
     const pt = {};
-    const es = {};
+    const espelhos = { ES: {}, EN: {} };
 
     const ordenados = items.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
@@ -55,12 +55,20 @@ export function applyNoteTemplateContent(items) {
 
         const id = idDoModelo(item);
 
-        if (String(item.lang).toUpperCase() === 'ES') {
-            // SCENARIO_ES sobrescreve só os campos de texto; o metadado
+        // Roteamento por idioma EXPLÍCITO. Antes era "se é ES, espelho; senão,
+        // base" — e a linha EN, que tem o MESMO id da PT, caía no senão e
+        // sobrescrevia o cenário português pelo inglês, em silêncio. O agente
+        // PT abriria o chip e receberia o texto em inglês.
+        const lang = String(item.lang || '').toUpperCase();
+        const espelho = espelhos[lang];
+
+        if (espelho) {
+            // O espelho sobrescreve só os campos de texto; o metadado
             // (type/substatus) continua vindo da definição base, como já era.
-            es[id] = { ...parsed.fields };
+            espelho[id] = { ...parsed.fields };
             continue;
         }
+        if (lang && lang !== 'PT' && lang !== 'ALL') continue;
 
         pt[id] = {
             type: (item.field || 'all').toLowerCase(),
@@ -78,8 +86,16 @@ export function applyNoteTemplateContent(items) {
     for (const k of Object.keys(scenarioSnippets)) delete scenarioSnippets[k];
     Object.assign(scenarioSnippets, pt);
 
-    for (const k of Object.keys(SCENARIO_ES)) delete SCENARIO_ES[k];
-    Object.assign(SCENARIO_ES, es);
+    // Espelho que a Central não serviu NÃO é espelho vazio: é a Central não
+    // tendo nada a dizer sobre aquele idioma. Zerar nesse caso derrubaria o
+    // fallback embutido e o agente daquele idioma leria tudo em português —
+    // sem erro, como de hábito. Mesma regra que o `if (!pt.length) return
+    // false` acima já aplica à base.
+    for (const [lang, alvo] of [['ES', SCENARIO_ES], ['EN', SCENARIO_EN]]) {
+        if (!Object.keys(espelhos[lang]).length) continue;
+        for (const k of Object.keys(alvo)) delete alvo[k];
+        Object.assign(alvo, espelhos[lang]);
+    }
 
     return true;
 }

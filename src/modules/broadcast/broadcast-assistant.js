@@ -104,6 +104,39 @@ const BC_DICT = {
         updated: "Actualizado",
         offline: "Sin conexión — mostrando lo que ya estaba aquí",
     },
+    en: {
+        headerTitle: "Broadcast Central",
+        headerDesc: "Official communication from the operation.",
+        searchPlaceholder: "Search broadcasts\u2026",
+        clearSearch: "Clear the search",
+        markRead: (t) => `Mark \u201c${t}\u201d as read`,
+        markReadShort: "Mark as read",
+        publishedBy: (a) => `Published by ${a}`,
+        system: "System",
+        bauAvailability: "BAU Availability",
+        attention: "caution",
+        full: "full",
+        noDates: "no dates published",
+        asideLabel: "Operation status",
+        filtersTitle: "Filter by type",
+        filterAll: "All",
+        readTitle: "Read",
+        readCount: (n) => n === 1 ? "1 read" : `${n} read`,
+        markAllRead: "Mark all as read",
+        updatedAgo: (q) => `Updated ${q}`,
+        swapTo: (seg) => `View ${seg} availability`,
+        justNow: "just now",
+        minutesAgo: (n) => `${n} min ago`,
+        hoursAgo: (n) => `${n} h ago`,
+        yesterday: "yesterday",
+        nothingFound: "Nothing found.",
+        allRead: "All read!",
+        history: (n) => `History (${n})`,
+        typeLabel: { info: "Info", critical: "Alert", success: "Success" },
+        syncing: "Syncing\u2026",
+        updated: "Updated",
+        offline: "No connection \u2014 showing what was already here",
+    },
 };
 
 function bt(key) {
@@ -128,6 +161,10 @@ const SEGMENTS = {
     ES: {
         label: "ES",
         flag: `<svg class="cw-bc-bau-flag" viewBox="0 0 21 15" aria-hidden="true"><rect width="21" height="15" fill="#AA151B"/><rect y="3.75" width="21" height="7.5" fill="#F1BF00"/></svg>`
+    },
+    EN: {
+        label: "EN",
+        flag: `<svg class="cw-bc-bau-flag" viewBox="0 0 21 15" aria-hidden="true"><rect width="21" height="15" fill="#012169"/><path d="M0 0l21 15M21 0L0 15" stroke="#FFF" stroke-width="3"/><path d="M0 0l21 15M21 0L0 15" stroke="#C8102E" stroke-width="2"/><path d="M10.5 0v15M0 7.5h21" stroke="#FFF" stroke-width="5"/><path d="M10.5 0v15M0 7.5h21" stroke="#C8102E" stroke-width="3"/></svg>`
     }
 };
 
@@ -406,7 +443,7 @@ function injectStyles() {
 
 // Formata no idioma da interface, e não sempre em pt-BR como antes: quem
 // atende ES via a interface em espanhol e as datas em português.
-const DATE_LOCALE = { pt: 'pt-BR', es: 'es-ES' };
+const DATE_LOCALE = { pt: 'pt-BR', es: 'es-ES', en: 'en-US' };
 
 function formatFriendlyDate(dateInput) {
     if (!dateInput) return "";
@@ -872,9 +909,11 @@ export function initBroadcastAssistant() {
           datas.full ? linha('full', datas.full) : ''
       ].join('');
 
-      // O botão de troca só existe quando há de fato outro segmento para ver.
-      const outro = codes.find(c => c !== preferido);
-      const swapHTML = outro
+      // O botão de troca CICLA pelos segmentos publicados, em vez de alternar
+      // entre dois: com a entrada do EN, `find(c => c !== preferido)` passaria
+      // a devolver sempre o mesmo vizinho e o terceiro ficaria inalcançável.
+      const outro = codes[(codes.indexOf(preferido) + 1) % codes.length];
+      const swapHTML = (outro && outro !== preferido)
           ? `<button class="cw-bc-bau-swap" type="button"
                      aria-label="${bt('swapTo')(SEGMENTS[outro].label)}"
                      title="${bt('swapTo')(SEGMENTS[outro].label)}">${SWAP_ICON}</button>`

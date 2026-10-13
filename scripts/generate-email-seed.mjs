@@ -14,7 +14,7 @@
 //
 // Uso: npm run seed:emails
 //
-// --- Como o par PT/ES é modelado ---
+// --- Como os idiomas são modelados ---
 // Hoje há uma lista PT e um overlay EMAIL_TEMPLATES_ES chaveado por id, onde as
 // CHAVES dos placeholders continuam em português ("[Nome do Cliente]") e só os
 // rótulos mudam. Isso é proposital: a chave é o que o corpo do e-mail contém.
@@ -70,6 +70,9 @@ const EMAIL_TEMPLATES = evalLiteral(
 const EMAIL_TEMPLATES_ES = evalLiteral(
     extractLiteral('const EMAIL_TEMPLATES_ES = {', '{', '}')
 );
+const EMAIL_TEMPLATES_EN = evalLiteral(
+    extractLiteral('const EMAIL_TEMPLATES_EN = {', '{', '}')
+);
 
 const TOKEN = /\[[^\][]{2,60}\]/g;
 
@@ -90,13 +93,19 @@ for (const tpl of EMAIL_TEMPLATES) {
     if (semDeclarar.length) problemas.push(`PT[${tpl.id}] no corpo mas não declarado: ${semDeclarar.join(', ')}`);
 }
 
-for (const [id, es] of Object.entries(EMAIL_TEMPLATES_ES)) {
-    const pt = EMAIL_TEMPLATES.find(t => t.id === id);
-    if (!pt) { problemas.push(`ES[${id}] não tem correspondente em PT`); continue; }
+// Mesma checagem para cada overlay: um placeholder declarado em PT que
+// sumiu do corpo traduzido quebra o preenchimento em silêncio.
+const OVERLAYS = { ES: EMAIL_TEMPLATES_ES, EN: EMAIL_TEMPLATES_EN };
 
-    const corpo = `${es.subject || ''} ${es.template || ''}`;
-    const faltando = (pt.placeholders || []).map(p => p.key).filter(k => !corpo.includes(k));
-    if (faltando.length) problemas.push(`ES[${id}] placeholder ausente no corpo: ${faltando.join(', ')}`);
+for (const [lang, overlay] of Object.entries(OVERLAYS)) {
+    for (const [id, tr] of Object.entries(overlay)) {
+        const pt = EMAIL_TEMPLATES.find(t => t.id === id);
+        if (!pt) { problemas.push(`${lang}[${id}] não tem correspondente em PT`); continue; }
+
+        const corpo = `${tr.subject || ''} ${tr.template || ''}`;
+        const faltando = (pt.placeholders || []).map(p => p.key).filter(k => !corpo.includes(k));
+        if (faltando.length) problemas.push(`${lang}[${id}] placeholder ausente no corpo: ${faltando.join(', ')}`);
+    }
 }
 
 if (problemas.length) {
@@ -126,23 +135,25 @@ for (const tpl of EMAIL_TEMPLATES) {
         sortOrder: order++,
     });
 
-    const es = EMAIL_TEMPLATES_ES[tpl.id];
-    if (!es) continue;
+    for (const [lang, overlay] of Object.entries(OVERLAYS)) {
+        const tr = overlay[tpl.id];
+        if (!tr) continue;
 
-    items.push({
-        key: tpl.id,
-        field: es.category || tpl.category || '',
-        lang: 'ES',
-        label: es.name || tpl.name || tpl.id,
-        value: JSON.stringify({
-            subject: es.subject || '',
-            template: es.template || '',
-            // Em ES só os RÓTULOS mudam; as chaves seguem as de PT, porque são
-            // elas que aparecem no corpo do e-mail.
-            labels: es.labels || {},
-        }),
-        sortOrder: order++,
-    });
+        items.push({
+            key: tpl.id,
+            field: tr.category || tpl.category || '',
+            lang,
+            label: tr.name || tpl.name || tpl.id,
+            value: JSON.stringify({
+                subject: tr.subject || '',
+                template: tr.template || '',
+                // Nos overlays só os RÓTULOS mudam; as chaves seguem as de PT,
+                // porque são elas que aparecem no corpo do e-mail.
+                labels: tr.labels || {},
+            }),
+            sortOrder: order++,
+        });
+    }
 }
 
 const payload = { module: 'email_template', items };
@@ -176,8 +187,9 @@ writeFileSync(resolve(here, '../gas-backend/ContentSeed_Emails.js'), gasFile);
 
 const pt = items.filter(i => i.lang === 'PT').length;
 const es = items.filter(i => i.lang === 'ES').length;
+const en = items.filter(i => i.lang === 'EN').length;
 
 process.stdout.write(
-    `${items.length} itens (${pt} PT + ${es} ES) — placeholders conferidos, nenhum inconsistente\n` +
+    `${items.length} itens (${pt} PT + ${es} ES + ${en} EN) — placeholders conferidos, nenhum inconsistente\n` +
     'Gerados: gas-backend/seeds/email-seed.json e gas-backend/ContentSeed_Emails.js\n'
 );

@@ -211,7 +211,8 @@
                 if (v && v.url) {
                     return 'Nome: ' + v.name + '\nURL: ' + v.url +
                         '\nDescrição (PT): ' + (v.desc || '—') +
-                        '\nDescrição (ES): ' + (v.desc_es || '—');
+                        '\nDescrição (ES): ' + (v.desc_es || '—') +
+                        '\nDescrição (EN): ' + (v.desc_en || '—');
                 }
                 // Modelo de e-mail: o revisor compara ASSUNTO e CORPO, não um
                 // objeto JSON. Sem isto o diff marcava aspas e chaves como se

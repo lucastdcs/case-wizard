@@ -8,7 +8,76 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.5.0] - 2026-10-13
+
+### Added
+- **Inglês em todo o produto, como terceiro idioma.** O `SUPPORTED_LANGS` já
+  previa a entrada num comentário, e `CONTENT_LANGS`, `profile.defaultLanguage`
+  e a coluna `Idioma` já aceitavam `EN` — faltava o dicionário e a operação.
+  Agora: os ~21 dicionários de interface, os 26 cenários rápidos, os 8 modelos
+  de e-mail, os 42 passos de call script (`EN BAU` / `EN LT`), os rótulos de
+  evidência, as descrições dos 60 links, a tela do TL e o e-mail automático.
+  `BAU_SEGMENTS` ganha `EN`, então a disponibilidade BAU passa a ter a terceira
+  linha e o aviso segmentado chega a quem atende em inglês.
+- **O idioma da interface deixa de arrastar o idioma do caso.** São dois knobs
+  independentes: um agente pode pôr a ferramenta em inglês por preferência e
+  continuar escrevendo case notes e e-mails em português. Com PT/ES a
+  coincidência era inofensiva; com EN, o primeiro idioma que alguém escolhe por
+  conforto e não por segmento, ela viraria nota em inglês em caso PT/ES sem
+  nenhum aviso. Ver `docs/decisions/0016-idioma-da-interface-separado-do-idioma-da-saida.md`.
+  O card de idioma em Configurações agora tem as duas linhas.
+- **O primeiro boot pergunta o idioma.** Antes ele vinha só do segmento da
+  planilha People e nunca era confirmado: quem não se encaixava só descobria o
+  seletor se fosse procurar em Configurações. O idioma do perfil chega
+  pré-selecionado, então confirmar é um Enter.
+- **O SME pode traduzir as evidências para EN na Central.** O editor de tasks
+  ganha uma coluna por idioma, com cobertura contada separadamente
+  ("Implementação: 12 (ES ok, EN 5/12)") — somar os dois esconderia o que falta.
+  A prévia "como o agente vê" aceita EN e diz qual linha caiu no texto base.
+- **`seedMissingLangsNow()`** — leva um idioma novo para a planilha sem tocar
+  no que já está no ar. `seedContentModule()` é migração de primeira vez e pula
+  módulo já semeado, então até aqui acrescentar um idioma a um módulo em
+  produção não tinha caminho nenhum além de publicar item a item pela Central.
+  A unidade é o idioma inteiro, não a linha: em `note_template` e `call_script`
+  várias linhas dividem `(key, field, lang)`, então não existe identidade por
+  linha para casar "esta falta" — idioma com qualquer linha no ar é pulado,
+  porque ali alguém já está cuidando dele pela tela. Módulos que guardam a
+  tradução dentro do valor (`links`) são relatados como pulados, com motivo, em
+  vez de dar um no-op silencioso.
+- **Seletor de idioma na barra do TL Dashboard.** O idioma da tela vinha só do
+  segmento na planilha People, sem como trocar. Agora há PT/ES/EN na barra, com
+  a mesma precedência do bundle: escolha manual salva vence o perfil. A troca
+  re-renderiza os casos, porque metade da tela é montada em JS e não passa pelo
+  laço de `data-i18n`.
+- **As notas de versão dos dois modais passam a ter os três idiomas.** Eram
+  PT-only: um agente com o app em espanhol lia botão traduzido e slide em
+  português, e o mesmo valia para o TL. `test:dash-changelog` agora reprova nota
+  publicada sem as três línguas.
+- `npm run test:i18n` (paridade dos dicionários nas três línguas) e
+  `npm run smoke:i18n` (qual knob cada lugar lê, no navegador real).
+
 ### Fixed
+- **Linha em idioma novo contaminava o conteúdo base.** Duas hidratações
+  roteavam por "se é ES, tradução; **senão**, base". Como a linha EN tem o mesmo
+  `key` da PT, ela caía no senão: em `note-templates-service` **sobrescrevia o
+  cenário português pelo inglês** (o agente PT abriria o chip e leria inglês), e
+  em `email-data` entrava na lista base, duplicando os 8 modelos no assistente —
+  com as cópias sem `placeholders`, porque uma tradução só carrega rótulos.
+  Nenhum dos dois dava erro. Agora o roteamento é por idioma explícito e idioma
+  desconhecido é ignorado em vez de virar conteúdo base.
+- **A troca de segmento do Central de Avisos assumia exatamente dois.**
+  `codes.find(c => c !== preferido)` devolve sempre o mesmo vizinho, então com a
+  entrada do EN o terceiro segmento ficaria inalcançável. Agora cicla.
+- **Idioma sem linhas publicadas perdia o fallback embutido.** A hidratação
+  limpava o espelho do idioma e reatribuía o que a Central servisse; com zero
+  linhas daquele idioma, limpava e não repunha. Como a planilha só passa a ter
+  linhas EN quando alguém as publicar — `seedContentModule()` é semeadura de
+  primeira vez e pula módulo já semeado —, o agente EN leria tudo em português
+  com a Central no ar. Agora espelho que a Central não serviu é tratado como
+  "nada a dizer", não como "vazio", igual à regra que a lista base já tinha.
+- **O seletor de idioma do onboarding ignorava o idioma do perfil.** O foco
+  inicial usava `find(...)?.focus() ?? buttons[0].focus()`, e como `focus()`
+  devolve `undefined` o fallback rodava **sempre**.
 - **A abertura do painel lateral do BAU tremia.** A coluna passava de 454,9px
   para 504,3px — **10,9% de sobra**, contra os ≤3% que a regra de movimento
   previa — e, por ser propriedade de **layout**, o texto refluía na largura
@@ -1001,7 +1070,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.4.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.5.0...HEAD
+[6.5.0]: https://github.com/lucastdcs/case-wizard/compare/v6.4.0...v6.5.0
 [6.4.0]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...v6.4.0
 [6.3.3]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...v6.3.3
 [6.3.2]: https://github.com/lucastdcs/case-wizard/compare/v6.3.1...v6.3.2

@@ -88,7 +88,7 @@ const svcBundle = await build({
     format: 'cjs',
     platform: 'node',
     logLevel: 'silent',
-    footer: { js: 'module.exports.__scenarios = scenarioSnippets; module.exports.__es = SCENARIO_ES;' },
+    footer: { js: 'module.exports.__scenarios = scenarioSnippets; module.exports.__es = SCENARIO_ES; module.exports.__en = SCENARIO_EN;' },
 });
 const svcMod = { exports: {} };
 // eslint-disable-next-line no-new-func
@@ -97,6 +97,7 @@ await svcMod.exports.loadNoteTemplates();
 
 const depois = svcMod.exports.__scenarios;
 const depoisEs = svcMod.exports.__es;
+const depoisEn = svcMod.exports.__en;
 
 let fail = 0;
 function check(name, fn) {
@@ -153,13 +154,37 @@ check('cada cenário tem sua tradução em ES', () => {
     }
 });
 
-check('a tradução ES não muda o substatus nem o tipo', () => {
-    // SCENARIO_ES sobrescreve só texto; se vazasse metadado, o cenário
+check('cada cenário tem sua tradução em EN', () => {
+    const semEn = Object.keys(depois).filter((id) => !depoisEn[id]);
+    if (semEn.length) {
+        throw new Error(`${semEn.length} cenários sem EN: ${semEn.slice(0, 3).join(', ')}`);
+    }
+});
+
+check('nenhuma tradução muda o substatus nem o tipo', () => {
+    // Os espelhos sobrescrevem só texto; se vazasse metadado, o cenário
     // apareceria no lugar errado quando o agente trocasse o idioma.
-    for (const [id, es] of Object.entries(depoisEs)) {
-        if (es.substatus !== undefined) throw new Error(`${id}: ES carregou substatus`);
-        if (es.type !== undefined) throw new Error(`${id}: ES carregou type`);
-        void depois[id];
+    for (const [lang, espelho] of [['ES', depoisEs], ['EN', depoisEn]]) {
+        for (const [id, tr] of Object.entries(espelho)) {
+            if (tr.substatus !== undefined) throw new Error(`${id}: ${lang} carregou substatus`);
+            if (tr.type !== undefined) throw new Error(`${id}: ${lang} carregou type`);
+            void depois[id];
+        }
+    }
+});
+
+check('a linha EN não sobrescreve o cenário em português', () => {
+    // A linha EN tem o MESMO `key` da PT, então um roteamento por "se é ES,
+    // espelho; senão, base" a empurrava para a base e trocava o texto do
+    // agente PT por inglês, sem erro nenhum. Compara contra o seed PT.
+    for (const item of seed.items) {
+        if (item.lang !== 'PT') continue;
+        const esperado = JSON.parse(item.value).fields;
+        const alvo = Object.values(depois).find(
+            (sc) => sc.substatus[0] === item.key &&
+                Object.entries(esperado).every(([k, v]) => sc[k] === v)
+        );
+        if (!alvo) throw new Error(`cenário "${item.label}" (${item.key}) não chegou em PT`);
     }
 });
 
@@ -196,6 +221,61 @@ check('nenhum cenário preenche campo que o substatus não tem', () => {
         if (fora.length) throw new Error(`${id}: campos fora do template: ${fora.join(', ')}`);
     }
 });
+
+// --- A planilha real ainda não tem as linhas EN ---
+//
+// `seedContentModule` é semeadura de PRIMEIRA VEZ: num módulo que já tem itens
+// no ar ele devolve `skipped`. Então, publicada a versão com EN, a Central
+// segue servindo só PT/ES por um tempo indeterminado — e é nesse estado que o
+// agente EN vive até alguém traduzir pela tela.
+//
+// Zerar o espelho nesse caso derrubaria o fallback embutido e o agente EN
+// leria tudo em português, sem erro nenhum.
+{
+    for (const k of Object.keys(store)) delete store[k];
+    store['cw_content_note_template'] = JSON.stringify(
+        seed.items
+            .filter((it) => it.lang !== 'EN')
+            .map((it, idx) => ({
+                id: 'itm_' + idx, key: it.key, field: it.field, lang: it.lang,
+                label: it.label, value: it.value, sortOrder: it.sortOrder ?? idx,
+            }))
+    );
+
+    const semEnBundle = await build({
+        entryPoints: [resolve(here, '../src/modules/notes/data/note-templates-service.js')],
+        bundle: true,
+        write: false,
+        format: 'cjs',
+        platform: 'node',
+        logLevel: 'silent',
+        footer: { js: 'module.exports.__en = SCENARIO_EN; module.exports.__es = SCENARIO_ES;' },
+    });
+    const semEnMod = { exports: {} };
+    // eslint-disable-next-line no-new-func
+    new Function('module', 'exports', 'require', semEnBundle.outputFiles[0].text)(semEnMod, semEnMod.exports, require);
+
+    const enAntes = Object.keys(semEnMod.exports.__en).length;
+    await semEnMod.exports.loadNoteTemplates();
+
+    check('Central sem linhas EN não derruba o EN embutido', () => {
+        const depoisEnSemCentral = Object.keys(semEnMod.exports.__en).length;
+        if (depoisEnSemCentral !== enAntes) {
+            throw new Error(
+                `o fallback EN foi de ${enAntes} para ${depoisEnSemCentral} cenários — ` +
+                'o agente EN cairia no português'
+            );
+        }
+    });
+
+    check('mas o ES publicado continua vencendo o embutido', () => {
+        // O contrário também tem de valer: idioma que a Central SERVE manda,
+        // senão uma correção publicada nunca chegaria ao agente.
+        if (!Object.keys(semEnMod.exports.__es).length) {
+            throw new Error('o espelho ES ficou vazio com linhas ES publicadas');
+        }
+    });
+}
 
 console.log(
     '\n' + (fail ? '✗' : '✓') +

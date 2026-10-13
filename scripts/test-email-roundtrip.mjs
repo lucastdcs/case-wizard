@@ -49,6 +49,7 @@ const { EMAIL_TEMPLATES, applyEmailContent, getEmailTemplate } = mod.exports;
 // entrega hoje (é ela que o agente vê, não o overlay cru).
 const originalPt = JSON.parse(JSON.stringify(EMAIL_TEMPLATES));
 const originalEsView = originalPt.map(t => JSON.parse(JSON.stringify(getEmailTemplate(t, 'es'))));
+const originalEnView = originalPt.map(t => JSON.parse(JSON.stringify(getEmailTemplate(t, 'en'))));
 
 const seed = JSON.parse(readFileSync(resolve(here, '../gas-backend/seeds/email-seed.json'), 'utf8'));
 
@@ -120,36 +121,55 @@ check('placeholders preservam chave, rótulo, tipo e preenchimento automático',
     }
 });
 
-check('a visão em espanhol continua idêntica', () => {
-    for (const orig of originalEsView) {
-        const base = EMAIL_TEMPLATES.find(t => t.id === orig.id);
-        if (!base) throw new Error('sumiu o modelo ' + orig.id);
-        const novo = getEmailTemplate(base, 'es');
+for (const [lang, originalView] of [['es', originalEsView], ['en', originalEnView]]) {
+    const LANG = lang.toUpperCase();
 
-        for (const prop of ['name', 'category', 'subject', 'template']) {
-            if (novo[prop] !== orig[prop]) {
-                throw new Error(`${orig.id}.${prop} divergiu em ES`);
+    check(`a visão em ${LANG} continua idêntica`, () => {
+        for (const orig of originalView) {
+            const base = EMAIL_TEMPLATES.find(t => t.id === orig.id);
+            if (!base) throw new Error('sumiu o modelo ' + orig.id);
+            const novo = getEmailTemplate(base, lang);
+
+            for (const prop of ['name', 'category', 'subject', 'template']) {
+                if (novo[prop] !== orig[prop]) {
+                    throw new Error(`${orig.id}.${prop} divergiu em ${LANG}`);
+                }
+            }
+            const a = orig.placeholders || [];
+            const b = novo.placeholders || [];
+            for (let i = 0; i < a.length; i++) {
+                if (a[i].key !== b[i].key) throw new Error(`${orig.id}: chave mudou em ${LANG} (${a[i].key} -> ${b[i].key})`);
+                if (a[i].label !== b[i].label) throw new Error(`${orig.id}: rótulo ${LANG} divergiu em ${a[i].key}`);
             }
         }
-        const a = orig.placeholders || [];
-        const b = novo.placeholders || [];
-        for (let i = 0; i < a.length; i++) {
-            if (a[i].key !== b[i].key) throw new Error(`${orig.id}: chave mudou em ES (${a[i].key} -> ${b[i].key})`);
-            if (a[i].label !== b[i].label) throw new Error(`${orig.id}: rótulo ES divergiu em ${a[i].key}`);
-        }
-    }
-});
+    });
 
-check('as chaves dos placeholders continuam em português no corpo em ES', () => {
-    // Traduzir a chave quebraria o preenchimento: é ela que o corpo contém e
-    // que o assistente procura para substituir.
-    for (const base of EMAIL_TEMPLATES) {
-        const es = getEmailTemplate(base, 'es');
-        for (const ph of base.placeholders || []) {
-            const corpo = (es.subject || '') + ' ' + (es.template || '');
-            if (!corpo.includes(ph.key)) {
-                throw new Error(`${base.id}: chave ${ph.key} não está no corpo em ES`);
+    check(`as chaves dos placeholders continuam em português no corpo em ${LANG}`, () => {
+        // Traduzir a chave quebraria o preenchimento: é ela que o corpo contém
+        // e que o assistente procura para substituir.
+        for (const base of EMAIL_TEMPLATES) {
+            const tr = getEmailTemplate(base, lang);
+            for (const ph of base.placeholders || []) {
+                const corpo = (tr.subject || '') + ' ' + (tr.template || '');
+                if (!corpo.includes(ph.key)) {
+                    throw new Error(`${base.id}: chave ${ph.key} não está no corpo em ${LANG}`);
+                }
             }
+        }
+    });
+}
+
+check('a linha EN não vira um modelo base duplicado', () => {
+    // As três linhas de um template compartilham o `key`. Um roteamento por
+    // "se é ES, overlay; senão, base" empurrava a EN para a lista base: os
+    // modelos apareciam duplicados no assistente e a cópia vinha sem
+    // placeholders, porque um overlay só carrega rótulos.
+    const ids = EMAIL_TEMPLATES.map(t => t.id);
+    const repetidos = ids.filter((id, i) => ids.indexOf(id) !== i);
+    if (repetidos.length) throw new Error('modelo duplicado na base: ' + [...new Set(repetidos)].join(', '));
+    for (const t of EMAIL_TEMPLATES) {
+        if (!(t.placeholders || []).length && /\[[^\][]{2,60}\]/.test(t.template || '')) {
+            throw new Error(`${t.id}: modelo base sem placeholders declarados`);
         }
     }
 });
@@ -164,5 +184,25 @@ check('nenhum modelo publicado ficaria com placeholder inconsistente', () => {
     }
 });
 
-console.log('\n' + (fail ? '✗' : '✓') + ` round-trip de ${EMAIL_TEMPLATES.length} modelos (PT + ES), ${fail} falhas\n`);
+// --- A planilha real ainda não tem as linhas EN ---
+//
+// `seedContentModule` só semeia módulo vazio, então a Central segue servindo
+// PT/ES até alguém traduzir pela tela. Nesse estado o overlay EN embutido tem
+// de sobreviver à hidratação, senão o agente EN recebe o modelo em português
+// com a Central no ar — e nada fica vermelho.
+check('Central sem linhas EN não derruba o overlay EN embutido', () => {
+    const semEn = asServed.filter((it) => String(it.lang).toUpperCase() !== 'EN');
+    applyEmailContent(semEn);
+
+    for (const orig of originalEnView) {
+        const base = EMAIL_TEMPLATES.find((t) => t.id === orig.id);
+        if (!base) throw new Error('sumiu o modelo ' + orig.id);
+        const visao = getEmailTemplate(base, 'en');
+        if (visao.subject !== orig.subject) {
+            throw new Error(`${orig.id}: a visão EN caiu para outro idioma sem linha EN publicada`);
+        }
+    }
+});
+
+console.log('\n' + (fail ? '✗' : '✓') + ` round-trip de ${EMAIL_TEMPLATES.length} modelos (PT + ES + EN), ${fail} falhas\n`);
 process.exit(fail ? 1 : 0);

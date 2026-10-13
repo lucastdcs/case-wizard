@@ -180,21 +180,88 @@ const EMAIL_TEMPLATES_ES = {
   }
 };
 
-// Template de e-mail no idioma ativo. Sem entrada em ES, devolve o PT
-// original intacto.
+
+// Mesmo overlay do EMAIL_TEMPLATES_ES acima, em inglês. Os tokens entre
+// colchetes ([Nome do Cliente], [INSERIR URL], [MM/DD/YYYY]...) NUNCA são
+// traduzidos: são a chave que liga o corpo ao campo preenchido pelo agente
+// e às substituições automáticas do email-automation-service. Traduzi-los
+// quebraria o preenchimento sem erro visível — o ADR-0001 já rejeitou isso
+// explicitamente para o espanhol.
+const EMAIL_TEMPLATES_EN = {
+  "attempt_10min": {
+    name: "Contact Attempt (Before the 10min)",
+    category: "Attempts & Scheduling",
+    subject: "Implementation with the Google Technical Solutions Team - Contact Attempt",
+    labels: { "[Seu Nome]": "Signature", "[INSERIR URL]": "Site URL", "[LINK DO MEET]": "Meet Link" },
+    template: "<p>Hello,</p><br><p>This is <strong>[Seu Nome]</strong> from the Google Technical Solutions team. I tried calling the following number: <strong>...</strong> without success. Would you have another number I could reach you on?</p><br><p>As a reminder, I will be helping you implement the following task:</p><p><strong>Ads Conversion Tracking</strong></p><br><p>On your site: <strong>[INSERIR URL]</strong></p><p>I will try calling again within 10 minutes. If you prefer, you can join our meeting link: <strong>[LINK DO MEET]</strong></p><br><p>Best regards,</p><p><strong>[Seu Nome]</strong><br>Cognizant Technical Solutions Team, on behalf of Google.</p>"
+  },
+  "reschedule2": {
+    name: "Rescheduling Proposal",
+    category: "Attempts & Scheduling",
+    subject: "Consultation Rescheduling",
+    labels: { "[Seu Nome]": "Signature" },
+    template: "<p>Hello, how are you?</p><br><p>Here are the next available dates:</p><ul><li><strong>[DATA 1] at [HORA 1]</strong></li><li><strong>[DATA 2] at [HORA 2]</strong></li><li><strong>[DATA 3] at [HORA 3]</strong></li></ul><br><p>Please note that if there is no reply to this email within the next 48 hours, the case will be closed.</p><p>My calendar is dynamic, so a consultation can be booked for the available days at any time. The sooner you can reply, the more likely it is that the date and time will be secured.</p><br><p>Best regards,</p><p><strong>[Seu Nome]</strong><br>Cognizant Technical Solutions Team, on behalf of Google.</p>"
+  },
+  "max_reschedules": {
+    name: "Rescheduling Limit Exceeded",
+    category: "Attempts & Scheduling",
+    subject: "Scheduling Status - Google Technical Solutions Team",
+    labels: { "[Nome do Cliente]": "Customer Name", "[Seu Nome]": "Signature" },
+    template: "<p>Hello, <strong>[Nome do Cliente]</strong>,</p><br><p>I hope this email finds you well.</p><p>I am writing on behalf of the Google Ads team regarding your rescheduling request for the tag implementation.</p><br><p>Unfortunately, <strong>we can no longer reschedule this particular case</strong>, as we have exceeded the maximum number of bookings allowed.</p><br><p>If you would like to proceed with the tag implementation, you will need to open a <strong>new case</strong> directly with <a href=\"https://support.google.com/google-ads\">Google Ads Help</a>. That will ensure you receive the follow-up and support needed to continue with your request.</p><br><p>Thank you for your involvement in this process and for the opportunity to help. We look forward to continuing our collaboration.</p><br><p>Best regards,</p><p><strong>[Seu Nome]</strong><br>Cognizant Technical Solutions Team, on behalf of Google</p>"
+  },
+  "2_6_day3": {
+    name: "Day 3 (Follow-up)",
+    category: "Follow Up",
+    subject: "Consultation with the Google Technical Solutions Team",
+    labels: { "[Nome do Cliente]": "Customer Name", "[INFORMAR QUAL AÇÃO FICOU PENDENTE]": "Pending Action", "[MM/DD/YYYY]": "Next Contact Date", "[Seu Nome]": "Signature" },
+    template: "<p>Hello, <strong>[Nome do Cliente]</strong></p><br><p>I hope you are well!</p><p>We tried to reach you by phone, but without success. I would like to know whether you have been able to <strong>[INFORMAR QUAL AÇÃO FICOU PENDENTE]</strong>, or whether you have an estimate of when that action will be completed.</p><br><p>I will keep monitoring the implementation status on your site, and on <strong>[MM/DD/YYYY]</strong> I will follow up again to check on its progress.</p><p>If you run into any problem or question that prevents you from completing the implementation, please feel free to share it with us.</p><br><p>I remain at your disposal.</p><p><strong>[Seu Nome]</strong><br>Cognizant Technical Solutions Team, on behalf of Google</p>"
+  },
+  "2_6_day6": {
+    name: "Day 6 (Final Follow-up)",
+    category: "Follow Up",
+    subject: "Consultation with the Google Technical Solutions Team",
+    labels: { "[Nome do Cliente]": "Customer Name", "[URL]": "Site URL", "[Seu Nome]": "Signature" },
+    template: "<p>Hello, <strong>[Nome do Cliente]</strong></p><br><p>I hope you are well!</p><p>After analyzing and reviewing the tag implementation status on your site, <strong>[URL]</strong>, we found that the tag is still pending implementation. We tried to reach you by email, but without success.</p><br><p>Implementing it is essential, as it offers a wide range of benefits, such as:</p><ul><li>It helps track conversions in real time</li><li>It improves revenue generation, in terms of clicks</li><li>It links Google Analytics to your ads and tracks conversions</li><li>It provides insight into the user experience</li></ul><br><p>If you run into any problem or question that prevents you from completing the implementation, please feel free to share it with us. We would be glad to help.</p><p>If we do not hear back within the next 3 days, the case will unfortunately be closed.</p><br><p>I remain at your disposal.</p><p><strong>[Seu Nome]</strong><br>Cognizant Technical Solutions Team, on behalf of Google</p>"
+  },
+  "2_6_completed_reschedule": {
+    name: "Actions Completed (Request Rescheduling)",
+    category: "Follow Up",
+    subject: "Continuing the Implementation - Google Technical Solutions",
+    labels: { "[Disponibilidade em BAU]": "Next Availability", "[Seu Nome]": "Signature" },
+    template: "<p>Hello, how are you?</p><br><p>Great! Good to hear you managed to complete the pending actions. That means we can now continue with the setup on your account.</p><br><p>For that, please send me a few of the next dates and times you are available from <strong>[Disponibilidade em BAU]</strong> onwards.</p><p>As soon as you send that over, I will create a rescheduling so one of our agents can continue helping you.</p><br><p>Please also note that if there is no reply to this email, I will follow up on this case for 6 days, getting in touch every 3 days so we can reschedule your case as soon as possible.</p><p>My calendar is dynamic, so a consultation can be booked for the available days at any time. The sooner you can reply, the more likely it is that the date and time will be secured.</p><br><p>Best regards,</p><p><strong>[Seu Nome]</strong><br>Cognizant Technical Solutions Team, on behalf of Google.</p>"
+  },
+  "nrp_standard": {
+    name: "NRP - Standard (3rd Attempt)",
+    category: "NRP / Closure",
+    subject: "Implementation with the Google Technical Solutions Team - Closure",
+    labels: { "[Nome do Cliente]": "Customer Name", "[Task pedida pelo AM]": "Requested Task", "[Seu Nome]": "Signature" },
+    template: "<p>Hello, <strong>[Nome do Cliente]</strong>,</p><br><p>We tried to call you today about the tag Implementation case regarding the request for <strong>[Task pedida pelo AM]</strong>. Another attempt was made after 10 minutes, but we were unable to reach you then either.</p><p>Due to high demand, we are unable to reschedule a time. We will therefore be closing this case. However, if you would still like to continue with the implementation, you can use this link to pick the best date and time to speak with our team, or if you prefer, contact your Google account manager to book a new meeting.</p><p>We apologize for the inconvenience and hope to work with you again in the future.</p><br><p>If you would like to know more, below are some useful links with valuable resources about tag implementation and Shopping support.</p><p><strong>Regarding tags</strong></p><ul><li><a href=\"https://developers.google.com/gtagjs\">Tag implementation support</a></li><li><a href=\"https://www.youtube.com/user/learnwithgoogle/playlists\">Google Ads</a></li><li><a href=\"https://www.youtube.com/user/googleanalytics\">Google Analytics</a></li></ul><p><strong>Regarding Shopping</strong></p><ul><li><a href=\"https://www.google.com/retail/\">Google for Retail</a></li><li><a href=\"https://www.google.com/retail/solutions/merchant-center/\">Google Merchant Center</a></li><li><a href=\"https://support.google.com/merchants/answer/188924\">How to set up the account and the feed</a></li><li><a href=\"https://support.google.com/merchants/topic/7294606\">Feed optimization</a></li><li><a href=\"https://support.google.com/merchants/answer/9199328\">Google platforms</a></li></ul><br><p><strong>[Seu Nome]</strong><br>Cognizant Technical Solutions Team, on behalf of Google</p>"
+  },
+  "nrp_dfa": {
+    name: "NRP - DFA",
+    category: "NRP / Closure",
+    subject: "Implementation with the Google Technical Solutions Team - Closure",
+    labels: { "[Nome do Cliente]": "Customer Name", "[Seu Nome]": "Signature" },
+    template: "<p>Hello, <strong>[Nome do Cliente]</strong>,</p><br><p>We tried to call you today about the tag Implementation case regarding the request. Another attempt was made after 10 minutes, but we were unable to reach you then either.</p><p>Due to high demand, we are unable to reschedule a time. We will therefore be closing this case. However, if you would still like to continue with the implementation, you can use this link to pick the best date and time to speak with our team.</p><p>We apologize for the inconvenience and hope to work with you again in the future.</p><br><p>If you would like to know more, below are some useful links with valuable resources about tag implementation and Shopping support.</p><p><strong>Regarding tags</strong></p><ul><li><a href=\"https://developers.google.com/gtagjs\">Tag implementation support</a></li><li><a href=\"https://www.youtube.com/user/learnwithgoogle/playlists\">Google Ads</a></li><li><a href=\"https://www.youtube.com/user/googleanalytics\">Google Analytics</a></li></ul><p><strong>Regarding Shopping</strong></p><ul><li><a href=\"https://www.google.com/retail/\">Google for Retail</a></li><li><a href=\"https://www.google.com/retail/solutions/merchant-center/\">Google Merchant Center</a></li><li><a href=\"https://support.google.com/merchants/answer/188924\">How to set up the account and the feed</a></li><li><a href=\"https://support.google.com/merchants/topic/7294606\">Feed optimization</a></li><li><a href=\"https://support.google.com/merchants/answer/9199328\">Google platforms</a></li></ul><br><p><strong>[Seu Nome]</strong><br>Cognizant Technical Solutions Team, on behalf of Google</p>"
+  }
+};
+
+// Template de e-mail no idioma ativo. Sem overlay para o idioma (ou sem
+// entrada para este template), devolve o PT original intacto.
 export function getEmailTemplate(tpl, lang) {
-    if (lang !== 'es') return tpl;
-    const es = EMAIL_TEMPLATES_ES[tpl?.id];
-    if (!es) return tpl;
+    const overlay = { es: EMAIL_TEMPLATES_ES, en: EMAIL_TEMPLATES_EN }[lang];
+    if (!overlay) return tpl;
+    const tr = overlay[tpl?.id];
+    if (!tr) return tpl;
     return {
         ...tpl,
-        name: es.name ?? tpl.name,
-        category: es.category ?? tpl.category,
-        subject: es.subject ?? tpl.subject,
-        template: es.template ?? tpl.template,
+        name: tr.name ?? tpl.name,
+        category: tr.category ?? tpl.category,
+        subject: tr.subject ?? tpl.subject,
+        template: tr.template ?? tpl.template,
         placeholders: (tpl.placeholders || []).map(ph => ({
             ...ph,
-            label: es.labels?.[ph.key] ?? ph.label
+            label: tr.labels?.[ph.key] ?? ph.label
         }))
     };
 }
@@ -211,7 +278,7 @@ export function applyEmailContent(items) {
 
     const sorted = items.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
     const pt = [];
-    const es = {};
+    const overlays = { ES: {}, EN: {} };
 
     for (const item of sorted) {
         const id = item.key;
@@ -225,15 +292,22 @@ export function applyEmailContent(items) {
         }
         if (!v.subject || !v.template) continue;
 
-        if (String(item.lang).toUpperCase() === 'ES') {
-            es[id] = {
+        // O roteamento é por idioma EXPLÍCITO, não por "não é ES, então é PT".
+        // Com a entrada do inglês, o `else` engolia as linhas EN e as empurrava
+        // para a lista base: os modelos apareciam duplicados e as cópias
+        // chegavam sem `placeholders`, porque um overlay só carrega rótulos.
+        const lang = String(item.lang || '').toUpperCase();
+        const overlay = overlays[lang];
+
+        if (overlay) {
+            overlay[id] = {
                 name: item.label || '',
                 category: item.field || '',
                 subject: v.subject,
                 template: v.template,
                 labels: v.labels || {},
             };
-        } else {
+        } else if (lang === 'PT' || lang === '' || lang === 'ALL') {
             pt.push({
                 id,
                 name: item.label || id,
@@ -243,6 +317,8 @@ export function applyEmailContent(items) {
                 placeholders: v.placeholders || [],
             });
         }
+        // Idioma desconhecido é ignorado: melhor faltar um overlay do que
+        // contaminar a lista base com uma linha que ninguém sabe ler.
     }
 
     // Sem nenhum modelo PT não há o que exibir: melhor manter o embutido do que
@@ -252,8 +328,14 @@ export function applyEmailContent(items) {
     EMAIL_TEMPLATES.length = 0;
     EMAIL_TEMPLATES.push(...pt);
 
-    for (const key of Object.keys(EMAIL_TEMPLATES_ES)) delete EMAIL_TEMPLATES_ES[key];
-    Object.assign(EMAIL_TEMPLATES_ES, es);
+    // Overlay que a Central não serviu não é overlay vazio — ver a mesma
+    // regra em note-templates-service.js. Zerar aqui mandaria o agente EN
+    // receber o modelo em português com a Central no ar e sem linha EN.
+    for (const [lang, alvo] of [['ES', EMAIL_TEMPLATES_ES], ['EN', EMAIL_TEMPLATES_EN]]) {
+        if (!Object.keys(overlays[lang]).length) continue;
+        for (const key of Object.keys(alvo)) delete alvo[key];
+        Object.assign(alvo, overlays[lang]);
+    }
 
     return true;
 }

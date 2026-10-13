@@ -7,6 +7,7 @@ import { getLanguage } from "../../shared/i18n.js";
 const PREVIEW_PLACEHOLDER = {
   pt: "Passe o mouse sobre um cenário para visualizar o texto...",
   es: "Pasa el mouse sobre un escenario para ver el texto...",
+  en: "Hover over a scenario to preview the text...",
 };
 function defaultPreviewText() {
   return PREVIEW_PLACEHOLDER[getLanguage()] || PREVIEW_PLACEHOLDER.pt;

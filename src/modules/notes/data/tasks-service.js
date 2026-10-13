@@ -45,15 +45,18 @@ function taskDoValor(raw) {
     // montar o "Acesso rápido", e um `false` explícito não muda nada.
     if (v.popular === true) task.popular = true;
 
-    // A tradução viaja no MESMO item (lang 'ALL'), como o par desc/desc_es dos
-    // links: a quantidade de evidências é uma decisão só, e separar em duas
-    // linhas por idioma abriria espaço para PT e ES pedirem números diferentes
-    // de screenshot para o mesmo Win Criteria.
-    const es = v.screenshots_es;
-    if (es && (Array.isArray(es.implementation) || Array.isArray(es.education))) {
-        task.screenshots_es = {};
-        if (Array.isArray(es.implementation)) task.screenshots_es.implementation = es.implementation;
-        if (Array.isArray(es.education)) task.screenshots_es.education = es.education;
+    // As traduções viajam no MESMO item (lang 'ALL'), como o par desc/desc_es
+    // dos links: a quantidade de evidências é uma decisão só, e separar em uma
+    // linha por idioma abriria espaço para os idiomas pedirem números
+    // diferentes de screenshot para o mesmo Win Criteria.
+    for (const lang of ['es', 'en']) {
+        const campo = `screenshots_${lang}`;
+        const trad = v[campo];
+        if (!trad || !(Array.isArray(trad.implementation) || Array.isArray(trad.education))) continue;
+
+        task[campo] = {};
+        if (Array.isArray(trad.implementation)) task[campo].implementation = trad.implementation;
+        if (Array.isArray(trad.education)) task[campo].education = trad.education;
     }
 
     return task;

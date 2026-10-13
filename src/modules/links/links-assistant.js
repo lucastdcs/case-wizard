@@ -78,14 +78,84 @@ const LINK_DESC_ES = {
     'Lista de números': 'Lista de números',
     'Cursos': 'Cursos',
 };
+
+const LINK_DESC_EN = {
+    'Ponto Eletrônico': 'Time Clock',
+    'Ferramenta de ajuda': 'Help tool',
+    'Intranet Google': 'Google Intranet',
+    'Relatório Follow-ups': 'Follow-ups report',
+    'Dashboard WFM': 'WFM Dashboard',
+    'Tech Solutions SAO': 'Tech Solutions SAO',
+    'Form Gravação': 'Recording Form',
+    'Form Escalação': 'Escalation Form',
+    'Instruções Split': 'Split instructions',
+    'Single Page App': 'Single Page App',
+    'Procedimento Padrão': 'Standard Procedure',
+    'Validação Código': 'Code validation',
+    'Conversão Chamada': 'Call conversion',
+    'Validação WCC': 'WCC validation',
+    'ECW4': 'ECW4',
+    'Monitoramento EC': 'EC monitoring',
+    'Resolução problemas': 'Troubleshooting',
+    'Implementação RMKT': 'RMKT implementation',
+    'Pontuação Leads': 'Lead scoring',
+    'Instalação Container': 'Container installation',
+    'Instalação Config.': 'Config. installation',
+    'Validação GA4': 'GA4 validation',
+    'Guia Dev': 'Dev guide',
+    'Resolução Problemas': 'Troubleshooting',
+    'Domínio Cruzado': 'Cross-domain',
+    'Lista Oficial': 'Official list',
+    'Criador URLs': 'URL builder',
+    'Setup Inicial': 'Initial setup',
+    'Otimização Feed': 'Feed optimization',
+    'Ferramenta Interna': 'Internal tool',
+    'Avaliações': 'Reviews',
+    'Feeds Offline': 'Offline feeds',
+    'Help Center': 'Help Center',
+    'Guias CMS': 'CMS guides',
+    'Soluções Iframes': 'Iframe solutions',
+    'Ghost Ads': 'Ghost Ads',
+    'Ghost Analytics': 'Ghost Analytics',
+    'Ghost GTM': 'Ghost GTM',
+    'Ferramenta': 'Tool',
+    'Ghost MC': 'Ghost MC',
+    'Playground JS': 'JS Playground',
+    'Testador Regex': 'Regex tester',
+    'Doc. CSP': 'CSP docs',
+    'Guia CoMo': 'CoMo guide',
+    'Debug CoMo': 'CoMo debug',
+    'Portal Colaborador': 'Employee Portal',
+    'Apps e Sistemas': 'Apps and Systems',
+    'Folha Pagamento': 'Payroll',
+    'Reportar problemas': 'Report problems',
+    'Registro chamadas': 'Call log',
+    'Erros de sistema': 'System errors',
+    'BAU/Descarte/Monitoria': 'BAU/Discard/Monitoring',
+    'Feedback positivo': 'Positive feedback',
+    'Casos difíceis': 'Difficult cases',
+    'Chat/Email Ads': 'Chat/Email Ads',
+    'Chat/Email Shopping': 'Chat/Email Shopping',
+    'Perfil da Empresa': 'Business Profile',
+    'Console API': 'API Console',
+    'Lista de números': 'Number list',
+    'Cursos': 'Courses',
+};
+
+// Mapa embutido e campo publicado, por idioma. PT é a base e não aparece.
+const LINK_DESC = {
+    es: { mapa: LINK_DESC_ES, campo: 'descEs' },
+    en: { mapa: LINK_DESC_EN, campo: 'descEn' },
+};
 // Aceita o objeto do link (não só a string) porque os itens vindos da Central
-// de Conteúdo carregam a tradução em `descEs`, editável na tela. O mapa
-// LINK_DESC_ES acima segue valendo para os links do fallback embutido.
+// de Conteúdo carregam a tradução em `descEs`/`descEn`, editável na tela. Os
+// mapas acima seguem valendo para os links do fallback embutido.
 function linkDesc(link) {
     const obj = (link && typeof link === 'object') ? link : { desc: link };
     const desc = obj.desc || '';
-    if (getLanguage() !== 'es') return desc;
-    return obj.descEs || LINK_DESC_ES[desc] || desc;
+    const fonte = LINK_DESC[getLanguage()];
+    if (!fonte) return desc;
+    return obj[fonte.campo] || fonte.mapa[desc] || desc;
 }
 
 const LINKS_DICT = {
@@ -118,6 +188,21 @@ const LINKS_DICT = {
         linkCopiedToast: "¡Enlace copiado!",
         copyFailedToast: "No se pudo copiar el enlace.",
         categoryLabels: { tasks: "Tareas", ads: "Ads", analytics: "GA4", shopping: "Shop", tech: "Tech", hr: "RRHH", lm: "Forms", qa: "QA", suporte: "Ayuda" },
+    },
+    en: {
+        headerTitle: "Links Central",
+        headerDesc: "Browse the categories or use the search.",
+        searchPlaceholder: "Search for a tool or SOP...",
+        recent: "Recent",
+        nothingHereYet: "Nothing here yet",
+        nothingHereSub: "The links you open show up here for quick access later.",
+        searchResults: "Search results",
+        nothingFound: "Nothing found",
+        noLinkMatches: (term) => `No link matches "${term}".`,
+        copyUrl: "Copy URL",
+        linkCopiedToast: "Link copied!",
+        copyFailedToast: "Could not copy the link.",
+        categoryLabels: { tasks: "Tasks", ads: "Ads", analytics: "GA4", shopping: "Shop", tech: "Tech", hr: "HR", lm: "Forms", qa: "QA", suporte: "Help" },
     },
 };
 function lt(key) {
@@ -244,8 +329,8 @@ const LINKS_DB = {
 // API nem cache local. Assim que a Central responde, a lista publicada vence.
 //
 // Cada item publicado traz `key` = categoria e `value` = JSON com
-// { name, url, desc, desc_es } — o par PT/ES viaja junto do link que descreve,
-// em vez de num mapa paralelo (LINK_DESC_ES) que precisa ser editado à parte.
+// { name, url, desc, desc_es, desc_en } — as traduções viajam junto do link
+// que descrevem, em vez de num mapa paralelo editado à parte.
 function applyContentItems(items) {
     if (!Array.isArray(items) || !items.length) return false;
 
@@ -270,7 +355,8 @@ function applyContentItems(items) {
             name: parsed.name,
             url: parsed.url,
             desc: parsed.desc || '',
-            descEs: parsed.desc_es || ''
+            descEs: parsed.desc_es || '',
+            descEn: parsed.desc_en || ''
         });
     }
 

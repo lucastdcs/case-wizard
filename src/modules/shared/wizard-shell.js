@@ -54,6 +54,16 @@ const SHELL_DICT = {
         slideLabel: (i, n) => `Diapositiva ${i} de ${n}`,
         announce: (i, n, title, text) => `Diapositiva ${i} de ${n}: ${title}. ${text}`,
     },
+    en: {
+        back: "Back",
+        skip: "Skip",
+        next: "Next",
+        done: "Finish",
+        dotsGroup: "Slide navigation",
+        report: "Report a bug or suggestion",
+        slideLabel: (i, n) => `Slide ${i} of ${n}`,
+        announce: (i, n, title, text) => `Slide ${i} of ${n}: ${title}. ${text}`,
+    },
 };
 
 function wt(key) {

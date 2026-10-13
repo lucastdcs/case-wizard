@@ -664,13 +664,27 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         // filtrar só o PT deslocaria todas as traduções seguintes em silêncio.
         await page.fill('#tsk-pt-implementation', 'Tag criada\n\nTeste GTM');
         await page.fill('#tsk-es-implementation', 'Etiqueta creada\n\nPrueba GTM');
+        await page.fill('#tsk-en-implementation', 'Tag created\n\nGTM test');
         await page.waitForTimeout(80);
 
         const aviso = await page.locator('#tsk-contagem-implementation');
         verdade(!(await aviso.evaluate((el) => el.classList.contains('erro'))),
             'não deveria acusar erro: ' + await aviso.textContent());
-        verdade(/2 screenshots · 2 com redação em ES/.test(await aviso.textContent()),
+        verdade(/2 screenshots · 2 em ES · 2 em EN/.test(await aviso.textContent()),
             'a contagem deveria ignorar a linha em branco: ' + await aviso.textContent());
+    });
+
+    await check('a coluna EN é contada separadamente da ES', async () => {
+        // Cada idioma tem sua própria cobertura: dizer "traduzido" quando só um
+        // dos dois está pronto esconde exatamente o trabalho que falta.
+        await page.fill('#tsk-pt-implementation', 'Tag criada\nTeste GTM');
+        await page.fill('#tsk-es-implementation', 'Etiqueta creada\nPrueba GTM');
+        await page.fill('#tsk-en-implementation', 'Tag created\n');
+        await page.waitForTimeout(80);
+
+        const texto = await page.locator('#tsk-contagem-implementation').textContent();
+        verdade(/2 em ES/.test(texto), 'ES deveria estar completo: ' + texto);
+        verdade(/1 em EN \(resto sai em PT\)/.test(texto), 'EN deveria estar parcial: ' + texto);
     });
 
     await check('task nova vira UMA proposta, com as duas listas no valor', async () => {

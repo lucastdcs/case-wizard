@@ -219,6 +219,118 @@ export const translations = {
         'ligacao_2': 'Llamada 2',
         'mensagem_am': 'Mensaje para AM',
         'tentativa_ligacao': '📞 Intento de llamada:'
+    },
+    'en': {
+        'idioma': 'Language:',
+        'fluxo': 'Flow:',
+        'status_principal': 'Main Status:',
+        'select_status': 'Select',
+        'substatus': 'Substatus:',
+        'select_substatus': 'Select the Status',
+        'cenarios_comuns': 'Common Scenarios',
+        'selecione_tasks': 'Select the Tasks',
+        'preencha_detalhes': 'Fill In the Details',
+        'copiar': 'Copy',
+        'preencher': 'Fill in',
+        'limpar': 'Clear',
+        'preencher_email_automaticamente': 'Fill in the email automatically?',
+        'gostaria_de_adicionar_uma_task': 'I would like to add a task',
+        'rascunhos_salvos': 'Saved Drafts',
+        'nenhum_rascunho': 'No drafts saved',
+        'guardar': 'Park',
+        'trechos': 'Snippets',
+        'acesso_rapido': 'Quick Access',
+        'buscar_catalogo': 'Search the catalog...',
+        'selecione_tarefas': 'Select tasks to see the fields.',
+        'utilizou_tag_support': 'Did you use Tag Support to create/verify?',
+        'motivo_ts': 'What was the reason?',
+        'lembre_preencher_form': 'Remember to fill in the Form!',
+        'link_aqui': 'Link here',
+        'tag_support_output_label': 'Used Tag Support?',
+        'motivo_output_label': 'Reason:',
+        'auto_busca': '✨ Auto Search',
+        'utilize_marcadores': 'Use bullets to add detail...',
+        'descreva_consideracoes': 'Describe the considerations...',
+        'remover': 'Remove',
+        'remover_campo_confirm': 'Remove the field "{campo}"?',
+        'meus_rascunhos': 'My Drafts',
+        'confirmar_guardar_rascunho': 'Park the current draft and clear the fields?',
+        'rascunho_salvo_sucesso': 'Draft saved successfully!',
+        'erro_ler_dados': 'Error: could not read the data.',
+        'erro_ao_salvar': 'Error saving.',
+        'cliente_sem_nome': 'Unnamed Customer',
+        'sem_status': 'No Status',
+        'retomar_caso': 'Resume Case',
+        'descartar': 'Discard',
+        'retomar_rascunho_confirm': 'Resume this draft? The current form will be replaced.',
+        'rascunho_carregado': 'Draft loaded.',
+        'excluir_rascunho_confirm': 'Delete this draft?',
+        'acoes_plural': 'Actions',
+        'acao_singular': 'Action',
+        'definidas_plural': 'defined',
+        'definida_singular': 'defined',
+        'renomear_tooltip': 'Click to rename this task',
+        'renomear_hint': '✎ Rename',
+        'substituir_rascunho_confirm': 'This will replace the current note draft. Do you want to continue?',
+        'salvar_como_atalho': 'Save as a Ctrl+K shortcut',
+        'atalho_nome_pergunta': 'What should this shortcut be called in Ctrl+K?',
+        'atalho_salvo': 'Shortcut saved! It already shows up in Ctrl+K.',
+        'atalho_salvo_local': 'Shortcut saved in this browser (no cloud connection).',
+        'atalho_limite': 'You already have {max} shortcuts. Delete one in Settings before creating another.',
+        'atalho_cenario_sumiu': 'This shortcut pointed to a scenario that no longer exists. Review it in Settings.',
+        'restaurar_rascunho_confirm': 'We found an unsaved draft from your last session. Would you like to restore it?',
+        'cole_link_placeholder': 'Paste the link here...',
+        'copiado_sucesso': 'Text copied successfully',
+        'inserido_copiado': 'Text inserted and copied!',
+        'campo_nao_encontrado': 'Field not found. The text has already been copied.',
+        'ts_disclaimer': 'Screenshots are not required for conversions created/verified by Tag Support',
+        'incluir_mesmo_assim': 'Include anyway',
+        'ajuda_scenarios': 'How do I use Scenarios?',
+        'ajuda_scenarios_desc': 'Scenarios fill in several note fields automatically. Click a chip to apply it. You can combine several scenarios (e.g.: GTM Installation + WhatsApp).',
+        'ts_output_disclaimer': 'Tag created/verified by Tag Support, as the note automatically added to the case indicates. I am not including the screenshots, in line with the Win Criteria guidance.',
+
+        'caso_portugal': 'Portugal case?',
+        'consentiu_gravacao': '⏺️ Did the advertiser consent to the recording?',
+        'sim': 'Yes',
+        'nao': 'No',
+        'pronto_comecar': 'Ready to start?',
+        'selecione_status_ajuda': 'Select a status and substatus to<br>start your technical note.',
+
+        // Labels dos campos. Os que já estão em inglês no PT/ES espelham a
+        // tela do CRM e ficam IDÊNTICOS aqui de propósito (On Call, OnCall
+        // Comments, Multiple CIDs, Reason/Comments, Tag Implemented,
+        // Substatus, Screenshots, Speakeasy ID) — ver o glossário de termos
+        // que não se traduzem em specs/_MASTER_RULEBOOK.md.
+        'speakeasy_id': '🆔 Speakeasy ID:',
+        'on_call': '📞 On Call signaled on time?',
+        'tasks_solicitadas': '🎯 Requested task(s):',
+        'passos_executados': '👣 What was done:',
+        'resultado': '🏆 Result:',
+        'duvidas': '❓ Advertiser questions:',
+        'problemas': '⚠️ Initial problem:',
+        'resolucoes': '✅ Resolutions/Explanations:',
+        'gtm_ga4_verificado': '🛡️ GTM/GA4 Verified:',
+        'tasks_implementadas_call': '🛠️ Tasks implemented on the call:',
+        'proximos_passos': '🚀 Next steps (Follow-up):',
+        'consideracoes': '💡 Additional considerations:',
+        'contexto_call': '💬 Context/What was done:',
+        'impedimento_cliente': '🚧 Blocker / Next step (Advertiser):',
+        'minha_acao': '👨‍💻 My Action:',
+        'dia': '📅 Follow-up day (if applicable):',
+        'screenshots': '📸 Screenshots:',
+        'comentarios': '💬 OnCall Comments:',
+        'motivo_reagendamento': '💬 OnCall Comments:',
+        'data_reagendamento': '📅 Rescheduling date:',
+        'multiple_cids': '📂 Multiple CIDs:',
+        'reason_comments': '📌 Reason/Comments:',
+        'tags_implemented': '🛠️ Tag Implemented:',
+        'screenshots_list': '📸 Screenshots:',
+        'label_substatus': '📋 Substatus:',
+        'evidencias_contato': 'Contact Evidence',
+        'ligacao_1': 'Call 1',
+        'ligacao_2': 'Call 2',
+        'mensagem_am': 'Message to the AM',
+        'tentativa_ligacao': '📞 Call attempt:'
     }
 };
 
@@ -468,6 +580,50 @@ const SCREENSHOT_LABEL_ES = {
     '5. O gclid foi passado para a página de conversão?': '5. ¿El gclid fue pasado a la página de conversión?',
 };
 
+// Espelho em inglês. Mesma regra do ES acima: rótulo ausente cai no texto
+// base, que para boa parte destes já está em inglês no TASKS_DB.
+const SCREENSHOT_LABEL_EN = {
+    'GTM Instalado': 'GTM Installed',
+    'Vinculador de conversões': 'Conversion Linker',
+    'Tag criada': 'Tag created',
+    'Teste GTM': 'GTM test',
+    'Teste Ads': 'Ads test',
+    'Versão Publicada': 'Published Version',
+    'Status Ads': 'Ads Status',
+    'Termos aceitos no Ads': 'Terms accepted in Ads',
+    'Tag implementada': 'Tag implemented',
+    'Painel do Ads (após 7 dias)': 'Ads dashboard (after 7 days)',
+    'Tag do evento GA4 implementado no GTM': 'GA4 event tag implemented in GTM',
+    'Teste GTM (tagassistant.google.com)': 'GTM test (tagassistant.google.com)',
+    'Teste GA4 (DebugView - tagassistant.google.com)': 'GA4 test (DebugView - tagassistant.google.com)',
+    'Versão publicada no GTM': 'Version published in GTM',
+    '(Se houver parâmetros) Dimensões customizadas criadas no GA4': '(If there are parameters) Custom dimensions created in GA4',
+    'Evento marcado como principal no GA4': 'Event marked as key event in GA4',
+    'GA4 e Google Ads vinculados corretamente': 'GA4 and Google Ads linked correctly',
+    'Evento principal GA4 importado no Google Ads (como secundário)': 'GA4 key event imported into Google Ads (as secondary)',
+    'Métricas app & web ativadas no Google Ads': 'App & web metrics enabled in Google Ads',
+    '(Opcional) Teste no Relatório do Tempo Real (GA4)': '(Optional) Test in the Realtime report (GA4)',
+    'Validação: Conta GA4 (somente fluxo web, não é setor de saúde)': 'Validation: GA4 account (web stream only, not healthcare)',
+    '"Coleta de dados fornecidos pelo usuário" habilitado no GA4 (Admin > Coleta de Dados)': '"User-provided data collection" enabled in GA4 (Admin > Data Collection)',
+    'Confirmação de coleta de dados (UI)': 'Data collection confirmation (UI)',
+    'Tag do evento GA4 otimizado (UPD) implementado no GTM': 'Optimized GA4 event tag (UPD) implemented in GTM',
+    "Teste GTM (tagassistant - parâmetro 'em' sem erro)": "GTM test (tagassistant - 'em' parameter with no error)",
+    'Teste GA4 (DebugView - tagassistant)': 'GA4 test (DebugView - tagassistant)',
+    '(Treinamento) Evento principal importado no Google Ads como secundário': '(Training) Key event imported into Google Ads as secondary',
+    'Tag implementado no GTM': 'Tag implemented in GTM',
+    'Teste do disparo da etiqueta de configuração no tag assistant em mais de uma página, mostrando ID e rótulo': 'Test of the configuration tag firing in tag assistant on more than one page, showing ID and label',
+    'Teste usando o #google-wcc-debug': 'Test using #google-wcc-debug',
+    'Mudança do status da conversão no Google Ads [Aguardar alguns minutos]': 'Change of the conversion status in Google Ads [Wait a few minutes]',
+    '1. OGT (gTag/GTM com tag de vinculador de conversão) adicionado em todas as páginas': '1. OGT (gTag/GTM with Conversion Linker tag) added on all pages',
+    '2. A codificação automática (auto tagging) está habilitada no Google Ads (Admin > Config. da Conta)': '2. Auto tagging is enabled in Google Ads (Admin > Account Settings)',
+    '3. [Se for GTM] O vinculador de conversão está presente e o acionador definido para disparar em "Todas as Páginas".': '3. [If GTM] The Conversion Linker is present and the trigger set to fire on "All Pages".',
+    '4. O gclid está sendo mantido sem redirecionamentos e armazenado no cookie _gcl_aw na landing page?': '4. Is the gclid being kept without redirects and stored in the _gcl_aw cookie on the landing page?',
+    '5. O gclid foi passado para a página de conversão?': '5. Was the gclid passed to the conversion page?',
+};
+
+// Mapas embutidos por idioma. Acrescentar um idioma é acrescentar uma entrada.
+const SCREENSHOT_LABELS = { es: SCREENSHOT_LABEL_ES, en: SCREENSHOT_LABEL_EN };
+
 // Rótulos de screenshot de uma task no idioma ativo.
 //
 // Três fontes, nesta ordem: a tradução publicada na Central (`screenshots_es`,
@@ -481,9 +637,10 @@ const SCREENSHOT_LABEL_ES = {
 // em vez de o agente ES ver um campo a menos que o agente PT.
 export function getTaskScreenshots(task, mode, lang) {
     const labels = task?.screenshots?.[mode] || [];
-    if (lang !== 'es') return labels;
+    const embutido = SCREENSHOT_LABELS[lang];
+    if (!embutido) return labels;
 
-    const publicada = task?.screenshots_es?.[mode];
+    const publicada = task?.[`screenshots_${lang}`]?.[mode];
     const traduzida = (i) => String(publicada?.[i] == null ? '' : publicada[i]).trim();
 
     // Task publicada na Central é AUTOSSUFICIENTE: o mapa embutido não entra
@@ -497,30 +654,30 @@ export function getTaskScreenshots(task, mode, lang) {
     }
 
     if (Array.isArray(publicada)) {
-        return labels.map((l, i) => traduzida(i) || SCREENSHOT_LABEL_ES[l] || l);
+        return labels.map((l, i) => traduzida(i) || embutido[l] || l);
     }
-    return labels.map(l => SCREENSHOT_LABEL_ES[l] || l);
+    return labels.map(l => embutido[l] || l);
 }
 
-// Prefixo de campo do template no idioma ativo (fieldPrefixes_es sobrescreve
+// Prefixo de campo do template no idioma ativo (fieldPrefixes_<lang> sobrescreve
 // fieldPrefixes quando existe).
 export function getFieldPrefix(templateDef, fieldKey, lang) {
-    if (lang === 'es' && templateDef?.fieldPrefixes_es?.[fieldKey]) {
-        return templateDef.fieldPrefixes_es[fieldKey];
-    }
+    const override = templateDef?.[`fieldPrefixes_${lang}`]?.[fieldKey];
+    if (override) return override;
     return templateDef?.fieldPrefixes?.[fieldKey] || "";
 }
 
 // Campos de um cenário rápido no idioma ativo. O espanhol vive num mapa
-// próprio (SCENARIO_ES, no fim deste arquivo) em vez de um bloco `es`
+// próprio (SCENARIO_ES/SCENARIO_EN, no fim deste arquivo) em vez de um bloco
 // dentro de cada snippet: mantém scenarioSnippets — a fonte da verdade
 // operacional, cheia de comentários de decisão do time — intocada, e deixa
 // o espanhol num único bloco revisável de uma vez por um falante nativo.
 // Só os campos de texto são sobrescritos; metadados (type/substatus/
 // linkedTask) continuam vindo da definição base, sem duplicação.
 export function getScenarioFields(snippet, lang, scenarioId) {
-    if (lang !== 'es') return snippet;
-    const overrides = SCENARIO_ES[scenarioId];
+    const mirror = { es: SCENARIO_ES, en: SCENARIO_EN }[lang];
+    if (!mirror) return snippet;
+    const overrides = mirror[scenarioId];
     if (!overrides) return snippet;
     return { ...snippet, ...overrides };
 }
@@ -609,6 +766,10 @@ export const SUBSTATUS_TEMPLATES = {
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Caso Reprogramado.'
         }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Case Rescheduled.'
+        }
     },
     'AS_Acceptable_Reschedule': { 
         status: 'AS', 
@@ -620,6 +781,10 @@ export const SUBSTATUS_TEMPLATES = {
         },
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Reprogramación aceptable.'
+        }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Acceptable rescheduling.'
         }
     },
 
@@ -646,6 +811,10 @@ export const SUBSTATUS_TEMPLATES = {
         },
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Esperando Validaciones en Google Ads.'
+        }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Awaiting Validations in Google Ads.'
         }
     },
     'NI_Attempted_Contact': {
@@ -727,6 +896,10 @@ export const SUBSTATUS_TEMPLATES = {
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Tarea implementada con éxito.'
         }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Task implemented successfully.'
+        }
     },
     'SO_Education_Only': {
         status: 'SO',
@@ -740,6 +913,10 @@ export const SUBSTATUS_TEMPLATES = {
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Consultoría utilizada para resolver dudas del anunciante.'
         }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Consultation used to answer the advertiser\u2019s questions.'
+        }
     },
     'SO_Troubleshooting_Only': {
         status: 'SO', 
@@ -751,6 +928,10 @@ export const SUBSTATUS_TEMPLATES = {
         },
         fieldPrefixes_es: {
             'REASON_COMMENTS': 'Consultoría utilizada para probar y solucionar problemas de la conversión.'
+        }
+        ,
+        fieldPrefixes_en: {
+            'REASON_COMMENTS': 'Consultation used to test and troubleshoot the conversion.'
         }
     },
     'DC_Other': {
@@ -1271,5 +1452,150 @@ export const SCENARIO_ES = {
     'quickfill-dc-lm-incomplete': {
         'field-REASON_COMMENTS': "Nada fue implementado durante la consultoría (tiempo insuficiente, límite de reprogramación excedido)",
         'field-COMENTARIOS': "No pudimos implementar nada durante la consultoría, pues no hubo tiempo suficiente para terminar la tarea relacionada y el límite de reprogramaciones ya fue alcanzado.\n\nAbriré un caso en BAU para el día solicitado y pediré la inactivación del mismo."
+    },
+};
+
+// ==================================================================
+// Mesmo espelho de scenarioSnippets, agora em inglês. Vale aqui tudo o
+// que vale para SCENARIO_ES acima: só campos de TEXTO, chaves 1:1, e um
+// cenário sem entrada cai no português em vez de quebrar.
+//
+// Os marcadores entre colchetes ([describe...]) e o placeholder {DIA}
+// são preservados — o resto do código depende deles — e "N/A" fica "N/A"
+// nos três idiomas, porque é o que vai literalmente para a nota.
+export const SCENARIO_EN = {
+    // --- SO_Implementation_Only ---
+    'quickfill-gtm-install': {
+        'field-REASON_COMMENTS': "GTM installation completed.",
+        'field-TASKS_SOLICITADAS': "• GTM Installation",
+        'field-PASSOS_EXECUTADOS': "• We created the account inside GTM\n• We installed it inside the CMS/Hosting.\n• We created the Conversion Linker.",
+        'field-RESULTADO': "• I validated the installation."
+    },
+    'quickfill-whatsapp': {
+        'field-REASON_COMMENTS': "Ads Conversion Tracking installation for WhatsApp completed.",
+        'field-TASKS_SOLICITADAS': "• Conversion creation for WHATSAPP",
+        'field-PASSOS_EXECUTADOS': "• We created the conversion in Ads.\n• We created the Tag in GTM for the WhatsApp buttons.\n• We ran the tests and validated that it works.",
+        'field-RESULTADO': "• Task implemented successfully. I am closing the case with no follow-up."
+    },
+    'quickfill-form': {
+        'field-REASON_COMMENTS': "Ads Conversion Tracking installation for Form completed.",
+        'field-TASKS_SOLICITADAS': "• Conversion creation for FORM (standard, not optimized).",
+        'field-PASSOS_EXECUTADOS': "• We created the conversion in Ads.\n• We created the Tag in GTM.\n• We ran the tests and validated that it works.",
+        'field-RESULTADO': "• Task implemented successfully. I am closing the case with no follow-up."
+    },
+    'quickfill-ecw4-close': {
+        'field-REASON_COMMENTS': "End of the EC follow-up.",
+        'field-TASKS_SOLICITADAS': "• Follow-up of the optimized conversion (ECW4).",
+        'field-PASSOS_EXECUTADOS': "• After the follow-up period, I checked the Ads dashboard.\n• The conversion is being recorded correctly.",
+        'field-RESULTADO': "• I confirm the optimized conversion is working.\n• I am therefore closing the case."
+    },
+    'quickfill-ga4-event-close': {
+        'field-REASON_COMMENTS': "End of the GA4 follow-up.",
+        'field-TASKS_SOLICITADAS': "• GA4 Events follow-up after 48h.",
+        'field-PASSOS_EXECUTADOS': "• After the 48h follow-up period, I checked the dashboard.\n• The event is being recorded correctly.",
+        'field-RESULTADO': "• I confirm the event tracking is working.\n• I am therefore closing the case."
+    },
+
+    // --- NI_Awaiting_Inputs ---
+    'quickfill-ni-inicio-manual': {
+        'field-REASON_COMMENTS': "Awaiting information from the advertiser (Start 2/6)"
+    },
+    'quickfill-ni-cms-access': {
+        'field-REASON_COMMENTS': "Awaiting information from the advertiser (Start 2/6 - No CMS Access)",
+        'field-TASKS_SOLICITADAS': "• GTM Installation\n• Conversion setup",
+        'field-CONTEXTO_CALL': "• I noticed the advertiser did not have GTM installed.\n• We went ahead with creating the GTM account.\n• However, the account used to access the site's panel (e.g.: WordPress) did not have permission to install plugins or edit the code.",
+        'field-IMPEDIMENTO_CLIENTE': "• The advertiser needs to obtain administrator access to the site's panel.\n• OR\n• The advertiser needs to contact their developer so that they install GTM.",
+        'field-MINHA_ACAO': "• I am placing the case in 2/6.\n• As soon as the advertiser has access or the installation is done, I will open a BAU case to continue.",
+        'field-SCREENSHOTS': "• Screenshot of the CMS panel showing the missing permission (optional)."
+    },
+    'quickfill-ni-lack-of-access': {
+        'field-REASON_COMMENTS': "Awaiting information from the advertiser (Missing required access)",
+        'field-CONTEXTO_CALL': "• During the call we identified that the access required to proceed with the implementation was not available.\n• I walked the advertiser through which access is required and how to obtain it.",
+        'field-IMPEDIMENTO_CLIENTE': "• The advertiser needs to arrange the required access (e.g.: site panel, ads platform, or contact with their developer) so the implementation can be completed."
+        ,
+        'field-MINHA_ACAO': "• I am placing the case in 2/6.\n• As soon as the advertiser obtains the access, I will open a BAU case to continue."
+    },
+    'quickfill-ni-awaiting-ecw4': {
+        'field-REASON_COMMENTS': "Awaiting data validation (ECW4 - 7 Days)",
+        'field-TASKS_SOLICITADAS': "• Enhanced Conversions implementation (ECW4)",
+        'field-CONTEXTO_CALL': "• We created the conversion in Google Ads.\n• We set up the tag firing via GTM.\n• We added the UPD (User Provided Data) tag.\n• We tested together and validated that it works.",
+        'field-MINHA_ACAO': "• I am moving the case to Awaiting Validation for a 7-day follow-up."
+    },
+    'quickfill-ni-awaiting-ga4': {
+        'field-REASON_COMMENTS': "Awaiting data validation (GA4 Event - 48h)",
+        'field-TASKS_SOLICITADAS': "• GA4 Events implementation",
+        'field-CONTEXTO_CALL': "• We created the event in GA4.\n• We set up the tag firing via GTM.\n• We tested together and validated that it works.",
+        'field-MINHA_ACAO': "• I am moving the case to Awaiting Validation for a 48h follow-up."
+    },
+    'quickfill-ni-followup-bau': {
+        'field-REASON_COMMENTS': "Awaiting information from the advertiser (BAU Follow-up 2/6)",
+        'field-CONTEXTO_CALL': "• On day {DIA} of the 2/6 I made two consecutive contact attempts with no answer. I am sending the email for that day next.",
+        'field-SCREENSHOTS': "• Attempt 1 - \n• Attempt 2 - "
+    },
+    'quickfill-ni-followup-lm': {
+        'field-REASON_COMMENTS': "Contact attempt unsuccessful (LM Follow-up 2/6)",
+        'field-CONTEXTO_CALL': "• On day {DIA} of the 2/6 I sent a follow-up email (LM case, no call attempts) with no answer.",
+        'field-SCREENSHOTS': "• Follow-up email sent (LM) - "
+    },
+    'quickfill-ni-attempted-2day': {
+        'field-REASON_COMMENTS': "Attempted Contact (Start 2 Day Rule)",
+        'field-CONTEXTO_CALL': "• I made the first call attempt, with no success.\n• I sent a chat message to the AM.\n• I waited 5 minutes and made the second call attempt, again with no success.\n• I waited another 5 minutes and will now proceed with the 2 Day Rule follow-up.",
+        'field-SCREENSHOTS': "• MSG AM - \n• Attempt 1 - \n• Attempt 2 - "
+    },
+    'quickfill-in-nrp-bau': {
+        'field-REASON_COMMENTS': "NRP (BAU - 3 attempts)",
+        'field-COMENTARIOS': "• Two consecutive calls, the \"Before the 10 minutes\" email and a third and final call attempt.\n• There was no answer to the call attempts or the email, so the case will be inactivated.",
+        'field-SCREENSHOTS': "• Attempt 1 - \n• Attempt 2 - \n• Attempt 3 - "
+    },
+    'quickfill-in-no-show-bau': {
+        'field-REASON_COMMENTS': "No answer to the 2 Day Rule.",
+        'field-COMENTARIOS': "• The case was created and I joined the call at the scheduled time.\n• The advertiser did not attend the meeting.\n• I followed the waiting protocol (BAU): I made two call attempts, with no success.\n• Neither call was answered (e.g.: voicemail).\n• Case inactivated after the 2 Day Rule."
+    },
+    'quickfill-in-2-6-final': {
+        'field-REASON_COMMENTS': "Closure (2/6)",
+        'field-COMENTARIOS': "• Day 9, closure of the 2/6. There was no response from the advertiser during the follow-up period, so the case will be closed."
+    },
+    'quickfill-in-not-reachable-no-return': {
+        'field-REASON_COMMENTS': "Inactivation due to no response from the advertiser",
+        'field-COMENTARIOS': "The advertiser did not attend the consultation. I made the call attempts but got no response.\n\nI will request the inactivation of the case, taking the lack of contact into account."
+    },
+    'quickfill-in-not-ready-lack-of-access': {
+        'field-REASON_COMMENTS': "Inactivation due to missing access (Rescheduling requested)",
+        'field-COMENTARIOS': "We were unable to implement anything during the consultation, as the advertiser did not have the required access.\n\nI will open a BAU case for the requested day and ask for it to be inactivated, taking into account the missing access and the rescheduling request."
+    },
+    'quickfill-in-infeasible': {
+        'field-REASON_COMMENTS': "Inactivation due to technical infeasibility",
+        'field-COMENTARIOS': "• We assessed the requested implementation and found that it cannot be carried out due to the technical complexity/structure of the site (e.g.: [describe the limitation found]).\n• This is not a Google limitation, but the current structure of the advertiser's site/platform.\n• I walked the advertiser through the available options (e.g.: changing platform, support from a specialized developer)."
+    },
+    'quickfill-in-not-interested': {
+        'field-REASON_COMMENTS': "Inactivation due to lack of advertiser interest",
+        'field-COMENTARIOS': "• The advertiser said they are not interested in proceeding with the consultation at this time.\n• [Or] The contact was limited to general questions, with no intention of carrying out the implementation.\n• There are no further actions pending on our side; case closed at the advertiser's request."
+    },
+    'quickfill-in-troubleshooting-transferred': {
+        'field-REASON_COMMENTS': "Inactivation - Troubleshooting unsuccessful, case transferred",
+        'field-COMENTARIOS': "• We ran the standard troubleshooting steps for the reported problem (e.g.: [list the tests/checks performed]).\n• The steps did not resolve the problem.\n• I am forwarding the case to the responsible team ([team name]) to continue."
+    },
+    'quickfill-in-manual': {
+        'field-REASON_COMMENTS': "Other (Manual)"
+    },
+
+    // --- AS ---
+    'quickfill-as-no-show': {
+        'field-MOTIVO_REAGENDAMENTO': '• We need to reschedule the case, as the advertiser did not attend the meet but replied to the email asking to reschedule'
+    },
+    'quickfill-as-insufficient-time': {
+        'field-MOTIVO_REAGENDAMENTO': '• We need to reschedule the case, as there was not enough time to finish the Tasks\n• We implemented [describe what was done]'
+    },
+    'quickfill-as-no-access': {
+        'field-MOTIVO_REAGENDAMENTO': '• We need to reschedule the case, as the advertiser did not have access to the site, the code or the CMS required to install Google Tag Manager'
+    },
+    'quickfill-as-force-majeure': {
+        'field-MOTIVO_REAGENDAMENTO': '• Rescheduling due to force majeure outside the advertiser\'s control (e.g.: no internet/power, health reasons) - within the acceptable rescheduling criteria.\n• [Detail the specific factor reported by the advertiser]'
+    },
+
+    // --- DC ---
+    'quickfill-dc-lm-incomplete': {
+        'field-REASON_COMMENTS': "Nothing was implemented during the consultation (insufficient time, rescheduling limit exceeded)",
+        'field-COMENTARIOS': "We were unable to implement anything during the consultation, as there was not enough time to finish the related task and the rescheduling limit has already been reached.\n\nI will open a BAU case for the requested day and ask for it to be inactivated."
     },
 };

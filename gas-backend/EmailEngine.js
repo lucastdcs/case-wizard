@@ -13,7 +13,8 @@ function getRecipientLang(destinatario) {
     const ldap = String(destinatario || "").split('@')[0].toLowerCase().trim();
     if (!ldap) return 'pt';
     const profile = getUserProfileByLdap(ldap);
-    return String(profile && profile.defaultLanguage) === 'ES' ? 'es' : 'pt';
+    const code = String(profile && profile.defaultLanguage).toUpperCase();
+    return { 'ES': 'es', 'EN': 'en' }[code] || 'pt';
   } catch (e) {
     return 'pt';
   }
@@ -121,6 +122,57 @@ const EMAIL_I18N = {
     labelTask: "Procedimiento",
     labelChildCase: "Caso BAU generado",
     labelTLJustification: "Justificación de la gerencia"
+  },
+  en: {
+    dateUnavailable: "Date unavailable",
+    dateAt: " at ",
+    fallbackTeam: "BAU Team",
+    defaultCase: "Notification",
+    defaultSubject: function (adv) { return "TechSol notification: " + adv; },
+    requestedBy: function (ldap) { return "Requested by @" + ldap; },
+    footerTrace: function (id) { return "Cases Wizard \u00b7 automated by " + CW_AUTHOR_CREDIT + " \u00b7 trace " + id; },
+    reportProblem: "Report a problem",
+    actionViewCase: "View case",
+    actionOpenDashboard: "Open TL Dashboard",
+    sectionDetails: "Case details",
+
+    urgentToday: "Scheduled for today or tomorrow.",
+    urgentSoon: "Scheduled for the next 3 days.",
+
+    agentSentTitle: "Case in the BAU queue",
+    agentSentMessage: function (adv) { return "The request for <strong style=\"font-weight:500;\">" + adv + "</strong> has been logged and is awaiting leadership review."; },
+    agentSentSubject: function (adv) { return "Case in the BAU queue: " + adv; },
+
+    leadershipTitle: "A request needs a case opened",
+    leadershipMessage: function (adv) { return "A new request for <strong style=\"font-weight:500;\">" + adv + "</strong> has been submitted and requires a case to be opened."; },
+    leadershipSubject: function (adv) { return "BAU action required: " + adv; },
+
+    createdTitle: "Case created",
+    createdMessage: function (adv) { return "Leadership created the BAU case for <strong style=\"font-weight:500;\">" + adv + "</strong>. Everything is ready for the engagement."; },
+    createdSubject: function (adv) { return "Case created: " + adv; },
+
+    discardSentTitle: "Discard under review",
+    discardSentMessage: function (adv) { return "Your discard request for <strong style=\"font-weight:500;\">" + adv + "</strong> has been sent for TL review."; },
+    discardSentSubject: function (adv) { return "Discard under review: " + adv; },
+
+    discardDoneTitle: "Case discarded",
+    discardDoneMessage: function (adv) { return "The discard of the case for <strong style=\"font-weight:500;\">" + adv + "</strong> was approved and completed by leadership."; },
+    discardDoneSubject: function (adv) { return "Case discarded: " + adv; },
+
+    creationRejectedTitle: "Request rejected",
+    creationRejectedMessage: function (adv) { return "The request for <strong style=\"font-weight:500;\">" + adv + "</strong> was rejected by leadership and will not be opened as a case."; },
+    creationRejectedSubject: function (adv) { return "Request rejected: " + adv; },
+
+    discardDeniedTitle: "Discard denied",
+    discardDeniedMessage: function (adv) { return "Leadership denied the discard request for the case of <strong style=\"font-weight:500;\">" + adv + "</strong>. The case remains active."; },
+    discardDeniedSubject: function (adv) { return "Discard denied: " + adv; },
+
+    labelContext: "Reason",
+    labelDomain: "Final domain",
+    labelSchedule: "Scheduling (SLA)",
+    labelTask: "Procedure",
+    labelChildCase: "BAU case generated",
+    labelTLJustification: "Leadership justification"
   }
 };
 

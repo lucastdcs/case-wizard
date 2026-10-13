@@ -37,6 +37,18 @@ const ST_DICT = {
         noteGeneratedToast: "¡Nota generada e insertada!",
         copiedOpenNoteToast: "¡Copiado! Abre una nota para pegar.",
     },
+    en: {
+        back: "Back",
+        generateNote: "Generate Note",
+        describeIssuePlaceholder: "Describe the error, steps to reproduce...",
+        whatTestedPlaceholder: "What have you already tested?",
+        fieldsFilledToast: (n) => `${n} fields filled in!`,
+        noNewDataToast: "No new data found.",
+        readPageErrorToast: "Error reading the page.",
+        fillRequiredToast: "Fill in the required fields.",
+        noteGeneratedToast: "Note generated and inserted!",
+        copiedOpenNoteToast: "Copied! Open a note to paste it.",
+    },
 };
 function st(key) {
     const lang = getLanguage();

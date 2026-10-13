@@ -488,6 +488,196 @@ check('validação de módulo desconhecido', () => {
   throws(() => api.listContentItems('inexistente'), /Módulo desconhecido/);
 });
 
+// --- seedMissingLangs_: acrescentar um IDIOMA a um módulo já no ar ---
+//
+// O buraco que esta função fecha: `seedContentModule()` é migração de primeira
+// vez e pula módulo já semeado, então quando o inglês entrou não havia caminho
+// nenhum para a planilha além de publicar item a item pela Central.
+
+function ctxLimpo() {
+  const ss = new FakeSpreadsheet();
+  const ctx = vm.createContext({
+    SpreadsheetApp: { getActiveSpreadsheet: () => ss },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
+    MailApp: { sendEmail: () => { } },
+    Logger: { log: () => { } },
+    Utilities: UTILITIES_STUB,
+    handleLog: () => { },
+    console,
+  });
+  vm.runInContext(fs.readFileSync(SRC, 'utf8'), ctx);
+  return ctx;
+}
+
+function carregaSeed(ctx, arquivo) {
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, '..', 'gas-backend', arquivo), 'utf8'),
+    ctx
+  );
+}
+
+// Reproduz a planilha REAL: semeada antes do inglês existir, ou seja com as
+// linhas PT/ES no ar e nenhuma EN.
+function comoEstavaAntesDoIngles(ctx, payloadVar) {
+  const payload = vm.runInContext(payloadVar, ctx);
+  const semEn = {
+    module: payload.module,
+    items: payload.items.filter((i) => String(i.lang).toUpperCase() !== 'EN'),
+  };
+  const res = ctx.seedContentModule(semEn);
+  eq(res.status, 'success', 'pré-condição (semeadura PT/ES):');
+  return res.seeded;
+}
+
+check('seedMissingLangs_ insere só o idioma ausente, sem tocar no que está no ar', () => {
+  const ctx = ctxLimpo();
+  carregaSeed(ctx, 'ContentSeed_NoteTemplates.js');
+
+  const antes = comoEstavaAntesDoIngles(ctx, 'CONTENT_SEED_NOTE_TEMPLATES');
+  const liveAntes = ctx.listContentItems('note_template');
+  const idsAntes = new Set(liveAntes.map((i) => i.id));
+
+  const res = ctx.seedMissingLangs_(vm.runInContext('CONTENT_SEED_NOTE_TEMPLATES', ctx));
+  eq(res.status, 'success');
+  eq(res.languages, ['EN'], 'idiomas inseridos:');
+  eq(res.skipped.sort(), ['ES', 'PT'], 'idiomas pulados:');
+
+  const live = ctx.listContentItems('note_template');
+  eq(live.length, antes + res.seeded, 'total depois:');
+
+  // As linhas que já estavam no ar continuam lá, com os mesmos IDs: a função
+  // não republica nem reescreve nada do que existia.
+  const idsDepois = new Set(live.map((i) => i.id));
+  for (const id of idsAntes) {
+    if (!idsDepois.has(id)) throw new Error('linha pré-existente sumiu: ' + id);
+  }
+
+  const porLang = {};
+  live.forEach((i) => { porLang[i.lang] = (porLang[i.lang] || 0) + 1; });
+  eq(porLang.EN, porLang.PT, 'EN tem tantas linhas quanto PT:');
+
+  // Linhagem própria por item, como na semeadura — senão um rollback futuro
+  // arrastaria o idioma inteiro junto.
+  const novas = live.filter((i) => i.lang === 'EN');
+  eq(new Set(novas.map((i) => i.lineage)).size, novas.length, 'linhagens únicas:');
+});
+
+check('rodar de novo não duplica: idioma já no ar é pulado por inteiro', () => {
+  const ctx = ctxLimpo();
+  carregaSeed(ctx, 'ContentSeed_NoteTemplates.js');
+  comoEstavaAntesDoIngles(ctx, 'CONTENT_SEED_NOTE_TEMPLATES');
+
+  const payload = vm.runInContext('CONTENT_SEED_NOTE_TEMPLATES', ctx);
+  ctx.seedMissingLangs_(payload);
+  const depoisDaPrimeira = ctx.listContentItems('note_template').length;
+
+  const segunda = ctx.seedMissingLangs_(payload);
+  eq(segunda.status, 'skipped');
+  eq(ctx.listContentItems('note_template').length, depoisDaPrimeira, 'nada duplicou:');
+});
+
+check('idioma pela METADE é pulado — a tela da Central é que resolve', () => {
+  // A regra conservadora que evita o pior caso: em note_template e call_script
+  // várias linhas dividem (key, field, lang), então não há como casar "esta
+  // linha falta". Se EN já tem uma linha, alguém cuida dele pela tela, e
+  // inserir o lote inteiro duplicaria tudo o que já está lá.
+  const ctx = ctxLimpo();
+  carregaSeed(ctx, 'ContentSeed_NoteTemplates.js');
+
+  const payload = vm.runInContext('CONTENT_SEED_NOTE_TEMPLATES', ctx);
+  const umaEn = payload.items.find((i) => String(i.lang).toUpperCase() === 'EN');
+  const parcial = {
+    module: payload.module,
+    items: payload.items.filter((i) => String(i.lang).toUpperCase() !== 'EN').concat([umaEn]),
+  };
+  eq(ctx.seedContentModule(parcial).status, 'success', 'pré-condição:');
+  const antes = ctx.listContentItems('note_template').length;
+
+  const res = ctx.seedMissingLangs_(payload);
+  eq(res.status, 'skipped');
+  eq(ctx.listContentItems('note_template').length, antes, 'não inseriu em cima do parcial:');
+});
+
+check('módulo com tradução DENTRO do valor (lang ALL) diz que não é o caminho', () => {
+  // links e task_screenshots guardam desc_es/desc_en e screenshots_* no próprio
+  // valor: uma linha nova duplicaria o link em vez de traduzi-lo. Precisa dizer
+  // isso, não dar um no-op silencioso.
+  const ctx = ctxLimpo();
+  carregaSeed(ctx, 'ContentSeed_Links.js');
+  eq(ctx.seedLinksNow().status, 'success', 'pré-condição:');
+  const antes = ctx.listContentItems('links').length;
+
+  const res = ctx.seedMissingLangs_(vm.runInContext('CONTENT_SEED_LINKS', ctx));
+  eq(res.status, 'skipped');
+  if (!/dentro do valor/.test(res.reason)) {
+    throw new Error('o motivo não explica o caso ALL: ' + res.reason);
+  }
+  eq(ctx.listContentItems('links').length, antes, 'não inseriu nada:');
+});
+
+check('módulo vazio é encaminhado para seedContentModule', () => {
+  const ctx = ctxLimpo();
+  carregaSeed(ctx, 'ContentSeed_NoteTemplates.js');
+
+  const res = ctx.seedMissingLangs_(vm.runInContext('CONTENT_SEED_NOTE_TEMPLATES', ctx));
+  eq(res.status, 'skipped');
+  if (!/seedContentModule/.test(res.reason)) {
+    throw new Error('o motivo não aponta o caminho certo: ' + res.reason);
+  }
+  eq(ctx.listContentItems('note_template').length, 0, 'continua vazio:');
+});
+
+check('a ORDEM dos passos do roteiro sobrevive à inserção tardia', () => {
+  // No call_script a ordem é o conteúdo: um roteiro fora de ordem é um roteiro
+  // errado. As linhas EN entram depois das PT/ES e com sortOrder do seed, que é
+  // global — o que importa é a ordem RELATIVA dentro do idioma.
+  const ctx = ctxLimpo();
+  carregaSeed(ctx, 'ContentSeed_CallScript.js');
+  comoEstavaAntesDoIngles(ctx, 'CONTENT_SEED_CALL_SCRIPT');
+  eq(ctx.seedMissingLangs_(vm.runInContext('CONTENT_SEED_CALL_SCRIPT', ctx)).status, 'success');
+
+  const payload = vm.runInContext('CONTENT_SEED_CALL_SCRIPT', ctx);
+  const esperado = payload.items
+    .filter((i) => String(i.lang).toUpperCase() === 'EN')
+    .map((i) => i.key + '/' + i.field + '/' + i.value);
+
+  const veio = ctx.listContentItems('call_script')
+    .filter((i) => i.lang === 'EN')
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((i) => i.key + '/' + i.field + '/' + i.value);
+
+  eq(veio.length, esperado.length, 'passos EN no ar:');
+  for (let i = 0; i < esperado.length; i++) {
+    if (veio[i] !== esperado[i]) {
+      throw new Error(`passo ${i + 1} fora de ordem:\n  esperado ${esperado[i].slice(0, 70)}\n  veio     ${veio[i].slice(0, 70)}`);
+    }
+  }
+});
+
+check('seedMissingLangsNow() cobre os quatro módulos e relata cada um', () => {
+  const ctx = ctxLimpo();
+  ['ContentSeed_NoteTemplates.js', 'ContentSeed_Emails.js',
+   'ContentSeed_CallScript.js', 'ContentSeed_Links.js'].forEach((f) => carregaSeed(ctx, f));
+
+  comoEstavaAntesDoIngles(ctx, 'CONTENT_SEED_NOTE_TEMPLATES');
+  comoEstavaAntesDoIngles(ctx, 'CONTENT_SEED_EMAILS');
+  comoEstavaAntesDoIngles(ctx, 'CONTENT_SEED_CALL_SCRIPT');
+  ctx.seedLinksNow();
+
+  const rel = ctx.seedMissingLangsNow();
+  eq(Object.keys(rel).sort(), ['call_script', 'email_template', 'links', 'note_template']);
+
+  ['note_template', 'email_template', 'call_script'].forEach((m) => {
+    eq(rel[m].status, 'success', m + ':');
+    eq(rel[m].languages, ['EN'], m + ' idiomas:');
+    const langs = new Set(ctx.listContentItems(m).map((i) => i.lang));
+    if (!langs.has('EN')) throw new Error(m + ' ficou sem EN no ar');
+  });
+
+  // links é ALL: entra no relatório como pulado, com motivo, em vez de sumir.
+  eq(rel.links.status, 'skipped', 'links:');
+});
+
 check('seedCallScriptNow() popula o roteiro numa planilha zerada', () => {
   const freshSS = new FakeSpreadsheet();
   const freshCtx = vm.createContext({
@@ -516,8 +706,15 @@ check('seedCallScriptNow() popula o roteiro numa planilha zerada', () => {
   // grudados numa chave só ("PT BAU") e passam a ser colunas separadas.
   const langs = new Set(live.map(i => i.lang));
   const flows = new Set(live.map(i => i.key));
-  eq([...langs].sort(), ['ES', 'PT']);
+  eq([...langs].sort(), ['EN', 'ES', 'PT']);
   eq([...flows].sort(), ['BAU', 'LT']);
+
+  // Cada idioma tem de trazer os dois fluxos: um roteiro semeado só em BAU
+  // deixaria o agente de LT daquele idioma sem script, sem erro nenhum.
+  [...langs].forEach(l => {
+    const seus = new Set(live.filter(i => i.lang === l).map(i => i.key));
+    eq([...seus].sort(), ['BAU', 'LT'], `fluxos de ${l}:`);
+  });
 
   const groups = new Set(live.map(i => i.field));
   [...groups].forEach(g => {
@@ -1276,12 +1473,26 @@ check('publicação sem nenhuma data é recusada', () => {
   );
 });
 
-check('segmento fora de PT/ES é recusado', () => {
+// EN deixou de ser exemplo de segmento inválido quando a operação em inglês
+// passou a existir (BAU_SEGMENTS em ContentAPI.js). O par abaixo trava os
+// dois lados: EN entra, e um segmento que não existe continua sendo recusado.
+check('EN é segmento válido de disponibilidade BAU', () => {
+  api.publishContentDirect({
+    module: 'bau_availability',
+    label: 'X',
+    value: bau({ EN: { attention: '2026-09-15', full: '2026-09-22' } })
+  });
+  const publicado = JSON.parse(api.listContentItems('bau_availability')[0].value);
+  eq(publicado.segments.EN.attention, '2026-09-15', 'atenção EN:');
+  eq(publicado.segments.EN.full, '2026-09-22', 'total EN:');
+});
+
+check('segmento fora dos atendidos é recusado', () => {
   throws(
     () => api.publishContentDirect({
       module: 'bau_availability',
       label: 'X',
-      value: bau({ EN: { attention: '2026-09-15', full: '' } })
+      value: bau({ FR: { attention: '2026-09-15', full: '' } })
     }),
     /Segmento desconhecido/
   );

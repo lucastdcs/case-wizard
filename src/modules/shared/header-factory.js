@@ -24,6 +24,14 @@ const HEADER_DICT = {
         backBtn: "Volver",
         createdBy: "creado por",
     },
+    en: {
+        helpTooltip: "About & Feedback",
+        closeTooltip: "Close",
+        version: "Version",
+        reportLink: "Report a Bug or Suggestion",
+        backBtn: "Back",
+        createdBy: "created by",
+    },
 };
 function ht(key) {
     const lang = getLanguage();

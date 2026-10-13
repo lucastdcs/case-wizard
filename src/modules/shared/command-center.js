@@ -26,6 +26,14 @@ const CC_DICT = {
         cancel: "Cancelar",
         cancelledToast: "¡Cancelado!",
     },
+    en: {
+        milestoneToast: (count) => `🔥 ${count} cases today!`,
+        quickSearch: "Quick search: Ctrl/Cmd+K",
+        casesToday: "Cases completed today",
+        drag: "Drag",
+        cancel: "Cancel",
+        cancelledToast: "Cancelled!",
+    },
 };
 function cct(key) {
     const lang = getLanguage();

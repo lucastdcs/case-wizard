@@ -195,7 +195,13 @@ quadro também desorienta.
 - Região que abre e fecha: `aria-expanded` + `aria-controls`.
 - Texto que muda sozinho (sincronização, status de rede): `role="status"` com
   `aria-live="polite"`.
-- Data e número por `Intl.*` no idioma da interface — nada de locale fixo.
+- Data e número por `Intl.*` — nada de locale fixo. **Qual idioma** depende de
+  para quem o texto é: cromo da tela usa o da interface, texto que vai no caso
+  ou no e-mail do anunciante usa o do atendimento (ADR-0016).
+- Controle de idioma: grupo segmentado com um botão por idioma suportado
+  (`PT | ES | EN`), nunca um `<select>` — são poucos e a escolha tem de ser
+  visível sem abrir nada. O separador é `:not(:last-child)`, não
+  `:first-child`: com três opções o do meio some.
 
 ## Variações Semânticas
 - **Fluxo Padrão (Criação BAU):** Utiliza brilhos/auras (pseudo-elemento `::before`) em tons de Azul/Gemini.

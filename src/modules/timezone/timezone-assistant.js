@@ -79,6 +79,30 @@ const TZ_DICT = {
         outOfHours: "Fuera de Horario",
         filters: { all: 'Todos', sa: 'América del Sur', us: 'Estados Unidos', na: 'Norte y Central', eu: 'Europa' },
     },
+    en: {
+        headerDesc: "Global monitoring and call planning.",
+        tabLive: "Monitoring",
+        tabPlan: "Planner",
+        searchPlaceholder: "Search for a city or country...",
+        noLocationFound: "No location found",
+        unpin: "Unpin",
+        pin: "Pin",
+        statusOpen: "Open",
+        statusOpening: "Opening",
+        statusClosing: "Closing",
+        statusClosed: "Closed",
+        whereIsClient: "Where is the customer?",
+        you: "You",
+        // O fuso da operação, não o de quem lê: a equipe atende do Brasil
+        // nos tres segmentos, inclusive no EN.
+        yourTimezone: "Bras\u00edlia (GMT-3)",
+        client: "Customer",
+        dragToSimulate: "Drag to simulate the time:",
+        idealBusinessHours: "Ideal Business Hours",
+        limitHours: "Cutoff Hours (Caution)",
+        outOfHours: "Outside Business Hours",
+        filters: { all: 'All', sa: 'South America', us: 'United States', na: 'North & Central', eu: 'Europe' },
+    },
 };
 function tt(key) {
     const lang = getLanguage();

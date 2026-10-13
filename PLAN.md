@@ -122,6 +122,30 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [x] **Inglês de ponta a ponta (2026-10-13).** Terceiro idioma em toda a
+      cadeia: os ~21 dicionários de interface, 76 linhas de conteúdo operacional
+      (26 cenários, 8 modelos de e-mail, 42 passos de call script), rótulos de
+      evidência, descrições de link, tela do TL, e-mail automático do Apps
+      Script e os cinco HTMLs da Central. `BAU_SEGMENTS` ganhou `EN`, então a
+      operação BAU em inglês existe de fato.
+      - **Decisão estrutural**: idioma da interface e idioma do atendimento
+        viraram knobs independentes (ADR-0016), desfazendo em parte a unificação
+        do ADR-0001. Sem isso, pôr a ferramenta em inglês passaria a gravar case
+        notes em inglês em casos PT/ES, em silêncio.
+      - **Dois defeitos reais** achados pelos testes, do mesmo formato
+        (`if ES … else base`): a linha EN sobrescrevia o cenário PT em
+        `note-templates-service`, e duplicava os modelos de e-mail sem
+        placeholders. Regra em `docs/LEARNINGS.md`.
+      - **TL Dashboard**: além do dicionário EN, ganhou seletor PT/ES/EN na
+        barra — antes o idioma vinha só do segmento, sem como trocar.
+      - **Notas de versão dos dois modais** (agente e TL) passaram a carregar os
+        três idiomas; eram PT-only, com botão traduzido e slide em português.
+      - **Cobertura nova**: `test:i18n` (paridade dos dicionários) e
+        `smoke:i18n` (qual knob cada lugar lê, com os knobs divergentes).
+      - Suíte: 15/15 `test:*` verdes, `test:scraping` 62/62, smokes verdes
+        exceto as 2 falhas de `smoke:shortcuts` já conhecidas desde a v6.3.3
+        (reproduzidas na branch limpa antes de começar — não são desta mudança).
+
 - [x] **Release v6.4.0 (2026-09-24).** Os 13 commits acumulados em
       `refactor-structure` desde a v6.3.3 — com o conserto do AM do caso
       anterior à frente — fechados no CHANGELOG, versões alinhadas e notas dos
@@ -254,6 +278,21 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Up next
 
+- [ ] **Central de Conteúdo em PT/ES/EN (decidido em 2026-10-13).** A rodada do
+      inglês cobriu a dimensão de CONTEÚDO da Central (seletor de idioma dos
+      modelos, coluna de tradução das evidências, EN na prévia "como o agente
+      vê"), mas **o cromo da própria Central segue 100% em português** — e nunca
+      teve espanhol tampouco. São várias centenas de strings cravadas em
+      template literals nos 4 HTMLs, sem `t()` e sem dicionário: diferente do
+      bundle, onde a estrutura `{pt, es}` já existia, aqui ela precisa ser criada
+      antes de traduzir qualquer coisa.
+      Ficou fora da v6.5.0 de propósito: o público é SME/maintainer, pequeno e
+      interno, enquanto o agente e o TL são a operação. Alvo acordado: **PT + ES
+      + EN**, para não deixar o SME espanhol de fora numa segunda passada.
+      Ordem sugerida: infra de `t()` compartilhada entre os 4 arquivos →
+      extração das strings → tradução → controle de idioma na barra, no molde do
+      que o TL Dashboard acabou de ganhar.
+
 - [ ] **Consumir `appointmentTasks`.** Já exposto no `pageData` (multivalorado),
       sem consumidor. A ideia mais valiosa é usá-lo para pré-selecionar script
       de call e template de nota, mas isso depende de uma tabela
@@ -378,6 +417,25 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 - [ ] **Empurrar a tag `v6.4.0`** de um checkout local (o proxy da sessão web
       recusa push de tag — `RELEASE.md` → Known fragilities):
       `git fetch origin main && git tag -a v6.4.0 origin/main -m "v6.4.0" && git push origin v6.4.0`
+- [ ] **Rodar `seedMissingLangsNow()` no editor do Apps Script.** É o que leva
+      as 76 linhas EN para a planilha. NÃO use os `seed*Now()` de sempre:
+      `seedContentModule()` é semeadura de primeira vez e, num módulo já no ar,
+      devolve `{status:'skipped'}` sem escrever nada.
+      `seedMissingLangsNow()` insere só os idiomas que o módulo ainda não tem,
+      sem tocar no que está publicado, e é seguro de rodar mais de uma vez.
+      Devolve um relatório por módulo — `links` aparece como `skipped` de
+      propósito, porque ali a tradução vive dentro do valor e se edita pela tela.
+      **Não é bloqueio para o agente**: o bundle traz o EN embutido e a
+      hidratação não o derruba quando a Central não serve aquele idioma. O que
+      isso destrava é o SME poder editar o conteúdo EN pela Central.
+- [ ] **Publicar a disponibilidade BAU do segmento EN.** `BAU_SEGMENTS` aceita
+      `EN` e o editor da Central já mostra o terceiro campo, mas enquanto
+      ninguém publicar datas para ele o painel do agente EN cai no primeiro
+      segmento que tiver — rotulado, mas não é o dele.
+- [ ] **Traduzir para EN as evidências das tasks publicadas.** O editor da
+      Central ganhou a coluna e a contagem de cobertura por idioma; as tasks já
+      publicadas nascem com `EN 0/n` até alguém preencher. O mapa embutido cobre
+      o catálogo do bundle, não o que já foi publicado.
 - [ ] **`smoke:shortcuts` vermelho desde a v6.3.3** — "a lista de Configurações
       segue a mesma ordem do Ctrl+K" e "o construtor de Configurações só oferece
       cenários do substatus escolhido". Investigar à parte.

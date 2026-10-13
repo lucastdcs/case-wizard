@@ -103,6 +103,16 @@ const CP_DICT = {
         groupShortcuts: 'Meus atalhos',
         groupModules: 'Módulos',
     },
+    en: {
+        ariaLabel: 'Quick search',
+        placeholder: 'Search for a module...',
+        empty: 'Nothing found.',
+        navigate: 'navigate',
+        select: 'select',
+        close: 'esc to close',
+        groupShortcuts: 'My shortcuts',
+        groupModules: 'Modules',
+    },
     es: {
         ariaLabel: 'Búsqueda rápida',
         placeholder: 'Buscar un módulo...',

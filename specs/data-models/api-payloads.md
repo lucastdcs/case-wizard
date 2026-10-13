@@ -311,7 +311,7 @@ próprio valor.
 | Campo do item | Conteúdo |
 | :--- | :--- |
 | `key` | Identidade da task (`ads_conversion_tracking`). `^[a-z][a-z0-9_]{2,39}$` |
-| `lang` | Sempre `ALL` — o par PT/ES vive dentro do valor |
+| `lang` | Sempre `ALL` — as traduções (PT/ES/EN) vivem dentro do valor |
 | `label` | O nome da task (o mesmo de `value.name`) |
 | `sortOrder` | Ordem na tela do agente |
 
@@ -392,7 +392,7 @@ próprio valor.
   sozinha — e uma prévia desatualizada mente com mais convicção que prévia
   nenhuma.
 - **O idioma vem do seletor da Central.** É onde a tradução ES que ninguém
-  confere aparece: o editor mostra PT e ES lado a lado e por isso esconde a
+  confere aparece: o editor mostra PT, ES e EN lado a lado e por isso esconde a
   falta; a prévia mostra um de cada vez e **nomeia o que está faltando**.
 - **Aviso fora da janela é anunciado.** Mostrar o cartão sem dizer que ele já
   saiu do ar seria afirmar o contrário do que está acontecendo.

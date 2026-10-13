@@ -153,6 +153,27 @@
 
         /* Boas-vindas de quem acessou (foto + saudação), compacta dentro da própria nav */
         .tl-welcome { display: flex; align-items: center; gap: 8px; }
+        /* Mesmo controle segmentado do toggle de Configurações no bundle: três
+           opções cabem lado a lado e a escolha fica visível sem abrir nada. O
+           separador é :not(:last-child) — com :first-child o do meio some. */
+        .tl-lang-toggle {
+            display: flex; border: 1px solid var(--nav-border); border-radius: 8px;
+            overflow: hidden; flex-shrink: 0;
+        }
+        .tl-lang-toggle button {
+            border: none; background: var(--nav-surface); padding: 6px 10px;
+            font-size: 11px; font-weight: 700; cursor: pointer;
+            color: var(--nav-text-secondary); font-family: inherit;
+            transition: background-color .2s ease, color .2s ease;
+        }
+        .tl-lang-toggle button:not(:last-child) { border-right: 1px solid var(--nav-border); }
+        .tl-lang-toggle button.active { background: #1A73E8; color: #fff; }
+        .tl-lang-toggle button:hover:not(.active) { background: rgba(255,255,255,.08); }
+        .tl-lang-toggle button:focus-visible { outline: 2px solid #1A73E8; outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) {
+            .tl-lang-toggle button { transition: none; }
+        }
+
         .tl-avatar {
             width: 30px;
             height: 30px;
@@ -1102,6 +1123,11 @@
             </div>
             <div style="width: 1px; height: 24px; background: var(--nav-border);"></div>
             <span id="last-synced-label" style="font-size: 12px; color: var(--nav-text-secondary);"></span>
+            <div class="tl-lang-toggle" id="tl-lang-toggle" role="group" aria-label="Idioma da tela">
+                <button type="button" data-lang="pt">PT</button>
+                <button type="button" data-lang="es">ES</button>
+                <button type="button" data-lang="en">EN</button>
+            </div>
             <button class="btn" id="btn-whats-new" style="background: var(--nav-surface); border: 1px solid var(--nav-border); color: var(--nav-text-secondary);"
                     onclick="SoundKit.click(); openReleaseNotes()" data-i18n-aria="whatsNew" aria-label="Novidades desta versão">
                 <span class="material-symbols-rounded" aria-hidden="true" style="font-size: 20px;">campaign</span>
@@ -1207,7 +1233,7 @@
 
     <script>
         // =====================================================
-        //                     IDIOMA (PT/ES)
+        //                  IDIOMA DA TELA (PT/ES/EN)
         // =====================================================
         // Esta página roda fora do bundle do bookmarklet, então não dá pra
         // usar shared/i18n.js — o dicionário é replicado aqui, mesma ideia
@@ -1217,7 +1243,7 @@
         // O idioma vem do MESMO profile que a faixa de boas-vindas já
         // busca (getCurrentTLProfile → getUserProfileByLdap → planilha
         // People), então não há requisição extra. Como esse profile chega
-        // async, a página nasce em PT e troca pra ES quando ele responde —
+        // async, a página nasce em PT e troca quando ele responde —
         // applyStaticTexts() cuida do texto fixo e o re-render dos casos
         // cuida do resto.
         const TL_I18N = {
@@ -1452,12 +1478,173 @@
                 historyLoadError: "No fue posible cargar el historial.",
                 noSubmissionsPeriod: "Sin envíos en el período.",
                 noCasesResolved: function (d) { return "Ningún caso resuelto en los últimos " + d + " días."; }
+            },
+            en: {
+                confirmTitle: "Confirm Action",
+                confirmMessage: "Are you sure you want to proceed with this action?",
+                caseSummary: "Case Summary",
+                cancel: "Cancel",
+                confirm: "Confirm",
+                sync: "Sync",
+                tabCreation: "Creation Approval",
+                tabDiscard: "Discard Approval",
+                colAdvertiser: "ADVERTISER & ID",
+                colRequest: "REQUEST & REFERENCE",
+                colSchedule: "SCHEDULING",
+                colAction: "ACTION",
+                loading: "Accessing the database...",
+                syncedNow: "Synced just now",
+                syncedSec: function (s) { return "Synced " + s + "s ago"; },
+                syncedMin: function (m) { return "Synced " + m + "min ago"; },
+                loadError: "Could not load the cases",
+                emptyState: "There are no pending requests in this category.",
+                notInformed: "Not provided",
+                flowDiscard: "Discard Request",
+                flowCreation: "BAU Creation",
+                keepActive: "Keep Case Active",
+                rejectRequest: "Reject Request",
+                confirmDiscard: "Confirm Discard",
+                approveNotify: "Approve and Notify",
+                approve: "Approve",
+                rowAdvertiser: "Advertiser",
+                rowTask: "Task",
+                rowAdvEmail: "Advertiser Email",
+                rowSuggestDiscard: "Agent Suggestion",
+                suggestDiscardBadge: "Agent suggests a discard",
+                outcomeDiscard: "The case should be discarded by the TL",
+                outcomeImplement: "The case will be implemented by the agent",
+                outcomeUnknown: "The agent did not say whether the case should be discarded",
+                rowLanguage: "Language",
+                rowAm: "Responsible AM",
+                rowSalesProgram: "Sales Program",
+                rowSite: "Site",
+                rowSchedule: "Scheduling",
+                rowAgent: "Agent",
+                rowWhatToDo: "What must be done",
+                rowJustification: "Justification / Details",
+                rowCaseSummary: "Summary for the BAU case",
+                rowAdvLastName: "Advertiser Last Name",
+                rowReasonNotImpl: "Reason for non-implementation",
+                dataTitle: "Case data",
+                submittedBy: "Submitted by",
+                closeDetails: "Close the request details",
+                copyField: "Copy",
+                copySummary: "Copy summary",
+                decisionTitle: "Decision",
+                decidedBy: "Decided by",
+                decidedAt: "Decided on",
+                tlJustification: "Leadership justification",
+                outcomeAPPROVED_CREATION: "Creation approved",
+                outcomeREJECTED_CREATION: "Creation rejected",
+                outcomeCONFIRMED_DISCARD: "Discard confirmed",
+                outcomeKEPT_ACTIVE: "Case kept active",
+                justificationLabel: "Justification for the agent",
+                justificationPlaceholder: "Why was this request not accepted?",
+                justificationRequired: "Write the justification \u2014 it goes in the agent's email.",
+                whatsNew: "What's new in this version",
+                closeWhatsNew: "Close what's new",
+                confirmKeepTitle: "Keep Case Active",
+                confirmDiscardTitle: "Confirm Discard",
+                confirmKeepMsg: "The case will stay active and the agent will be told the discard request was not accepted.",
+                confirmDiscardMsg: "On confirmation the agent is notified and the case is marked as discarded. This action is irreversible.",
+                confirmApproveTitle: "Confirm Approval",
+                confirmRejectTitle: "Confirm Rejection",
+                confirmApproveMsg: "On approval the agent receives a notification and the case moves to the next stage.",
+                confirmRejectMsg: "You are about to reject this request. This action is irreversible.",
+                toastApproved: "Request approved successfully",
+                toastRejected: "Request rejected",
+                toastEmailFailed: "Action recorded, but the confirmation email to the agent failed.",
+                toastActionFailed: "Could not process the action. Try again.",
+                toastCopied: "Copied to the clipboard",
+                greetHello: "Hello", greetMorning: "Good morning", greetAfternoon: "Good afternoon", greetEvening: "Good evening",
+                phrasesWeekend: ["Thanks for taking a look even on the weekend.", "Your dedication does not go unnoticed."],
+                phrasesDawn: ["Reviewing at dawn \u2014 respect.", "Let's keep the queue current."],
+                phrasesMonday: ["Let's start the week by clearing the queue.", "New week, empty queue."],
+                phrasesDefault: ["Let's keep the queue current.", "All under control here.", "Time to review the requests."],
+                dateAt: " at ",
+                tabHistory: "History",
+                searchPlaceholder: "Search by advertiser, CID, case or agent...",
+                clearSearch: "Clear search",
+                statApproved: function (d) { return "Approved (" + d + "d)"; },
+                statDiscarded: function (d) { return "Discarded (" + d + "d)"; },
+                statAvgTime: "Average approval time",
+                topAgents: function (d) { return "Who opened the most cases (" + d + "d)"; },
+                historyPeriodAria: "History period",
+                historyPeriodOption: function (d) { return "Last " + d + " days"; },
+                historyHorizon: "Finished cases stay in this list. The weekly backup copies, it does not remove.",
+                clientTimeSuffix: "(customer)",
+                childCaseLabel: "ID of the BAU case created",
+                childCasePlaceholder: "0-0000000000000",
+                childCaseRequired: "Provide the ID of the created case to approve.",
+                childCaseHistory: "Case created:",
+                rowAdvPhone: "Phone",
+                activeNow: "Active now",
+                recentActivity: "Recent activity",
+                nothingFoundFor: function (q) { return 'Nothing found for "' + q + '"'; },
+                tryAnotherTerm: "Try another term or ",
+                clearSearchLink: "clear the search",
+                connectionFailed: "Could not connect to the server. Try syncing again.",
+                queueClear: "Queue clear",
+                onlyYou: "Just you, for now.",
+                minAgo: function (n) { return n + "min ago"; },
+                hourAgo: function (n) { return n + "h ago"; },
+                dayAgo: function (n) { return n + "d ago"; },
+                noActivityYet: "No action recorded yet.",
+                someone: "someone",
+                historyLoadError: "Could not load the history.",
+                noSubmissionsPeriod: "No submissions in the period.",
+                noCasesResolved: function (d) { return "No case resolved in the last " + d + " days."; }
             }
         };
-        let TL_LANG = 'pt';
+        // Mesma ordem de resolução do bundle (shared/i18n.js): escolha manual
+        // salva neste navegador > idioma do perfil > 'pt'. Chave própria porque
+        // esta página roda fora do bundle e não compartilha localStorage com ele
+        // em todo ambiente.
+        const TL_LANG_KEY = 'cw_tl_lang';
+        const TL_LANGS = ['pt', 'es', 'en'];
+
+        function tlStoredLang() {
+            try {
+                const raw = localStorage.getItem(TL_LANG_KEY);
+                return TL_LANGS.indexOf(raw) !== -1 ? raw : null;
+            } catch (e) {
+                return null; // aba privada, cookies bloqueados: segue em memória
+            }
+        }
+
+        let TL_LANG_MANUAL = tlStoredLang();
+        let TL_LANG = TL_LANG_MANUAL || 'pt';
+
         function tt(key) {
             const dict = TL_I18N[TL_LANG] || TL_I18N.pt;
             return dict[key] !== undefined ? dict[key] : TL_I18N.pt[key];
+        }
+
+        // Troca na barra. Repinta o texto fixo e re-renderiza os casos, porque
+        // boa parte da tela (linhas, selos, datas) é montada em JS e não passa
+        // pelo laço de data-i18n.
+        function setTlLang(lang) {
+            if (TL_LANGS.indexOf(lang) === -1 || lang === TL_LANG) return;
+            TL_LANG = lang;
+            TL_LANG_MANUAL = lang;
+            try { localStorage.setItem(TL_LANG_KEY, lang); } catch (e) { /* segue em memória */ }
+            applyStaticTexts();
+            syncTlLangToggle();
+            if (typeof allCases !== 'undefined' && allCases.length > 0) renderCases();
+            // Não há o que repintar no modal de novidades: ele cobre a tela
+            // inteira (.modal-overlay, z-index 1000) e deixa o seletor da barra
+            // inalcançável, então os dois nunca estão abertos ao mesmo tempo.
+            // `renderReleaseNotes()` já lê TL_LANG na hora de abrir.
+        }
+
+        function syncTlLangToggle() {
+            const host = document.getElementById('tl-lang-toggle');
+            if (!host) return;
+            host.querySelectorAll('button').forEach(btn => {
+                const ativo = btn.dataset.lang === TL_LANG;
+                btn.classList.toggle('active', ativo);
+                btn.setAttribute('aria-pressed', String(ativo));
+            });
         }
 
         // Preenche todo elemento marcado com data-i18n. Chamado no boot e de
@@ -1479,6 +1666,8 @@
             // As <option> do período são texto gerado a partir do próprio value
             // ("Últimos 30 dias"), então não cabem no laço de data-i18n acima —
             // ficariam três chaves de dicionário dizendo a mesma frase.
+            syncTlLangToggle();
+
             document.querySelectorAll('#history-period option').forEach(opt => {
                 opt.textContent = tt('historyPeriodOption')(opt.value);
             });
@@ -1498,11 +1687,20 @@
         // loadCases() direto, sem depender de load nenhum - só reproduzindo esse
         // mesmo comportamento aqui.
         document.addEventListener('DOMContentLoaded', () => {
-            // No boot é no-op (o HTML já nasce em PT); o que importa é que o
-            // mecanismo seja o mesmo caminho usado quando o profile chega em
-            // ES — assim um texto novo marcado com data-i18n nunca fica de
-            // fora por esquecimento.
+            // No boot sem escolha salva é no-op (o HTML já nasce em PT); com
+            // escolha salva, é ela que repinta a tela antes do profile chegar.
+            // De todo modo é o mesmo caminho usado quando o profile responde —
+            // assim um texto novo marcado com data-i18n nunca fica de fora por
+            // esquecimento.
             applyStaticTexts();
+
+            const langToggle = document.getElementById('tl-lang-toggle');
+            if (langToggle) {
+                langToggle.querySelectorAll('button').forEach(btn => {
+                    btn.onclick = () => { SoundKit.click(); setTlLang(btn.dataset.lang); };
+                });
+                syncTlLangToggle();
+            }
 
             // Esc fecha o modal aberto. O de confirmação vem primeiro: quando os
             // dois estão na tela, ele é o que está por cima.
@@ -1558,8 +1756,12 @@
                     // Mesmo profile que já vinha pra faixa de boas-vindas
                     // carrega o idioma — sem requisição extra. A saudação é
                     // montada DEPOIS de trocar o idioma pra já nascer certa.
-                    if (String(profile.defaultLanguage) === 'ES') {
-                        TL_LANG = 'es';
+                    const lang = { 'ES': 'es', 'EN': 'en' }[String(profile.defaultLanguage).toUpperCase()];
+                    // Escolha manual salva vence o perfil — senão o seletor da
+                    // barra só valeria até o profile responder, e a tela voltaria
+                    // sozinha para o idioma do segmento.
+                    if (lang && !TL_LANG_MANUAL) {
+                        TL_LANG = lang;
                         applyStaticTexts();
                         // Os casos já podem estar na tela (loadCases roda em
                         // paralelo): re-renderiza pra pegar o novo idioma.
@@ -2207,15 +2409,24 @@
             try { localStorage.setItem(RELEASE_SEEN_KEY, RELEASE_NOTES.version); } catch (e) { /* sem persistência: reabre na próxima */ }
         }
 
+        // As notas trazem os três idiomas por campo. Seguem a TELA (TL_LANG) e
+        // não o atendimento: o modal fala sobre o dashboard, não sobre o caso.
+        // Campo sem tradução cai no PT — nota em branco é pior que nota no
+        // idioma errado.
+        function notaNoIdioma(campo) {
+            if (typeof campo === 'string') return campo; // formato antigo
+            return (campo && (campo[TL_LANG] || campo.pt)) || '';
+        }
+
         function renderReleaseNotes() {
-            document.getElementById('release-title').textContent = RELEASE_NOTES.title;
+            document.getElementById('release-title').textContent = notaNoIdioma(RELEASE_NOTES.title);
             document.getElementById('release-version').textContent = 'v' + RELEASE_NOTES.version;
             document.getElementById('release-body').innerHTML = (RELEASE_NOTES.items || []).map(item => `
                 <div class="release-item">
                     <span class="material-symbols-rounded" aria-hidden="true">${escapeHtml(item.icon)}</span>
                     <div>
-                        <div class="release-item-title">${escapeHtml(item.title)}</div>
-                        <div class="release-item-text">${escapeHtml(item.text)}</div>
+                        <div class="release-item-title">${escapeHtml(notaNoIdioma(item.title))}</div>
+                        <div class="release-item-text">${escapeHtml(notaNoIdioma(item.text))}</div>
                     </div>
                 </div>`).join('');
         }
@@ -2452,7 +2663,7 @@
         function formatSubmittedAt(iso) {
             const d = new Date(iso);
             if (isNaN(d.getTime())) return tt('notInformed');
-            return new Intl.DateTimeFormat(TL_LANG === 'es' ? 'es-ES' : 'pt-BR', {
+            return new Intl.DateTimeFormat({ es: 'es-ES', en: 'en-US' }[TL_LANG] || 'pt-BR', {
                 day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
             }).format(d);
         }

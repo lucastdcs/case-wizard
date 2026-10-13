@@ -568,6 +568,342 @@
       "label": "Informar al cliente que el equipo de QA irá a realizar pruebas en los siguientes días.",
       "value": "Informar al cliente que el equipo de QA irá a realizar pruebas en los siguientes días.",
       "sortOrder": 70
+    },
+    {
+      "key": "BAU",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Introduction (Name and Team)",
+      "value": "Introduction (Name and Team)",
+      "sortOrder": 71
+    },
+    {
+      "key": "BAU",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Recording notice and Privacy Policy",
+      "value": "Recording notice and Privacy Policy",
+      "sortOrder": 72
+    },
+    {
+      "key": "BAU",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Confirm the CID and the email",
+      "value": "Confirm the CID and the email",
+      "sortOrder": 73
+    },
+    {
+      "key": "BAU",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "(Optional) Validate the account authentication via link",
+      "value": "(Optional) Validate the account authentication via link",
+      "sortOrder": 74
+    },
+    {
+      "key": "BAU",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Confirm the Task and the AM",
+      "value": "Confirm the Task and the AM",
+      "sortOrder": 75
+    },
+    {
+      "key": "BAU",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "State the call duration (30-45 min)",
+      "value": "State the call duration (30-45 min)",
+      "sortOrder": 76
+    },
+    {
+      "key": "BAU",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Ask them to close sensitive content (before sharing)",
+      "value": "Ask them to close sensitive content (before sharing)",
+      "sortOrder": 77
+    },
+    {
+      "key": "BAU",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Validate the backup and admin access",
+      "value": "Validate the backup and admin access",
+      "sortOrder": 78
+    },
+    {
+      "key": "BAU",
+      "field": "meio",
+      "lang": "EN",
+      "label": "Offer implementation via Tag Support (Temporary Access)",
+      "value": "Offer implementation via Tag Support (Temporary Access)",
+      "sortOrder": 79
+    },
+    {
+      "key": "BAU",
+      "field": "meio",
+      "lang": "EN",
+      "label": "Send and walk through acceptance of the 'Consent and authorization...' email",
+      "value": "Send and walk through acceptance of the 'Consent and authorization...' email",
+      "sortOrder": 80
+    },
+    {
+      "key": "BAU",
+      "field": "meio",
+      "lang": "EN",
+      "label": "Confirm the access was received",
+      "value": "Confirm the access was received",
+      "sortOrder": 81
+    },
+    {
+      "key": "BAU",
+      "field": "meio",
+      "lang": "EN",
+      "label": "Start the setup (warn about ~10min of silence)",
+      "value": "Start the setup (warn about ~10min of silence)",
+      "sortOrder": 82
+    },
+    {
+      "key": "BAU",
+      "field": "meio",
+      "lang": "EN",
+      "label": "[If declined] Continue with Screen Sharing",
+      "value": "[If declined] Continue with Screen Sharing",
+      "sortOrder": 83
+    },
+    {
+      "key": "BAU",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Call summary (what was done and how it works)",
+      "value": "Call summary (what was done and how it works)",
+      "sortOrder": 84
+    },
+    {
+      "key": "BAU",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Offer further help / Open the floor for questions",
+      "value": "Offer further help / Open the floor for questions",
+      "sortOrder": 85
+    },
+    {
+      "key": "BAU",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Ask them to stop sharing their screen",
+      "value": "Ask them to stop sharing their screen",
+      "sortOrder": 86
+    },
+    {
+      "key": "BAU",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Next steps (Follow-up for XX days)",
+      "value": "Next steps (Follow-up for XX days)",
+      "sortOrder": 87
+    },
+    {
+      "key": "BAU",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Ask for consent for the QA test",
+      "value": "Ask for consent for the QA test",
+      "sortOrder": 88
+    },
+    {
+      "key": "BAU",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Align on scope (Technical vs. Account Manager)",
+      "value": "Align on scope (Technical vs. Account Manager)",
+      "sortOrder": 89
+    },
+    {
+      "key": "BAU",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Satisfaction Survey (and confirm the email to send it to)",
+      "value": "Satisfaction Survey (and confirm the email to send it to)",
+      "sortOrder": 90
+    },
+    {
+      "key": "BAU",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Sign-off",
+      "value": "Sign-off",
+      "sortOrder": 91
+    },
+    {
+      "key": "LT",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Hello [...], I am [...], and I am part of the Google Technical Solutions Team. How are you?",
+      "value": "Hello [...], I am [...], and I am part of the Google Technical Solutions Team. How are you?",
+      "sortOrder": 92
+    },
+    {
+      "key": "LT",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Our call may be recorded for training, quality and service improvement purposes, in line with our Privacy Policy.",
+      "value": "Our call may be recorded for training, quality and service improvement purposes, in line with our Privacy Policy.",
+      "sortOrder": 93
+    },
+    {
+      "key": "LT",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "For security reasons, I need you to give me your email and the CID (or number) of the Ads account, please",
+      "value": "For security reasons, I need you to give me your email and the CID (or number) of the Ads account, please",
+      "sortOrder": 94
+    },
+    {
+      "key": "LT",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Confirm the Task and the AM",
+      "value": "Confirm the Task and the AM",
+      "sortOrder": 95
+    },
+    {
+      "key": "LT",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "The consultation lasts around 30 to 45 minutes.",
+      "value": "The consultation lasts around 30 to 45 minutes.",
+      "sortOrder": 96
+    },
+    {
+      "key": "LT",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Please share your screen using the “Full Screen” option",
+      "value": "Please share your screen using the “Full Screen” option",
+      "sortOrder": 97
+    },
+    {
+      "key": "LT",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Please close any and all confidential and sensitive content (conversations, important personal data, etc).",
+      "value": "Please close any and all confidential and sensitive content (conversations, important personal data, etc).",
+      "sortOrder": 98
+    },
+    {
+      "key": "LT",
+      "field": "inicio",
+      "lang": "EN",
+      "label": "Do you have a backup of your site and all the access to the Google tools?",
+      "value": "Do you have a backup of your site and all the access to the Google tools?",
+      "sortOrder": 99
+    },
+    {
+      "key": "LT",
+      "field": "meio",
+      "lang": "EN",
+      "label": "Offer implementation via Tag Support (Temporary Access)",
+      "value": "Offer implementation via Tag Support (Temporary Access)",
+      "sortOrder": 100
+    },
+    {
+      "key": "LT",
+      "field": "meio",
+      "lang": "EN",
+      "label": "Send and walk through acceptance of the 'Consent and authorization...' email",
+      "value": "Send and walk through acceptance of the 'Consent and authorization...' email",
+      "sortOrder": 101
+    },
+    {
+      "key": "LT",
+      "field": "meio",
+      "lang": "EN",
+      "label": "Confirm the access was received",
+      "value": "Confirm the access was received",
+      "sortOrder": 102
+    },
+    {
+      "key": "LT",
+      "field": "meio",
+      "lang": "EN",
+      "label": "Start the setup (warn about ~10min of silence)",
+      "value": "Start the setup (warn about ~10min of silence)",
+      "sortOrder": 103
+    },
+    {
+      "key": "LT",
+      "field": "meio",
+      "lang": "EN",
+      "label": "[If declined] Continue with Screen Sharing",
+      "value": "[If declined] Continue with Screen Sharing",
+      "sortOrder": 104
+    },
+    {
+      "key": "LT",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Call summary (what was done and how it works)",
+      "value": "Call summary (what was done and how it works)",
+      "sortOrder": 105
+    },
+    {
+      "key": "LT",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Offer further help / Open the floor for questions",
+      "value": "Offer further help / Open the floor for questions",
+      "sortOrder": 106
+    },
+    {
+      "key": "LT",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Ask them to stop sharing their screen",
+      "value": "Ask them to stop sharing their screen",
+      "sortOrder": 107
+    },
+    {
+      "key": "LT",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Next steps (Follow-up for XX days)",
+      "value": "Next steps (Follow-up for XX days)",
+      "sortOrder": 108
+    },
+    {
+      "key": "LT",
+      "field": "fim",
+      "lang": "EN",
+      "label": "During that time, our quality team may run a conversion test to validate the implementation. Do you agree to that test so we can confirm the implementation is effective?",
+      "value": "During that time, our quality team may run a conversion test to validate the implementation. Do you agree to that test so we can confirm the implementation is effective?",
+      "sortOrder": 109
+    },
+    {
+      "key": "LT",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Align on scope (Technical vs. Account Manager)",
+      "value": "Align on scope (Technical vs. Account Manager)",
+      "sortOrder": 110
+    },
+    {
+      "key": "LT",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Satisfaction Survey (and confirm the email to send it to)",
+      "value": "Satisfaction Survey (and confirm the email to send it to)",
+      "sortOrder": 111
+    },
+    {
+      "key": "LT",
+      "field": "fim",
+      "lang": "EN",
+      "label": "Sign-off",
+      "value": "Sign-off",
+      "sortOrder": 112
     }
   ]
 }

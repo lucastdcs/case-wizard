@@ -1,6 +1,6 @@
 {
   "name": "case-wizard",
-  "version": "6.4.0",
+  "version": "6.5.0",
   "description": "TechSol Operations Assistant - Productivity Suite",
   "main": "src/app.js",
   "scripts": {
@@ -9,6 +9,7 @@
     "portfolio": "python3 generate-portfolio.py",
     "wiki:build": "node scripts/build-wiki.mjs",
     "test:content": "node scripts/test-content-api.js",
+    "test:i18n": "node scripts/test-i18n.mjs",
     "test:call-script": "node scripts/test-call-script-roundtrip.mjs",
     "seed:links": "node scripts/generate-links-seed.mjs",
     "seed:call-script": "node scripts/generate-call-script-seed.mjs",
@@ -29,6 +30,7 @@
     "test:dash-changelog": "node scripts/test-dash-changelog.mjs",
     "test:tl-decision": "node scripts/test-tl-decision.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
+    "smoke:i18n": "node scripts/smoke-i18n.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:bau-scraping": "node scripts/smoke-bau-scraping.mjs",
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",

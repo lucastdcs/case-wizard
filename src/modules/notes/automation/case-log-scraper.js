@@ -23,6 +23,14 @@ const CLS_DICT = {
         notFound: "No encontrado",
         processingError: "Error al procesar.",
     },
+    en: {
+        searching: "Searching for ID...",
+        readingMessage: "Reading message...",
+        idFound: (id) => `ID found: ${id}`,
+        noIdFound: "No ID found.",
+        notFound: "Not found",
+        processingError: "Processing error.",
+    },
 };
 function cls(key) {
     const lang = getLanguage();
