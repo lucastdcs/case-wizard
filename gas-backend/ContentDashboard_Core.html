@@ -79,60 +79,32 @@
         // Ter isso numa tabela em vez de espalhado em ifs é o que permite a rota
         // por hash, o teclado e o título da página lerem a MESMA fonte.
         var DESTINOS = {
-            home: { titulo: 'Hoje', sub: 'O que está acontecendo no conteúdo agora.' },
-            links: {
-                titulo: 'Links', carregar: null,
-                sub: 'Atalhos que o agente abre pela pílula. Editar cria uma proposta.'
-            },
-            callscript: {
-                titulo: 'Call Script', carregar: function () { loadCallScript(); },
-                sub: 'O roteiro da ligação, passo a passo. Editar cria uma proposta.'
-            },
-            notes: {
-                titulo: 'Case Notes', carregar: function () { loadNoteTemplates(); },
-                sub: 'Notas prontas por substatus. Editar cria uma proposta.'
-            },
-            tasks: {
-                titulo: 'Tasks', carregar: function () { loadTaskCatalog(); },
-                sub: 'O catálogo de tasks e os screenshots que o Win Criteria exige de cada uma.'
-            },
-            emails: {
-                titulo: 'E-mails', carregar: function () { loadEmails(); },
-                sub: 'Modelos que o agente envia ao anunciante. Editar cria uma proposta.'
-            },
-            tips: {
-                titulo: 'Dicas', carregar: function () { loadTips(); },
-                sub: 'Frases curtas exibidas durante os carregamentos do app.'
-            },
-            broadcast: {
-                titulo: 'Avisos', carregar: function () { loadBroadcast(); }, aoVivo: true,
-                sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.'
-            },
-            bau: {
-                titulo: 'Disponibilidade', carregar: function () { loadBau(); }, aoVivo: true,
-                sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.'
-            },
-            approvals: {
-                titulo: 'Aprovações', carregar: function () { loadApprovals(); },
-                sub: 'Propostas esperando revisão, de todos os módulos.'
-            },
-            people: {
-                titulo: 'Pessoas', carregar: function () { loadPeople(); },
-                sub: 'O diretório que decide quem é liderança e em que idioma o app abre.'
-            },
-            audit: {
-                titulo: 'Auditoria', carregar: function () { loadAudit(); },
-                sub: 'Tudo que aconteceu na Central, com filtro e período.'
-            },
-            roles: {
-                titulo: 'Papéis', carregar: function () { loadRoles(); },
-                sub: 'O que cada papel pode fazer. Vale no ato, sem passar por fila.'
-            },
-            access: {
-                titulo: 'Acessos', carregar: function () { loadAccess(); },
-                sub: 'Quem entra na Central e com qual papel.'
-            }
+            home: {},
+            links: { carregar: null },
+            callscript: { carregar: function () { loadCallScript(); } },
+            notes: { carregar: function () { loadNoteTemplates(); } },
+            tasks: { carregar: function () { loadTaskCatalog(); } },
+            emails: { carregar: function () { loadEmails(); } },
+            tips: { carregar: function () { loadTips(); } },
+            broadcast: { carregar: function () { loadBroadcast(); }, aoVivo: true },
+            bau: { carregar: function () { loadBau(); }, aoVivo: true },
+            approvals: { carregar: function () { loadApprovals(); } },
+            people: { carregar: function () { loadPeople(); } },
+            audit: { carregar: function () { loadAudit(); } },
+            roles: { carregar: function () { loadRoles(); } },
+            access: { carregar: function () { loadAccess(); } }
         };
+
+        // Título e subtítulo moram no dicionário da interface (`dest_<destino>`
+        // e `dest_<destino>_sub`), não aqui: o trilho, o cabeçalho e a busca
+        // leem a mesma chave, no idioma de quem está lendo.
+        function tituloDoDestino(d) { return tt('dest_' + d); }
+        function subDoDestino(d) { return tt('dest_' + d + '_sub'); }
+
+        function pintarCabecalho(destino) {
+            document.getElementById('page-title').textContent = tituloDoDestino(destino);
+            document.getElementById('page-sub').textContent = subDoDestino(destino);
+        }
 
         var DESTINO_PADRAO = 'home';
 
@@ -152,8 +124,7 @@
             });
 
             var def = DESTINOS[destino];
-            document.getElementById('page-title').textContent = def.titulo;
-            document.getElementById('page-sub').textContent = def.sub;
+            pintarCabecalho(destino);
 
             // O endereço acompanha o destino: uma pendência passa a caber num
             // chat, que antes era "abre a Central, vai em Aprovações, procura".
@@ -280,8 +251,9 @@
             var d = new Date(iso);
             if (isNaN(d.getTime())) return String(iso);
             // Intl no idioma da interface, não formato fixo — mesma regra do
-            // resto do produto (specs/ui-ux/design-system.md).
-            return d.toLocaleString({ ES: 'es', EN: 'en-US' }[idiomaAtual()] || 'pt-BR',
+            // resto do produto (specs/ui-ux/design-system.md). Interface, e não
+            // o seletor de conteúdo: a data é de quem lê.
+            return d.toLocaleString(UI_LOCALE[UI_LANG],
                 { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
 
@@ -788,10 +760,10 @@
                 var botao = document.getElementById('tab-' + d);
                 // Só o que a pessoa realmente enxerga no trilho.
                 if (botao && botao.classList.contains('hidden')) return false;
-                return semAcentoNaTela(DESTINOS[d].titulo).indexOf(t) !== -1;
+                return semAcentoNaTela(tituloDoDestino(d)).indexOf(t) !== -1;
             }).map(function (d) {
-                return { tipo: 'destino', destino: d, label: DESTINOS[d].titulo,
-                         snippet: DESTINOS[d].sub };
+                return { tipo: 'destino', destino: d, label: tituloDoDestino(d),
+                         snippet: subDoDestino(d) };
             });
         }
 
@@ -1027,34 +999,26 @@
                 nota.classList.remove('hidden');
             }
 
-            function gate(module, idBotao, idNota, texto) {
+            // O texto de cada aviso está no dicionário (`gate_<módulo>`).
+            function gate(module, idBotao, idNota) {
                 if (idBotao) {
                     document.getElementById(idBotao).classList.toggle('hidden', !podeEscrever(module));
                 }
-                explicarSemPermissao(idNota,
-                    'Seu papel (' + s.role + ') ' + texto, canPropose(module));
+                explicarSemPermissao(idNota, tt('gate_' + module, s.role), canPropose(module));
             }
 
-            gate('links', 'links-new-btn', 'links-note',
-                'vê os links, mas não propõe alterações neste módulo.');
-            gate('call_script', 'cs-new-btn', 'cs-note',
-                'vê o roteiro, mas não propõe alterações neste módulo.');
-            gate('tips', 'tp-new-btn', 'tp-note',
-                'vê as dicas, mas não propõe alterações neste módulo.');
-            gate('email_template', null, 'em-note',
-                'vê os modelos, mas não propõe alterações neste módulo.');
-            gate('note_template', 'nt-new-btn', 'nt-note',
-                'vê os modelos de nota, mas não propõe alterações neste módulo.');
-            gate('task_screenshots', 'tsk-new-btn', 'tsk-note',
-                'vê as tasks e os screenshots exigidos, mas não propõe alterações neste módulo.');
+            gate('links', 'links-new-btn', 'links-note');
+            gate('call_script', 'cs-new-btn', 'cs-note');
+            gate('tips', 'tp-new-btn', 'tp-note');
+            gate('email_template', null, 'em-note');
+            gate('note_template', 'nt-new-btn', 'nt-note');
+            gate('task_screenshots', 'tsk-new-btn', 'tsk-note');
             // Avisos e disponibilidade seguem a mesma regra do resto da tela:
             // quem tem acesso enxerga o que está no ar, e só quem tem o papel vê
             // o caminho de publicar. É o WFM que separa os dois na prática —
             // publica disponibilidade, não avisos.
-            gate('broadcast', 'bc-new-btn', 'bc-note',
-                'vê os avisos no ar, mas não publica neste módulo.');
-            gate('bau_availability', null, 'bau-note',
-                'vê a disponibilidade no ar, mas não publica neste módulo.');
+            gate('broadcast', 'bc-new-btn', 'bc-note');
+            gate('bau_availability', null, 'bau-note');
             document.getElementById('bau-editor').classList
                 .toggle('hidden', !podeEscrever('bau_availability'));
         }
@@ -1146,14 +1110,86 @@
                 esc(s.realRole) + '</button>';
         }
 
+        // --- Novidades da versão ---
+        //
+        // O mesmo aviso do TL Dashboard: quem usa a Central não carrega o
+        // bookmarklet, então o changelog do agente não chega aqui. O conteúdo vem
+        // injetado pelo servidor (CW_RELEASE_NOTES, ver renderDashboard e
+        // DashReleaseNotes.gs), não por google.script.run: é estático, e uma
+        // chamada a mais no boot é o que #333/#334 pediu para evitar.
+        // `RELEASE_NOTES` é declarado na casca (ContentDashboard.html): parte
+        // incluída não passa pelo avaliador de template.
+
+        // Chave própria, pelo mesmo motivo do TL: um TL que usa as duas telas
+        // veria o aviso de uma sumir por ter lido o da outra.
+        var RELEASE_SEEN_KEY = 'cw_content_seen_version';
+
+        function lerVersaoVista() {
+            try { return localStorage.getItem(RELEASE_SEEN_KEY); } catch (e) { return null; }
+        }
+
+        function marcarVersaoVista() {
+            try { localStorage.setItem(RELEASE_SEEN_KEY, RELEASE_NOTES.version); } catch (e) { /* reabre na próxima */ }
+        }
+
+        // Cada campo vem em `{ pt, es, en }`, como no TL, e segue o idioma da
+        // TELA: o aviso fala da Central, não do conteúdo em revisão.
+        function notaNoIdioma(campo) {
+            if (typeof campo === 'string') return campo;
+            return (campo && (campo[UI_LANG] || campo.pt)) || '';
+        }
+
+        function abrirNovidades() {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="novidades-titulo">' +
+                '<h2 id="novidades-titulo">' + esc(notaNoIdioma(RELEASE_NOTES.title)) + '</h2>' +
+                '<p class="card-sub" id="novidades-versao">v' + esc(RELEASE_NOTES.version) + '</p>' +
+                '<div class="novidades-lista">' +
+                (RELEASE_NOTES.items || []).map(function (item) {
+                    return '<div class="novidade">' +
+                        '<span class="material-symbols-rounded" aria-hidden="true">' + esc(item.icon) + '</span>' +
+                        '<div><div class="novidade-titulo">' + esc(notaNoIdioma(item.title)) + '</div>' +
+                        '<div class="novidade-texto">' + esc(notaNoIdioma(item.text)) + '</div></div></div>';
+                }).join('') +
+                '</div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-primary" id="novidades-fechar" onclick="closeModal()">' +
+                esc(tt('close')) + '</button>' +
+                '</div></div></div>';
+            document.getElementById('novidades-ponto').hidden = true;
+            marcarVersaoVista();
+            document.getElementById('novidades-fechar').focus();
+        }
+
+        // Só abre sozinho quando a versão mudou; o botão do topo segue lá para
+        // reler. Espera a tela assentar, e não abre por cima de um modal que a
+        // pessoa já tenha aberto nesse meio-tempo.
+        function checarNovidades() {
+            if (lerVersaoVista() === RELEASE_NOTES.version) return;
+            document.getElementById('novidades-ponto').hidden = false;
+            setTimeout(function () {
+                if (document.getElementById('modal-root').innerHTML) return;
+                abrirNovidades();
+            }, 1200);
+        }
+
         // --- Boot ---
         function boot() {
+            // A escolha salva já vale para a tela de espera; o perfil só chega
+            // com a sessão.
+            definirIdiomaDaInterface(idiomaSalvo() || 'pt');
+
             google.script.run
                 .withSuccessHandler(function (s) {
                     SESSION = s;
                     SESSION_REAL = s;
                     document.getElementById('boot-state').classList.add('hidden');
                     document.getElementById('user-ldap').textContent = s.ldap || '';
+
+                    // Ordem do ADR-0001: escolha manual > People > PT. Antes de
+                    // qualquer render, para nada nascer no idioma errado.
+                    definirIdiomaDaInterface(idiomaSalvo() || idiomaDoPerfil(s.defaultLanguage));
 
                     if (!s.hasAccess) {
                         document.getElementById('denied-state').classList.remove('hidden');
@@ -1182,6 +1218,9 @@
 
                     switchTab(destinoDaURL());
 
+                    document.getElementById('btn-novidades').classList.remove('hidden');
+                    checarNovidades();
+
                     // Voltar/avançar do navegador passam a funcionar.
                     window.addEventListener('hashchange', function () {
                         switchTab(destinoDaURL());
@@ -1190,7 +1229,7 @@
                 .withFailureHandler(function (err) {
                     document.getElementById('boot-state').classList.add('hidden');
                     document.getElementById('denied-state').classList.remove('hidden');
-                    toast(err.message || 'Falha ao verificar acesso.', true);
+                    toast(err.message || tt('bootFail'), true);
                 })
                 .getContentSession();
         }

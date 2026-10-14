@@ -7,6 +7,24 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Idiomas na Central de Conteúdo + novidades da versão (2026-10-14,
+      ADR-0017).** Seletor de idioma da **interface** (PT/ES/EN) no topo,
+      separado do idioma do **conteúdo** (trilho); abre pelo `defaultLanguage`
+      da People, escolha manual salva no navegador. Junto, o modal de novidades
+      no padrão do TL (`CW_CONTENT_RELEASE_NOTES`). Tradução por fases:
+      1. [x] **Casca** — topo, trilho, boot/recusa, cabeçalho das abas, textos
+         fixos dos painéis, aviso de permissão. `smoke:content` (+21),
+         `test:content` (+1), `test:dash-changelog` (cobre os dois painéis).
+      2. [ ] **Catálogo** (`_Catalog`): listas, editores e estados vazios de
+         links, call script, notas, tasks, e-mails e dicas.
+      3. [ ] **Operação** (`_Ops`): avisos e disponibilidade, confirmação de
+         publicação.
+      4. [ ] **Governança** (`_Governance`) e o resto do `_Core`: aprovações,
+         pessoas, auditoria, papéis, acessos, histórico, busca, "ver como",
+         atividade, home e toasts.
+      Ao fechar a release: subir `CW_CONTENT_RELEASE_NOTES.version` junto com
+      as outras (RELEASE.md) e reescrever os itens com o que a fase entregou.
+
 - [~] **Revisão do fluxo de descarte do BAU Form (2026-09-21).** Três frentes
       levantadas pelo Lucas. A primeira saiu; as outras duas estão abertas.
       1. [x] **E-mail do descarte** — dois defeitos, ambos silenciosos: descarte

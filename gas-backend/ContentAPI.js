@@ -729,11 +729,20 @@ function getContentSession() {
   const ldap = getCallerLdap_();
   const role = getContentRoleForLdap_(ldap);
 
+  // O idioma da INTERFACE vem da planilha People, a mesma fonte do app e do TL
+  // Dashboard (ADR-0001). Vai também para quem não tem acesso: a tela de
+  // recusa é a única coisa que essa pessoa lê, e ela tem que vir no idioma dela.
+  // Fica fora do sessionParaPapel_ de propósito: o "ver como" troca o papel,
+  // não a pessoa que está lendo.
+  const defaultLanguage = getUserProfileByLdap(ldap).defaultLanguage;
+
   if (!role) {
-    return { ldap: ldap, role: null, hasAccess: false };
+    return { ldap: ldap, role: null, hasAccess: false, defaultLanguage: defaultLanguage };
   }
 
-  return sessionParaPapel_(ldap, role, getContentPermsForRole_(role));
+  const session = sessionParaPapel_(ldap, role, getContentPermsForRole_(role));
+  session.defaultLanguage = defaultLanguage;
+  return session;
 }
 
 // O formato que a tela consome. Extraído porque a prévia "ver como" devolve

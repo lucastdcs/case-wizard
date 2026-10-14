@@ -186,6 +186,7 @@ Além do que já devolvia (`ldap`, `role`, `hasAccess`, `canApprove`,
 | `readableModules` | módulos com `view` — o que a pessoa consegue abrir |
 | `permissions` | a matriz inteira do papel, para a tela explicar **por que** um botão não está lá |
 | `moduleActions` / `globalPerms` | os eixos da matriz |
+| `defaultLanguage` | `PT-BR` / `ES` / `EN`, da aba People (fallback `PT-BR`). Abre a **interface** da Central nesse idioma (ADR-0017). Vem também com `hasAccess: false`, para a tela de recusa; o "ver como" não o muda |
 
 `canApprove` continua existindo e agora significa **"aprova alguma coisa"** — a
 fila filtra item a item com `canReview`.

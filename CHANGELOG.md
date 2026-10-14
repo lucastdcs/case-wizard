@@ -8,6 +8,27 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **A Central de Conteúdo troca o idioma da interface: português, espanhol ou
+  inglês** (ADR-0017). Seletor novo no topo, separado do seletor do trilho, que
+  passou a se chamar "Idioma do conteúdo" e segue decidindo só qual catálogo
+  (PT/ES) está em revisão — dá para ler a tela em português e revisar o
+  espanhol, ou o contrário. A tela abre no idioma da pessoa na aba People
+  (`getContentSession()` passou a devolver `defaultLanguage`, inclusive para
+  quem não tem acesso, que lê a recusa no idioma dele), e a escolha manual fica
+  salva no navegador e vale mais que o perfil. **Primeira fase:** topo, trilho,
+  estados de boot e recusa, cabeçalho de cada aba, textos fixos dos painéis e o
+  aviso "seu papel não propõe neste módulo". Listas, editores e modais seguem
+  em português até as próximas fases. Datas passaram a seguir o idioma da
+  interface, e não mais o do conteúdo.
+- **Novidades da versão na Central**, no padrão do TL Dashboard: notas próprias
+  (`CW_CONTENT_RELEASE_NOTES` em `DashReleaseNotes.js`), que abrem uma vez
+  quando a versão muda, com botão de megafone no topo para reler.
+  `renderDashboard()` escolhe as notas pelo template, e
+  `npm run test:dash-changelog` passou a cobrar os dois painéis — e a acusar
+  tag de template dentro de uma parte da Central, onde ela iria literal para o
+  navegador.
+
 ## [6.5.0] - 2026-10-13
 
 ### Added

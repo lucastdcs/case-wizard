@@ -1,0 +1,442 @@
+<!-- Parte de gas-backend/ContentDashboard.html. Ver o cabeçalho de lá. -->
+<!-- Idioma da INTERFACE da Central (ADR-0017). O idioma do CONTEÚDO é outro
+     seletor, outra decisão: ver idiomaAtual() no Core. -->
+<script>
+        // Duas naturezas de texto, como no resto do produto (ADR-0001):
+        //   - interface (menus, títulos, botões) segue a PESSOA que lê, e é o
+        //     que este arquivo traduz;
+        //   - conteúdo (o catálogo em revisão) segue o seletor "Idioma do
+        //     conteúdo", porque um revisor que lê em PT revisa o catálogo ES.
+        //
+        // Mesmo mecanismo do TL Dashboard: um dicionário por idioma, marcação
+        // `data-i18n*` no HTML fixo e `tt()` para o que o JS monta. A página
+        // roda fora do bundle, então o dicionário é desta tela e mora aqui.
+        //
+        // A tradução entra por fases: esta cobre a casca (topo, trilho, estados
+        // de boot, cabeçalho e textos fixos de cada aba). O que os
+        // renderizadores montam (listas, editores, modais) segue em português
+        // até a fase dele — uma chave que falta em ES/EN cai no PT, nunca em
+        // branco.
+        var UI_I18N = {
+            pt: {
+                brand: 'Central de Conteúdo',
+                search: 'Buscar',
+                viewAs: 'Ver como',
+                activity: 'Atividade',
+                whatsNew: 'Novidades desta versão',
+                uiLang: 'Idioma da interface',
+                railAria: 'Seções da Central',
+                contentLang: 'Idioma do conteúdo',
+                groupCatalog: 'Catálogo',
+                groupCatalogSub: 'passa por revisão',
+                groupOps: 'Operação',
+                groupOpsSub: 'vai ao ar na hora',
+                groupGov: 'Governança',
+
+                bootTitle: 'Verificando seu acesso…',
+                bootSub: 'Só um instante.',
+                deniedTitle: 'Você não tem acesso à Central de Conteúdo',
+                deniedSub: 'Peça a um ADMIN para liberar seu LDAP. Enquanto isso, nada aqui fica visível.',
+                bootFail: 'Falha ao verificar acesso.',
+                loading: 'Carregando…',
+
+                dest_home: 'Hoje',
+                dest_home_sub: 'O que está acontecendo no conteúdo agora.',
+                dest_links: 'Links',
+                dest_links_sub: 'Atalhos que o agente abre pela pílula. Editar cria uma proposta.',
+                dest_callscript: 'Call Script',
+                dest_callscript_sub: 'O roteiro da ligação, passo a passo. Editar cria uma proposta.',
+                dest_notes: 'Case Notes',
+                dest_notes_sub: 'Notas prontas por substatus. Editar cria uma proposta.',
+                dest_tasks: 'Tasks',
+                dest_tasks_sub: 'O catálogo de tasks e os screenshots que o Win Criteria exige de cada uma.',
+                dest_emails: 'E-mails',
+                dest_emails_sub: 'Modelos que o agente envia ao anunciante. Editar cria uma proposta.',
+                dest_tips: 'Dicas',
+                dest_tips_sub: 'Frases curtas exibidas durante os carregamentos do app.',
+                dest_broadcast: 'Avisos',
+                dest_broadcast_sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.',
+                dest_bau: 'Disponibilidade',
+                dest_bau_sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.',
+                dest_approvals: 'Aprovações',
+                dest_approvals_sub: 'Propostas esperando revisão, de todos os módulos.',
+                dest_people: 'Pessoas',
+                dest_people_sub: 'O diretório que decide quem é liderança e em que idioma o app abre.',
+                dest_audit: 'Auditoria',
+                dest_audit_sub: 'Tudo que aconteceu na Central, com filtro e período.',
+                dest_roles: 'Papéis',
+                dest_roles_sub: 'O que cada papel pode fazer. Vale no ato, sem passar por fila.',
+                dest_access: 'Acessos',
+                dest_access_sub: 'Quem entra na Central e com qual papel.',
+
+                linksLive: 'Links no ar',
+                newLink: 'Novo link',
+                csFlow: 'Fluxo',
+                newStep: 'Novo passo',
+                ntSub: 'Substatus',
+                ntAll: 'Todos',
+                newNote: 'Nova nota',
+                tasksLive: 'Tasks no ar',
+                newTask: 'Nova task',
+                tipsLive: 'Dicas no ar',
+                newTip: 'Nova dica',
+                bcLive: 'Avisos no ar',
+                newBc: 'Novo aviso',
+
+                bauLive: 'Disponibilidade no ar',
+                bauPublishTitle: 'Publicar nova disponibilidade',
+                bauPublishSub: 'Cada segmento aceita duas datas, e as duas são opcionais. Preencha só a que você tem.',
+                bauSegPt: 'Português — PT-BR',
+                bauSegEs: 'Espanhol — ES',
+                bauAttention: 'Atenção — data mais próxima',
+                bauFull: 'Disponibilidade total',
+                bauObs: 'Observação (opcional)',
+                bauObsPh: 'ex.: fila de criação priorizada até quinta',
+                bauPublish: 'Publicar disponibilidade',
+
+                pplNote: 'Esta é a aba <strong>People</strong> da planilha — a mesma que decide quem abre o TL Dashboard e em que idioma o app abre para cada pessoa. Alterações entram como proposta e só o <strong>ADMIN</strong> aprova.',
+                pplSearchPh: 'LDAP, cargo, categoria ou segmento',
+                addPerson: 'Adicionar pessoa',
+                pplFilters: 'Filtrar por segmento',
+
+                audNote: 'Tudo que aconteceu na Central, com quem fez e quando. A barra <strong>Atividade recente</strong> responde “o que está acontecendo”; esta responde “o que aconteceu”.',
+                audSearchPh: 'rótulo, chave ou detalhe',
+                audWho: 'Quem',
+                audAction: 'Ação',
+                audModule: 'Módulo',
+                audFrom: 'De',
+                audTo: 'Até',
+                audClear: 'Limpar filtros',
+                audExport: 'Exportar para a planilha',
+                loadMore: 'Carregar mais',
+
+                rolNote: 'O que um papel pode fazer vale <strong>no ato</strong> para todas as pessoas que o têm. Não passa por revisão e não tem fila.',
+                role: 'Papel',
+                newRole: 'Novo papel',
+                newRoleName: 'Nome do novo papel',
+                saveRole: 'Salvar papel',
+
+                accNote: 'Quem entra aqui passa a ver e propor conteúdo, conforme o papel. O que cada papel pode fazer se edita na aba <strong>Papéis</strong>.',
+                accTitle: 'Conceder ou alterar acesso',
+                saveAccess: 'Salvar acesso',
+                accList: 'Pessoas com acesso',
+
+                recentActivity: 'Atividade recente',
+                close: 'Fechar',
+
+                // Aviso de quem vê o módulo mas não propõe nele.
+                gate_links: function (r) { return 'Seu papel (' + r + ') vê os links, mas não propõe alterações neste módulo.'; },
+                gate_call_script: function (r) { return 'Seu papel (' + r + ') vê o roteiro, mas não propõe alterações neste módulo.'; },
+                gate_tips: function (r) { return 'Seu papel (' + r + ') vê as dicas, mas não propõe alterações neste módulo.'; },
+                gate_email_template: function (r) { return 'Seu papel (' + r + ') vê os modelos, mas não propõe alterações neste módulo.'; },
+                gate_note_template: function (r) { return 'Seu papel (' + r + ') vê os modelos de nota, mas não propõe alterações neste módulo.'; },
+                gate_task_screenshots: function (r) { return 'Seu papel (' + r + ') vê as tasks e os screenshots exigidos, mas não propõe alterações neste módulo.'; },
+                gate_broadcast: function (r) { return 'Seu papel (' + r + ') vê os avisos no ar, mas não publica neste módulo.'; },
+                gate_bau_availability: function (r) { return 'Seu papel (' + r + ') vê a disponibilidade no ar, mas não publica neste módulo.'; }
+            },
+
+            es: {
+                brand: 'Central de Contenido',
+                search: 'Buscar',
+                viewAs: 'Ver como',
+                activity: 'Actividad',
+                whatsNew: 'Novedades de esta versión',
+                uiLang: 'Idioma de la interfaz',
+                railAria: 'Secciones de la Central',
+                contentLang: 'Idioma del contenido',
+                groupCatalog: 'Catálogo',
+                groupCatalogSub: 'pasa por revisión',
+                groupOps: 'Operación',
+                groupOpsSub: 'se publica al instante',
+                groupGov: 'Gobernanza',
+
+                bootTitle: 'Verificando tu acceso…',
+                bootSub: 'Solo un momento.',
+                deniedTitle: 'No tienes acceso a la Central de Contenido',
+                deniedSub: 'Pide a un ADMIN que habilite tu LDAP. Mientras tanto, aquí no se muestra nada.',
+                bootFail: 'No fue posible verificar el acceso.',
+                loading: 'Cargando…',
+
+                dest_home: 'Hoy',
+                dest_home_sub: 'Lo que está pasando con el contenido ahora.',
+                dest_links: 'Links',
+                dest_links_sub: 'Accesos directos que el agente abre desde la píldora. Editar crea una propuesta.',
+                dest_callscript: 'Call Script',
+                dest_callscript_sub: 'El guion de la llamada, paso a paso. Editar crea una propuesta.',
+                dest_notes: 'Case Notes',
+                dest_notes_sub: 'Notas listas por subestado. Editar crea una propuesta.',
+                dest_tasks: 'Tasks',
+                dest_tasks_sub: 'El catálogo de tasks y las capturas que el Win Criteria exige de cada una.',
+                dest_emails: 'Correos',
+                dest_emails_sub: 'Plantillas que el agente envía al anunciante. Editar crea una propuesta.',
+                dest_tips: 'Consejos',
+                dest_tips_sub: 'Frases cortas que se muestran durante las cargas de la app.',
+                dest_broadcast: 'Avisos',
+                dest_broadcast_sub: 'Se publica al instante, para todo agente conectado. No pasa por revisión.',
+                dest_bau: 'Disponibilidad',
+                dest_bau_sub: 'Se publica al instante, para todo agente conectado. No pasa por revisión.',
+                dest_approvals: 'Aprobaciones',
+                dest_approvals_sub: 'Propuestas esperando revisión, de todos los módulos.',
+                dest_people: 'Personas',
+                dest_people_sub: 'El directorio que define quién es liderazgo y en qué idioma se abre la app.',
+                dest_audit: 'Auditoría',
+                dest_audit_sub: 'Todo lo que pasó en la Central, con filtro y período.',
+                dest_roles: 'Roles',
+                dest_roles_sub: 'Lo que cada rol puede hacer. Rige al instante, sin pasar por cola.',
+                dest_access: 'Accesos',
+                dest_access_sub: 'Quién entra a la Central y con qué rol.',
+
+                linksLive: 'Links publicados',
+                newLink: 'Nuevo link',
+                csFlow: 'Flujo',
+                newStep: 'Nuevo paso',
+                ntSub: 'Subestado',
+                ntAll: 'Todos',
+                newNote: 'Nueva nota',
+                tasksLive: 'Tasks publicadas',
+                newTask: 'Nueva task',
+                tipsLive: 'Consejos publicados',
+                newTip: 'Nuevo consejo',
+                bcLive: 'Avisos publicados',
+                newBc: 'Nuevo aviso',
+
+                bauLive: 'Disponibilidad publicada',
+                bauPublishTitle: 'Publicar nueva disponibilidad',
+                bauPublishSub: 'Cada segmento acepta dos fechas, y ambas son opcionales. Completa solo la que tengas.',
+                bauSegPt: 'Portugués — PT-BR',
+                bauSegEs: 'Español — ES',
+                bauAttention: 'Atención — fecha más cercana',
+                bauFull: 'Disponibilidad total',
+                bauObs: 'Observación (opcional)',
+                bauObsPh: 'ej.: cola de creación priorizada hasta el jueves',
+                bauPublish: 'Publicar disponibilidad',
+
+                pplNote: 'Esta es la pestaña <strong>People</strong> de la planilla — la misma que define quién abre el TL Dashboard y en qué idioma se abre la app para cada persona. Los cambios entran como propuesta y solo el <strong>ADMIN</strong> aprueba.',
+                pplSearchPh: 'LDAP, cargo, categoría o segmento',
+                addPerson: 'Agregar persona',
+                pplFilters: 'Filtrar por segmento',
+
+                audNote: 'Todo lo que pasó en la Central, con quién lo hizo y cuándo. La barra <strong>Actividad reciente</strong> responde “qué está pasando”; esta responde “qué pasó”.',
+                audSearchPh: 'etiqueta, clave o detalle',
+                audWho: 'Quién',
+                audAction: 'Acción',
+                audModule: 'Módulo',
+                audFrom: 'Desde',
+                audTo: 'Hasta',
+                audClear: 'Limpiar filtros',
+                audExport: 'Exportar a la planilla',
+                loadMore: 'Cargar más',
+
+                rolNote: 'Lo que un rol puede hacer rige <strong>al instante</strong> para todas las personas que lo tienen. No pasa por revisión ni tiene cola.',
+                role: 'Rol',
+                newRole: 'Nuevo rol',
+                newRoleName: 'Nombre del nuevo rol',
+                saveRole: 'Guardar rol',
+
+                accNote: 'Quien entra aquí pasa a ver y proponer contenido, según su rol. Lo que cada rol puede hacer se edita en la pestaña <strong>Roles</strong>.',
+                accTitle: 'Conceder o cambiar acceso',
+                saveAccess: 'Guardar acceso',
+                accList: 'Personas con acceso',
+
+                recentActivity: 'Actividad reciente',
+                close: 'Cerrar',
+
+                gate_links: function (r) { return 'Tu rol (' + r + ') ve los links, pero no propone cambios en este módulo.'; },
+                gate_call_script: function (r) { return 'Tu rol (' + r + ') ve el guion, pero no propone cambios en este módulo.'; },
+                gate_tips: function (r) { return 'Tu rol (' + r + ') ve los consejos, pero no propone cambios en este módulo.'; },
+                gate_email_template: function (r) { return 'Tu rol (' + r + ') ve las plantillas, pero no propone cambios en este módulo.'; },
+                gate_note_template: function (r) { return 'Tu rol (' + r + ') ve las plantillas de nota, pero no propone cambios en este módulo.'; },
+                gate_task_screenshots: function (r) { return 'Tu rol (' + r + ') ve las tasks y las capturas exigidas, pero no propone cambios en este módulo.'; },
+                gate_broadcast: function (r) { return 'Tu rol (' + r + ') ve los avisos publicados, pero no publica en este módulo.'; },
+                gate_bau_availability: function (r) { return 'Tu rol (' + r + ') ve la disponibilidad publicada, pero no publica en este módulo.'; }
+            },
+
+            en: {
+                brand: 'Content Hub',
+                search: 'Search',
+                viewAs: 'View as',
+                activity: 'Activity',
+                whatsNew: "What's new in this version",
+                uiLang: 'Interface language',
+                railAria: 'Hub sections',
+                contentLang: 'Content language',
+                groupCatalog: 'Catalog',
+                groupCatalogSub: 'goes through review',
+                groupOps: 'Operations',
+                groupOpsSub: 'goes live instantly',
+                groupGov: 'Governance',
+
+                bootTitle: 'Checking your access…',
+                bootSub: 'Just a moment.',
+                deniedTitle: "You don't have access to the Content Hub",
+                deniedSub: 'Ask an ADMIN to enable your LDAP. Until then, nothing here is visible.',
+                bootFail: 'Could not verify access.',
+                loading: 'Loading…',
+
+                dest_home: 'Today',
+                dest_home_sub: "What's happening with content right now.",
+                dest_links: 'Links',
+                dest_links_sub: 'Shortcuts the agent opens from the pill. Editing creates a proposal.',
+                dest_callscript: 'Call Script',
+                dest_callscript_sub: 'The call script, step by step. Editing creates a proposal.',
+                dest_notes: 'Case Notes',
+                dest_notes_sub: 'Ready-made notes by substatus. Editing creates a proposal.',
+                dest_tasks: 'Tasks',
+                dest_tasks_sub: 'The task catalog and the screenshots Win Criteria requires for each one.',
+                dest_emails: 'Emails',
+                dest_emails_sub: 'Templates the agent sends to the advertiser. Editing creates a proposal.',
+                dest_tips: 'Tips',
+                dest_tips_sub: 'Short phrases shown while the app is loading.',
+                dest_broadcast: 'Announcements',
+                dest_broadcast_sub: 'Goes live instantly, for every connected agent. No review.',
+                dest_bau: 'Availability',
+                dest_bau_sub: 'Goes live instantly, for every connected agent. No review.',
+                dest_approvals: 'Approvals',
+                dest_approvals_sub: 'Proposals waiting for review, across all modules.',
+                dest_people: 'People',
+                dest_people_sub: 'The directory that decides who is leadership and which language the app opens in.',
+                dest_audit: 'Audit',
+                dest_audit_sub: 'Everything that happened in the Hub, with filters and date range.',
+                dest_roles: 'Roles',
+                dest_roles_sub: 'What each role can do. Takes effect immediately, no queue.',
+                dest_access: 'Access',
+                dest_access_sub: 'Who gets into the Hub and with which role.',
+
+                linksLive: 'Live links',
+                newLink: 'New link',
+                csFlow: 'Flow',
+                newStep: 'New step',
+                ntSub: 'Substatus',
+                ntAll: 'All',
+                newNote: 'New note',
+                tasksLive: 'Live tasks',
+                newTask: 'New task',
+                tipsLive: 'Live tips',
+                newTip: 'New tip',
+                bcLive: 'Live announcements',
+                newBc: 'New announcement',
+
+                bauLive: 'Live availability',
+                bauPublishTitle: 'Publish new availability',
+                bauPublishSub: 'Each segment takes two dates, and both are optional. Fill in only the one you have.',
+                bauSegPt: 'Portuguese — PT-BR',
+                bauSegEs: 'Spanish — ES',
+                bauAttention: 'Attention — nearest date',
+                bauFull: 'Full availability',
+                bauObs: 'Note (optional)',
+                bauObsPh: 'e.g.: creation queue prioritized until Thursday',
+                bauPublish: 'Publish availability',
+
+                pplNote: 'This is the <strong>People</strong> tab of the spreadsheet — the same one that decides who opens the TL Dashboard and which language the app opens in for each person. Changes go in as proposals and only an <strong>ADMIN</strong> approves them.',
+                pplSearchPh: 'LDAP, title, category or segment',
+                addPerson: 'Add person',
+                pplFilters: 'Filter by segment',
+
+                audNote: 'Everything that happened in the Hub, who did it and when. The <strong>Recent activity</strong> bar answers “what is happening”; this one answers “what happened”.',
+                audSearchPh: 'label, key or detail',
+                audWho: 'Who',
+                audAction: 'Action',
+                audModule: 'Module',
+                audFrom: 'From',
+                audTo: 'To',
+                audClear: 'Clear filters',
+                audExport: 'Export to the spreadsheet',
+                loadMore: 'Load more',
+
+                rolNote: 'What a role can do takes effect <strong>immediately</strong> for everyone who has it. No review and no queue.',
+                role: 'Role',
+                newRole: 'New role',
+                newRoleName: 'New role name',
+                saveRole: 'Save role',
+
+                accNote: 'Whoever is added here can view and propose content, according to their role. What each role can do is edited in the <strong>Roles</strong> tab.',
+                accTitle: 'Grant or change access',
+                saveAccess: 'Save access',
+                accList: 'People with access',
+
+                recentActivity: 'Recent activity',
+                close: 'Close',
+
+                gate_links: function (r) { return 'Your role (' + r + ') can see the links but cannot propose changes in this module.'; },
+                gate_call_script: function (r) { return 'Your role (' + r + ') can see the script but cannot propose changes in this module.'; },
+                gate_tips: function (r) { return 'Your role (' + r + ') can see the tips but cannot propose changes in this module.'; },
+                gate_email_template: function (r) { return 'Your role (' + r + ') can see the templates but cannot propose changes in this module.'; },
+                gate_note_template: function (r) { return 'Your role (' + r + ') can see the note templates but cannot propose changes in this module.'; },
+                gate_task_screenshots: function (r) { return 'Your role (' + r + ') can see the tasks and required screenshots but cannot propose changes in this module.'; },
+                gate_broadcast: function (r) { return 'Your role (' + r + ') can see live announcements but cannot publish in this module.'; },
+                gate_bau_availability: function (r) { return 'Your role (' + r + ') can see live availability but cannot publish in this module.'; }
+            }
+        };
+
+        var UI_LANGS = ['pt', 'es', 'en'];
+        var UI_LOCALE = { pt: 'pt-BR', es: 'es', en: 'en-US' };
+        var UI_LANG = 'pt';
+
+        // Chave própria: a escolha da Central não é a do app do agente (que tem
+        // a dele, em Configurações) nem a do TL Dashboard.
+        var UI_LANG_KEY = 'cw_content_ui_lang';
+
+        // Valor de função recebe os argumentos (`tt('gate_links', 'QA')`).
+        function tt(key) {
+            var dict = UI_I18N[UI_LANG] || UI_I18N.pt;
+            var v = dict[key] !== undefined ? dict[key] : UI_I18N.pt[key];
+            if (typeof v === 'function') return v.apply(null, Array.prototype.slice.call(arguments, 1));
+            return v === undefined ? key : v;
+        }
+
+        // `People` guarda "PT-BR" / "ES" / "EN" (defaultLanguageForSegment).
+        function idiomaDoPerfil(defaultLanguage) {
+            var v = String(defaultLanguage || '').toUpperCase();
+            if (v === 'ES') return 'es';
+            if (v === 'EN') return 'en';
+            return 'pt';
+        }
+
+        // localStorage some em navegação privada e no iframe do Apps Script com
+        // cookies de terceiros bloqueados: sem ele, vale o idioma do perfil.
+        function idiomaSalvo() {
+            var v = null;
+            try { v = localStorage.getItem(UI_LANG_KEY); } catch (e) { }
+            return UI_LANGS.indexOf(v) !== -1 ? v : null;
+        }
+
+        // Preenche todo elemento marcado. `data-i18n-html` é só para o texto
+        // fixo deste dicionário (tem <strong>); nada que venha de dado passa
+        // por ele.
+        function aplicarTextosFixos() {
+            document.querySelectorAll('[data-i18n]').forEach(function (el) {
+                el.textContent = tt(el.getAttribute('data-i18n'));
+            });
+            document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+                el.innerHTML = tt(el.getAttribute('data-i18n-html'));
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(function (el) {
+                el.setAttribute('placeholder', tt(el.getAttribute('data-i18n-ph')));
+            });
+            document.querySelectorAll('[data-i18n-aria]').forEach(function (el) {
+                el.setAttribute('aria-label', tt(el.getAttribute('data-i18n-aria')));
+            });
+        }
+
+        function definirIdiomaDaInterface(lang) {
+            UI_LANG = UI_LANGS.indexOf(lang) !== -1 ? lang : 'pt';
+            document.documentElement.lang = UI_LOCALE[UI_LANG];
+            var sel = document.getElementById('lang-ui');
+            if (sel) sel.value = UI_LANG;
+            aplicarTextosFixos();
+
+            // O que o JS escreveu com o idioma anterior: o cabeçalho da aba e os
+            // avisos de permissão. Só depois do boot — antes não há sessão.
+            if (SESSION && SESSION.hasAccess) {
+                aplicarPermissoes(SESSION);
+                pintarCabecalho(destinoDaURL());
+            }
+        }
+
+        // A escolha manual vale mais que o perfil, e fica neste navegador.
+        function aoTrocarIdiomaDaInterface() {
+            var lang = document.getElementById('lang-ui').value;
+            try { localStorage.setItem(UI_LANG_KEY, lang); } catch (e) { /* vale só nesta sessão */ }
+            definirIdiomaDaInterface(lang);
+        }
+</script>

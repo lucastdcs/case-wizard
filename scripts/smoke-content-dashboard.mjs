@@ -38,6 +38,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { montarContentDashboard } from './content-dashboard-html.mjs';
+import { readFileSync } from 'node:fs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const raiz = resolve(here, '..');
@@ -46,6 +47,11 @@ const raiz = resolve(here, '..');
 // scripts de inicialização do Playwright — que é onde o dublê do
 // google.script.run é instalado — só rodam numa navegação.
 const ARQUIVO = join(tmpdir(), 'cw-content-dashboard-smoke.html');
+
+// As notas da Central têm a versão do package.json (test:dash-changelog garante).
+// Por padrão a página abre como quem já as leu: o modal abre sozinho 1,2s depois
+// do boot, e cairia por cima de qualquer teste que use o modal-root.
+const VERSAO = JSON.parse(readFileSync(resolve(raiz, 'package.json'), 'utf8')).version;
 
 async function prepararArquivo() {
     // A montagem mora em content-dashboard-html.mjs: o smoke da aba Pessoas lê
@@ -289,7 +295,8 @@ const AUDITORIA = [
 
 // ------------------------------------------------------- montagem da página
 async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null,
-    fila = [], atividade = [], matriz = MATRIZ, confirmarSalvar = null } = {}) {
+    fila = [], atividade = [], matriz = MATRIZ, confirmarSalvar = null,
+    versaoVista = VERSAO, idiomaSalvo = null, idiomaDoPerfil = null } = {}) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
     page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
 
@@ -311,7 +318,14 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
     // O dublê precisa existir ANTES do script da página rodar: o boot dispara
     // no DOMContentLoaded.
     await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos, pendentes, atividade,
-        matriz, respostaDoSalvar, auditoria }) => {
+        matriz, respostaDoSalvar, auditoria, versaoVista, idiomaSalvo, idiomaDoPerfil }) => {
+        try {
+            if (versaoVista) localStorage.setItem('cw_content_seen_version', versaoVista);
+            else localStorage.removeItem('cw_content_seen_version');
+            if (idiomaSalvo) localStorage.setItem('cw_content_ui_lang', idiomaSalvo);
+            else localStorage.removeItem('cw_content_ui_lang');
+        } catch (e) { /* sem storage: os testes que dependem dele acusam */ }
+        if (idiomaDoPerfil) sessao = Object.assign({}, sessao, { defaultLanguage: idiomaDoPerfil });
         const PENDENTES = pendentes || [];
         const ATIVIDADE = atividade || [];
         const AUDITORIA = auditoria || [];
@@ -457,6 +471,7 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
         sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe,
         historico: HISTORICO, rascunhos: draftsDe, pendentes: fila, atividade,
         matriz, respostaDoSalvar: confirmarSalvar, auditoria: AUDITORIA,
+        versaoVista, idiomaSalvo, idiomaDoPerfil,
     });
 
     await page.goto('file://' + ARQUIVO + hash, { waitUntil: 'domcontentloaded' });
@@ -1919,6 +1934,154 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         verdade(/Nenhum agente vê isto agora/.test(texto), 'faltou o aviso da janela: ' + texto);
     });
 
+    await page.close();
+}
+
+// ------------------------------------------------- idioma da interface (ADR-0017)
+{
+    const page = await abrir({ sessao: 'admin' });
+
+    await check('sem perfil nem escolha, a interface abre em PT', async () => {
+        igual(await page.locator('#lang-ui').inputValue(), 'pt', 'seletor da interface');
+        igual(await page.evaluate(() => document.documentElement.lang), 'pt-BR', '<html lang>');
+        igual((await page.locator('#tab-approvals .rail-label').textContent()).trim(), 'Aprovações', 'trilho');
+    });
+
+    await check('trocar para ES traduz a casca e o cabeçalho da aba aberta', async () => {
+        await page.evaluate(() => switchTab('people'));
+        await page.selectOption('#lang-ui', 'es');
+        await page.waitForTimeout(100);
+        igual((await page.locator('#page-title').textContent()).trim(), 'Personas', 'título da aba');
+        igual((await page.locator('#tab-approvals .rail-label').textContent()).trim(), 'Aprobaciones', 'trilho');
+        igual((await page.locator('label[for="lang-global"]').textContent()).trim(), 'Idioma del contenido', 'rótulo do conteúdo');
+        igual(await page.locator('#ppl-search').getAttribute('placeholder'), 'LDAP, cargo, categoría o segmento', 'placeholder');
+        igual(await page.locator('#btn-novidades').getAttribute('aria-label'), 'Novedades de esta versión', 'aria-label');
+        igual(await page.evaluate(() => document.documentElement.lang), 'es', '<html lang>');
+        // O <strong> do texto fixo sobrevive; o ícone do botão também.
+        igual(await page.locator('#ppl-note strong').count(), 2, 'negrito da nota');
+        igual(await page.locator('#ppl-new-btn .material-symbols-rounded').count(), 1, 'ícone do botão');
+    });
+
+    await check('o idioma da interface NÃO mexe no idioma do conteúdo', async () => {
+        igual(await page.locator('#lang-global').inputValue(), 'PT', 'conteúdo seguiu a interface');
+        await page.selectOption('#lang-global', 'ES');
+        await page.selectOption('#lang-ui', 'en');
+        igual(await page.locator('#lang-global').inputValue(), 'ES', 'trocar a interface mexeu no conteúdo');
+    });
+
+    await check('EN traduz, e a busca encontra o destino pelo nome traduzido', async () => {
+        igual((await page.locator('#tab-access .rail-label').textContent()).trim(), 'Access', 'trilho');
+        igual(await page.evaluate(() => destinosQueCasam('approv').map(d => d.destino)), ['approvals'], 'busca');
+    });
+
+    await check('a escolha fica salva no navegador', async () => {
+        igual(await page.evaluate(() => localStorage.getItem('cw_content_ui_lang')), 'en', 'localStorage');
+    });
+
+    await check('todo idioma tem as mesmas chaves do PT', async () => {
+        const faltas = await page.evaluate(() => ['es', 'en'].map(l =>
+            Object.keys(UI_I18N.pt).filter(k => !(k in UI_I18N[l])).map(k => l + ':' + k)).flat());
+        igual(faltas, [], 'chaves sem tradução');
+    });
+
+    await check('toda marcação data-i18n aponta para uma chave que existe', async () => {
+        const orfas = await page.evaluate(() => Array.from(document.querySelectorAll(
+            '[data-i18n],[data-i18n-html],[data-i18n-ph],[data-i18n-aria]')).map(el =>
+            el.getAttribute('data-i18n') || el.getAttribute('data-i18n-html') ||
+            el.getAttribute('data-i18n-ph') || el.getAttribute('data-i18n-aria'))
+            .filter(k => !(k in UI_I18N.pt)));
+        igual(orfas, [], 'chaves inexistentes');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin', idiomaDoPerfil: 'ES' });
+    await check('o perfil ES da People abre a interface em espanhol', async () => {
+        igual(await page.locator('#lang-ui').inputValue(), 'es', 'seletor');
+        igual((await page.locator('#page-title').textContent()).trim(), 'Hoy', 'cabeçalho');
+    });
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin', idiomaDoPerfil: 'ES', idiomaSalvo: 'en' });
+    await check('a escolha manual vale mais que o perfil', async () => {
+        igual(await page.locator('#lang-ui').inputValue(), 'en', 'seletor');
+        igual((await page.locator('#page-title').textContent()).trim(), 'Today', 'cabeçalho');
+    });
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'semAcesso', idiomaDoPerfil: 'EN' });
+    await check('quem não tem acesso lê a recusa no idioma dele', async () => {
+        verdade(await page.locator('#denied-state').isVisible(), 'recusa visível');
+        igual((await page.locator('#denied-state h2').textContent()).trim(),
+            "You don't have access to the Content Hub", 'texto da recusa');
+    });
+    await check('e não recebe o aviso de novidades da Central', async () => {
+        verdade(!(await page.locator('#btn-novidades').isVisible()), 'botão de novidades visível sem acesso');
+    });
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'qa', idiomaSalvo: 'es' });
+    await check('o aviso "seu papel não propõe" sai no idioma da interface', async () => {
+        await page.evaluate(() => switchTab('links'));
+        const nota = (await page.locator('#links-note').textContent()).trim();
+        verdade(/^Tu rol \(QA\) ve los links/.test(nota), 'aviso: ' + nota);
+    });
+    await page.close();
+}
+
+// --------------------------------------------------------- novidades da versão
+{
+    const page = await abrir({ sessao: 'admin', versaoVista: null });
+
+    await check('versão nova: o aviso abre sozinho depois do boot', async () => {
+        await page.waitForSelector('#novidades-titulo', { timeout: 4000 });
+        igual((await page.locator('#novidades-titulo').textContent()).trim(),
+            'Novidades da Central de Conteúdo', 'título');
+        igual((await page.locator('#novidades-versao').textContent()).trim(), 'v' + VERSAO, 'versão');
+        verdade(await page.locator('.novidade').count() > 0, 'nenhum item');
+    });
+
+    await check('fechar marca a versão como vista e apaga o ponto', async () => {
+        await page.click('#novidades-fechar');
+        igual(await page.locator('#novidades-titulo').count(), 0, 'modal continuou aberto');
+        igual(await page.evaluate(() => localStorage.getItem('cw_content_seen_version')), VERSAO, 'versão vista');
+        verdade(!(await page.locator('#novidades-ponto').isVisible()), 'ponto continuou aceso');
+    });
+
+    await check('o botão do topo reabre as notas', async () => {
+        await page.click('#btn-novidades');
+        verdade(await page.locator('#novidades-titulo').isVisible(), 'não reabriu');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin', versaoVista: null, idiomaSalvo: 'es' });
+    await check('as novidades saem no idioma da interface', async () => {
+        await page.waitForSelector('#novidades-titulo', { timeout: 4000 });
+        igual((await page.locator('#novidades-titulo').textContent()).trim(),
+            'Novedades de la Central de Contenido', 'título');
+        igual((await page.locator('#novidades-fechar').textContent()).trim(), 'Cerrar', 'botão');
+    });
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin' });
+    await check('versão já vista: o aviso não abre sozinho', async () => {
+        await page.waitForTimeout(1600);
+        igual(await page.locator('#novidades-titulo').count(), 0, 'abriu de novo');
+        verdade(await page.locator('#btn-novidades').isVisible(), 'o botão para reler sumiu');
+    });
     await page.close();
 }
 

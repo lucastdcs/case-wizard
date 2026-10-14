@@ -551,7 +551,7 @@
                     NOTE_SUBSTATUS = (cat && cat.substatus) || [];
 
                     var sel = document.getElementById('nt-sub');
-                    sel.innerHTML = '<option value="">Todos</option>' +
+                    sel.innerHTML = '<option value="" data-i18n="ntAll">' + esc(tt('ntAll')) + '</option>' +
                         NOTE_SUBSTATUS.map(function (s) {
                             return '<option value="' + esc(s.key) + '">' + esc(s.name) + '</option>';
                         }).join('');

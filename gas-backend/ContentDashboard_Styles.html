@@ -143,6 +143,73 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        /* Botão só de ícone: o rótulo vai no aria-label. */
+        .topnav-acao.topnav-icone {
+            position: relative;
+            padding: 6px 8px;
+        }
+
+        .novidades-ponto {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gemini-blue);
+        }
+
+        /* Mesmo vidro dos botões ao lado: é preferência de quem lê, chrome do
+           header, não controle do conteúdo (esse é o seletor do trilho). */
+        .topnav-idioma {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--nav-border);
+            color: var(--nav-text-primary);
+            padding: 2px 4px 2px 10px;
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+        }
+
+        .topnav-idioma:hover { background: rgba(255, 255, 255, 0.16); }
+
+        .topnav-idioma .material-symbols-rounded { font-size: 19px; }
+
+        .topnav-idioma select {
+            width: auto;
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-family: inherit;
+            font-size: 13px;
+            padding: 4px 6px;
+            cursor: pointer;
+        }
+
+        /* Ganha do `select:focus` genérico, que pinta o fundo de claro — com o
+           texto claro do header, o valor sumiria justo ao receber foco. */
+        .topnav-idioma select:focus {
+            background: transparent;
+            outline: 2px solid var(--nav-text-primary);
+            outline-offset: 2px;
+        }
+
+        .topnav-idioma option { color: var(--text-primary); }
+
+        .novidades-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-top: 20px;
+        }
+
+        .novidade { display: flex; gap: 16px; align-items: flex-start; }
+        .novidade .material-symbols-rounded { color: var(--gemini-purple); font-size: 22px; flex: 0 0 auto; }
+        .novidade-titulo { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+        .novidade-texto { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+
         .user-chip {
             display: flex;
             align-items: center;

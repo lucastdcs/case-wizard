@@ -798,17 +798,17 @@
         }
 
         function pedirAuditoria(btn) {
-            if (btn) { btn.disabled = true; btn.textContent = 'Carregando…'; }
+            if (btn) { btn.disabled = true; btn.textContent = tt('loading'); }
 
             google.script.run
                 .withSuccessHandler(function (r) {
-                    if (btn) { btn.disabled = false; btn.textContent = 'Carregar mais'; }
+                    if (btn) { btn.disabled = false; btn.textContent = tt('loadMore'); }
                     AUD_LINHAS = AUD_LINHAS.concat(r.rows || []);
                     AUD_CURSOR = r.nextCursor || 0;
                     renderAuditoria(r);
                 })
                 .withFailureHandler(function (err) {
-                    if (btn) { btn.disabled = false; btn.textContent = 'Carregar mais'; }
+                    if (btn) { btn.disabled = false; btn.textContent = tt('loadMore'); }
                     document.getElementById('aud-lista').innerHTML =
                         '<div class="note warn">' + esc(err.message) + '</div>';
                 })

@@ -232,6 +232,25 @@ check('LDAP desconhecido não tem acesso nenhum', () => {
   });
 });
 
+check('a sessão leva o idioma da People, com ou sem acesso', () => {
+  // A Central abre a interface nesse idioma (ADR-0017). Sem linha na People, o
+  // fallback do getUserProfileByLdap é PT-BR.
+  eq(api.getContentSession().defaultLanguage, 'PT-BR');
+
+  const anterior = SS.sheets.People;
+  const people = SS.insertSheet('People');
+  people.appendRow(['LDAP', 'Role', 'Category', 'Segment']);
+  people.appendRow(['lucaste', 'TL', 'Lead', 'ES']);
+  people.appendRow(['estranho', 'Agent', 'Agent', 'EN']);
+  try {
+    eq(api.getContentSession().defaultLanguage, 'ES');
+    // Quem não tem acesso lê a tela de recusa — no idioma dele.
+    as('estranho', () => eq(api.getContentSession().defaultLanguage, 'EN'));
+  } finally {
+    if (anterior) SS.sheets.People = anterior; else delete SS.sheets.People;
+  }
+});
+
 check('LDAP desconhecido não consegue nem listar', () => {
   as('estranho', () => {
     throws(() => api.listContentItems('links'), /Acesso negado/);

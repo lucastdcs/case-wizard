@@ -229,7 +229,7 @@ function renderDashboard(fileName, title) {
   // Consumido por <?!= CW_RELEASE_NOTES ?>. Vai como JSON na própria página em
   // vez de por google.script.run: é conteúdo estático, e uma chamada a mais no
   // boot do dashboard é o que #333/#334 pediu para evitar.
-  template.CW_RELEASE_NOTES = buildReleaseNotesJson();
+  template.CW_RELEASE_NOTES = buildReleaseNotesJson(fileName);
 
   return template.evaluate()
     .setTitle(title)
