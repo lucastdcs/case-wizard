@@ -12,8 +12,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **A Central de Conteúdo troca o idioma da interface: português, espanhol ou
   inglês** (ADR-0017). Seletor novo no topo, separado do seletor do trilho, que
   passou a se chamar "Idioma do conteúdo" e segue decidindo só qual catálogo
-  (PT/ES) está em revisão — dá para ler a tela em português e revisar o
-  espanhol, ou o contrário. A tela abre no idioma da pessoa na aba People
+  está em revisão — dá para ler a tela em português e revisar o espanhol, ou
+  o contrário. A tela abre no idioma da pessoa na aba People
   (`getContentSession()` passou a devolver `defaultLanguage`, inclusive para
   quem não tem acesso, que lê a recusa no idioma dele), e a escolha manual fica
   salva no navegador e vale mais que o perfil. **Primeira fase:** topo, trilho,
@@ -21,6 +21,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   aviso "seu papel não propõe neste módulo". Listas, editores e modais seguem
   em português até as próximas fases. Datas passaram a seguir o idioma da
   interface, e não mais o do conteúdo.
+- **"Idioma do conteúdo" ganha EN.** Desde a v6.5.0 o catálogo tem conteúdo em
+  inglês (roteiro, notas, e-mails), mas o seletor só oferecia PT/ES — revisar o
+  EN pela Central não tinha caminho. Junto, um defeito que a opção nova
+  tornaria alcançável: o editor de e-mail tratava só `ES` como idioma de
+  `labels`, então salvar um modelo EN gravaria `placeholders: []` e apagaria os
+  rótulos dos campos sem aviso. Agora tudo que não é PT guarda `labels`.
 - **Novidades da versão na Central**, no padrão do TL Dashboard: notas próprias
   (`CW_CONTENT_RELEASE_NOTES` em `DashReleaseNotes.js`), que abrem uma vez
   quando a versão muda, com botão de megafone no topo para reler.

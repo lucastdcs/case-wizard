@@ -1417,11 +1417,15 @@
             if (!subject) return toast('O e-mail precisa de um assunto.', true);
             if (!template) return toast('O e-mail precisa de um corpo.', true);
 
-            // Só assunto e corpo são editáveis: a lista de campos (e, em ES, os
-            // rótulos) segue como está. Mexer nela pela tela exigiria casar as
-            // duas linguagens de uma vez, e é justamente onde um erro vaza
+            // Só assunto e corpo são editáveis: a lista de campos (e, fora do
+            // PT, os rótulos) segue como está. Mexer nela pela tela exigiria
+            // casar as linguagens de uma vez, e é justamente onde um erro vaza
             // placeholder literal para o anunciante.
-            var value = (item.lang === 'ES')
+            //
+            // "Fora do PT", e não "ES": o EN guarda `labels` como o ES. Com o
+            // teste antigo, salvar um modelo EN gravava `placeholders: []` e
+            // apagava os rótulos sem aviso.
+            var value = (item.lang !== 'PT')
                 ? JSON.stringify({ subject: subject, template: template, labels: original.labels || {} })
                 : JSON.stringify({ subject: subject, template: template, placeholders: original.placeholders || [] });
 

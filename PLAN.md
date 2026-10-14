@@ -22,6 +22,8 @@ This file differs from the long-term roadmap: it describes what is happening **n
       4. [ ] **Governança** (`_Governance`) e o resto do `_Core`: aprovações,
          pessoas, auditoria, papéis, acessos, histórico, busca, "ver como",
          atividade, home e toasts.
+      - [x] "Idioma do conteúdo" ganhou EN, com o conserto do editor de e-mail
+        que apagaria os `labels` de um modelo EN (`smoke:content` +2).
       Ao fechar a release: subir `CW_CONTENT_RELEASE_NOTES.version` junto com
       as outras (RELEASE.md) e reescrever os itens com o que a fase entregou.
 

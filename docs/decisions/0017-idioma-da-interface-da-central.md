@@ -27,7 +27,8 @@ do conteúdo**:
 
 - seletor próprio no topo (`#lang-ui`), visível desde o boot, com os nomes dos
   idiomas sempre no próprio idioma; o seletor do trilho passa a se chamar
-  "Idioma do conteúdo" e não muda de comportamento;
+  "Idioma do conteúdo", não muda de comportamento e ganha EN, que o catálogo
+  já tinha desde a v6.5.0;
 - resolução na ordem do ADR-0001: escolha manual salva no navegador
   (`cw_content_ui_lang`) → `defaultLanguage` da People, que agora vem em
   `getContentSession()` (também para quem não tem acesso, que lê a tela de

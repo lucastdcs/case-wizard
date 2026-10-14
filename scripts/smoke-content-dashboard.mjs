@@ -2037,6 +2037,62 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
     await page.close();
 }
 
+// ---------------------------------------------------- inglês no conteúdo
+{
+    const page = await abrir({ sessao: 'admin' });
+
+    await check('o idioma do conteúdo oferece EN, e o roteiro filtra por ele', async () => {
+        igual(await page.locator('#lang-global option').evaluateAll(os => os.map(o => o.value)),
+            ['PT', 'ES', 'EN'], 'opções do conteúdo');
+        await page.evaluate(() => switchTab('callscript'));
+        await page.waitForTimeout(150);
+        await page.selectOption('#lang-global', 'EN');
+        await page.evaluate(() => {
+            const passo = (id, lang, texto) => ({
+                id, module: 'call_script', key: 'BAU', field: 'inicio', lang, label: texto,
+                value: texto, version: 1, status: 'live', sortOrder: 0, lineage: id,
+            });
+            CS_ITEMS = [passo('cs_pt', 'PT', 'Olá, aqui é do Google'), passo('cs_en', 'EN', 'Hello, this is Google')];
+            renderCallScript();
+        });
+        const texto = await page.locator('#cs-list').textContent();
+        verdade(/Hello, this is Google/.test(texto), 'o passo EN não apareceu');
+        verdade(!/Olá, aqui é do Google/.test(texto), 'o passo PT apareceu no catálogo EN');
+    });
+
+    await check('editar um e-mail EN mantém os rótulos dos campos', async () => {
+        // O EN guarda `labels`, como o ES. Antes, só 'ES' era tratado assim, e
+        // salvar um modelo EN gravava `placeholders: []` apagando os rótulos.
+        await page.evaluate(() => switchTab('emails'));
+        await page.waitForTimeout(150);
+        await page.evaluate(() => {
+            EM_ITEMS = [{
+                id: 'em_en', module: 'email_template', key: 'reagendamento', field: '', lang: 'EN',
+                label: 'Rescheduling', version: 1, status: 'live', sortOrder: 0, lineage: 'em_en',
+                category: 'Agendamento',
+                value: JSON.stringify({ subject: 'Rescheduling', template: '<p>[Seu Nome]</p>',
+                    labels: { '[Seu Nome]': 'Signature' } }),
+            }];
+            EM_DRAFTS = [];
+            renderEmails();
+            window.__chamadas.length = 0;
+            openEmailEditor('em_en');
+        });
+        await page.fill('#em-body', '<p>Hi — [Seu Nome]</p>');
+        await page.click('#em-save');
+        await page.waitForTimeout(200);
+        const salvo = await page.evaluate(() => {
+            const c = window.__chamadas.filter(x => x.metodo === 'saveAndSubmitContentDraft')[0];
+            return c ? JSON.parse(c.args[0].value) : null;
+        });
+        verdade(salvo, 'nenhuma proposta foi enviada');
+        igual(salvo.labels, { '[Seu Nome]': 'Signature' }, 'rótulos');
+        igual('placeholders' in salvo, false, 'gravou placeholders num modelo EN');
+    });
+
+    await page.close();
+}
+
 // --------------------------------------------------------- novidades da versão
 {
     const page = await abrir({ sessao: 'admin', versaoVista: null });
