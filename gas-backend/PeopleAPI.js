@@ -473,6 +473,7 @@ function applyApprovedPeopleDraft_(draft, session, note) {
     if (!existing) throw new Error("A pessoa " + targetLdap + " já não está na aba People.");
     assertPeopleLeadershipSurvives_({ ldap: targetLdap, removed: true });
     sheet.deleteRow(existing._row);
+    revokeContentAccessForLeaver_(targetLdap, session.ldap);
     outcome = 'removed';
   } else {
     const record = assertValidPeopleValue_(String(draft.Value || ""));

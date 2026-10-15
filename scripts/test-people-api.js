@@ -476,6 +476,90 @@ check('baixa de quem não está na aba é recusada', () => {
   throws(() => as('lucaste', () => api.requestPeopleRemoval('ninguem', 'x')), /não encontrada/i);
 });
 
+console.log('\n--- Quem saiu deixa de receber aviso ---');
+
+const COM_QA = TIME_BASE.concat([
+  ['qapessoa', 'QA', 'Agent', 'PT'],
+  ['tlaine', 'Team Lead', 'TL', 'PT'],
+]);
+
+function acessoDe(ldap) {
+  const aba = SS.getSheetByName('Content_Access');
+  const linha = aba._data.slice(1).find((r) => r[0] === ldap);
+  return linha && linha[2];
+}
+
+check('baixa em People desativa o acesso à Central de quem saiu', () => {
+  reset(COM_QA);
+  eq(acessoDe('tlaine'), true, 'antes:');
+
+  as('lucaste', () => api.requestPeopleRemoval('tlaine', 'saiu da empresa'));
+
+  eq(acessoDe('tlaine'), false, 'depois:');
+  const evento = logDaCentral().find((l) => l.Action === 'access_change' && l.Label === 'tlaine' && /inativo/.test(String(l.Detail)));
+  if (!evento) throw new Error('a revogação não foi para a auditoria');
+});
+
+check('baixa de quem não tinha acesso à Central segue normal', () => {
+  reset(COM_QA);
+  as('lucaste', () => api.requestPeopleRemoval('anaflor', 'saiu'));
+  eq(peopleRows().some((r) => r[0] === 'anaflor'), false);
+});
+
+check('baixa do único governante mantém o acesso (a trava de governança vale) e registra', () => {
+  reset(COM_QA);
+  as('lucaste', () => api.requestPeopleRemoval('lucaste', 'saindo'));
+
+  eq(peopleRows().some((r) => r[0] === 'lucaste'), false, 'a baixa em People aconteceu:');
+  eq(acessoDe('lucaste'), true, 'o acesso ficou de pé:');
+  if (!logDaCentral().some((l) => l.Action === 'access_revoke_skipped')) {
+    throw new Error('o motivo de não revogar não foi registrado');
+  }
+});
+
+check('aviso de proposta não vai para quem ainda tem acesso mas já não está em People', () => {
+  // Cenário real: a pessoa foi tirada da aba na mão (ou antes desta correção).
+  reset(TIME_BASE.concat([['qapessoa', 'QA', 'Agent', 'PT']]));
+  SENT_MAIL.length = 0;
+
+  as('qapessoa', () => api.saveAndSubmitContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo novo', value: 'Bom dia!'
+  }));
+
+  eq(SENT_MAIL.length, 1);
+  const para = SENT_MAIL[0].to.split(',');
+  eq(para.indexOf('tlaine@google.com'), -1, 'tlaine saiu de People:');
+  eq(para.indexOf('lucaste@google.com') !== -1, true, 'quem segue na empresa recebe:');
+});
+
+check('decisão não é enviada a quem propôs e já saiu', () => {
+  reset(COM_QA);
+  as('qapessoa', () => api.saveAndSubmitContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo novo', value: 'Bom dia!'
+  }));
+  const draftId = as('lucaste', () => api.listPendingApprovals())
+    .find((d) => d.module === 'call_script').draftId;
+
+  const aba = SS.getSheetByName('People');
+  aba.deleteRow(aba._data.findIndex((r) => r[0] === 'qapessoa') + 1);
+  SENT_MAIL.length = 0;
+
+  as('lucaste', () => api.rejectContentDraft(draftId, 'ajustar'));
+  eq(SENT_MAIL.length, 0, 'ninguém para avisar:');
+});
+
+check('People vazia não silencia a Central (planilha nova)', () => {
+  reset([]);
+  SENT_MAIL.length = 0;
+  as('qapessoa', () => api.saveAndSubmitContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo novo', value: 'Bom dia!'
+  }));
+  eq(SENT_MAIL.length, 1);
+});
+
 console.log('\n--- Travas ---');
 
 check('a operação nunca fica sem liderança: baixa do último TL é recusada', () => {

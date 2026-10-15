@@ -105,6 +105,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **O seletor de idioma do onboarding ignorava o idioma do perfil.** O foco
   inicial usava `find(...)?.focus() ?? buttons[0].focus()`, e como `focus()`
   devolve `undefined` o fallback rodava **sempre**.
+- **Quem saiu da empresa seguia recebendo e-mail da Central de Conteúdo.** A
+  baixa na aba Pessoas não tocava em `Content_Access`, e os avisos de proposta,
+  de decisão e de pendência parada liam só essa aba — inclusive endereços que já
+  não existem (bounce para o dono do script). Agora a baixa desativa o acesso
+  (respeitando a trava de governança) e os três envios só vão a quem está em
+  `People`. Travado em `test:people` (+6).
 - **A abertura do painel lateral do BAU tremia.** A coluna passava de 454,9px
   para 504,3px — **10,9% de sobra**, contra os ≤3% que a regra de movimento
   previa — e, por ser propriedade de **layout**, o texto refluía na largura

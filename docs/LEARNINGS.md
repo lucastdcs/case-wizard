@@ -145,6 +145,24 @@ E teste com os dois knobs **divergentes**. Com os dois no mesmo valor — que é
 estado de 99% dos usuários — qualquer religação errada passa despercebida, que
 é exatamente por que o acoplamento sobreviveu dois idiomas.
 
+## Aviso por e-mail da Central: destinatário = papel em `Content_Access` **e** presença em `People`
+
+**Why**: quem era tirado da aba Pessoas seguia recebendo os e-mails da Central, e
+quem tinha saído da empresa gerava bounce "endereço não encontrado" para o dono
+do script. `People` diz quem está na empresa; `Content_Access` diz quem tem papel
+na Central. A baixa só apagava a linha de `People` (`deleteRow`) e os três envios
+(`notifyApprovers_`, `notifyProposerDecision_`, `notifyStaleContentApprovals`) liam
+só `Content_Access`. O `MailApp` não lança para endereço inexistente, então nada
+avisava.
+
+**When to apply**: qualquer novo e-mail da Central endereçado a `ldap + "@google.com"`
+passa por `filterContentRecipients_()`. Qualquer novo caminho que tire alguém de
+`People` chama `revokeContentAccessForLeaver_()`. `People` vazia não filtra (planilha
+nova); se a revogação deixaria a Central sem governante, o acesso fica e o motivo
+vai para a auditoria (`access_revoke_skipped`).
+
+---
+
 ## Animar `grid-template-columns`: os dois estados declaram a trilha da MESMA forma
 
 **Why**: o painel lateral do BAU abria com um tremor. A suspeita óbvia era a

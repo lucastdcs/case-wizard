@@ -1860,6 +1860,55 @@ function saveAndSubmitContentDraft(payload) {
   return { status: 'success', draftId: saved.draftId };
 }
 
+// Quem ainda é da operação, segundo a aba People (a fonte de verdade de quem está
+// na empresa). Content_Access diz quem TEM PAPEL na Central, não quem ainda
+// trabalha aqui: a baixa em People nunca encostou nela, então quem saiu seguia
+// ativo lá e seguia recebendo aviso - num endereço que já não existe, o que
+// devolve um bounce para o dono do script.
+//
+// People vazia (planilha nova, antes do primeiro cadastro) não filtra nada: o
+// filtro nasceu para tirar quem saiu, não para silenciar a Central inteira.
+function filterContentRecipients_(ldaps) {
+  const gente = readPeopleRows_();
+  if (!gente.length) return ldaps;
+
+  const naEmpresa = {};
+  gente.forEach(function (p) { naEmpresa[p.ldap] = true; });
+
+  return ldaps.filter(function (ldap) {
+    return naEmpresa[String(ldap || "").toLowerCase().trim()] === true;
+  });
+}
+
+// Chamada quando a baixa em People é aplicada. A baixa vale primeiro: se tirar o
+// acesso deixasse a Central sem ninguém capaz de gerenciá-la, o acesso fica de
+// pé (o filtro acima já impede o e-mail) e o motivo vai para a auditoria.
+function revokeContentAccessForLeaver_(ldap, actor) {
+  const alvo = String(ldap || "").toLowerCase().trim();
+  const acesso = findContentRow_(SHEET_CONTENT_ACCESS, 'LDAP', alvo);
+  if (!acesso) return;
+
+  const ativo = String(acesso.Active).toUpperCase().trim();
+  if (ativo !== 'TRUE' && ativo !== '1') return;
+
+  const papel = String(acesso.Role || "").toUpperCase().trim();
+
+  try {
+    assertGovernancaSobrevive_({ ldap: alvo, role: papel, active: false }, null);
+  } catch (e) {
+    logContentEvent_(actor, 'access_revoke_skipped', { label: alvo }, String(e.message || e));
+    return;
+  }
+
+  const sheet = getContentSheet_(SHEET_CONTENT_ACCESS);
+  sheet.getRange(acesso._row, 3).setValue(false);
+  sheet.getRange(acesso._row, 4).setValue(actor);
+  sheet.getRange(acesso._row, 5).setValue(contentNow_());
+
+  logContentEvent_(actor, 'access_change', { label: alvo }, papel + ' inativo (baixa em People)');
+  invalidateContentPermsCache_();
+}
+
 // Avisa quem pode aprovar. Sem isso, "pendente" pode ficar parado indefinidamente
 // sem ninguém perceber - o fluxo de aprovação vira um limbo em vez de um portão.
 function notifyApprovers_(draftRow, proposedBy) {
@@ -1874,13 +1923,17 @@ function notifyApprovers_(draftRow, proposedBy) {
         // matriz, mandar a fila inteira para todo revisor seria ruído.
         return podeAprovarModulo_(getContentPermsForRole_(role), module);
       })
-      .map(function (r) { return String(r.LDAP).trim() + "@google.com"; })
-      .filter(function (mail) { return mail.indexOf(proposedBy + "@") !== 0; });
+      .map(function (r) { return String(r.LDAP).trim(); })
+      .filter(function (ldap) { return ldap !== proposedBy; });
 
-    if (!approvers.length) return;
+    const destinos = filterContentRecipients_(approvers).map(function (ldap) {
+      return ldap + "@google.com";
+    });
+
+    if (!destinos.length) return;
 
     MailApp.sendEmail({
-      to: approvers.join(","),
+      to: destinos.join(","),
       subject: "📝 Central de Conteúdo: proposta aguardando revisão",
       htmlBody: "<p><strong>" + proposedBy + "</strong> propôs uma alteração em <strong>" +
         String(draftRow.Module) + "</strong> (" + String(draftRow.Label) + ").</p>" +
@@ -1905,6 +1958,9 @@ function notifyProposerDecision_(draftRow, session, approved, note) {
 
   // Quem decide sobre a própria proposta (autoaprovação do ADMIN) já sabe.
   if (proposer === session.ldap) return;
+
+  // Quem propôs e já saiu da empresa não tem para onde receber a resposta.
+  if (!filterContentRecipients_([proposer]).length) return;
 
   const label = String(draftRow.Label || draftRow.Key || "").trim();
   const module = String(draftRow.Module || "").trim();
@@ -2977,11 +3033,17 @@ function staleContentApprovals_() {
 
   const porPessoa = {};
 
-  readContentRows_(SHEET_CONTENT_ACCESS).forEach(function (r) {
+  const acessos = readContentRows_(SHEET_CONTENT_ACCESS);
+  const naEmpresa = filterContentRecipients_(acessos.map(function (r) {
+    return String(r.LDAP || "").toLowerCase().trim();
+  }));
+
+  acessos.forEach(function (r) {
     const ativo = String(r.Active).toUpperCase().trim();
     if (ativo !== 'TRUE' && ativo !== '1') return;
 
     const ldap = String(r.LDAP || "").toLowerCase().trim();
+    if (naEmpresa.indexOf(ldap) === -1) return;
     const perms = getContentPermsForRole_(String(r.Role || "").toUpperCase().trim());
     if (!ldap || !perms) return;
 
