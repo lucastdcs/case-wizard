@@ -1860,6 +1860,60 @@ function saveAndSubmitContentDraft(payload) {
   return { status: 'success', draftId: saved.draftId };
 }
 
+// Os três e-mails da Central saem pela mesma casca do fluxo BAU (renderBauEmail,
+// EmailEngine.js). Antes eram dois <p> soltos e um botão improvisado, sem
+// versão em texto puro e com o texto livre (rótulo do item, motivo) colado cru
+// no HTML. `campos` é uma lista de { label, value } em TEXTO: o escape é daqui.
+function sendContentEmail_(o) {
+  const campos = o.campos || [];
+
+  const htmlBody = renderBauEmail({
+    preheader: escapeEmailText(o.preheader || o.title),
+    accent: o.accent,
+    title: escapeEmailText(o.title),
+    lead: escapeEmailText(o.lead),
+    meta: escapeEmailText(o.meta || ""),
+    callout: o.callout
+      ? renderEmailCallout(o.callout.kind, o.callout.html)
+      : "",
+    action: o.url ? renderEmailButton(o.buttonLabel, o.url) : "",
+    blocks: campos.length
+      ? renderEmailSection(o.sectionTitle, renderEmailFields(campos.map(function (c) {
+        return { label: escapeEmailText(c.label), value: escapeEmailText(c.value) };
+      })))
+      : "",
+    footerNote: escapeEmailText(o.footer + " · Cases Wizard · automatizado por " + CW_AUTHOR_CREDIT)
+  });
+
+  const plainBody = [o.title, "", o.lead]
+    .concat(o.callout ? ["", o.callout.text] : [])
+    .concat(o.url ? ["", o.buttonLabel + ": " + o.url] : [])
+    .concat(campos.length
+      ? ["", o.sectionTitle].concat(campos.map(function (c) { return c.label + ": " + c.value; }))
+      : [])
+    .concat(["", o.footer])
+    .join("\n");
+
+  MailApp.sendEmail({
+    to: o.to,
+    subject: o.subject,
+    htmlBody: htmlBody,
+    body: plainBody,
+    name: "Cases Wizard"
+  });
+}
+
+// Link da Central para e-mails disparados por AÇÃO de alguém: segue a
+// implantação em que a ação aconteceu. O gatilho de tempo usa
+// buildProductionPageUrl() - ver notifyStaleContentApprovals().
+function contentPageUrlForAction_() {
+  try {
+    return buildDeploymentPageUrl('content');
+  } catch (e) {
+    return '';
+  }
+}
+
 // Quem ainda é da operação, segundo a aba People (a fonte de verdade de quem está
 // na empresa). Content_Access diz quem TEM PAPEL na Central, não quem ainda
 // trabalha aqui: a baixa em People nunca encostou nela, então quem saiu seguia
@@ -1932,13 +1986,27 @@ function notifyApprovers_(draftRow, proposedBy) {
 
     if (!destinos.length) return;
 
-    MailApp.sendEmail({
+    const acao = String(draftRow.Action || CONTENT_ACTIONS.UPSERT) === CONTENT_ACTIONS.REMOVE
+      ? "Remover do ar" : "Criar ou alterar";
+
+    sendContentEmail_({
       to: destinos.join(","),
       subject: "📝 Central de Conteúdo: proposta aguardando revisão",
-      htmlBody: "<p><strong>" + proposedBy + "</strong> propôs uma alteração em <strong>" +
-        String(draftRow.Module) + "</strong> (" + String(draftRow.Label) + ").</p>" +
-        "<p>Abra a Central de Conteúdo para revisar e aprovar.</p>",
-      name: "Cases Wizard"
+      preheader: proposedBy + " propôs uma alteração em " + module,
+      accent: EMAIL_TOKENS.accentBlue,
+      title: "Proposta aguardando revisão",
+      lead: proposedBy + " propôs uma alteração em " + module + ".",
+      meta: "Central de Conteúdo",
+      url: contentPageUrlForAction_(),
+      buttonLabel: "Revisar na Central",
+      sectionTitle: "O que foi proposto",
+      campos: [
+        { label: "Módulo", value: module },
+        { label: "Item", value: String(draftRow.Label || draftRow.Key || "") },
+        { label: "Ação", value: acao },
+        { label: "Proposto por", value: proposedBy }
+      ],
+      footer: "Você recebeu isso porque aprova propostas do módulo " + module
     });
   } catch (e) {
     // Falha de e-mail não pode impedir o envio para revisão.
@@ -1965,41 +2033,34 @@ function notifyProposerDecision_(draftRow, session, approved, note) {
   const label = String(draftRow.Label || draftRow.Key || "").trim();
   const module = String(draftRow.Module || "").trim();
 
-  let url = '';
-  try {
-    url = buildDeploymentPageUrl('content');
-  } catch (e) {
-    url = '';
-  }
-
-  const botao = url
-    ? '<p style="margin:24px 0"><a href="' + url + '" ' +
-      'style="background:#1A73E8;color:#fff;text-decoration:none;' +
-      'padding:10px 20px;border-radius:4px;display:inline-block;' +
-      'font-family:Roboto,Arial,sans-serif;font-size:14px">' +
-      'Abrir a Central de Conteúdo</a></p>'
-    : '';
-
-  const corpo = approved
-    ? '<p><strong>' + session.ldap + '</strong> aprovou sua proposta em <strong>' +
-      module + '</strong> (' + label + '). Já está no ar.</p>' +
-      (String(note || "").trim()
-        ? '<p style="color:#5F6368">Comentário: ' + String(note).trim() + '</p>'
-        : '')
-    : '<p><strong>' + session.ldap + '</strong> devolveu sua proposta em <strong>' +
-      module + '</strong> (' + label + ').</p>' +
-      '<p><strong>Motivo:</strong> ' + String(note || "").trim() + '</p>' +
-      '<p style="color:#5F6368">Ela voltou como rascunho: corrija e reenvie, ' +
-      'sem redigitar do zero.</p>';
+  const nota = String(note || "").trim();
 
   try {
-    MailApp.sendEmail({
+    sendContentEmail_({
       to: proposer + "@google.com",
       subject: approved
         ? "✅ Central de Conteúdo: sua proposta foi publicada"
         : "↩️ Central de Conteúdo: sua proposta voltou para ajuste",
-      htmlBody: corpo + botao,
-      name: "Cases Wizard"
+      preheader: approved ? "Já está no ar: " + label : "Corrija e reenvie: " + label,
+      accent: approved ? EMAIL_TOKENS.accentGreen : EMAIL_TOKENS.accentAmber,
+      title: approved ? "Sua proposta foi publicada" : "Sua proposta voltou para ajuste",
+      lead: approved
+        ? session.ldap + " aprovou sua proposta em " + module + ". Já está no ar."
+        : session.ldap + " devolveu sua proposta em " + module + ".",
+      meta: "Central de Conteúdo",
+      // A justificativa é a parte acionável: é ela que diz o que corrigir.
+      callout: !approved && nota
+        ? { kind: "warn", html: '<strong style="font-weight:500;">Motivo:</strong> ' + escapeEmailText(nota), text: "Motivo: " + nota }
+        : null,
+      url: contentPageUrlForAction_(),
+      buttonLabel: "Abrir a Central de Conteúdo",
+      sectionTitle: "Detalhes",
+      campos: [
+        { label: "Módulo", value: module },
+        { label: "Item", value: label }
+      ].concat(approved && nota ? [{ label: "Comentário", value: nota }] : [])
+        .concat(approved ? [] : [{ label: "Próximo passo", value: "Ela voltou como rascunho: corrija e reenvie, sem redigitar do zero." }]),
+      footer: "Você recebeu isso porque propôs a alteração"
     });
   } catch (e) {
     // A decisão já aconteceu e não pode ser desfeita por falha de e-mail. Mas,
@@ -3099,23 +3160,25 @@ function notifyStaleContentApprovals() {
       const itens = r.porPessoa[ldap];
       const listados = itens.slice(0, CONTENT_STALE_MAX_LISTED);
 
-      const linhas = listados.map(function (d) {
-        return '<li><strong>' + d.label + '</strong> — ' + d.module +
-          ' · proposto por ' + d.proposedBy + '</li>';
-      }).join('');
-
       const sobra = itens.length > listados.length
-        ? '<p>…e mais ' + (itens.length - listados.length) + '.</p>' : '';
+        ? itens.length - listados.length : 0;
 
-      MailApp.sendEmail({
+      sendContentEmail_({
         to: ldap + '@google.com',
         subject: '⏳ Central de Conteúdo: ' + itens.length +
           (itens.length === 1 ? ' proposta parada' : ' propostas paradas'),
-        htmlBody:
-          '<p>Estas propostas estão esperando revisão há mais de ' +
-          CONTENT_STALE_DAYS + ' dias:</p><ul>' + linhas + '</ul>' + sobra +
-          '<p><a href="' + url + '">Abrir a Central de Conteúdo</a></p>',
-        name: 'Cases Wizard'
+        preheader: 'Esperando revisão há mais de ' + CONTENT_STALE_DAYS + ' dias',
+        accent: EMAIL_TOKENS.accentAmber,
+        title: itens.length + (itens.length === 1 ? ' proposta parada' : ' propostas paradas'),
+        lead: 'Estão esperando revisão há mais de ' + CONTENT_STALE_DAYS + ' dias.',
+        meta: 'Lembrete automático da Central de Conteúdo',
+        url: url,
+        buttonLabel: 'Abrir a Central de Conteúdo',
+        sectionTitle: 'Aguardando você',
+        campos: listados.map(function (d) {
+          return { label: d.module + ' · ' + d.proposedBy, value: d.label };
+        }).concat(sobra ? [{ label: '…', value: 'e mais ' + sobra }] : []),
+        footer: 'Você recebeu isso porque aprova propostas paradas há mais de ' + CONTENT_STALE_DAYS + ' dias'
       });
     });
 

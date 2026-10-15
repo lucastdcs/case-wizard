@@ -83,6 +83,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 - `npm run test:i18n` (paridade dos dicionários nas três línguas) e
   `npm run smoke:i18n` (qual knob cada lugar lê, no navegador real).
 
+### Changed
+- **E-mails da Central de Conteúdo com a casca do fluxo BAU.** O aviso de
+  "proposta aguardando revisão" era dois parágrafos soltos, sem link nem
+  detalhe. Os três e-mails da Central (proposta, decisão, pendência parada)
+  agora usam `renderBauEmail`: cartão com cor por tipo, campos (módulo, item,
+  ação, autor), botão para a Central, motivo da devolução em callout, preheader,
+  versão em texto puro e texto livre escapado (antes o rótulo e o motivo entravam
+  crus no HTML). Travado em `test:content` (+2).
+
 ### Fixed
 - **Linha em idioma novo contaminava o conteúdo base.** Duas hidratações
   roteavam por "se é ES, tradução; **senão**, base". Como a linha EN tem o mesmo

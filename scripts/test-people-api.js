@@ -76,6 +76,12 @@ class FakeSpreadsheet {
   insertSheet(n) { return (this.sheets[n] = new FakeSheet(n)); }
 }
 
+const HTML_SERVICE_STUB = {
+  createHtmlOutputFromFile: (n) => ({
+    getContent: () => fs.readFileSync(path.join(GAS, n + '.html'), 'utf8')
+  })
+};
+
 // ---- Ambiente ----
 let CURRENT_USER = 'lucaste@google.com';
 let SS, SENT_MAIL, LOGGED, ctx, api;
@@ -92,6 +98,7 @@ function reset(people) {
     Session: { getActiveUser: () => ({ getEmail: () => CURRENT_USER }) },
     MailApp: { sendEmail: (o) => SENT_MAIL.push(o) },
     Logger: { log: () => { } },
+    HtmlService: HTML_SERVICE_STUB,
     Utilities: { getUuid: () => require('node:crypto').randomUUID() },
     ContentService: {
       MimeType: { JSON: 'json', JAVASCRIPT: 'js' },
@@ -106,7 +113,7 @@ function reset(people) {
   // A ordem é a do Apps Script: todos os arquivos do projeto no mesmo escopo
   // global. O Código.gs precisa vir antes de reapontarmos handleLog, porque é
   // ele quem declara a função.
-  ['Código.js', 'ContentAPI.js', 'PeopleAPI.js'].forEach((f) => {
+  ['Código.js', 'ContentAPI.js', 'PeopleAPI.js', 'EmailEngine.js'].forEach((f) => {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx);
   });
   // A auditoria da Central escreve em `Content_Log`, não aqui. handleLog()
