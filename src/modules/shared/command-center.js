@@ -56,6 +56,7 @@ const COLORS = {
   green: "#81C995",  
   orange: "#F9AB00", 
   teal: "#00BFA5",
+  yellow: "#FDD663", // Pre-call Checklist
   pink: "#F48FB1", // [NOVO] Cor para a Biblioteca
   gray: "#9AA0A6", // [NOVO] Cor para Configurações
 };
@@ -414,6 +415,7 @@ export function initCommandCenter(actions, splashDone) {
             }
 
             .cw-btn.notes.active { color: ${COLORS.blue} !important; background: rgba(138, 180, 248, 0.15); }
+            .cw-btn.precall.active { color: ${COLORS.yellow} !important; background: rgba(253, 214, 99, 0.15); }
             .cw-btn.email.active { color: ${COLORS.red} !important; background: rgba(242, 139, 130, 0.15); }
             .cw-btn.script.active { color: ${COLORS.purple} !important; background: rgba(197, 138, 249, 0.15); }
             .cw-btn.links.active { color: ${COLORS.green} !important; background: rgba(129, 201, 149, 0.15); }
@@ -424,6 +426,7 @@ export function initCommandCenter(actions, splashDone) {
             .cw-btn.bauform.active { color: ${COLORS.blue} !important; background: rgba(66, 133, 244, 0.15); }
 
             .cw-btn.notes:hover { color: ${COLORS.blue}; filter: drop-shadow(0 0 8px rgba(138, 180, 248, 0.6)); }
+            .cw-btn.precall:hover { color: ${COLORS.yellow}; filter: drop-shadow(0 0 8px rgba(253, 214, 99, 0.6)); }
             .cw-btn.email:hover { color: ${COLORS.red}; filter: drop-shadow(0 0 8px rgba(242, 139, 130, 0.6)); }
             .cw-btn.script:hover { color: ${COLORS.purple}; filter: drop-shadow(0 0 8px rgba(197, 138, 249, 0.6)); }
             .cw-btn.links:hover { color: ${COLORS.green}; filter: drop-shadow(0 0 8px rgba(129, 201, 149, 0.6)); }
@@ -780,6 +783,7 @@ export function initCommandCenter(actions, splashDone) {
   const ICONS = {
     check: `<svg viewBox="0 0 24 24" fill="none" stroke="#81C995" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
     notes: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
+    precall: `<svg viewBox="0 0 24 24"><path d="M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11L2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z"/></svg>`,
     email: `<svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>`,
     script: `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
     links: `<svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>`,
@@ -813,6 +817,7 @@ export function initCommandCenter(actions, splashDone) {
             <div class="cw-grip-bar"></div>
         </div>
         <button class="cw-btn notes" id="cw-btn-notes" data-label="Case Notes">${ICONS.notes}</button>
+        <button class="cw-btn precall" id="cw-btn-precall" data-label="Pre-call Checklist">${ICONS.precall}</button>
         <button class="cw-btn bauform" id="cw-btn-bauform" data-label="BAU Form">${ICONS.bauform}</button>
         <button class="cw-btn email" id="cw-btn-email" data-label="Email Assistant">${ICONS.email}</button>
         <button class="cw-btn script" id="cw-btn-script" data-label="Call Script">${ICONS.script}</button>
@@ -856,6 +861,7 @@ export function initCommandCenter(actions, splashDone) {
   };
 
   pill.querySelector(".notes").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleNotes); };
+  pill.querySelector(".precall").onclick = (e) => { e.stopPropagation(); toggleModule(actions.togglePrecall); };
   pill.querySelector(".bauform").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleBAUForm); };
   pill.querySelector(".email").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleEmail); };
   pill.querySelector(".script").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleScript); };

@@ -29,6 +29,7 @@
     "test:backup": "node scripts/test-bau-backup.mjs",
     "test:dash-changelog": "node scripts/test-dash-changelog.mjs",
     "test:tl-decision": "node scripts/test-tl-decision.mjs",
+    "test:precall": "node scripts/test-precall.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:i18n": "node scripts/smoke-i18n.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
@@ -40,6 +41,7 @@
     "smoke:bau-tasks": "node scripts/smoke-bau-tasks.mjs",
     "smoke:people": "node scripts/smoke-people.mjs",
     "smoke:tl-dash": "node scripts/smoke-tl-dashboard.mjs",
+    "smoke:precall": "node scripts/smoke-precall.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },
   "dependencies": {
