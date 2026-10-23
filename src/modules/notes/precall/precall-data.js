@@ -64,20 +64,26 @@ export function missingFields(values) {
         .map((f) => f.id);
 }
 
+// Assinatura da ferramenta no fim da nota. Fica fora do bloco auditado: não é
+// uma linha de `buildPrecallLines`.
+export const FOOTER = 'Gerado pelo Cases Wizard';
+
+// Pares rótulo/valor do bloco, sem o título. O rótulo leva os dois-pontos: é ele
+// que vai em negrito na nota, e o valor segue normal.
+function buildEntries(values) {
+    if (values.completed === NO) {
+        return [{ label: `${EXCEPTION_LABEL}:`, value: `${NO} → ${clean(values.exceptionReason)}` }];
+    }
+    return PRECALL_FIELDS.map((f) => ({
+        label: `${f.label}:`,
+        value: clean(values[f.id]) || NONE_PROVIDED,
+    }));
+}
+
 // Linhas lógicas do bloco. Um valor de várias linhas (textarea) continua sendo
 // UMA entrada daqui; quem renderiza decide como quebrar.
 export function buildPrecallLines(values) {
-    const lines = [BLOCK_TITLE];
-
-    if (values.completed === NO) {
-        lines.push(`${EXCEPTION_LABEL}: ${NO} → ${clean(values.exceptionReason)}`);
-        return lines;
-    }
-
-    PRECALL_FIELDS.forEach((f) => {
-        lines.push(`${f.label}: ${clean(values[f.id]) || NONE_PROVIDED}`);
-    });
-    return lines;
+    return [BLOCK_TITLE, ...buildEntries(values).map(({ label, value }) => `${label} ${value}`)];
 }
 
 // O que o agente digitou entra como texto, nunca como marcação: um `<` no meio
@@ -91,10 +97,16 @@ export function escapeHtml(text) {
         .replace(/'/g, '&#39;');
 }
 
+// Uma linha em branco entre cada linha do bloco (`<br><br>`, o mesmo espaçamento
+// do Case Notes). Título e rótulo em negrito, valor normal; a quebra DENTRO de um
+// valor de várias linhas continua sendo um `<br>` só.
 export function buildPrecallHtml(values) {
-    const [title, ...rest] = buildPrecallLines(values);
-    const body = rest.map((line) => escapeHtml(line).replace(/\r?\n/g, '<br>'));
-    return [`<b>${escapeHtml(title)}</b>`, ...body].join('<br>');
+    const asHtml = (text) => escapeHtml(text).replace(/\r?\n/g, '<br>');
+    return [
+        `<b>${escapeHtml(BLOCK_TITLE)}</b>`,
+        ...buildEntries(values).map(({ label, value }) => `<b>${escapeHtml(label)}</b> ${asHtml(value)}`),
+        `<i>${escapeHtml(FOOTER)}</i>`,
+    ].join('<br><br>');
 }
 
 const EMAIL = /[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+/;

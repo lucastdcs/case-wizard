@@ -12,8 +12,8 @@ This file differs from the long-term roadmap: it describes what is happening **n
       e-mail, site e CID capturados da tela do caso e marcados como *Auto*.
       Sub-recurso do Case Notes (`src/modules/notes/precall/`), botão próprio na
       pílula e entrada no Ctrl+K. Nota **sempre em inglês** (exceção à regra dos
-      dois idiomas); texto travado em `test:precall` (21) e a tela real em
-      `smoke:precall` (21, com interface ES × atendimento PT). Só frontend.
+      dois idiomas); texto travado em `test:precall` (25) e a tela real em
+      `smoke:precall` (22, com interface ES × atendimento PT). Só frontend.
       **Falta confirmar:**
       - com quem audita, a linha de exceção `Completed: No → motivo` (veio do texto
         do SOP, não de uma nota real) e as opções do *Next steps* — o SOP cita só

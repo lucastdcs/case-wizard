@@ -34,11 +34,33 @@ Special instructions: None provided
 Next steps: OOS
 ```
 
-- A primeira linha (título) vai em negrito; o resto é `Rótulo: valor`, uma linha
-  por campo, na ordem acima.
+- **Formatação na nota:** título e rótulos (`Duplicate Case:`) em **negrito**, os
+  valores em texto normal, com **uma linha em branco entre cada linha** do bloco.
+  O bloco acima está compactado; na nota fica assim:
+
+  ```
+  **Pre-call checklist**
+
+  **Duplicate Case:** No
+
+  **360 Suite:** No
+
+  ...
+
+  **Next steps:** OOS
+
+  _Gerado pelo Cases Wizard_
+  ```
+
+- O texto puro continua sendo `Rótulo: valor`, uma linha por campo, na ordem acima.
 - O rótulo `Task(s) [copy&paste]` é literal, com os colchetes.
+- **Rodapé:** `Gerado pelo Cases Wizard`, em itálico, depois de uma linha em
+  branco, no fim de toda nota do formulário (inclusive a de exceção). É a única
+  linha em português, fixa nos três idiomas, e fica **fora** do bloco auditado
+  (`buildPrecallLines` não a inclui).
 - Campo de texto vazio sai como `None provided` — nunca em branco nem `N/A`.
-- Valor de várias linhas (tasks, instruções especiais) mantém as quebras.
+- Valor de várias linhas (tasks, instruções especiais) mantém as quebras, sem
+  linha em branco no meio dele.
 - O texto digitado pelo agente entra como **texto**, escapado: `<` e `&` não
   viram marcação no editor de notas.
 
@@ -52,7 +74,8 @@ Pre-call checklist
 Completed: No → Live Meet case
 ```
 
-O motivo é um de `Live Meet case` ou `Case arrived <1h before the call`. Os
+(Com a mesma formatação: título e `Completed:` em negrito, linha em branco entre
+as linhas, rodapé no fim.) O motivo é um de `Live Meet case` ou `Case arrived <1h before the call`. Os
 demais campos não saem na nota, mesmo que estejam preenchidos.
 
 > **A confirmar com quem audita:** o formato exato da linha de exceção

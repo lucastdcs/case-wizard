@@ -151,7 +151,8 @@ const TEXTO_ESPERADO = [
     'GA4 Measurement ID: None provided',
     'Special instructions: <img src=x onerror=alert(1)> & ligar às 14h',
     'Next steps: OOS',
-].join('\n');
+    'Gerado pelo Cases Wizard',
+].join('\n\n');
 
 console.log('\n--- Smoke: Pre-call Checklist no navegador ---');
 
@@ -234,9 +235,26 @@ await check('Inserir põe o bloco no card de nota, com o texto do contrato', asy
     igual(nota.texto.trim(), TEXTO_ESPERADO, 'texto da nota');
 });
 
-await check('o que o agente digitou não virou tag no editor (só <b> e <br>)', async () => {
+await check('no editor, título e rótulos estão em negrito, os valores não, e o rodapé fecha a nota', async () => {
+    const forma = await pagina.evaluate(() => {
+        const eds = [...document.querySelectorAll('.mock-note-editor')];
+        const ed = eds[eds.length - 1];
+        return {
+            negritos: [...ed.querySelectorAll('b')].map((b) => b.textContent),
+            italicos: [...ed.querySelectorAll('i')].map((i) => i.textContent),
+            valorEmNegrito: [...ed.querySelectorAll('b')].some((b) => /(None provided|OOS|Yes)$/.test(b.textContent)),
+        };
+    });
+    igual(forma.negritos.length, 15, 'negritos (título + 14 rótulos)');
+    igual(forma.negritos[0], 'Pre-call checklist', 'título');
+    forma.negritos.slice(1).forEach((n) => { if (!n.endsWith(':')) throw new Error('negrito que não é rótulo: ' + n); });
+    igual(forma.valorEmNegrito, false, 'valor dentro do negrito');
+    igual(forma.italicos, ['Gerado pelo Cases Wizard'], 'rodapé');
+});
+
+await check('o que o agente digitou não virou tag no editor (só <b>, <br> e o <i> do rodapé)', async () => {
     const nota = await ultimaNota(pagina);
-    const estranhas = nota.tags.filter((t) => !['B', 'BR'].includes(t));
+    const estranhas = nota.tags.filter((t) => !['B', 'BR', 'I'].includes(t));
     igual(estranhas, [], 'tags no editor');
 });
 
@@ -312,7 +330,7 @@ await check('exceção: o bloco vira só "Completed: No → motivo"', async () =
     await popup.getByRole('button', { name: 'Inserir na nota' }).click();
     await pagina.waitForFunction(() => document.querySelector('.mock-note-editor:last-of-type')?.innerText.includes('Completed'), null, { timeout: 8000 });
     const nota = await ultimaNota(pagina);
-    igual(nota.texto.trim(), 'Pre-call checklist\nCompleted: No → Live Meet case', 'texto da exceção');
+    igual(nota.texto.trim(), 'Pre-call checklist\n\nCompleted: No → Live Meet case\n\nGerado pelo Cases Wizard', 'texto da exceção');
 });
 
 await check('o botão da pílula existe, abre a janela e fica marcado como ativo', async () => {

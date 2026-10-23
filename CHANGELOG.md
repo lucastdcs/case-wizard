@@ -18,8 +18,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   antes de gerar a nota; texto vazio sai como `None provided`. Quem não faz o
   checklist (Live Meet, ou caso que chegou com menos de 1h) registra
   `Completed: No` com o motivo. **A nota sai sempre em inglês**, nos três idiomas
-  da interface — é o que a auditoria do SOP procura —, e o texto inteiro é
-  travado por `npm run test:precall`. Só frontend: nada é gravado na planilha.
+  da interface — é o que a auditoria do SOP procura —, com título e rótulos em
+  negrito, valores normais, uma linha em branco entre as linhas e "Gerado pelo
+  Cases Wizard" no fim, e o texto inteiro é travado por `npm run test:precall`. Só frontend: nada é gravado na planilha.
 - **A Central de Conteúdo troca o idioma da interface: português, espanhol ou
   inglês** (ADR-0017). Seletor novo no topo, separado do seletor do trilho, que
   passou a se chamar "Idioma do conteúdo" e segue decidindo só qual catálogo

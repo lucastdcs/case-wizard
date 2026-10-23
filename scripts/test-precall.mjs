@@ -22,7 +22,7 @@
 import { readFileSync } from 'node:fs';
 import {
     PRECALL_FIELDS, AUTO_FIELD_IDS, NEXT_STEPS, EXCEPTION_REASONS,
-    missingFields, buildPrecallLines, buildPrecallHtml, normalizeCapture,
+    FOOTER, missingFields, buildPrecallLines, buildPrecallHtml, normalizeCapture,
 } from '../src/modules/notes/precall/precall-data.js';
 import { PRECALL_I18N } from '../src/modules/notes/precall/precall-i18n.js';
 
@@ -142,10 +142,39 @@ function htmlParaTexto(html) {
         .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
 }
 
-check('o título vai em negrito e o texto do HTML é o das linhas', () => {
+check('uma linha em branco entre as linhas, e o texto do HTML é o das linhas mais o rodapé', () => {
     const html = buildPrecallHtml(completo);
-    if (!html.startsWith('<b>Pre-call checklist</b><br>Duplicate Case: No<br>')) throw new Error('começo inesperado: ' + html.slice(0, 80));
-    igual(htmlParaTexto(html), buildPrecallLines(completo).join('\n'), 'texto');
+    if (!html.startsWith('<b>Pre-call checklist</b><br><br><b>Duplicate Case:</b> No<br><br>')) throw new Error('começo inesperado: ' + html.slice(0, 90));
+    igual(htmlParaTexto(html), [...buildPrecallLines(completo), FOOTER].join('\n\n'), 'texto');
+});
+
+check('título e rótulos em negrito, valores normais', () => {
+    const html = buildPrecallHtml(completo);
+    // Tudo que está em <b> é o título ou um rótulo terminado em ":" — nunca um valor.
+    const negritos = [...html.matchAll(/<b>(.*?)<\/b>/g)].map((m) => m[1]);
+    igual(negritos.length, PRECALL_FIELDS.length + 1, 'quantidade de negritos');
+    igual(negritos[0], 'Pre-call checklist', 'título');
+    negritos.slice(1).forEach((n) => { if (!n.endsWith(':')) throw new Error('negrito sem ser rótulo: ' + n); });
+    // O valor vem logo depois do rótulo, fora do negrito.
+    if (!html.includes('<b>Next steps:</b> OOS')) throw new Error('valor dentro ou longe do rótulo');
+    if (!html.includes('<b>Task(s) [copy&amp;paste]:</b> Ads Conversion Tracking')) throw new Error('rótulo das tasks');
+});
+
+check('"Gerado pelo Cases Wizard" fecha a nota, fora do bloco auditado', () => {
+    igual(FOOTER, 'Gerado pelo Cases Wizard', 'texto do rodapé');
+    for (const valores of [completo, { completed: 'No', exceptionReason: 'Live Meet case' }]) {
+        const html = buildPrecallHtml(valores);
+        if (!html.endsWith('<br><br><i>Gerado pelo Cases Wizard</i>')) throw new Error('fim inesperado: ' + html.slice(-60));
+        if (buildPrecallLines(valores).includes(FOOTER)) throw new Error('o rodapé entrou nas linhas do bloco');
+    }
+});
+
+check('exceção: mesma forma (título e rótulo em negrito, linha em branco, rodapé)', () => {
+    igual(
+        buildPrecallHtml({ completed: 'No', exceptionReason: 'Live Meet case' }),
+        '<b>Pre-call checklist</b><br><br><b>Completed:</b> No → Live Meet case<br><br><i>Gerado pelo Cases Wizard</i>',
+        'HTML da exceção',
+    );
 });
 
 check('o "&" do rótulo "[copy&paste]" sai escapado e volta idêntico', () => {
@@ -165,7 +194,7 @@ check('o que o agente digita entra como texto, nunca como marcação', () => {
 
 check('instrução de várias linhas vira <br>, sem quebrar o bloco', () => {
     const html = buildPrecallHtml({ ...completo, specialInstructions: 'linha 1\nlinha 2' });
-    if (!html.includes('Special instructions: linha 1<br>linha 2<br>Next steps: OOS')) throw new Error(html);
+    if (!html.includes('<b>Special instructions:</b> linha 1<br>linha 2<br><br><b>Next steps:</b> OOS')) throw new Error(html);
 });
 
 console.log('\n--- Pre-call Checklist: captura automática ---');
