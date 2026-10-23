@@ -44,7 +44,12 @@ const CONTENT_MODULES = [
   // Criteria exige. Era o TASKS_DB embutido no bundle: mudar uma exigência de
   // evidência custava um deploy, e quem conhece a regra (o SME) não é quem
   // consegue fazer deploy. Ver ADR-0012.
-  'task_screenshots'
+  'task_screenshots',
+  // Categorias de link criadas pela tela (além das embutidas) e os destaques da
+  // home do módulo de Links. São dois módulos e não campos do link porque têm
+  // ciclo de vida e regime próprios: a categoria é catálogo (passa pela fila), o
+  // destaque é operação (vai ao ar na hora e expira sozinho). Ver ADR-0018.
+  'link_categories', 'link_highlights'
 ];
 
 // Nome do módulo das tasks, usado nas validações abaixo. Constante em vez de
@@ -64,7 +69,7 @@ const CONTENT_TASK_MODULE = 'task_screenshots';
 //
 // A publicação direta não abre mão de nada além da fila: continua versionando,
 // arquivando a versão anterior e indo para o log.
-const CONTENT_DIRECT_PUBLISH_MODULES = ['broadcast', 'bau_availability'];
+const CONTENT_DIRECT_PUBLISH_MODULES = ['broadcast', 'bau_availability', 'link_highlights'];
 
 // Módulos cuja LEITURA é tão restrita quanto a escrita: quem não propõe,
 // também não lê.
@@ -161,7 +166,9 @@ const CONTENT_ROLES = {
   // aviso geral - comunicado da operação continua sendo de ADMIN e TL, que
   // herdam os dois módulos por `propose: CONTENT_MODULES` lá em cima.
   WFM: {
-    propose: ['links', 'bau_availability'],
+    // Quem cura os links cria a categoria onde eles moram. Destaque não: ele vai
+    // ao ar sem revisão para a operação inteira, e isso segue sendo de ADMIN e TL.
+    propose: ['links', 'bau_availability', 'link_categories'],
     approve: false,
     manageAccess: false,
     selfApprove: false
@@ -1484,12 +1491,380 @@ function checkBauAvailability(rawValue) {
   }
 }
 
+// ---------------------------------------------------------
+//  Validação: categorias e destaques do módulo de Links (ADR-0018)
+// ---------------------------------------------------------
+
+const CONTENT_LINK_MODULE = 'links';
+const CONTENT_LINK_CATEGORY_MODULE = 'link_categories';
+const CONTENT_HIGHLIGHT_MODULE = 'link_highlights';
+
+// As categorias que vêm com o produto. Moram também no bundle do agente (que as
+// desenha sem esperar a rede) e na tela da Central. Uma categoria criada pela
+// tela NÃO pode tomar uma destas chaves: duas definições disputariam a mesma
+// chave, e qual valeria dependeria de quem carregasse primeiro.
+const CONTENT_LINK_BUILTIN_CATEGORIES = [
+  'tasks', 'ads', 'analytics', 'shopping', 'tech', 'hr', 'lm', 'qa', 'suporte', 'feedback'
+];
+
+// A chave é a identidade da categoria: todo link aponta para ela em `Key`. Por
+// isso o formato é fechado e ela não muda depois de criada — renomear
+// desligaria, em silêncio, todo link que já mora ali.
+const CONTENT_LINK_CATEGORY_KEY_RE = /^[a-z][a-z0-9_]{1,23}$/;
+
+// O rótulo vai num botão de 56px da barra lateral do agente. Mais que isso
+// quebra o botão, e quem escreve só descobre olhando o app.
+const CONTENT_LINK_CATEGORY_LABEL_MAX = 12;
+
+// Paleta e ícones são conjuntos FECHADOS, e os nomes aqui são o contrato com o
+// bundle (que tem o desenho de cada um) e com a Central (que tem o seletor).
+// Cor livre abriria a porta para um texto sem contraste na barra do agente;
+// SVG livre, para HTML de uma pessoa executando no navegador de outra.
+// `test:links` trava a igualdade dos três lugares.
+const CONTENT_LINK_CATEGORY_COLORS = [
+  'cyan', 'blue', 'orange', 'green', 'purple', 'red', 'slate', 'amber', 'sky', 'pink', 'teal', 'indigo'
+];
+const CONTENT_LINK_CATEGORY_ICONS = [
+  'description', 'assignment', 'verified_user', 'chat', 'public', 'bar_chart',
+  'shopping_cart', 'code', 'person', 'folder', 'bookmark', 'star', 'info', 'help',
+  'flag', 'school', 'build', 'lightbulb', 'event', 'feedback'
+];
+
+// Prévia do link: o que ele é e quando usar. Mora no link, não no destaque,
+// para continuar aparecendo na biblioteca depois que o destaque sair do ar.
+const CONTENT_LINK_ABOUT_MAX = 200;
+const CONTENT_LINK_WHEN_MAX = 160;
+
+// Destaques: quantos cabem no ar ao mesmo tempo, e por quanto tempo o que saiu
+// continua alimentando o "Saíram do destaque" do agente.
+const CONTENT_HIGHLIGHT_MAX_ACTIVE = 3;
+const CONTENT_HIGHLIGHT_ENDED_DAYS = 30;
+const CONTENT_HIGHLIGHT_HEADLINE_MAX = 60;
+const CONTENT_HIGHLIGHT_BLURB_MAX = 80;
+const CONTENT_HIGHLIGHT_POSITIONS = ['main', 'secondary'];
+
+/** Chaves de categoria que um link pode usar: as embutidas e as criadas pela tela. */
+function liveLinkCategoryKeys_() {
+  const criadas = readContentRows_(SHEET_CONTENT_ITEMS)
+    .filter(function (r) {
+      return String(r.Module).trim() === CONTENT_LINK_CATEGORY_MODULE &&
+        String(r.Status).trim() === CONTENT_STATUS.LIVE;
+    })
+    .map(function (r) { return String(r.Key).trim(); });
+  return CONTENT_LINK_BUILTIN_CATEGORIES.concat(criadas);
+}
+
+function assertTextoCurto_(valor, max, rotulo) {
+  const texto = String(valor == null ? "" : valor).trim();
+  if (texto.length > max) {
+    throw new Error(rotulo + " passa de " + max + " caracteres.");
+  }
+  return texto;
+}
+
+/**
+ * Valida o que a Central grava num LINK: a categoria precisa existir e a prévia
+ * precisa caber no painel do agente.
+ *
+ * A categoria é validada aqui, e não só pelo `<select>` da tela, porque o painel
+ * do agente desenha por categoria: um link numa chave sem definição aparecia
+ * numa seção sem cor nem ícone — ou, num bundle antigo, derrubava a tela.
+ */
+function assertValidLinkItem_(key, rawValue) {
+  const chave = String(key || "").trim();
+  if (liveLinkCategoryKeys_().indexOf(chave) === -1) {
+    throw new Error(
+      "Categoria desconhecida: '" + chave + "'. Escolha uma categoria existente " +
+      "ou crie a categoria antes de publicar o link."
+    );
+  }
+
+  let parsed;
+  try { parsed = JSON.parse(String(rawValue || "{}")); } catch (e) { return; }
+  if (!parsed || typeof parsed !== 'object') return;
+
+  ['about', 'about_es', 'about_en'].forEach(function (campo) {
+    assertTextoCurto_(parsed[campo], CONTENT_LINK_ABOUT_MAX, "O texto 'O que é'");
+  });
+  ['when', 'when_es', 'when_en'].forEach(function (campo) {
+    assertTextoCurto_(parsed[campo], CONTENT_LINK_WHEN_MAX, "O texto 'Quando usar'");
+  });
+}
+
+/**
+ * Valida uma categoria criada pela tela: chave no formato, fora das embutidas,
+ * única e imutável; rótulo que cabe no botão; cor e ícone dos conjuntos fechados.
+ */
+function assertValidLinkCategory_(key, itemId, rawValue) {
+  const chave = String(key || "").trim();
+
+  if (!CONTENT_LINK_CATEGORY_KEY_RE.test(chave)) {
+    throw new Error(
+      "Chave de categoria inválida: use de 2 a 24 caracteres entre letras " +
+      "minúsculas, números e '_', começando por letra (ex.: treinamento)."
+    );
+  }
+  if (CONTENT_LINK_BUILTIN_CATEGORIES.indexOf(chave) !== -1) {
+    throw new Error("'" + chave + "' já é uma categoria do sistema. Escolha outra chave.");
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(String(rawValue || "{}"));
+  } catch (e) {
+    throw new Error("Conteúdo da categoria inválido (JSON malformado).");
+  }
+
+  if (!String(parsed.label || "").trim()) throw new Error("Dê um nome à categoria.");
+  ['label', 'label_es', 'label_en'].forEach(function (campo) {
+    assertTextoCurto_(parsed[campo], CONTENT_LINK_CATEGORY_LABEL_MAX, "O nome da categoria");
+  });
+  if (CONTENT_LINK_CATEGORY_COLORS.indexOf(parsed.color) === -1) {
+    throw new Error("Escolha uma das cores da paleta.");
+  }
+  if (CONTENT_LINK_CATEGORY_ICONS.indexOf(parsed.icon) === -1) {
+    throw new Error("Escolha um dos ícones da lista.");
+  }
+
+  const noAr = readContentRows_(SHEET_CONTENT_ITEMS).filter(function (r) {
+    return String(r.Module).trim() === CONTENT_LINK_CATEGORY_MODULE &&
+      String(r.Status).trim() === CONTENT_STATUS.LIVE;
+  });
+
+  if (itemId) {
+    const alvo = noAr.filter(function (r) { return String(r.ID) === String(itemId); });
+    if (alvo.length && String(alvo[0].Key).trim() !== chave) {
+      throw new Error(
+        "A chave de uma categoria não muda: '" + String(alvo[0].Key).trim() + "' é o que " +
+        "cada link dela já guarda. Para trocar, crie outra categoria e mova os links."
+      );
+    }
+    return;
+  }
+
+  if (noAr.some(function (r) { return String(r.Key).trim() === chave; })) {
+    throw new Error("Já existe uma categoria com a chave '" + chave + "'.");
+  }
+}
+
+/**
+ * Tirar uma categoria do ar com links dentro os deixaria numa chave sem
+ * definição. Recusa em vez de orfanar: mover os links é uma decisão de quem
+ * cura, não deste código.
+ */
+function assertCategoryUnused_(key) {
+  const emUso = readContentRows_(SHEET_CONTENT_ITEMS).filter(function (r) {
+    return String(r.Module).trim() === CONTENT_LINK_MODULE &&
+      String(r.Status).trim() === CONTENT_STATUS.LIVE &&
+      String(r.Key).trim() === String(key).trim();
+  });
+  if (emUso.length) {
+    throw new Error(
+      "A categoria '" + String(key).trim() + "' ainda tem " + emUso.length +
+      " link(s) no ar (" + emUso.slice(0, 3).map(function (r) { return String(r.Label); }).join(", ") +
+      (emUso.length > 3 ? "…" : "") + "). Mova ou retire esses links antes."
+    );
+  }
+}
+
+// Minutos desde a época para um horário `YYYY-MM-DDTHH:MM`, lido como relógio de
+// parede (UTC só como régua): serve para somar e subtrair dias sem depender do
+// fuso do ambiente, que é a armadilha que janelaAgora_() já evita.
+function janelaMs_(texto) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(String(texto || ""));
+  if (!m) return NaN;
+  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+}
+
+function janelaRotulo_(texto) {
+  const m = /^\d{4}-(\d{2})-(\d{2})T(\d{2}:\d{2})$/.exec(String(texto || ""));
+  return m ? m[2] + "/" + m[1] + " " + m[3] : String(texto || "");
+}
+
+/**
+ * Em que ponto da vida está um destaque agora.
+ *   scheduled — ainda não entrou;  active — no ar;
+ *   ended — saiu há até CONTENT_HIGHLIGHT_ENDED_DAYS dias (alimenta o
+ *   "Saíram do destaque");  expired — saiu há mais que isso.
+ *
+ * Um destaque é uma linha 'live' da planilha do começo ao fim: o que muda com o
+ * tempo é só esta resposta, e ela é calculada a cada leitura, no fuso da
+ * planilha — pelo mesmo motivo de janelaAgora_(): um relógio só.
+ */
+function estadoDoDestaque_(valor, agora) {
+  const ini = String((valor && valor.startsAt) || "");
+  const fim = String((valor && valor.endsAt) || "");
+
+  if (!ini || agora < ini) return 'scheduled';
+  if (!fim || agora < fim) return 'active';
+
+  const dias = (janelaMs_(agora) - janelaMs_(fim)) / 86400000;
+  return dias <= CONTENT_HIGHLIGHT_ENDED_DAYS ? 'ended' : 'expired';
+}
+
+/**
+ * Leitura pública dos destaques: tira o que ainda não entrou e o que saiu há
+ * muito, e carimba `state` no resto. É a ÚNICA diferença para os módulos com
+ * janela (`CONTENT_WINDOWED_MODULES`), que escondem o item vencido por inteiro:
+ * aqui o vencido recente precisa chegar, porque é ele que o agente mostra em
+ * "Saíram do destaque".
+ */
+function destaquesNaLeitura_(itens) {
+  const agora = janelaAgora_();
+  const saida = [];
+
+  itens.forEach(function (it) {
+    let v;
+    try { v = JSON.parse(String(it.value || "{}")); } catch (e) { return; }
+
+    const estado = estadoDoDestaque_(v, agora);
+    if (estado === 'scheduled' || estado === 'expired') return;
+
+    const copia = {};
+    Object.keys(it).forEach(function (k) { copia[k] = it[k]; });
+    copia.state = estado;
+    saida.push(copia);
+  });
+
+  return saida;
+}
+
+/**
+ * No máximo CONTENT_HIGHLIGHT_MAX_ACTIVE destaques no ar em QUALQUER instante
+ * futuro — não só agora. Contar só o presente deixaria agendar três destaques
+ * para a mesma segunda-feira em dias diferentes e descobrir o quarto na segunda.
+ *
+ * Varre os instantes em que a ocupação pode subir: o início do novo e o início
+ * de cada outro que cai dentro da janela dele. O passado fica de fora (o que
+ * já terminou não ocupa vaga, e recusar uma edição por causa de história
+ * seria punir quem só corrige um texto).
+ */
+function assertHighlightCapacity_(parsed, key) {
+  const agora = janelaAgora_();
+  const fimNovo = String(parsed.endsAt || "");
+  if (fimNovo && fimNovo <= agora) return;
+
+  const clamp = function (t) { return t < agora ? agora : t; };
+
+  const outros = readContentRows_(SHEET_CONTENT_ITEMS)
+    .filter(function (r) {
+      return String(r.Module).trim() === CONTENT_HIGHLIGHT_MODULE &&
+        String(r.Status).trim() === CONTENT_STATUS.LIVE &&
+        String(r.Key).trim() !== String(key).trim();
+    })
+    .map(function (r) {
+      try { return JSON.parse(String(r.Value || "{}")); } catch (e) { return null; }
+    })
+    .filter(function (v) { return v && v.startsAt && (!v.endsAt || v.endsAt > agora); });
+
+  const inicioNovo = clamp(String(parsed.startsAt));
+  const pontos = [inicioNovo];
+  outros.forEach(function (v) {
+    const p = clamp(v.startsAt);
+    if (p > inicioNovo && (!fimNovo || p < fimNovo)) pontos.push(p);
+  });
+
+  pontos.forEach(function (p) {
+    const ocupam = outros.filter(function (v) {
+      return clamp(v.startsAt) <= p && (!v.endsAt || p < v.endsAt);
+    }).length + 1;
+
+    if (ocupam > CONTENT_HIGHLIGHT_MAX_ACTIVE) {
+      throw new Error(
+        "Em " + janelaRotulo_(p) + " haveria " + ocupam + " destaques no ar ao mesmo tempo, " +
+        "e o máximo é " + CONTENT_HIGHLIGHT_MAX_ACTIVE + ". Encerre um deles ou ajuste a janela."
+      );
+    }
+  });
+}
+
+/**
+ * Valida um destaque: aponta para um link que está no ar, tem título, janela
+ * coerente e cabe nas vagas.
+ *
+ * O link é referenciado pela LINHAGEM (`linkLineage`), que atravessa as versões:
+ * a URL muda quando o SME corrige o link, o ID muda a cada publicação.
+ */
+function assertValidLinkHighlight_(rawValue, key) {
+  let parsed;
+  try {
+    parsed = JSON.parse(String(rawValue || ""));
+  } catch (e) {
+    throw new Error("Destaque inválido: o conteúdo não é um JSON válido.");
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error("Destaque inválido: esperado um objeto com link, título e janela.");
+  }
+
+  const lineage = String(parsed.linkLineage || "").trim();
+  if (!lineage) throw new Error("Escolha o link que vai em destaque.");
+
+  const link = readContentRows_(SHEET_CONTENT_ITEMS).filter(function (r) {
+    return String(r.Module).trim() === CONTENT_LINK_MODULE &&
+      String(r.Status).trim() === CONTENT_STATUS.LIVE &&
+      String(r.Lineage || r.ID).trim() === lineage;
+  });
+  if (!link.length) {
+    throw new Error("O link deste destaque não está no ar. Escolha outro ou publique o link primeiro.");
+  }
+
+  if (!String(parsed.headline || "").trim()) throw new Error("Dê um título ao destaque.");
+  ['headline', 'headline_es', 'headline_en'].forEach(function (campo) {
+    assertTextoCurto_(parsed[campo], CONTENT_HIGHLIGHT_HEADLINE_MAX, "O título do destaque");
+  });
+  ['blurb', 'blurb_es', 'blurb_en'].forEach(function (campo) {
+    assertTextoCurto_(parsed[campo], CONTENT_HIGHLIGHT_BLURB_MAX, "O resumo do destaque");
+  });
+
+  if (parsed.position !== undefined && CONTENT_HIGHLIGHT_POSITIONS.indexOf(parsed.position) === -1) {
+    throw new Error("Posição desconhecida. Use main (principal) ou secondary (secundário).");
+  }
+
+  const inicio = String(parsed.startsAt || "").trim();
+  const fim = String(parsed.endsAt || "").trim();
+  if (!inicio) throw new Error("Informe quando o destaque entra no ar.");
+  if (!CONTENT_WINDOW_RE.test(inicio)) {
+    throw new Error("Data de início inválida. Use o formato AAAA-MM-DDTHH:MM.");
+  }
+  if (fim && !CONTENT_WINDOW_RE.test(fim)) {
+    throw new Error("Data de fim inválida. Use o formato AAAA-MM-DDTHH:MM.");
+  }
+  if (fim && fim <= inicio) {
+    throw new Error("O fim do destaque precisa vir depois do início.");
+  }
+
+  assertHighlightCapacity_(parsed, key);
+  return parsed;
+}
+
+function checkLinkHighlight(rawValue, key) {
+  try {
+    assertValidLinkHighlight_(rawValue, key || "");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/** O que a tela de destaques precisa saber do servidor para não adivinhar. */
+function getLinkHighlightsConfig() {
+  assertContentRole_('read', CONTENT_HIGHLIGHT_MODULE);
+  return {
+    now: janelaAgora_(),
+    timeZone: Session.getScriptTimeZone ? Session.getScriptTimeZone() : 'America/Sao_Paulo',
+    maxActive: CONTENT_HIGHLIGHT_MAX_ACTIVE,
+    endedDays: CONTENT_HIGHLIGHT_ENDED_DAYS
+  };
+}
+
 // Porta única de validação por módulo. Deixa `publishContentDirect()` sem um
 // if/else por módulo e garante que um módulo novo entre aqui de propósito, e
-// não por esquecimento.
-function assertValidDirectValue_(module, rawValue) {
+// não por esquecimento. `key` só importa a quem precisa se excluir da conta
+// (o destaque que está sendo editado não compete com a própria versão antiga).
+function assertValidDirectValue_(module, rawValue, key) {
   if (module === 'broadcast') return assertValidBroadcast_(rawValue);
   if (module === 'bau_availability') return assertValidBauAvailability_(rawValue);
+  if (module === CONTENT_HIGHLIGHT_MODULE) return assertValidLinkHighlight_(rawValue, key);
   throw new Error("Módulo sem validação de publicação direta: " + module);
 }
 
@@ -1677,6 +2052,12 @@ function saveContentDraft(payload) {
   if (p.module === CONTENT_TASK_MODULE) {
     assertValidTaskKey_(p.key, p.itemId);
     assertValidTaskScreenshots_(String(p.value || ""));
+  }
+  if (p.module === CONTENT_LINK_MODULE) {
+    assertValidLinkItem_(p.key, String(p.value || ""));
+  }
+  if (p.module === CONTENT_LINK_CATEGORY_MODULE) {
+    assertValidLinkCategory_(p.key, p.itemId, String(p.value || ""));
   }
 
   const sheet = getContentSheet_(SHEET_CONTENT_DRAFTS);
@@ -2116,6 +2497,12 @@ function approveContentDraftLocked_(draftId, note) {
   const itemsSheet = getContentSheet_(SHEET_CONTENT_ITEMS);
   const now = contentNow_();
   const action = String(draft.Action || CONTENT_ACTIONS.UPSERT);
+
+  // Entre o pedido e a aprovação alguém pode ter publicado um link na categoria.
+  if (action === CONTENT_ACTIONS.REMOVE && String(draft.Module).trim() === CONTENT_LINK_CATEGORY_MODULE) {
+    assertCategoryUnused_(String(draft.Key));
+  }
+
   let version = 1;
   let newItemId = "";
   let lineage = "";
@@ -2302,6 +2689,13 @@ function requestContentRemoval(itemId, reason) {
   }
 
   const session = assertContentRole_('propose', String(item.Module).trim());
+
+  // Falhar no PEDIDO, e não só na aprovação: quem pede precisa saber agora que
+  // a categoria ainda tem links, em vez de o revisor descobrir depois.
+  if (String(item.Module).trim() === CONTENT_LINK_CATEGORY_MODULE) {
+    assertCategoryUnused_(String(item.Key));
+  }
+
   const sheet = getContentSheet_(SHEET_CONTENT_DRAFTS);
   const now = contentNow_();
   const draftId = newContentId_('drf');
@@ -2413,11 +2807,33 @@ function publishContentDirectLocked_(payload) {
 
   // Valida antes de escrever qualquer coisa: uma publicação recusada não pode
   // ter arquivado a versão que estava no ar.
-  const parsed = assertValidDirectValue_(module, data.value);
+  const parsed = assertValidDirectValue_(module, data.value, key);
 
+  return appendDirectVersion_(session, {
+    module: module,
+    key: key,
+    lang: lang,
+    field: String(data.field || (isSingleton ? 'availability'
+      : (module === CONTENT_HIGHLIGHT_MODULE ? 'highlight' : 'notice'))),
+    label: String(data.label || parsed.title || parsed.headline || ""),
+    value: String(data.value || ""),
+    sortOrder: Number(data.sortOrder) || 0
+  }, { novo: 'publish_direct', edicao: 'publish_direct_update' });
+}
+
+/**
+ * Escreve UMA versão nova de um item de publicação direta: arquiva a que está
+ * no ar, anexa a nova com a linhagem herdada, derruba o cache e loga.
+ *
+ * Separada de publishContentDirectLocked_() porque "encerrar agora" também
+ * republica um destaque — e não pode repassar pela validação de publicação, que
+ * recusaria encerrar um destaque cujo link saiu do ar entretanto. Quem chama
+ * já validou o que lhe cabia.
+ */
+function appendDirectVersion_(session, o, evento) {
   const now = contentNow_();
   const sheet = getContentSheet_(SHEET_CONTENT_ITEMS);
-  const previous = findLiveItemToReplace_(module, key);
+  const previous = findLiveItemToReplace_(o.module, o.key);
 
   let version = 1;
   let lineage = "";
@@ -2431,30 +2847,30 @@ function publishContentDirectLocked_(payload) {
   const newItemId = newContentId_('itm');
   sheet.appendRow([
     newItemId,
-    module,
-    key,
-    String(data.field || (isSingleton ? 'availability' : 'notice')),
-    lang,
-    String(data.label || parsed.title || ""),
-    String(data.value || ""),
+    o.module,
+    o.key,
+    o.field,
+    o.lang,
+    o.label,
+    o.value,
     version,
     CONTENT_STATUS.LIVE,
     session.ldap,
     now,
-    Number(data.sortOrder) || 0,
+    o.sortOrder,
     lineage || newItemId
   ]);
 
-  invalidateContentCache_(module);
+  invalidateContentCache_(o.module);
 
   logContentEvent_(
     session.ldap,
-    previous ? 'publish_direct_update' : 'publish_direct',
-    { module: module, key: key, itemId: newItemId, label: String(data.label || "") },
+    previous ? evento.edicao : evento.novo,
+    { module: o.module, key: o.key, itemId: newItemId, label: o.label },
     'v' + version
   );
 
-  return { status: 'success', itemId: newItemId, key: key, version: version };
+  return { status: 'success', itemId: newItemId, key: o.key, version: version };
 }
 
 /**
@@ -2497,6 +2913,55 @@ function unpublishContentDirectLocked_(itemId) {
     ""
   );
   return { status: 'success', itemId: itemId };
+}
+
+/**
+ * Encerra um destaque AGORA: republica o mesmo destaque com o fim na hora atual
+ * do servidor. O relógio é o da planilha (o mesmo que decide quem está no ar),
+ * então a tela não manda "agora" — o navegador de quem clica pode estar noutro
+ * fuso, e o destaque encerraria horas antes ou depois do que a pessoa viu.
+ *
+ * Republicar, em vez de arquivar, é o que o põe em "Saíram do destaque" no app
+ * do agente por 30 dias: arquivado ele simplesmente desapareceria.
+ */
+function endLinkHighlight(itemId) {
+  return withContentWriteLock_(function () {
+    const item = findContentRow_(SHEET_CONTENT_ITEMS, 'ID', itemId);
+    if (!item) throw new Error("Item não encontrado.");
+    if (String(item.Module).trim() !== CONTENT_HIGHLIGHT_MODULE) {
+      throw new Error("Este item não é um destaque.");
+    }
+    if (String(item.Status).trim() !== CONTENT_STATUS.LIVE) {
+      throw new Error("Este destaque já não está no ar.");
+    }
+
+    const session = assertContentRole_('publish', CONTENT_HIGHLIGHT_MODULE);
+
+    let v;
+    try { v = JSON.parse(String(item.Value || "{}")); } catch (e) {
+      throw new Error("Este destaque está ilegível; tire-o do ar e crie de novo.");
+    }
+
+    const agora = janelaAgora_();
+    if (estadoDoDestaque_(v, agora) !== 'active') {
+      throw new Error("Só um destaque que está no ar pode ser encerrado agora. Para um agendado, use Cancelar.");
+    }
+
+    // Entrou neste mesmo minuto: encerrar agora daria uma janela vazia (fim =
+    // início), que a validação recusa e que o agente nunca chegou a ver.
+    if (agora <= String(v.startsAt)) return unpublishContentDirectLocked_(itemId);
+
+    v.endsAt = agora;
+    return appendDirectVersion_(session, {
+      module: CONTENT_HIGHLIGHT_MODULE,
+      key: String(item.Key),
+      lang: String(item.Lang || 'ALL'),
+      field: String(item.Field || 'highlight'),
+      label: String(item.Label || ""),
+      value: JSON.stringify(v),
+      sortOrder: Number(item.Sort_Order) || 0
+    }, { novo: 'highlight_end', edicao: 'highlight_end' });
+  });
 }
 
 // =========================================================
@@ -3549,6 +4014,11 @@ function readPublicModuleItems_(module) {
   }
 
   const itens = readLiveItemsCached_(module);
+
+  // Destaque: o filtro é do próprio módulo (o vencido recente PRECISA chegar,
+  // com `state`), e vem depois do cache pelo mesmo motivo do filtro abaixo.
+  if (module === CONTENT_HIGHLIGHT_MODULE) return destaquesNaLeitura_(itens);
+
   if (CONTENT_WINDOWED_MODULES.indexOf(module) === -1) return itens;
 
   // O filtro vem DEPOIS do cache, não dentro dele. Dentro, um aviso agendado
@@ -3776,4 +4246,85 @@ function seedMissingLangsNow() {
 
   Logger.log(JSON.stringify(relatorio, null, 2));
   return relatorio;
+}
+
+// =========================================================
+//  MIGRAÇÃO: formulários de feedback → categoria "feedback"
+// =========================================================
+
+// Os links que já existiam e que são formulário de feedback. Hoje só um: o
+// "Elogios" (feedback positivo), que morava em QA. Os outros formulários de QA
+// ("Casos Complexos") e o de bugs ("Relatório de Bugs") ficaram onde estão de
+// propósito: são relatos de caso e de erro de sistema, não feedback. Quem
+// quiser mover mais um troca a categoria pela Central, que é o caminho normal.
+const CONTENT_FEEDBACK_LINKS = ['Elogios'];
+
+/**
+ * Leva os formulários de feedback já publicados para a categoria "feedback".
+ *
+ * `seedContentModule()` não serve aqui: num módulo já semeado ele devolve
+ * `skipped`, e a categoria nova só aparece para o agente quando algum link a usa
+ * (ver docs/LEARNINGS.md, "Semear não é sincronizar"). Isto é uma migração de
+ * conteúdo decidida pelo dono do produto, como a semeadura — por isso escreve
+ * direto, sem fila —, mas versiona: arquiva a versão que estava no ar e herda a
+ * linhagem, então o histórico e o "voltar para esta versão" continuam valendo.
+ *
+ * Idempotente: link que já está em "feedback" ou que não existe é pulado e
+ * dito. Roda pelo editor do Apps Script, sem argumento.
+ */
+function migrateFeedbackLinksNow() {
+  const session = assertContentRole_('approve', null);
+  assertContentRole_('propose', CONTENT_LINK_MODULE);
+
+  return withContentWriteLock_(function () {
+    const sheet = getContentSheet_(SHEET_CONTENT_ITEMS);
+    const now = contentNow_();
+    const movidos = [];
+    const pulados = [];
+
+    CONTENT_FEEDBACK_LINKS.forEach(function (nome) {
+      const noAr = readContentRows_(SHEET_CONTENT_ITEMS).filter(function (r) {
+        return String(r.Module).trim() === CONTENT_LINK_MODULE &&
+          String(r.Status).trim() === CONTENT_STATUS.LIVE &&
+          String(r.Label).trim() === nome;
+      });
+
+      if (!noAr.length) { pulados.push(nome + ': não está no ar'); return; }
+
+      const atual = noAr[0];
+      if (String(atual.Key).trim() === 'feedback') { pulados.push(nome + ': já está em feedback'); return; }
+
+      sheet.getRange(atual._row, 9).setValue(CONTENT_STATUS.ARCHIVED);
+
+      const novoId = newContentId_('itm');
+      sheet.appendRow([
+        novoId,
+        CONTENT_LINK_MODULE,
+        'feedback',
+        String(atual.Field || ""),
+        String(atual.Lang || 'ALL'),
+        String(atual.Label || ""),
+        String(atual.Value || ""),
+        (Number(atual.Version) || 1) + 1,
+        CONTENT_STATUS.LIVE,
+        session.ldap,
+        now,
+        Number(atual.Sort_Order) || 0,
+        String(atual.Lineage || atual.ID)
+      ]);
+
+      logContentEvent_(
+        session.ldap, 'link_move',
+        { module: CONTENT_LINK_MODULE, key: 'feedback', itemId: novoId, label: nome },
+        'de ' + String(atual.Key).trim() + ' para feedback'
+      );
+      movidos.push(nome);
+    });
+
+    if (movidos.length) invalidateContentCache_(CONTENT_LINK_MODULE);
+
+    const relatorio = { status: 'success', moved: movidos, skipped: pulados };
+    Logger.log(JSON.stringify(relatorio, null, 2));
+    return relatorio;
+  });
 }

@@ -2975,5 +2975,412 @@ check('a busca tem teto de resultados', () => {
   eq(r.length, 30, 'o teto precisa cortar, veio ' + r.length);
 });
 
+console.log('\n--- Links: categorias, prévia e destaques (ADR-0018) ---');
+
+const agoraMais = (min) => UTILITIES_STUB.formatDate(new Date(Date.now() + min * 60000));
+const DIA = 24 * 60;
+const linkNoAr = () => api.listContentItems('links')[0];
+const linkValue = (over) => JSON.stringify(Object.assign({ name: 'Link de teste', url: 'https://go/teste', desc: 'Teste' }, over || {}));
+const catValue = (over) => JSON.stringify(Object.assign(
+  { label: 'Treinamento', label_es: 'Capacitación', label_en: 'Training', color: 'teal', icon: 'school' }, over || {}));
+const hlValue = (over) => JSON.stringify(Object.assign({
+  linkLineage: linkNoAr().lineage, headline: 'Novo formulário de escalação',
+  blurb: 'Substitui o e-mail ao TL.', position: 'secondary',
+  startsAt: agoraMais(-10), endsAt: agoraMais(2 * DIA)
+}, over || {}));
+
+function limparDestaques() {
+  api.listContentItems('link_highlights').forEach((it) => api.unpublishContentDirect(it.id));
+}
+const publicoDeDestaques = () => api.handleContentPublicRead({ module: 'link_highlights' }).items;
+const publicaDestaque = (over, key) => api.publishContentDirect({
+  module: 'link_highlights', key: key, value: hlValue(over)
+});
+
+function criaCategoria(key, over) {
+  const r = api.saveAndSubmitContentDraft({
+    module: 'link_categories', key: key, lang: 'ALL', label: (over && over.label) || 'Treinamento',
+    value: catValue(over)
+  });
+  return api.approveContentDraft(r.draftId, '');
+}
+
+api.saveContentAccess('wfm1', 'WFM', true);
+
+check('os módulos novos entram na matriz com o caminho de escrita certo', () => {
+  const acoes = api.contentActionsByModule_();
+  eq(acoes.link_categories, ['view', 'propose', 'approve', 'rollback'], 'categoria é catálogo:');
+  eq(acoes.link_highlights, ['view', 'publish', 'rollback'], 'destaque é operação:');
+});
+
+check('módulo novo herda o preset numa Content_Roles já gravada (ADR-0013)', () => {
+  const admin = matrizAtual('ADMIN');
+  eq(admin.modules.link_highlights.publish, true, 'ADMIN publica destaque:');
+  eq(admin.modules.link_categories.propose, true, 'ADMIN propõe categoria:');
+  eq(matrizAtual('WFM').modules.link_highlights.publish, false, 'WFM não publica destaque:');
+  eq(matrizAtual('WFM').modules.link_categories.propose, true, 'WFM propõe categoria:');
+  eq(matrizAtual('QA').modules.link_categories.propose, false, 'QA não:');
+});
+
+console.log('--- categoria de link ---');
+
+check('"feedback" é categoria do sistema: um link pode morar nela de saída', () => {
+  const r = api.saveContentDraft({
+    module: 'links', key: 'feedback', lang: 'ALL', label: 'Elogios novo', value: linkValue()
+  });
+  api.discardContentDraft(r.draftId);
+});
+
+check('link em categoria que não existe é recusado', () => {
+  throws(() => api.saveContentDraft({
+    module: 'links', key: 'inexistente', lang: 'ALL', label: 'X', value: linkValue()
+  }), /Categoria desconhecida/);
+});
+
+check('criar categoria: passa pela fila e só então um link pode usá-la', () => {
+  throws(() => api.saveContentDraft({
+    module: 'links', key: 'treinamento', lang: 'ALL', label: 'X', value: linkValue()
+  }), /Categoria desconhecida/, 'antes de aprovada:');
+
+  const r = criaCategoria('treinamento');
+  eq(r.status, 'success');
+
+  const d = api.saveContentDraft({
+    module: 'links', key: 'treinamento', lang: 'ALL', label: 'Curso novo', value: linkValue()
+  });
+  api.discardContentDraft(d.draftId);
+});
+
+check('a categoria criada chega ao agente pela leitura pública', () => {
+  const pub = api.handleContentPublicRead({ module: 'link_categories' }).items;
+  eq(pub.length, 1);
+  eq(pub[0].key, 'treinamento');
+  eq(JSON.parse(pub[0].value).icon, 'school');
+});
+
+check('a chave da categoria é fechada: formato, embutida e duplicada', () => {
+  ['Treinamento', 'x', 'com-hifen', '1abc', 'com espaço', ''].forEach((chave) => {
+    throws(() => api.saveContentDraft({
+      module: 'link_categories', key: chave, lang: 'ALL', label: 'X', value: catValue()
+    }), /Chave de categoria inválida/, 'chave "' + chave + '":');
+  });
+  throws(() => api.saveContentDraft({
+    module: 'link_categories', key: 'feedback', lang: 'ALL', label: 'X', value: catValue()
+  }), /já é uma categoria do sistema/);
+  throws(() => api.saveContentDraft({
+    module: 'link_categories', key: 'treinamento', lang: 'ALL', label: 'X', value: catValue()
+  }), /Já existe uma categoria/);
+});
+
+check('a categoria precisa de nome que caiba, cor e ícone da lista fechada', () => {
+  const tenta = (over, re, m) => throws(() => api.saveContentDraft({
+    module: 'link_categories', key: 'novacat', lang: 'ALL', label: 'X', value: catValue(over)
+  }), re, m);
+
+  tenta({ label: '' }, /Dê um nome/);
+  tenta({ label: 'Nome grande demais' }, /passa de 12 caracteres/);
+  tenta({ label_en: 'An English name that is too long' }, /passa de 12 caracteres/);
+  tenta({ color: '#ff0000' }, /cores da paleta/, 'cor livre:');
+  tenta({ icon: '<svg onload=alert(1)>' }, /ícones da lista/, 'ícone livre:');
+});
+
+check('a chave de uma categoria não muda depois de criada', () => {
+  const noAr = api.listContentItems('link_categories')[0];
+  throws(() => api.saveContentDraft({
+    itemId: noAr.id, module: 'link_categories', key: 'outra_chave', lang: 'ALL',
+    label: 'Treinamento', value: catValue()
+  }), /chave de uma categoria não muda/);
+
+  // Editar o rótulo e a cor, mantendo a chave, é o caminho normal.
+  const ok = api.saveContentDraft({
+    itemId: noAr.id, module: 'link_categories', key: 'treinamento', lang: 'ALL',
+    label: 'Treinamento', value: catValue({ color: 'indigo' })
+  });
+  api.discardContentDraft(ok.draftId);
+});
+
+check('categoria com link dentro não sai do ar — recusa no pedido e na aprovação', () => {
+  const cat = api.listContentItems('link_categories')[0];
+  const link = api.saveAndSubmitContentDraft({
+    module: 'links', key: 'treinamento', lang: 'ALL', label: 'Curso de onboarding', value: linkValue()
+  });
+  api.approveContentDraft(link.draftId, '');
+
+  throws(() => api.requestContentRemoval(cat.id, 'não usamos mais'),
+    /ainda tem 1 link\(s\) no ar \(Curso de onboarding\)/);
+
+  // O estado muda ENTRE o pedido e a aprovação: pedido feito com a categoria
+  // vazia, link publicado depois, aprovação tem que recusar também.
+  const livre = api.listContentItems('links').find((l) => l.label === 'Curso de onboarding');
+  const pedidoRemocaoLink = api.requestContentRemoval(livre.id, 'saiu');
+  api.approveContentDraft(pedidoRemocaoLink.draftId, '');
+
+  const pedido = api.requestContentRemoval(cat.id, 'não usamos mais');
+  const outro = api.saveAndSubmitContentDraft({
+    module: 'links', key: 'treinamento', lang: 'ALL', label: 'Curso tardio', value: linkValue()
+  });
+  api.approveContentDraft(outro.draftId, '');
+  throws(() => api.approveContentDraft(pedido.draftId, ''), /ainda tem 1 link/);
+
+  // Esvaziada, sai.
+  const tardio = api.listContentItems('links').find((l) => l.label === 'Curso tardio');
+  api.approveContentDraft(api.requestContentRemoval(tardio.id, 'saiu').draftId, '');
+  api.approveContentDraft(pedido.draftId, '');
+  eq(api.listContentItems('link_categories').length, 0, 'categoria saiu do ar:');
+});
+
+check('WFM propõe categoria, mas quem aprova é outro papel', () => {
+  as('wfm1', () => {
+    const d = api.saveContentDraft({
+      module: 'link_categories', key: 'wfmcat', lang: 'ALL', label: 'WFM', value: catValue({ label: 'Escalas' })
+    });
+    api.discardContentDraft(d.draftId);
+  });
+});
+
+console.log('--- prévia do link ---');
+
+check('a prévia (o que é / quando usar) cabe no painel do agente', () => {
+  const tenta = (over, re) => throws(() => api.saveContentDraft({
+    module: 'links', key: 'tech', lang: 'ALL', label: 'X', value: linkValue(over)
+  }), re);
+
+  tenta({ about: 'a'.repeat(201) }, /'O que é' passa de 200/);
+  tenta({ about_es: 'a'.repeat(201) }, /'O que é' passa de 200/);
+  tenta({ when: 'a'.repeat(161) }, /'Quando usar' passa de 160/);
+  tenta({ when_en: 'a'.repeat(161) }, /'Quando usar' passa de 160/);
+
+  const ok = api.saveContentDraft({
+    module: 'links', key: 'tech', lang: 'ALL', label: 'X',
+    value: linkValue({ about: 'a'.repeat(200), when: 'a'.repeat(160) })
+  });
+  api.discardContentDraft(ok.draftId);
+});
+
+check('a prévia viaja no valor do link e a leitura pública a entrega intacta', () => {
+  const r = api.saveAndSubmitContentDraft({
+    module: 'links', key: 'tech', lang: 'ALL', label: 'Link com prévia',
+    value: linkValue({ about: 'O que é isto.', about_es: 'Qué es esto.', when: 'Quando usar.' })
+  });
+  api.approveContentDraft(r.draftId, '');
+  const pub = api.handleContentPublicRead({ module: 'links' }).items.find((i) => i.label === 'Link com prévia');
+  eq(JSON.parse(pub.value).about_es, 'Qué es esto.');
+  eq(typeof pub.lineage, 'string', 'a linhagem chega ao agente (favoritos e destaques apontam para ela):');
+});
+
+console.log('--- destaques ---');
+
+check('o destaque publica direto: sem rascunho, sem fila', () => {
+  throws(() => api.saveContentDraft({
+    module: 'link_highlights', key: 'x', lang: 'ALL', label: 'X', value: hlValue()
+  }), /publica direto, sem rascunho/);
+});
+
+check('só ADMIN e TL publicam destaque; WFM e QA não', () => {
+  ['wfm1', 'quality1'].forEach((ldap) => as(ldap, () => throws(
+    () => publicaDestaque(), /não publica no módulo|não tem acesso ao módulo/, ldap + ':')));
+});
+
+check('destaque no ar chega ao agente com state=active', () => {
+  limparDestaques();
+  publicaDestaque();
+  const pub = publicoDeDestaques();
+  eq(pub.length, 1);
+  eq(pub[0].state, 'active');
+  eq(JSON.parse(pub[0].value).linkLineage, linkNoAr().lineage);
+});
+
+check('destaque agendado não chega ao agente, mas fica na Central', () => {
+  limparDestaques();
+  publicaDestaque({ startsAt: agoraMais(DIA), endsAt: agoraMais(3 * DIA) });
+  eq(publicoDeDestaques().length, 0, 'ainda não é hora:');
+  eq(api.listContentItems('link_highlights').length, 1, 'a Central mostra o agendado:');
+});
+
+check('destaque que saiu há pouco chega com state=ended — é o "Saíram do destaque"', () => {
+  limparDestaques();
+  publicaDestaque({ startsAt: agoraMais(-3 * DIA), endsAt: agoraMais(-DIA) });
+  const pub = publicoDeDestaques();
+  eq(pub.length, 1);
+  eq(pub[0].state, 'ended');
+});
+
+check('destaque que saiu há mais de 30 dias deixa de ser servido', () => {
+  limparDestaques();
+  publicaDestaque({ startsAt: agoraMais(-45 * DIA), endsAt: agoraMais(-40 * DIA) });
+  eq(publicoDeDestaques().length, 0, 'saiu há 40 dias:');
+  eq(api.listContentItems('link_highlights').length, 1, 'mas segue auditável:');
+});
+
+check('as fronteiras do estado: fim exato = ended; 30 dias exatos = ended; 31 = expired', () => {
+  const agora = '2026-10-23T12:00';
+  const est = (ini, fim) => api.estadoDoDestaque_({ startsAt: ini, endsAt: fim }, agora);
+
+  eq(est('2026-10-23T12:00', ''), 'active', 'começa no minuto exato:');
+  eq(est('2026-10-23T12:01', ''), 'scheduled', 'um minuto antes de entrar:');
+  eq(est('2026-10-20T12:00', '2026-10-23T12:00'), 'ended', 'o fim é exclusivo:');
+  eq(est('2026-10-20T12:00', '2026-10-23T11:59'), 'ended');
+  eq(est('2026-09-01T12:00', '2026-09-23T12:00'), 'ended', '30 dias exatos:');
+  eq(est('2026-09-01T12:00', '2026-09-23T11:59'), 'expired', '30 dias e um minuto:');
+  eq(est('', ''), 'scheduled', 'sem início não é um destaque válido:');
+});
+
+check('o destaque aponta para um link que precisa estar no ar', () => {
+  limparDestaques();
+  throws(() => publicaDestaque({ linkLineage: 'lineage_que_nao_existe' }), /link deste destaque não está no ar/);
+  throws(() => publicaDestaque({ linkLineage: '' }), /Escolha o link/);
+});
+
+check('título, resumo, posição e janela são validados', () => {
+  limparDestaques();
+  throws(() => publicaDestaque({ headline: '' }), /Dê um título/);
+  throws(() => publicaDestaque({ headline: 'x'.repeat(61) }), /título do destaque passa de 60/);
+  throws(() => publicaDestaque({ headline_es: 'x'.repeat(61) }), /título do destaque passa de 60/);
+  throws(() => publicaDestaque({ blurb: 'x'.repeat(81) }), /resumo do destaque passa de 80/);
+  throws(() => publicaDestaque({ position: 'topo' }), /Posição desconhecida/);
+  throws(() => publicaDestaque({ startsAt: '' }), /quando o destaque entra no ar/);
+  throws(() => publicaDestaque({ startsAt: '28/10/2026 08:00' }), /Data de início inválida/);
+  throws(() => publicaDestaque({ endsAt: '31/10/2026' }), /Data de fim inválida/);
+  throws(() => publicaDestaque({ startsAt: agoraMais(60), endsAt: agoraMais(30) }), /fim do destaque precisa vir depois/);
+  eq(api.listContentItems('link_highlights').length, 0, 'nada foi gravado:');
+});
+
+check('no máximo 3 no ar ao mesmo tempo — o 4º é recusado', () => {
+  limparDestaques();
+  publicaDestaque({ headline: 'Um' });
+  publicaDestaque({ headline: 'Dois' });
+  publicaDestaque({ headline: 'Três' });
+  throws(() => publicaDestaque({ headline: 'Quatro' }), /haveria 4 destaques no ar ao mesmo tempo, e o máximo é 3/);
+  eq(api.listContentItems('link_highlights').length, 3, 'o recusado não entrou:');
+});
+
+check('editar um dos 3 não compete com a própria versão antiga', () => {
+  const um = api.listContentItems('link_highlights')[0];
+  const r = publicaDestaque({ headline: 'Um, corrigido' }, um.key);
+  eq(r.version, 2);
+  eq(api.listContentItems('link_highlights').length, 3);
+});
+
+check('o limite vale no FUTURO: 3 agendados para o mesmo dia barram o 4º', () => {
+  limparDestaques();
+  const janela = { startsAt: agoraMais(2 * DIA), endsAt: agoraMais(3 * DIA) };
+  publicaDestaque(Object.assign({ headline: 'A' }, janela));
+  publicaDestaque(Object.assign({ headline: 'B' }, janela));
+  publicaDestaque(Object.assign({ headline: 'C' }, janela));
+  throws(() => publicaDestaque(Object.assign({ headline: 'D' }, janela)), /haveria 4 destaques/);
+});
+
+check('janelas que não se sobrepõem cabem, mesmo com 3 no ar agora', () => {
+  limparDestaques();
+  publicaDestaque({ headline: 'A', endsAt: agoraMais(DIA) });
+  publicaDestaque({ headline: 'B', endsAt: agoraMais(DIA) });
+  publicaDestaque({ headline: 'C', endsAt: agoraMais(DIA) });
+  // Começa DEPOIS que os três terminam: não há instante com quatro.
+  publicaDestaque({ headline: 'D', startsAt: agoraMais(DIA), endsAt: agoraMais(2 * DIA) });
+  eq(api.listContentItems('link_highlights').length, 4);
+});
+
+check('o que já terminou não ocupa vaga — nem trava a edição de quem corrige texto', () => {
+  limparDestaques();
+  for (let i = 0; i < 3; i++) {
+    publicaDestaque({ headline: 'Antigo ' + i, startsAt: agoraMais(-5 * DIA), endsAt: agoraMais(-4 * DIA) });
+  }
+  publicaDestaque({ headline: 'Atual' });
+  eq(publicoDeDestaques().filter((i) => i.state === 'active').length, 1);
+});
+
+check('encerrar agora republica com o fim na hora do servidor e vira "Saíram do destaque"', () => {
+  limparDestaques();
+  const a = publicaDestaque({ headline: 'Para encerrar' });
+  const r = api.endLinkHighlight(a.itemId);
+  eq(r.version, 2, 'republicou, não apagou:');
+
+  const pub = publicoDeDestaques();
+  eq(pub.length, 1);
+  eq(pub[0].state, 'ended');
+  eq(api.listContentItemHistory(pub[0].lineage, 'link_highlights').length, 2, 'a linhagem guarda as duas versões:');
+  eq(logDaCentral().some((l) => l.Action === 'highlight_end'), true, 'foi para o log:');
+});
+
+check('só se encerra o que está no ar; agendado se cancela', () => {
+  limparDestaques();
+  const futuro = publicaDestaque({ startsAt: agoraMais(DIA), endsAt: agoraMais(2 * DIA) });
+  throws(() => api.endLinkHighlight(futuro.itemId), /Só um destaque que está no ar/);
+  throws(() => api.endLinkHighlight('itm_que_nao_existe'), /Item não encontrado/);
+  throws(() => api.endLinkHighlight(linkNoAr().id), /não é um destaque/);
+  as('wfm1', () => throws(() => api.endLinkHighlight(futuro.itemId), /não publica no módulo|não tem acesso/));
+
+  api.unpublishContentDirect(futuro.itemId);
+  eq(api.listContentItems('link_highlights').length, 0, 'cancelar arquiva:');
+});
+
+check('encerrar funciona mesmo se o link do destaque já saiu do ar', () => {
+  limparDestaques();
+  const d = api.saveAndSubmitContentDraft({
+    module: 'links', key: 'tech', lang: 'ALL', label: 'Link efêmero', value: linkValue()
+  });
+  api.approveContentDraft(d.draftId, '');
+  const efemero = api.listContentItems('links').find((l) => l.label === 'Link efêmero');
+  const hl = publicaDestaque({ linkLineage: efemero.lineage });
+
+  api.approveContentDraft(api.requestContentRemoval(efemero.id, 'saiu').draftId, '');
+  eq(api.endLinkHighlight(hl.itemId).status, 'success', 'o encerramento não revalida o link:');
+});
+
+check('checkLinkHighlight devolve o erro sem lançar, para a tela mostrá-lo antes de gravar', () => {
+  eq(api.checkLinkHighlight(hlValue()).ok, true);
+  const ruim = api.checkLinkHighlight(hlValue({ headline: '' }));
+  eq(ruim.ok, false);
+  eq(/Dê um título/.test(ruim.error), true);
+});
+
+check('a tela recebe do servidor o relógio e os limites, em vez de adivinhá-los', () => {
+  const c = api.getLinkHighlightsConfig();
+  eq(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(c.now), true, 'agora no formato da janela:');
+  eq(c.maxActive, 3);
+  eq(c.endedDays, 30);
+});
+
+check('a leitura em lote entrega os três módulos do painel de links numa execução', () => {
+  const r = api.handleContentPublicRead({ modules: 'links,link_categories,link_highlights' });
+  eq(Object.keys(r.modules).sort(), ['link_categories', 'link_highlights', 'links']);
+});
+
+console.log('--- migração: formulários de feedback ---');
+
+check('migrateFeedbackLinksNow leva o Elogios para "feedback" mantendo a linhagem', () => {
+  const aba = SS.getSheetByName('Content_Items');
+  aba.appendRow([
+    'itm_elogios', 'links', 'qa', '', 'ALL', 'Elogios',
+    linkValue({ name: 'Elogios', desc: 'Feedback positivo' }), 1, 'live', 'lucaste',
+    contentAgora(), 99, 'itm_elogios'
+  ]);
+
+  const r = api.migrateFeedbackLinksNow();
+  eq(r.moved, ['Elogios']);
+
+  const live = api.listContentItems('links').filter((l) => l.label === 'Elogios');
+  eq(live.length, 1, 'só uma versão no ar:');
+  eq(live[0].key, 'feedback');
+  eq(live[0].version, 2);
+  eq(live[0].lineage, 'itm_elogios', 'a linhagem é a mesma, então o histórico continua:');
+  eq(JSON.parse(live[0].value).desc, 'Feedback positivo', 'o conteúdo não mudou:');
+
+  const hist = api.listContentItemHistory('itm_elogios', 'links');
+  eq(hist.map((h) => h.key).sort(), ['feedback', 'qa'], 'a versão em QA ficou no histórico:');
+  eq(logDaCentral().some((l) => l.Action === 'link_move'), true, 'e foi para o log:');
+});
+
+check('a migração é idempotente e diz o que pulou', () => {
+  const r = api.migrateFeedbackLinksNow();
+  eq(r.moved, []);
+  eq(r.skipped, ['Elogios: já está em feedback']);
+  eq(api.listContentItems('links').filter((l) => l.label === 'Elogios').length, 1, 'não duplicou:');
+});
+
+check('a migração só roda para quem aprova conteúdo', () => {
+  as('quality1', () => throws(() => api.migrateFeedbackLinksNow(), /Acesso negado/));
+});
+
 console.log('\n' + (fail ? '✗' : '✓') + ` ${pass} passaram, ${fail} falharam\n`);
 process.exit(fail ? 1 : 0);
