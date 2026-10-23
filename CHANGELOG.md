@@ -21,6 +21,20 @@ versions follow [Semantic Versioning](https://semver.org/).
   da interface — é o que a auditoria do SOP procura —, com título e rótulos em
   negrito, valores normais, uma linha em branco entre as linhas e "Gerado pelo
   Cases Wizard" no fim, e o texto inteiro é travado por `npm run test:precall`. Só frontend: nada é gravado na planilha.
+- **Link para a documentação do projeto (deck de slides) onde o agente trava.**
+  No bookmarklet, entra no "?" do cabeçalho de todo módulo — o ponto que o
+  agente aperta quando está perdido, dentro do módulo em que travou — e na seção
+  Suporte & Feedback de Configurações. No TL Dashboard e na Central de Conteúdo,
+  entra no rodapé que as duas já tinham ("Docs · Reportar bug ou sugestão"),
+  inclusive na tela de "sem acesso" da Central. A URL abre em `/preview`, não em
+  `/edit`, para quem tem permissão de escrita não alterar o deck sem querer. É
+  um deck único para os três idiomas; se virar um por idioma, `DOCS_URL`
+  (`shared/config.js`) e `CW_DOCS_URL` (`Código.js`) viram mapas.
+  `test:deployment-env` trava as duas cópias iguais e confere que as duas telas
+  imprimem o rodapé; `smoke:i18n`, `smoke:tl-dash` e `smoke:content` passaram a
+  ler o link no navegador. Até aqui os dois smokes dos dashboards apagavam o
+  rodapé (`CW_CREDIT` virava vazio), então ele nunca tinha sido renderizado em
+  teste — agora é, e o do TL prova que ele não cobre os botões de decisão.
 - **A Central de Conteúdo troca o idioma da interface: português, espanhol ou
   inglês** (ADR-0017). Seletor novo no topo, separado do seletor do trilho, que
   passou a se chamar "Idioma do conteúdo" e segue decidindo só qual catálogo

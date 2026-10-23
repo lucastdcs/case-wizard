@@ -48,6 +48,31 @@ CRM (SPA: o caso muda por baixo, sem recarregar). Antes de dar por pronto:
 
 ---
 
+## Tag de template do servidor não pode virar vazio no smoke: o que ela imprime fica sem teste
+
+**Why**: ao pôr o link da documentação no rodapé dos dashboards (2026-10-23), o
+`buildCreditHtml()` — o bloco "Reportar bug · criado por", injetado em
+`<?!= CW_CREDIT ?>` nas duas telas — não tinha **teste nenhum**. Os smokes do TL
+e da Central liam o HTML do disco e trocavam a tag por `''` para a página não
+ficar com `<?!= … ?>` literal. Funcionou para o que eles testam, e como efeito
+colateral o rodapé nunca chegava a ser renderizado: dava para quebrá-lo (tirar o
+link, cobrir um botão de decisão) com a suíte inteira verde. Só apareceu porque
+a mudança nova precisava provar que o link chega às duas telas.
+
+**Fix**: `scripts/credit-footer.mjs` avalia o mesmo `Código.js` num `vm` e devolve
+o que `buildCreditHtml()` imprimiria; os smokes injetam isso no lugar do vazio e
+conferem link, destino, `target` e — o que só o navegador mostra — que o centro
+do link não está sob outro elemento e que o rodapé não se sobrepõe aos botões
+de decisão do modal do TL.
+
+**When to apply**: ao acrescentar ou mudar o que uma tag de template do Apps
+Script imprime (`CW_CREDIT`, `CW_ENV_BADGE`, `CW_RELEASE_NOTES`). Pergunte "algum
+teste lê o que ela renderiza, ou só garante que ela some?". O selo de ambiente
+tem o builder coberto em `test:deployment-env`; o rodapé agora tem builder e
+tela. Uma asserção só vale depois de você quebrar o código e vê-la reprovar —
+foi assim que apareceu um erro no próprio smoke (ele lia o texto do `<a>` com o
+emoji junto).
+
 ## Semear não é sincronizar: `seedContentModule()` só escreve em módulo vazio
 
 **Why**: ao entregar o inglês eu escrevi, no PR e no `PLAN.md`, "rode

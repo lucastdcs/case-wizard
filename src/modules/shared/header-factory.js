@@ -2,7 +2,7 @@
 
 import { makeDraggable } from './utils.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
-import { FEEDBACK_FORM_URL, AUTHOR_CREDIT } from './config.js';
+import { FEEDBACK_FORM_URL, DOCS_URL, AUTHOR_CREDIT } from './config.js';
 
 // Textos fixos do header/overlay de ajuda, compartilhados por TODO popup de
 // módulo (Notes, Email, Configs, etc.) - traduzir aqui já cobre esses
@@ -13,6 +13,7 @@ const HEADER_DICT = {
         closeTooltip: "Fechar",
         version: "Versão",
         reportLink: "Reportar Bug ou Sugestão",
+        docsLink: "Abrir a documentação",
         backBtn: "Voltar",
         createdBy: "criado por",
     },
@@ -21,6 +22,7 @@ const HEADER_DICT = {
         closeTooltip: "Cerrar",
         version: "Versión",
         reportLink: "Reportar error o sugerencia",
+        docsLink: "Abrir la documentación",
         backBtn: "Volver",
         createdBy: "creado por",
     },
@@ -29,6 +31,7 @@ const HEADER_DICT = {
         closeTooltip: "Close",
         version: "Version",
         reportLink: "Report a Bug or Suggestion",
+        docsLink: "Open the documentation",
         backBtn: "Back",
         createdBy: "created by",
     },
@@ -202,6 +205,19 @@ export function createStandardHeader(popupElement, titleText, versionText, helpD
     return header;
 }
 
+const HELP_LINK_STYLE = `
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px;
+    background-color: #F8F9FA;
+    border: 1px dashed #1a73e8;
+    border-radius: 20px;
+    color: #1a73e8;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+`;
+
 function createHelpOverlay(parentPopup, title, version, description) {
     const overlay = document.createElement("div");
     
@@ -230,19 +246,11 @@ function createHelpOverlay(parentPopup, title, version, description) {
             ${description}
         </div>
 
-        <div style="margin-bottom: 32px;">
-            <a href="${FEEDBACK_FORM_URL}" target="_blank" rel="noopener noreferrer" id="cw-feedback-link" style="
-                display: inline-flex; align-items: center; gap: 8px;
-                padding: 10px 20px;
-                background-color: #F8F9FA;
-                border: 1px dashed #1a73e8;
-                border-radius: 20px;
-                color: #1a73e8;
-                font-size: 13px;
-                font-weight: 500;
-                text-decoration: none;
-                transition: all 0.2s ease;
-            ">
+        <div style="margin-bottom: 32px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <a href="${DOCS_URL}" target="_blank" rel="noopener noreferrer" class="cw-help-link" style="${HELP_LINK_STYLE}">
+                <span>📖</span> <span class="cw-help-docs-link">${ht('docsLink')}</span>
+            </a>
+            <a href="${FEEDBACK_FORM_URL}" target="_blank" rel="noopener noreferrer" id="cw-feedback-link" class="cw-help-link" style="${HELP_LINK_STYLE}">
                 <span>💬</span> <span class="cw-help-report-link">${ht('reportLink')}</span>
             </a>
         </div>
@@ -256,13 +264,12 @@ function createHelpOverlay(parentPopup, title, version, description) {
         </button>
     `;
 
-    // Efeito hover no link de feedback via JS
+    // Efeito hover nos links (documentação e feedback) via JS
     setTimeout(() => {
-        const link = overlay.querySelector('#cw-feedback-link');
-        if(link) {
+        overlay.querySelectorAll('.cw-help-link').forEach((link) => {
             link.onmouseenter = () => { link.style.backgroundColor = "#E8F0FE"; link.style.transform = "scale(1.02)"; };
             link.onmouseleave = () => { link.style.backgroundColor = "#F8F9FA"; link.style.transform = "scale(1)"; };
-        }
+        });
 
         const btn = overlay.querySelector('#close-help-internal');
         if(btn) {
@@ -278,6 +285,8 @@ function createHelpOverlay(parentPopup, title, version, description) {
     onLanguageChange(() => {
         const versionEl = overlay.querySelector('.cw-help-version');
         if (versionEl) versionEl.textContent = `${ht('version')} ${version}`;
+        const docsEl = overlay.querySelector('.cw-help-docs-link');
+        if (docsEl) docsEl.textContent = ht('docsLink');
         const reportEl = overlay.querySelector('.cw-help-report-link');
         if (reportEl) reportEl.textContent = ht('reportLink');
         const createdByEl = overlay.querySelector('.cw-help-created-by');

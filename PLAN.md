@@ -163,6 +163,16 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [~] **Link da documentação (deck de slides) onde o agente trava e nas duas
+      telas do Apps Script (2026-10-23).** No bookmarklet: "?" do cabeçalho de
+      todo módulo + Configurações → Suporte & Feedback. No TL Dashboard e na
+      Central (inclusive na tela de "sem acesso"): rodapé "Docs" do
+      `buildCreditHtml()`. Uma URL só, em `shared/config.js` (`DOCS_URL`) e no
+      espelho do backend (`CW_DOCS_URL`), travadas iguais por
+      `test:deployment-env`. Os smokes dos dashboards deixaram de apagar o
+      rodapé. **Falta:** conferir com um agente comum que o deck abre sem
+      pedir acesso (ver "Waiting / blocked").
+
 - [x] **Inglês de ponta a ponta (2026-10-13).** Terceiro idioma em toda a
       cadeia: os ~21 dicionários de interface, 76 linhas de conteúdo operacional
       (26 cenários, 8 modelos de e-mail, 42 passos de call script), rótulos de
@@ -455,6 +465,12 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
+- [ ] **Conferir que o deck de documentação abre para quem não é o dono.** A URL
+      leva `resourcekey` e termina em `/preview`, mas a permissão do arquivo não
+      é verificável daqui. Abrir o link numa conta de agente e numa de TL, fora
+      da conta que criou o deck: se cair em "solicitar acesso", ajustar o
+      compartilhamento do deck (a URL não muda). O link só chega ao agente com
+      a próxima release; no TL e na Central, com o deploy do backend.
 - [ ] **Empurrar as tags `v6.4.0` e `v6.5.0`** de um checkout local (o proxy da
       sessão web recusa push de tag — `RELEASE.md` → Known fragilities;
       confirmado de novo na v6.5.0: `HTTP 403` no `git push origin v6.5.0`):
