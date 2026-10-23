@@ -235,6 +235,82 @@ e texto:
 
 ---
 
+## Links: prévia, categorias e destaques (`links`, `link_categories`, `link_highlights`)
+
+Três módulos de `Content_Items`. Contexto e alternativas em
+`docs/decisions/0018-home-de-links-destaques-e-categorias.md`.
+
+```json
+// links — Key = categoria. O Value ganha a prévia, no mesmo formato de sufixo
+// do desc/desc_es/desc_en (o português é o campo sem sufixo)
+{ "name": "Elogios", "url": "https://…", "desc": "…", "desc_es": "…", "desc_en": "…",
+  "about": "…", "about_es": "…", "about_en": "…",   // "O que é", ≤ 200 caracteres cada
+  "when":  "…", "when_es":  "…", "when_en":  "…" }  // "Quando usar", ≤ 160 caracteres cada
+
+// link_categories — regime de catálogo (fila de aprovação)
+{ "label": "Feedback", "label_es": "Feedback", "label_en": "Feedback",   // ≤ 12 letras cada
+  "color": "pink", "icon": "feedback" }
+
+// link_highlights — publicação direta, com passo de confirmação
+{ "linkLineage": "itm_…",
+  "headline": "…", "headline_es": "…", "headline_en": "…",   // ≤ 60 caracteres cada
+  "blurb": "…",    "blurb_es": "…",    "blurb_en": "…",      // ≤ 80 caracteres cada
+  "position": "main" | "secondary",
+  "startsAt": "2026-10-23T08:00", "endsAt": "2026-10-30T18:00" }
+```
+
+| Função | Params | Quem pode | Resposta |
+| :--- | :--- | :--- | :--- |
+| `getLinkHighlightsConfig()` | — | quem lê `link_highlights` | `{ now, timeZone, maxActive, endedDays }` — o "agora" do **servidor**, no fuso da planilha |
+| `checkLinkHighlight(rawValue, key)` | JSON do destaque, chave de edição | qualquer sessão da Central (valida, não grava — como `checkBroadcast`) | `{ ok: true }` ou `{ ok: false, error }`; a Central chama **antes** do passo de confirmação |
+| `endLinkHighlight(itemId)` | `Item_ID` | quem publica `link_highlights` | republica com `endsAt` = agora; se o destaque começou neste minuto, tira do ar |
+| `migrateFeedbackLinksNow()` | — | quem aprova **e** propõe `links` | move os links de feedback (hoje só "Elogios") para a categoria `feedback`; idempotente, mantém a `Lineage`, registra `link_move` |
+
+A leitura pública (`op=content_public`, módulo `link_highlights`) devolve cada
+destaque com um campo extra, `state`, que **não é gravado**: `active`, `ended`
+(saiu há até 30 dias); `scheduled` (ainda não começou) e `expired` (saiu há mais
+de 30 dias) não saem na resposta.
+
+### Regras
+- **Chave de categoria**: `^[a-z][a-z0-9_]{1,23}$`, imutável depois de publicada
+  (cada link a guarda). Os nomes (`label*`) têm até 12 letras — o que cabe no
+  trilho do agente — e o português é obrigatório.
+  Uma categoria só sai do ar sem link dentro (`assertCategoryUnused_`).
+- **Cor e ícone vêm de listas fechadas**: 12 cores (`cyan, blue, orange, green,
+  purple, red, slate, amber, sky, pink, teal, indigo`) e 20 ícones
+  (`description, assignment, verified_user, chat, public, bar_chart,
+  shopping_cart, code, person, folder, bookmark, star, info, help, flag, school,
+  build, lightbulb, event, feedback`). As três cópias (servidor, pacote, Central)
+  precisam ser iguais — `npm run test:links` compara os literais.
+- **As categorias do sistema** (`tasks, ads, analytics, shopping, tech, hr, lm,
+  qa, suporte, feedback`) não têm linha em `link_categories`; as criadas pela
+  Central entram **depois** delas, na ordem de publicação (ordem declarada, não
+  derivada de `Sort_Order`). Link cuja categoria não existe aparece sob a
+  própria chave, nunca some.
+- **O destaque aponta para a `Lineage` do link**, não para o `Item_ID` (que muda
+  a cada versão) nem para uma cópia do nome. O servidor exige que o link esteja
+  no ar ao publicar; se ele sair depois, o app descarta o destaque em vez de
+  mostrar um card quebrado.
+- **A janela segue as regras do `broadcast`** (um relógio só, comparação de
+  texto, filtro depois do cache, "expirar não arquiva"), com uma diferença: o
+  destaque é `live` durante a vida inteira e `state` sai da janela.
+  `endsAt` ausente = sem fim.
+- **Capacidade: no máximo 3 destaques no ar em qualquer instante futuro.** A
+  varredura olha cada início de janela a partir de agora (o passado não conta) e
+  a edição exclui a si mesma. Excedeu → recusa dizendo o instante em que passaria
+  de 3 ("Encerre um deles ou ajuste a janela"). `position` só ordena: o principal
+  vem primeiro, depois o mais recente; o servidor não limita quantos são `main`.
+- **Texto da Central chega ao app como texto.** O app monta tudo com
+  `textContent`; ícone só sai da lista fechada, nunca de `Value`.
+
+### Preferências do agente neste módulo
+`Prefs_JSON` ganha `links_fav` (lista de IDs, máx. 30, recusa o 31º, nunca
+expulsa) e `links_recent` (lista de `{ id, t }`, máx. 10, mais recente primeiro).
+Os IDs são a `Lineage` do link (`itm_…`) ou `u:<url>` para link do fallback
+embutido. Formato e regras em `db-schema.md` → `User_Prefs`.
+
+---
+
 ## Auditoria completa (aba restrita)
 
 | Função | Params | Quem pode | Resposta |

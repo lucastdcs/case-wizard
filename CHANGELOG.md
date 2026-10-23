@@ -9,6 +9,47 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Home dentro do módulo de Links: destaques, subdestaques e prévia ao passar o
+  mouse** (ADR-0018). A janela do módulo abre numa home com até **3 destaques**
+  (1 principal + 2) — cada um com título, resumo e janela de exibição — e, logo
+  abaixo, três listas: **Favoritos**, **Recentes** e **Saíram do destaque** (até
+  30 dias). A biblioteca de links com busca continua a um clique, e a busca agora
+  também acha pela descrição, pelo "o que é", pelo "quando usar" e pelo nome da
+  categoria, sem depender de acento. Um **painel de prévia fixo** acompanha o
+  mouse e o foco do teclado: "O que é", "Quando usar" e Abrir/Copiar. Abaixo de
+  1000px de tela o painel some e a lista fica sozinha. Favoritos (máx. 30) e recentes (máx. 10) vão para as preferências do
+  agente na nuvem, por identidade estável do link — o histórico antigo do
+  navegador (`cw_link_history_v4`) é migrado uma vez.
+- **Central: aba "Destaques" em Links.** Segmentado Biblioteca | Destaques.
+  Publica direto, com o passo de confirmação que declara quem vai ver e quando.
+  A janela é avaliada **no servidor**, no fuso da planilha, e a tela mostra o
+  "agora" do servidor; o limite de 3 vagas vale para qualquer instante futuro e
+  é checado **antes** da confirmação. Cada destaque pode ser encerrado agora,
+  cancelado (se agendado) ou reativado a partir de um encerrado, e o "Como o
+  agente vê" mostra o cartão real. Novos módulos `link_highlights` e
+  `link_categories` na matriz de papéis (herdam o preset — ADR-0013).
+- **Central: prévia no editor de link** ("O que é", ≤ 200, e "Quando usar", ≤ 160,
+  em PT/ES/EN, com contador e aviso de idioma faltando). Link sem prévia diz
+  "sem prévia" na lista, e o botão "Destacar" abre o editor de destaque já com
+  aquele link.
+- **Central: "Nova categoria".** A operação cria categorias de link que o app não
+  conhecia — nome (até 12 letras por idioma), cor e ícone de listas fechadas, com
+  prévia da barra do agente. Passa pela fila de aprovação; a chave é imutável e a
+  categoria só sai do ar sem link dentro. O app desenha as categorias criadas em
+  seguida às do sistema.
+- **Categoria "Feedback"** (rosa, ícone `feedback`), nova categoria do sistema
+  para guardar os formulários de feedback. O link "Elogios" saiu de QA para ela
+  (no fallback embutido e no seed). Em produção a mudança é feita por
+  `migrateFeedbackLinksNow()`, idempotente e versionada, que mantém a identidade
+  do link — **rodar só depois de o frontend novo estar no ar** (um pacote antigo
+  quebra ao desenhar um link numa categoria que não conhece). Os demais
+  formulários (Casos Complexos, Relatório de Bugs…) ficam onde estão até alguém
+  decidir; mover é editar a categoria do link na Central.
+- Testes: `npm run test:links` (modelo puro + paridade de cores/ícones entre
+  servidor, pacote e Central) e `npm run smoke:links` (28 checagens com o módulo
+  isolado no navegador); `test:content` (+36) e `smoke:content` (+28) cobrem
+  janela, vagas, categorias e as telas novas da Central.
+
 - **A Central de Conteúdo troca o idioma da interface: português, espanhol ou
   inglês** (ADR-0017). Seletor novo no topo, separado do seletor do trilho, que
   passou a se chamar "Idioma do conteúdo" e segue decidindo só qual catálogo
@@ -34,6 +75,20 @@ versions follow [Semantic Versioning](https://semver.org/).
   `npm run test:dash-changelog` passou a cobrar os dois painéis — e a acusar
   tag de template dentro de uma parte da Central, onde ela iria literal para o
   navegador.
+
+### Changed
+- **Links: quem decide "agora" é o servidor, não o navegador.** O destaque é uma
+  linha `live` durante toda a vida e o `state` (`scheduled`, `active`, `ended`,
+  `expired`) é calculado a cada leitura, depois do cache de 300s — o mesmo
+  princípio do aviso (`broadcast`), sem esconder o item inteiro.
+- **Links: a janela do módulo passou de 600 para 860px**, para caber o painel de
+  prévia ao lado da lista.
+- **Central: campos de data e hora** (`datetime-local`) ganham o estilo dos
+  demais campos.
+- **Linguagem visual do módulo de Links**: superfícies de vidro (translúcidas
+  com desfoque), peso de fonte 400/500, grade de 4/8px, alvos ≥32px e
+  `prefers-reduced-motion` respeitado. Copiar um link confirma no próprio botão,
+  com som e vibração (nos três canais); favoritar, com som, vibração e aviso.
 
 ## [6.5.0] - 2026-10-13
 

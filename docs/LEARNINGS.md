@@ -12,6 +12,81 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Janela de exibição esconde o item inteiro: o que precisa sobreviver à janela mora em outra linha
+
+**Why**: o destaque do módulo de Links nasceu como ideia de "um campo do link
+com data de início e fim". Não funciona: o filtro de janela do `broadcast`
+(`janelaAgora_`) decide se o **item** aparece, então o link sumiria da
+biblioteca no dia em que o destaque vencesse. Por isso o destaque é uma linha
+própria (`link_highlights`) que aponta para a `Lineage` do link, é `live` a vida
+inteira e tem o `state` calculado **a cada leitura, depois do cache** (ADR-0018).
+O mesmo desenho dá "Saíram do destaque" de graça: o item vencido continua lá,
+com `state: 'ended'`, por 30 dias.
+
+**When to apply**: ao dar a algo um prazo de exibição (campanha, aviso, banner)
+que se aplica a um conteúdo que **deve continuar existindo** depois. E ao criar
+qualquer janela nova: o relógio é o do servidor, no fuso da planilha, e a tela
+mostra o "agora" dele (`getLinkHighlightsConfig`) em vez de usar o do navegador.
+
+## Dado que um bundle antigo não sabe desenhar: libere o frontend antes do dado
+
+**Why**: a categoria de link passou a poder ser criada pela Central. Um bundle
+**antigo** faz `CAT_THEMES[key].color` para cada link e quebra a tela inteira de
+Links quando a chave não tem tema — e o `deploy.yml` sobe o backend antes do
+frontend (`needs: deploy-backend-gas`), com agentes de CRM abertos por horas. A
+migração dos formulários de feedback (`migrateFeedbackLinksNow()`) tem, por isso,
+uma ordem: frontend no ar, **depois** a migração. O seed não resolve — ele só
+escreve em módulo vazio (entrada abaixo).
+
+**When to apply**: sempre que a Central passar a emitir um **valor novo num
+conjunto que o app trata como fechado** (categoria, tipo, ícone, estado). Ou o
+bundle novo sai primeiro, ou o código do app ganha um caminho para o
+desconhecido. E o servidor valida contra o conjunto (`assertValidLinkItem_`),
+em vez de confiar no `<select>` da tela.
+
+## Favoritos e destaques guardam identidade, e o fallback nunca poda
+
+**Why**: o histórico antigo de Links guardava a URL; mudar a URL de um link na
+Central o fazia sumir do histórico de cada agente. Agora tudo aponta para a `Lineage`
+(`itm_…`), que atravessa as versões — e `u:<url>` só para o fallback embutido. O
+risco vem junto: um "limpar IDs que não existem mais" rodando contra o catálogo
+**embutido** (a Central fora do ar, o JSONP em falha) apagaria os favoritos de
+todos de uma vez, porque o fallback não conhece os links da Central.
+`reconcileIds(..., fromCentral)` só poda quando o catálogo veio da Central, e
+`smoke:links` trava isso.
+
+**When to apply**: ao guardar na `User_Prefs` qualquer referência a conteúdo da
+Central (atalhos, favoritos, rascunhos): guarde o ID estável, nunca a cópia, e
+faça a poda depender de **de onde veio o catálogo**, não só de "não achei".
+
+## Mockup aprovado não é tela aprovada: meça na UI real
+
+**Why**: os mockups da home de Links passaram numa auditoria **medida** (espaço,
+contraste, alvos, grade de 4/8px). A tela de verdade, montada no navegador,
+ainda tinha seis defeitos que o protótipo não tinha: botões do trilho
+espremidos (faltava `flex-shrink: 0`), rótulo "Treiname…" truncado, botão ativo
+cortado pelo `scrollIntoView`, anel de foco duplo na busca, o segmentado
+"Posição" sem estado selecionado e o `datetime-local` sem estilo, os dois na
+Central. Todos apareceram só ao fotografar a UI real.
+
+**When to apply**: antes de dar uma tela por pronta, fotografe-a com Playwright
+(`CW_CHROMIUM=/opt/pw-browsers/chromium`) com o pior caso de dado — nome longo,
+muitas categorias, texto no limite — e olhe. Conferir o HTML do mockup não
+conta.
+
+## Anexar a um arquivo sem newline final cola duas linhas
+
+**Why**: ao acrescentar um bloco ao `design-system.md` com `cat >> arquivo`, o
+arquivo terminava sem `\n`, e o primeiro item novo foi colado no fim da última
+linha antiga. Na mesma leva, inseri um `### Changed` novo no `CHANGELOG`
+**antes** dos itens que já existiam em `[Unreleased]`, e eles passaram a ficar
+sob o título errado. As duas coisas só apareceram ao ler o `git diff`, não pela
+mensagem de sucesso da ferramenta.
+
+**When to apply**: depois de editar documentação por inserção ou anexo, leia o
+`git diff` do arquivo (`\ No newline at end of file` é o aviso) e confira o que
+ficou **abaixo** de cada título que você acrescentou.
+
 ## Semear não é sincronizar: `seedContentModule()` só escreve em módulo vazio
 
 **Why**: ao entregar o inglês eu escrevi, no PR e no `PLAN.md`, "rode

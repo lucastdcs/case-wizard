@@ -210,3 +210,22 @@ quadro também desorienta.
 ## Componentes UI
 - **Tags `<select>`:** Para economizar cliques em listas complexas (como os motivos de descarte), utilizar obrigatoriamente a semântica de agrupamento `<optgroup label="Categoria">`.
 - **Botões:** Manter o padrão translúcido/outline com hover states claros. Ao executar ações, os botões devem ser desabilitados temporariamente.
+- **Mestre-detalhe com prévia (Links, ADR-0018):** lista à esquerda, painel de
+  prévia **fixo** à direita (janela de 860px). A prévia segue o `mouseover` e o
+  `focusin` — teclado e mouse mostram a mesma coisa — e o painel **nunca fica
+  vazio**: sem seleção ele mostra o destaque principal, e na falta dele o
+  primeiro favorito, recente ou link da lista; só uma busca sem resultado o
+  esvazia. Texto vindo da Central entra por `textContent`, e o ícone só sai de
+  uma lista fechada no pacote. Abaixo de 1000px o painel some (a lista não
+  comprime).
+- **Controle segmentado:** para alternar entre 2–3 vistas irmãs da mesma tela
+  (Biblioteca | Destaques na Central; Favoritos | Recentes | Saíram do destaque no
+  app) em vez de abas soltas. Estado em `aria-pressed` na Central e
+  `role="tab"` + `aria-selected` no app, alvo ≥32px, o selecionado é o único com
+  fundo. É a versão Apple do "chip de filtro" do Material: uma só
+  escolha, sem rolagem.
+- **Vidro só na casca:** superfícies translúcidas (`rgba(248,249,250,.88)` +
+  blur) valem para a janela e o trilho; o conteúdo dentro continua sólido e
+  recuado por tom, não por borda. Tudo o que anima declara as propriedades
+  (`transition: transform, opacity…`), nunca `all`, e respeita
+  `prefers-reduced-motion`.

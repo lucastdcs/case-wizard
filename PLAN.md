@@ -7,6 +7,31 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Home de Links: destaques, prévia e categorias (2026-10-23, ADR-0018).**
+      Pedido do Lucas: agentes reclamam de procurar formulários/planilhas por
+      nome dentro de Links. Entregue o desenho inteiro (variante A, painel de
+      prévia fixo, janela de 860px) — backend, Central, app, testes e docs:
+      1. [x] **Backend** (`ContentAPI.js`): módulos `link_categories` (catálogo)
+         e `link_highlights` (publicação direta), prévia `about`/`when` no
+         link, janela e capacidade (máx. 3 no ar em qualquer instante futuro)
+         no servidor, `checkLinkHighlight`, `getLinkHighlightsConfig`,
+         `endLinkHighlight`, `migrateFeedbackLinksNow`. `test:content` +36.
+      2. [x] **App** (`links-model.js` puro + `links-assistant.js` reescrito):
+         home com destaques + Favoritos/Recentes/Saíram do destaque, painel de
+         prévia, busca sem acento, favoritos/recentes na nuvem por `Lineage`,
+         migração do histórico antigo. `test:links`, `smoke:links` (28).
+      3. [x] **Central**: Biblioteca | Destaques, editor de destaque com
+         prévia do cartão, editor de link com prévia ×3 idiomas, "Nova
+         categoria". `smoke:content` +28.
+      4. [x] **Categoria Feedback**: do sistema, com "Elogios" movido de QA.
+      5. [ ] **Rodar em produção, nesta ordem** (ver Waiting/blocked): frontend
+         novo no ar → `migrateFeedbackLinksNow()` → conferir no app.
+      6. [ ] **Notas de versão**: subir `CW_CONTENT_RELEASE_NOTES.version` e
+         reescrever os itens na hora da release (`RELEASE.md`).
+      Fora do escopo, de propósito: tradução dos editores de Links na Central
+      (ADR-0017, fase 2 — os textos novos estão em português); painel de
+      prévia abaixo de 1000px de largura (a lista fica sozinha).
+
 - [~] **Idiomas na Central de Conteúdo + novidades da versão (2026-10-14,
       ADR-0017).** Seletor de idioma da **interface** (PT/ES/EN) no topo,
       separado do idioma do **conteúdo** (trilho); abre pelo `defaultLanguage`
@@ -434,6 +459,18 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
+- [ ] **Links (ADR-0018): ordem de implantação.** Um pacote **antigo** quebra ao
+      desenhar um link cuja categoria não tem tema (`CAT_THEMES[key].color`), e o
+      `deploy.yml` sobe o backend **antes** do frontend (`needs: deploy-backend-gas`).
+      Em cada ambiente (a branch `refactor-structure` promove o dev, `main` o
+      produção): (1) esperar o job do frontend terminar → (2) no editor do Apps Script, rodar
+      `migrateFeedbackLinksNow()` com um usuário que **aprova e propõe links**
+      (devolve `{ moved, skipped }`; idempotente) → (3) só então publicar links em
+      categorias criadas pela Central. Abas do CRM abertas precisam recarregar.
+      O seed (`seedLinksNow()`) **não** serve: só escreve em módulo vazio.
+- [ ] **Decidir com o Lucas quais outros formulários vão para "Feedback"**
+      (hoje só "Elogios" foi movido). Candidatos: "Casos Complexos", "Relatório
+      de Bugs". Mover é editar a categoria do link na Central — sem deploy.
 - [ ] **Empurrar as tags `v6.4.0` e `v6.5.0`** de um checkout local (o proxy da
       sessão web recusa push de tag — `RELEASE.md` → Known fragilities;
       confirmado de novo na v6.5.0: `HTTP 403` no `git push origin v6.5.0`):
