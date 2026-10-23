@@ -433,13 +433,13 @@
             google.script.run
                 .withSuccessHandler(function () {
                     btn.disabled = false;
-                    btn.textContent = 'Publicar disponibilidade';
+                    btn.textContent = tt('bauPublish');
                     toast('Disponibilidade publicada.');
                     loadBau();
                 })
                 .withFailureHandler(function (err) {
                     btn.disabled = false;
-                    btn.textContent = 'Publicar disponibilidade';
+                    btn.textContent = tt('bauPublish');
                     // O servidor é quem valida (data invertida, data inexistente,
                     // nenhuma data). A mensagem dele já diz o que corrigir.
                     toast(err.message, true);

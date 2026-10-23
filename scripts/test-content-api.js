@@ -99,6 +99,13 @@ const UTILITIES_STUB = {
   }
 };
 
+// Os e-mails da Central saem pela casca do BAU, que lê o template do projeto.
+const HTML_SERVICE_STUB = {
+  createHtmlOutputFromFile: (n) => ({
+    getContent: () => fs.readFileSync(path.join(__dirname, '..', 'gas-backend', n + '.html'), 'utf8')
+  })
+};
+
 let CURRENT_USER = 'lucaste@google.com';
 const SS = new FakeSpreadsheet();
 const SENT_MAIL = [];
@@ -135,6 +142,7 @@ const sandbox = {
   Session: { getActiveUser: () => ({ getEmail: () => CURRENT_USER }), getScriptTimeZone: () => 'America/Sao_Paulo' },
   MailApp: { sendEmail: (o) => SENT_MAIL.push(o) },
   Logger: { log: (m) => LOGGER.push(m) },
+  HtmlService: HTML_SERVICE_STUB,
   Utilities: UTILITIES_STUB,
   handleLog: (p) => LOGGED.push(p),
   console,
@@ -152,6 +160,7 @@ const CORE_SRC = path.join(__dirname, '..', 'gas-backend', 'Código.js');
 vm.runInContext(fs.readFileSync(CORE_SRC, 'utf8'), ctx);
 
 vm.runInContext(fs.readFileSync(SRC, 'utf8'), ctx);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'EmailEngine.js'), 'utf8'), ctx);
 
 // PeopleAPI.gs não é opcional para o ContentAPI: approveContentDraft(),
 // saveContentDraft() e listPendingApprovals() desviam para ele quando o módulo
@@ -230,6 +239,25 @@ check('LDAP desconhecido não tem acesso nenhum', () => {
     eq(s.hasAccess, false);
     eq(s.role, null);
   });
+});
+
+check('a sessão leva o idioma da People, com ou sem acesso', () => {
+  // A Central abre a interface nesse idioma (ADR-0017). Sem linha na People, o
+  // fallback do getUserProfileByLdap é PT-BR.
+  eq(api.getContentSession().defaultLanguage, 'PT-BR');
+
+  const anterior = SS.sheets.People;
+  const people = SS.insertSheet('People');
+  people.appendRow(['LDAP', 'Role', 'Category', 'Segment']);
+  people.appendRow(['lucaste', 'TL', 'Lead', 'ES']);
+  people.appendRow(['estranho', 'Agent', 'Agent', 'EN']);
+  try {
+    eq(api.getContentSession().defaultLanguage, 'ES');
+    // Quem não tem acesso lê a tela de recusa — no idioma dele.
+    as('estranho', () => eq(api.getContentSession().defaultLanguage, 'EN'));
+  } finally {
+    if (anterior) SS.sheets.People = anterior; else delete SS.sheets.People;
+  }
 });
 
 check('LDAP desconhecido não consegue nem listar', () => {
@@ -1958,6 +1986,37 @@ check('aprovação avisa o autor, e só ele', () => {
   eq(enviados.length, 1, 'um e-mail só:');
   eq(enviados[0].to, 'qa_pessoa@google.com', 'endereçado ao autor:');
   eq(/publicada/.test(enviados[0].subject), true);
+});
+
+check('o e-mail de decisão usa a casca do BAU: texto puro, botão e campo escapado', () => {
+  const d = as('qa_pessoa', () => api.saveAndSubmitContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo <b>x</b>', value: 'Confirme o CID.'
+  }));
+
+  const antes = SENT_MAIL.length;
+  api.rejectContentDraft(d.draftId, 'Troque <script> por texto.');
+  const m = SENT_MAIL.slice(antes).filter(x => x.to === 'qa_pessoa@google.com')[0];
+
+  eq(typeof m.body, 'string', 'versão em texto puro:');
+  eq(/Motivo: Troque <script> por texto\./.test(m.body), true, 'o motivo vai no texto puro:');
+  eq(m.htmlBody.indexOf('<script>'), -1, 'HTML do motivo escapado:');
+  eq(m.htmlBody.indexOf('Passo <b>x</b>'), -1, 'HTML do rótulo escapado:');
+  eq(/Abrir a Central de Conteúdo/.test(m.htmlBody), true, 'botão para a Central:');
+  eq(m.htmlBody.indexOf('{{'), -1, 'nenhum slot ficou por preencher:');
+});
+
+check('o aviso de proposta mostra módulo, item e autor, com botão para revisar', () => {
+  const antes = SENT_MAIL.length;
+  as('qa_pessoa', () => api.saveAndSubmitContentDraft({
+    module: 'call_script', key: 'BAU', field: 'inicio', lang: 'PT',
+    label: 'Passo para revisar', value: 'Peça o CID.'
+  }));
+  const m = SENT_MAIL.slice(antes)[0];
+
+  eq(/Passo para revisar/.test(m.htmlBody) && /qa_pessoa/.test(m.htmlBody), true, 'item e autor:');
+  eq(/Revisar na Central/.test(m.htmlBody), true, 'botão:');
+  eq(/Revisar na Central: https:\/\//.test(m.body), true, 'link no texto puro:');
 });
 
 check('autoaprovação do ADMIN não manda e-mail para si mesmo', () => {

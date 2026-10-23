@@ -138,5 +138,63 @@ check('o mapa do backend bate com o do frontend', () => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// Rodapé dos dashboards (buildCreditHtml). Mora neste arquivo porque é o mesmo
+// Código.js carregado do mesmo jeito; o assunto é outro: o link da documentação
+// que o TL Dashboard e a Central de Conteúdo mostram.
+console.log('\n--- Rodapé dos dashboards (documentação) ---');
+
+const lerFront = (...partes) =>
+    fs.readFileSync(path.join(__dirname, '..', ...partes), 'utf8');
+
+// São duas cópias porque são dois runtimes, e o único elo entre elas era um
+// comentário. Uma URL trocada num lado só deixaria o agente e o TL em decks
+// diferentes sem erro nenhum.
+check('a URL da documentação do backend é a mesma do frontend', () => {
+    const front = lerFront('src', 'modules', 'shared', 'config.js')
+        .match(/export const DOCS_URL\s*=\s*"([^"]+)"/);
+    if (!front) throw new Error('não achei DOCS_URL em config.js');
+    const s = carregar(() => url(PROD));
+    igual(s.__ler('CW_DOCS_URL'), front[1], 'CW_DOCS_URL x DOCS_URL');
+});
+
+// /edit abriria o editor do deck para quem tem permissão de escrita.
+check('a documentação abre em /preview e leva o resourcekey', () => {
+    const s = carregar(() => url(PROD));
+    const docs = s.__ler('CW_DOCS_URL');
+    if (!/\/presentation\/d\/[^/]+\/preview\?resourcekey=/.test(docs)) {
+        throw new Error('URL fora do formato /preview?resourcekey=…: ' + docs);
+    }
+});
+
+check('o rodapé tem o link da documentação, ao lado do de feedback', () => {
+    const s = carregar(() => url(PROD));
+    const html = s.buildCreditHtml();
+    const docs = s.__ler('CW_DOCS_URL');
+    const feedback = s.__ler('CW_FEEDBACK_FORM_URL');
+    if (!html.includes('href="' + docs + '"')) throw new Error('link da documentação ausente');
+    if (!html.includes('href="' + feedback + '"')) throw new Error('o link de feedback sumiu do rodapé');
+    if (html.indexOf(docs) > html.indexOf(feedback)) throw new Error('a documentação deveria vir antes do feedback');
+});
+
+// O rodapé chega às duas telas pela tag que renderDashboard() preenche. Sem a
+// tag no HTML, o link existiria no servidor e não apareceria em tela nenhuma.
+for (const [tela, arquivo] of [['TL Dashboard', 'TLDashboard.html'], ['Central de Conteúdo', 'ContentDashboard.html']]) {
+    check(`${tela} imprime o rodapé`, () => {
+        if (!/<\?!=\s*CW_CREDIT\s*\?>/.test(lerFront('gas-backend', arquivo))) {
+            throw new Error(`${arquivo} não tem <?!= CW_CREDIT ?>`);
+        }
+    });
+}
+
+check('as duas telas passam pelo renderDashboard, que injeta o rodapé', () => {
+    const codigo = lerFront('gas-backend', 'Código.js');
+    for (const arquivo of ['TLDashboard', 'ContentDashboard']) {
+        if (!new RegExp(`renderDashboard\\(\\s*['"]${arquivo}['"]`).test(codigo)) {
+            throw new Error(`${arquivo} não é servido por renderDashboard()`);
+        }
+    }
+});
+
 console.log('\n' + (falhas ? '✗' : '✓') + ` ${falhas} falhas\n`);
 process.exit(falhas ? 1 : 0);

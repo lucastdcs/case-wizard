@@ -8,6 +8,59 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Pre-call Checklist** (ADR-0018). Formulário curto, no botão novo da pílula e
+  no Ctrl+K, que escreve o bloco "Pre-call checklist" no card de nota do caso (ou
+  só copia). Tasks, telefone, e-mail, site e CID que a tela do caso já mostra
+  chegam preenchidos, com a marca *Auto* e uma animação curta; nada capturado
+  sobrescreve o que o agente digitou, e outro caso na tela zera o formulário. As
+  cinco perguntas Yes/No e o Next steps começam sem resposta e precisam de uma
+  antes de gerar a nota; texto vazio sai como `None provided`. Quem não faz o
+  checklist (Live Meet, ou caso que chegou com menos de 1h) registra
+  `Completed: No` com o motivo. **A nota sai sempre em inglês**, nos três idiomas
+  da interface — é o que a auditoria do SOP procura —, com título e rótulos em
+  negrito, valores normais, uma linha em branco entre as linhas e "Gerado pelo
+  Cases Wizard" no fim, e o texto inteiro é travado por `npm run test:precall`. Só frontend: nada é gravado na planilha.
+- **Link para a documentação do projeto (deck de slides) onde o agente trava.**
+  No bookmarklet, entra no "?" do cabeçalho de todo módulo — o ponto que o
+  agente aperta quando está perdido, dentro do módulo em que travou — e na seção
+  Suporte & Feedback de Configurações. No TL Dashboard e na Central de Conteúdo,
+  entra no rodapé que as duas já tinham ("Docs · Reportar bug ou sugestão"),
+  inclusive na tela de "sem acesso" da Central. A URL abre em `/preview`, não em
+  `/edit`, para quem tem permissão de escrita não alterar o deck sem querer. É
+  um deck único para os três idiomas; se virar um por idioma, `DOCS_URL`
+  (`shared/config.js`) e `CW_DOCS_URL` (`Código.js`) viram mapas.
+  `test:deployment-env` trava as duas cópias iguais e confere que as duas telas
+  imprimem o rodapé; `smoke:i18n`, `smoke:tl-dash` e `smoke:content` passaram a
+  ler o link no navegador. Até aqui os dois smokes dos dashboards apagavam o
+  rodapé (`CW_CREDIT` virava vazio), então ele nunca tinha sido renderizado em
+  teste — agora é, e o do TL prova que ele não cobre os botões de decisão.
+- **A Central de Conteúdo troca o idioma da interface: português, espanhol ou
+  inglês** (ADR-0017). Seletor novo no topo, separado do seletor do trilho, que
+  passou a se chamar "Idioma do conteúdo" e segue decidindo só qual catálogo
+  está em revisão — dá para ler a tela em português e revisar o espanhol, ou
+  o contrário. A tela abre no idioma da pessoa na aba People
+  (`getContentSession()` passou a devolver `defaultLanguage`, inclusive para
+  quem não tem acesso, que lê a recusa no idioma dele), e a escolha manual fica
+  salva no navegador e vale mais que o perfil. **Primeira fase:** topo, trilho,
+  estados de boot e recusa, cabeçalho de cada aba, textos fixos dos painéis e o
+  aviso "seu papel não propõe neste módulo". Listas, editores e modais seguem
+  em português até as próximas fases. Datas passaram a seguir o idioma da
+  interface, e não mais o do conteúdo.
+- **"Idioma do conteúdo" ganha EN.** Desde a v6.5.0 o catálogo tem conteúdo em
+  inglês (roteiro, notas, e-mails), mas o seletor só oferecia PT/ES — revisar o
+  EN pela Central não tinha caminho. Junto, um defeito que a opção nova
+  tornaria alcançável: o editor de e-mail tratava só `ES` como idioma de
+  `labels`, então salvar um modelo EN gravaria `placeholders: []` e apagaria os
+  rótulos dos campos sem aviso. Agora tudo que não é PT guarda `labels`.
+- **Novidades da versão na Central**, no padrão do TL Dashboard: notas próprias
+  (`CW_CONTENT_RELEASE_NOTES` em `DashReleaseNotes.js`), que abrem uma vez
+  quando a versão muda, com botão de megafone no topo para reler.
+  `renderDashboard()` escolhe as notas pelo template, e
+  `npm run test:dash-changelog` passou a cobrar os dois painéis — e a acusar
+  tag de template dentro de uma parte da Central, onde ela iria literal para o
+  navegador.
+
 ## [6.5.0] - 2026-10-13
 
 ### Added
@@ -56,6 +109,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 - `npm run test:i18n` (paridade dos dicionários nas três línguas) e
   `npm run smoke:i18n` (qual knob cada lugar lê, no navegador real).
 
+### Changed
+- **E-mails da Central de Conteúdo com a casca do fluxo BAU.** O aviso de
+  "proposta aguardando revisão" era dois parágrafos soltos, sem link nem
+  detalhe. Os três e-mails da Central (proposta, decisão, pendência parada)
+  agora usam `renderBauEmail`: cartão com cor por tipo, campos (módulo, item,
+  ação, autor), botão para a Central, motivo da devolução em callout, preheader,
+  versão em texto puro e texto livre escapado (antes o rótulo e o motivo entravam
+  crus no HTML). Travado em `test:content` (+2).
+
 ### Fixed
 - **Linha em idioma novo contaminava o conteúdo base.** Duas hidratações
   roteavam por "se é ES, tradução; **senão**, base". Como a linha EN tem o mesmo
@@ -78,6 +140,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **O seletor de idioma do onboarding ignorava o idioma do perfil.** O foco
   inicial usava `find(...)?.focus() ?? buttons[0].focus()`, e como `focus()`
   devolve `undefined` o fallback rodava **sempre**.
+- **Quem saiu da empresa seguia recebendo e-mail da Central de Conteúdo.** A
+  baixa na aba Pessoas não tocava em `Content_Access`, e os avisos de proposta,
+  de decisão e de pendência parada liam só essa aba — inclusive endereços que já
+  não existem (bounce para o dono do script). Agora a baixa desativa o acesso
+  (respeitando a trava de governança) e os três envios só vão a quem está em
+  `People`. Travado em `test:people` (+6).
 - **A abertura do painel lateral do BAU tremia.** A coluna passava de 454,9px
   para 504,3px — **10,9% de sobra**, contra os ≤3% que a regra de movimento
   previa — e, por ser propriedade de **layout**, o texto refluía na largura

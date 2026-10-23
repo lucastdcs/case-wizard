@@ -28,7 +28,7 @@
 // sobre o dashboard, não sobre o caso. Até a v6.4.0 era só PT, e um TL com a
 // tela em espanhol lia as novidades em português.
 //
-// REGRA: `version` aqui tem que ser igual à `version` do package.json.
+// REGRA: `version` aqui (nos dois objetos) tem que ser igual à `version` do package.json.
 // Numa release de correção, este arquivo guarda só o que mudou nela: o modal
 // conta uma release por vez (o navegador guarda uma única versão vista).
 
@@ -82,6 +82,60 @@ const CW_DASH_RELEASE_NOTES = {
   ]
 };
 
+// A Central de Conteúdo tem as SUAS notas, com as mesmas regras (versão, uma
+// release por vez, `{ pt, es, en }` resolvido pelo idioma da TELA). Quem abre a
+// Central (ADMIN, QA, WFM, TL que edita conteúdo) não é o mesmo público do TL
+// Dashboard, e um TL que usa as duas telas leria em cada uma o que mudou NELA.
+const CW_CONTENT_RELEASE_NOTES = {
+  version: "6.5.0",
+  title: {
+    pt: "Novidades da Central de Conteúdo",
+    es: "Novedades de la Central de Contenido",
+    en: "What's new in the Content Hub"
+  },
+  items: [
+    {
+      icon: "translate",
+      title: {
+        pt: "A Central agora fala português, espanhol e inglês",
+        es: "La Central ahora habla portugués, español e inglés",
+        en: "The Hub now speaks Portuguese, Spanish and English"
+      },
+      text: {
+        pt: "Um seletor novo no topo da tela troca o idioma da interface. Ela já abre no idioma cadastrado para você na aba Pessoas, e a sua escolha fica guardada neste navegador. A tradução está entrando por partes: menu, títulos e textos fixos de cada aba primeiro; listas e editores seguem nas próximas versões.",
+        es: "Un selector nuevo en la parte superior cambia el idioma de la interfaz. Ya abre en el idioma registrado para ti en la pestaña Personas, y tu elección queda guardada en este navegador. La traducción entra por partes: menú, títulos y textos fijos de cada pestaña primero; listas y editores siguen en las próximas versiones.",
+        en: "A new selector at the top switches the interface language. It already opens in the language registered for you in the People tab, and your choice is saved in this browser. The translation is arriving in parts: menu, titles and fixed text of each tab first; lists and editors follow in the next versions."
+      }
+    },
+    {
+      icon: "language",
+      title: {
+        pt: "Idioma da interface e idioma do conteúdo são escolhas separadas",
+        es: "Idioma de la interfaz e idioma del contenido son elecciones separadas",
+        en: "Interface language and content language are separate choices"
+      },
+      text: {
+        pt: "O seletor do menu lateral passou a se chamar \"Idioma do conteúdo\" e continua decidindo qual catálogo você revisa. Assim dá para ler a tela em português e revisar o conteúdo em espanhol, ou o contrário.",
+        es: "El selector del menú lateral pasó a llamarse \"Idioma del contenido\" y sigue decidiendo qué catálogo revisas. Así puedes leer la pantalla en español y revisar el contenido en portugués, o al revés.",
+        en: "The side menu selector is now called \"Content language\" and still decides which catalog you are reviewing. So you can read the screen in English and review the content in Spanish, or the other way around."
+      }
+    },
+    {
+      icon: "campaign",
+      title: {
+        pt: "Novidades da versão, aqui mesmo",
+        es: "Novedades de la versión, aquí mismo",
+        en: "What's new, right here"
+      },
+      text: {
+        pt: "Este aviso é novo: quando a Central mudar, ele abre uma vez sozinho. Depois, o botão de megafone no topo mostra de novo o que mudou nesta versão.",
+        es: "Este aviso es nuevo: cuando la Central cambie, se abrirá solo una vez. Después, el botón del megáfono en la parte superior vuelve a mostrar lo que cambió en esta versión.",
+        en: "This notice is new: when the Hub changes, it opens once on its own. After that, the megaphone button at the top shows again what changed in this version."
+      }
+    }
+  ]
+};
+
 /**
  * Notas de versão em JSON, para o template injetar na página.
  *
@@ -89,7 +143,10 @@ const CW_DASH_RELEASE_NOTES = {
  * por google.script.run: é conteúdo estático que a página já poderia ter no
  * primeiro byte, e uma chamada a mais no boot do dashboard é exatamente o que
  * #333/#334 pediu para evitar.
+ *
+ * `fileName` é o do template que está sendo montado: a Central recebe as notas
+ * dela, e qualquer outro dashboard (hoje, só o do TL) recebe as do TL.
  */
-function buildReleaseNotesJson() {
-  return JSON.stringify(CW_DASH_RELEASE_NOTES);
+function buildReleaseNotesJson(fileName) {
+  return JSON.stringify(fileName === 'ContentDashboard' ? CW_CONTENT_RELEASE_NOTES : CW_DASH_RELEASE_NOTES);
 }

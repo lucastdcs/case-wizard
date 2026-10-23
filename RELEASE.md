@@ -135,6 +135,11 @@ the bookmarklet — so a change to the dashboard that is only in
 release at a time**, so on a fix release this file holds only what changed in
 that release — replace the items, don't append to them.
 
+**So does the Content Hub (Central de Conteúdo).** `CW_CONTENT_RELEASE_NOTES`, in
+the same file, is what people who open the Central see; `renderDashboard()` picks
+it by template name. Same rules: `version` equals `package.json`, one release at a
+time, and the same test guards it.
+
 ## Tags & GitHub Releases
 
 A tag is **bookkeeping, not a deploy**. `deploy.yml` triggers on `push.branches`
@@ -150,10 +155,11 @@ Order — the tag comes **last**, on a commit that is already in production:
 #    add the two link refs at the bottom.
 # 2. Align the four version sources in the same commit:
 #    package.json "version", APP_VERSION (src/app.js), RELEASE_NOTES.version
-#    (src/modules/changelog/changelog-data.js) and CW_DASH_RELEASE_NOTES.version
-#    (gas-backend/DashReleaseNotes.js). See "App version" above.
-#    If the release touched the TL Dashboard, rewrite that file's items too —
-#    it is the only changelog the TL ever sees.
+#    (src/modules/changelog/changelog-data.js), and CW_DASH_RELEASE_NOTES.version
+#    plus CW_CONTENT_RELEASE_NOTES.version (both in gas-backend/DashReleaseNotes.js).
+#    See "App version" above.
+#    If the release touched the TL Dashboard or the Central, rewrite that
+#    object's items too — it is the only changelog its readers ever see.
 #    Check with: npm run test:dash-changelog
 # 3. Merge into main and push — this is what promotes production.
 git checkout main && git merge refactor-structure && git push origin main

@@ -45,7 +45,17 @@ Keep definitions short and precise. The goal: a new developer (or Claude) quickl
 
 **LM** — The other main case category alongside BAU (see BAU). Referenced together as "BAU/LM" throughout Case Notes and templates.
 
+## O
+
+**OOS** — "Out of scope": o pedido do anunciante está fora do que o time atende. No Pre-call Checklist é um dos três valores de *Next steps* (`Proceed` / `OOS` / `Infeasible`); no Case Notes corresponde ao substatus `IN_Out_of_Scope_Rerouted`.
+
+## P
+
+**Pre-call Checklist** — Formulário curto, feito antes da ligação, cujo resultado é o bloco "Pre-call checklist" da case note (`src/modules/notes/precall/`). Filtra cedo o que é OOS ou inviável. O bloco sai **sempre em inglês** e com texto fixo, porque a conformidade do SOP é medida lendo as notas (ADR-0018, `specs/workflow/precall-checklist.md`). Quem não faz o checklist (Live Meet, caso que chegou com menos de 1h) registra `Completed: No` com o motivo.
+
 ## S
+
+**sGTM** — Server-side Google Tag Manager. Uma das perguntas Yes/No do Pre-call Checklist.
 
 **Smart CR** — Email Assistant shortcuts tied to a Case Notes sub-status, letting an agent jump straight to the matching email template from the note-taking flow.
 

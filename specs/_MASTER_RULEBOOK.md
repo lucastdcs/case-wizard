@@ -26,6 +26,10 @@ conveniência:
   da chamada). Ao escrever ou mover uma string, a pergunta é **"este texto sai
   no caso ou fica na tela?"** — ela decide o knob, não o arquivo em que a
   string mora. Ver `docs/decisions/0016-idioma-da-interface-separado-do-idioma-da-saida.md`.
+- **Exceção: texto que o caso carrega mas que não é para o anunciante.** O bloco
+  "Pre-call checklist" da nota sai sempre em inglês, nos três idiomas, porque a
+  auditoria do SOP o procura por texto (ADR-0018). Só a tela do formulário segue
+  `getLanguage()`.
 - **O valor gravado no backend nunca é traduzido.** `Motivo_Abertura`,
   `Task_BAU`, o motivo do descarte e os status/substatus seguem em PT (ou no
   original do CRM) nos três idiomas. Traduzi-los quebra a categorização dos
@@ -34,7 +38,7 @@ conveniência:
 ### Termos que NÃO se traduzem
 
 - **Siglas de domínio:** BAU, AM, CID, SE ID, Speakeasy, Case ID, TL, LM, SME,
-  GTM, GA4, ECW4, UPD, NRP, Tag Support.
+  GTM, sGTM, GA4, ECW4, UPD, NRP, OOS, CMS, Tag Support.
 - **Rótulos que espelham a tela do CRM:** `On Call signaled on time?`,
   `OnCall Comments`, `Multiple CIDs`, `Reason/Comments`, `Tag Implemented`,
   `Substatus`, `Screenshots`. Já estão em inglês nos três idiomas de propósito.

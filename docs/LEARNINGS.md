@@ -12,6 +12,67 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Formulário que se preenche por raspagem: zere pelo caso ANTES da captura lenta
+
+**Why**: o Pre-call Checklist captura tasks, telefone, e-mail, site e CID da tela do
+caso. A primeira versão decidia "é outro caso?" **depois** da captura, e a captura
+espera ~500ms pelo unmask da PII. Nesse intervalo o formulário do caso anterior
+ficava visível e editável, e dois defeitos saíam do mesmo desenho — os dois
+achados pelo smoke, nenhum pelo teste de unidade:
+
+1. dado do caso anterior (instruções, respostas Yes/No) à vista, e o botão Inserir
+   funcionando: dava para pôr no caso novo uma nota do caso velho;
+2. quem digitasse nesses 500ms tinha a resposta **apagada** quando a captura
+   terminava, percebia o caso novo e zerava o formulário.
+
+O conserto separa as duas perguntas pelo custo. "Qual caso está na tela?" (Case ID
++ CID) não depende de unmask nem de tradução e responde na hora; "o que há nos
+campos?" é a lenta. Reset do formulário na primeira, preenchimento na segunda, e
+Copiar/Inserir parados enquanto a segunda roda.
+
+O mesmo smoke achou uma terceira coisa: `captureClientEmail()` só confere se há um
+`@`, então o container com `a@b.com Click to view` passa inteiro. Quem leva o valor
+para um texto que sai do app extrai o que precisa (o endereço) em vez de confiar
+que a captura devolve só ele.
+
+**When to apply**: qualquer formulário que se preencha sozinho a partir da tela do
+CRM (SPA: o caso muda por baixo, sem recarregar). Antes de dar por pronto:
+
+- a decisão "mudou o caso?" precisa vir **antes** de qualquer espera da captura;
+- teste lendo o formulário **logo após abrir**, sem esperar a captura — esperar é
+  exatamente o que esconde a corrida (`esperarCaptura` passou instantaneamente no
+  caso novo porque as marcas do caso velho ainda estavam lá; só uma espera pelo
+  VALOR esperado pega isso);
+- contar animações pelo evento (`animationstart`), não por mutação de classe:
+  `classList.remove` de classe ausente também gera registro e dobra a contagem.
+
+---
+
+## Tag de template do servidor não pode virar vazio no smoke: o que ela imprime fica sem teste
+
+**Why**: ao pôr o link da documentação no rodapé dos dashboards (2026-10-23), o
+`buildCreditHtml()` — o bloco "Reportar bug · criado por", injetado em
+`<?!= CW_CREDIT ?>` nas duas telas — não tinha **teste nenhum**. Os smokes do TL
+e da Central liam o HTML do disco e trocavam a tag por `''` para a página não
+ficar com `<?!= … ?>` literal. Funcionou para o que eles testam, e como efeito
+colateral o rodapé nunca chegava a ser renderizado: dava para quebrá-lo (tirar o
+link, cobrir um botão de decisão) com a suíte inteira verde. Só apareceu porque
+a mudança nova precisava provar que o link chega às duas telas.
+
+**Fix**: `scripts/credit-footer.mjs` avalia o mesmo `Código.js` num `vm` e devolve
+o que `buildCreditHtml()` imprimiria; os smokes injetam isso no lugar do vazio e
+conferem link, destino, `target` e — o que só o navegador mostra — que o centro
+do link não está sob outro elemento e que o rodapé não se sobrepõe aos botões
+de decisão do modal do TL.
+
+**When to apply**: ao acrescentar ou mudar o que uma tag de template do Apps
+Script imprime (`CW_CREDIT`, `CW_ENV_BADGE`, `CW_RELEASE_NOTES`). Pergunte "algum
+teste lê o que ela renderiza, ou só garante que ela some?". O selo de ambiente
+tem o builder coberto em `test:deployment-env`; o rodapé agora tem builder e
+tela. Uma asserção só vale depois de você quebrar o código e vê-la reprovar —
+foi assim que apareceu um erro no próprio smoke (ele lia o texto do `<a>` com o
+emoji junto).
+
 ## Semear não é sincronizar: `seedContentModule()` só escreve em módulo vazio
 
 **Why**: ao entregar o inglês eu escrevi, no PR e no `PLAN.md`, "rode
@@ -144,6 +205,24 @@ na tela do agente?* Saída → `getOutputLanguage()`. Tela → `getLanguage()`.
 E teste com os dois knobs **divergentes**. Com os dois no mesmo valor — que é o
 estado de 99% dos usuários — qualquer religação errada passa despercebida, que
 é exatamente por que o acoplamento sobreviveu dois idiomas.
+
+## Aviso por e-mail da Central: destinatário = papel em `Content_Access` **e** presença em `People`
+
+**Why**: quem era tirado da aba Pessoas seguia recebendo os e-mails da Central, e
+quem tinha saído da empresa gerava bounce "endereço não encontrado" para o dono
+do script. `People` diz quem está na empresa; `Content_Access` diz quem tem papel
+na Central. A baixa só apagava a linha de `People` (`deleteRow`) e os três envios
+(`notifyApprovers_`, `notifyProposerDecision_`, `notifyStaleContentApprovals`) liam
+só `Content_Access`. O `MailApp` não lança para endereço inexistente, então nada
+avisava.
+
+**When to apply**: qualquer novo e-mail da Central endereçado a `ldap + "@google.com"`
+passa por `filterContentRecipients_()`. Qualquer novo caminho que tire alguém de
+`People` chama `revokeContentAccessForLeaver_()`. `People` vazia não filtra (planilha
+nova); se a revogação deixaria a Central sem governante, o acesso fica e o motivo
+vai para a auditoria (`access_revoke_skipped`).
+
+---
 
 ## Animar `grid-template-columns`: os dois estados declaram a trilha da MESMA forma
 

@@ -26,6 +26,7 @@ A productivity and automation suite for a corporate CRM, delivered as a JavaScri
 ## Key Features
 
 - **Case Notes** — generates standardized case notes (BAU/LM, PT/ES/EN) from a Status → Sub-status → template flow, with a visual task picker, quick scenarios, implementation tags, automatic Speakeasy ID capture, and an emergency-autosave draft system.
+- **Pre-call Checklist** — short form that writes the "Pre-call checklist" block into the case note before the call (or copies it). Fields the CRM screen already shows — tasks, phone, email, website, CID — arrive filled and marked *Auto*; the block is always written in English, whatever the interface language. Frontend only: nothing is stored.
 - **Email Assistant** — detects and clears "ghost" Gmail drafts before inserting a new one, backed by a template library with placeholders and "Smart CR" shortcuts tied to Case Notes sub-statuses.
 - **Call Script Assistant** — interactive call checklist (PT/ES/EN × BAU/LT) with progress tracking and live capture of the customer's CID/email.
 - **Timezone Assistant** — live local-time monitoring per supported country and a meeting-time planner for customer calls.

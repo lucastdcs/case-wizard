@@ -7,6 +7,47 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Pre-call Checklist (2026-10-23, ADR-0018).** Formulário que escreve o
+      bloco "Pre-call checklist" no card de nota (ou copia), com tasks, telefone,
+      e-mail, site e CID capturados da tela do caso e marcados como *Auto*.
+      Sub-recurso do Case Notes (`src/modules/notes/precall/`), botão próprio na
+      pílula e entrada no Ctrl+K. Nota **sempre em inglês** (exceção à regra dos
+      dois idiomas); texto travado em `test:precall` (25) e a tela real em
+      `smoke:precall` (22, com interface ES × atendimento PT). Só frontend.
+      **Falta confirmar:**
+      - com quem audita, a linha de exceção `Completed: No → motivo` (veio do texto
+        do SOP, não de uma nota real) e as opções do *Next steps* — o SOP cita só
+        OOS e Infeasible como filtros, e a lista `Proceed / OOS / Infeasible` é a
+        mais curta que os cobre;
+      - no CRM ao vivo, a captura: contra as duas capturas reais de
+        `specs/fixtures/` (original e traduzida) ela devolveu tasks, telefone,
+        e-mail, site e CID corretos, mas as tasks chegam como **slug** no idioma
+        original (mapeadas para o nome do catálogo) e como frase em português na
+        tela traduzida (passam como vieram). O CID sai com traços
+        (`123-456-7890`, como o BAU Form grava) — confirmar que a auditoria aceita;
+      - ao fechar a release: nota de versão do modal do agente
+        (`RELEASE_NOTES`) falando do botão novo.
+
+- [~] **Idiomas na Central de Conteúdo + novidades da versão (2026-10-14,
+      ADR-0017).** Seletor de idioma da **interface** (PT/ES/EN) no topo,
+      separado do idioma do **conteúdo** (trilho); abre pelo `defaultLanguage`
+      da People, escolha manual salva no navegador. Junto, o modal de novidades
+      no padrão do TL (`CW_CONTENT_RELEASE_NOTES`). Tradução por fases:
+      1. [x] **Casca** — topo, trilho, boot/recusa, cabeçalho das abas, textos
+         fixos dos painéis, aviso de permissão. `smoke:content` (+21),
+         `test:content` (+1), `test:dash-changelog` (cobre os dois painéis).
+      2. [ ] **Catálogo** (`_Catalog`): listas, editores e estados vazios de
+         links, call script, notas, tasks, e-mails e dicas.
+      3. [ ] **Operação** (`_Ops`): avisos e disponibilidade, confirmação de
+         publicação.
+      4. [ ] **Governança** (`_Governance`) e o resto do `_Core`: aprovações,
+         pessoas, auditoria, papéis, acessos, histórico, busca, "ver como",
+         atividade, home e toasts.
+      - [x] "Idioma do conteúdo" ganhou EN, com o conserto do editor de e-mail
+        que apagaria os `labels` de um modelo EN (`smoke:content` +2).
+      Ao fechar a release: subir `CW_CONTENT_RELEASE_NOTES.version` junto com
+      as outras (RELEASE.md) e reescrever os itens com o que a fase entregou.
+
 - [~] **Revisão do fluxo de descarte do BAU Form (2026-09-21).** Três frentes
       levantadas pelo Lucas. A primeira saiu; as outras duas estão abertas.
       1. [x] **E-mail do descarte** — dois defeitos, ambos silenciosos: descarte
@@ -121,6 +162,16 @@ This file differs from the long-term roadmap: it describes what is happening **n
       do Apps Script — o gatilho ainda não existe (mesma nota do `Backup.js`).
 
 ## Done (esta sessão)
+
+- [~] **Link da documentação (deck de slides) onde o agente trava e nas duas
+      telas do Apps Script (2026-10-23).** No bookmarklet: "?" do cabeçalho de
+      todo módulo + Configurações → Suporte & Feedback. No TL Dashboard e na
+      Central (inclusive na tela de "sem acesso"): rodapé "Docs" do
+      `buildCreditHtml()`. Uma URL só, em `shared/config.js` (`DOCS_URL`) e no
+      espelho do backend (`CW_DOCS_URL`), travadas iguais por
+      `test:deployment-env`. Os smokes dos dashboards deixaram de apagar o
+      rodapé. **Falta:** conferir com um agente comum que o deck abre sem
+      pedir acesso (ver "Waiting / blocked").
 
 - [x] **Inglês de ponta a ponta (2026-10-13).** Terceiro idioma em toda a
       cadeia: os ~21 dicionários de interface, 76 linhas de conteúdo operacional
@@ -414,10 +465,25 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
-- [ ] **Empurrar a tag `v6.4.0`** de um checkout local (o proxy da sessão web
-      recusa push de tag — `RELEASE.md` → Known fragilities):
-      `git fetch origin main && git tag -a v6.4.0 origin/main -m "v6.4.0" && git push origin v6.4.0`
-- [ ] **Rodar `seedMissingLangsNow()` no editor do Apps Script.** É o que leva
+- [ ] **Conferir que o deck de documentação abre para quem não é o dono.** A URL
+      leva `resourcekey` e termina em `/preview`, mas a permissão do arquivo não
+      é verificável daqui. Abrir o link numa conta de agente e numa de TL, fora
+      da conta que criou o deck: se cair em "solicitar acesso", ajustar o
+      compartilhamento do deck (a URL não muda). O link só chega ao agente com
+      a próxima release; no TL e na Central, com o deploy do backend.
+- [ ] **Empurrar as tags `v6.4.0` e `v6.5.0`** de um checkout local (o proxy da
+      sessão web recusa push de tag — `RELEASE.md` → Known fragilities;
+      confirmado de novo na v6.5.0: `HTTP 403` no `git push origin v6.5.0`):
+      ```
+      git fetch origin main
+      git tag -a v6.4.0 <sha da release v6.4.0> -m "v6.4.0"
+      git tag -a v6.5.0 5193275 -m "v6.5.0"
+      git push origin v6.4.0 v6.5.0
+      ```
+      Sem isso os link refs do rodapé do CHANGELOG (`compare/v6.4.0...v6.5.0`)
+      continuam apontando para tags que não existem.
+- [ ] **Rodar `seedMissingLangsNow()` no editor do Apps Script** (a v6.5.0 já
+      está em produção, então o arquivo já está lá — falta executá-lo). É o que leva
       as 76 linhas EN para a planilha. NÃO use os `seed*Now()` de sempre:
       `seedContentModule()` é semeadura de primeira vez e, num módulo já no ar,
       devolve `{status:'skipped'}` sem escrever nada.
