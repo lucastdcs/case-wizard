@@ -9,10 +9,93 @@
         // porque a home também precisa do número.
         var PENDING_TOTAL = 0;
 
-        var CATEGORY_LABELS = {
-            tasks: 'Tarefas', ads: 'Ads', analytics: 'GA4', shopping: 'Shop',
-            tech: 'Tech', hr: 'RH', lm: 'Forms', qa: 'QA', suporte: 'Ajuda'
+        // Categorias de link: as que vêm com o produto (mesma lista, mesma ordem e
+        // mesmas chaves do bundle do agente e do servidor — `test:links` trava a
+        // igualdade) e as criadas por esta tela (módulo link_categories).
+        //
+        // Cor e ícone são conjuntos FECHADOS: a tela oferece estes, o servidor só
+        // aceita estes. Cor livre abriria a porta para texto sem contraste na barra
+        // do agente; SVG livre, para HTML de uma pessoa rodando no navegador de outra.
+        var LINK_CAT_COLORS = {
+            cyan: { color: '#0097A7', bg: '#E0F7FA', nome: 'Ciano' },
+            blue: { color: '#1967D2', bg: '#E8F0FE', nome: 'Azul' },
+            orange: { color: '#E37400', bg: '#FEF7E0', nome: 'Laranja' },
+            green: { color: '#188038', bg: '#E6F4EA', nome: 'Verde' },
+            purple: { color: '#9334E6', bg: '#F3E8FD', nome: 'Roxo' },
+            red: { color: '#C5221F', bg: '#FCE8E6', nome: 'Vermelho' },
+            slate: { color: '#5F6368', bg: '#F1F3F4', nome: 'Cinza' },
+            amber: { color: '#F09D00', bg: '#FFF3E0', nome: 'Âmbar' },
+            sky: { color: '#0B57D0', bg: '#D3E3FD', nome: 'Azul-claro' },
+            pink: { color: '#D01884', bg: '#FDE7F3', nome: 'Rosa' },
+            teal: { color: '#00796B', bg: '#E0F2F1', nome: 'Verde-água' },
+            indigo: { color: '#3949AB', bg: '#E8EAF6', nome: 'Índigo' }
         };
+
+        // Nomes do Material Symbols, que são os mesmos que o bundle desenha em SVG.
+        var LINK_CAT_ICONS = [
+            'description', 'assignment', 'verified_user', 'chat', 'public', 'bar_chart',
+            'shopping_cart', 'code', 'person', 'folder', 'bookmark', 'star', 'info', 'help',
+            'flag', 'school', 'build', 'lightbulb', 'event', 'feedback'
+        ];
+
+        var LINK_CAT_BUILTIN = [
+            { key: 'tasks', label: 'Tarefas', color: 'cyan', icon: 'description' },
+            { key: 'ads', label: 'Ads', color: 'blue', icon: 'public' },
+            { key: 'analytics', label: 'GA4', color: 'orange', icon: 'bar_chart' },
+            { key: 'shopping', label: 'Shop', color: 'green', icon: 'shopping_cart' },
+            { key: 'tech', label: 'Tech', color: 'purple', icon: 'code' },
+            { key: 'hr', label: 'RH', color: 'red', icon: 'person' },
+            { key: 'lm', label: 'Forms', color: 'slate', icon: 'assignment' },
+            { key: 'qa', label: 'QA', color: 'amber', icon: 'verified_user' },
+            { key: 'suporte', label: 'Ajuda', color: 'sky', icon: 'chat' },
+            { key: 'feedback', label: 'Feedback', color: 'pink', icon: 'feedback' }
+        ];
+
+        // Itens no ar do módulo link_categories, e as propostas da própria pessoa.
+        var CUSTOM_LINK_CATS = [];
+        var MY_CAT_DRAFTS = [];
+
+        function parseCatValue(raw) {
+            try {
+                var v = JSON.parse(raw || '{}');
+                return {
+                    label: v.label || '', label_es: v.label_es || '', label_en: v.label_en || '',
+                    color: LINK_CAT_COLORS[v.color] ? v.color : 'slate',
+                    icon: LINK_CAT_ICONS.indexOf(v.icon) !== -1 ? v.icon : 'folder'
+                };
+            } catch (e) {
+                return { label: '', label_es: '', label_en: '', color: 'slate', icon: 'folder' };
+            }
+        }
+
+        // As embutidas, na ordem do produto, e depois as criadas pela tela.
+        function linkCategories() {
+            var lista = LINK_CAT_BUILTIN.map(function (c) {
+                return { key: c.key, label: c.label, color: c.color, icon: c.icon, custom: false };
+            });
+            CUSTOM_LINK_CATS.forEach(function (it) {
+                var v = parseCatValue(it.value);
+                lista.push({
+                    key: it.key, label: v.label || it.key, label_es: v.label_es, label_en: v.label_en,
+                    color: v.color, icon: v.icon, custom: true, itemId: it.id, lineage: it.lineage
+                });
+            });
+            return lista;
+        }
+
+        // Chave sem definição (dado antigo): aparece com o nome da própria chave,
+        // em vez de sumir com os links que estão nela.
+        function linkCatByKey(key) {
+            var todas = linkCategories();
+            for (var i = 0; i < todas.length; i++) {
+                if (todas[i].key === key) return todas[i];
+            }
+            return { key: key, label: key, color: 'slate', icon: 'folder', custom: false, unknown: true };
+        }
+
+        function linkCatLabel(key) {
+            return linkCatByKey(key).label;
+        }
 
         function toast(msg, isErr) {
             var t = document.getElementById('toast');
@@ -31,11 +114,17 @@
         // viajam como um item só e o par PT/ES fica junto do link que descreve,
         // em vez de num mapa paralelo como o LINK_DESC_ES de hoje.
         function parseLinkValue(raw) {
+            var vazio = {
+                name: '', url: '', desc: '', desc_es: '', desc_en: '',
+                about: '', about_es: '', about_en: '', when: '', when_es: '', when_en: ''
+            };
             try {
                 var v = JSON.parse(raw || '{}');
-                return { name: v.name || '', url: v.url || '', desc: v.desc || '', desc_es: v.desc_es || '', desc_en: v.desc_en || '' };
+                var out = {};
+                Object.keys(vazio).forEach(function (k) { out[k] = v[k] || ''; });
+                return out;
             } catch (e) {
-                return { name: '', url: '', desc: '', desc_es: '', desc_en: '' };
+                return vazio;
             }
         }
 
@@ -359,6 +448,8 @@
             publish_direct: 'publicou',
             publish_direct_update: 'republicou',
             unpublish_direct: 'tirou do ar',
+            highlight_end: 'encerrou o destaque',
+            link_move: 'moveu o link',
             access_change: 'mudou o acesso de',
             seed: 'semeou',
             notify_failed: 'não conseguiu avisar sobre',
@@ -380,7 +471,8 @@
         var ATIVIDADE_MODULO = {
             links: 'Links', call_script: 'Call Script', note_template: 'Case Notes',
             task_screenshots: 'Tasks', email_template: 'E-mails', tips: 'Dicas',
-            broadcast: 'Avisos', bau_availability: 'Disponibilidade', people: 'Pessoas'
+            broadcast: 'Avisos', bau_availability: 'Disponibilidade', people: 'Pessoas',
+            link_categories: 'Categorias de link', link_highlights: 'Destaques'
         };
 
         var FOTO_PADRAO = 'https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg';
@@ -537,6 +629,7 @@
             var direto = [];
             if (canPropose('broadcast')) direto.push('avisos');
             if (canPropose('bau_availability')) direto.push('disponibilidade BAU');
+            if (canPropose('link_highlights')) direto.push('destaques de links');
 
             cartoes.push(
                 '<div class="card">' +
@@ -641,6 +734,8 @@
                     '<div class="ag-titulo">' + esc(v.title || item.label) + '</div>' +
                     '<div class="ag-texto">' + esc(v.text || '') + '</div>' +
                     '</div>' + avisoDaJanelaNaPrevia(v);
+            } else if (item.module === 'link_highlights') {
+                corpo = previaDoDestaque(hlParse({ value: item.value, label: item.label }), idioma);
             } else if (item.module === 'task_screenshots') {
                 corpo = previaDaTask(v, idioma);
             } else if (item.module === 'email_template') {
@@ -858,7 +953,8 @@
         var DESTINO_DO_MODULO = {
             links: 'links', call_script: 'callscript', note_template: 'notes',
             task_screenshots: 'tasks', email_template: 'emails', tips: 'tips',
-            broadcast: 'broadcast', bau_availability: 'bau', people: 'people'
+            broadcast: 'broadcast', bau_availability: 'bau', people: 'people',
+            link_categories: 'links', link_highlights: 'links'
         };
 
         function destinoDoModulo(module) {
@@ -1008,6 +1104,8 @@
             }
 
             gate('links', 'links-new-btn', 'links-note');
+            gate('link_categories', 'lk-cat-btn', 'lkcat-note');
+            gate('link_highlights', 'hl-new-btn', 'hl-note');
             gate('call_script', 'cs-new-btn', 'cs-note');
             gate('tips', 'tp-new-btn', 'tp-note');
             gate('email_template', null, 'em-note');

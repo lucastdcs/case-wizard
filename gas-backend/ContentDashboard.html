@@ -211,22 +211,61 @@
                 </div>
             </section>
 
-            <!-- TAB: Links -->
+            <!-- TAB: Links
+                 Duas vistas no mesmo destino: a BIBLIOTECA (links e categorias,
+                 passam por revisão) e os DESTAQUES da home do agente (vão ao ar
+                 na hora e expiram sozinhos). O regime de cada vista é dito no
+                 próprio painel, porque o trilho só tem um item para os dois. -->
             <section id="pane-links">
-                <div class="note hidden" id="links-note"></div>
-                <div class="row-between" style="margin-bottom:8px">
-                    <div>
-                        <div class="card-title" data-i18n="linksLive">Links no ar</div>
-                        <p class="card-sub" id="links-summary">Carregando…</p>
+                <div class="lk-top">
+                    <div class="lk-seg" role="tablist" aria-label="Vista de Links">
+                        <button type="button" role="tab" id="lk-seg-lib" aria-selected="true"
+                            onclick="lkSwitchView('lib')">Biblioteca <span class="lk-seg-n" id="lk-n-lib"></span></button>
+                        <button type="button" role="tab" id="lk-seg-hl" aria-selected="false"
+                            onclick="lkSwitchView('hl')">Destaques <span class="lk-seg-n" id="lk-n-hl"></span></button>
                     </div>
-                    <button class="btn btn-primary" id="links-new-btn" onclick="openLinkEditor(null)">
-                        <span class="material-symbols-rounded" style="font-size:19px">add</span> <span data-i18n="newLink">Novo link</span>
-                    </button>
+                    <div class="lk-top-actions" id="lk-actions-lib">
+                        <button class="btn btn-ghost" id="lk-cat-btn" onclick="openCategoryEditor(null)">
+                            <span class="material-symbols-rounded" style="font-size:19px" aria-hidden="true">new_label</span> Nova categoria
+                        </button>
+                        <button class="btn btn-primary" id="links-new-btn" onclick="openLinkEditor(null)">
+                            <span class="material-symbols-rounded" style="font-size:19px" aria-hidden="true">add</span> <span data-i18n="newLink">Novo link</span>
+                        </button>
+                    </div>
+                    <div class="lk-top-actions hidden" id="lk-actions-hl">
+                        <button class="btn btn-primary" id="hl-new-btn" onclick="openHighlightEditor(null)">
+                            <span class="material-symbols-rounded" style="font-size:19px" aria-hidden="true">add</span> Novo destaque
+                        </button>
+                    </div>
                 </div>
-                <div class="card" id="links-list">
-                    <div class="skeleton"></div>
-                    <div class="skeleton"></div>
-                    <div class="skeleton"></div>
+
+                <div id="lk-view-lib">
+                    <div class="note hidden" id="links-note"></div>
+                    <div class="note hidden" id="lkcat-note"></div>
+                    <p class="card-sub" id="links-summary" style="margin-bottom:12px">Carregando…</p>
+                    <div class="card" id="lk-cats"></div>
+                    <div class="card" id="links-list">
+                        <div class="skeleton"></div>
+                        <div class="skeleton"></div>
+                        <div class="skeleton"></div>
+                    </div>
+                </div>
+
+                <div id="lk-view-hl" class="hidden">
+                    <div class="note hidden" id="hl-note"></div>
+                    <div class="card" id="hl-list">
+                        <div class="skeleton"></div>
+                        <div class="skeleton"></div>
+                    </div>
+                    <div class="card lk-info">
+                        <h4>Como funciona</h4>
+                        <ul>
+                            <li><span class="material-symbols-rounded" aria-hidden="true">bolt</span><span><b>Publica direto.</b> Vale na hora, sem fila de aprovação. O link em si continua passando pela fila.</span></li>
+                            <li><span class="material-symbols-rounded" aria-hidden="true">looks_3</span><span><b>No máximo 3 ao mesmo tempo.</b> Para publicar outro, encerre um ou agende para depois.</span></li>
+                            <li><span class="material-symbols-rounded" aria-hidden="true">schedule</span><span><b>Horário da planilha</b> (<span id="hl-tz">America/Sao_Paulo</span>), o mesmo dos Avisos. Quem está em outro fuso vê no mesmo instante.</span></li>
+                            <li><span class="material-symbols-rounded" aria-hidden="true">history</span><span><b>Nada se perde.</b> Quando termina, o destaque vira histórico e alimenta o &ldquo;Saíram do destaque&rdquo; do agente por 30 dias.</span></li>
+                        </ul>
+                    </div>
                 </div>
             </section>
 

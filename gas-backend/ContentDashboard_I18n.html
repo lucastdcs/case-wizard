@@ -43,7 +43,7 @@
                 dest_home: 'Hoje',
                 dest_home_sub: 'O que está acontecendo no conteúdo agora.',
                 dest_links: 'Links',
-                dest_links_sub: 'Atalhos que o agente abre pela pílula. Editar cria uma proposta.',
+                dest_links_sub: 'Atalhos que o agente abre pela pílula e os destaques da home. Links e categorias passam por revisão; destaques vão ao ar na hora.',
                 dest_callscript: 'Call Script',
                 dest_callscript_sub: 'O roteiro da ligação, passo a passo. Editar cria uma proposta.',
                 dest_notes: 'Case Notes',
@@ -126,6 +126,8 @@
 
                 // Aviso de quem vê o módulo mas não propõe nele.
                 gate_links: function (r) { return 'Seu papel (' + r + ') vê os links, mas não propõe alterações neste módulo.'; },
+                gate_link_categories: function (r) { return 'Seu papel (' + r + ') vê as categorias, mas não propõe alterações neste módulo.'; },
+                gate_link_highlights: function (r) { return 'Seu papel (' + r + ') vê os destaques no ar, mas não publica neste módulo.'; },
                 gate_call_script: function (r) { return 'Seu papel (' + r + ') vê o roteiro, mas não propõe alterações neste módulo.'; },
                 gate_tips: function (r) { return 'Seu papel (' + r + ') vê as dicas, mas não propõe alterações neste módulo.'; },
                 gate_email_template: function (r) { return 'Seu papel (' + r + ') vê os modelos, mas não propõe alterações neste módulo.'; },
@@ -160,7 +162,7 @@
                 dest_home: 'Hoy',
                 dest_home_sub: 'Lo que está pasando con el contenido ahora.',
                 dest_links: 'Links',
-                dest_links_sub: 'Accesos directos que el agente abre desde la píldora. Editar crea una propuesta.',
+                dest_links_sub: 'Accesos directos que el agente abre desde la píldora y los destacados del inicio. Links y categorías pasan por revisión; los destacados salen al aire al instante.',
                 dest_callscript: 'Call Script',
                 dest_callscript_sub: 'El guion de la llamada, paso a paso. Editar crea una propuesta.',
                 dest_notes: 'Case Notes',
@@ -242,6 +244,8 @@
                 close: 'Cerrar',
 
                 gate_links: function (r) { return 'Tu rol (' + r + ') ve los links, pero no propone cambios en este módulo.'; },
+                gate_link_categories: function (r) { return 'Tu rol (' + r + ') ve las categorías, pero no propone cambios en este módulo.'; },
+                gate_link_highlights: function (r) { return 'Tu rol (' + r + ') ve los destacados publicados, pero no publica en este módulo.'; },
                 gate_call_script: function (r) { return 'Tu rol (' + r + ') ve el guion, pero no propone cambios en este módulo.'; },
                 gate_tips: function (r) { return 'Tu rol (' + r + ') ve los consejos, pero no propone cambios en este módulo.'; },
                 gate_email_template: function (r) { return 'Tu rol (' + r + ') ve las plantillas, pero no propone cambios en este módulo.'; },
@@ -276,7 +280,7 @@
                 dest_home: 'Today',
                 dest_home_sub: "What's happening with content right now.",
                 dest_links: 'Links',
-                dest_links_sub: 'Shortcuts the agent opens from the pill. Editing creates a proposal.',
+                dest_links_sub: 'Shortcuts the agent opens from the pill and the featured items on its home. Links and categories go through review; highlights go live immediately.',
                 dest_callscript: 'Call Script',
                 dest_callscript_sub: 'The call script, step by step. Editing creates a proposal.',
                 dest_notes: 'Case Notes',
@@ -358,6 +362,8 @@
                 close: 'Close',
 
                 gate_links: function (r) { return 'Your role (' + r + ') can see the links but cannot propose changes in this module.'; },
+                gate_link_categories: function (r) { return 'Your role (' + r + ') can see the categories but cannot propose changes in this module.'; },
+                gate_link_highlights: function (r) { return 'Your role (' + r + ') can see live highlights but cannot publish in this module.'; },
                 gate_call_script: function (r) { return 'Your role (' + r + ') can see the script but cannot propose changes in this module.'; },
                 gate_tips: function (r) { return 'Your role (' + r + ') can see the tips but cannot propose changes in this module.'; },
                 gate_email_template: function (r) { return 'Your role (' + r + ') can see the templates but cannot propose changes in this module.'; },

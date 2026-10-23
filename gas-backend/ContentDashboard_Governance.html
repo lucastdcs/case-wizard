@@ -209,10 +209,25 @@
                         '\nAcesso: ' + (peopleIsOverhead(v.roleCategory) ? 'liderança (abre o TL Dashboard)' : 'agente');
                 }
                 if (v && v.url) {
+                    // A prévia também é conteúdo que o agente lê: se ela mudou, o
+                    // revisor precisa ver o que mudou, e não só a descrição.
+                    var previa = '';
+                    ['about', 'when'].forEach(function (campo) {
+                        var rotulo = campo === 'about' ? 'O que é' : 'Quando usar';
+                        [['', 'PT'], ['_es', 'ES'], ['_en', 'EN']].forEach(function (l) {
+                            if (v[campo + l[0]]) previa += '\n' + rotulo + ' (' + l[1] + '): ' + v[campo + l[0]];
+                        });
+                    });
                     return 'Nome: ' + v.name + '\nURL: ' + v.url +
                         '\nDescrição (PT): ' + (v.desc || '—') +
                         '\nDescrição (ES): ' + (v.desc_es || '—') +
-                        '\nDescrição (EN): ' + (v.desc_en || '—');
+                        '\nDescrição (EN): ' + (v.desc_en || '—') + previa;
+                }
+                // Categoria de link: o revisor vê o nome nos três idiomas e o que vai
+                // aparecer na barra do agente.
+                if (v && v.label && v.color && v.icon) {
+                    return 'Nome (PT): ' + v.label + '\nNome (ES): ' + (v.label_es || '—') +
+                        '\nNome (EN): ' + (v.label_en || '—') + '\nCor: ' + v.color + '\nÍcone: ' + v.icon;
                 }
                 // Modelo de e-mail: o revisor compara ASSUNTO e CORPO, não um
                 // objeto JSON. Sem isto o diff marcava aspas e chaves como se
@@ -918,7 +933,8 @@
         var ROL_MODULO_NOME = {
             links: 'Links', call_script: 'Call Script', note_template: 'Case Notes',
             task_screenshots: 'Tasks', email_template: 'E-mails', tips: 'Dicas',
-            broadcast: 'Avisos', bau_availability: 'Disponibilidade', people: 'Pessoas'
+            broadcast: 'Avisos', bau_availability: 'Disponibilidade', people: 'Pessoas',
+            link_categories: 'Categorias de link', link_highlights: 'Destaques'
         };
 
         function loadRoles() {

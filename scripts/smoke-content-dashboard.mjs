@@ -84,7 +84,8 @@ const SESSOES = {
         canApprove: true, canManageAccess: true, canManageRoles: true,
         canViewAudit: true, canSelfApprove: true,
         proposableModules: ['links', 'call_script', 'email_template', 'note_template',
-            'task_screenshots', 'tips', 'broadcast', 'bau_availability', 'people'],
+            'task_screenshots', 'tips', 'broadcast', 'bau_availability', 'people',
+            'link_categories', 'link_highlights'],
     },
     qa: {
         ldap: 'qapessoa', role: 'QA', hasAccess: true,
@@ -94,7 +95,7 @@ const SESSOES = {
     wfm: {
         ldap: 'wfmpessoa', role: 'WFM', hasAccess: true,
         canApprove: false, canManageAccess: false, canSelfApprove: false,
-        proposableModules: ['links', 'bau_availability'],
+        proposableModules: ['links', 'bau_availability', 'link_categories'],
     },
     semAcesso: { ldap: 'estranho', role: null, hasAccess: false },
 };
@@ -104,8 +105,9 @@ const SESSOES = {
 // regime de cada módulo.
 const ACOES = ['view', 'propose', 'approve', 'publish', 'rollback'];
 const MODULOS_MATRIZ = ['links', 'call_script', 'note_template', 'task_screenshots',
-    'email_template', 'tips', 'broadcast', 'bau_availability', 'people'];
-const DIRETOS = ['broadcast', 'bau_availability'];
+    'email_template', 'tips', 'broadcast', 'bau_availability', 'people',
+    'link_categories', 'link_highlights'];
+const DIRETOS = ['broadcast', 'bau_availability', 'link_highlights'];
 
 const ACOES_POR_MODULO = MODULOS_MATRIZ.reduce((acc, m) => {
     acc[m] = DIRETOS.includes(m)
@@ -233,6 +235,7 @@ const ITENS = {
         },
     ],
     bau_availability: [], people: [],
+    link_categories: [], link_highlights: [],
 };
 
 // Duas versões do mesmo link: é o mínimo para provar que a versão arquivada
@@ -296,7 +299,8 @@ const AUDITORIA = [
 // ------------------------------------------------------- montagem da página
 async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', draftsDe = null,
     fila = [], atividade = [], matriz = MATRIZ, confirmarSalvar = null,
-    versaoVista = VERSAO, idiomaSalvo = null, idiomaDoPerfil = null } = {}) {
+    versaoVista = VERSAO, idiomaSalvo = null, idiomaDoPerfil = null,
+    itensExtra = null, agoraServidor = '2026-10-23T12:00', erroDoCheck = null } = {}) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
     page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
 
@@ -318,7 +322,8 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
     // O dublê precisa existir ANTES do script da página rodar: o boot dispara
     // no DOMContentLoaded.
     await page.addInitScript(({ sessao, itens, falhar, historico, rascunhos, pendentes, atividade,
-        matriz, respostaDoSalvar, auditoria, versaoVista, idiomaSalvo, idiomaDoPerfil }) => {
+        matriz, respostaDoSalvar, auditoria, versaoVista, idiomaSalvo, idiomaDoPerfil,
+        agoraServidor, erroDoCheck }) => {
         try {
             if (versaoVista) localStorage.setItem('cw_content_seen_version', versaoVista);
             else localStorage.removeItem('cw_content_seen_version');
@@ -424,6 +429,9 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
             getNoteFieldCatalog: () => ({ fields: {}, substatus: [] }),
             saveAndSubmitContentDraft: () => ({ status: 'success', draftId: 'drf_novo' }),
             publishContentDirect: () => ({ status: 'success', itemId: 'itm_novo', version: 1 }),
+            getLinkHighlightsConfig: () => ({ now: agoraServidor, timeZone: 'America/Sao_Paulo', maxActive: 3, endedDays: 30 }),
+            checkLinkHighlight: () => (erroDoCheck ? { ok: false, error: erroDoCheck } : { ok: true }),
+            endLinkHighlight: () => ({ status: 'success' }),
             unpublishContentDirect: () => ({ status: 'success' }),
             approveContentDraft: () => ({ status: 'success', version: 1, action: 'upsert' }),
             rejectContentDraft: () => ({ status: 'success' }),
@@ -468,10 +476,10 @@ async function abrir({ sessao = 'admin', falharRascunhosDe = null, hash = '', dr
             writable: true,
         });
     }, {
-        sessao: SESSOES[sessao], itens: ITENS, falhar: falharRascunhosDe,
+        sessao: SESSOES[sessao], itens: Object.assign({}, ITENS, itensExtra || {}), falhar: falharRascunhosDe,
         historico: HISTORICO, rascunhos: draftsDe, pendentes: fila, atividade,
         matriz, respostaDoSalvar: confirmarSalvar, auditoria: AUDITORIA,
-        versaoVista, idiomaSalvo, idiomaDoPerfil,
+        versaoVista, idiomaSalvo, idiomaDoPerfil, agoraServidor, erroDoCheck,
     });
 
     await page.goto('file://' + ARQUIVO + hash, { waitUntil: 'domcontentloaded' });
@@ -1932,6 +1940,392 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         // Uma prévia que mostra o cartão sem dizer que ele já saiu do ar é uma
         // prévia que afirma o contrário do que está acontecendo.
         verdade(/Nenhum agente vê isto agora/.test(texto), 'faltou o aviso da janela: ' + texto);
+    });
+
+    await page.close();
+}
+
+// ------------------------------------------- links: biblioteca, categorias, destaques (ADR-0018)
+//
+// O "agora" do servidor é fixo (2026-10-23T12:00, fuso da planilha): a tela não
+// pode decidir o que está no ar pelo relógio do navegador de quem olha.
+const linkDe = (id, key, valor, lineage) => ({
+        id, module: 'links', key, field: '', lang: 'ALL', label: valor.name, version: 1, status: 'live',
+        publishedBy: 'lucaste', publishedAt: '2026-09-01T10:00:00Z', sortOrder: 0, lineage: lineage || id,
+        value: JSON.stringify(valor),
+    });
+const destaque = (id, linkLineage, over) => ({
+        id, key: id, module: 'link_highlights', field: 'highlight', lang: 'ALL', label: 'Destaque ' + id,
+        version: 1, status: 'live', publishedBy: 'lucaste', publishedAt: '2026-10-20T10:00:00Z', sortOrder: 0, lineage: id,
+        value: JSON.stringify(Object.assign({
+            linkLineage, headline: 'Destaque ' + id, blurb: 'Resumo ' + id, position: 'secondary',
+            startsAt: '2026-10-20T08:00', endsAt: '2026-10-31T18:00',
+        }, over)),
+    });
+
+const EXTRA = {
+        links: [
+            ITENS.links[0],
+            linkDe('itm_l2', 'feedback', { name: 'Elogios', url: 'https://go/elogios', desc: 'Feedback positivo', about: 'Formulário de elogios.', when: 'Quando um colega merece reconhecimento.' }, 'lin_l2'),
+            linkDe('itm_l3', 'treinamento', { name: 'Curso de onboarding', url: 'https://go/curso', desc: 'Para quem entrou agora' }, 'lin_l3'),
+            linkDe('itm_l4', 'chave_orfa', { name: 'Link órfão', url: 'https://go/orfao', desc: 'Sem categoria definida' }, 'lin_l4'),
+        ],
+        link_categories: [{
+            id: 'cat_1', module: 'link_categories', key: 'treinamento', field: '', lang: 'ALL', label: 'Treinamento', version: 1,
+            status: 'live', publishedBy: 'lucaste', publishedAt: '2026-10-01T10:00:00Z', sortOrder: 0, lineage: 'cat_1',
+            value: JSON.stringify({ label: 'Treinamento', label_en: 'Training', color: 'teal', icon: 'school' }),
+        }],
+        link_highlights: [
+            destaque('h_a', 'lin_l2', { position: 'main', headline: 'Novo formulário de elogios' }),
+            destaque('h_b', 'lin_l3', { startsAt: '2026-10-21T08:00', endsAt: '' }),
+            destaque('h_f', 'lin_removido', { headline: 'Destaque de link que saiu', endsAt: '2026-10-25T18:00' }),
+            destaque('h_c', 'itm_1', { startsAt: '2026-11-03T08:00', endsAt: '2026-11-10T08:00' }),
+            destaque('h_d', 'itm_1', { startsAt: '2026-10-10T08:00', endsAt: '2026-10-20T18:00' }),
+            destaque('h_e', 'itm_1', { startsAt: '2026-07-10T08:00', endsAt: '2026-08-01T18:00' }),
+        ],
+    };
+
+const chamadas = (page, metodo) => page.evaluate((m) => window.__chamadas.filter(c => c.metodo === m), metodo);
+const ultimaChamada = async (page, metodo) => { const c = await chamadas(page, metodo); return c[c.length - 1]; };
+const abrirLinks = (extra = {}) => abrir(Object.assign({ sessao: 'admin', hash: '#/links', itensExtra: EXTRA }, extra));
+
+
+{
+    const page = await abrirLinks();
+    await page.waitForSelector('#links-list .item-row', { timeout: 5000 });
+    await page.waitForSelector('#hl-list .lk-hl-row', { state: 'attached', timeout: 5000 });
+
+    await check('Links tem duas vistas, abre na Biblioteca e cada uma diz quantos itens tem', async () => {
+        igual(await page.locator('#lk-seg-lib').getAttribute('aria-selected'), 'true', 'Biblioteca ativa');
+        verdade(await page.locator('#lk-view-lib').isVisible() && !(await page.locator('#lk-view-hl').isVisible()), 'só a biblioteca');
+        igual((await page.locator('#lk-n-lib').textContent()).trim(), '4', 'links');
+        igual((await page.locator('#lk-n-hl').textContent()).trim(), '3 no ar', 'destaques no ar');
+    });
+
+    await check('as categorias do sistema e a criada pela tela aparecem; só a criada se edita e se tira do ar', async () => {
+        const chips = await page.locator('#lk-cats .lk-chip').allTextContents();
+        verdade(chips.some(c => c.includes('Feedback')), 'a categoria Feedback precisa existir: ' + chips.join('|'));
+        verdade(chips.some(c => c.includes('Treinamento')), 'a categoria criada');
+        igual(await page.locator('#lk-cats .lk-chip').count(), 11, '10 do sistema + 1 criada');
+        igual(await page.locator('#lk-cats .lk-chip .btn-icon').count(), 2, 'editar e tirar do ar, só na criada');
+    });
+
+    await check('os links agrupam na ordem do produto, e a chave sem definição aparece sob o próprio nome', async () => {
+        const cabs = await page.locator('#links-list .cat-head').allTextContents();
+        const nomes = cabs.map(c => c.replace(/\s*\d+\s*$/, '').trim());
+        igual(nomes, ['Tarefas', 'Feedback', 'Treinamento', 'chave_orfa']);
+    });
+
+    await check('link sem prévia diz "sem prévia"; com prévia, não', async () => {
+        const linhas = await page.locator('#links-list .item-row').allTextContents();
+        const por = (nome) => linhas.find(l => l.includes(nome));
+        verdade(por('Fila de tarefas').includes('sem prévia'), 'Fila de tarefas');
+        verdade(!por('Elogios').includes('sem prévia'), 'Elogios tem prévia');
+    });
+
+    await check('Destaques: três vagas, no ar / agendados / encerrados, e o que saiu há mais de 30 dias avisa', async () => {
+        await page.locator('#lk-seg-hl').click();
+        verdade(await page.locator('#lk-view-hl').isVisible(), 'vista de destaques');
+        verdade((await page.locator('.lk-cap').textContent()).includes('3 de 3 vagas'), 'vagas');
+        const grupos = await page.locator('.lk-group').allTextContents();
+        verdade(grupos[0].startsWith('No ar agora') && grupos[1].startsWith('Agendados') && grupos[2].startsWith('Encerrados'), grupos.join('|'));
+        const linhas = await page.locator('.lk-hl-row').allTextContents();
+        verdade(linhas.some(l => l.includes('Destaque h_e') && l.includes('já não aparece no app do agente')), 'o de 08/2026 está fora do app');
+        verdade(linhas.some(l => l.includes('Destaque de link que saiu') && l.includes('link removido do ar')), 'link removido é dito');
+    });
+
+    await check('a ordem do destaque no ar é a do app: principal primeiro', async () => {
+        const titulos = await page.locator('.lk-hl-row .lk-hl-title').allTextContents();
+        igual(titulos[0], 'Novo formulário de elogios');
+    });
+
+    await check('Encerrar agora pede confirmação e chama o servidor com o item certo', async () => {
+        await page.locator('.lk-hl-row', { hasText: 'Novo formulário de elogios' }).getByText('Encerrar agora').click();
+        verdade((await page.locator('#modal-root').textContent()).includes('Saíram do destaque'), 'diz para onde o destaque vai');
+        await page.locator('#hl-fim-go').click();
+        await page.waitForTimeout(150);
+        igual((await ultimaChamada(page, 'endLinkHighlight')).args, ['h_a']);
+    });
+
+    await check('Cancelar um agendado o tira do ar sem passar por "encerrar"', async () => {
+        await page.locator('.lk-hl-row', { hasText: 'Destaque h_c' }).getByText('Cancelar').click();
+        await page.locator('#hl-canc-go').click();
+        await page.waitForTimeout(150);
+        igual((await ultimaChamada(page, 'unpublishContentDirect')).args, ['h_c']);
+    });
+
+    await check('"Como o agente vê" de um destaque mostra o cartão com o link e a prévia dele', async () => {
+        await page.locator('.lk-hl-row', { hasText: 'Novo formulário de elogios' }).getByText('Como o agente vê').click();
+        await page.waitForSelector('.lk-hero');
+        const t = await page.locator('#ag-corpo').textContent();
+        verdade(t.includes('Elogios') && t.includes('Novo formulário de elogios'), 'cartão');
+        verdade(t.includes('Quando um colega merece reconhecimento.'), 'a prévia do LINK aparece junto');
+        await page.keyboard.press('Escape');
+    });
+
+    await check('Novo destaque abre com a janela do SERVIDOR e avisa que as vagas estouram', async () => {
+        await page.locator('#hl-new-btn').click();
+        await page.waitForSelector('#hl-link');
+        igual(await page.locator('#hl-ini').inputValue(), '2026-10-23T12:00', 'início = agora do servidor, não do navegador');
+        igual(await page.locator('#hl-fim').inputValue(), '2026-10-30T12:00', 'fim = +7 dias');
+        const aviso = await page.locator('#hl-vagas').textContent();
+        verdade(aviso.includes('haveria') && aviso.includes('4') && aviso.includes('máximo é 3'), aviso);
+    });
+
+    await check('o limite de vagas considera o FUTURO: depois que os outros saem, cabe', async () => {
+        // h_b não tem fim, então segue ocupando UMA vaga; h_a e h_f saem antes.
+        await page.locator('#hl-ini').fill('2026-11-01T08:00');
+        await page.locator('#hl-fim').fill('2026-11-02T08:00');
+        const aviso = await page.locator('#hl-vagas').textContent();
+        verdade(aviso.includes('até') && aviso.includes('2 de 3'), aviso);
+    });
+
+    await check('o cartão da prévia acompanha o que se digita, no idioma escolhido', async () => {
+        await page.locator('#hl-link').selectOption('lin_l2');
+        await page.locator('#hl-h').fill('Elogios agora têm formulário próprio');
+        verdade((await page.locator('#hl-prev').textContent()).includes('Elogios agora têm formulário próprio'), 'título');
+        verdade((await page.locator('#hl-prev').textContent()).includes('Quando um colega merece reconhecimento.'), 'prévia do link');
+        await page.locator('#hl-tx-lang button[data-lang="es"]').click();
+        verdade((await page.locator('#hl-prev').textContent()).includes('Elogios agora têm formulário próprio'), 'ES sem tradução cai no PT');
+    });
+
+    await check('idioma sem texto é marcado como "falta", para ninguém descobrir só no app', async () => {
+        const rot = await page.locator('#hl-tx-lang button').allTextContents();
+        igual(rot, ['PT', 'ES: falta', 'EN: falta']);
+        await page.locator('#hl-h_es').fill('Los elogios tienen formulario');
+        igual((await page.locator('#hl-tx-lang button').nth(1).textContent()), 'ES');
+    });
+
+    await check('publicar: o servidor valida ANTES da confirmação, e só então publica', async () => {
+        await page.locator('#hl-save').click();
+        await page.waitForSelector('#pub-sim');
+        verdade((await page.locator('#pub-titulo').textContent()).includes('Publicar agora'), 'confirmação do alcance');
+        const antes = (await chamadas(page, 'publishContentDirect')).length;
+        igual(antes, 0, 'nada publicado antes de confirmar');
+        igual((await chamadas(page, 'checkLinkHighlight')).length, 1, 'validou antes');
+
+        await page.locator('#pub-sim').click();
+        await page.waitForTimeout(200);
+        const pub = await ultimaChamada(page, 'publishContentDirect');
+        igual(pub.args[0].module, 'link_highlights');
+        const v = JSON.parse(pub.args[0].value);
+        igual([v.linkLineage, v.headline, v.headline_es, v.position, v.startsAt, v.endsAt],
+            ['lin_l2', 'Elogios agora têm formulário próprio', 'Los elogios tienen formulario', 'secondary', '2026-11-01T08:00', '2026-11-02T08:00']);
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin', hash: '#/links', itensExtra: {
+        links: [ITENS.links[0]],
+        link_highlights: [],
+    }, erroDoCheck: 'Em 25/10 12:00 haveria 4 destaques no ar ao mesmo tempo, e o máximo é 3.' });
+    await page.waitForSelector('#links-list .item-row');
+
+    await check('recusa do servidor aparece na tela e NÃO abre a confirmação nem publica', async () => {
+        await page.locator('#lk-seg-hl').click();
+        await page.locator('#hl-new-btn').click();
+        await page.waitForSelector('#hl-link');
+        await page.locator('#hl-link').selectOption('itm_1');
+        await page.locator('#hl-h').fill('Qualquer um');
+        await page.locator('#hl-save').click();
+        await page.waitForTimeout(250);
+        verdade((await page.locator('#toast').textContent()).includes('máximo é 3'), 'erro do servidor na tela');
+        igual(await page.locator('#pub-sim').count(), 0, 'sem confirmação');
+        igual((await page.evaluate(() => window.__chamadas.filter(c => c.metodo === 'publishContentDirect').length)), 0, 'sem publicação');
+    });
+
+    await check('sem destaque nenhum, a vista diz o que fazer em vez de ficar em branco', async () => {
+        await page.keyboard.press('Escape');
+        verdade((await page.locator('#hl-list').textContent()).includes('Nenhum destaque ainda'), 'estado vazio');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin', hash: '#/links', itensExtra: EXTRA });
+    await page.waitForSelector('#links-list .item-row');
+
+    await check('Destacar, na linha de um link, abre o editor com esse link já escolhido', async () => {
+        await page.locator('#links-list .item-row', { hasText: 'Curso de onboarding' }).getByText('Destacar').click();
+        await page.waitForSelector('#hl-link');
+        igual(await page.locator('#hl-link').inputValue(), 'lin_l3');
+    });
+
+    await check('Reativar leva texto e link de um destaque encerrado, com janela nova', async () => {
+        await page.keyboard.press('Escape');
+        await page.locator('#lk-seg-hl').click();
+        await page.locator('.lk-hl-row', { hasText: 'Destaque h_d' }).getByText('Reativar').click();
+        await page.waitForSelector('#hl-link');
+        igual(await page.locator('#hl-h').inputValue(), 'Destaque h_d');
+        igual(await page.locator('#hl-ini').inputValue(), '2026-10-23T12:00', 'janela nova, a partir de agora');
+    });
+
+    await check('"sem data de fim" libera um destaque aberto e desliga o campo de fim', async () => {
+        await page.locator('#hl-sem-fim').check();
+        verdade(await page.locator('#hl-fim').isDisabled(), 'campo de fim desligado');
+        await page.keyboard.press('Escape');
+    });
+
+    await page.close();
+}
+
+{
+    const veneno = '<img src=x onerror="window.__xss=1">';
+    const link = {
+        id: 'itm_x', module: 'links', key: 'tasks', field: '', lang: 'ALL', label: 'x', version: 1, status: 'live',
+        publishedBy: 'lucaste', publishedAt: '2026-09-01T10:00:00Z', sortOrder: 0, lineage: 'lin_x',
+        value: JSON.stringify({ name: veneno, url: 'https://go/x', desc: veneno, about: veneno, when: veneno }),
+    };
+    const hl = {
+        id: 'h_x', key: 'h_x', module: 'link_highlights', field: 'highlight', lang: 'ALL', label: 'x', version: 1, status: 'live',
+        publishedBy: 'lucaste', publishedAt: '2026-10-20T10:00:00Z', sortOrder: 0, lineage: 'h_x',
+        value: JSON.stringify({ linkLineage: 'lin_x', headline: veneno, blurb: veneno, position: 'main', startsAt: '2026-10-20T08:00', endsAt: '' }),
+    };
+    const cat = {
+        id: 'cat_x', module: 'link_categories', key: 'veneno', field: '', lang: 'ALL', label: 'x', version: 1, status: 'live',
+        publishedBy: 'lucaste', publishedAt: '2026-10-01T10:00:00Z', sortOrder: 0, lineage: 'cat_x',
+        value: JSON.stringify({ label: veneno, color: 'red', icon: 'flag' }),
+    };
+    const page = await abrir({ sessao: 'admin', hash: '#/links', itensExtra: { links: [link], link_highlights: [hl], link_categories: [cat] } });
+    await page.waitForSelector('#links-list .item-row');
+    await page.waitForSelector('#hl-list .lk-hl-row', { state: 'attached' });
+
+    await check('nome, categoria, prévia e destaque com HTML aparecem como TEXTO — na lista, no editor e na prévia', async () => {
+        await page.locator('#lk-seg-hl').click();
+        await page.locator('.lk-hl-row').getByText('Editar').click();
+        await page.waitForSelector('#hl-prev .lk-hero');
+        await page.keyboard.press('Escape');
+        await page.locator('#lk-seg-lib').click();
+        await page.locator('#links-list .item-row').getByText('Editar').click();
+        await page.waitForSelector('#lnk-name');
+        igual(await page.evaluate(() => window.__xss), undefined, 'executou script');
+        igual(await page.locator('#lk-cats img, #hl-list img, #modal-root img, #links-list img').count(), 0, 'nasceu um <img>');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'admin', hash: '#/links', itensExtra: EXTRA });
+    await page.waitForSelector('#links-list .item-row');
+
+    await check('o editor de link oferece as categorias criadas e a prévia em três idiomas', async () => {
+        await page.locator('#links-new-btn').click();
+        await page.waitForSelector('#lnk-cat');
+        const opcoes = await page.locator('#lnk-cat option').allTextContents();
+        verdade(opcoes.includes('Feedback') && opcoes.includes('Treinamento'), opcoes.join('|'));
+        igual(await page.locator('#lnk-pv-lang button').count(), 3, 'PT, ES, EN');
+        igual(await page.locator('#lnk-pv-lang button').nth(1).textContent(), 'ES: falta');
+    });
+
+    await check('os contadores respeitam o limite da prévia (200 e 160) e avisam enquanto se digita', async () => {
+        await page.locator('#lnk-about').fill('a'.repeat(150));
+        igual((await page.locator('#lnk-about-n').textContent()).trim(), '150 / 200');
+        igual(await page.locator('#lnk-about').getAttribute('maxlength'), '200');
+        igual(await page.locator('#lnk-when').getAttribute('maxlength'), '160');
+    });
+
+    await check('a prévia viaja no valor do link, nos três idiomas', async () => {
+        await page.locator('#lnk-name').fill('Novo link');
+        await page.locator('#lnk-url').fill('https://go/novo');
+        await page.locator('#lnk-cat').selectOption('feedback');
+        await page.locator('#lnk-about').fill('O que é.');
+        await page.locator('#lnk-pv-lang button').nth(1).click();
+        await page.locator('#lnk-about_es').fill('Qué es.');
+        await page.locator('#lnk-when_es').fill('Cuándo usar.');
+        await page.locator('#lnk-save').click();
+        await page.waitForTimeout(200);
+        const c = await ultimaChamada(page, 'saveAndSubmitContentDraft');
+        igual(c.args[0].key, 'feedback');
+        const v = JSON.parse(c.args[0].value);
+        igual([v.about, v.about_es, v.when_es, v.about_en], ['O que é.', 'Qué es.', 'Cuándo usar.', '']);
+    });
+
+    await check('Nova categoria: o nome sugere a chave, cor e ícone mudam a prévia da barra', async () => {
+        await page.locator('#lk-cat-btn').click();
+        await page.waitForSelector('#cat-nome');
+        await page.locator('#cat-nome').fill('Ouvidoria');
+        igual(await page.locator('#cat-chave').inputValue(), 'ouvidoria');
+        await page.locator('#cat-cores [data-color="pink"]').click();
+        await page.locator('#cat-icones [data-icon="flag"]').click();
+        const prev = await page.locator('#cat-previa').evaluate((e) => ({ txt: e.textContent, cor: e.style.color }));
+        verdade(prev.txt.includes('flag') && prev.txt.includes('Ouvidoria'), prev.txt);
+        verdade(prev.cor !== '', 'a cor da prévia mudou');
+        igual(await page.locator('#cat-cores [data-color="pink"]').getAttribute('aria-pressed'), 'true');
+    });
+
+    await check('o nome é limitado ao que cabe na barra do agente (12 letras)', async () => {
+        igual(await page.locator('#cat-nome').getAttribute('maxlength'), '12');
+    });
+
+    await check('chave fora do formato é barrada na tela, e nada vai ao servidor', async () => {
+        await page.locator('#cat-chave').fill('Ab');
+        const antes = (await chamadas(page, 'saveAndSubmitContentDraft')).length;
+        await page.locator('#cat-save').click();
+        await page.waitForTimeout(150);
+        verdade((await page.locator('#toast').textContent()).includes('A chave precisa'), 'mensagem');
+        igual((await chamadas(page, 'saveAndSubmitContentDraft')).length, antes, 'não enviou');
+    });
+
+    await check('enviar a categoria vira UMA proposta, com cor e ícone da lista fechada', async () => {
+        await page.locator('#cat-chave').fill('ouvidoria');
+        await page.locator('#cat-save').click();
+        await page.waitForTimeout(200);
+        const c = await ultimaChamada(page, 'saveAndSubmitContentDraft');
+        igual(c.args[0].module, 'link_categories');
+        igual(c.args[0].key, 'ouvidoria');
+        const v = JSON.parse(c.args[0].value);
+        igual([v.label, v.color, v.icon], ['Ouvidoria', 'pink', 'flag']);
+    });
+
+    await check('editar uma categoria criada: a chave fica travada, porque cada link dela a guarda', async () => {
+        await page.locator('#lk-cats .lk-chip', { hasText: 'Treinamento' }).getByLabel(/Editar a categoria/).click();
+        await page.waitForSelector('#cat-chave');
+        verdade(await page.locator('#cat-chave').evaluate((e) => e.readOnly), 'chave só de leitura');
+        igual(await page.locator('#cat-chave').inputValue(), 'treinamento');
+    });
+
+    await check('tirar uma categoria com link dentro é explicado, e o botão fica desligado', async () => {
+        await page.keyboard.press('Escape');
+        await page.locator('#lk-cats .lk-chip', { hasText: 'Treinamento' }).getByLabel(/Tirar a categoria/).click();
+        verdade((await page.locator('#modal-root').textContent()).includes('ainda tem 1 link'), 'motivo');
+        verdade(await page.locator('#rm-go').isDisabled(), 'botão desligado');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'wfm', hash: '#/links', itensExtra: EXTRA });
+    await page.waitForSelector('#links-list .item-row');
+
+    await check('WFM cria categoria e link, mas NÃO publica destaque — e a tela diz por quê', async () => {
+        verdade(await page.locator('#lk-cat-btn').isVisible(), 'Nova categoria');
+        verdade(await page.locator('#links-new-btn').isVisible(), 'Novo link');
+        await page.locator('#lk-seg-hl').click();
+        verdade(!(await page.locator('#hl-new-btn').isVisible()), 'Novo destaque escondido');
+        verdade((await page.locator('#hl-note').textContent()).includes('não publica neste módulo'), 'nota do papel');
+        igual(await page.locator('.lk-hl-row button:has-text("Encerrar agora")').count(), 0, 'sem encerrar');
+        await page.locator('#lk-seg-lib').click();
+        igual(await page.locator('#links-list button:has-text("Destacar")').count(), 0, 'sem "Destacar" nas linhas');
+    });
+
+    await page.close();
+}
+
+{
+    const page = await abrir({ sessao: 'qa', hash: '#/links', itensExtra: EXTRA });
+    await page.waitForSelector('#links-list .item-row');
+
+    await check('QA só lê: sem Novo link, Nova categoria nem Novo destaque', async () => {
+        verdade(!(await page.locator('#links-new-btn').isVisible()), 'Novo link');
+        verdade(!(await page.locator('#lk-cat-btn').isVisible()), 'Nova categoria');
+        await page.locator('#lk-seg-hl').click();
+        verdade(!(await page.locator('#hl-new-btn').isVisible()), 'Novo destaque');
+        verdade(await page.locator('.lk-hl-row').first().isVisible(), 'mas enxerga o que está no ar');
     });
 
     await page.close();
