@@ -12,6 +12,42 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Formulário que se preenche por raspagem: zere pelo caso ANTES da captura lenta
+
+**Why**: o Pre-call Checklist captura tasks, telefone, e-mail, site e CID da tela do
+caso. A primeira versão decidia "é outro caso?" **depois** da captura, e a captura
+espera ~500ms pelo unmask da PII. Nesse intervalo o formulário do caso anterior
+ficava visível e editável, e dois defeitos saíam do mesmo desenho — os dois
+achados pelo smoke, nenhum pelo teste de unidade:
+
+1. dado do caso anterior (instruções, respostas Yes/No) à vista, e o botão Inserir
+   funcionando: dava para pôr no caso novo uma nota do caso velho;
+2. quem digitasse nesses 500ms tinha a resposta **apagada** quando a captura
+   terminava, percebia o caso novo e zerava o formulário.
+
+O conserto separa as duas perguntas pelo custo. "Qual caso está na tela?" (Case ID
++ CID) não depende de unmask nem de tradução e responde na hora; "o que há nos
+campos?" é a lenta. Reset do formulário na primeira, preenchimento na segunda, e
+Copiar/Inserir parados enquanto a segunda roda.
+
+O mesmo smoke achou uma terceira coisa: `captureClientEmail()` só confere se há um
+`@`, então o container com `a@b.com Click to view` passa inteiro. Quem leva o valor
+para um texto que sai do app extrai o que precisa (o endereço) em vez de confiar
+que a captura devolve só ele.
+
+**When to apply**: qualquer formulário que se preencha sozinho a partir da tela do
+CRM (SPA: o caso muda por baixo, sem recarregar). Antes de dar por pronto:
+
+- a decisão "mudou o caso?" precisa vir **antes** de qualquer espera da captura;
+- teste lendo o formulário **logo após abrir**, sem esperar a captura — esperar é
+  exatamente o que esconde a corrida (`esperarCaptura` passou instantaneamente no
+  caso novo porque as marcas do caso velho ainda estavam lá; só uma espera pelo
+  VALOR esperado pega isso);
+- contar animações pelo evento (`animationstart`), não por mutação de classe:
+  `classList.remove` de classe ausente também gera registro e dobra a contagem.
+
+---
+
 ## Semear não é sincronizar: `seedContentModule()` só escreve em módulo vazio
 
 **Why**: ao entregar o inglês eu escrevi, no PR e no `PLAN.md`, "rode

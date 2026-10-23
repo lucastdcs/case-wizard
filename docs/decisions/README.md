@@ -44,3 +44,4 @@ No ADR needed for trivial choices or implementation details.
 | [0012](0012-tasks-e-screenshots-na-central.md) | Catálogo de tasks e screenshots do Win Criteria na Central de Conteúdo | Accepted | 2026-09-09 |
 | [0013](0013-modulo-novo-herda-o-preset.md) | Módulo novo herda o preset nas casas que a planilha não tem | Accepted | 2026-09-09 |
 | [0017](0017-idioma-da-interface-da-central.md) | Idioma da interface da Central, separado do idioma do conteúdo | Accepted | 2026-10-14 |
+| [0018](0018-precall-checklist-no-case-notes.md) | Pre-call Checklist: sub-recurso do Case Notes, com a nota em inglês fixo | Accepted | 2026-10-23 |

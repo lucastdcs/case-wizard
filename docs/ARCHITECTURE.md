@@ -17,7 +17,7 @@ O ponto de entrada é o arquivo `app.js`. Ele orquestra o "boot" da aplicação 
 2.  **Styles & Fonts:** Injeta estilos globais e a fonte Roboto/Google Sans no `<head>` via `initGlobalStylesAndFont`.
 3.  **Audio Engine:** Inicializa o `SoundManager` e adiciona listeners globais para feedback tátil (sons de hover/click).
 4.  **Data Fetching:** Dispara a busca assíncrona das dicas (`DataService.fetchTips`) e resolve o perfil do agente (`fetchUserProfile`), que define o idioma da interface E o idioma do atendimento (`applyProfileLanguage` alimenta os dois, que são knobs independentes — ver ADR-0016) além do segmento que a pessoa atende (`setUserProfile`) — este último é o que decide qual disponibilidade BAU e quais avisos segmentados ela enxerga. Cada módulo busca o próprio conteúdo depois disso.
-5.  **Module Init:** Instancia cada módulo (Notes, Email, Call Script, Timezone, BAU Central, Minha Biblioteca, Configurações, etc.), que retornam suas funções de controle (ex: `toggleNotes`).
+5.  **Module Init:** Instancia cada módulo (Notes, Pre-call Checklist, Email, Call Script, Timezone, BAU Central, Minha Biblioteca, Configurações, etc.), que retornam suas funções de controle (ex: `toggleNotes`).
 6.  **Command Center:** Injeta a pílula flutuante principal, passando as funções de controle dos módulos para os botões.
 
 ## 3. Fluxo de Dados (Backend Serverless)

@@ -9,6 +9,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Pre-call Checklist** (ADR-0018). Formulário curto, no botão novo da pílula e
+  no Ctrl+K, que escreve o bloco "Pre-call checklist" no card de nota do caso (ou
+  só copia). Tasks, telefone, e-mail, site e CID que a tela do caso já mostra
+  chegam preenchidos, com a marca *Auto* e uma animação curta; nada capturado
+  sobrescreve o que o agente digitou, e outro caso na tela zera o formulário. As
+  cinco perguntas Yes/No e o Next steps começam sem resposta e precisam de uma
+  antes de gerar a nota; texto vazio sai como `None provided`. Quem não faz o
+  checklist (Live Meet, ou caso que chegou com menos de 1h) registra
+  `Completed: No` com o motivo. **A nota sai sempre em inglês**, nos três idiomas
+  da interface — é o que a auditoria do SOP procura —, e o texto inteiro é
+  travado por `npm run test:precall`. Só frontend: nada é gravado na planilha.
 - **A Central de Conteúdo troca o idioma da interface: português, espanhol ou
   inglês** (ADR-0017). Seletor novo no topo, separado do seletor do trilho, que
   passou a se chamar "Idioma do conteúdo" e segue decidindo só qual catálogo

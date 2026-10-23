@@ -7,6 +7,27 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Pre-call Checklist (2026-10-23, ADR-0018).** Formulário que escreve o
+      bloco "Pre-call checklist" no card de nota (ou copia), com tasks, telefone,
+      e-mail, site e CID capturados da tela do caso e marcados como *Auto*.
+      Sub-recurso do Case Notes (`src/modules/notes/precall/`), botão próprio na
+      pílula e entrada no Ctrl+K. Nota **sempre em inglês** (exceção à regra dos
+      dois idiomas); texto travado em `test:precall` (21) e a tela real em
+      `smoke:precall` (21, com interface ES × atendimento PT). Só frontend.
+      **Falta confirmar:**
+      - com quem audita, a linha de exceção `Completed: No → motivo` (veio do texto
+        do SOP, não de uma nota real) e as opções do *Next steps* — o SOP cita só
+        OOS e Infeasible como filtros, e a lista `Proceed / OOS / Infeasible` é a
+        mais curta que os cobre;
+      - no CRM ao vivo, a captura: contra as duas capturas reais de
+        `specs/fixtures/` (original e traduzida) ela devolveu tasks, telefone,
+        e-mail, site e CID corretos, mas as tasks chegam como **slug** no idioma
+        original (mapeadas para o nome do catálogo) e como frase em português na
+        tela traduzida (passam como vieram). O CID sai com traços
+        (`123-456-7890`, como o BAU Form grava) — confirmar que a auditoria aceita;
+      - ao fechar a release: nota de versão do modal do agente
+        (`RELEASE_NOTES`) falando do botão novo.
+
 - [~] **Idiomas na Central de Conteúdo + novidades da versão (2026-10-14,
       ADR-0017).** Seletor de idioma da **interface** (PT/ES/EN) no topo,
       separado do idioma do **conteúdo** (trilho); abre pelo `defaultLanguage`
