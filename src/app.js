@@ -53,7 +53,7 @@ function initApp() {
             console.warn("Áudio bloqueado:", audioErr);
         }
         
-        // B. Busca o conteúdo gerenciável — os oito módulos numa execução só.
+        // B. Busca o conteúdo gerenciável — os dez módulos numa execução só.
         //
         // Antes cada módulo pedia o seu quando era aberto, e o boot já disparava
         // três (dicas, avisos, disponibilidade). Numa virada de turno isso são
@@ -66,7 +66,11 @@ function initApp() {
         DataService.fetchContentModules([
             'tips', 'broadcast', 'bau_availability',
             'links', 'call_script', 'email_template', 'note_template',
-            'task_screenshots'
+            'task_screenshots',
+            // Categorias criadas pela tela e destaques da home de Links. Ficam
+            // aqui, e não só no módulo, pelo mesmo motivo dos outros: um módulo
+            // que pede o seu quando é aberto é uma execução a mais por agente.
+            'link_categories', 'link_highlights'
         ]);
 
         // C. Animação de Entrada (Aqui o 'Sherlock' começa a buscar o nome)
