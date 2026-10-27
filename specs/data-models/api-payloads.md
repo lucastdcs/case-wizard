@@ -238,7 +238,7 @@ e texto:
 ## Links: prévia, categorias e destaques (`links`, `link_categories`, `link_highlights`)
 
 Três módulos de `Content_Items`. Contexto e alternativas em
-`docs/decisions/0018-home-de-links-destaques-e-categorias.md`.
+`docs/decisions/0019-home-de-links-destaques-e-categorias.md`.
 
 ```json
 // links — Key = categoria. O Value ganha a prévia, no mesmo formato de sufixo

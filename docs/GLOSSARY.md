@@ -15,7 +15,7 @@ Keep definitions short and precise. The goal: a new developer (or Claude) quickl
 
 ## C
 
-**Categoria (de link)** — O grupo em que um link mora (Tasks, Ads, QA, Feedback…) e que vira um botão no trilho do módulo de Links. As 10 do sistema (`tasks, ads, analytics, shopping, tech, hr, lm, qa, suporte, feedback`) vêm no bundle; as demais são criadas pela Central (módulo `link_categories`, ADR-0018) com nome de até 12 letras, uma cor e um ícone de listas fechadas. A chave é imutável depois de publicada, porque cada link a guarda.
+**Categoria (de link)** — O grupo em que um link mora (Tasks, Ads, QA, Feedback…) e que vira um botão no trilho do módulo de Links. As 10 do sistema (`tasks, ads, analytics, shopping, tech, hr, lm, qa, suporte, feedback`) vêm no bundle; as demais são criadas pela Central (módulo `link_categories`, ADR-0019) com nome de até 12 letras, uma cor e um ícone de listas fechadas. A chave é imutável depois de publicada, porque cada link a guarda.
 
 **CID** — Customer/case identifier captured live during a call (Call Script Assistant) or from the CRM page.
 

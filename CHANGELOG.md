@@ -10,7 +10,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **Home dentro do módulo de Links: destaques, subdestaques e prévia ao passar o
-  mouse** (ADR-0018). A janela do módulo abre numa home com até **3 destaques**
+  mouse** (ADR-0019). A janela do módulo abre numa home com até **3 destaques**
   (1 principal + 2) — cada um com título, resumo e janela de exibição — e, logo
   abaixo, três listas: **Favoritos**, **Recentes** e **Saíram do destaque** (até
   30 dias). A biblioteca de links com busca continua a um clique, e a busca agora

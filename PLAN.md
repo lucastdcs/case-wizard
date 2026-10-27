@@ -7,7 +7,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
-- [~] **Home de Links: destaques, prévia e categorias (2026-10-23, ADR-0018).**
+- [~] **Home de Links: destaques, prévia e categorias (2026-10-23, ADR-0019).**
       Pedido do Lucas: agentes reclamam de procurar formulários/planilhas por
       nome dentro de Links. Entregue o desenho inteiro (variante A, painel de
       prévia fixo, janela de 860px) — backend, Central, app, testes e docs:
@@ -459,7 +459,7 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
 
 ## Waiting / blocked
 
-- [ ] **Links (ADR-0018): ordem de implantação.** Um pacote **antigo** quebra ao
+- [ ] **Links (ADR-0019): ordem de implantação.** Um pacote **antigo** quebra ao
       desenhar um link cuja categoria não tem tema (`CAT_THEMES[key].color`), e o
       `deploy.yml` sobe o backend **antes** do frontend (`needs: deploy-backend-gas`).
       Em cada ambiente (a branch `refactor-structure` promove o dev, `main` o

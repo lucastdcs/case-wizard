@@ -7,7 +7,7 @@
 // utilitários que tocam `document` no topo — para o `test:links` conseguir
 // importá-la em Node sem subir um DOM falso. Aqui não há import nenhum.
 //
-// Ver docs/decisions/0018-home-de-links-destaques-e-categorias.md.
+// Ver docs/decisions/0019-home-de-links-destaques-e-categorias.md.
 
 // ---------------------------------------------------------------------------
 // Cores e ícones: conjuntos FECHADOS.

@@ -1,4 +1,4 @@
-# 0018 — Home do módulo de Links: destaques com janela, prévia no link e categorias criadas pela Central
+# 0019 — Home do módulo de Links: destaques com janela, prévia no link e categorias criadas pela Central
 
 **Date**: 2026-10-23
 **Status**: Accepted

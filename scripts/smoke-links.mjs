@@ -1,6 +1,6 @@
 // scripts/smoke-links.mjs
 //
-// Smoke da home do módulo de Links no navegador de verdade (ADR-0018).
+// Smoke da home do módulo de Links no navegador de verdade (ADR-0019).
 //
 // Existe porque o que mudou não aparece num teste de unidade: a tela é uma
 // closure que monta DOM, reage a mouse e teclado e guarda estado em

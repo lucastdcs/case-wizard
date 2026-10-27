@@ -1945,7 +1945,7 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
     await page.close();
 }
 
-// ------------------------------------------- links: biblioteca, categorias, destaques (ADR-0018)
+// ------------------------------------------- links: biblioteca, categorias, destaques (ADR-0019)
 //
 // O "agora" do servidor é fixo (2026-10-23T12:00, fuso da planilha): a tela não
 // pode decidir o que está no ar pelo relógio do navegador de quem olha.

@@ -112,7 +112,7 @@
   para um link do fallback embutido, que nunca passou pela Central. Um ID que a Central já não
   publica é podado na leitura — **menos** quando o app está no fallback, que não
   sabe quais links existem e, podando, apagaria os favoritos de todo mundo.
-  Ver `docs/decisions/0018-home-de-links-destaques-e-categorias.md`.
+  Ver `docs/decisions/0019-home-de-links-destaques-e-categorias.md`.
 - A **contagem de uso** dos atalhos NÃO vive aqui: é local
   (`cw_shortcut_usage_v1` no `localStorage`), porque sincronizá-la significaria
   uma escrita na nuvem a cada Ctrl+K.

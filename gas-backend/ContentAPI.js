@@ -48,7 +48,7 @@ const CONTENT_MODULES = [
   // Categorias de link criadas pela tela (além das embutidas) e os destaques da
   // home do módulo de Links. São dois módulos e não campos do link porque têm
   // ciclo de vida e regime próprios: a categoria é catálogo (passa pela fila), o
-  // destaque é operação (vai ao ar na hora e expira sozinho). Ver ADR-0018.
+  // destaque é operação (vai ao ar na hora e expira sozinho). Ver ADR-0019.
   'link_categories', 'link_highlights'
 ];
 
@@ -1492,7 +1492,7 @@ function checkBauAvailability(rawValue) {
 }
 
 // ---------------------------------------------------------
-//  Validação: categorias e destaques do módulo de Links (ADR-0018)
+//  Validação: categorias e destaques do módulo de Links (ADR-0019)
 // ---------------------------------------------------------
 
 const CONTENT_LINK_MODULE = 'links';

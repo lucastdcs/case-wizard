@@ -2975,7 +2975,7 @@ check('a busca tem teto de resultados', () => {
   eq(r.length, 30, 'o teto precisa cortar, veio ' + r.length);
 });
 
-console.log('\n--- Links: categorias, prévia e destaques (ADR-0018) ---');
+console.log('\n--- Links: categorias, prévia e destaques (ADR-0019) ---');
 
 const agoraMais = (min) => UTILITIES_STUB.formatDate(new Date(Date.now() + min * 60000));
 const DIA = 24 * 60;

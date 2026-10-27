@@ -210,7 +210,7 @@ quadro também desorienta.
 ## Componentes UI
 - **Tags `<select>`:** Para economizar cliques em listas complexas (como os motivos de descarte), utilizar obrigatoriamente a semântica de agrupamento `<optgroup label="Categoria">`.
 - **Botões:** Manter o padrão translúcido/outline com hover states claros. Ao executar ações, os botões devem ser desabilitados temporariamente.
-- **Mestre-detalhe com prévia (Links, ADR-0018):** lista à esquerda, painel de
+- **Mestre-detalhe com prévia (Links, ADR-0019):** lista à esquerda, painel de
   prévia **fixo** à direita (janela de 860px). A prévia segue o `mouseover` e o
   `focusin` — teclado e mouse mostram a mesma coisa — e o painel **nunca fica
   vazio**: sem seleção ele mostra o destaque principal, e na falta dele o

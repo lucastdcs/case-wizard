@@ -19,7 +19,7 @@ com data de início e fim". Não funciona: o filtro de janela do `broadcast`
 (`janelaAgora_`) decide se o **item** aparece, então o link sumiria da
 biblioteca no dia em que o destaque vencesse. Por isso o destaque é uma linha
 própria (`link_highlights`) que aponta para a `Lineage` do link, é `live` a vida
-inteira e tem o `state` calculado **a cada leitura, depois do cache** (ADR-0018).
+inteira e tem o `state` calculado **a cada leitura, depois do cache** (ADR-0019).
 O mesmo desenho dá "Saíram do destaque" de graça: o item vencido continua lá,
 com `state: 'ended'`, por 30 dias.
 
