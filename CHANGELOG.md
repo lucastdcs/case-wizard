@@ -61,6 +61,16 @@ versions follow [Semantic Versioning](https://semver.org/).
   da interface — é o que a auditoria do SOP procura —, com título e rótulos em
   negrito, valores normais, uma linha em branco entre as linhas e "Gerado pelo
   Cases Wizard" no fim, e o texto inteiro é travado por `npm run test:precall`. Só frontend: nada é gravado na planilha.
+- **Pre-call Checklist avulso** (ADR-0020). `npm run build:precall` gera, em
+  `dist/`, um arquivo só com a raspagem e o formulário — sem pílula, splash,
+  Ctrl+K, outros módulos nem backend — para entregar a quem não usa o app
+  completo: `precall-standalone.js` (legível, para o console) e
+  `precall-bookmarklet.txt` (uma linha `javascript:`, para colar como URL de um
+  favorito, sem hospedagem). O formulário abre sozinho ao carregar e é o mesmo do
+  app (idêntico pixel a pixel); clicar no favorito de novo reabre, e com a janela
+  aberta relê o caso da tela. A interface segue o idioma do navegador. O arquivo
+  não leva o endereço do backend. Travado em `npm run smoke:precall-standalone`
+  (19 checagens, inclusive um CRM com Trusted Types obrigatório).
 - **Link para a documentação do projeto (deck de slides) onde o agente trava.**
   No bookmarklet, entra no "?" do cabeçalho de todo módulo — o ponto que o
   agente aperta quando está perdido, dentro do módulo em que travou — e na seção

@@ -7,6 +7,7 @@ Como o projeto roda injetado em um ambiente de produção de terceiros, **não e
 2.  **Build:** O projeto usa `esbuild` para empacotar os módulos em um único arquivo (`npm install` na primeira vez).
     * `npm run build` → `dist/bundle.js` (minificado, produção).
     * `npm run dev` → `dist/bundle-dev.js` (sem minificação, debug).
+    * `npm run build:precall` → `dist/precall-standalone.js` e `dist/precall-bookmarklet.txt`: só o Pre-call, num arquivo avulso, para entregar a quem não usa o app completo (ADR-0020). Não entra no CI nem no site: é gerado sob demanda.
     * O GitHub Actions roda o build automaticamente a cada push (`.github/workflows/deploy.yml`), não é necessário rodar manualmente antes de commitar.
 3.  **Deploy:**
     * Commits na branch `main` geram o `dist/bundle.js` (Produção), publicado em `cases-wizard.web.app`.

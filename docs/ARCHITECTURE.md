@@ -20,6 +20,9 @@ O ponto de entrada é o arquivo `app.js`. Ele orquestra o "boot" da aplicação 
 5.  **Module Init:** Instancia cada módulo (Notes, Pre-call Checklist, Email, Call Script, Timezone, BAU Central, Minha Biblioteca, Configurações, etc.), que retornam suas funções de controle (ex: `toggleNotes`).
 6.  **Command Center:** Injeta a pílula flutuante principal, passando as funções de controle dos módulos para os botões.
 
+### 2.1 Entrada avulsa do Pre-call (`src/precall-standalone.js`)
+Segundo ponto de entrada, sobre o mesmo módulo do Pre-call, para entregar só esse formulário (ADR-0020): cria a política Trusted Types `default` (primeiro import, porque `animations.js` já usa `innerHTML` ao carregar), injeta os estilos globais, abre o formulário e mais nada — sem pílula, splash, Ctrl+K nem perfil. O build (`npm run build:precall`) troca o `data-service` por um stub para o arquivo não levar os IDs do backend.
+
 ## 3. Fluxo de Dados (Backend Serverless)
 Como não possuímos um backend tradicional, utilizamos o **Google Apps Script** como API. O código-fonte do backend vive em [`gas-backend/`](../gas-backend/) neste mesmo repositório, sincronizado com o projeto Apps Script via [`clasp`](https://github.com/google/clasp) (job próprio dentro do mesmo `.github/workflows/deploy.yml`, separado do build do front-end — veja `docs/WORKFLOW.md` para o detalhe de push vs. promoção de implantação). O banco de dados é uma planilha Google Sheets (ver `specs/data-models/db-schema.md`).
 

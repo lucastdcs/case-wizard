@@ -46,3 +46,4 @@ No ADR needed for trivial choices or implementation details.
 | [0017](0017-idioma-da-interface-da-central.md) | Idioma da interface da Central, separado do idioma do conteúdo | Accepted | 2026-10-14 |
 | [0018](0018-precall-checklist-no-case-notes.md) | Pre-call Checklist: sub-recurso do Case Notes, com a nota em inglês fixo | Accepted | 2026-10-23 |
 | [0019](0019-home-de-links-destaques-e-categorias.md) | Home de Links: destaques com janela, prévia no link e categorias criadas pela Central | Accepted | 2026-10-23 |
+| [0020](0020-precall-checklist-build-avulso.md) | Pre-call Checklist: build avulso, sem backend, com o favorito dentro do arquivo | Accepted | 2026-10-27 |

@@ -52,6 +52,11 @@ This file differs from the long-term roadmap: it describes what is happening **n
         (`123-456-7890`, como o BAU Form grava) — confirmar que a auditoria aceita;
       - ao fechar a release: nota de versão do modal do agente
         (`RELEASE_NOTES`) falando do botão novo.
+      **Build avulso (2026-10-27, ADR-0020):** `npm run build:precall` gera um
+      arquivo só com raspagem + formulário (`dist/precall-standalone.js` e o
+      favorito `dist/precall-bookmarklet.txt`) para enviar ao SME que valida as
+      duas dúvidas acima; `smoke:precall-standalone` (19). Falta: o SME rodar no
+      CRM ao vivo — a captura e o Trusted Types só foram provados no mock.
 
 - [~] **Idiomas na Central de Conteúdo + novidades da versão (2026-10-14,
       ADR-0017).** Seletor de idioma da **interface** (PT/ES/EN) no topo,

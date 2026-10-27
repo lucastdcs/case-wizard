@@ -12,6 +12,42 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Arquivo avulso: o que o esbuild não poda, entrega; audite o arquivo, não o import
+
+**Why**: ao empacotar só o Pre-call, o `data-service.js` entrou inteiro no
+arquivo mesmo sem ninguém chamá-lo — ele tem um `console.log` no topo, então o
+esbuild o trata como módulo com efeito colateral e não poda nada dele. Dentro
+vinham os IDs de implantação do Apps Script (produção e dev), num arquivo feito
+para ir a alguém de fora do time. O `page-data.js` importa dele só por um
+`fetchUserProfile` que o Pre-call nunca usa. Nada falhava: o formulário abria
+normalmente, com o endereço do backend de carona.
+
+**When to apply**: ao gerar qualquer bundle que **não** vá ao CDN do app (entrega
+a terceiro, demo, colar no console). Rode o build, abra o arquivo e procure
+`script.google.com`/`AKfycb` antes de enviar; `smoke:precall-standalone` faz isso
+e também trava quais módulos entram. A correção é um plugin que troca o módulo
+por um stub no build (`scripts/build-precall-standalone.mjs`), não editar o
+módulo de produção.
+
+## Bookmarklet com o código dentro: política Trusted Types no primeiro import, e escape do `javascript:`
+
+**Why**: dois defeitos silenciosos de um favorito que carrega o próprio código.
+(1) O CRM exige Trusted Types, e `animations.js` grava um `<style>` com
+`innerHTML` **no import**. Criar a política `default` no corpo da entrada é
+tarde: os imports (hoisted) rodam antes, e o arquivo inteiro cai ao carregar.
+Por isso a política mora em `src/trusted-types-default.js`, primeiro import da
+entrada — reproduzido tirando o import: `Failed to set the 'innerHTML'… requires
+'TrustedHTML' assignment`. (2) Um favorito `javascript:` percent-decodifica a
+URL, descarta tudo depois de `#` e **apaga tabs e quebras de linha** antes de
+executar; sem escapar `% # \n \r \t`, o código quebra (ou, pior, é cortado no
+primeiro `#` de uma cor CSS) sem erro algum.
+
+**When to apply**: ao mudar a ordem dos imports de `precall-standalone.js`, ao
+trocar o gerador do favorito, ou ao criar outra entrada que rode fora do
+bookmarklet do app (que já cria a política antes do bundle). Testar num CRM com
+`require-trusted-types-for 'script'` e clicando um `<a href="javascript:…">` de
+verdade — rodar o texto decodificado num `evaluate` não exercita nenhum dos dois.
+
 ## Janela de exibição esconde o item inteiro: o que precisa sobreviver à janela mora em outra linha
 
 **Why**: o destaque do módulo de Links nasceu como ideia de "um campo do link
