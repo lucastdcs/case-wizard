@@ -199,6 +199,11 @@ async function abrirComo(browser, ldap) {
         }
     });
     await page.addInitScript(SHIM);
+    // Abre como quem já leu as novidades da Central: o modal abre sozinho 1,2s
+    // depois do boot e cobriria os botões que este smoke clica.
+    await page.addInitScript((v) => {
+        try { localStorage.setItem('cw_content_seen_version', v); } catch (e) { }
+    }, JSON.parse(readFileSync(join(raiz, 'package.json'), 'utf8')).version);
     await page.goto('file://' + htmlPath);
     await page.waitForSelector('#app:not(.hidden), #denied-state:not(.hidden)');
     return page;

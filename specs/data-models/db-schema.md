@@ -88,7 +88,9 @@
       }
     }
   ],
-  "shortcutsSortByUsage": true
+  "shortcutsSortByUsage": true,
+  "links_fav": ["itm_3f9a…", "u:https://docs.google.com/forms/…"],
+  "links_recent": [{ "id": "itm_77c1…", "t": 1760000000000 }]
 }
 ```
 
@@ -104,6 +106,13 @@
   registra no `Logger` — o agente nunca fica trancado fora das preferências.
 - **`kind` existe para crescer**: hoje só `"note"`. Um atalho de e-mail ou de
   link entra como outro `kind` sem migrar o dado de ninguém.
+- **Links guarda IDs, nunca cópias.** `links_fav` (máx. 30; o 31º é recusado, os
+  antigos nunca são expulsos) e `links_recent` (máx. 10, o mais novo primeiro,
+  com o instante `t` em ms) guardam a `Lineage` do link (`itm_…`), ou `u:<url>`
+  para um link do fallback embutido, que nunca passou pela Central. Um ID que a Central já não
+  publica é podado na leitura — **menos** quando o app está no fallback, que não
+  sabe quais links existem e, podando, apagaria os favoritos de todo mundo.
+  Ver `docs/decisions/0019-home-de-links-destaques-e-categorias.md`.
 - A **contagem de uso** dos atalhos NÃO vive aqui: é local
   (`cw_shortcut_usage_v1` no `localStorage`), porque sincronizá-la significaria
   uma escrita na nuvem a cada Ctrl+K.

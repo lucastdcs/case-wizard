@@ -13,6 +13,7 @@ import { ShortcutService } from './shortcut-service.js';
 
 const ICONS = {
     notes: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
+    precall: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11L2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z"/></svg>`,
     email: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>`,
     script: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
     links: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>`,
@@ -172,6 +173,7 @@ export function initCommandPalette(actions) {
     // (descrição) e as keywords de busca variam por idioma.
     const MODULE_ACTIONS = [
         { id: 'notes', label: 'Case Notes', hint: { pt: 'Montar a nota técnica do caso', es: 'Armar la nota técnica del caso' }, keywords: 'notas nota caso anotacoes anotaciones', icon: ICONS.notes, run: actions.toggleNotes },
+        { id: 'precall', label: 'Pre-call Checklist', hint: { pt: 'Checklist antes da ligação, direto na nota', es: 'Checklist antes de la llamada, directo en la nota', en: 'Checklist before the call, straight into the note' }, keywords: 'precall pre call checklist ligacao llamada verificacao verificacion', icon: ICONS.precall, run: actions.togglePrecall },
         { id: 'bauform', label: 'BAU Form', hint: { pt: 'Solicitação de criação/descarte BAU', es: 'Solicitud de creación/descarte BAU' }, keywords: 'bau formulario solicitacao solicitud criacao creacion descarte', icon: ICONS.bauform, run: actions.toggleBAUForm },
         { id: 'email', label: 'Email Assistant', hint: { pt: 'Templates inteligentes de e-mail', es: 'Plantillas inteligentes de correo' }, keywords: 'email e-mail correio correo template plantilla', icon: ICONS.email, run: actions.toggleEmail },
         { id: 'script', label: 'Call Script', hint: { pt: 'Guia interativo de chamada', es: 'Guía interactiva de llamada' }, keywords: 'script roteiro guion chamada llamada ligacao', icon: ICONS.script, run: actions.toggleScript },

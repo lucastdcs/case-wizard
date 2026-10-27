@@ -20,52 +20,52 @@
 // contar uma release por vez (o localStorage guarda uma única versão vista).
 
 export const RELEASE_NOTES = {
-    version: "v6.5.0",
+    version: "v6.6.0",
 
     title: {
-        pt: "Case Wizard v6.5.0",
-        es: "Case Wizard v6.5.0",
-        en: "Case Wizard v6.5.0",
+        pt: "Case Wizard v6.6.0",
+        es: "Case Wizard v6.6.0",
+        en: "Case Wizard v6.6.0",
     },
 
     slides: [
         {
-            icon: "\ud83c\udf10",
+            icon: "📋",
             title: {
-                pt: "O Case Wizard agora fala inglês",
-                es: "Case Wizard ahora habla inglés",
-                en: "Case Wizard now speaks English",
+                pt: "Pre-call Checklist, direto na nota",
+                es: "Pre-call Checklist, directo en la nota",
+                en: "Pre-call Checklist, straight into the note",
             },
             text: {
-                pt: "Menus, botões, mensagens, modelos de nota, templates de e-mail e roteiros de chamada: tudo passa a existir também em inglês. Troque em Configurações → Idioma da Interface, no novo botão EN.",
-                es: "Menús, botones, mensajes, plantillas de nota, plantillas de correo y guiones de llamada: todo pasa a existir también en inglés. Cámbialo en Configuración → Idioma de la Interfaz, en el nuevo botón EN.",
-                en: "Menus, buttons, messages, note templates, email templates and call scripts: all of it now exists in English too. Switch it in Settings → Interface Language, on the new EN button.",
+                pt: "Um botão novo na pílula (e no Ctrl+K) abre um formulário curto que escreve o bloco \"Pre-call checklist\" no card de nota do caso — ou só copia. Tasks, telefone, e-mail, site e CID que a tela do caso já mostra chegam preenchidos e marcados como Auto: confira antes de gerar. A nota sai sempre em inglês, que é o que a auditoria procura.",
+                es: "Un botón nuevo en la píldora (y en Ctrl+K) abre un formulario corto que escribe el bloque \"Pre-call checklist\" en la tarjeta de nota del caso — o solo lo copia. Las tasks, el teléfono, el correo, el sitio y el CID que la pantalla del caso ya muestra llegan completados y marcados como Auto: revísalos antes de generar. La nota sale siempre en inglés, que es lo que busca la auditoría.",
+                en: "A new button on the pill (and in Ctrl+K) opens a short form that writes the \"Pre-call checklist\" block into the case's note card — or just copies it. The tasks, phone, email, website and CID the case screen already shows arrive pre-filled and tagged Auto: check them before generating. The note is always written in English, which is what the audit looks for.",
             }
         },
         {
-            icon: "\u2696\ufe0f",
+            icon: "🔗",
             title: {
-                pt: "O idioma da ferramenta não é mais o idioma do caso",
-                es: "El idioma de la herramienta ya no es el idioma del caso",
-                en: "The tool's language is no longer the case's language",
+                pt: "Links ganhou uma home",
+                es: "Links ahora tiene una página de inicio",
+                en: "Links now has a home screen",
             },
             text: {
-                pt: "Antes eram o mesmo botão. Agora são dois: o da interface é o seu conforto, e o do atendimento é o do anunciante — é ele que decide o idioma do case note, do e-mail e do roteiro. Você pode usar o Case Wizard em inglês e continuar escrevendo em português. Os dois começam no idioma do seu segmento, então só muda algo se você quiser.",
-                es: "Antes eran el mismo botón. Ahora son dos: el de la interfaz es tu comodidad, y el de la atención es el del anunciante — es el que decide el idioma del case note, del correo y del guion. Puedes usar Case Wizard en inglés y seguir escribiendo en español. Ambos empiezan en el idioma de tu segmento, así que solo cambia algo si tú quieres.",
-                en: "They used to be the same button. Now there are two: the interface one is your own comfort, and the case one is the advertiser's — it decides the language of the case note, the email and the call script. You can run Case Wizard in English and keep writing in Portuguese. Both start on your segment's language, so nothing changes unless you want it to.",
+                pt: "Ao abrir Links, você vê até 3 destaques do momento e, logo abaixo, seus Favoritos, os Recentes e o que saiu do destaque. A busca agora acha também pela descrição e pelo nome da categoria, sem depender de acento, e um painel de prévia mostra \"O que é\" e \"Quando usar\" ao passar o mouse. Favoritos e recentes ficam salvos na nuvem, então acompanham você.",
+                es: "Al abrir Links ves hasta 3 destacados del momento y, justo debajo, tus Favoritos, los Recientes y lo que salió de destacados. La búsqueda ahora también encuentra por descripción y por nombre de categoría, sin depender de las tildes, y un panel de vista previa muestra \"Qué es\" y \"Cuándo usar\" al pasar el mouse. Favoritos y recientes se guardan en la nube, así que te acompañan.",
+                en: "When you open Links you see up to 3 current highlights and, right below, your Favorites, Recent and what is no longer featured. Search now also matches the description and the category name, without depending on accents, and a preview panel shows \"What it is\" and \"When to use\" as you hover. Favorites and recents are saved in the cloud, so they follow you.",
             }
         },
         {
-            icon: "\ud83d\udcc4",
+            icon: "📖",
             title: {
-                pt: "Na nota, você vê o que vai gravar",
-                es: "En la nota, ves lo que vas a guardar",
-                en: "In the note, you see what you are going to save",
+                pt: "A documentação está a um clique",
+                es: "La documentación está a un clic",
+                en: "The documentation is one click away",
             },
             text: {
-                pt: "Os rótulos dos campos do Case Notes seguem o idioma do atendimento, e não o da interface: eles são, literalmente, o texto que sai impresso na nota. Os botões em volta (Copiar, Limpar, a busca) seguem a interface. Assim nada é gravado num idioma que você não escolheu.",
-                es: "Las etiquetas de los campos de Case Notes siguen el idioma de la atención, no el de la interfaz: son, literalmente, el texto que sale impreso en la nota. Los botones alrededor (Copiar, Limpiar, la búsqueda) siguen la interfaz. Así nada se guarda en un idioma que no elegiste.",
-                en: "The Case Notes field labels follow the case language, not the interface one: they are, literally, the text printed in the note. The buttons around them (Copy, Clear, the search) follow the interface. That way nothing gets saved in a language you did not pick.",
+                pt: "O \"?\" do cabeçalho de cada módulo e a seção Suporte & Feedback, em Configurações, agora levam ao deck de documentação do Case Wizard. Travou num módulo? Comece por ele.",
+                es: "El \"?\" del encabezado de cada módulo y la sección Soporte y Comentarios, en Configuración, ahora llevan a la presentación de documentación de Case Wizard. ¿Te trabaste en un módulo? Empieza por ahí.",
+                en: "The \"?\" in each module's header and the Support & Feedback section in Settings now open the Case Wizard documentation deck. Stuck in a module? Start there.",
             }
         },
     ],

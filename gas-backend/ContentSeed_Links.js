@@ -379,57 +379,57 @@ const CONTENT_SEED_LINKS = {
     {
       "key": "qa",
       "lang": "ALL",
-      "label": "Elogios",
-      "value": "{\"name\":\"Elogios\",\"url\":\"https://docs.google.com/forms/d/e/1FAIpQLSezY5K-trQDv0LkL5IoTlV0Tl0oOqGTEszylmgcbMRXcC9Weg/viewform\",\"desc\":\"Feedback positivo\",\"desc_es\":\"Feedback positivo\",\"desc_en\":\"Positive feedback\"}",
-      "sortOrder": 52
-    },
-    {
-      "key": "qa",
-      "lang": "ALL",
       "label": "Casos Complexos",
       "value": "{\"name\":\"Casos Complexos\",\"url\":\"https://docs.google.com/forms/d/e/1FAIpQLSe26q1LEloFNRfOAVZtA7DCOQTqdu1BAEeWuxtK6oPwZhLp-A/viewform?resourcekey=0-c1N4h8gntza2gQowqYAqMw\",\"desc\":\"Casos difíceis\",\"desc_es\":\"Casos difíciles\",\"desc_en\":\"Difficult cases\"}",
-      "sortOrder": 53
+      "sortOrder": 52
     },
     {
       "key": "suporte",
       "lang": "ALL",
       "label": "Fale Conosco Ads",
       "value": "{\"name\":\"Fale Conosco Ads\",\"url\":\"https://support.google.com/google-ads/gethelp\",\"desc\":\"Chat/Email Ads\",\"desc_es\":\"Chat/Email Ads\",\"desc_en\":\"Chat/Email Ads\"}",
-      "sortOrder": 54
+      "sortOrder": 53
     },
     {
       "key": "suporte",
       "lang": "ALL",
       "label": "Fale Conosco Merchant",
       "value": "{\"name\":\"Fale Conosco Merchant\",\"url\":\"https://support.google.com/merchants/gethelp\",\"desc\":\"Chat/Email Shopping\",\"desc_es\":\"Chat/Email Shopping\",\"desc_en\":\"Chat/Email Shopping\"}",
-      "sortOrder": 55
+      "sortOrder": 54
     },
     {
       "key": "suporte",
       "lang": "ALL",
       "label": "Fale Conosco GMB",
       "value": "{\"name\":\"Fale Conosco GMB\",\"url\":\"https://support.google.com/business/gethelp\",\"desc\":\"Perfil da Empresa\",\"desc_es\":\"Perfil de la Empresa\",\"desc_en\":\"Business Profile\"}",
-      "sortOrder": 56
+      "sortOrder": 55
     },
     {
       "key": "suporte",
       "lang": "ALL",
       "label": "Suporte API",
       "value": "{\"name\":\"Suporte API\",\"url\":\"https://support.google.com/googleapi\",\"desc\":\"Console API\",\"desc_es\":\"Console API\",\"desc_en\":\"API Console\"}",
-      "sortOrder": 57
+      "sortOrder": 56
     },
     {
       "key": "suporte",
       "lang": "ALL",
       "label": "Telefones Suporte",
       "value": "{\"name\":\"Telefones Suporte\",\"url\":\"https://www.adwordsrobot.com/en/list-of-google-adwords-support-phone-numbers\",\"desc\":\"Lista de números\",\"desc_es\":\"Lista de números\",\"desc_en\":\"Number list\"}",
-      "sortOrder": 58
+      "sortOrder": 57
     },
     {
       "key": "suporte",
       "lang": "ALL",
       "label": "Skill Shop",
       "value": "{\"name\":\"Skill Shop\",\"url\":\"https://skillshop.withgoogle.com/intl/pt-BR_ALL/\",\"desc\":\"Cursos\",\"desc_es\":\"Cursos\",\"desc_en\":\"Courses\"}",
+      "sortOrder": 58
+    },
+    {
+      "key": "feedback",
+      "lang": "ALL",
+      "label": "Elogios",
+      "value": "{\"name\":\"Elogios\",\"url\":\"https://docs.google.com/forms/d/e/1FAIpQLSezY5K-trQDv0LkL5IoTlV0Tl0oOqGTEszylmgcbMRXcC9Weg/viewform\",\"desc\":\"Feedback positivo\",\"desc_es\":\"Feedback positivo\",\"desc_en\":\"Positive feedback\"}",
       "sortOrder": 59
     }
   ]

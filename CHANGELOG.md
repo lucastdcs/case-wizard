@@ -8,6 +8,145 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.6.0] - 2026-10-27
+
+### Added
+- **Home dentro do módulo de Links: destaques, subdestaques e prévia ao passar o
+  mouse** (ADR-0019). A janela do módulo abre numa home com até **3 destaques**
+  (1 principal + 2) — cada um com título, resumo e janela de exibição — e, logo
+  abaixo, três listas: **Favoritos**, **Recentes** e **Saíram do destaque** (até
+  30 dias). A biblioteca de links com busca continua a um clique, e a busca agora
+  também acha pela descrição, pelo "o que é", pelo "quando usar" e pelo nome da
+  categoria, sem depender de acento. Um **painel de prévia fixo** acompanha o
+  mouse e o foco do teclado: "O que é", "Quando usar" e Abrir/Copiar. Abaixo de
+  1000px de tela o painel some e a lista fica sozinha. Favoritos (máx. 30) e recentes (máx. 10) vão para as preferências do
+  agente na nuvem, por identidade estável do link — o histórico antigo do
+  navegador (`cw_link_history_v4`) é migrado uma vez.
+- **Central: aba "Destaques" em Links.** Segmentado Biblioteca | Destaques.
+  Publica direto, com o passo de confirmação que declara quem vai ver e quando.
+  A janela é avaliada **no servidor**, no fuso da planilha, e a tela mostra o
+  "agora" do servidor; o limite de 3 vagas vale para qualquer instante futuro e
+  é checado **antes** da confirmação. Cada destaque pode ser encerrado agora,
+  cancelado (se agendado) ou reativado a partir de um encerrado, e o "Como o
+  agente vê" mostra o cartão real. Novos módulos `link_highlights` e
+  `link_categories` na matriz de papéis (herdam o preset — ADR-0013).
+- **Central: prévia no editor de link** ("O que é", ≤ 200, e "Quando usar", ≤ 160,
+  em PT/ES/EN, com contador e aviso de idioma faltando). Link sem prévia diz
+  "sem prévia" na lista, e o botão "Destacar" abre o editor de destaque já com
+  aquele link.
+- **Central: "Nova categoria".** A operação cria categorias de link que o app não
+  conhecia — nome (até 12 letras por idioma), cor e ícone de listas fechadas, com
+  prévia da barra do agente. Passa pela fila de aprovação; a chave é imutável e a
+  categoria só sai do ar sem link dentro. O app desenha as categorias criadas em
+  seguida às do sistema.
+- **Categoria "Feedback"** (rosa, ícone `feedback`), nova categoria do sistema
+  para guardar os formulários de feedback. O link "Elogios" saiu de QA para ela
+  (no fallback embutido e no seed). Em produção a mudança é feita por
+  `migrateFeedbackLinksNow()`, idempotente e versionada, que mantém a identidade
+  do link — **rodar só depois de o frontend novo estar no ar** (um pacote antigo
+  quebra ao desenhar um link numa categoria que não conhece). Os demais
+  formulários (Casos Complexos, Relatório de Bugs…) ficam onde estão até alguém
+  decidir; mover é editar a categoria do link na Central.
+- Testes: `npm run test:links` (modelo puro + paridade de cores/ícones entre
+  servidor, pacote e Central) e `npm run smoke:links` (28 checagens com o módulo
+  isolado no navegador); `test:content` (+36) e `smoke:content` (+28) cobrem
+  janela, vagas, categorias e as telas novas da Central.
+- **Pre-call Checklist** (ADR-0018). Formulário curto, no botão novo da pílula e
+  no Ctrl+K, que escreve o bloco "Pre-call checklist" no card de nota do caso (ou
+  só copia). Tasks, telefone, e-mail, site e CID que a tela do caso já mostra
+  chegam preenchidos, com a marca *Auto* e uma animação curta; nada capturado
+  sobrescreve o que o agente digitou, e outro caso na tela zera o formulário. As
+  cinco perguntas Yes/No e o Next steps começam sem resposta e precisam de uma
+  antes de gerar a nota; texto vazio sai como `None provided`. Quem não faz o
+  checklist (Live Meet, ou caso que chegou com menos de 1h) registra
+  `Completed: No` com o motivo. **A nota sai sempre em inglês**, nos três idiomas
+  da interface — é o que a auditoria do SOP procura —, com título e rótulos em
+  negrito, valores normais, uma linha em branco entre as linhas e "Gerado pelo
+  Cases Wizard" no fim, e o texto inteiro é travado por `npm run test:precall`. Só frontend: nada é gravado na planilha.
+- **Pre-call Checklist avulso** (ADR-0020). `npm run build:precall` gera, em
+  `dist/`, um arquivo só com a raspagem e o formulário — sem pílula, splash,
+  Ctrl+K, outros módulos nem backend — para entregar a quem não usa o app
+  completo: `precall-standalone.js` (legível, para o console) e
+  `precall-bookmarklet.txt` (uma linha `javascript:`, para colar como URL de um
+  favorito, sem hospedagem). O formulário abre sozinho ao carregar e é o mesmo do
+  app (idêntico pixel a pixel); clicar no favorito de novo reabre, e com a janela
+  aberta relê o caso da tela. O "?" mostra só título, versão e crédito (sem a
+  descrição nem os botões de documentação e de bug/sugestão). A interface segue o
+  idioma do navegador. A variante
+  `-en` (`precall-bookmarklet-en.txt`) é 100% inglês — tela, "?", avisos e o
+  rodapé da nota (`Generated by Cases Wizard`) — mesmo com o navegador ou o app
+  completo em português, e não mexe nas preferências do app. O arquivo
+  não leva o endereço do backend. Travado em `npm run smoke:precall-standalone`
+  (29 checagens, inclusive um CRM com Trusted Types obrigatório).
+- **Link para a documentação do projeto (deck de slides) onde o agente trava.**
+  No bookmarklet, entra no "?" do cabeçalho de todo módulo — o ponto que o
+  agente aperta quando está perdido, dentro do módulo em que travou — e na seção
+  Suporte & Feedback de Configurações. No TL Dashboard e na Central de Conteúdo,
+  entra no rodapé que as duas já tinham ("Docs · Reportar bug ou sugestão"),
+  inclusive na tela de "sem acesso" da Central. A URL abre em `/preview`, não em
+  `/edit`, para quem tem permissão de escrita não alterar o deck sem querer. É
+  um deck único para os três idiomas; se virar um por idioma, `DOCS_URL`
+  (`shared/config.js`) e `CW_DOCS_URL` (`Código.js`) viram mapas.
+  `test:deployment-env` trava as duas cópias iguais e confere que as duas telas
+  imprimem o rodapé; `smoke:i18n`, `smoke:tl-dash` e `smoke:content` passaram a
+  ler o link no navegador. Até aqui os dois smokes dos dashboards apagavam o
+  rodapé (`CW_CREDIT` virava vazio), então ele nunca tinha sido renderizado em
+  teste — agora é, e o do TL prova que ele não cobre os botões de decisão.
+- **A Central de Conteúdo troca o idioma da interface: português, espanhol ou
+  inglês** (ADR-0017). Seletor novo no topo, separado do seletor do trilho, que
+  passou a se chamar "Idioma do conteúdo" e segue decidindo só qual catálogo
+  está em revisão — dá para ler a tela em português e revisar o espanhol, ou
+  o contrário. A tela abre no idioma da pessoa na aba People
+  (`getContentSession()` passou a devolver `defaultLanguage`, inclusive para
+  quem não tem acesso, que lê a recusa no idioma dele), e a escolha manual fica
+  salva no navegador e vale mais que o perfil. **Primeira fase:** topo, trilho,
+  estados de boot e recusa, cabeçalho de cada aba, textos fixos dos painéis e o
+  aviso "seu papel não propõe neste módulo". Listas, editores e modais seguem
+  em português até as próximas fases. Datas passaram a seguir o idioma da
+  interface, e não mais o do conteúdo.
+- **"Idioma do conteúdo" ganha EN.** Desde a v6.5.0 o catálogo tem conteúdo em
+  inglês (roteiro, notas, e-mails), mas o seletor só oferecia PT/ES — revisar o
+  EN pela Central não tinha caminho. Junto, um defeito que a opção nova
+  tornaria alcançável: o editor de e-mail tratava só `ES` como idioma de
+  `labels`, então salvar um modelo EN gravaria `placeholders: []` e apagaria os
+  rótulos dos campos sem aviso. Agora tudo que não é PT guarda `labels`.
+- **Novidades da versão na Central**, no padrão do TL Dashboard: notas próprias
+  (`CW_CONTENT_RELEASE_NOTES` em `DashReleaseNotes.js`), que abrem uma vez
+  quando a versão muda, com botão de megafone no topo para reler.
+  `renderDashboard()` escolhe as notas pelo template, e
+  `npm run test:dash-changelog` passou a cobrar os dois painéis — e a acusar
+  tag de template dentro de uma parte da Central, onde ela iria literal para o
+  navegador.
+
+### Changed
+- **Links: quem decide "agora" é o servidor, não o navegador.** O destaque é uma
+  linha `live` durante toda a vida e o `state` (`scheduled`, `active`, `ended`,
+  `expired`) é calculado a cada leitura, depois do cache de 300s — o mesmo
+  princípio do aviso (`broadcast`), sem esconder o item inteiro.
+- **Links: a janela do módulo passou de 600 para 860px**, para caber o painel de
+  prévia ao lado da lista.
+- **Central: campos de data e hora** (`datetime-local`) ganham o estilo dos
+  demais campos.
+- **Linguagem visual do módulo de Links**: superfícies de vidro (translúcidas
+  com desfoque), peso de fonte 400/500, grade de 4/8px, alvos ≥32px e
+  `prefers-reduced-motion` respeitado. Copiar um link confirma no próprio botão,
+  com som e vibração (nos três canais); favoritar, com som, vibração e aviso.
+- **E-mails da Central de Conteúdo com a casca do fluxo BAU.** O aviso de
+  "proposta aguardando revisão" era dois parágrafos soltos, sem link nem
+  detalhe. Os três e-mails da Central (proposta, decisão, pendência parada)
+  agora usam `renderBauEmail`: cartão com cor por tipo, campos (módulo, item,
+  ação, autor), botão para a Central, motivo da devolução em callout, preheader,
+  versão em texto puro e texto livre escapado (antes o rótulo e o motivo entravam
+  crus no HTML). Travado em `test:content` (+2).
+
+### Fixed
+- **Quem saiu da empresa seguia recebendo e-mail da Central de Conteúdo.** A
+  baixa na aba Pessoas não tocava em `Content_Access`, e os avisos de proposta,
+  de decisão e de pendência parada liam só essa aba — inclusive endereços que já
+  não existem (bounce para o dono do script). Agora a baixa desativa o acesso
+  (respeitando a trava de governança) e os três envios só vão a quem está em
+  `People`. Travado em `test:people` (+6).
+
 ## [6.5.0] - 2026-10-13
 
 ### Added
@@ -1070,7 +1209,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.5.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.6.0...HEAD
+[6.6.0]: https://github.com/lucastdcs/case-wizard/compare/v6.5.0...v6.6.0
 [6.5.0]: https://github.com/lucastdcs/case-wizard/compare/v6.4.0...v6.5.0
 [6.4.0]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...v6.4.0
 [6.3.3]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...v6.3.3

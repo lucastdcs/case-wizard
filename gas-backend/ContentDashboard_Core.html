@@ -9,10 +9,93 @@
         // porque a home também precisa do número.
         var PENDING_TOTAL = 0;
 
-        var CATEGORY_LABELS = {
-            tasks: 'Tarefas', ads: 'Ads', analytics: 'GA4', shopping: 'Shop',
-            tech: 'Tech', hr: 'RH', lm: 'Forms', qa: 'QA', suporte: 'Ajuda'
+        // Categorias de link: as que vêm com o produto (mesma lista, mesma ordem e
+        // mesmas chaves do bundle do agente e do servidor — `test:links` trava a
+        // igualdade) e as criadas por esta tela (módulo link_categories).
+        //
+        // Cor e ícone são conjuntos FECHADOS: a tela oferece estes, o servidor só
+        // aceita estes. Cor livre abriria a porta para texto sem contraste na barra
+        // do agente; SVG livre, para HTML de uma pessoa rodando no navegador de outra.
+        var LINK_CAT_COLORS = {
+            cyan: { color: '#0097A7', bg: '#E0F7FA', nome: 'Ciano' },
+            blue: { color: '#1967D2', bg: '#E8F0FE', nome: 'Azul' },
+            orange: { color: '#E37400', bg: '#FEF7E0', nome: 'Laranja' },
+            green: { color: '#188038', bg: '#E6F4EA', nome: 'Verde' },
+            purple: { color: '#9334E6', bg: '#F3E8FD', nome: 'Roxo' },
+            red: { color: '#C5221F', bg: '#FCE8E6', nome: 'Vermelho' },
+            slate: { color: '#5F6368', bg: '#F1F3F4', nome: 'Cinza' },
+            amber: { color: '#F09D00', bg: '#FFF3E0', nome: 'Âmbar' },
+            sky: { color: '#0B57D0', bg: '#D3E3FD', nome: 'Azul-claro' },
+            pink: { color: '#D01884', bg: '#FDE7F3', nome: 'Rosa' },
+            teal: { color: '#00796B', bg: '#E0F2F1', nome: 'Verde-água' },
+            indigo: { color: '#3949AB', bg: '#E8EAF6', nome: 'Índigo' }
         };
+
+        // Nomes do Material Symbols, que são os mesmos que o bundle desenha em SVG.
+        var LINK_CAT_ICONS = [
+            'description', 'assignment', 'verified_user', 'chat', 'public', 'bar_chart',
+            'shopping_cart', 'code', 'person', 'folder', 'bookmark', 'star', 'info', 'help',
+            'flag', 'school', 'build', 'lightbulb', 'event', 'feedback'
+        ];
+
+        var LINK_CAT_BUILTIN = [
+            { key: 'tasks', label: 'Tarefas', color: 'cyan', icon: 'description' },
+            { key: 'ads', label: 'Ads', color: 'blue', icon: 'public' },
+            { key: 'analytics', label: 'GA4', color: 'orange', icon: 'bar_chart' },
+            { key: 'shopping', label: 'Shop', color: 'green', icon: 'shopping_cart' },
+            { key: 'tech', label: 'Tech', color: 'purple', icon: 'code' },
+            { key: 'hr', label: 'RH', color: 'red', icon: 'person' },
+            { key: 'lm', label: 'Forms', color: 'slate', icon: 'assignment' },
+            { key: 'qa', label: 'QA', color: 'amber', icon: 'verified_user' },
+            { key: 'suporte', label: 'Ajuda', color: 'sky', icon: 'chat' },
+            { key: 'feedback', label: 'Feedback', color: 'pink', icon: 'feedback' }
+        ];
+
+        // Itens no ar do módulo link_categories, e as propostas da própria pessoa.
+        var CUSTOM_LINK_CATS = [];
+        var MY_CAT_DRAFTS = [];
+
+        function parseCatValue(raw) {
+            try {
+                var v = JSON.parse(raw || '{}');
+                return {
+                    label: v.label || '', label_es: v.label_es || '', label_en: v.label_en || '',
+                    color: LINK_CAT_COLORS[v.color] ? v.color : 'slate',
+                    icon: LINK_CAT_ICONS.indexOf(v.icon) !== -1 ? v.icon : 'folder'
+                };
+            } catch (e) {
+                return { label: '', label_es: '', label_en: '', color: 'slate', icon: 'folder' };
+            }
+        }
+
+        // As embutidas, na ordem do produto, e depois as criadas pela tela.
+        function linkCategories() {
+            var lista = LINK_CAT_BUILTIN.map(function (c) {
+                return { key: c.key, label: c.label, color: c.color, icon: c.icon, custom: false };
+            });
+            CUSTOM_LINK_CATS.forEach(function (it) {
+                var v = parseCatValue(it.value);
+                lista.push({
+                    key: it.key, label: v.label || it.key, label_es: v.label_es, label_en: v.label_en,
+                    color: v.color, icon: v.icon, custom: true, itemId: it.id, lineage: it.lineage
+                });
+            });
+            return lista;
+        }
+
+        // Chave sem definição (dado antigo): aparece com o nome da própria chave,
+        // em vez de sumir com os links que estão nela.
+        function linkCatByKey(key) {
+            var todas = linkCategories();
+            for (var i = 0; i < todas.length; i++) {
+                if (todas[i].key === key) return todas[i];
+            }
+            return { key: key, label: key, color: 'slate', icon: 'folder', custom: false, unknown: true };
+        }
+
+        function linkCatLabel(key) {
+            return linkCatByKey(key).label;
+        }
 
         function toast(msg, isErr) {
             var t = document.getElementById('toast');
@@ -31,11 +114,17 @@
         // viajam como um item só e o par PT/ES fica junto do link que descreve,
         // em vez de num mapa paralelo como o LINK_DESC_ES de hoje.
         function parseLinkValue(raw) {
+            var vazio = {
+                name: '', url: '', desc: '', desc_es: '', desc_en: '',
+                about: '', about_es: '', about_en: '', when: '', when_es: '', when_en: ''
+            };
             try {
                 var v = JSON.parse(raw || '{}');
-                return { name: v.name || '', url: v.url || '', desc: v.desc || '', desc_es: v.desc_es || '', desc_en: v.desc_en || '' };
+                var out = {};
+                Object.keys(vazio).forEach(function (k) { out[k] = v[k] || ''; });
+                return out;
             } catch (e) {
-                return { name: '', url: '', desc: '', desc_es: '', desc_en: '' };
+                return vazio;
             }
         }
 
@@ -79,60 +168,32 @@
         // Ter isso numa tabela em vez de espalhado em ifs é o que permite a rota
         // por hash, o teclado e o título da página lerem a MESMA fonte.
         var DESTINOS = {
-            home: { titulo: 'Hoje', sub: 'O que está acontecendo no conteúdo agora.' },
-            links: {
-                titulo: 'Links', carregar: null,
-                sub: 'Atalhos que o agente abre pela pílula. Editar cria uma proposta.'
-            },
-            callscript: {
-                titulo: 'Call Script', carregar: function () { loadCallScript(); },
-                sub: 'O roteiro da ligação, passo a passo. Editar cria uma proposta.'
-            },
-            notes: {
-                titulo: 'Case Notes', carregar: function () { loadNoteTemplates(); },
-                sub: 'Notas prontas por substatus. Editar cria uma proposta.'
-            },
-            tasks: {
-                titulo: 'Tasks', carregar: function () { loadTaskCatalog(); },
-                sub: 'O catálogo de tasks e os screenshots que o Win Criteria exige de cada uma.'
-            },
-            emails: {
-                titulo: 'E-mails', carregar: function () { loadEmails(); },
-                sub: 'Modelos que o agente envia ao anunciante. Editar cria uma proposta.'
-            },
-            tips: {
-                titulo: 'Dicas', carregar: function () { loadTips(); },
-                sub: 'Frases curtas exibidas durante os carregamentos do app.'
-            },
-            broadcast: {
-                titulo: 'Avisos', carregar: function () { loadBroadcast(); }, aoVivo: true,
-                sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.'
-            },
-            bau: {
-                titulo: 'Disponibilidade', carregar: function () { loadBau(); }, aoVivo: true,
-                sub: 'Publica na hora, para todo agente conectado. Não passa por revisão.'
-            },
-            approvals: {
-                titulo: 'Aprovações', carregar: function () { loadApprovals(); },
-                sub: 'Propostas esperando revisão, de todos os módulos.'
-            },
-            people: {
-                titulo: 'Pessoas', carregar: function () { loadPeople(); },
-                sub: 'O diretório que decide quem é liderança e em que idioma o app abre.'
-            },
-            audit: {
-                titulo: 'Auditoria', carregar: function () { loadAudit(); },
-                sub: 'Tudo que aconteceu na Central, com filtro e período.'
-            },
-            roles: {
-                titulo: 'Papéis', carregar: function () { loadRoles(); },
-                sub: 'O que cada papel pode fazer. Vale no ato, sem passar por fila.'
-            },
-            access: {
-                titulo: 'Acessos', carregar: function () { loadAccess(); },
-                sub: 'Quem entra na Central e com qual papel.'
-            }
+            home: {},
+            links: { carregar: null },
+            callscript: { carregar: function () { loadCallScript(); } },
+            notes: { carregar: function () { loadNoteTemplates(); } },
+            tasks: { carregar: function () { loadTaskCatalog(); } },
+            emails: { carregar: function () { loadEmails(); } },
+            tips: { carregar: function () { loadTips(); } },
+            broadcast: { carregar: function () { loadBroadcast(); }, aoVivo: true },
+            bau: { carregar: function () { loadBau(); }, aoVivo: true },
+            approvals: { carregar: function () { loadApprovals(); } },
+            people: { carregar: function () { loadPeople(); } },
+            audit: { carregar: function () { loadAudit(); } },
+            roles: { carregar: function () { loadRoles(); } },
+            access: { carregar: function () { loadAccess(); } }
         };
+
+        // Título e subtítulo moram no dicionário da interface (`dest_<destino>`
+        // e `dest_<destino>_sub`), não aqui: o trilho, o cabeçalho e a busca
+        // leem a mesma chave, no idioma de quem está lendo.
+        function tituloDoDestino(d) { return tt('dest_' + d); }
+        function subDoDestino(d) { return tt('dest_' + d + '_sub'); }
+
+        function pintarCabecalho(destino) {
+            document.getElementById('page-title').textContent = tituloDoDestino(destino);
+            document.getElementById('page-sub').textContent = subDoDestino(destino);
+        }
 
         var DESTINO_PADRAO = 'home';
 
@@ -152,8 +213,7 @@
             });
 
             var def = DESTINOS[destino];
-            document.getElementById('page-title').textContent = def.titulo;
-            document.getElementById('page-sub').textContent = def.sub;
+            pintarCabecalho(destino);
 
             // O endereço acompanha o destino: uma pendência passa a caber num
             // chat, que antes era "abre a Central, vai em Aprovações, procura".
@@ -280,8 +340,9 @@
             var d = new Date(iso);
             if (isNaN(d.getTime())) return String(iso);
             // Intl no idioma da interface, não formato fixo — mesma regra do
-            // resto do produto (specs/ui-ux/design-system.md).
-            return d.toLocaleString({ ES: 'es', EN: 'en-US' }[idiomaAtual()] || 'pt-BR',
+            // resto do produto (specs/ui-ux/design-system.md). Interface, e não
+            // o seletor de conteúdo: a data é de quem lê.
+            return d.toLocaleString(UI_LOCALE[UI_LANG],
                 { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
 
@@ -387,6 +448,8 @@
             publish_direct: 'publicou',
             publish_direct_update: 'republicou',
             unpublish_direct: 'tirou do ar',
+            highlight_end: 'encerrou o destaque',
+            link_move: 'moveu o link',
             access_change: 'mudou o acesso de',
             seed: 'semeou',
             notify_failed: 'não conseguiu avisar sobre',
@@ -408,7 +471,8 @@
         var ATIVIDADE_MODULO = {
             links: 'Links', call_script: 'Call Script', note_template: 'Case Notes',
             task_screenshots: 'Tasks', email_template: 'E-mails', tips: 'Dicas',
-            broadcast: 'Avisos', bau_availability: 'Disponibilidade', people: 'Pessoas'
+            broadcast: 'Avisos', bau_availability: 'Disponibilidade', people: 'Pessoas',
+            link_categories: 'Categorias de link', link_highlights: 'Destaques'
         };
 
         var FOTO_PADRAO = 'https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg';
@@ -565,6 +629,7 @@
             var direto = [];
             if (canPropose('broadcast')) direto.push('avisos');
             if (canPropose('bau_availability')) direto.push('disponibilidade BAU');
+            if (canPropose('link_highlights')) direto.push('destaques de links');
 
             cartoes.push(
                 '<div class="card">' +
@@ -669,6 +734,8 @@
                     '<div class="ag-titulo">' + esc(v.title || item.label) + '</div>' +
                     '<div class="ag-texto">' + esc(v.text || '') + '</div>' +
                     '</div>' + avisoDaJanelaNaPrevia(v);
+            } else if (item.module === 'link_highlights') {
+                corpo = previaDoDestaque(hlParse({ value: item.value, label: item.label }), idioma);
             } else if (item.module === 'task_screenshots') {
                 corpo = previaDaTask(v, idioma);
             } else if (item.module === 'email_template') {
@@ -788,10 +855,10 @@
                 var botao = document.getElementById('tab-' + d);
                 // Só o que a pessoa realmente enxerga no trilho.
                 if (botao && botao.classList.contains('hidden')) return false;
-                return semAcentoNaTela(DESTINOS[d].titulo).indexOf(t) !== -1;
+                return semAcentoNaTela(tituloDoDestino(d)).indexOf(t) !== -1;
             }).map(function (d) {
-                return { tipo: 'destino', destino: d, label: DESTINOS[d].titulo,
-                         snippet: DESTINOS[d].sub };
+                return { tipo: 'destino', destino: d, label: tituloDoDestino(d),
+                         snippet: subDoDestino(d) };
             });
         }
 
@@ -886,7 +953,8 @@
         var DESTINO_DO_MODULO = {
             links: 'links', call_script: 'callscript', note_template: 'notes',
             task_screenshots: 'tasks', email_template: 'emails', tips: 'tips',
-            broadcast: 'broadcast', bau_availability: 'bau', people: 'people'
+            broadcast: 'broadcast', bau_availability: 'bau', people: 'people',
+            link_categories: 'links', link_highlights: 'links'
         };
 
         function destinoDoModulo(module) {
@@ -1027,34 +1095,28 @@
                 nota.classList.remove('hidden');
             }
 
-            function gate(module, idBotao, idNota, texto) {
+            // O texto de cada aviso está no dicionário (`gate_<módulo>`).
+            function gate(module, idBotao, idNota) {
                 if (idBotao) {
                     document.getElementById(idBotao).classList.toggle('hidden', !podeEscrever(module));
                 }
-                explicarSemPermissao(idNota,
-                    'Seu papel (' + s.role + ') ' + texto, canPropose(module));
+                explicarSemPermissao(idNota, tt('gate_' + module, s.role), canPropose(module));
             }
 
-            gate('links', 'links-new-btn', 'links-note',
-                'vê os links, mas não propõe alterações neste módulo.');
-            gate('call_script', 'cs-new-btn', 'cs-note',
-                'vê o roteiro, mas não propõe alterações neste módulo.');
-            gate('tips', 'tp-new-btn', 'tp-note',
-                'vê as dicas, mas não propõe alterações neste módulo.');
-            gate('email_template', null, 'em-note',
-                'vê os modelos, mas não propõe alterações neste módulo.');
-            gate('note_template', 'nt-new-btn', 'nt-note',
-                'vê os modelos de nota, mas não propõe alterações neste módulo.');
-            gate('task_screenshots', 'tsk-new-btn', 'tsk-note',
-                'vê as tasks e os screenshots exigidos, mas não propõe alterações neste módulo.');
+            gate('links', 'links-new-btn', 'links-note');
+            gate('link_categories', 'lk-cat-btn', 'lkcat-note');
+            gate('link_highlights', 'hl-new-btn', 'hl-note');
+            gate('call_script', 'cs-new-btn', 'cs-note');
+            gate('tips', 'tp-new-btn', 'tp-note');
+            gate('email_template', null, 'em-note');
+            gate('note_template', 'nt-new-btn', 'nt-note');
+            gate('task_screenshots', 'tsk-new-btn', 'tsk-note');
             // Avisos e disponibilidade seguem a mesma regra do resto da tela:
             // quem tem acesso enxerga o que está no ar, e só quem tem o papel vê
             // o caminho de publicar. É o WFM que separa os dois na prática —
             // publica disponibilidade, não avisos.
-            gate('broadcast', 'bc-new-btn', 'bc-note',
-                'vê os avisos no ar, mas não publica neste módulo.');
-            gate('bau_availability', null, 'bau-note',
-                'vê a disponibilidade no ar, mas não publica neste módulo.');
+            gate('broadcast', 'bc-new-btn', 'bc-note');
+            gate('bau_availability', null, 'bau-note');
             document.getElementById('bau-editor').classList
                 .toggle('hidden', !podeEscrever('bau_availability'));
         }
@@ -1146,14 +1208,86 @@
                 esc(s.realRole) + '</button>';
         }
 
+        // --- Novidades da versão ---
+        //
+        // O mesmo aviso do TL Dashboard: quem usa a Central não carrega o
+        // bookmarklet, então o changelog do agente não chega aqui. O conteúdo vem
+        // injetado pelo servidor (CW_RELEASE_NOTES, ver renderDashboard e
+        // DashReleaseNotes.gs), não por google.script.run: é estático, e uma
+        // chamada a mais no boot é o que #333/#334 pediu para evitar.
+        // `RELEASE_NOTES` é declarado na casca (ContentDashboard.html): parte
+        // incluída não passa pelo avaliador de template.
+
+        // Chave própria, pelo mesmo motivo do TL: um TL que usa as duas telas
+        // veria o aviso de uma sumir por ter lido o da outra.
+        var RELEASE_SEEN_KEY = 'cw_content_seen_version';
+
+        function lerVersaoVista() {
+            try { return localStorage.getItem(RELEASE_SEEN_KEY); } catch (e) { return null; }
+        }
+
+        function marcarVersaoVista() {
+            try { localStorage.setItem(RELEASE_SEEN_KEY, RELEASE_NOTES.version); } catch (e) { /* reabre na próxima */ }
+        }
+
+        // Cada campo vem em `{ pt, es, en }`, como no TL, e segue o idioma da
+        // TELA: o aviso fala da Central, não do conteúdo em revisão.
+        function notaNoIdioma(campo) {
+            if (typeof campo === 'string') return campo;
+            return (campo && (campo[UI_LANG] || campo.pt)) || '';
+        }
+
+        function abrirNovidades() {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="novidades-titulo">' +
+                '<h2 id="novidades-titulo">' + esc(notaNoIdioma(RELEASE_NOTES.title)) + '</h2>' +
+                '<p class="card-sub" id="novidades-versao">v' + esc(RELEASE_NOTES.version) + '</p>' +
+                '<div class="novidades-lista">' +
+                (RELEASE_NOTES.items || []).map(function (item) {
+                    return '<div class="novidade">' +
+                        '<span class="material-symbols-rounded" aria-hidden="true">' + esc(item.icon) + '</span>' +
+                        '<div><div class="novidade-titulo">' + esc(notaNoIdioma(item.title)) + '</div>' +
+                        '<div class="novidade-texto">' + esc(notaNoIdioma(item.text)) + '</div></div></div>';
+                }).join('') +
+                '</div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-primary" id="novidades-fechar" onclick="closeModal()">' +
+                esc(tt('close')) + '</button>' +
+                '</div></div></div>';
+            document.getElementById('novidades-ponto').hidden = true;
+            marcarVersaoVista();
+            document.getElementById('novidades-fechar').focus();
+        }
+
+        // Só abre sozinho quando a versão mudou; o botão do topo segue lá para
+        // reler. Espera a tela assentar, e não abre por cima de um modal que a
+        // pessoa já tenha aberto nesse meio-tempo.
+        function checarNovidades() {
+            if (lerVersaoVista() === RELEASE_NOTES.version) return;
+            document.getElementById('novidades-ponto').hidden = false;
+            setTimeout(function () {
+                if (document.getElementById('modal-root').innerHTML) return;
+                abrirNovidades();
+            }, 1200);
+        }
+
         // --- Boot ---
         function boot() {
+            // A escolha salva já vale para a tela de espera; o perfil só chega
+            // com a sessão.
+            definirIdiomaDaInterface(idiomaSalvo() || 'pt');
+
             google.script.run
                 .withSuccessHandler(function (s) {
                     SESSION = s;
                     SESSION_REAL = s;
                     document.getElementById('boot-state').classList.add('hidden');
                     document.getElementById('user-ldap').textContent = s.ldap || '';
+
+                    // Ordem do ADR-0001: escolha manual > People > PT. Antes de
+                    // qualquer render, para nada nascer no idioma errado.
+                    definirIdiomaDaInterface(idiomaSalvo() || idiomaDoPerfil(s.defaultLanguage));
 
                     if (!s.hasAccess) {
                         document.getElementById('denied-state').classList.remove('hidden');
@@ -1182,6 +1316,9 @@
 
                     switchTab(destinoDaURL());
 
+                    document.getElementById('btn-novidades').classList.remove('hidden');
+                    checarNovidades();
+
                     // Voltar/avançar do navegador passam a funcionar.
                     window.addEventListener('hashchange', function () {
                         switchTab(destinoDaURL());
@@ -1190,7 +1327,7 @@
                 .withFailureHandler(function (err) {
                     document.getElementById('boot-state').classList.add('hidden');
                     document.getElementById('denied-state').classList.remove('hidden');
-                    toast(err.message || 'Falha ao verificar acesso.', true);
+                    toast(err.message || tt('bootFail'), true);
                 })
                 .getContentSession();
         }

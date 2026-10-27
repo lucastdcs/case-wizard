@@ -43,3 +43,7 @@ No ADR needed for trivial choices or implementation details.
 | [0011](0011-am-do-bcc-vem-do-case-log.md) | O AM do BCC vem do case log, não do assignee nem da lista de contatos | Accepted | 2026-09-09 |
 | [0012](0012-tasks-e-screenshots-na-central.md) | Catálogo de tasks e screenshots do Win Criteria na Central de Conteúdo | Accepted | 2026-09-09 |
 | [0013](0013-modulo-novo-herda-o-preset.md) | Módulo novo herda o preset nas casas que a planilha não tem | Accepted | 2026-09-09 |
+| [0017](0017-idioma-da-interface-da-central.md) | Idioma da interface da Central, separado do idioma do conteúdo | Accepted | 2026-10-14 |
+| [0018](0018-precall-checklist-no-case-notes.md) | Pre-call Checklist: sub-recurso do Case Notes, com a nota em inglês fixo | Accepted | 2026-10-23 |
+| [0019](0019-home-de-links-destaques-e-categorias.md) | Home de Links: destaques com janela, prévia no link e categorias criadas pela Central | Accepted | 2026-10-23 |
+| [0020](0020-precall-checklist-build-avulso.md) | Pre-call Checklist: build avulso, sem backend, com o favorito dentro do arquivo | Accepted | 2026-10-27 |

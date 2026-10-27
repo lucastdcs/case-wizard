@@ -184,6 +184,26 @@ espacial, mas `linear` é o ponto (bounce ali lê-se como travamento).
 duração: some com a sobra e com o deslize, não com a transição — sumir num
 quadro também desorienta.
 
+## Dado capturado do CRM: mostre que veio sozinho
+
+Quando um formulário chega com campos já preenchidos pela raspagem da tela do caso
+(Pre-call Checklist é a referência viva), a pessoa precisa saber **o que não
+precisa digitar**, e o formulário nunca pode mentir sobre de que caso é:
+
+- **Marca no próprio campo**, não um aviso à parte: "Auto" com ícone de check na
+  linha do rótulo, e a dica completa no `title`. A barra de status (`role="status"`)
+  diz quantos vieram e pede para revisar. Editar o campo tira a marca — deixou de
+  ser dado capturado.
+- **Entrada animada e curta**: os campos aparecem em sequência (~110ms de
+  intervalo), com realce azul que se dissolve. Só `opacity`/`transform`/cor, sem
+  overshoot; com `prefers-reduced-motion` aparecem sem animação.
+- **Nada capturado sobrescreve o que a pessoa digitou**, e captura que termina
+  depois de o caso mudar é descartada.
+- **Outro caso na tela zera o formulário antes da captura lenta**, e as ações de
+  saída ficam paradas enquanto ela roda. Do contrário o formulário do caso
+  anterior fica visível e editável por alguns centenas de milissegundos.
+- Valor ausente (`null`, vazio, `N/A`) não é dado capturado: o campo fica vazio.
+
 ## Acessibilidade (piso, não extra)
 
 - Todo controle é `<button>`/`<a>` — nunca `<div>` com `onclick`, que o teclado
@@ -210,3 +230,22 @@ quadro também desorienta.
 ## Componentes UI
 - **Tags `<select>`:** Para economizar cliques em listas complexas (como os motivos de descarte), utilizar obrigatoriamente a semântica de agrupamento `<optgroup label="Categoria">`.
 - **Botões:** Manter o padrão translúcido/outline com hover states claros. Ao executar ações, os botões devem ser desabilitados temporariamente.
+- **Mestre-detalhe com prévia (Links, ADR-0019):** lista à esquerda, painel de
+  prévia **fixo** à direita (janela de 860px). A prévia segue o `mouseover` e o
+  `focusin` — teclado e mouse mostram a mesma coisa — e o painel **nunca fica
+  vazio**: sem seleção ele mostra o destaque principal, e na falta dele o
+  primeiro favorito, recente ou link da lista; só uma busca sem resultado o
+  esvazia. Texto vindo da Central entra por `textContent`, e o ícone só sai de
+  uma lista fechada no pacote. Abaixo de 1000px o painel some (a lista não
+  comprime).
+- **Controle segmentado:** para alternar entre 2–3 vistas irmãs da mesma tela
+  (Biblioteca | Destaques na Central; Favoritos | Recentes | Saíram do destaque no
+  app) em vez de abas soltas. Estado em `aria-pressed` na Central e
+  `role="tab"` + `aria-selected` no app, alvo ≥32px, o selecionado é o único com
+  fundo. É a versão Apple do "chip de filtro" do Material: uma só
+  escolha, sem rolagem.
+- **Vidro só na casca:** superfícies translúcidas (`rgba(248,249,250,.88)` +
+  blur) valem para a janela e o trilho; o conteúdo dentro continua sólido e
+  recuado por tom, não por borda. Tudo o que anima declara as propriedades
+  (`transition: transform, opacity…`), nunca `all`, e respeita
+  `prefers-reduced-motion`.

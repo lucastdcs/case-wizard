@@ -15,6 +15,8 @@ Keep definitions short and precise. The goal: a new developer (or Claude) quickl
 
 ## C
 
+**Categoria (de link)** — O grupo em que um link mora (Tasks, Ads, QA, Feedback…) e que vira um botão no trilho do módulo de Links. As 10 do sistema (`tasks, ads, analytics, shopping, tech, hr, lm, qa, suporte, feedback`) vêm no bundle; as demais são criadas pela Central (módulo `link_categories`, ADR-0019) com nome de até 12 letras, uma cor e um ícone de listas fechadas. A chave é imutável depois de publicada, porque cada link a guarda.
+
 **CID** — Customer/case identifier captured live during a call (Call Script Assistant) or from the CRM page.
 
 **Command Center** — The floating pill UI (`src/modules/shared/command-center.js`) that is the app's main entry point, surfacing every module and drag-repositionable on screen.
@@ -26,6 +28,8 @@ Keep definitions short and precise. The goal: a new developer (or Claude) quickl
 ## D
 
 **Deployment (Apps Script)** — A *promoted, pinned* version of the Apps Script project, served at a stable `/exec` or `/dev` URL. Distinct from the HEAD (see below): pushing code does not change what a deployment serves until someone explicitly promotes a new version into it.
+
+**Destaque (de link)** — Um link posto na home do módulo de Links por um período, com título e resumo próprios. No máximo 3 no ar ao mesmo tempo (1 principal + 2). Não é um campo do link, e sim uma linha própria (módulo `link_highlights`, publicação direta) que aponta para a `Lineage` do link: assim o link continua na biblioteca quando a janela vence. A janela é avaliada no servidor, no fuso da planilha. Depois de encerrado, ele alimenta "Saíram do destaque" por 30 dias.
 
 ## G
 
@@ -43,9 +47,23 @@ Keep definitions short and precise. The goal: a new developer (or Claude) quickl
 
 ## L
 
+**Lineage (linhagem)** — A identidade estável de um item da Central ao longo das versões (`Content_Items.Lineage`, no formato `itm_<uuid>`). O `ID` muda a cada publicação, porque cada versão é uma linha nova; a linhagem não. É o que um destaque, um favorito ou um recente guardam para apontar para um link — nunca o `ID`, a URL ou uma cópia do nome. Um link do fallback embutido, que nunca passou pela Central, usa `u:<url>`.
+
 **LM** — The other main case category alongside BAU (see BAU). Referenced together as "BAU/LM" throughout Case Notes and templates.
 
+## O
+
+**OOS** — "Out of scope": o pedido do anunciante está fora do que o time atende. No Pre-call Checklist é um dos três valores de *Next steps* (`Proceed` / `OOS` / `Infeasible`); no Case Notes corresponde ao substatus `IN_Out_of_Scope_Rerouted`.
+
+## P
+
+**Pre-call Checklist** — Formulário curto, feito antes da ligação, cujo resultado é o bloco "Pre-call checklist" da case note (`src/modules/notes/precall/`). Filtra cedo o que é OOS ou inviável. O bloco sai **sempre em inglês** e com texto fixo, porque a conformidade do SOP é medida lendo as notas (ADR-0018, `specs/workflow/precall-checklist.md`). Quem não faz o checklist (Live Meet, caso que chegou com menos de 1h) registra `Completed: No` com o motivo.
+
+**Prévia (de link)** — Os dois textos curtos que o painel lateral do módulo de Links mostra ao passar o mouse ou focar num link: **"O que é"** (até 200 caracteres) e **"Quando usar"** (até 160), em PT/ES/EN. Moram no próprio link, não no destaque, então valem para a biblioteca inteira. Link sem prévia cai na descrição curta.
+
 ## S
+
+**sGTM** — Server-side Google Tag Manager. Uma das perguntas Yes/No do Pre-call Checklist.
 
 **Smart CR** — Email Assistant shortcuts tied to a Case Notes sub-status, letting an agent jump straight to the matching email template from the note-taking flow.
 

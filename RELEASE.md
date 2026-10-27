@@ -106,6 +106,7 @@ backend is the exact state this ordering exists to prevent.
 
 - [ ] There is no automated lint/test suite today (see `README.md` → Testing) — verify manually: load the Dev bookmarklet against the real CRM and exercise the changed module(s).
 - [ ] **Capture before shipping** (cf. `CLAUDE.md` → "Capture at checkpoints"): anything **decided** → an ADR, **learned / blocked** → `docs/LEARNINGS.md`, an **agent mistake/drift** → `docs/AGENT-EVALS.md`. A push/merge-to-main is the most reliable capture moment.
+- [ ] **Compare a seção da versão anterior do CHANGELOG com a da `main`** (o `diff` está em `docs/LEARNINGS.md`, entrada "CHANGELOG: depois da release…"). Linha que a branch acrescentou a uma versão já lançada é entrada arquivada no lugar errado: ela some da release que a carrega e entra nas notas da GitHub Release de uma versão que nunca a levou.
 - [ ] If `gas-backend/` changed: confirm the payload contract in `specs/data-models/api-payloads.md` still matches — more than one frontend module depends on it.
 - [ ] **If a `gas-backend/ContentSeed_*.js` changed, know that re-running its seeder will NOT update the sheet.** `seedContentModule()` is first-run-only: on a module that already has live items it returns `{status:'skipped'}` and writes nothing. The regenerated file ships with the deploy, nothing runs it, and the bundle's embedded fallback masks the gap — so **nothing turns red** and the Central silently keeps serving the old rows. Getting new content in depends on what changed. **A new language** is covered by `seedMissingLangsNow()`, which inserts only the languages a module does not have yet and leaves everything live untouched (safe to re-run; modules that keep translations inside the value, like `links`, are reported as skipped on purpose). **Changed text in a language already live** is not covered by anything automatic: publish it through the Central's own screens, or archive the module and re-seed, which discards edits made through the UI since the original seed. Decide which before shipping; do not assume a seeder covers it.
 - [ ] Confirm the GitHub Actions secret `CLASPRC_JSON` is still valid (CI fails fast at "Validar integridade do JSON" if not).
@@ -135,6 +136,11 @@ the bookmarklet — so a change to the dashboard that is only in
 release at a time**, so on a fix release this file holds only what changed in
 that release — replace the items, don't append to them.
 
+**So does the Content Hub (Central de Conteúdo).** `CW_CONTENT_RELEASE_NOTES`, in
+the same file, is what people who open the Central see; `renderDashboard()` picks
+it by template name. Same rules: `version` equals `package.json`, one release at a
+time, and the same test guards it.
+
 ## Tags & GitHub Releases
 
 A tag is **bookkeeping, not a deploy**. `deploy.yml` triggers on `push.branches`
@@ -150,10 +156,11 @@ Order — the tag comes **last**, on a commit that is already in production:
 #    add the two link refs at the bottom.
 # 2. Align the four version sources in the same commit:
 #    package.json "version", APP_VERSION (src/app.js), RELEASE_NOTES.version
-#    (src/modules/changelog/changelog-data.js) and CW_DASH_RELEASE_NOTES.version
-#    (gas-backend/DashReleaseNotes.js). See "App version" above.
-#    If the release touched the TL Dashboard, rewrite that file's items too —
-#    it is the only changelog the TL ever sees.
+#    (src/modules/changelog/changelog-data.js), and CW_DASH_RELEASE_NOTES.version
+#    plus CW_CONTENT_RELEASE_NOTES.version (both in gas-backend/DashReleaseNotes.js).
+#    See "App version" above.
+#    If the release touched the TL Dashboard or the Central, rewrite that
+#    object's items too — it is the only changelog its readers ever see.
 #    Check with: npm run test:dash-changelog
 # 3. Merge into main and push — this is what promotes production.
 git checkout main && git merge refactor-structure && git push origin main

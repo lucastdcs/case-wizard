@@ -2,6 +2,7 @@
 // 1. Importação dos Módulos
 
 import { initCaseNotesAssistant } from './modules/notes/notes-assistant.js';
+import { initPrecallChecklist } from './modules/notes/precall/precall-checklist.js';
 import { initEmailAssistant } from './modules/email-assistant/email-assistant.js';
 import { initCallScriptAssistant } from './modules/call-script/call-script-assistant.js';
 import { initLinksAssistant } from './modules/links/links-assistant.js';
@@ -35,7 +36,7 @@ function initApp() {
     }
     window.techSolInitialized = true;
 
-    const APP_VERSION = "v6.5.0"; 
+    const APP_VERSION = "v6.6.0";
 
     console.log(`🚀 TechSol Suite Initializing (${APP_VERSION})...`);
 
@@ -53,7 +54,7 @@ function initApp() {
             console.warn("Áudio bloqueado:", audioErr);
         }
         
-        // B. Busca o conteúdo gerenciável — os oito módulos numa execução só.
+        // B. Busca o conteúdo gerenciável — os dez módulos numa execução só.
         //
         // Antes cada módulo pedia o seu quando era aberto, e o boot já disparava
         // três (dicas, avisos, disponibilidade). Numa virada de turno isso são
@@ -66,7 +67,11 @@ function initApp() {
         DataService.fetchContentModules([
             'tips', 'broadcast', 'bau_availability',
             'links', 'call_script', 'email_template', 'note_template',
-            'task_screenshots'
+            'task_screenshots',
+            // Categorias criadas pela tela e destaques da home de Links. Ficam
+            // aqui, e não só no módulo, pelo mesmo motivo dos outros: um módulo
+            // que pede o seu quando é aberto é uma execução a mais por agente.
+            'link_categories', 'link_highlights'
         ]);
 
         // C. Animação de Entrada (Aqui o 'Sherlock' começa a buscar o nome)
@@ -77,6 +82,7 @@ function initApp() {
 
         // D. Inicializa os Módulos
         const toggleNotes = initCaseNotesAssistant();
+        const togglePrecall = initPrecallChecklist();
         const toggleEmail = initEmailAssistant();
         const toggleScript = initCallScriptAssistant();
         const toggleLinks = initLinksAssistant();
@@ -89,6 +95,7 @@ function initApp() {
 
         const moduleActions = {
             toggleNotes,
+            togglePrecall,
             toggleEmail,
             toggleScript,
             toggleLinks,

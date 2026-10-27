@@ -39,6 +39,7 @@ import { readFile, writeFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { rodapeDosDashboards, lerLinkDeDocs } from './credit-footer.mjs';
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ARQUIVO = join(tmpdir(), 'cw-tl-dashboard-smoke.html');
@@ -50,9 +51,13 @@ const executablePath = process.env.CW_CHROMIUM || undefined;
 
 // A página precisa vir de uma URL de verdade e não de setContent(): o
 // addInitScript — que é onde o dublê é instalado — só roda numa navegação.
+const RODAPE = rodapeDosDashboards(raiz);
+
 async function prepararArquivo() {
     let html = await readFile(resolve(raiz, 'gas-backend/TLDashboard.html'), 'utf8');
-    html = html.replace(/<\?!=\s*CW_ENV_BADGE\s*\?>/g, '').replace(/<\?!=\s*CW_CREDIT\s*\?>/g, '');
+    // O selo de ambiente some, mas o rodapé volta de verdade (e não vazio): é por
+    // ele que a documentação chega ao TL, e vazio nunca o deixaria ser testado.
+    html = html.replace(/<\?!=\s*CW_ENV_BADGE\s*\?>/g, '').replace(/<\?!=\s*CW_CREDIT\s*\?>/g, () => RODAPE.html);
     // As notas de versão vêm do arquivo de verdade, e não de um fixture: se
     // alguém quebrar o formato de CW_DASH_RELEASE_NOTES, é aqui que aparece.
     html = html.replace(/<\?!=\s*CW_RELEASE_NOTES\s*\?>/g, () => JSON.stringify(NOTAS));
@@ -330,6 +335,33 @@ console.log('\n--- Smoke: TL Dashboard (resumo copiável) ---\n');
     // versaoJaVista: estes blocos testam a vista de caso, e o aviso de novidades
     // abriria por cima no meio deles. O changelog tem bloco próprio no fim.
     const page = await abrirPagina(browser, { versaoJaVista: NOTAS.version });
+
+    await check('o link da documentação está no rodapé, livre para o clique', async () => {
+        const l = await lerLinkDeDocs(page);
+        verdade(l, 'o rodapé não tem o link da documentação');
+        igual(l.href, RODAPE.docsUrl, 'destino');
+        igual(l.alvo, '_blank', 'abre em outra aba');
+        verdade(l.visivel && l.livre && l.dentroDaJanela, 'link escondido, coberto ou fora da janela: ' + JSON.stringify(l));
+    });
+
+    // O rodapé é fixo no canto inferior direito, e a ação de decidir o caso
+    // mora no canto inferior direito do modal. Se um dia se encostarem, o TL
+    // clica em "Docs" querendo aprovar.
+    await check('com o caso aberto, o rodapé não cobre nem se sobrepõe aos botões de decisão', async () => {
+        await abrirCaso(page, 'bau_pt');
+        const r = await page.evaluate(() => {
+            const ret = (el) => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; };
+            const cruza = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
+            const rodape = ret(document.getElementById('cw-credit'));
+            const botoes = Array.from(document.querySelectorAll('#modal-footer-content button')).map(ret);
+            const modal = ret(document.querySelector('#caseModal .modal-content'));
+            return { botoes: botoes.length, cobreBotao: botoes.some((b) => cruza(rodape, b)), cobreModal: cruza(rodape, modal) };
+        });
+        verdade(r.botoes > 0, 'não achei os botões de decisão do modal');
+        verdade(!r.cobreBotao, 'o rodapé se sobrepõe a um botão de decisão');
+        verdade(!r.cobreModal, 'o rodapé se sobrepõe ao modal do caso');
+        verdade((await lerLinkDeDocs(page)).livre, 'com o modal aberto o link da documentação ficou coberto');
+    });
 
     await check('o cabeçalho diz de quem é o caso, não "Detalhes da Solicitação"', async () => {
         const r = await abrirCaso(page, 'bau_pt');

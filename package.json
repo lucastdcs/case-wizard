@@ -1,15 +1,17 @@
 {
   "name": "case-wizard",
-  "version": "6.5.0",
+  "version": "6.6.0",
   "description": "TechSol Operations Assistant - Productivity Suite",
   "main": "src/app.js",
   "scripts": {
     "build": "esbuild src/app.js --bundle --minify --outfile=dist/bundle.js --define:__CW_BUILD_ENV__='\"production\"'",
     "dev": "esbuild src/app.js --bundle --outfile=dist/bundle-dev.js --define:__CW_BUILD_ENV__='\"development\"'",
+    "build:precall": "node scripts/build-precall-standalone.mjs",
     "portfolio": "python3 generate-portfolio.py",
     "wiki:build": "node scripts/build-wiki.mjs",
     "test:content": "node scripts/test-content-api.js",
     "test:i18n": "node scripts/test-i18n.mjs",
+    "test:links": "node scripts/test-links.mjs",
     "test:call-script": "node scripts/test-call-script-roundtrip.mjs",
     "seed:links": "node scripts/generate-links-seed.mjs",
     "seed:call-script": "node scripts/generate-call-script-seed.mjs",
@@ -29,8 +31,10 @@
     "test:backup": "node scripts/test-bau-backup.mjs",
     "test:dash-changelog": "node scripts/test-dash-changelog.mjs",
     "test:tl-decision": "node scripts/test-tl-decision.mjs",
+    "test:precall": "node scripts/test-precall.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
     "smoke:i18n": "node scripts/smoke-i18n.mjs",
+    "smoke:links": "node scripts/smoke-links.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
     "smoke:bau-scraping": "node scripts/smoke-bau-scraping.mjs",
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",
@@ -40,6 +44,8 @@
     "smoke:bau-tasks": "node scripts/smoke-bau-tasks.mjs",
     "smoke:people": "node scripts/smoke-people.mjs",
     "smoke:tl-dash": "node scripts/smoke-tl-dashboard.mjs",
+    "smoke:precall": "node scripts/smoke-precall.mjs",
+    "smoke:precall-standalone": "node scripts/smoke-precall-standalone.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
   },
   "dependencies": {

@@ -3,6 +3,25 @@
      Links, Call Script, Case Notes, E-mails e Dicas. -->
 <script>
         // --- Links ---
+        //
+        // Duas vistas no mesmo destino. A BIBLIOTECA (links e categorias) passa
+        // pela fila de revisão; os DESTAQUES (Ops.html) vão ao ar na hora. A vista
+        // escolhida vive só na memória: o endereço (#/links) é um destino, não
+        // um estado de aba.
+        var LK_VIEW = 'lib';
+        var CAT_LOAD_FAILED = false;
+
+        function lkSwitchView(v) {
+            LK_VIEW = v === 'hl' ? 'hl' : 'lib';
+            var lib = LK_VIEW === 'lib';
+            document.getElementById('lk-view-lib').classList.toggle('hidden', !lib);
+            document.getElementById('lk-view-hl').classList.toggle('hidden', lib);
+            document.getElementById('lk-actions-lib').classList.toggle('hidden', !lib);
+            document.getElementById('lk-actions-hl').classList.toggle('hidden', lib);
+            document.getElementById('lk-seg-lib').setAttribute('aria-selected', String(lib));
+            document.getElementById('lk-seg-hl').setAttribute('aria-selected', String(!lib));
+        }
+
         function loadLinks() {
             google.script.run
                 .withSuccessHandler(function (items) {
@@ -12,8 +31,13 @@
                             MY_DRAFTS = drafts || [];
                             delete DRAFTS_OFFLINE.links;
                             renderLinks();
+                            renderHighlights();
                         })
-                        .withFailureHandler(function () { MY_DRAFTS = []; DRAFTS_OFFLINE.links = true; renderLinks(); })
+                        .withFailureHandler(function () {
+                            MY_DRAFTS = []; DRAFTS_OFFLINE.links = true;
+                            renderLinks();
+                            renderHighlights();
+                        })
                         .listContentDrafts('links');
                 })
                 .withFailureHandler(function (err) {
@@ -22,6 +46,30 @@
                         '<h2>Não foi possível carregar os links</h2><p>' + esc(err.message) + '</p></div>';
                 })
                 .listContentItems('links');
+
+            loadLinkCategories();
+            loadHighlights();
+        }
+
+        // Categorias criadas pela tela, e as propostas da própria pessoa. Falhar
+        // aqui não pode apagar os links: eles só passam a aparecer sob o nome da
+        // chave, e a tela AVISA que a lista de categorias não carregou.
+        function loadLinkCategories() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    CUSTOM_LINK_CATS = items || [];
+                    CAT_LOAD_FAILED = false;
+                    google.script.run
+                        .withSuccessHandler(function (drafts) { MY_CAT_DRAFTS = drafts || []; renderLinks(); })
+                        .withFailureHandler(function () { MY_CAT_DRAFTS = []; renderLinks(); })
+                        .listContentDrafts('link_categories');
+                })
+                .withFailureHandler(function () {
+                    CUSTOM_LINK_CATS = [];
+                    CAT_LOAD_FAILED = true;
+                    renderLinks();
+                })
+                .listContentItems('link_categories');
         }
 
         function draftForItem(itemId) {
@@ -31,9 +79,73 @@
             return null;
         }
 
+        // Links agrupados por categoria, na ordem do produto (embutidas) e depois
+        // as criadas pela tela. Chave sem definição vai por último, sob o próprio
+        // nome: um link nunca some por causa da categoria dele.
+        function lkGruposPorCategoria() {
+            var ordem = linkCategories().map(function (c) { return c.key; });
+            var grupos = {};
+            LIVE_LINKS.forEach(function (it) {
+                if (ordem.indexOf(it.key) === -1) ordem.push(it.key);
+                (grupos[it.key] = grupos[it.key] || []).push(it);
+            });
+            return { ordem: ordem, grupos: grupos };
+        }
+
+        function lkRenderCategorias() {
+            var host = document.getElementById('lk-cats');
+            var contagem = {};
+            LIVE_LINKS.forEach(function (it) { contagem[it.key] = (contagem[it.key] || 0) + 1; });
+            var pode = podeEscrever('link_categories');
+
+            var chips = linkCategories().map(function (c) {
+                var t = LINK_CAT_COLORS[c.color];
+                var n = contagem[c.key] || 0;
+                var acoes = '';
+                if (c.custom && pode) {
+                    acoes =
+                        '<button class="btn-icon" title="Editar a categoria" aria-label="Editar a categoria ' +
+                        esc(c.label) + '" onclick="openCategoryEditor(\'' + esc(c.itemId) + '\')">' +
+                        '<span class="material-symbols-rounded" aria-hidden="true">edit</span></button>' +
+                        '<button class="btn-icon" title="Tirar a categoria do ar" aria-label="Tirar a categoria ' +
+                        esc(c.label) + ' do ar" onclick="askCategoryRemoval(\'' + esc(c.itemId) + '\')">' +
+                        '<span class="material-symbols-rounded" aria-hidden="true">delete</span></button>';
+                }
+                return '<span class="lk-chip" title="' + esc(c.custom ? 'Criada pela tela · chave ' + c.key : 'Categoria do sistema · chave ' + c.key) + '">' +
+                    '<span class="lk-chip-ico" style="background:' + t.bg + ';color:' + t.color + '">' +
+                    '<span class="material-symbols-rounded" aria-hidden="true">' + esc(c.icon) + '</span></span>' +
+                    esc(c.label) + ' <span class="lk-chip-n">' + n + '</span>' + acoes + '</span>';
+            }).join('');
+
+            // Propostas de categoria da própria pessoa que ainda não entraram no ar.
+            var pendentes = MY_CAT_DRAFTS.filter(function (d) { return d.status === 'pending' || d.status === 'draft'; })
+                .map(function (d) {
+                    var v = parseCatValue(d.value);
+                    return '<span class="lk-chip"><span class="lk-chip-ico" style="background:' +
+                        LINK_CAT_COLORS[v.color].bg + ';color:' + LINK_CAT_COLORS[v.color].color + '">' +
+                        '<span class="material-symbols-rounded" aria-hidden="true">' + esc(v.icon) + '</span></span>' +
+                        esc(v.label || d.key) + ' <span class="estado estado-espera">em revisão</span></span>';
+                }).join('');
+
+            var aviso = CAT_LOAD_FAILED
+                ? '<div class="note warn" style="margin-bottom:12px">Não foi possível carregar as categorias criadas pela tela. ' +
+                  'Os links delas aparecem abaixo sob o nome da chave. ' +
+                  '<button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="loadLinkCategories()">Tentar de novo</button></div>'
+                : '';
+
+            host.innerHTML = '<div class="card-title">Categorias</div>' +
+                '<p class="card-sub" style="margin-bottom:12px">A barra lateral do app do agente. ' +
+                'As do sistema não mudam; as que você cria passam por revisão.</p>' + aviso +
+                '<div class="lk-cats">' + chips + pendentes + '</div>';
+        }
+
         function renderLinks() {
             var host = document.getElementById('links-list');
             var summary = document.getElementById('links-summary');
+            var contador = document.getElementById('lk-n-lib');
+            if (contador) contador.textContent = LIVE_LINKS.length ? String(LIVE_LINKS.length) : '';
+
+            lkRenderCategorias();
 
             if (!LIVE_LINKS.length) {
                 summary.textContent = 'Nenhum link publicado ainda.';
@@ -45,21 +157,22 @@
                 return;
             }
 
-            var byCat = {};
-            LIVE_LINKS.forEach(function (it) {
-                (byCat[it.key] = byCat[it.key] || []).push(it);
-            });
-
             var pend = MY_DRAFTS.length;
             summary.textContent = LIVE_LINKS.length + ' links publicados' +
                 (pend ? ' · ' + pend + ' com alteração em andamento' : '');
 
-            var html = '';
-            Object.keys(byCat).sort().forEach(function (cat) {
-                html += '<div class="cat-head">' + esc(CATEGORY_LABELS[cat] || cat) +
-                    ' <span class="pill draft">' + byCat[cat].length + '</span></div>';
+            var agrupado = lkGruposPorCategoria();
+            var podeDestacar = podeEscrever('link_highlights');
 
-                byCat[cat].forEach(function (it) {
+            var html = '';
+            agrupado.ordem.forEach(function (cat) {
+                var lista = agrupado.grupos[cat];
+                if (!lista || !lista.length) return;
+
+                html += '<div class="cat-head">' + esc(linkCatLabel(cat)) +
+                    ' <span class="pill draft">' + lista.length + '</span></div>';
+
+                lista.forEach(function (it) {
                     var v = parseLinkValue(it.value);
                     var d = draftForItem(it.id);
                     var badge = selosDoRascunho(d);
@@ -77,17 +190,27 @@
                         + 'onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'links\')">Histórico</button>'
                         + botaoComoAgente(it.id);
 
+                    var destacar = podeDestacar
+                        ? '<button class="btn btn-ghost btn-sm" onclick="openHighlightEditor(null,\'' +
+                          esc(it.lineage) + '\')">Destacar</button>'
+                        : '';
+
                     var actions = podeEscrever('links')
-                        ? '<div style="display:flex;gap:8px">' + historico + descarte +
+                        ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + historico + destacar + descarte +
                         '<button class="btn btn-ghost btn-sm" onclick="openLinkEditor(\'' + it.id + '\')">Editar</button>' +
                         '<button class="btn btn-danger btn-sm" onclick="askRemoval(\'' + it.id + '\')">Tirar do ar</button>' +
                         '</div>'
-                        : '<div style="display:flex;gap:8px">' + historico + descarte + '</div>';
+                        : '<div style="display:flex;gap:8px;flex-wrap:wrap">' + historico + destacar + descarte + '</div>';
+
+                    // A prévia é opcional e vale para qualquer link; o que falta é
+                    // dito aqui para o SME achar onde escrever.
+                    var temPrevia = !!(v.about || v.when);
 
                     html += '<div class="item-row" data-item="' + esc(it.id) + '">' +
                         '<div class="item-main">' +
                         '<div class="item-name">' + esc(v.name) + ' ' + badge + '</div>' +
-                        '<div class="item-meta">' + esc(v.desc) + ' — ' + esc(v.url) + '</div>' +
+                        '<div class="item-meta">' + esc(v.desc) + ' — ' + esc(v.url) +
+                        (temPrevia ? '' : ' · <span class="lk-missing">sem prévia</span>') + '</div>' +
                         '</div>' + actions + '</div>';
                 });
             });
@@ -228,6 +351,87 @@
                 .saveAndSubmitContentDraft(payload);
         }
 
+        // --- Campos por idioma (descrição e prévia do link; título e resumo do destaque) ---
+        //
+        // Os três idiomas vivem no DOM o tempo todo e só um fica visível. Trocar de
+        // aba não recria os campos — o que se digitou em ES continua lá quando
+        // a pessoa volta do EN, e o envio lê os três de uma vez.
+        var LK_LANGS = [['pt', 'PT'], ['es', 'ES'], ['en', 'EN']];
+
+        function lkLangChips(prefix) {
+            return '<div class="lk-lang" id="' + prefix + '-lang" role="group" aria-label="Idioma do texto">' +
+                LK_LANGS.map(function (l, i) {
+                    return '<button type="button" data-lang="' + l[0] + '" aria-pressed="' + (i === 0) + '" ' +
+                        'onclick="lkSetLang(\'' + prefix + '\',\'' + l[0] + '\')">' + l[1] + '</button>';
+                }).join('') + '</div>';
+        }
+
+        // Quem quiser reagir à troca (o destaque repinta a prévia no idioma
+        // escolhido) registra aqui, por prefixo.
+        var LK_LANG_HOOKS = {};
+
+        function lkSetLang(prefix, lang) {
+            document.querySelectorAll('[data-pane^="' + prefix + '-"]').forEach(function (p) {
+                p.classList.toggle('hidden', p.getAttribute('data-pane') !== prefix + '-' + lang);
+            });
+            document.querySelectorAll('#' + prefix + '-lang button').forEach(function (b) {
+                b.setAttribute('aria-pressed', String(b.getAttribute('data-lang') === lang));
+            });
+            if (typeof LK_LANG_HOOKS[prefix] === 'function') LK_LANG_HOOKS[prefix](lang);
+        }
+
+        // Marca "falta" no idioma sem nenhum campo preenchido: o agente desse idioma
+        // vê o texto em português, e quem escreve precisa saber disso ANTES de enviar.
+        function lkMarcarFaltas(prefix, ids) {
+            LK_LANGS.forEach(function (l) {
+                if (l[0] === 'pt') return;
+                var preenchido = ids[l[0]].some(function (id) {
+                    var el = document.getElementById(id);
+                    return el && el.value.trim();
+                });
+                var b = document.querySelector('#' + prefix + '-lang button[data-lang="' + l[0] + '"]');
+                if (!b) return;
+                b.classList.toggle('miss', !preenchido);
+                b.textContent = l[1] + (preenchido ? '' : ': falta');
+            });
+        }
+
+        function lkContar(inputId, max) {
+            var el = document.getElementById(inputId);
+            var cnt = document.getElementById(inputId + '-n');
+            if (el && cnt) cnt.textContent = el.value.length + ' / ' + max;
+        }
+
+        // Prévia do link: o que é e quando usar. É opcional, mas é ela que dá ao
+        // agente mais que uma linha genérica ao passar o mouse.
+        var LK_ABOUT_MAX = 200;
+        var LK_WHEN_MAX = 160;
+
+        function lkCamposDePrevia(v) {
+            var suf = { pt: '', es: '_es', en: '_en' };
+            return '<div class="lk-help" style="margin-top:20px"><strong>Prévia</strong> — aparece ao passar o mouse no app do agente.</div>' +
+                lkLangChips('lnk-pv') +
+                LK_LANGS.map(function (l, i) {
+                    var s = suf[l[0]];
+                    return '<div data-pane="lnk-pv-' + l[0] + '"' + (i === 0 ? '' : ' class="hidden"') + '>' +
+                        '<label class="fld" for="lnk-about' + s + '">O que é <span class="lk-count" id="lnk-about' + s + '-n"></span></label>' +
+                        '<textarea id="lnk-about' + s + '" maxlength="' + LK_ABOUT_MAX + '" style="min-height:64px" ' +
+                        'oninput="lkContar(\'lnk-about' + s + '\',' + LK_ABOUT_MAX + ');lkMarcarFaltas(\'lnk-pv\',LK_PV_IDS)" ' +
+                        'placeholder="Uma ou duas frases: o que é esta ferramenta ou documento.">' + esc(v['about' + s]) + '</textarea>' +
+                        '<label class="fld" for="lnk-when' + s + '">Quando usar <span class="lk-count" id="lnk-when' + s + '-n"></span></label>' +
+                        '<textarea id="lnk-when' + s + '" maxlength="' + LK_WHEN_MAX + '" style="min-height:64px" ' +
+                        'oninput="lkContar(\'lnk-when' + s + '\',' + LK_WHEN_MAX + ');lkMarcarFaltas(\'lnk-pv\',LK_PV_IDS)" ' +
+                        'placeholder="Em que situação do atendimento o agente deve abrir isto.">' + esc(v['when' + s]) + '</textarea>' +
+                        '</div>';
+                }).join('');
+        }
+
+        var LK_PV_IDS = {
+            pt: ['lnk-about', 'lnk-when'],
+            es: ['lnk-about_es', 'lnk-when_es'],
+            en: ['lnk-about_en', 'lnk-when_en']
+        };
+
         function openLinkEditor(itemId) {
             var item = null;
             for (var i = 0; i < LIVE_LINKS.length; i++) {
@@ -239,10 +443,15 @@
             var v = parseLinkValue(src ? src.value : '{}');
             var cat = src ? src.key : 'tasks';
 
-            var catOptions = Object.keys(CATEGORY_LABELS).map(function (k) {
-                return '<option value="' + k + '"' + (k === cat ? ' selected' : '') + '>' +
-                    esc(CATEGORY_LABELS[k]) + '</option>';
+            var catOptions = linkCategories().map(function (c) {
+                return '<option value="' + esc(c.key) + '"' + (c.key === cat ? ' selected' : '') + '>' +
+                    esc(c.label) + '</option>';
             }).join('');
+            // Chave que já não tem definição: o link continua editável, sem
+            // empurrá-lo para outra categoria em silêncio.
+            if (!linkCategories().some(function (c) { return c.key === cat; })) {
+                catOptions = '<option value="' + esc(cat) + '" selected>' + esc(cat) + ' (sem definição)</option>' + catOptions;
+            }
 
             document.getElementById('modal-root').innerHTML =
                 '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
@@ -266,6 +475,7 @@
                 '</div>' +
                 '<label class="fld" for="lnk-cat">Categoria</label>' +
                 '<select id="lnk-cat">' + catOptions + '</select>' +
+                lkCamposDePrevia(v) +
                 '<div class="modal-actions">' +
                 '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
                 '<button class="btn btn-ghost" id="lnk-draft">Salvar rascunho</button>' +
@@ -278,8 +488,16 @@
             document.getElementById('lnk-draft').onclick = function () {
                 submitLink(itemId, existingDraft ? existingDraft.draftId : null, this, true);
             };
+
+            LK_ABOUT_IDS().concat(LK_WHEN_IDS()).forEach(function (id) {
+                lkContar(id, id.indexOf('about') !== -1 ? LK_ABOUT_MAX : LK_WHEN_MAX);
+            });
+            lkMarcarFaltas('lnk-pv', LK_PV_IDS);
             document.getElementById('lnk-name').focus();
         }
+
+        function LK_ABOUT_IDS() { return ['lnk-about', 'lnk-about_es', 'lnk-about_en']; }
+        function LK_WHEN_IDS() { return ['lnk-when', 'lnk-when_es', 'lnk-when_en']; }
 
         function submitLink(itemId, draftId, btn, apenasRascunho) {
             var name = document.getElementById('lnk-name').value.trim();
@@ -289,6 +507,8 @@
             if (!/^https?:\/\/|^http:\/\/go\//i.test(url)) {
                 return toast('A URL precisa começar com http:// ou https://', true);
             }
+
+            function val(id) { return document.getElementById(id).value.trim(); }
 
             var payload = {
                 draftId: draftId || '',
@@ -300,13 +520,189 @@
                 value: JSON.stringify({
                     name: name,
                     url: url,
-                    desc: document.getElementById('lnk-desc').value.trim(),
-                    desc_es: document.getElementById('lnk-desc-es').value.trim(),
-                    desc_en: document.getElementById('lnk-desc-en').value.trim()
+                    desc: val('lnk-desc'),
+                    desc_es: val('lnk-desc-es'),
+                    desc_en: val('lnk-desc-en'),
+                    about: val('lnk-about'), about_es: val('lnk-about_es'), about_en: val('lnk-about_en'),
+                    when: val('lnk-when'), when_es: val('lnk-when_es'), when_en: val('lnk-when_en')
                 })
             };
 
             (apenasRascunho ? salvarRascunho : enviarProposta)(payload, btn, loadLinks);
+        }
+
+        // --- Categorias criadas pela tela ---
+        //
+        // Passam pela fila, como o link: uma categoria nova muda a barra lateral de
+        // todo agente. Cor e ícone vêm de listas fechadas (ver LINK_CAT_COLORS).
+        var LK_CAT_FORM = { color: 'teal', icon: 'folder', keyTouched: false };
+
+        // "Treinamento de TL" -> "treinamento_de_tl". É só sugestão: a chave é
+        // identidade e a pessoa pode ajustá-la antes de criar.
+        function lkSlug(texto) {
+            var s = String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+            if (s && !/^[a-z]/.test(s)) s = 'c_' + s;
+            return s.slice(0, 24);
+        }
+
+        function openCategoryEditor(itemId) {
+            var item = null;
+            CUSTOM_LINK_CATS.forEach(function (c) { if (c.id === itemId) item = c; });
+            var v = item ? parseCatValue(item.value) : { label: '', label_es: '', label_en: '', color: 'teal', icon: 'folder' };
+
+            LK_CAT_FORM = { color: v.color, icon: v.icon, keyTouched: !!item };
+
+            var swatches = Object.keys(LINK_CAT_COLORS).map(function (k) {
+                var c = LINK_CAT_COLORS[k];
+                return '<button type="button" class="lk-swatch" data-color="' + k + '" title="' + esc(c.nome) + '" ' +
+                    'aria-label="' + esc(c.nome) + '" aria-pressed="' + (k === v.color) + '" ' +
+                    'style="background:' + c.color + '" onclick="lkPickColor(\'' + k + '\')"></button>';
+            }).join('');
+
+            var icones = LINK_CAT_ICONS.map(function (n) {
+                return '<button type="button" class="lk-icon-opt" data-icon="' + n + '" title="' + esc(n) + '" ' +
+                    'aria-label="Ícone ' + esc(n) + '" aria-pressed="' + (n === v.icon) + '" ' +
+                    'onclick="lkPickIcon(\'' + n + '\')"><span class="material-symbols-rounded" aria-hidden="true">' + n + '</span></button>';
+            }).join('');
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="cat-titulo" style="max-width:640px">' +
+                '<h2 id="cat-titulo">' + (item ? 'Editar categoria' : 'Nova categoria') + '</h2>' +
+                '<p class="card-sub">Isso cria uma proposta. A categoria só aparece na barra do agente depois da aprovação, e quando ganhar o primeiro link.</p>' +
+                '<div class="lk-cols" style="grid-template-columns:minmax(0,1fr) 96px;gap:24px">' +
+                '<div>' +
+                '<label class="fld" for="cat-nome">Nome <span class="lk-count" id="cat-nome-n"></span></label>' +
+                '<input type="text" id="cat-nome" maxlength="12" autocomplete="off" placeholder="ex.: Treinamento" value="' + esc(v.label) + '" ' +
+                'oninput="lkCatNome()">' +
+                '<p class="lk-help">Cabe na barra do agente: até 12 letras.</p>' +
+                '<div class="lk-two"><div><label class="fld" for="cat-nome-es">Nome (ES) <span class="lk-help" style="display:inline">opcional</span></label>' +
+                '<input type="text" id="cat-nome-es" maxlength="12" value="' + esc(v.label_es) + '" oninput="lkCatPreview()"></div>' +
+                '<div><label class="fld" for="cat-nome-en">Nome (EN) <span class="lk-help" style="display:inline">opcional</span></label>' +
+                '<input type="text" id="cat-nome-en" maxlength="12" value="' + esc(v.label_en) + '" oninput="lkCatPreview()"></div></div>' +
+                '<label class="fld" for="cat-chave">Chave</label>' +
+                '<input type="text" id="cat-chave" maxlength="24" autocomplete="off" value="' + esc(item ? item.key : '') + '"' +
+                (item ? ' readonly' : ' oninput="LK_CAT_FORM.keyTouched=true"') + '>' +
+                '<p class="lk-help">' + (item
+                    ? 'A chave não muda depois de criada: cada link da categoria a guarda.'
+                    : 'Identifica a categoria (letras minúsculas, números e _). Não muda depois de criada.') + '</p>' +
+                '<label class="fld">Cor</label><div class="lk-swatches" id="cat-cores">' + swatches + '</div>' +
+                '<label class="fld">Ícone</label><div class="lk-icons" id="cat-icones">' + icones + '</div>' +
+                '</div>' +
+                '<div><label class="fld">Na barra</label><div class="lk-side-prev" id="cat-previa" aria-hidden="true"></div></div>' +
+                '</div>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="cat-save">Enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('cat-save').onclick = function () { submitCategory(item, this); };
+            lkCatPreview();
+            document.getElementById('cat-nome').focus();
+        }
+
+        function lkPickColor(k) {
+            LK_CAT_FORM.color = k;
+            document.querySelectorAll('#cat-cores .lk-swatch').forEach(function (b) {
+                b.setAttribute('aria-pressed', String(b.getAttribute('data-color') === k));
+            });
+            lkCatPreview();
+        }
+
+        function lkPickIcon(n) {
+            LK_CAT_FORM.icon = n;
+            document.querySelectorAll('#cat-icones .lk-icon-opt').forEach(function (b) {
+                b.setAttribute('aria-pressed', String(b.getAttribute('data-icon') === n));
+            });
+            lkCatPreview();
+        }
+
+        function lkCatNome() {
+            var chave = document.getElementById('cat-chave');
+            if (chave && !chave.readOnly && !LK_CAT_FORM.keyTouched) {
+                chave.value = lkSlug(document.getElementById('cat-nome').value);
+            }
+            lkCatPreview();
+        }
+
+        // O que a pessoa vai ver na barra do agente, no tamanho dela.
+        function lkCatPreview() {
+            var host = document.getElementById('cat-previa');
+            if (!host) return;
+            var t = LINK_CAT_COLORS[LK_CAT_FORM.color];
+            var nome = document.getElementById('cat-nome').value.trim() || 'Nome';
+            document.getElementById('cat-nome-n').textContent = document.getElementById('cat-nome').value.length + ' / 12';
+            host.style.background = t.bg;
+            host.style.color = t.color;
+            host.innerHTML = '<span class="material-symbols-rounded">' + esc(LK_CAT_FORM.icon) + '</span>' +
+                '<span class="lbl">' + esc(nome) + '</span>';
+        }
+
+        function submitCategory(item, btn) {
+            function val(id) { return document.getElementById(id).value.trim(); }
+            var nome = val('cat-nome');
+            var chave = val('cat-chave');
+
+            if (!nome) return toast('Dê um nome à categoria.', true);
+            if (!/^[a-z][a-z0-9_]{1,23}$/.test(chave)) {
+                return toast('A chave precisa ter de 2 a 24 caracteres: letras minúsculas, números e _, começando por letra.', true);
+            }
+
+            enviarProposta({
+                draftId: '',
+                itemId: item ? item.id : '',
+                module: 'link_categories',
+                key: chave,
+                lang: 'ALL',
+                label: nome,
+                value: JSON.stringify({
+                    label: nome, label_es: val('cat-nome-es'), label_en: val('cat-nome-en'),
+                    color: LK_CAT_FORM.color, icon: LK_CAT_FORM.icon
+                })
+            }, btn, loadLinks);
+        }
+
+        function askCategoryRemoval(itemId) {
+            var item = null;
+            CUSTOM_LINK_CATS.forEach(function (c) { if (c.id === itemId) item = c; });
+            if (!item) return;
+
+            var emUso = LIVE_LINKS.filter(function (l) { return l.key === item.key; });
+            var bloqueio = emUso.length
+                ? '<div class="note warn" style="margin-top:14px">Esta categoria ainda tem ' + emUso.length +
+                  ' link(s): ' + esc(emUso.slice(0, 3).map(function (l) { return l.label; }).join(', ')) +
+                  (emUso.length > 3 ? '…' : '') + '. Mova ou retire esses links antes.</div>'
+                : '';
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" role="dialog" aria-modal="true">' +
+                '<h2>Tirar esta categoria do ar?</h2>' +
+                '<p class="card-sub">Também passa por aprovação. Só é possível com a categoria vazia; nada é apagado — a versão fica arquivada e pode voltar.</p>' +
+                bloqueio +
+                '<label class="fld" for="rm-reason">Motivo</label>' +
+                '<textarea id="rm-reason" placeholder="ex.: não usamos mais"></textarea>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-danger" id="rm-go"' + (emUso.length ? ' disabled' : '') + '>Enviar para revisão</button>' +
+                '</div></div></div>';
+
+            document.getElementById('rm-go').onclick = function () {
+                var reason = document.getElementById('rm-reason').value.trim();
+                if (!reason) return toast('Explique o motivo.', true);
+                this.disabled = true;
+
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Pedido de remoção enviado.');
+                        refreshContentLists();
+                        loadPendingCount();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .requestContentRemoval(itemId, reason);
+            };
         }
 
         function askRemoval(itemId) {
@@ -551,7 +947,7 @@
                     NOTE_SUBSTATUS = (cat && cat.substatus) || [];
 
                     var sel = document.getElementById('nt-sub');
-                    sel.innerHTML = '<option value="">Todos</option>' +
+                    sel.innerHTML = '<option value="" data-i18n="ntAll">' + esc(tt('ntAll')) + '</option>' +
                         NOTE_SUBSTATUS.map(function (s) {
                             return '<option value="' + esc(s.key) + '">' + esc(s.name) + '</option>';
                         }).join('');
@@ -1417,11 +1813,15 @@
             if (!subject) return toast('O e-mail precisa de um assunto.', true);
             if (!template) return toast('O e-mail precisa de um corpo.', true);
 
-            // Só assunto e corpo são editáveis: a lista de campos (e, em ES, os
-            // rótulos) segue como está. Mexer nela pela tela exigiria casar as
-            // duas linguagens de uma vez, e é justamente onde um erro vaza
+            // Só assunto e corpo são editáveis: a lista de campos (e, fora do
+            // PT, os rótulos) segue como está. Mexer nela pela tela exigiria
+            // casar as linguagens de uma vez, e é justamente onde um erro vaza
             // placeholder literal para o anunciante.
-            var value = (item.lang === 'ES')
+            //
+            // "Fora do PT", e não "ES": o EN guarda `labels` como o ES. Com o
+            // teste antigo, salvar um modelo EN gravava `placeholders: []` e
+            // apagava os rótulos sem aviso.
+            var value = (item.lang !== 'PT')
                 ? JSON.stringify({ subject: subject, template: template, labels: original.labels || {} })
                 : JSON.stringify({ subject: subject, template: template, placeholders: original.placeholders || [] });
 

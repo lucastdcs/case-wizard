@@ -1,6 +1,7 @@
 <!-- Parte de gas-backend/ContentDashboard.html. Ver o cabeçalho de lá. -->
 <!-- Módulos de OPERAÇÃO: publicam direto, sem fila.
-     Avisos e Disponibilidade BAU. -->
+     Avisos, Disponibilidade BAU e os Destaques da home de Links (que moram na
+     aba Links, mas têm o regime desta parte: vão ao ar na hora). -->
 <script>
         // =====================================================
         //  AVISOS
@@ -433,13 +434,13 @@
             google.script.run
                 .withSuccessHandler(function () {
                     btn.disabled = false;
-                    btn.textContent = 'Publicar disponibilidade';
+                    btn.textContent = tt('bauPublish');
                     toast('Disponibilidade publicada.');
                     loadBau();
                 })
                 .withFailureHandler(function (err) {
                     btn.disabled = false;
-                    btn.textContent = 'Publicar disponibilidade';
+                    btn.textContent = tt('bauPublish');
                     // O servidor é quem valida (data invertida, data inexistente,
                     // nenhuma data). A mensagem dele já diz o que corrigir.
                     toast(err.message, true);
@@ -454,6 +455,575 @@
                         segments: segments
                     })
                 });
+        }
+
+        // =====================================================
+        //  DESTAQUES DA HOME DE LINKS (ADR-0019)
+        //
+        //  Publicam direto, como os avisos: um destaque "a partir de segunda" que
+        //  espera revisor chega depois de já não importar. O LINK em si continua
+        //  passando pela fila — aqui só se escolhe quais links estão em evidência,
+        //  por quanto tempo e com que texto.
+        //
+        //  A linha de um destaque está 'live' na planilha do começo ao fim. O que
+        //  muda com o tempo é o ESTADO (agendado, no ar, encerrado), calculado
+        //  pelo servidor no fuso da planilha; esta tela repete a conta para
+        //  mostrá-lo, e quem decide o que o agente recebe é a leitura pública.
+        // =====================================================
+        var HL_ITEMS = [];
+        var HL_CONFIG = null;
+        var HL_LOADED = false;
+        var HL_FORM = { position: 'secondary', lang: 'pt' };
+        var HL_ENDED_SHOWN = 10;
+
+        function hlParse(item) {
+            try {
+                var p = JSON.parse(item.value || '{}');
+                return {
+                    linkLineage: p.linkLineage || '',
+                    headline: p.headline || item.label || '', headline_es: p.headline_es || '', headline_en: p.headline_en || '',
+                    blurb: p.blurb || '', blurb_es: p.blurb_es || '', blurb_en: p.blurb_en || '',
+                    position: p.position === 'main' ? 'main' : 'secondary',
+                    startsAt: p.startsAt || '', endsAt: p.endsAt || ''
+                };
+            } catch (e) {
+                return {
+                    linkLineage: '', headline: item.label || '(ilegível)', headline_es: '', headline_en: '',
+                    blurb: '', blurb_es: '', blurb_en: '', position: 'secondary', startsAt: '', endsAt: '', broken: true
+                };
+            }
+        }
+
+        // O "agora" é o do SERVIDOR (fuso da planilha), nunca o do navegador de
+        // quem olha — a mesma razão do relógio único dos avisos.
+        function hlNow() { return HL_CONFIG ? HL_CONFIG.now : agoraLocalISO(); }
+        function hlMax() { return HL_CONFIG ? HL_CONFIG.maxActive : 3; }
+        function hlEndedDays() { return HL_CONFIG ? HL_CONFIG.endedDays : 30; }
+
+        function hlMs(t) {
+            var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(String(t || ''));
+            return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : NaN;
+        }
+
+        // Mesma regra do servidor (estadoDoDestaque_).
+        function hlEstado(v, agora) {
+            if (!v.startsAt || agora < v.startsAt) return 'scheduled';
+            if (!v.endsAt || agora < v.endsAt) return 'active';
+            return (hlMs(agora) - hlMs(v.endsAt)) / 86400000 <= hlEndedDays() ? 'ended' : 'expired';
+        }
+
+        function hlSomaDias(t, dias) {
+            var ms = hlMs(t);
+            if (isNaN(ms)) return '';
+            var d = new Date(ms + dias * 86400000);
+            var p = function (n) { return String(n).padStart(2, '0'); };
+            return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()) +
+                'T' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+        }
+
+        // O horário é o do relógio de parede da planilha: sem conversão de fuso.
+        function hlRotulo(t) {
+            var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(String(t || ''));
+            if (!m) return String(t || '');
+            return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).toLocaleString(UI_LOCALE[UI_LANG],
+                { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        function hlLinkDe(lineage) {
+            if (!lineage) return null;
+            for (var i = 0; i < LIVE_LINKS.length; i++) {
+                if ((LIVE_LINKS[i].lineage || LIVE_LINKS[i].id) === lineage) return LIVE_LINKS[i];
+            }
+            return null;
+        }
+
+        function loadHighlights() {
+            google.script.run
+                .withSuccessHandler(function (items) {
+                    HL_ITEMS = items || [];
+                    google.script.run
+                        .withSuccessHandler(function (cfg) {
+                            HL_CONFIG = cfg;
+                            HL_LOADED = true;
+                            var tz = document.getElementById('hl-tz');
+                            if (tz && cfg && cfg.timeZone) tz.textContent = cfg.timeZone;
+                            renderHighlights();
+                        })
+                        .withFailureHandler(function () { HL_LOADED = true; renderHighlights(); })
+                        .getLinkHighlightsConfig();
+                })
+                .withFailureHandler(function (err) {
+                    document.getElementById('hl-list').innerHTML =
+                        '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                        '<h2>Não foi possível carregar os destaques</h2><p>' + esc(err.message) + '</p></div>';
+                })
+                .listContentItems('link_highlights');
+        }
+
+        function hlClassificar() {
+            var agora = hlNow();
+            var out = { ativos: [], agendados: [], encerrados: [] };
+            HL_ITEMS.forEach(function (it) {
+                var v = hlParse(it);
+                var e = hlEstado(v, agora);
+                var entrada = { it: it, v: v, e: e };
+                if (e === 'active') out.ativos.push(entrada);
+                else if (e === 'scheduled') out.agendados.push(entrada);
+                else out.encerrados.push(entrada);
+            });
+            // Principal primeiro, depois o que entrou mais recentemente: a ordem do app.
+            out.ativos.sort(function (a, b) {
+                return (a.v.position === 'main' ? 0 : 1) - (b.v.position === 'main' ? 0 : 1) ||
+                    String(b.v.startsAt).localeCompare(String(a.v.startsAt));
+            });
+            out.agendados.sort(function (a, b) { return String(a.v.startsAt).localeCompare(String(b.v.startsAt)); });
+            out.encerrados.sort(function (a, b) { return String(b.v.endsAt).localeCompare(String(a.v.endsAt)); });
+            return out;
+        }
+
+        function hlLinhaDoLink(v) {
+            var link = hlLinkDe(v.linkLineage);
+            var cat = link ? linkCatByKey(link.key) : null;
+            return {
+                nome: link ? parseLinkValue(link.value).name : '',
+                catNome: cat ? cat.label : '',
+                tema: cat ? LINK_CAT_COLORS[cat.color] : LINK_CAT_COLORS.slate,
+                icone: cat ? cat.icon : 'link_off',
+                removido: !link
+            };
+        }
+
+        function hlLinha(entrada, indice) {
+            var v = entrada.v;
+            var l = hlLinhaDoLink(v);
+            var pode = podeEscrever('link_highlights');
+            var id = esc(entrada.it.id);
+
+            var estado, quando, acoes;
+            var comoAgente = botaoComoAgente(entrada.it.id);
+
+            if (entrada.e === 'active') {
+                estado = '<span class="estado">No ar' + (v.position === 'main' ? ' · Principal' : '') + '</span>';
+                quando = v.endsAt ? 'termina ' + esc(hlRotulo(v.endsAt)) : 'sem data de fim';
+                acoes = comoAgente + (pode
+                    ? '<button class="btn btn-ghost btn-sm" onclick="openHighlightEditor(\'' + id + '\')">Editar</button>' +
+                      '<button class="btn btn-danger btn-sm" onclick="askEndHighlight(\'' + id + '\')">Encerrar agora</button>'
+                    : '');
+            } else if (entrada.e === 'scheduled') {
+                estado = '<span class="estado estado-espera">Entra no ar ' + esc(hlRotulo(v.startsAt)) + '</span>';
+                quando = v.endsAt ? 'até ' + esc(hlRotulo(v.endsAt)) : 'sem data de fim';
+                acoes = comoAgente + (pode
+                    ? '<button class="btn btn-ghost btn-sm" onclick="openHighlightEditor(\'' + id + '\')">Editar</button>' +
+                      '<button class="btn btn-danger btn-sm" onclick="askCancelHighlight(\'' + id + '\')">Cancelar</button>'
+                    : '');
+            } else {
+                estado = '<span class="estado estado-fim">Encerrado</span>';
+                quando = 'saiu em ' + esc(hlRotulo(v.endsAt)) +
+                    (entrada.e === 'expired' ? ' · já não aparece no app do agente' : '');
+                acoes = pode
+                    ? '<button class="btn btn-ghost btn-sm" onclick="openHighlightEditor(null,null,\'' + id + '\')">Reativar</button>'
+                    : '';
+            }
+
+            var pos = entrada.e === 'active'
+                ? '<div class="lk-pos">' + (indice + 1) + '</div>'
+                : '<div class="lk-pos off">·</div>';
+
+            return '<div class="lk-hl-row" data-item="' + id + '">' + pos +
+                '<div class="lk-ico" style="background:' + l.tema.bg + ';color:' + l.tema.color + '">' +
+                '<span class="material-symbols-rounded" aria-hidden="true">' + esc(l.icone) + '</span></div>' +
+                '<div class="lk-hl-main"><div class="lk-hl-title">' + esc(v.headline) + '</div>' +
+                '<div class="lk-hl-sub">' + (l.removido
+                    ? '<span class="lk-missing">link removido do ar</span>'
+                    : esc(l.nome) + ' · ' + esc(l.catNome)) + '</div>' +
+                '<div class="lk-hl-when">' + estado + '<span>' + quando + '</span></div></div>' +
+                '<div class="lk-hl-acts">' + acoes + '</div></div>';
+        }
+
+        function renderHighlights() {
+            var host = document.getElementById('hl-list');
+            if (!host || !HL_LOADED) return;
+
+            var g = hlClassificar();
+            var max = hlMax();
+
+            var n = document.getElementById('lk-n-hl');
+            if (n) n.textContent = g.ativos.length ? g.ativos.length + ' no ar' : '';
+
+            if (!HL_ITEMS.length) {
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">star</span>' +
+                    '<h2>Nenhum destaque ainda</h2>' +
+                    '<p>Escolha um link da biblioteca para pôr na home do agente, com um texto que diga por que abri-lo agora.</p></div>';
+                return;
+            }
+
+            var barras = '';
+            for (var i = 0; i < max; i++) barras += '<i class="' + (i < g.ativos.length ? 'on' : '') + '"></i>';
+
+            var html = '<div class="lk-cap"><div class="lk-cap-bars">' + barras + '</div><span><strong>' +
+                g.ativos.length + ' de ' + max + ' vagas</strong> ocupadas agora · ' +
+                g.agendados.length + ' agendado(s) · ' + g.encerrados.length + ' encerrado(s)</span></div>';
+
+            html += '<div class="lk-group">No ar agora <span>a ordem é a da home do agente</span></div>';
+            html += g.ativos.length
+                ? g.ativos.map(hlLinha).join('')
+                : '<p class="card-sub" style="padding:12px 0">Nenhum destaque no ar. A home do agente mostra só favoritos e recentes.</p>';
+
+            if (g.agendados.length) {
+                html += '<div class="lk-group">Agendados</div>' + g.agendados.map(hlLinha).join('');
+            }
+            if (g.encerrados.length) {
+                html += '<div class="lk-group">Encerrados <span>os 5 mais recentes alimentam "Saíram do destaque" no agente, por ' +
+                    hlEndedDays() + ' dias</span></div>' +
+                    g.encerrados.slice(0, HL_ENDED_SHOWN).map(hlLinha).join('');
+            }
+
+            host.innerHTML = html;
+        }
+
+        // ---- texto por idioma, com o mesmo fallback do app ----
+        function hlTexto(v, base, idioma) {
+            var l = String(idioma || 'pt').toLowerCase();
+            var traduzido = (l === 'es' || l === 'en') ? v[base + '_' + l] : '';
+            return traduzido || v[base] || '';
+        }
+
+        // O cartão como o agente o vê. Usado no editor, ao vivo, e em "Como o agente vê".
+        function hlCartaoHtml(v, idioma) {
+            var link = hlLinkDe(v.linkLineage);
+            var l = hlLinhaDoLink(v);
+            var lk = link ? parseLinkValue(link.value) : null;
+            var headline = hlTexto(v, 'headline', idioma) || (lk ? lk.name : '(sem título)');
+            var blurb = hlTexto(v, 'blurb', idioma);
+            var ate = v.endsAt ? 'até ' + esc(hlRotulo(v.endsAt).split(',')[0]) : '';
+
+            var cartao =
+                '<div class="lk-hero"><div class="lk-hero-eb">' +
+                '<span class="material-symbols-rounded" aria-hidden="true" style="color:' + l.tema.color + '">' + esc(l.icone) + '</span>' +
+                '<b>' + esc(l.nome || 'Escolha um link') + '</b><span class="sp">' + ate + '</span></div>' +
+                '<h3>' + esc(headline) + '</h3>' + (blurb ? '<p>' + esc(blurb) + '</p>' : '') + '</div>';
+
+            var about = lk ? hlTexto(lk, 'about', idioma) : '';
+            var when = lk ? hlTexto(lk, 'when', idioma) : '';
+            var painel = (about || when)
+                ? '<div class="lk-pv">' +
+                  (about ? '<h6>O que é</h6><p>' + esc(about) + '</p>' : '') +
+                  (when ? '<h6>Quando usar</h6><p>' + esc(when) + '</p>' : '') + '</div>'
+                : (lk ? '<p class="lk-help" style="margin-top:12px">Este link ainda não tem prévia: ao passar o mouse, o agente vê só a descrição. ' +
+                        'Escreva em Biblioteca → Editar.</p>' : '');
+
+            return cartao + painel;
+        }
+
+        // "Como o agente vê" de um destaque já publicado.
+        function previaDoDestaque(v, idioma) {
+            return '<div class="lk-prev" style="padding:16px">' + hlCartaoHtml(v, idioma) + '</div>';
+        }
+
+        // ---- limite de vagas: a mesma conta do servidor (assertHighlightCapacity_) ----
+        // Aqui existe para AVISAR enquanto se digita; quem recusa é o servidor.
+        function hlOcupacao(ini, fim, chave) {
+            var agora = hlNow();
+            if (!ini || (fim && fim <= agora)) return null;
+
+            var clamp = function (t) { return t < agora ? agora : t; };
+            var outros = [];
+            HL_ITEMS.forEach(function (it) {
+                if (chave && it.key === chave) return;
+                var v = hlParse(it);
+                if (!v.startsAt || (v.endsAt && v.endsAt <= agora)) return;
+                outros.push(v);
+            });
+
+            var inicio = clamp(ini);
+            var pontos = [inicio];
+            outros.forEach(function (v) {
+                var p = clamp(v.startsAt);
+                if (p > inicio && (!fim || p < fim)) pontos.push(p);
+            });
+
+            var pico = 0, quando = inicio;
+            pontos.forEach(function (p) {
+                var n = 1;
+                outros.forEach(function (v) {
+                    if (clamp(v.startsAt) <= p && (!v.endsAt || p < v.endsAt)) n++;
+                });
+                if (n > pico) { pico = n; quando = p; }
+            });
+            return { pico: pico, quando: quando };
+        }
+
+        function hlLerForm() {
+            function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+            var semFim = document.getElementById('hl-sem-fim').checked;
+            return {
+                linkLineage: val('hl-link'),
+                headline: val('hl-h'), headline_es: val('hl-h_es'), headline_en: val('hl-h_en'),
+                blurb: val('hl-b'), blurb_es: val('hl-b_es'), blurb_en: val('hl-b_en'),
+                position: HL_FORM.position,
+                startsAt: val('hl-ini'),
+                endsAt: semFim ? '' : val('hl-fim')
+            };
+        }
+
+        var HL_TX_IDS = {
+            pt: ['hl-h', 'hl-b'], es: ['hl-h_es', 'hl-b_es'], en: ['hl-h_en', 'hl-b_en']
+        };
+
+        // Chamada a cada tecla: repinta o cartão, a faixa de vagas e as faltas de tradução.
+        function hlAtualizar(chave) {
+            var v = hlLerForm();
+            var prev = document.getElementById('hl-prev');
+            if (prev) prev.innerHTML = hlCartaoHtml(v, HL_FORM.lang);
+
+            ['hl-h', 'hl-h_es', 'hl-h_en'].forEach(function (id) { lkContar(id, 60); });
+            ['hl-b', 'hl-b_es', 'hl-b_en'].forEach(function (id) { lkContar(id, 80); });
+            lkMarcarFaltas('hl-tx', HL_TX_IDS);
+
+            var host = document.getElementById('hl-vagas');
+            if (!host) return;
+            var o = hlOcupacao(v.startsAt, v.endsAt, chave);
+            var max = hlMax();
+            if (!o) {
+                host.className = 'lk-vagas';
+                host.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">looks_3</span><span>Informe uma janela que ainda não terminou.</span>';
+            } else if (o.pico > max) {
+                host.className = 'lk-vagas warn';
+                host.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">error</span><span>Em ' + esc(hlRotulo(o.quando)) +
+                    ' haveria <b>' + o.pico + '</b> destaques no ar, e o máximo é ' + max + '. Encerre um ou ajuste a janela.</span>';
+            } else {
+                host.className = 'lk-vagas';
+                host.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">looks_3</span><span>Neste período haverá até <b>' +
+                    o.pico + ' de ' + max + '</b> destaques no ar.</span>';
+            }
+        }
+
+        function hlPosicao(p) {
+            HL_FORM.position = p;
+            document.getElementById('hl-pos-main').setAttribute('aria-pressed', String(p === 'main'));
+            document.getElementById('hl-pos-sec').setAttribute('aria-pressed', String(p === 'secondary'));
+        }
+
+        function hlFimLiberado() {
+            var semFim = document.getElementById('hl-sem-fim').checked;
+            document.getElementById('hl-fim').disabled = semFim;
+        }
+
+        // itemId: edita um destaque existente.
+        // preLineage: "Destacar" a partir de um link da biblioteca.
+        // modeloId: "Reativar" — texto e link de um destaque encerrado, janela nova.
+        function openHighlightEditor(itemId, preLineage, modeloId) {
+            if (!HL_LOADED || !HL_CONFIG) {
+                return toast('Os destaques ainda estão carregando. Tente em um instante.', true);
+            }
+            if (!LIVE_LINKS.length) {
+                return toast('Publique ao menos um link na biblioteca antes de criar um destaque.', true);
+            }
+
+            var item = null, base = null;
+            HL_ITEMS.forEach(function (it) {
+                if (it.id === itemId) item = it;
+                if (it.id === modeloId) base = it;
+            });
+
+            var agora = HL_CONFIG.now;
+            var v;
+            if (item) {
+                v = hlParse(item);
+            } else if (base) {
+                v = hlParse(base);
+                v.startsAt = agora;
+                v.endsAt = hlSomaDias(agora, 7);
+            } else {
+                v = hlParse({ value: '{}', label: '' });
+                v.linkLineage = preLineage || '';
+                v.startsAt = agora;
+                v.endsAt = hlSomaDias(agora, 7);
+            }
+
+            HL_FORM = { position: v.position, lang: 'pt' };
+
+            // Os links, por categoria. O destaque aponta para a LINHAGEM do link.
+            var agrupado = lkGruposPorCategoria();
+            var opcoes = '<option value=""' + (v.linkLineage ? '' : ' selected') + ' disabled>Escolha um link…</option>';
+            agrupado.ordem.forEach(function (cat) {
+                var lista = (agrupado.grupos[cat] || []).slice().sort(function (a, b) {
+                    return parseLinkValue(a.value).name.localeCompare(parseLinkValue(b.value).name);
+                });
+                if (!lista.length) return;
+                opcoes += '<optgroup label="' + esc(linkCatLabel(cat)) + '">' + lista.map(function (it) {
+                    var lin = it.lineage || it.id;
+                    return '<option value="' + esc(lin) + '"' + (lin === v.linkLineage ? ' selected' : '') + '>' +
+                        esc(parseLinkValue(it.value).name) + '</option>';
+                }).join('') + '</optgroup>';
+            });
+            if (v.linkLineage && !hlLinkDe(v.linkLineage)) {
+                opcoes += '<option value="' + esc(v.linkLineage) + '" selected disabled>(link removido do ar)</option>';
+            }
+
+            var suf = { pt: '', es: '_es', en: '_en' };
+            var textos = LK_LANGS.map(function (l, i) {
+                var s = suf[l[0]];
+                return '<div data-pane="hl-tx-' + l[0] + '"' + (i === 0 ? '' : ' class="hidden"') + '>' +
+                    '<label class="fld" for="hl-h' + s + '">Título do destaque <span class="lk-count" id="hl-h' + s + '-n"></span></label>' +
+                    '<input type="text" id="hl-h' + s + '" maxlength="60" autocomplete="off" value="' + esc(v['headline' + s]) + '" ' +
+                    'placeholder="ex.: Novo formulário de escalação de Sellers" oninput="hlAtualizar(HL_CHAVE)">' +
+                    '<label class="fld" for="hl-b' + s + '">Resumo, uma linha <span class="lk-count" id="hl-b' + s + '-n"></span></label>' +
+                    '<input type="text" id="hl-b' + s + '" maxlength="80" autocomplete="off" value="' + esc(v['blurb' + s]) + '" ' +
+                    'placeholder="ex.: Substitui o envio por e-mail ao TL." oninput="hlAtualizar(HL_CHAVE)">' +
+                    '</div>';
+            }).join('');
+
+            window.HL_CHAVE = item ? item.key : '';
+            LK_LANG_HOOKS['hl-tx'] = function (lang) { HL_FORM.lang = lang; hlAtualizar(window.HL_CHAVE); };
+
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal lk-wide" role="dialog" aria-modal="true" aria-labelledby="hl-titulo">' +
+                '<h2 id="hl-titulo">' + (item ? 'Editar destaque' : 'Novo destaque') + '</h2>' +
+                '<p class="card-sub">Publica direto: vale assim que você confirmar. Na próxima tela você vê o alcance.</p>' +
+                '<div class="lk-cols">' +
+                '<div>' +
+                '<label class="fld" for="hl-link">Link</label>' +
+                '<select id="hl-link" onchange="hlAtualizar(HL_CHAVE)">' + opcoes + '</select>' +
+                lkLangChips('hl-tx') + textos +
+                '<div class="lk-two" style="margin-top:8px">' +
+                '<div><label class="fld" for="hl-ini">Início</label>' +
+                '<input type="datetime-local" id="hl-ini" value="' + esc(v.startsAt) + '" oninput="hlAtualizar(HL_CHAVE)"></div>' +
+                '<div><label class="fld" for="hl-fim">Fim</label>' +
+                '<input type="datetime-local" id="hl-fim" value="' + esc(v.endsAt) + '" oninput="hlAtualizar(HL_CHAVE)"' +
+                (v.endsAt ? '' : ' disabled') + '></div></div>' +
+                '<label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px">' +
+                '<input type="checkbox" id="hl-sem-fim"' + (v.endsAt ? '' : ' checked') + ' onchange="hlFimLiberado();hlAtualizar(HL_CHAVE)"> ' +
+                'Sem data de fim (fica até alguém encerrar)</label>' +
+                '<p class="lk-help">Horário da planilha (' + esc(HL_CONFIG.timeZone || '') + ').</p>' +
+                '<label class="fld">Posição na home</label>' +
+                '<div class="lk-seg" role="group" aria-label="Posição na home">' +
+                '<button type="button" id="hl-pos-main" aria-pressed="' + (v.position === 'main') + '" onclick="hlPosicao(\'main\')">Principal</button>' +
+                '<button type="button" id="hl-pos-sec" aria-pressed="' + (v.position !== 'main') + '" onclick="hlPosicao(\'secondary\')">Secundário</button>' +
+                '</div>' +
+                '</div>' +
+                '<div><div class="lk-prev"><h5>Como o agente vê</h5><div id="hl-prev"></div></div>' +
+                '<div class="lk-vagas" id="hl-vagas"></div></div>' +
+                '</div>' +
+                '<div class="lk-foot"><span class="grow"><span class="material-symbols-rounded" aria-hidden="true">bolt</span>Sem fila de aprovação</span>' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="hl-save">Revisar e publicar</button></div>' +
+                '</div></div>';
+
+            document.getElementById('hl-save').onclick = function () { submitHighlight(item, this); };
+            hlAtualizar(window.HL_CHAVE);
+            document.getElementById(preLineage || v.linkLineage ? 'hl-h' : 'hl-link').focus();
+        }
+
+        function hlDescreverJanela(ini, fim) {
+            var comeco = ini <= hlNow() ? 'Vai ao ar agora' : 'Entra no ar em ' + hlRotulo(ini);
+            return comeco + (fim ? ' e sai em ' + hlRotulo(fim) + '.' : ' e fica até alguém encerrar.');
+        }
+
+        function submitHighlight(item, btn) {
+            var v = hlLerForm();
+
+            if (!v.linkLineage) return toast('Escolha o link que vai em destaque.', true);
+            if (!v.headline) return toast('Dê um título ao destaque.', true);
+            if (!v.startsAt) return toast('Informe quando o destaque entra no ar.', true);
+            if (v.endsAt && v.endsAt <= v.startsAt) return toast('O fim do destaque precisa vir depois do início.', true);
+
+            var valor = JSON.stringify(v);
+
+            // O servidor valida tudo (inclusive as vagas) ANTES da confirmação:
+            // confirmar "vai ao ar para todos" e só então ouvir "não cabe" seria a
+            // ordem errada.
+            google.script.run
+                .withSuccessHandler(function (r) {
+                    if (!r || !r.ok) return toast((r && r.error) || 'O destaque não passou na validação.', true);
+
+                    confirmarPublicacao(
+                        'todos os agentes, de todos os segmentos',
+                        v.headline + ' — ' + hlDescreverJanela(v.startsAt, v.endsAt),
+                        function () { publicarDestaque(item, btn, v, valor); }
+                    );
+                })
+                .withFailureHandler(function (err) { toast(err.message, true); })
+                .checkLinkHighlight(valor, item ? item.key : '');
+        }
+
+        function publicarDestaque(item, btn, v, valor) {
+            var rotulo = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Publicando…';
+
+            google.script.run
+                .withSuccessHandler(function () {
+                    closeModal();
+                    toast(item ? 'Destaque atualizado.' : 'Destaque publicado.');
+                    loadHighlights();
+                })
+                .withFailureHandler(function (err) {
+                    btn.disabled = false;
+                    btn.textContent = rotulo;
+                    toast(err.message, true);
+                })
+                .publishContentDirect({
+                    module: 'link_highlights',
+                    // Editar reusa a chave do item: é o que faz a publicação
+                    // versionar em vez de nascer um destaque duplicado.
+                    key: item ? item.key : '',
+                    lang: 'ALL',
+                    label: v.headline,
+                    value: valor
+                });
+        }
+
+        function askEndHighlight(itemId) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:460px" role="dialog" aria-modal="true" aria-labelledby="hl-fim-titulo">' +
+                '<h2 id="hl-fim-titulo">Encerrar este destaque agora?</h2>' +
+                '<p class="card-sub">Ele sai da home do agente na próxima atualização, em até um minuto, e passa a aparecer em ' +
+                '“Saíram do destaque” por ' + hlEndedDays() + ' dias. Não se perde nada.</p>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Manter</button>' +
+                '<button class="btn btn-danger" id="hl-fim-go">Encerrar agora</button>' +
+                '</div></div></div>';
+
+            document.getElementById('hl-fim-go').onclick = function () {
+                this.disabled = true;
+                this.textContent = 'Encerrando…';
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Destaque encerrado.');
+                        loadHighlights();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .endLinkHighlight(itemId);
+            };
+        }
+
+        function askCancelHighlight(itemId) {
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:460px" role="dialog" aria-modal="true" aria-labelledby="hl-canc-titulo">' +
+                '<h2 id="hl-canc-titulo">Cancelar este destaque agendado?</h2>' +
+                '<p class="card-sub">Ele nunca chegou ao agente, então sai sem deixar rastro na home. A versão fica arquivada.</p>' +
+                '<div class="modal-actions">' +
+                '<button class="btn btn-ghost" onclick="closeModal()">Manter</button>' +
+                '<button class="btn btn-danger" id="hl-canc-go">Cancelar destaque</button>' +
+                '</div></div></div>';
+
+            document.getElementById('hl-canc-go').onclick = function () {
+                this.disabled = true;
+                google.script.run
+                    .withSuccessHandler(function () {
+                        closeModal();
+                        toast('Destaque cancelado.');
+                        loadHighlights();
+                    })
+                    .withFailureHandler(function (err) { toast(err.message, true); })
+                    .unpublishContentDirect(itemId);
+            };
         }
 
 </script>

@@ -36,7 +36,7 @@
     <nav class="topnav">
         <div class="brand-main">
             <span class="material-symbols-rounded">tune</span>
-            Central de Conteúdo
+            <span data-i18n="brand">Central de Conteúdo</span>
         </div>
         <div class="topnav-fim">
             <!-- Nasce escondido: antes de saber quem é a pessoa não há
@@ -45,18 +45,39 @@
                  botão é o que ensina o Ctrl+K. -->
             <button class="topnav-acao hidden" id="btn-busca" onclick="abrirBusca()">
                 <span class="material-symbols-rounded" aria-hidden="true">search</span>
-                <span class="topnav-acao-label">Buscar</span>
+                <span class="topnav-acao-label" data-i18n="search">Buscar</span>
                 <kbd class="topnav-kbd">Ctrl K</kbd>
             </button>
             <button class="topnav-acao hidden" id="btn-ver-como" onclick="abrirVerComo()">
                 <span class="material-symbols-rounded" aria-hidden="true">visibility</span>
-                <span class="topnav-acao-label">Ver como</span>
+                <span class="topnav-acao-label" data-i18n="viewAs">Ver como</span>
             </button>
             <button class="topnav-acao hidden" id="btn-lateral" onclick="alternarLateral()"
                 aria-expanded="true" aria-controls="lateral">
                 <span class="material-symbols-rounded" aria-hidden="true">history</span>
-                <span class="topnav-acao-label">Atividade</span>
+                <span class="topnav-acao-label" data-i18n="activity">Atividade</span>
             </button>
+            <!-- Mesmo aviso do TL Dashboard. Só aparece para quem entra: a
+                 novidade é da Central, e quem não tem acesso não a usa. -->
+            <button class="topnav-acao topnav-icone hidden" id="btn-novidades" onclick="abrirNovidades()"
+                data-i18n-aria="whatsNew" aria-label="Novidades desta versão">
+                <span class="material-symbols-rounded" aria-hidden="true">campaign</span>
+                <span class="novidades-ponto" id="novidades-ponto" hidden></span>
+            </button>
+            <!-- Idioma da INTERFACE, de quem lê. Fica no topo e visível desde o
+                 boot: a tela de recusa também é lida. O idioma do CONTEÚDO é
+                 o seletor do trilho (ADR-0017). Os nomes dos idiomas ficam
+                 sempre no próprio idioma: quem procura "Español" não lê
+                 "Espanhol". -->
+            <label class="topnav-idioma">
+                <span class="material-symbols-rounded" aria-hidden="true">translate</span>
+                <select id="lang-ui" onchange="aoTrocarIdiomaDaInterface()"
+                    data-i18n-aria="uiLang" aria-label="Idioma da interface">
+                    <option value="pt">Português</option>
+                    <option value="es">Español</option>
+                    <option value="en">English</option>
+                </select>
+            </label>
             <div class="user-chip">
                 <span id="user-ldap"></span>
                 <span class="role-badge hidden" id="user-role"></span>
@@ -75,85 +96,86 @@
              não há navegação a oferecer. Os grupos nomeiam o REGIME de cada
              módulo, que é a informação que antes morava num parágrafo dentro do
              painel (ADR-0007). -->
-        <nav class="rail hidden" id="rail" aria-label="Seções da Central">
+        <nav class="rail hidden" id="rail" data-i18n-aria="railAria" aria-label="Seções da Central">
             <div class="rail-group">
                 <div class="rail-items">
                     <button class="rail-item" id="tab-home" data-tab="home" onclick="switchTab('home')">
-                        <span class="material-symbols-rounded" aria-hidden="true">home</span> <span class="rail-label">Hoje</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">home</span> <span class="rail-label" data-i18n="dest_home">Hoje</span>
                     </button>
                 </div>
             </div>
 
             <div class="rail-lang">
-                <label for="lang-global">Idioma</label>
+                <label for="lang-global" data-i18n="contentLang">Idioma do conteúdo</label>
                 <select id="lang-global" onchange="aoTrocarIdioma()">
                     <option value="PT">Português</option>
                     <option value="ES">Español</option>
+                    <option value="EN">English</option>
                 </select>
             </div>
 
             <div class="rail-group">
                 <div class="rail-group-title">
-                    Catálogo
-                    <small>passa por revisão</small>
+                    <span data-i18n="groupCatalog">Catálogo</span>
+                    <small data-i18n="groupCatalogSub">passa por revisão</small>
                 </div>
                 <div class="rail-items">
                     <button class="rail-item" id="tab-links" data-tab="links" onclick="switchTab('links')">
-                        <span class="material-symbols-rounded" aria-hidden="true">link</span> <span class="rail-label">Links</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">link</span> <span class="rail-label" data-i18n="dest_links">Links</span>
                     </button>
                     <button class="rail-item" id="tab-callscript" data-tab="callscript" onclick="switchTab('callscript')">
-                        <span class="material-symbols-rounded" aria-hidden="true">support_agent</span> <span class="rail-label">Call Script</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">support_agent</span> <span class="rail-label" data-i18n="dest_callscript">Call Script</span>
                     </button>
                     <button class="rail-item" id="tab-notes" data-tab="notes" onclick="switchTab('notes')">
-                        <span class="material-symbols-rounded" aria-hidden="true">edit_note</span> <span class="rail-label">Case Notes</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">edit_note</span> <span class="rail-label" data-i18n="dest_notes">Case Notes</span>
                     </button>
                     <button class="rail-item" id="tab-tasks" data-tab="tasks" onclick="switchTab('tasks')">
-                        <span class="material-symbols-rounded" aria-hidden="true">checklist</span> <span class="rail-label">Tasks</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">checklist</span> <span class="rail-label" data-i18n="dest_tasks">Tasks</span>
                     </button>
                     <button class="rail-item" id="tab-emails" data-tab="emails" onclick="switchTab('emails')">
-                        <span class="material-symbols-rounded" aria-hidden="true">mail</span> <span class="rail-label">E-mails</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">mail</span> <span class="rail-label" data-i18n="dest_emails">E-mails</span>
                     </button>
                     <button class="rail-item" id="tab-tips" data-tab="tips" onclick="switchTab('tips')">
-                        <span class="material-symbols-rounded" aria-hidden="true">lightbulb</span> <span class="rail-label">Dicas</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">lightbulb</span> <span class="rail-label" data-i18n="dest_tips">Dicas</span>
                     </button>
                 </div>
             </div>
 
             <div class="rail-group">
                 <div class="rail-group-title">
-                    Operação
-                    <small>vai ao ar na hora</small>
+                    <span data-i18n="groupOps">Operação</span>
+                    <small data-i18n="groupOpsSub">vai ao ar na hora</small>
                 </div>
                 <div class="rail-items">
                     <button class="rail-item" id="tab-broadcast" data-tab="broadcast" onclick="switchTab('broadcast')">
-                        <span class="material-symbols-rounded" aria-hidden="true">campaign</span> <span class="rail-label">Avisos</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">campaign</span> <span class="rail-label" data-i18n="dest_broadcast">Avisos</span>
                         <span class="ao-vivo" aria-hidden="true"></span>
                     </button>
                     <button class="rail-item" id="tab-bau" data-tab="bau" onclick="switchTab('bau')">
-                        <span class="material-symbols-rounded" aria-hidden="true">event_available</span> <span class="rail-label">Disponibilidade</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">event_available</span> <span class="rail-label" data-i18n="dest_bau">Disponibilidade</span>
                         <span class="ao-vivo" aria-hidden="true"></span>
                     </button>
                 </div>
             </div>
 
             <div class="rail-group">
-                <div class="rail-group-title">Governança</div>
+                <div class="rail-group-title" data-i18n="groupGov">Governança</div>
                 <div class="rail-items">
                     <button class="rail-item" id="tab-approvals" data-tab="approvals" onclick="switchTab('approvals')">
-                        <span class="material-symbols-rounded" aria-hidden="true">rule</span> <span class="rail-label">Aprovações</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">rule</span> <span class="rail-label" data-i18n="dest_approvals">Aprovações</span>
                         <span class="rail-count hidden" id="pending-count">0</span>
                     </button>
                     <button class="rail-item hidden" id="tab-people" data-tab="people" onclick="switchTab('people')">
-                        <span class="material-symbols-rounded" aria-hidden="true">groups</span> <span class="rail-label">Pessoas</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">groups</span> <span class="rail-label" data-i18n="dest_people">Pessoas</span>
                     </button>
                     <button class="rail-item hidden" id="tab-audit" data-tab="audit" onclick="switchTab('audit')">
-                        <span class="material-symbols-rounded" aria-hidden="true">manage_search</span> <span class="rail-label">Auditoria</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">manage_search</span> <span class="rail-label" data-i18n="dest_audit">Auditoria</span>
                     </button>
                     <button class="rail-item hidden" id="tab-roles" data-tab="roles" onclick="switchTab('roles')">
-                        <span class="material-symbols-rounded" aria-hidden="true">shield_person</span> <span class="rail-label">Papéis</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">shield_person</span> <span class="rail-label" data-i18n="dest_roles">Papéis</span>
                     </button>
                     <button class="rail-item hidden" id="tab-access" data-tab="access" onclick="switchTab('access')">
-                        <span class="material-symbols-rounded" aria-hidden="true">manage_accounts</span> <span class="rail-label">Acessos</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">manage_accounts</span> <span class="rail-label" data-i18n="dest_access">Acessos</span>
                     </button>
                 </div>
             </div>
@@ -163,15 +185,15 @@
         <!-- Estado de carregamento inicial -->
         <div id="boot-state" class="state">
             <span class="material-symbols-rounded">hourglass_top</span>
-            <h2>Verificando seu acesso…</h2>
-            <p>Só um instante.</p>
+            <h2 data-i18n="bootTitle">Verificando seu acesso…</h2>
+            <p data-i18n="bootSub">Só um instante.</p>
         </div>
 
         <!-- Sem permissão -->
         <div id="denied-state" class="state hidden">
             <span class="material-symbols-rounded">lock</span>
-            <h2>Você não tem acesso à Central de Conteúdo</h2>
-            <p>Peça a um ADMIN para liberar seu LDAP. Enquanto isso, nada aqui fica visível.</p>
+            <h2 data-i18n="deniedTitle">Você não tem acesso à Central de Conteúdo</h2>
+            <p data-i18n="deniedSub">Peça a um ADMIN para liberar seu LDAP. Enquanto isso, nada aqui fica visível.</p>
         </div>
 
         <!-- App -->
@@ -189,22 +211,61 @@
                 </div>
             </section>
 
-            <!-- TAB: Links -->
+            <!-- TAB: Links
+                 Duas vistas no mesmo destino: a BIBLIOTECA (links e categorias,
+                 passam por revisão) e os DESTAQUES da home do agente (vão ao ar
+                 na hora e expiram sozinhos). O regime de cada vista é dito no
+                 próprio painel, porque o trilho só tem um item para os dois. -->
             <section id="pane-links">
-                <div class="note hidden" id="links-note"></div>
-                <div class="row-between" style="margin-bottom:8px">
-                    <div>
-                        <div class="card-title">Links no ar</div>
-                        <p class="card-sub" id="links-summary">Carregando…</p>
+                <div class="lk-top">
+                    <div class="lk-seg" role="tablist" aria-label="Vista de Links">
+                        <button type="button" role="tab" id="lk-seg-lib" aria-selected="true"
+                            onclick="lkSwitchView('lib')">Biblioteca <span class="lk-seg-n" id="lk-n-lib"></span></button>
+                        <button type="button" role="tab" id="lk-seg-hl" aria-selected="false"
+                            onclick="lkSwitchView('hl')">Destaques <span class="lk-seg-n" id="lk-n-hl"></span></button>
                     </div>
-                    <button class="btn btn-primary" id="links-new-btn" onclick="openLinkEditor(null)">
-                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Novo link
-                    </button>
+                    <div class="lk-top-actions" id="lk-actions-lib">
+                        <button class="btn btn-ghost" id="lk-cat-btn" onclick="openCategoryEditor(null)">
+                            <span class="material-symbols-rounded" style="font-size:19px" aria-hidden="true">new_label</span> Nova categoria
+                        </button>
+                        <button class="btn btn-primary" id="links-new-btn" onclick="openLinkEditor(null)">
+                            <span class="material-symbols-rounded" style="font-size:19px" aria-hidden="true">add</span> <span data-i18n="newLink">Novo link</span>
+                        </button>
+                    </div>
+                    <div class="lk-top-actions hidden" id="lk-actions-hl">
+                        <button class="btn btn-primary" id="hl-new-btn" onclick="openHighlightEditor(null)">
+                            <span class="material-symbols-rounded" style="font-size:19px" aria-hidden="true">add</span> Novo destaque
+                        </button>
+                    </div>
                 </div>
-                <div class="card" id="links-list">
-                    <div class="skeleton"></div>
-                    <div class="skeleton"></div>
-                    <div class="skeleton"></div>
+
+                <div id="lk-view-lib">
+                    <div class="note hidden" id="links-note"></div>
+                    <div class="note hidden" id="lkcat-note"></div>
+                    <p class="card-sub" id="links-summary" style="margin-bottom:12px">Carregando…</p>
+                    <div class="card" id="lk-cats"></div>
+                    <div class="card" id="links-list">
+                        <div class="skeleton"></div>
+                        <div class="skeleton"></div>
+                        <div class="skeleton"></div>
+                    </div>
+                </div>
+
+                <div id="lk-view-hl" class="hidden">
+                    <div class="note hidden" id="hl-note"></div>
+                    <div class="card" id="hl-list">
+                        <div class="skeleton"></div>
+                        <div class="skeleton"></div>
+                    </div>
+                    <div class="card lk-info">
+                        <h4>Como funciona</h4>
+                        <ul>
+                            <li><span class="material-symbols-rounded" aria-hidden="true">bolt</span><span><b>Publica direto.</b> Vale na hora, sem fila de aprovação. O link em si continua passando pela fila.</span></li>
+                            <li><span class="material-symbols-rounded" aria-hidden="true">looks_3</span><span><b>No máximo 3 ao mesmo tempo.</b> Para publicar outro, encerre um ou agende para depois.</span></li>
+                            <li><span class="material-symbols-rounded" aria-hidden="true">schedule</span><span><b>Horário da planilha</b> (<span id="hl-tz">America/Sao_Paulo</span>), o mesmo dos Avisos. Quem está em outro fuso vê no mesmo instante.</span></li>
+                            <li><span class="material-symbols-rounded" aria-hidden="true">history</span><span><b>Nada se perde.</b> Quando termina, o destaque vira histórico e alimenta o &ldquo;Saíram do destaque&rdquo; do agente por 30 dias.</span></li>
+                        </ul>
+                    </div>
                 </div>
             </section>
 
@@ -216,7 +277,7 @@
                 <div class="row-between" style="margin-bottom:14px">
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
                         <div>
-                            <label class="fld" style="margin-top:0" for="cs-flow">Fluxo</label>
+                            <label class="fld" style="margin-top:0" for="cs-flow" data-i18n="csFlow">Fluxo</label>
                             <select id="cs-flow" onchange="renderCallScript()">
                                 <option value="BAU">BAU</option>
                                 <option value="LT">LT</option>
@@ -224,7 +285,7 @@
                         </div>
                     </div>
                     <button class="btn btn-primary" id="cs-new-btn" onclick="openStepEditor(null)">
-                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Novo passo
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> <span data-i18n="newStep">Novo passo</span>
                     </button>
                 </div>
                 <div class="card" id="cs-list">
@@ -242,14 +303,14 @@
                 <div class="row-between" style="margin-bottom:14px">
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
                         <div>
-                            <label class="fld" style="margin-top:0" for="nt-sub">Substatus</label>
+                            <label class="fld" style="margin-top:0" for="nt-sub" data-i18n="ntSub">Substatus</label>
                             <select id="nt-sub" onchange="renderNoteTemplates()" style="min-width:260px">
-                                <option value="">Todos</option>
+                                <option value="" data-i18n="ntAll">Todos</option>
                             </select>
                         </div>
                     </div>
                     <button class="btn btn-primary" id="nt-new-btn" onclick="openTemplateEditor(null)">
-                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Nova nota
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> <span data-i18n="newNote">Nova nota</span>
                     </button>
                 </div>
                 <div class="card" id="nt-list">
@@ -267,11 +328,11 @@
                 </div>
                 <div class="row-between" style="margin-bottom:14px">
                     <div>
-                        <div class="card-title">Tasks no ar</div>
+                        <div class="card-title" data-i18n="tasksLive">Tasks no ar</div>
                         <p class="card-sub" id="tsk-summary">Carregando…</p>
                     </div>
                     <button class="btn btn-primary" id="tsk-new-btn" onclick="openTaskEditor(null)">
-                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Nova task
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> <span data-i18n="newTask">Nova task</span>
                     </button>
                 </div>
                 <div class="card" id="tsk-list">
@@ -299,11 +360,11 @@
                 </div>
                 <div class="row-between" style="margin-bottom:14px">
                     <div>
-                        <div class="card-title">Dicas no ar</div>
+                        <div class="card-title" data-i18n="tipsLive">Dicas no ar</div>
                         <p class="card-sub" id="tp-summary">Carregando…</p>
                     </div>
                     <button class="btn btn-primary" id="tp-new-btn" onclick="openTipEditor(null)">
-                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Nova dica
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> <span data-i18n="newTip">Nova dica</span>
                     </button>
                 </div>
                 <div class="card" id="tp-list">
@@ -320,11 +381,11 @@
                 </div>
                 <div class="row-between" style="margin-bottom:14px">
                     <div>
-                        <div class="card-title">Avisos no ar</div>
+                        <div class="card-title" data-i18n="bcLive">Avisos no ar</div>
                         <p class="card-sub" id="bc-summary">Carregando…</p>
                     </div>
                     <button class="btn btn-primary" id="bc-new-btn" onclick="openBroadcastEditor(null)">
-                        <span class="material-symbols-rounded" style="font-size:19px">add</span> Novo aviso
+                        <span class="material-symbols-rounded" style="font-size:19px">add</span> <span data-i18n="newBc">Novo aviso</span>
                     </button>
                 </div>
                 <div class="card" id="bc-list">
@@ -341,7 +402,7 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-title" style="margin-bottom:4px">Disponibilidade no ar</div>
+                    <div class="card-title" style="margin-bottom:4px" data-i18n="bauLive">Disponibilidade no ar</div>
                     <p class="card-sub" id="bau-current-meta">Carregando…</p>
                     <div id="bau-current" style="margin-top:12px">
                         <div class="skeleton"></div>
@@ -349,24 +410,24 @@
                 </div>
 
                 <div class="card" id="bau-editor">
-                    <div class="card-title" style="margin-bottom:4px">Publicar nova disponibilidade</div>
-                    <p class="card-sub" style="margin-bottom:20px">
+                    <div class="card-title" style="margin-bottom:4px" data-i18n="bauPublishTitle">Publicar nova disponibilidade</div>
+                    <p class="card-sub" style="margin-bottom:20px" data-i18n="bauPublishSub">
                         Cada segmento aceita duas datas, e as duas são opcionais. Preencha só a que
                         você tem.
                     </p>
 
                     <div class="bau-segment">
-                        <div class="bau-segment-name">Português — PT-BR</div>
+                        <div class="bau-segment-name" data-i18n="bauSegPt">Português — PT-BR</div>
                         <div class="grid-2">
                             <div>
                                 <label class="fld" for="bau-pt-attention">
-                                    <span class="bau-dot attention"></span>Atenção — data mais próxima
+                                    <span class="bau-dot attention"></span><span data-i18n="bauAttention">Atenção — data mais próxima</span>
                                 </label>
                                 <input type="date" id="bau-pt-attention">
                             </div>
                             <div>
                                 <label class="fld" for="bau-pt-full">
-                                    <span class="bau-dot full"></span>Disponibilidade total
+                                    <span class="bau-dot full"></span><span data-i18n="bauFull">Disponibilidade total</span>
                                 </label>
                                 <input type="date" id="bau-pt-full">
                             </div>
@@ -374,29 +435,29 @@
                     </div>
 
                     <div class="bau-segment">
-                        <div class="bau-segment-name">Espanhol — ES</div>
+                        <div class="bau-segment-name" data-i18n="bauSegEs">Espanhol — ES</div>
                         <div class="grid-2">
                             <div>
                                 <label class="fld" for="bau-es-attention">
-                                    <span class="bau-dot attention"></span>Atenção — data mais próxima
+                                    <span class="bau-dot attention"></span><span data-i18n="bauAttention">Atenção — data mais próxima</span>
                                 </label>
                                 <input type="date" id="bau-es-attention">
                             </div>
                             <div>
                                 <label class="fld" for="bau-es-full">
-                                    <span class="bau-dot full"></span>Disponibilidade total
+                                    <span class="bau-dot full"></span><span data-i18n="bauFull">Disponibilidade total</span>
                                 </label>
                                 <input type="date" id="bau-es-full">
                             </div>
                         </div>
                     </div>
 
-                    <label class="fld" for="bau-note-text">Observação (opcional)</label>
-                    <input type="text" id="bau-note-text"
+                    <label class="fld" for="bau-note-text" data-i18n="bauObs">Observação (opcional)</label>
+                    <input type="text" id="bau-note-text" data-i18n-ph="bauObsPh"
                         placeholder="ex.: fila de criação priorizada até quinta" autocomplete="off">
 
                     <div style="margin-top:20px">
-                        <button class="btn btn-primary" id="bau-save" onclick="submitBau(this)">
+                        <button class="btn btn-primary" id="bau-save" onclick="submitBau(this)" data-i18n="bauPublish">
                             Publicar disponibilidade
                         </button>
                     </div>
@@ -405,7 +466,7 @@
 
             <!-- TAB: Pessoas (aba People da planilha) -->
             <section id="pane-people" class="hidden">
-                <div class="note" id="ppl-note">
+                <div class="note" id="ppl-note" data-i18n-html="pplNote">
                     Esta é a aba <strong>People</strong> da planilha — a mesma que decide quem abre o
                     TL Dashboard e em que idioma o app abre para cada pessoa. Alterações entram como
                     proposta e só o <strong>ADMIN</strong> aprova.
@@ -414,16 +475,16 @@
                 <div class="card">
                     <div class="ppl-toolbar">
                         <div class="ppl-search">
-                            <label class="fld" for="ppl-search">Buscar</label>
-                            <input type="text" id="ppl-search" autocomplete="off"
+                            <label class="fld" for="ppl-search" data-i18n="search">Buscar</label>
+                            <input type="text" id="ppl-search" autocomplete="off" data-i18n-ph="pplSearchPh"
                                 placeholder="LDAP, cargo, categoria ou segmento">
                         </div>
                         <button class="btn btn-primary" id="ppl-new-btn" onclick="openPersonEditor(null)">
                             <span class="material-symbols-rounded" style="font-size:19px"
-                                aria-hidden="true">person_add</span> Adicionar pessoa
+                                aria-hidden="true">person_add</span> <span data-i18n="addPerson">Adicionar pessoa</span>
                         </button>
                     </div>
-                    <div class="ppl-filters" id="ppl-filters" role="group" aria-label="Filtrar por segmento"></div>
+                    <div class="ppl-filters" id="ppl-filters" role="group" data-i18n-aria="pplFilters" aria-label="Filtrar por segmento"></div>
                     <p class="ppl-count" id="ppl-summary" role="status" aria-live="polite">Carregando…</p>
                 </div>
 
@@ -444,7 +505,7 @@
 
             <!-- TAB: Auditoria (restrita a quem tem viewAudit) -->
             <section id="pane-audit" class="hidden">
-                <div class="note" id="aud-note">
+                <div class="note" id="aud-note" data-i18n-html="audNote">
                     Tudo que aconteceu na Central, com quem fez e quando. A barra
                     <strong>Atividade recente</strong> responde “o que está acontecendo”; esta
                     responde “o que aconteceu”.
@@ -453,41 +514,41 @@
                 <div class="card">
                     <div class="aud-filtros">
                         <div>
-                            <label class="fld" style="margin-top:0" for="aud-texto">Buscar</label>
-                            <input type="text" id="aud-texto" autocomplete="off"
+                            <label class="fld" style="margin-top:0" for="aud-texto" data-i18n="search">Buscar</label>
+                            <input type="text" id="aud-texto" autocomplete="off" data-i18n-ph="audSearchPh"
                                 placeholder="rótulo, chave ou detalhe">
                         </div>
                         <div>
-                            <label class="fld" style="margin-top:0" for="aud-quem">Quem</label>
+                            <label class="fld" style="margin-top:0" for="aud-quem" data-i18n="audWho">Quem</label>
                             <input type="text" id="aud-quem" autocomplete="off" placeholder="LDAP">
                         </div>
                         <div>
-                            <label class="fld" style="margin-top:0" for="aud-acao">Ação</label>
+                            <label class="fld" style="margin-top:0" for="aud-acao" data-i18n="audAction">Ação</label>
                             <select id="aud-acao"></select>
                         </div>
                         <div>
-                            <label class="fld" style="margin-top:0" for="aud-modulo">Módulo</label>
+                            <label class="fld" style="margin-top:0" for="aud-modulo" data-i18n="audModule">Módulo</label>
                             <select id="aud-modulo"></select>
                         </div>
                         <div>
-                            <label class="fld" style="margin-top:0" for="aud-de">De</label>
+                            <label class="fld" style="margin-top:0" for="aud-de" data-i18n="audFrom">De</label>
                             <input type="date" id="aud-de">
                         </div>
                         <div>
-                            <label class="fld" style="margin-top:0" for="aud-ate">Até</label>
+                            <label class="fld" style="margin-top:0" for="aud-ate" data-i18n="audTo">Até</label>
                             <input type="date" id="aud-ate">
                         </div>
                     </div>
                     <div class="aud-acoes">
-                        <button class="btn btn-primary" id="aud-buscar" onclick="buscarAuditoria()">
+                        <button class="btn btn-primary" id="aud-buscar" onclick="buscarAuditoria()" data-i18n="search">
                             Buscar
                         </button>
-                        <button class="btn btn-ghost" id="aud-limpar" onclick="limparAuditoria()">
+                        <button class="btn btn-ghost" id="aud-limpar" onclick="limparAuditoria()" data-i18n="audClear">
                             Limpar filtros
                         </button>
                         <button class="btn btn-ghost" id="aud-exportar" onclick="exportarAuditoria(this)">
                             <span class="material-symbols-rounded" style="font-size:19px"
-                                aria-hidden="true">table_view</span> Exportar para a planilha
+                                aria-hidden="true">table_view</span> <span data-i18n="audExport">Exportar para a planilha</span>
                         </button>
                         <span class="card-sub" id="aud-resumo" role="status" aria-live="polite"></span>
                     </div>
@@ -499,7 +560,7 @@
                 </div>
 
                 <div style="margin-top:14px">
-                    <button class="btn btn-ghost hidden" id="aud-mais" onclick="maisAuditoria(this)">
+                    <button class="btn btn-ghost hidden" id="aud-mais" onclick="maisAuditoria(this)" data-i18n="loadMore">
                         Carregar mais
                     </button>
                 </div>
@@ -507,7 +568,7 @@
 
             <!-- TAB: Papéis (matriz editável — ADR-0009) -->
             <section id="pane-roles" class="hidden">
-                <div class="note warn" id="rol-note">
+                <div class="note warn" id="rol-note" data-i18n-html="rolNote">
                     O que um papel pode fazer vale <strong>no ato</strong> para todas as pessoas
                     que o têm. Não passa por revisão e não tem fila.
                 </div>
@@ -515,18 +576,18 @@
                 <div class="card">
                     <div class="rol-toolbar">
                         <div>
-                            <label class="fld" style="margin-top:0" for="rol-papel">Papel</label>
+                            <label class="fld" style="margin-top:0" for="rol-papel" data-i18n="role">Papel</label>
                             <select id="rol-papel" onchange="aoTrocarPapel()"></select>
                         </div>
                         <p class="card-sub" id="rol-resumo" role="status" aria-live="polite">Carregando…</p>
                         <button class="btn btn-ghost" id="rol-novo-btn" onclick="novoPapel()">
                             <span class="material-symbols-rounded" style="font-size:19px"
-                                aria-hidden="true">add</span> Novo papel
+                                aria-hidden="true">add</span> <span data-i18n="newRole">Novo papel</span>
                         </button>
                     </div>
 
                     <div id="rol-nome-nova" class="hidden" style="margin-top:14px">
-                        <label class="fld" for="rol-nome">Nome do novo papel</label>
+                        <label class="fld" for="rol-nome" data-i18n="newRoleName">Nome do novo papel</label>
                         <input type="text" id="rol-nome" autocomplete="off"
                             placeholder="ex.: EDITOR" maxlength="24">
                     </div>
@@ -542,7 +603,7 @@
                 <div class="card" id="rol-globais"></div>
 
                 <div style="margin-top:18px;display:flex;gap:10px;align-items:center">
-                    <button class="btn btn-primary" id="rol-salvar" onclick="salvarPapel(this)">
+                    <button class="btn btn-primary" id="rol-salvar" onclick="salvarPapel(this)" data-i18n="saveRole">
                         Salvar papel
                     </button>
                     <span class="card-sub" id="rol-mudancas"></span>
@@ -551,19 +612,19 @@
 
             <!-- TAB: Acessos -->
             <section id="pane-access" class="hidden">
-                <div class="note warn">
+                <div class="note warn" data-i18n-html="accNote">
                     Quem entra aqui passa a ver e propor conteúdo, conforme o papel.
                     O que cada papel pode fazer se edita na aba <strong>Papéis</strong>.
                 </div>
                 <div class="card" id="acc-editor">
-                    <div class="card-title">Conceder ou alterar acesso</div>
+                    <div class="card-title" data-i18n="accTitle">Conceder ou alterar acesso</div>
                     <div class="grid-2">
                         <div>
                             <label class="fld" for="acc-ldap">LDAP</label>
                             <input type="text" id="acc-ldap" placeholder="ex.: lucaste" autocomplete="off">
                         </div>
                         <div>
-                            <label class="fld" for="acc-role">Papel</label>
+                            <label class="fld" for="acc-role" data-i18n="role">Papel</label>
                             <!-- Vazio de propósito: os papéis viraram dado (ADR-0009), e uma
                                  lista fixa aqui ficaria mentindo no dia em que alguém criar
                                  um papel novo. `loadAccess()` preenche. -->
@@ -571,11 +632,11 @@
                         </div>
                     </div>
                     <div style="margin-top:18px">
-                        <button class="btn btn-primary" onclick="saveAccess()">Salvar acesso</button>
+                        <button class="btn btn-primary" onclick="saveAccess()" data-i18n="saveAccess">Salvar acesso</button>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-title" style="margin-bottom:8px">Pessoas com acesso</div>
+                    <div class="card-title" style="margin-bottom:8px" data-i18n="accList">Pessoas com acesso</div>
                     <div id="access-list"></div>
                 </div>
             </section>
@@ -587,9 +648,9 @@
         <!-- Atividade recente: a mesma barra lateral do TL Dashboard, com a
              mesma foto de perfil. O que ela mostra já é filtrado no servidor
              pelo que a pessoa pode ver — a tela não recebe o que esconderia. -->
-        <aside class="lateral hidden" id="lateral" aria-label="Atividade recente">
+        <aside class="lateral hidden" id="lateral" data-i18n-aria="recentActivity" aria-label="Atividade recente">
             <section class="lateral-bloco">
-                <div class="lateral-titulo">Atividade recente</div>
+                <div class="lateral-titulo" data-i18n="recentActivity">Atividade recente</div>
                 <div id="atividade-lista">
                     <div class="skeleton"></div>
                     <div class="skeleton"></div>
@@ -604,6 +665,12 @@
     <div id="modal-root"></div>
     <div id="toast" role="status" aria-live="polite"></div>
 
+    <!-- Notas de versão da Central (DashReleaseNotes.gs). A tag fica AQUI, na
+         casca: as partes entram por include() e não passam pelo avaliador. -->
+    <script>
+        var RELEASE_NOTES = <?!= CW_RELEASE_NOTES ?>;
+    </script>
+    <?!= include('ContentDashboard_I18n') ?>
     <?!= include('ContentDashboard_Core') ?>
     <?!= include('ContentDashboard_Catalog') ?>
     <?!= include('ContentDashboard_Ops') ?>
