@@ -42,7 +42,10 @@ o app completo, mesmos dados e movimento reduzido: 0 de 398.320 pixels diferente
 O que a entrada acrescenta é o mínimo: política Trusted Types `default` como
 **primeiro import**, `initGlobalStylesAndFont()`, idioma do navegador (sem a
 People para dizer), abrir o formulário ao carregar, e o segundo clique no
-favorito reabrir (ou, com a janela aberta, reler o caso). O build troca o
+favorito reabrir (ou, com a janela aberta, reler o caso). O "?" do cabeçalho fica
+com título, versão e crédito: a descrição e os botões de documentação e de
+bug/sugestão saem só desta janela (o cabeçalho é do app inteiro, que os mantém).
+O build troca o
 `data-service` por um stub (`fetchUserProfile` → `null`) via plugin do esbuild:
 se o grafo um dia importar outro export dele, o build falha, não segue com
 `undefined`. O favorito escapa só `%`, `#` e quebras/tab (~77 KB, e não ~112 KB
@@ -83,6 +86,6 @@ de `encodeURIComponent`).
 
 - Entrada: `src/precall-standalone.js`, `src/trusted-types-default.js`. Build:
   `scripts/build-precall-standalone.mjs`. Teste: `npm run smoke:precall-standalone`
-  (19 checagens, incluindo um CRM com Trusted Types obrigatório e o favorito
+  (20 checagens, incluindo um CRM com Trusted Types obrigatório e o favorito
   `javascript:` clicado de verdade).
 - Spec do formulário e da nota: `specs/workflow/precall-checklist.md`.

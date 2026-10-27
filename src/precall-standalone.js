@@ -20,6 +20,16 @@ function applyBrowserLanguage() {
     if (isSupportedLang(lang)) setLanguage(lang, { persist: false });
 }
 
+// Quem recebe só este arquivo não tem o app completo: o "?" fica com título,
+// versão e crédito, sem a descrição do módulo nem os botões de documentação e de
+// bug/sugestão. O cabeçalho é compartilhado com o app, que os mantém, então o
+// corte é feito aqui, na janela que este build criou.
+function trimHelpOverlay() {
+    const popup = document.getElementById(POPUP_ID);
+    popup.querySelector('.cw-help-description')?.remove();
+    popup.querySelector('.cw-help-link')?.parentElement.remove(); // a caixa dos dois botões
+}
+
 function launch() {
     // Com o app completo na página, o Pre-call dele já existe (e o mesmo id de
     // janela não pode aparecer duas vezes): abre o dele.
@@ -40,6 +50,7 @@ function launch() {
     initGlobalStylesAndFont();
     applyBrowserLanguage();
     window.cwPrecallStandalone = initPrecallChecklist();
+    trimHelpOverlay();
     window.cwPrecallStandalone();
 }
 

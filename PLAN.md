@@ -55,7 +55,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
       **Build avulso (2026-10-27, ADR-0020):** `npm run build:precall` gera um
       arquivo só com raspagem + formulário (`dist/precall-standalone.js` e o
       favorito `dist/precall-bookmarklet.txt`) para enviar ao SME que valida as
-      duas dúvidas acima; `smoke:precall-standalone` (19). Falta: o SME rodar no
+      duas dúvidas acima; `smoke:precall-standalone` (20). Falta: o SME rodar no
       CRM ao vivo — a captura e o Trusted Types só foram provados no mock.
 
 - [~] **Idiomas na Central de Conteúdo + novidades da versão (2026-10-14,

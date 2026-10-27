@@ -174,6 +174,29 @@ await check('a interface segue o idioma do navegador (en-US → inglês)', async
     igual(await popup(page).getByRole('button', { name: 'Insert into note' }).count(), 1, 'botão em inglês');
 });
 
+// O cabeçalho é compartilhado com o app, que mantém a descrição e os botões; o
+// avulso tira os dois. A checagem é por texto e por link, não por classe: se o
+// cabeçalho mudar de nome, um teste por classe passaria sem tirar nada.
+await check('o "?" fica com título, versão e crédito: sem a descrição nem os botões de documentação e feedback', async () => {
+    await popup(page).getByTitle('About & Feedback').click();
+    const ajuda = popup(page).locator('#close-help-internal').locator('..');
+    try {
+        const texto = await ajuda.innerText();
+        igual(await popup(page).locator('a[href]').count(), 0, 'links na janela');
+        igual(/Quick checklist before the call/.test(texto), false, 'descrição do módulo');
+        igual(/documentation|Bug or Suggestion/i.test(texto), false, 'texto dos botões');
+        for (const parte of ['Pre-call Checklist', 'Version v1.0.0', 'created by', 'Back']) {
+            igual(texto.includes(parte), true, `"${parte}" no "?"`);
+        }
+        if (shotDir) {
+            await page.waitForTimeout(400); // o "?" entra com um fade de 0,2s
+            await page.screenshot({ path: resolve(shotDir, 'precall-avulso-ajuda.png') });
+        }
+    } finally {
+        await ajuda.getByRole('button', { name: 'Back' }).click(); // o "?" aberto cobriria o resto do formulário
+    }
+});
+
 await check('Inserir põe no card de nota o MESMO bloco do app, em inglês', async () => {
     await page.selectOption('#cw-pc-duplicateCase', 'No');
     await page.selectOption('#cw-pc-suite360', 'No');

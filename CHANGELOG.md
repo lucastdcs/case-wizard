@@ -68,9 +68,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   `precall-bookmarklet.txt` (uma linha `javascript:`, para colar como URL de um
   favorito, sem hospedagem). O formulário abre sozinho ao carregar e é o mesmo do
   app (idêntico pixel a pixel); clicar no favorito de novo reabre, e com a janela
-  aberta relê o caso da tela. A interface segue o idioma do navegador. O arquivo
+  aberta relê o caso da tela. O "?" mostra só título, versão e crédito (sem a
+  descrição nem os botões de documentação e de bug/sugestão). A interface segue o
+  idioma do navegador. O arquivo
   não leva o endereço do backend. Travado em `npm run smoke:precall-standalone`
-  (19 checagens, inclusive um CRM com Trusted Types obrigatório).
+  (20 checagens, inclusive um CRM com Trusted Types obrigatório).
 - **Link para a documentação do projeto (deck de slides) onde o agente trava.**
   No bookmarklet, entra no "?" do cabeçalho de todo módulo — o ponto que o
   agente aperta quando está perdido, dentro do módulo em que travou — e na seção
