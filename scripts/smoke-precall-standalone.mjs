@@ -1,7 +1,7 @@
 // scripts/smoke-precall-standalone.mjs
 //
-// Smoke do build avulso do Pre-call (ADR-0020): constrói dist/precall-standalone.js
-// e dist/precall-bookmarklet.txt e confere, no que saiu e no navegador de verdade
+// Smoke do build avulso do Pre-call (ADR-0020): constrói dist/precall-standalone[-en].js
+// e dist/precall-bookmarklet[-en].txt e confere, no que saiu e no navegador de verdade
 // (mock-crm.html), as promessas de quem recebe só esse arquivo:
 //
 //   - o arquivo NÃO leva o endereço do backend nem os outros módulos, e nada sai
@@ -10,7 +10,9 @@
 //   - a captura e a nota são as do app completo;
 //   - o favorito `javascript:` funciona de verdade (o parser de URL apaga `#`,
 //     tabs e quebras de linha e percent-decodifica o resto);
-//   - num CRM com Trusted Types obrigatório, o arquivo carrega e funciona.
+//   - num CRM com Trusted Types obrigatório, o arquivo carrega e funciona;
+//   - a variante -en é 100% inglês mesmo com o navegador e o app completo em
+//     português: a tela, o "?", os avisos e o rodapé da nota.
 //
 // Uso: npm run smoke:precall-standalone   (CW_CHROMIUM=/caminho/do/chromium se precisar)
 //      CW_SHOT_DIR=/tmp/x npm run smoke:precall-standalone   (salva capturas de tela)
@@ -20,6 +22,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { PRECALL_I18N } from '../src/modules/notes/precall/precall-i18n.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const raiz = resolve(here, '..');
@@ -27,6 +30,8 @@ const raiz = resolve(here, '..');
 execFileSync(process.execPath, [resolve(here, 'build-precall-standalone.mjs')], { stdio: 'pipe' });
 const codigo = readFileSync(resolve(raiz, 'dist/precall-standalone.js'), 'utf8');
 const favorito = readFileSync(resolve(raiz, 'dist/precall-bookmarklet.txt'), 'utf8').trim();
+const codigoEn = readFileSync(resolve(raiz, 'dist/precall-standalone-en.js'), 'utf8');
+const favoritoEn = readFileSync(resolve(raiz, 'dist/precall-bookmarklet-en.txt'), 'utf8').trim();
 const mock = readFileSync(resolve(raiz, 'mock-crm.html'), 'utf8');
 
 let fail = 0;
@@ -41,28 +46,36 @@ function igual(atual, esperado, oque) {
 
 console.log('\n--- Build avulso do Pre-call: o que saiu ---');
 
-await check('não leva o endereço do backend nem faz chamada a ele', () => {
-    for (const marca of ['script.google.com', 'AKfycb', 'jsonpFetch', 'DEPLOYMENTS', 'logEvent']) {
-        igual(codigo.includes(marca), false, `"${marca}" no arquivo`);
-    }
-});
+for (const [variante, js, fav] of [['padrão', codigo, favorito], ['em inglês', codigoEn, favoritoEn]]) {
+    await check(`[${variante}] não leva o endereço do backend nem faz chamada a ele`, () => {
+        for (const marca of ['script.google.com', 'AKfycb', 'jsonpFetch', 'DEPLOYMENTS', 'logEvent']) {
+            igual(js.includes(marca), false, `"${marca}" no arquivo`);
+        }
+    });
 
-await check('só entram os módulos do Pre-call e o que ele usa (nada de pílula, Ctrl+K, onboarding…)', () => {
-    const entraram = [...codigo.matchAll(/^ {2}\/\/ (src\/\S+)$/gm)].map((m) => m[1]);
-    const proibidos = ['command-center', 'command-palette', 'onboarding', 'changelog', 'am-resolver',
-        'email-assistant', 'call-script', 'bau-form', 'broadcast', 'links', 'configs', 'timezone'];
-    const intrusos = entraram.filter((f) => proibidos.some((p) => f.includes(p)));
-    igual(intrusos, [], 'módulos que não deveriam estar no arquivo');
-    igual(entraram.includes('src/modules/notes/precall/precall-checklist.js'), true, 'o próprio Pre-call');
-});
+    await check(`[${variante}] só entram os módulos do Pre-call e o que ele usa (nada de pílula, Ctrl+K, onboarding…)`, () => {
+        const entraram = [...js.matchAll(/^ {2}\/\/ (src\/\S+)$/gm)].map((m) => m[1]);
+        const proibidos = ['command-center', 'command-palette', 'onboarding', 'changelog', 'am-resolver',
+            'email-assistant', 'call-script', 'bau-form', 'broadcast', 'links', 'configs', 'timezone'];
+        const intrusos = entraram.filter((f) => proibidos.some((p) => f.includes(p)));
+        igual(intrusos, [], 'módulos que não deveriam estar no arquivo');
+        igual(entraram.includes('src/modules/notes/precall/precall-checklist.js'), true, 'o próprio Pre-call');
+    });
 
-await check('o favorito é uma linha só, sem os caracteres que um `javascript:` perde', () => {
-    igual(favorito.startsWith('javascript:'), true, 'prefixo');
-    const corpo = favorito.slice('javascript:'.length);
-    igual(/[#\n\r\t]/.test(corpo), false, '# ou quebra de linha ou tab soltos');
-    igual(/%(?![0-9A-F]{2})/.test(corpo), false, '% que não é escape');
-    const decodificado = decodeURIComponent(corpo);
-    igual(decodificado.includes('cw-precall-popup'), true, 'o código decodificado é o do formulário');
+    await check(`[${variante}] o favorito é uma linha só, sem os caracteres que um \`javascript:\` perde`, () => {
+        igual(fav.startsWith('javascript:'), true, 'prefixo');
+        const corpo = fav.slice('javascript:'.length);
+        igual(/[#\n\r\t]/.test(corpo), false, '# ou quebra de linha ou tab soltos');
+        igual(/%(?![0-9A-F]{2})/.test(corpo), false, '% que não é escape');
+        const decodificado = decodeURIComponent(corpo);
+        igual(decodificado.includes('cw-precall-popup'), true, 'o código decodificado é o do formulário');
+    });
+}
+
+await check('só a variante em inglês troca o rodapé da nota e não lê o idioma salvo', () => {
+    igual([codigo.includes('Gerado pelo Cases Wizard'), codigo.includes('cw_ui_lang')], [true, true], 'padrão');
+    igual([codigoEn.includes('Generated by Cases Wizard'), codigoEn.includes('Gerado pelo Cases Wizard'), codigoEn.includes('cw_ui_lang')],
+        [true, false, false], 'em inglês');
 });
 
 const executablePath = process.env.CW_CHROMIUM || undefined;
@@ -314,6 +327,98 @@ await check('o favorito não abre uma segunda janela: chama o Pre-call do app', 
     await crm.page.evaluate(codigo);
     igual(await crm.page.evaluate(() => window.__precallDoApp === true), true, 'botão do app acionado');
     igual(await crm.page.locator('#cw-precall-popup').count(), 0, 'janela do avulso');
+    await crm.page.context().close();
+});
+
+console.log('\n--- Variante 100% inglês ---');
+
+// Pior caso: navegador em português E português salvo pelo app completo no mesmo
+// CRM (`cw_ui_lang`), que vence o idioma do navegador na variante padrão.
+const TEXTO_EN = TEXTO_ESPERADO
+    .replace('Gerado pelo Cases Wizard', 'Generated by Cases Wizard')
+    .replace('ligar às 14h', 'call at 2pm');
+
+// O que a tela mostra em PT/ES e não em EN: valores dos dicionários do Pre-call
+// que diferem do inglês, mais os textos fixos do cabeçalho em PT/ES.
+const FORA_DO_INGLES = new Set([
+    'Fechar', 'Cerrar', 'Sobre & Feedback', 'Acerca de y Comentarios', 'Versão', 'Versión',
+    'criado por', 'creado por', 'Voltar', 'Volver', 'Reportar Bug', 'Reportar error', 'Abrir a documentação',
+]);
+for (const lang of ['pt', 'es']) {
+    for (const [chave, valor] of Object.entries(PRECALL_I18N[lang])) {
+        if (valor !== PRECALL_I18N.en[chave]) FORA_DO_INGLES.add(valor);
+    }
+}
+
+const ing = await abrirCrm({ locale: 'pt-BR', ui: 'pt' });
+await ing.page.evaluate(codigoEn);
+await aberto(ing.page);
+await esperarCaptura(ing.page);
+
+await check('navegador e app em português: a tela, as opções, as dicas e o "?" saem em inglês', async () => {
+    await popup(ing.page).getByTitle('About & Feedback').click();
+    const visivel = await ing.page.evaluate(() => {
+        const janela = document.getElementById('cw-precall-popup');
+        const atributos = [...janela.querySelectorAll('[title],[placeholder],[aria-label]')]
+            .flatMap((n) => [n.title, n.placeholder, n.getAttribute('aria-label')]);
+        const opcoes = [...janela.querySelectorAll('option')].map((o) => o.textContent);
+        return [janela.innerText, ...atributos, ...opcoes].filter(Boolean).join('\n');
+    });
+    try {
+        igual([...FORA_DO_INGLES].filter((t) => visivel.includes(t)), [], 'textos em PT/ES na tela');
+        for (const parte of ['Insert into note', 'Copy', 'Clear', 'Version v1.0.0', 'created by', 'Duplicate case', 'Next steps', 'Proceed', 'Close', 'About & Feedback']) {
+            igual(visivel.includes(parte), true, `"${parte}" na tela`);
+        }
+        if (shotDir) {
+            await ing.page.waitForTimeout(400);
+            await ing.page.screenshot({ path: resolve(shotDir, 'precall-avulso-en-ajuda.png') });
+        }
+    } finally {
+        await popup(ing.page).locator('#close-help-internal').click();
+    }
+});
+
+await check('o aviso de "responda antes" também sai em inglês', async () => {
+    await popup(ing.page).getByRole('button', { name: 'Insert into note' }).click();
+    await ing.page.waitForSelector('text=Answer “Duplicate case” before continuing.', { timeout: 3000 });
+    await ing.page.waitForTimeout(2600); // o destaque de "pendente" se dissolve
+});
+
+await check('a nota sai com o MESMO bloco e o rodapé em inglês', async () => {
+    await ing.page.selectOption('#cw-pc-duplicateCase', 'No');
+    await ing.page.selectOption('#cw-pc-suite360', 'No');
+    await ing.page.selectOption('#cw-pc-sgtm', 'Yes');
+    await ing.page.selectOption('#cw-pc-api', 'No');
+    await ing.page.selectOption('#cw-pc-sellerCc', 'Yes');
+    await ing.page.selectOption('#cw-pc-nextSteps', 'OOS');
+    await ing.page.fill('#cw-pc-websiteCms', 'Custom');
+    await ing.page.fill('#cw-pc-specialInstructions', 'call at 2pm');
+    await popup(ing.page).getByRole('button', { name: 'Insert into note' }).click();
+    await ing.page.waitForFunction(() => document.querySelector('.mock-note-editor')?.innerText.includes('Next steps'), null, { timeout: 8000 });
+    igual((await ing.page.evaluate(() => document.querySelector('.mock-note-editor').innerText)).trim(), TEXTO_EN, 'texto da nota');
+});
+
+await check('não mexe nas preferências do app completo: o PT salvo continua salvo', async () => {
+    igual(await ing.page.evaluate(() => localStorage.getItem('cw_ui_lang')), 'pt', 'cw_ui_lang');
+    igual(await ing.page.evaluate(() => localStorage.getItem('cw_output_lang')), null, 'cw_output_lang');
+    igual(ing.erros, [], 'erros de página');
+});
+await ing.page.context().close();
+
+await check('o favorito em inglês, clicado de verdade, abre em inglês num navegador em português', async () => {
+    const crm = await abrirCrm({ locale: 'pt-BR' });
+    await crm.page.evaluate((href) => {
+        const a = document.createElement('a');
+        a.id = 'favorito';
+        a.href = href;
+        a.textContent = 'Pre-call';
+        document.body.appendChild(a);
+    }, favoritoEn);
+    await crm.page.click('#favorito');
+    await aberto(crm.page);
+    await esperarCaptura(crm.page);
+    igual(await popup(crm.page).getByRole('button', { name: 'Insert into note' }).count(), 1, 'botão em inglês');
+    igual(crm.erros, [], 'erros de página');
     await crm.page.context().close();
 });
 
