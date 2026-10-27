@@ -18,6 +18,7 @@
 
 import { chromium } from 'playwright';
 import { build } from 'esbuild';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -84,6 +85,32 @@ const rotulos = (page) => page.evaluate(() =>
     Array.from(document.querySelectorAll('#notes-assistant-popup label'))
         .map((e) => e.textContent.trim()).filter(Boolean));
 
+// O link da documentação mora em dois lugares do bookmarklet: no "?" de todo
+// módulo (aqui, o do Case Notes) e em Configurações. Os dois estão no DOM desde
+// o boot, mesmo fechados, então dá para lê-los sem abrir nenhum popup.
+const DOCS_URL = readFileSync(resolve(raiz, 'src/modules/shared/config.js'), 'utf8')
+    .match(/export const DOCS_URL\s*=\s*"([^"]+)"/)[1];
+const linksDeDocs = (page) => page.evaluate(() => {
+    // No "?" o rótulo é um <span> dentro do <a>, ao lado do emoji; o texto do
+    // <a> inteiro traria o emoji junto.
+    const rotuloDoHelp = document.querySelector('#notes-assistant-popup .cw-help-docs-link');
+    const configs = document.querySelector('#configs-popup .js-docs-link');
+    const lerLink = (a, rotulo) => a && { texto: rotulo.textContent.trim(), href: a.href, alvo: a.target };
+    return {
+        ajuda: rotuloDoHelp && lerLink(rotuloDoHelp.closest('a'), rotuloDoHelp),
+        configs: configs && lerLink(configs, configs),
+    };
+});
+async function confereDocs(page, textoEsperado) {
+    const { ajuda, configs } = await linksDeDocs(page);
+    for (const [onde, l] of [['"?" do Case Notes', ajuda], ['Configurações', configs]]) {
+        if (!l) throw new Error(`${onde}: link da documentação não existe`);
+        igual(l.texto, textoEsperado, `${onde}: rótulo`);
+        igual(l.href, DOCS_URL, `${onde}: destino`);
+        igual(l.alvo, '_blank', `${onde}: abre em outra aba`);
+    }
+}
+
 console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
 
 // ------------------------------------------------- interface EN, nota PT
@@ -103,6 +130,9 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
         igual(t.status, 'Main Status:', 'rótulo de status');
         igual(t.copiar, 'Copy', 'botão copiar');
     });
+
+    await check('o link da documentação segue a INTERFACE (en), no "?" e em Configurações', () =>
+        confereDocs(page, 'Open the documentation'));
 
     await page.selectOption('#main-status-select', 'NI');
     await page.waitForTimeout(600);
@@ -135,6 +165,8 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
 // ------------------------------- o caso comum: os dois iguais, nada muda
 {
     const { page } = await abrirCaseNotes({ ui: 'pt', saida: 'pt' });
+    await check('o link da documentação, em pt, no "?" e em Configurações', () =>
+        confereDocs(page, 'Abrir a documentação'));
     await check('com os dois knobs em pt, tudo continua em português', async () => {
         igual(await page.evaluate(() => document.querySelector('.js-label-fluxo')?.textContent?.trim()),
             'Fluxo:', 'rótulo de fluxo');

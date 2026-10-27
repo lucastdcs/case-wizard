@@ -2,6 +2,7 @@
 // 1. Importação dos Módulos
 
 import { initCaseNotesAssistant } from './modules/notes/notes-assistant.js';
+import { initPrecallChecklist } from './modules/notes/precall/precall-checklist.js';
 import { initEmailAssistant } from './modules/email-assistant/email-assistant.js';
 import { initCallScriptAssistant } from './modules/call-script/call-script-assistant.js';
 import { initLinksAssistant } from './modules/links/links-assistant.js';
@@ -81,6 +82,7 @@ function initApp() {
 
         // D. Inicializa os Módulos
         const toggleNotes = initCaseNotesAssistant();
+        const togglePrecall = initPrecallChecklist();
         const toggleEmail = initEmailAssistant();
         const toggleScript = initCallScriptAssistant();
         const toggleLinks = initLinksAssistant();
@@ -93,6 +95,7 @@ function initApp() {
 
         const moduleActions = {
             toggleNotes,
+            togglePrecall,
             toggleEmail,
             toggleScript,
             toggleLinks,

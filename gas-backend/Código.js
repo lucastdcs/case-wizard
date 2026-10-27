@@ -25,6 +25,10 @@ const USER_PREFS_MAX_BYTES = 8000;
 const CW_FEEDBACK_FORM_URL = "https://docs.google.com/forms/d/1v8mi4eLmx3a2GX2lEMmxMDR2n8AdzGL9WP_p_YEaveg/viewform";
 const CW_AUTHOR_CREDIT = "@lucaste";
 
+// Deck de documentação do projeto. Cópia de DOCS_URL, em config.js (o porquê do
+// /preview e do resourcekey está lá); test:deployment-env trava as duas iguais.
+const CW_DOCS_URL = "https://docs.google.com/presentation/d/1EOBUyK0xK2hXv29939NjIEJpgHsKeNG37HHgI8jWTc0/preview?resourcekey=0-_ct0TKJgzoEhOkhlxz6ZbA";
+
 // ---------------------------------------------------------------------------
 // AMBIENTE DA IMPLANTAÇÃO
 //
@@ -173,6 +177,11 @@ function buildEnvBadgeHtml(info) {
  * duas de uma vez, pela mesma injeção que já existia para o selo de ambiente.
  *
  * Fica à DIREITA porque o selo de ambiente ocupa o canto inferior esquerdo.
+ *
+ * O rodapé é montado aqui, no servidor, e o servidor não sabe o idioma que a
+ * pessoa escolheu na tela (isso mora no navegador). Por isso o rótulo da
+ * documentação é "Docs", que lê igual em PT, ES e EN, ao contrário do resto do
+ * bloco, que é português.
  */
 function buildCreditHtml() {
   return '' +
@@ -182,6 +191,9 @@ function buildCreditHtml() {
       'font-family:\'Google Sans\', Roboto, sans-serif; font-size:11px;' +
       'color:#9AA0A6; letter-spacing:0.3px;' +
     '">' +
+      '<a href="' + CW_DOCS_URL + '" target="_blank" rel="noopener noreferrer" ' +
+        'style="color:#1a73e8; text-decoration:none;">Docs</a>' +
+      '<span style="opacity:0.5;">·</span>' +
       '<a href="' + CW_FEEDBACK_FORM_URL + '" target="_blank" rel="noopener noreferrer" ' +
         'style="color:#1a73e8; text-decoration:none;">Reportar bug ou sugestão</a>' +
       '<span style="opacity:0.5;">·</span>' +

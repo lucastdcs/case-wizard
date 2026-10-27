@@ -52,4 +52,4 @@ Wizard de escalação de caso para BAU. `bau-form-config.js` declara os passos e
 Snippets pessoais (notas, e-mails, textos gerais). `snippet-service.js` usa uma estratégia *cache-first*: lê do `localStorage` imediatamente e sincroniza com a planilha em segundo plano, com uma trava (`isMutating`) para evitar sobrescrever uma edição em andamento.
 
 ## 7. Configurações (`src/modules/configs/`)
-Perfil do agente (papel/segmento/idioma, vindo de `fetchUserProfile` no backend), preferências de som e link de feedback.
+Perfil do agente (papel/segmento/idioma, vindo de `fetchUserProfile` no backend), preferências de som e, na seção Suporte & Feedback, os links da documentação (deck de slides) e do formulário de feedback. Os dois também ficam no "?" do cabeçalho de todo módulo e, nos dashboards do Apps Script, no rodapé (`buildCreditHtml()`); as URLs vivem em `shared/config.js` e em `gas-backend/Código.js`.

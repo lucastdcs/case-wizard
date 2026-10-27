@@ -38,6 +38,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { montarContentDashboard } from './content-dashboard-html.mjs';
+import { rodapeDosDashboards, lerLinkDeDocs } from './credit-footer.mjs';
 import { readFileSync } from 'node:fs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -53,11 +54,16 @@ const ARQUIVO = join(tmpdir(), 'cw-content-dashboard-smoke.html');
 // do boot, e cairia por cima de qualquer teste que use o modal-root.
 const VERSAO = JSON.parse(readFileSync(resolve(raiz, 'package.json'), 'utf8')).version;
 
+const RODAPE = rodapeDosDashboards(raiz);
+
 async function prepararArquivo() {
     // A montagem mora em content-dashboard-html.mjs: o smoke da aba Pessoas lê
     // a mesma tela, e quando a divisão em partes entrou só este arquivo foi
     // ajustado — o outro passou a carregar uma casca sem estilo nem script.
-    await writeFile(ARQUIVO, await montarContentDashboard(raiz), 'utf8');
+    const html = await montarContentDashboard(raiz);
+    // A montagem apaga o rodapé (`CW_CREDIT`), como as outras tags do servidor.
+    // Aqui ele volta, o de verdade: é por ele que a documentação chega à tela.
+    await writeFile(ARQUIVO, html.replace('</body>', () => RODAPE.html + '</body>'), 'utf8');
 }
 
 let fail = 0;
@@ -505,6 +511,16 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
         verdade(!(await page.locator('#app').isVisible()), 'o app não deveria aparecer');
     });
 
+    // A tela de recusa também é lida, e é nela que quem não sabe como pedir
+    // acesso mais precisa de um caminho para a documentação.
+    await check('sem papel: o link da documentação continua ao alcance', async () => {
+        const l = await lerLinkDeDocs(page);
+        verdade(l, 'o rodapé não tem o link da documentação');
+        igual(l.href, RODAPE.docsUrl, 'destino');
+        igual(l.alvo, '_blank', 'abre em outra aba');
+        verdade(l.visivel && l.livre && l.dentroDaJanela, 'link escondido, coberto ou fora da janela: ' + JSON.stringify(l));
+    });
+
     await check('sem papel: nenhum conteúdo é carregado', async () => {
         const chamadas = await page.evaluate(() => window.__chamadas.map(c => c.metodo));
         igual(chamadas.includes('listContentItems'), false, 'buscou conteúdo sem ter acesso');
@@ -515,6 +531,14 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
 
 {
     const page = await abrir({ sessao: 'admin' });
+
+    await check('ADMIN: o link da documentação está no rodapé, livre para o clique', async () => {
+        const l = await lerLinkDeDocs(page);
+        verdade(l, 'o rodapé não tem o link da documentação');
+        igual(l.href, RODAPE.docsUrl, 'destino');
+        igual(l.alvo, '_blank', 'abre em outra aba');
+        verdade(l.visivel && l.livre && l.dentroDaJanela, 'link escondido, coberto ou fora da janela: ' + JSON.stringify(l));
+    });
 
     await check('ADMIN: a tela abre e mostra o papel', async () => {
         verdade(await page.locator('#app').isVisible(), 'o app deveria aparecer');

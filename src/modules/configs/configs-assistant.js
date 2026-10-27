@@ -12,7 +12,7 @@ import {
     getOutputLanguage, setOutputLanguage, onOutputLanguageChange,
 } from "../shared/i18n.js";
 import { createShortcutsSection } from "./shortcuts-section.js";
-import { FEEDBACK_FORM_URL } from "../shared/config.js";
+import { FEEDBACK_FORM_URL, DOCS_URL } from "../shared/config.js";
 
 const CONFIGS_DICT = {
     pt: {
@@ -30,6 +30,7 @@ const CONFIGS_DICT = {
         outLangLabel: "Idioma do Atendimento",
         outLangDesc: "Idioma do case note, do e-mail e do roteiro de chamada. É o idioma do anunciante, não o seu.",
         supportSectionTitle: "Suporte & Feedback",
+        docsLink: "Abrir a documentação",
         reportBug: "Reportar Bug/Sugestões",
         diagSectionTitle: "Diagnóstico",
         diagLabel: "Ambiente do backend",
@@ -80,6 +81,7 @@ const CONFIGS_DICT = {
         outLangLabel: "Idioma de la Atención",
         outLangDesc: "Idioma del case note, del correo y del guion de llamada. Es el idioma del anunciante, no el tuyo.",
         supportSectionTitle: "Soporte y Comentarios",
+        docsLink: "Abrir la documentación",
         reportBug: "Reportar error o sugerencia",
         diagSectionTitle: "Diagnóstico",
         diagLabel: "Entorno del backend",
@@ -130,6 +132,7 @@ const CONFIGS_DICT = {
         outLangLabel: "Case Language",
         outLangDesc: "Language of the case note, the email and the call script. This is the advertiser's language, not yours.",
         supportSectionTitle: "Support & Feedback",
+        docsLink: "Open the documentation",
         reportBug: "Report a Bug/Suggestion",
         diagSectionTitle: "Diagnostics",
         diagLabel: "Backend environment",
@@ -513,6 +516,7 @@ export function initConfigsAssistant() {
         <div class="cw-configs-section-title js-support-section-title"></div>
         <div class="cw-configs-card">
             <div style="display:flex; flex-direction:column; gap:12px;">
+                <a class="cw-configs-btn js-docs-link" href="${DOCS_URL}" target="_blank" rel="noopener noreferrer"></a>
                 <a class="cw-configs-btn js-support-link" href="${FEEDBACK_FORM_URL}" target="_blank" rel="noopener noreferrer"></a>
             </div>
         </div>
@@ -585,6 +589,7 @@ export function initConfigsAssistant() {
         soundSection.querySelector(".js-sound-desc").textContent = t('soundDesc');
 
         supportSection.querySelector(".js-support-section-title").textContent = t('supportSectionTitle');
+        supportSection.querySelector(".js-docs-link").textContent = t('docsLink');
         supportSection.querySelector(".js-support-link").textContent = t('reportBug');
 
         diagSection.querySelector(".js-diag-section-title").textContent = t('diagSectionTitle');
