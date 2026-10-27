@@ -55,8 +55,13 @@ This file differs from the long-term roadmap: it describes what is happening **n
       **Build avulso (2026-10-27, ADR-0020):** `npm run build:precall` gera um
       arquivo só com raspagem + formulário (`dist/precall-standalone.js` e o
       favorito `dist/precall-bookmarklet.txt`) para enviar ao SME que valida as
-      duas dúvidas acima; `smoke:precall-standalone` (29, com a variante `-en`). Falta: o SME rodar no
+      duas dúvidas acima; `smoke:precall-standalone` (32, com a variante `-en`). Falta: o SME rodar no
       CRM ao vivo — a captura e o Trusted Types só foram provados no mock.
+      **Achado fora do escopo, não corrigido (2026-10-27):** `notes-bridge.js`
+      mostra o aviso de falha ao copiar como `getLanguage() === 'es' ? "Error al
+      copiar" : "Falha ao copiar"` — com a interface em **inglês** o aviso sai em
+      português, no app inteiro, não só no avulso. O build `-en` troca a linha; no
+      app falta um mapa pt/es/en.
 
 - [~] **Idiomas na Central de Conteúdo + novidades da versão (2026-10-14,
       ADR-0017).** Seletor de idioma da **interface** (PT/ES/EN) no topo,

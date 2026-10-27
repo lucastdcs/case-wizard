@@ -12,6 +12,26 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## "100% inglês" é uma propriedade do ARQUIVO, não da tela: audite o texto que ele carrega
+
+**Why**: a variante `-en` do Pre-call passou em todo teste de tela (navegador e app
+em PT, tudo em inglês) e o SME respondeu que **não estava em inglês**: ele abriu o
+`.txt` e leu o que há dentro — dicionários PT/ES sem uso, rótulos de screenshot do
+catálogo de tasks, rótulos de CRM em PT/ES, comentários CSS (que são *texto* dentro
+de template literals e sobrevivem à minificação) e `console.warn` em português.
+Eu tinha listado isso como "invisível na tela" e entregado mesmo assim. E havia um
+defeito **visível** que o mock nunca exercitou: `getLanguage() === 'es' ? "Error al
+copiar" : "Falha ao copiar"` — em EN cai no português.
+
+**When to apply**: ao prometer um arquivo "em idioma X" para quem vai LER o arquivo.
+Corte no build o que a tela não mostra (gere do código real, não copie texto; troque
+com asserção para o build quebrar se a produção mudar) e audite o arquivo
+decodificado: letras acentuadas, `/*`, `console.`, textos PT/ES **derivados da
+produção** e vocabulário sem acento (acento sozinho não pega "Falha ao copiar").
+Prove que a auditoria tem dentes rodando-a contra o build que NÃO deveria passar.
+E teste o caminho de erro (toast de falha), não só o feliz: é lá que mora o texto
+fixo que ninguém traduziu.
+
 ## Arquivo avulso: o que o esbuild não poda, entrega; audite o arquivo, não o import
 
 **Why**: ao empacotar só o Pre-call, o `data-service.js` entrou inteiro no
