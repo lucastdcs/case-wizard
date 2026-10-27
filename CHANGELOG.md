@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [6.6.0] - 2026-10-27
+
 ### Added
 - **Home dentro do módulo de Links: destaques, subdestaques e prévia ao passar o
   mouse** (ADR-0019). A janela do módulo abre numa home com até **3 destaques**
@@ -129,6 +131,21 @@ versions follow [Semantic Versioning](https://semver.org/).
   com desfoque), peso de fonte 400/500, grade de 4/8px, alvos ≥32px e
   `prefers-reduced-motion` respeitado. Copiar um link confirma no próprio botão,
   com som e vibração (nos três canais); favoritar, com som, vibração e aviso.
+- **E-mails da Central de Conteúdo com a casca do fluxo BAU.** O aviso de
+  "proposta aguardando revisão" era dois parágrafos soltos, sem link nem
+  detalhe. Os três e-mails da Central (proposta, decisão, pendência parada)
+  agora usam `renderBauEmail`: cartão com cor por tipo, campos (módulo, item,
+  ação, autor), botão para a Central, motivo da devolução em callout, preheader,
+  versão em texto puro e texto livre escapado (antes o rótulo e o motivo entravam
+  crus no HTML). Travado em `test:content` (+2).
+
+### Fixed
+- **Quem saiu da empresa seguia recebendo e-mail da Central de Conteúdo.** A
+  baixa na aba Pessoas não tocava em `Content_Access`, e os avisos de proposta,
+  de decisão e de pendência parada liam só essa aba — inclusive endereços que já
+  não existem (bounce para o dono do script). Agora a baixa desativa o acesso
+  (respeitando a trava de governança) e os três envios só vão a quem está em
+  `People`. Travado em `test:people` (+6).
 
 ## [6.5.0] - 2026-10-13
 
@@ -178,15 +195,6 @@ versions follow [Semantic Versioning](https://semver.org/).
 - `npm run test:i18n` (paridade dos dicionários nas três línguas) e
   `npm run smoke:i18n` (qual knob cada lugar lê, no navegador real).
 
-### Changed
-- **E-mails da Central de Conteúdo com a casca do fluxo BAU.** O aviso de
-  "proposta aguardando revisão" era dois parágrafos soltos, sem link nem
-  detalhe. Os três e-mails da Central (proposta, decisão, pendência parada)
-  agora usam `renderBauEmail`: cartão com cor por tipo, campos (módulo, item,
-  ação, autor), botão para a Central, motivo da devolução em callout, preheader,
-  versão em texto puro e texto livre escapado (antes o rótulo e o motivo entravam
-  crus no HTML). Travado em `test:content` (+2).
-
 ### Fixed
 - **Linha em idioma novo contaminava o conteúdo base.** Duas hidratações
   roteavam por "se é ES, tradução; **senão**, base". Como a linha EN tem o mesmo
@@ -209,12 +217,6 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **O seletor de idioma do onboarding ignorava o idioma do perfil.** O foco
   inicial usava `find(...)?.focus() ?? buttons[0].focus()`, e como `focus()`
   devolve `undefined` o fallback rodava **sempre**.
-- **Quem saiu da empresa seguia recebendo e-mail da Central de Conteúdo.** A
-  baixa na aba Pessoas não tocava em `Content_Access`, e os avisos de proposta,
-  de decisão e de pendência parada liam só essa aba — inclusive endereços que já
-  não existem (bounce para o dono do script). Agora a baixa desativa o acesso
-  (respeitando a trava de governança) e os três envios só vão a quem está em
-  `People`. Travado em `test:people` (+6).
 - **A abertura do painel lateral do BAU tremia.** A coluna passava de 454,9px
   para 504,3px — **10,9% de sobra**, contra os ≤3% que a regra de movimento
   previa — e, por ser propriedade de **layout**, o texto refluía na largura
@@ -1207,7 +1209,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.5.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.6.0...HEAD
+[6.6.0]: https://github.com/lucastdcs/case-wizard/compare/v6.5.0...v6.6.0
 [6.5.0]: https://github.com/lucastdcs/case-wizard/compare/v6.4.0...v6.5.0
 [6.4.0]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...v6.4.0
 [6.3.3]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...v6.3.3
