@@ -26,8 +26,8 @@ This file differs from the long-term roadmap: it describes what is happening **n
       4. [x] **Categoria Feedback**: do sistema, com "Elogios" movido de QA.
       5. [ ] **Rodar em produção, nesta ordem** (ver Waiting/blocked): frontend
          novo no ar → `migrateFeedbackLinksNow()` → conferir no app.
-      6. [ ] **Notas de versão**: subir `CW_CONTENT_RELEASE_NOTES.version` e
-         reescrever os itens na hora da release (`RELEASE.md`).
+      6. [x] **Notas de versão**: `CW_CONTENT_RELEASE_NOTES` subiu para 6.6.0 e
+         os itens foram reescritos na release v6.6.0 (`RELEASE.md`).
       Fora do escopo, de propósito: tradução dos editores de Links na Central
       (ADR-0017, fase 2 — os textos novos estão em português); painel de
       prévia abaixo de 1000px de largura (a lista fica sozinha).
@@ -50,8 +50,10 @@ This file differs from the long-term roadmap: it describes what is happening **n
         original (mapeadas para o nome do catálogo) e como frase em português na
         tela traduzida (passam como vieram). O CID sai com traços
         (`123-456-7890`, como o BAU Form grava) — confirmar que a auditoria aceita;
-      - ao fechar a release: nota de versão do modal do agente
-        (`RELEASE_NOTES`) falando do botão novo.
+      - ~~ao fechar a release: nota de versão do modal do agente
+        (`RELEASE_NOTES`) falando do botão novo~~ — feito na v6.6.0 (primeiro
+        slide). O slide pede ao agente que **confira** o que veio como *Auto*
+        antes de gerar, porque a captura ainda não foi vista no CRM ao vivo.
       **Build avulso (2026-10-27, ADR-0020):** `npm run build:precall` gera um
       arquivo só com raspagem + formulário (`dist/precall-standalone.js` e o
       favorito `dist/precall-bookmarklet.txt`) para enviar ao SME que valida as
@@ -80,8 +82,9 @@ This file differs from the long-term roadmap: it describes what is happening **n
          atividade, home e toasts.
       - [x] "Idioma do conteúdo" ganhou EN, com o conserto do editor de e-mail
         que apagaria os `labels` de um modelo EN (`smoke:content` +2).
-      Ao fechar a release: subir `CW_CONTENT_RELEASE_NOTES.version` junto com
-      as outras (RELEASE.md) e reescrever os itens com o que a fase entregou.
+      ~~Ao fechar a release: subir `CW_CONTENT_RELEASE_NOTES.version`~~ — feito
+      na v6.6.0, a primeira release em que as notas da Central existem. Cada
+      fase nova que entregar tradução precisa reescrever os itens na release dela.
 
 - [~] **Revisão do fluxo de descarte do BAU Form (2026-09-21).** Três frentes
       levantadas pelo Lucas. A primeira saiu; as outras duas estão abertas.
@@ -197,6 +200,21 @@ This file differs from the long-term roadmap: it describes what is happening **n
       do Apps Script — o gatilho ainda não existe (mesma nota do `Backup.js`).
 
 ## Done (esta sessão)
+
+- [~] **Release v6.6.0 cortada (2026-10-27), aguardando revisão do PR para a
+      `main`.** Os 19 commits de `refactor-structure` desde a v6.5.0: home de
+      Links com destaques, Pre-call Checklist (e o build avulso), idioma da
+      interface da Central, link da documentação e os e-mails da Central.
+      `CHANGELOG.md` fechado, as cinco fontes de versão alinhadas e as notas dos
+      três modais (agente, TL, Central) reescritas. **Correção de registro:** duas
+      entradas (e-mails da Central com a casca do BAU e o fix de quem saiu de
+      People) estavam arquivadas dentro da seção `[6.5.0]` do CHANGELOG, mas os
+      commits delas não estão na v6.5.0 — a seção divergia da `main`. Foram para
+      a `[6.6.0]`, e a `[6.5.0]` voltou a ser idêntica à da `main`.
+      Suíte rodada antes e depois do corte: tudo verde exceto as 2 falhas
+      conhecidas de `smoke:shortcuts`. **Vai para produção sem a validação no CRM
+      ao vivo** do Pre-call (captura e Trusted Types provados só no mock e nas
+      capturas redigidas) — ver o item do Pre-call acima.
 
 - [~] **Link da documentação (deck de slides) onde o agente trava e nas duas
       telas do Apps Script (2026-10-23).** No bookmarklet: "?" do cabeçalho de
@@ -519,17 +537,21 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
       da conta que criou o deck: se cair em "solicitar acesso", ajustar o
       compartilhamento do deck (a URL não muda). O link só chega ao agente com
       a próxima release; no TL e na Central, com o deploy do backend.
-- [ ] **Empurrar as tags `v6.4.0` e `v6.5.0`** de um checkout local (o proxy da
-      sessão web recusa push de tag — `RELEASE.md` → Known fragilities;
-      confirmado de novo na v6.5.0: `HTTP 403` no `git push origin v6.5.0`):
+- [ ] **Empurrar as tags `v6.4.0`, `v6.5.0` e `v6.6.0`** de um checkout local (o
+      proxy da sessão web recusa push de tag — `RELEASE.md` → Known
+      fragilities; confirmado de novo na v6.5.0: `HTTP 403` no
+      `git push origin v6.5.0`). A `v6.6.0` só existe depois do merge do PR na
+      `main`: o sha é o do commit de merge.
       ```
       git fetch origin main
       git tag -a v6.4.0 <sha da release v6.4.0> -m "v6.4.0"
       git tag -a v6.5.0 5193275 -m "v6.5.0"
-      git push origin v6.4.0 v6.5.0
+      git tag -a v6.6.0 <sha do merge da v6.6.0 na main> -m "v6.6.0"
+      git push origin v6.4.0 v6.5.0 v6.6.0
       ```
-      Sem isso os link refs do rodapé do CHANGELOG (`compare/v6.4.0...v6.5.0`)
-      continuam apontando para tags que não existem.
+      Sem isso os link refs do rodapé do CHANGELOG (`compare/v6.5.0...v6.6.0`)
+      continuam apontando para tags que não existem. Confira depois com
+      `git ls-remote --tags origin`.
 - [ ] **Rodar `seedMissingLangsNow()` no editor do Apps Script** (a v6.5.0 já
       está em produção, então o arquivo já está lá — falta executá-lo). É o que leva
       as 76 linhas EN para a planilha. NÃO use os `seed*Now()` de sempre:
