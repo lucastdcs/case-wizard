@@ -22,6 +22,8 @@
 
 import {
     TIMEZONE_HUBS,
+    hubName,
+    hubLabel,
     offsetMinutesForWallTime,
     formatOffset,
     withZoneOffset,
@@ -137,6 +139,37 @@ check('os fusos do Brasil estão marcados como `home`', () => {
     const brasil = TIMEZONE_HUBS.filter(h => h.zone.startsWith('America/Sao_Paulo') || h.zone === 'America/Manaus' || h.zone === 'America/Rio_Branco');
     if (brasil.length === 0) throw new Error('nenhum fuso do Brasil no catálogo');
     brasil.forEach(h => { if (!h.home) throw new Error(`${h.id} deveria ter home: true`); });
+});
+
+// Nome e cidade são texto de TELA. O mapa de exceções falha em silêncio: um id
+// errado ou uma entrada esquecida cai de volta no português, sem erro nenhum —
+// foi assim que "Bolívia" e "EUA" chegaram à interface em EN e ES. Aqui se
+// procura o português que sobrou, em vez de conferir entrada por entrada.
+console.log('\n--- Nomes por idioma ---');
+
+const SO_PT = {
+    es: /EUA|Havaí|Espanha|Bolívia|Colômbia|Equador|Paraguai|Uruguai|Nicarágua|Porto Rico|Nova York|Assunção|Montevidéu|Manágua|C\. da |C\. do /,
+    en: /EUA|Havaí|Espanha|Brasil|Bolívia|Colômbia|Equador|Paraguai|Uruguai|Nicarágua|Porto Rico|México|Panamá|Rep\. Dominicana|Nova York|Lisboa|Assunção|Montevidéu|Manágua|C\. da |C\. do /,
+};
+
+['es', 'en'].forEach((lang) => {
+    check(`nenhum nome ou cidade em ${lang} guarda português`, () => {
+        TIMEZONE_HUBS.forEach((h) => {
+            const nome = hubName(h, lang);
+            const cidade = hubLabel(h, lang);
+            if (SO_PT[lang].test(nome)) throw new Error(`${h.id}: nome ficou em português (${nome})`);
+            if (SO_PT[lang].test(cidade)) throw new Error(`${h.id}: cidade ficou em português (${cidade})`);
+        });
+    });
+});
+
+check('em português, e em idioma desconhecido, o catálogo sai como está', () => {
+    TIMEZONE_HUBS.forEach((h) => {
+        ['pt', 'fr'].forEach((lang) => {
+            igual(hubName(h, lang), h.name, `${h.id} nome (${lang})`);
+            igual(hubLabel(h, lang), h.label, `${h.id} cidade (${lang})`);
+        });
+    });
 });
 
 console.log('\n' + (falhas ? '✗' : '✓') + ` ${falhas} falhas\n`);

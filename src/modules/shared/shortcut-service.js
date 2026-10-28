@@ -14,6 +14,7 @@
 
 import { UserPrefsService } from "./user-prefs-service.js";
 import { scenarioSnippets, scenarioSlug } from "../notes/data/notes-data.js";
+import { getLanguage } from "./i18n.js";
 
 const PREF_KEY = "shortcuts";
 const PREF_KEY_SORT = "shortcutsSortByUsage";
@@ -33,8 +34,6 @@ const DEFAULT_SHORTCUTS = [
         // contagem de uso e a seleção do Ctrl+K apontarem para o vazio.
         id: "sc_default_ni_attempted",
         kind: "note",
-        label: "NI Attempted — Início 2 Day Rule",
-        alias: "2day inicio",
         payload: {
             caseType: "bau",
             status: "NI",
@@ -45,8 +44,6 @@ const DEFAULT_SHORTCUTS = [
     {
         id: "sc_default_in_not_reachable",
         kind: "note",
-        label: "IN Not Reachable — Finalização 2 Day Rule",
-        alias: "2day fim",
         payload: {
             caseType: "bau",
             status: "IN",
@@ -55,6 +52,22 @@ const DEFAULT_SHORTCUTS = [
         },
     },
 ];
+
+// Nome e apelido dos padrões, por idioma. São aplicados em defaults(), que é
+// recalculado a cada leitura enquanto o agente não salva nada — então
+// acompanham a troca de idioma; o que ele salvar fica com o texto do momento.
+const DEFAULT_TEXT = {
+    sc_default_ni_attempted: {
+        pt: { label: "NI Attempted — Início 2 Day Rule", alias: "2day inicio" },
+        es: { label: "NI Attempted — Inicio 2 Day Rule", alias: "2day inicio" },
+        en: { label: "NI Attempted — 2 Day Rule (Start)", alias: "2day start" },
+    },
+    sc_default_in_not_reachable: {
+        pt: { label: "IN Not Reachable — Finalização 2 Day Rule", alias: "2day fim" },
+        es: { label: "IN Not Reachable — Cierre 2 Day Rule", alias: "2day cierre" },
+        en: { label: "IN Not Reachable — 2 Day Rule (End)", alias: "2day end" },
+    },
+};
 
 // Exportado porque quem abre um editor precisa carimbar o id ANTES do primeiro
 // save: sem isso, dois cliques no botão "Salvar" (o JSONP pode demorar até os
@@ -148,7 +161,12 @@ export const ShortcutService = {
     },
 
     defaults() {
-        return DEFAULT_SHORTCUTS.map((s, idx) => ({ ...s, order: idx }));
+        const lang = getLanguage();
+        return DEFAULT_SHORTCUTS.map((s, idx) => ({
+            ...s,
+            ...(DEFAULT_TEXT[s.id][lang] || DEFAULT_TEXT[s.id].pt),
+            order: idx,
+        }));
     },
 
     isSortedByUsage() {
