@@ -130,6 +130,44 @@ versions follow [Semantic Versioning](https://semver.org/).
   `prefers-reduced-motion` respeitado. Copiar um link confirma no próprio botão,
   com som e vibração (nos três canais); favoritar, com som, vibração e aviso.
 
+### Fixed
+- **Ctrl+K: o clique do mouse num item se perdia.** Passar o mouse sobre um item
+  reconstruía a lista inteira, e o navegador, vendo o DOM trocado debaixo do
+  cursor, emitia outro `mouseover` — mais de dez reconstruções por segundo com o
+  mouse parado, e o clique no meio delas não acontecia (0 de 18 abriam o módulo
+  num teste de clique). O hover agora só troca a classe do item selecionado, e só
+  com movimento real do mouse. Junto sai o outro sintoma do mesmo defeito: a seta
+  ↓ com o cursor em cima da lista empacava no meio dela, porque a rolagem trazia
+  outro item para debaixo do cursor e o hover devolvia a seleção.
+- **Ctrl+K: o teclado morria em silêncio.** O **Tab** saía da palette, passava por
+  trás do overlay e chegava aos campos do CRM (o que se digitasse dali caía no
+  CRM); clicar no rodapé ou na folga da lista tirava o foco do campo e as setas,
+  o Enter e o Esc deixavam de responder. Agora o Tab anda pela lista como a seta
+  (Shift+Tab volta) e nunca sai da palette, o clique dentro dela não tira o foco
+  do campo, e o **Esc devolve o cursor ao campo do CRM** em que o agente estava.
+- **Ctrl+K: o Esc fechava também a janela do módulo aberta por baixo** (o Esc
+  global de `animations.js` via o mesmo evento). Agora só fecha a palette.
+- **Ctrl+K: abrir e fechar em sequência rápida.** Fechar e reabrir em menos de
+  200ms deixava a palette "aberta" por dentro, invisível e com o scroll da página
+  travado (o timer de remoção do fechamento anterior tirava o overlay novo). Enter
+  duplo e duplo clique no item desfaziam a própria ação (os módulos alternam), e
+  um clique nos 200ms depois de fechar atravessava para o CRM. Segurar a tecla
+  abria e fechava a palette em rajada.
+- **Ctrl+K: só Ctrl/Cmd+K puro abre** (Ctrl+Shift+K e Ctrl+Alt+K, que no Windows
+  é o AltGr, também abriam), e **não abre por cima de um diálogo, de um wizard
+  (boas-vindas e novidades) nem do card de processamento** — a pílula já não era
+  clicável com o card no ar, e o Ctrl+K era o caminho que furava essa regra. O
+  atalho agora escuta na captura, para um campo do CRM que dê `stopPropagation`
+  não o engolir.
+- **Ctrl+K: rótulo de atalho com `<` ou tag** era lido como HTML (`Retorno <b>48h</b>`
+  aparecia sem o texto da tag); e em janela baixa (DevTools encaixado, zoom alto)
+  o rodapé da palette saía da tela.
+- Testes: novo `npm run smoke:palette` (23 checagens de mecânica, cada uma numa
+  página limpa; 22 delas falham no código anterior — a outra só trava o hover).
+  `smoke:shortcuts` voltou a
+  passar (12/12): dois testes supunham Configurações fechada, mas o Ctrl+K
+  alterna e o módulo estava aberto, então o Enter o fechava.
+
 ## [6.5.0] - 2026-10-13
 
 ### Added

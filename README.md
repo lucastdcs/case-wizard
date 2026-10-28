@@ -248,7 +248,7 @@ non-zero on failure, so you run the ones that cover what you touched.
   `test:shortcuts`, `test:prefs`, `test:people`, `test:deployment-env`,
   `test:timezones`, `test:jsonp`.
 - **Browser smokes** (`npm run smoke:*`) drive real UI with Playwright.
-  `smoke:shortcuts`, `smoke:wizards`, `smoke:env-badge`, `smoke:broadcast`,
+  `smoke:shortcuts`, `smoke:palette`, `smoke:wizards`, `smoke:env-badge`, `smoke:broadcast`,
   `smoke:bau-scraping`, `smoke:tasks` and `smoke:bau-tasks` run the agent overlay
   against `mock-crm.html`;
   `smoke:content` and `smoke:people` load the Apps Script dashboards from disk

@@ -193,6 +193,30 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Done (esta sessão)
 
+- [x] **Mecânica do Ctrl+K (2026-10-28).** Revisão pedida pelo Lucas ("o uso está
+      pobre; confunde com o Tab; quebra ao selecionar com o mouse"), só de
+      mecânica de uso, sem feature nova. Reproduzido em navegador real antes de
+      mexer; o detalhe está no CHANGELOG `[Unreleased] → Fixed`. Causa do clique
+      perdido: o hover reconstruía a lista inteira (>10×/s com o mouse parado).
+      Travado em `npm run smoke:palette` (23 checagens; 22 falham no código
+      anterior). De quebra, `smoke:shortcuts` estava vermelho (2 testes supunham
+      Configurações fechada) e voltou a 12/12. Ver `docs/LEARNINGS.md` (três
+      entradas novas, uma delas sobre um erro meu de teste).
+      **Achados que NÃO entraram, para decidir:**
+      - **Escolher na palette um módulo que já está aberto o FECHA** (os módulos
+        alternam, como o ícone da pílula), e a lista não diz quais estão abertos.
+        Quem usa a palette para "ir para" o Case Notes que está atrás de outra
+        janela o fecha sem querer. Opções: marcar "aberto" na linha e trazer para a
+        frente em vez de fechar (a pílula já tem o estado `.active`). É decisão de
+        produto — mudaria o contrato que `smoke:shortcuts` usa para alternar.
+      - **Dicas em inglês**: só o Pre-call tem `hint.en`. Com a interface em EN, os
+        outros nove módulos e o "Atalho de nota" mostram a dica em português.
+      - **Acessibilidade**: a lista não declara `role="listbox"`/`option` nem
+        `aria-activedescendant`; leitor de tela não anuncia o item selecionado.
+      - **Não verificado no CRM real** (só no `mock-crm.html`): o Ctrl+K escutando na
+        captura e a devolução do foco. Dentro de um `<iframe>` do CRM o `keydown`
+        não chega ao `document` do topo e o atalho não abre — não testado.
+
 - [~] **Link da documentação (deck de slides) onde o agente trava e nas duas
       telas do Apps Script (2026-10-23).** No bookmarklet: "?" do cabeçalho de
       todo módulo + Configurações → Suporte & Feedback. No TL Dashboard e na
