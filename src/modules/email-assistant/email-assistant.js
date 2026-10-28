@@ -38,6 +38,7 @@ const EMAIL_DICT = {
         copyErrorToast: "Erro ao copiar e-mail",
         fillErrorToast: "Erro ao preencher e-mail",
         smartCrErrorToast: "Erro ao aplicar Smart CR",
+        personalCategory: "Pessoal",
         copyHtml: "Copiar HTML",
         fillInCrm: "Preencher no CRM",
         loading: "Carregando...",
@@ -57,6 +58,7 @@ const EMAIL_DICT = {
         copyErrorToast: "Error al copiar el email",
         fillErrorToast: "Error al completar el email",
         smartCrErrorToast: "Error al aplicar Smart CR",
+        personalCategory: "Personal",
         copyHtml: "Copiar HTML",
         fillInCrm: "Rellenar en el CRM",
         loading: "Cargando...",
@@ -76,6 +78,7 @@ const EMAIL_DICT = {
         copyErrorToast: "Error copying the email",
         fillErrorToast: "Error filling in the email",
         smartCrErrorToast: "Error applying Smart CR",
+        personalCategory: "Personal",
         copyHtml: "Copy HTML",
         fillInCrm: "Fill in CRM",
         loading: "Loading...",
@@ -89,6 +92,13 @@ const EMAIL_DICT = {
 function et(key) {
     const lang = getLanguage();
     return EMAIL_DICT[lang]?.[key] ?? EMAIL_DICT.pt[key];
+}
+
+// Chave interna do grupo dos snippets pessoais: agrupa a lista, escolhe o ícone
+// e marca o grupo expandido. Nunca é exibida — o rótulo vem de categoryLabel().
+const PERSONAL_CATEGORY = "👤 Pessoal";
+function categoryLabel(category) {
+    return category === PERSONAL_CATEGORY ? `👤 ${et('personalCategory')}` : category;
 }
 
 // --- ESTILOS (Apple Inspired) ---
@@ -290,7 +300,7 @@ function getMatchingSnippets(searchTerm) {
                     placeholders.push({ key: m, label: m.replace('[', '').replace(']', ''), type: m.toLowerCase().includes('data') ? 'date' : 'text', auto: m.toLowerCase().includes('nome') && m.toLowerCase().includes('seu') ? 'agentName' : null });
                 });
             }
-            return { id: s.id || `snippet-${Math.random()}`, name: s.title, category: "👤 Pessoal", subject: s.subject || et('noSubject'), template: s.content, placeholders: placeholders };
+            return { id: s.id || `snippet-${Math.random()}`, name: s.title, category: PERSONAL_CATEGORY, subject: s.subject || et('noSubject'), template: s.content, placeholders: placeholders };
         });
 }
 
@@ -460,7 +470,7 @@ export function initEmailAssistant() {
         catHeader.setAttribute("aria-expanded", String(isExpanded));
 
         const headerText = document.createElement("span");
-        headerText.textContent = cat;
+        headerText.textContent = categoryLabel(cat);
         catHeader.appendChild(headerText);
 
         const badge = document.createElement("span");
@@ -508,7 +518,7 @@ export function initEmailAssistant() {
 
         const icon = document.createElement("span");
         icon.className = "cw-email-list-icon";
-        icon.innerHTML = template.isSmartCR ? '⚡' : (template.category === '👤 Pessoal' ? '👤' : '📄');
+        icon.innerHTML = template.isSmartCR ? '⚡' : (template.category === PERSONAL_CATEGORY ? '👤' : '📄');
         item.appendChild(icon);
 
         const text = document.createElement("span");

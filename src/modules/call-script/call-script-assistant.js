@@ -620,6 +620,7 @@ export function initCallScriptAssistant() {
       if (finalCopyBtn) finalCopyBtn.textContent = ct('copyFinalMessage');
       const resetLabel = resetBtn.querySelector('.js-csa-reset-label');
       if (resetLabel) resetLabel.textContent = ct('resetScript');
+      resizeHandle.title = ct('resize');
       csaBuildChecklist();
   });
 
