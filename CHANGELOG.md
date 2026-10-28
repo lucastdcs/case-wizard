@@ -129,6 +129,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   com desfoque), peso de fonte 400/500, grade de 4/8px, alvos ≥32px e
   `prefers-reduced-motion` respeitado. Copiar um link confirma no próprio botão,
   com som e vibração (nos três canais); favoritar, com som, vibração e aviso.
+- **Notas: "Caso de Portugal?" virou "Caso da Europa?"** (ES: "¿Caso de Europa?",
+  EN: "Europe case?"). Só o texto muda — no seletor e na linha que sai na nota.
+  O comportamento é o mesmo (liga o campo de consentimento de gravação) e os
+  identificadores internos (`CASO_PORTUGAL`, `isPortugalCase`) ficam, porque
+  rascunhos já salvos dependem deles.
 
 ## [6.5.0] - 2026-10-13
 
