@@ -12,6 +12,46 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Repintar "só se a view for X" é bug quando o elemento não é reconstruído
+
+**Why**: o handler de troca de idioma do BAU Form repintava os campos dentro de
+`if (currentView === 'form')`, com o comentário "form já é reconstruído a cada
+navegação". Não é: o formulário é montado **uma vez**, no boot, e "Novo caso" só o
+reseta. Como o perfil chega depois do boot, um agente de ES/EN com o dashboard na
+tela abria o formulário inteiro em português. O comentário descrevia o que o
+autor imaginava, não o código, e ninguém o confrontou.
+
+**When to apply**: antes de condicionar um repaint à view atual, confirme no
+código que a view **é** reconstruída ao entrar (procure o `innerHTML =`/`createElement`
+na navegação, não o comentário). Dúvida: repinte sempre — repintar texto é barato,
+e deixar de repintar é silencioso.
+
+## Mapa de idioma só de ES: o inglês cai em português, sem erro nenhum
+
+**Why**: `bft()`/`bfOptionText()` do BAU Form faziam `if (getLanguage() !== 'es')
+return texto-em-PT`, e `utils.js`, `wizard-shell.js` e `notes-bridge.js` tinham
+`getLanguage() === 'es' ? ES : PT`. Todos são do tempo do PT/ES: o inglês entrou
+depois e herdou o `else`. Resultado: com a interface em EN, **todo rótulo e opção
+do BAU Form** e o "Cancelar" de cada diálogo de confirmação saíam em PT. O
+`smoke:i18n` e o `test:i18n` passavam, porque só viam dicionários `{pt,es,en}`.
+
+**When to apply**: `grep -rnE "=== ?['\"]es['\"]|!== ?['\"]es['\"]" src` a cada rodada
+de idioma novo. O `test:i18n` agora reprova `X_ES` sem `X_EN` (chaves e
+propriedades). Para texto novo use sempre um mapa por idioma com fallback ao PT
+(`MAPA[getLanguage()] || MAPA.pt`), nunca um ternário de dois idiomas.
+
+## Build que troca texto exato: mexeu na linha, rode o smoke do avulso
+
+**Why**: o build em inglês do Pre-call troca trechos de produção **por texto
+exato** (`TROCAS`, em `scripts/build-precall-standalone.mjs`) e falha se achar
+0 — de propósito, para não entregar português ao SME. Ao reescrever o ternário do
+aviso de falha ao copiar em `notes-bridge.js`, o build quebrou. Quem só roda
+`test:*` e os smokes do app não vê: o erro aparece em `smoke:precall-standalone`.
+
+**When to apply**: ao editar `notes-bridge.js`, `header-factory.js`, `crm-labels.js`
+ou `precall-data.js`, rode `npm run smoke:precall-standalone`; se o trecho mudou,
+atualize a troca no build junto (como na mudança de `COPY_ERROR_TOAST`).
+
 ## Conflito de CHANGELOG: confira em QUAL seção ele caiu antes de resolver
 
 **Why**: ao integrar a remota, resolvi o conflito mantendo os dois lados e nem

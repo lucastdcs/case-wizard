@@ -25,6 +25,39 @@ versions follow [Semantic Versioning](https://semver.org/).
   prévia). Tudo foi para o `EMAIL_DICT` (PT/ES/EN) e é repintado na troca, sem
   tocar no que o agente já digitou. Travado em `smoke:i18n` (+3, e os de ES/EN
   falham no código anterior).
+- **Português que sobrava com a interface em ES ou EN — segunda rodada da
+  auditoria de idioma.** Achado comparando o texto de cada módulo aberto já no
+  idioma certo com o aberto em PT e trocado depois:
+  - **BAU Form: com a interface em EN, todo rótulo e toda opção saíam em
+    português** (só existia mapa de ES). E o formulário, montado uma vez no boot,
+    só era repintado com a tela do formulário aberta — quem tinha o dashboard na
+    tela quando o perfil trocava o idioma abria "Novo caso" no idioma errado.
+    Agora há EN e o repaint inclui os cartões de escolha, o título da
+    confirmação, o bloco de disponibilidade e o botão de buscar SE ID.
+  - **Case Notes:** o Split & Transfer (aviso do SOP, "Auto-Preencher Dados da
+    Página", títulos de seção, botões, placeholders) e a ajuda e a busca do
+    seletor de tasks eram montados no boot e nunca repintados; os placeholders dos
+    selects de status, o título do botão do Split e 4 toasts estavam cravados em
+    PT. A prévia ao passar o mouse num cenário usava o idioma da **interface**,
+    mas o que vai para a nota segue o do **atendimento** — com os dois
+    divergentes a prévia mostrava um texto e a nota gravava outro (ADR-0016).
+  - **Todo o app:** o "Cancelar" e o "Confirmar" dos diálogos de confirmação
+    estavam cravados em PT (e o "Excluir" caía em PT em EN); o "Cancelar" e o
+    "Cancelado!" do card de processamento tinham tradução pronta no
+    dicionário e ninguém a usava; o aviso de falha ao copiar e a assinatura dos
+    tutoriais caíam em PT em EN; o erro crítico de boot e o de "usuário não
+    identificado" também.
+  - **Fusos:** nomes de país e de cidade ("Bolívia", "Colômbia", "EUA", "Nova
+    York") saíam em PT em ES e EN. Passam a ter exibição por idioma no catálogo
+    compartilhado, e o seletor de fuso do BAU Form usa os mesmos nomes — só o
+    texto, o `value` segue sendo a zona IANA. Os atalhos padrão do Ctrl+K ganham
+    nome e apelido por idioma, e a categoria "Pessoal" do Email Assistant e o
+    título do puxador de redimensionar do Call Script também.
+  Travado em `smoke:i18n` (+9: Case Notes, BAU Form e o diálogo de confirmação a
+  cada troca de idioma; no código anterior os de ES e EN falham), `test:i18n` (todo `X_ES` exige um
+  `X_EN` com as mesmas chaves) e `test:timezones` (+3, nenhum nome em português
+  em ES/EN). O build avulso do Pre-call em inglês acompanha a nova forma do aviso
+  de falha ao copiar.
 - **Pre-call avulso em inglês: o arquivo também é 100% inglês, não só a tela**
   (ADR-0020). A variante `-en` mostrava tudo em inglês, mas o `.txt` ainda
   carregava os dicionários PT/ES, os rótulos de screenshot do catálogo de tasks, os
