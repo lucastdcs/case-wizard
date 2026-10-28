@@ -12,6 +12,37 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Conflito de CHANGELOG: confira em QUAL seção ele caiu antes de resolver
+
+**Why**: ao integrar a remota, resolvi o conflito mantendo os dois lados e nem
+olhei o cabeçalho da seção — a remota já tinha cortado a v6.6.0 (o `[Unreleased]`
+virou `[6.6.0]`), e a entrada de uma mudança **do dia** ficou dentro de uma versão
+já lançada, dizendo que ela saiu na 6.6.0. Os testes não pegam isso
+(`test:dash-changelog` só confere versões), e sem a marca de conflito o arquivo
+parece certo. Só apareceu ao ler as seções na hora de escrever a entrada seguinte.
+
+**When to apply**: em todo merge que conflita no `CHANGELOG.md`. Depois de
+resolver, rode `grep -n '^## ' CHANGELOG.md` e confirme que a sua entrada está sob
+`[Unreleased]` e não sob uma versão com data; se a remota trouxe um release
+novo, o conflito quase sempre é esse.
+
+## Troca de idioma em tempo real: o que o módulo desenha uma vez tem de ser repintado — e teste que sobe no idioma certo não vê isso
+
+**Why**: "Pronto para começar?" ficava em português no Case Notes e no Email
+Assistant com a interface em ES/EN. O app monta os módulos no boot, num idioma, e
+o perfil (que decide o idioma) só chega depois do backend. O `onLanguageChange`
+repinta o que está na lista dele, e o estado vazio não estava — no Email ele nem
+passava pelo `EMAIL_DICT`. O `smoke:i18n` já existia e passava: ele grava o idioma
+no `localStorage` **antes** do boot, então tudo sobe no idioma certo e o caminho
+"montado em PT, repintado em ES" nunca rodava.
+
+**When to apply**: ao criar texto de tela num módulo (estado vazio, placeholder,
+título, botão), ele entra no dicionário **e** no handler de troca; ao revisar um
+`onLanguageChange`, compare com tudo o que o módulo desenha uma vez. Para provar,
+troque o idioma com o app aberto — clicar `#cw-config-lang-toggle button[data-lang=…]`
+pelo DOM funciona com o popup fechado — e leia o texto. Ao repintar, mexa só no
+texto: não refaça o que carrega digitação do agente (campos de formulário).
+
 ## Seleção por hover: troque a classe do item, nunca reconstrua a lista
 
 **Why**: a palette do Ctrl+K chamava `render()` (que refaz a lista inteira) no

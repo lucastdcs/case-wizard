@@ -8,7 +8,23 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **Notas: "Caso de Portugal?" virou "Caso da Europa?"** (ES: "¿Caso de Europa?",
+  EN: "Europe case?"). Só o texto muda — no seletor e na linha que sai na nota.
+  O comportamento é o mesmo (liga o campo de consentimento de gravação) e os
+  identificadores internos (`CASO_PORTUGAL`, `isPortugalCase`) ficam, porque
+  rascunhos já salvos dependem deles.
+
 ### Fixed
+- **"Pronto para começar?" ficava em português no Case Notes e no Email
+  Assistant, mesmo com a interface em ES ou EN.** O bloco é montado uma vez, no
+  boot, e o perfil — que decide o idioma — só chega depois; o handler da troca
+  repintava rótulos e botões, mas não ele. No Email Assistant o texto nem passava
+  pelo dicionário, e junto dele estavam "Copiar HTML", "Preencher no CRM",
+  "Carregando...", "Nenhum resultado para…" e os dois textos do Smart CR (hint e
+  prévia). Tudo foi para o `EMAIL_DICT` (PT/ES/EN) e é repintado na troca, sem
+  tocar no que o agente já digitou. Travado em `smoke:i18n` (+3, e os de ES/EN
+  falham no código anterior).
 - **Pre-call avulso em inglês: o arquivo também é 100% inglês, não só a tela**
   (ADR-0020). A variante `-en` mostrava tudo em inglês, mas o `.txt` ainda
   carregava os dicionários PT/ES, os rótulos de screenshot do catálogo de tasks, os
@@ -187,11 +203,6 @@ versions follow [Semantic Versioning](https://semver.org/).
   ação, autor), botão para a Central, motivo da devolução em callout, preheader,
   versão em texto puro e texto livre escapado (antes o rótulo e o motivo entravam
   crus no HTML). Travado em `test:content` (+2).
-- **Notas: "Caso de Portugal?" virou "Caso da Europa?"** (ES: "¿Caso de Europa?",
-  EN: "Europe case?"). Só o texto muda — no seletor e na linha que sai na nota.
-  O comportamento é o mesmo (liga o campo de consentimento de gravação) e os
-  identificadores internos (`CASO_PORTUGAL`, `isPortugalCase`) ficam, porque
-  rascunhos já salvos dependem deles.
 
 ### Fixed
 - **Quem saiu da empresa seguia recebendo e-mail da Central de Conteúdo.** A

@@ -407,6 +407,43 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## Up next
 
+- [ ] **Idioma: telas que ficam em português ou não repintam na troca (auditoria
+      de 2026-10-28).** Nasceu do "Pronto para começar?" preso em PT no Case Notes
+      e no Email Assistant — esses dois estão consertados (CHANGELOG
+      `[Unreleased]`, travado em `smoke:i18n`). O resto que a busca achou **ficou
+      de fora de propósito**: são ~10 arquivos, com chave nova em três idiomas, e
+      inclui o BAU Form. Duas classes, mesma causa de fundo (o app monta tudo no
+      boot e o perfil troca o idioma depois):
+      1. **Estado velho — há dicionário, mas a tela não repinta na troca.**
+         Conferido no código: `notes/components/split-transfer.js` ("Gerar Nota",
+         "Voltar", dois placeholders; dicionário próprio, sem `onLanguageChange`)
+         e `step-scenarios.js` ("Passe o mouse sobre um cenário…"). Só pela
+         auditoria, sem ler o código: Biblioteca ("Novo Item", "Salvar", estado
+         vazio), Call Script ("Carregando…", "Redimensionar"), BAU Form (tela de
+         erro e os cartões "Abrir caso para BAU" / "Solicitar Descarte" / fuso),
+         Broadcast ("Updated").
+      2. **Cravado em PT — sem dicionário.** Conferido: `step-tasks.js` (texto de
+         ajuda e "0 ações definidas"), `split-transfer.js` ("Auto-Preencher Dados
+         da Página", "Dados Técnicos", "Cópias (CC)"), `notes-assistant.js` (título
+         "Alternar para Split & Transfer" e quatro toasts), toasts em `app.js`,
+         `snippet-service.js` e `command-center.js` ("Cancelado!"), e a categoria
+         "👤 Pessoal" do Email Assistant (a mesma string é rótulo **e** chave:
+         separar os dois antes de traduzir). Só pela auditoria: Configurações
+         ("NI Attempted — Início 2 Day Rule") e os nomes de país do catálogo de
+         fusos (`shared/timezones.js`: "Bolívia", "Colômbia", "Equador" com a
+         interface em EN).
+      **Não é erro, embora a busca marque:** os passos do Call Script e as
+      opções/valores do BAU Form são conteúdo do atendimento ou valor gravado —
+      seguem `getOutputLanguage()` ou ficam em PT (ADR-0016, rulebook §4).
+      **Como repetir a auditoria:** subir o app com a interface no idioma-alvo (A)
+      e subir em PT e trocar pelo `#cw-config-lang-toggle` (B); comparar o texto
+      de cada `*-popup`. O que está em B e não em A ficou velho; o que está em A e
+      parece PT está cravado. Manter o idioma de saída igual nos dois. Ruído
+      conhecido: a lista de fusos (relógio) e, em ES, o regex de PT casa palavras
+      do espanhol. **Decidir:** vale virar checagem permanente (hoje é script
+      descartável) e vale juntar a revisão do ES por falante nativo (já pendente
+      em *Waiting / blocked*).
+
 - [ ] **Central de Conteúdo em PT/ES/EN (decidido em 2026-10-13).** A rodada do
       inglês cobriu a dimensão de CONTEÚDO da Central (seletor de idioma dos
       modelos, coluna de tradução das evidências, EN na prévia "como o agente
