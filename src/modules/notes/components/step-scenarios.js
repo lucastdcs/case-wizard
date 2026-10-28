@@ -2,7 +2,7 @@
 
 import { getScenarioFields, getScenariosFor, scenarioLabel } from "../data/notes-data.js";
 import { SoundManager } from "../../shared/sound-manager.js";
-import { getLanguage } from "../../shared/i18n.js";
+import { getLanguage, onLanguageChange, getOutputLanguage } from "../../shared/i18n.js";
 
 const PREVIEW_PLACEHOLDER = {
   pt: "Passe o mouse sobre um cenário para visualizar o texto...",
@@ -58,6 +58,12 @@ export function createScenariosComponent(onSelectCallback) {
   // Estado interno
   const selectedIds = new Set();
   let hoverTimeout = null;
+  // O placeholder é chrome (idioma da interface) e é montado no boot, antes de
+  // o perfil trocar o idioma: só se repinta enquanto for ele que está na tela.
+  let showingDefault = true;
+  onLanguageChange(() => {
+      if (showingDefault) previewText.textContent = defaultPreviewText();
+  });
 
   // Refined render version
   container.render = (subStatusKey, caseType) => {
@@ -89,7 +95,9 @@ export function createScenariosComponent(onSelectCallback) {
             transition: "all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)",
           });
 
-          const localized = getScenarioFields(data, getLanguage(), id);
+          // A prévia mostra o texto que vai para a NOTA, então segue o idioma do
+          // atendimento — o mesmo que applyScenario usa ao gravar (ADR-0016).
+          const localized = getScenarioFields(data, getOutputLanguage(), id);
           const textPreviewContent = localized['field-REASON_COMMENTS'] || localized['field-CONTEXTO_CALL'] || id;
 
           chip.onmouseenter = () => {
@@ -103,6 +111,7 @@ export function createScenariosComponent(onSelectCallback) {
               if (!reduceMotion) previewText.style.transform = "translateY(5px)";
 
               hoverTimeout = setTimeout(() => {
+                  showingDefault = false;
                   previewText.textContent = textPreviewContent.substring(0, 120) + (textPreviewContent.length > 120 ? '...' : '');
                   previewText.style.opacity = "1";
                   if (!reduceMotion) previewText.style.transform = "translateY(0)";
@@ -120,6 +129,7 @@ export function createScenariosComponent(onSelectCallback) {
                   if (selectedIds.size === 0) {
                       previewText.style.opacity = "0";
                       setTimeout(() => {
+                          showingDefault = true;
                           previewText.textContent = defaultPreviewText();
                           previewText.style.opacity = "1";
                       }, 50);

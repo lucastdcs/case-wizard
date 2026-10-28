@@ -552,7 +552,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
             <div class="cw-hero-section">
                 <div class="cw-section-subtitle js-hero-title" style="font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.8px;">${t('acesso_rapido')}</div>
                 <div class="cw-hero-grid"></div>
-                <div class="cw-helper-text">Atalhos para as implementações mais frequentes.<br>Use a busca abaixo para o catálogo completo.</div>
+                <div class="cw-helper-text js-hero-help">${t('atalhos_ajuda')}</div>
             </div>
 
             <div class="cw-list-section">
@@ -566,7 +566,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
         </div>
 
         <div class="cw-status-bar">
-            <div class="cw-status-text">0 ações definidas</div>
+            <div class="cw-status-text"></div>
             <div class="cw-footer-icons"></div>
         </div>
     `;
@@ -854,7 +854,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
       });
       if (!found)
         resultsContainer.innerHTML =
-          '<div style="padding:20px; text-align:center; font-size:13px; color:#999">Nenhum resultado.</div>';
+          `<div style="padding:20px; text-align:center; font-size:13px; color:#999">${t('nenhum_resultado')}</div>`;
     } else {
       accContainer.style.display = "block";
       resultsContainer.style.display = "none";
@@ -1036,8 +1036,12 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
         t = newT;
         const hTitle = container.querySelector('.js-hero-title');
         if (hTitle) hTitle.textContent = t('acesso_rapido');
+        const hHelp = container.querySelector('.js-hero-help');
+        if (hHelp) hHelp.innerHTML = t('atalhos_ajuda');
         const sInput = container.querySelector('.cw-search-input');
         if (sInput) sInput.placeholder = t('buscar_catalogo');
+        const sLabel = container.querySelector('label[for="cw-task-search-input"]');
+        if (sLabel) sLabel.textContent = t('buscar_catalogo');
         renderScreenshots();
         updateUI();
     },
