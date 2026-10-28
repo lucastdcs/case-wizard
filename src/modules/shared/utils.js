@@ -1164,6 +1164,17 @@ function createBaseDialog() {
     return dialog;
 }
 
+// Os diálogos são montados sob demanda, então ler o idioma na hora de abrir
+// basta — não há tela viva para repintar na troca.
+const DIALOG_DICT = {
+    pt: { cancel: 'Cancelar', confirm: 'Confirmar', delete: 'Excluir' },
+    es: { cancel: 'Cancelar', confirm: 'Confirmar', delete: 'Eliminar' },
+    en: { cancel: 'Cancel', confirm: 'Confirm', delete: 'Delete' },
+};
+function dialogText(key) {
+    return (DIALOG_DICT[getLanguage()] || DIALOG_DICT.pt)[key];
+}
+
 export function alertDialog(message) {
     return new Promise((resolve) => {
         const overlay = createBaseOverlay();
@@ -1199,13 +1210,12 @@ export function confirmDialog(message, opts = {}) {
         const dialog = createBaseDialog();
 
         const confirmColor = opts.danger ? '#FF3B30' : '#007AFF';
-        const defaultDangerText = getLanguage() === 'es' ? 'Eliminar' : 'Excluir';
-        const confirmText = opts.confirmText || (opts.danger ? defaultDangerText : 'Confirmar');
+        const confirmText = opts.confirmText || dialogText(opts.danger ? 'delete' : 'confirm');
 
         dialog.innerHTML = `
             <div style="font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #202124; line-height: 1.4;">${message}</div>
             <div style="display: flex; gap: 10px;">
-                <button id="cw-conf-cancel" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #DADCE0; background: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; color: #5F6368;">Cancelar</button>
+                <button id="cw-conf-cancel" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #DADCE0; background: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; color: #5F6368;">${dialogText('cancel')}</button>
                 <button id="cw-conf-ok" style="flex: 1; padding: 12px; border-radius: 12px; border: none; background: ${confirmColor}; color: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px;">${confirmText}</button>
             </div>
         `;
@@ -1242,7 +1252,7 @@ export function promptDialog(message, defaultValue = "") {
             <div style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #202124; text-align: left;">${message}</div>
             <input type="text" id="cw-prompt-input" value="${defaultValue}" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #DADCE0; margin-bottom: 20px; box-sizing: border-box; font-family: inherit; font-size: 14px; outline: none;">
             <div style="display: flex; gap: 10px;">
-                <button id="cw-prompt-cancel" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #DADCE0; background: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; color: #5F6368;">Cancelar</button>
+                <button id="cw-prompt-cancel" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #DADCE0; background: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; color: #5F6368;">${dialogText('cancel')}</button>
                 <button id="cw-prompt-ok" style="flex: 1; padding: 12px; border-radius: 12px; border: none; background: #007AFF; color: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px;">OK</button>
             </div>
         `;

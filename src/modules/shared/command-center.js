@@ -1167,12 +1167,12 @@ export function triggerProcessingAnimation() {
 
   const abortBtn = document.createElement('div');
   abortBtn.className = 'cw-abort-btn';
-  abortBtn.textContent = 'Cancelar';
+  abortBtn.textContent = cct('cancel');
   abortBtn.onclick = (e) => {
     e.stopPropagation();
     window._CW_ABORT_PROCESS = true;
     SoundManager.stopThinking();
-    showToast('Cancelado!', { duration: 3000 });
+    showToast(cct('cancelledToast'), { duration: 3000 });
     dismissCard();
   };
   card.appendChild(abortBtn);

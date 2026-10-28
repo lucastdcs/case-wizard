@@ -17,7 +17,7 @@ import { initBAUForm } from './modules/bau-form/bau-form-assistant.js';
 // Importação do Serviço de Dados
 import { DataService, fetchUserProfile } from './modules/shared/data-service.js';
 import { getAgentEmail, setUserProfile } from './modules/shared/page-data.js';
-import { applyProfileLanguage } from './modules/shared/i18n.js';
+import { applyProfileLanguage, getLanguage } from './modules/shared/i18n.js';
 import { UserPrefsService } from './modules/shared/user-prefs-service.js';
 
 // 2. Importação do Núcleo Compartilhado
@@ -27,6 +27,12 @@ import { initGlobalStylesAndFont, playStartupAnimation, showToast } from './modu
 
 // --- Gerenciador de Som ---
 import { SoundManager } from './modules/shared/sound-manager.js';
+
+const BOOT_ERROR_TOAST = {
+    pt: "Erro crítico ao iniciar o Case Wizard.",
+    es: "Error crítico al iniciar Case Wizard.",
+    en: "Critical error starting Case Wizard.",
+};
 
 function initApp() {
     // Se já iniciou, só toca a animação de novo e sai (evita duplicidade)
@@ -165,7 +171,7 @@ function initApp() {
     } catch (error) {
         console.error("Erro fatal na inicialização:", error);
         SoundManager.playError();
-        showToast("Erro crítico ao iniciar o Case Wizard.", { error: true });
+        showToast(BOOT_ERROR_TOAST[getLanguage()] || BOOT_ERROR_TOAST.pt, { error: true });
     }
 }
 

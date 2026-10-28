@@ -4,6 +4,13 @@ import { DataService } from "../shared/data-service.js";
 import { getAgentEmail } from "../shared/page-data.js";
 import { showToast } from "../shared/utils.js";
 import { SoundManager } from "../shared/sound-manager.js";
+import { getLanguage } from "../shared/i18n.js";
+
+const NO_USER_TOAST = {
+    pt: "Erro: Usuário não identificado.",
+    es: "Error: usuario no identificado.",
+    en: "Error: user not identified.",
+};
 
 const STORAGE_KEY = "cw_personal_library_v1";
 
@@ -36,7 +43,7 @@ export const SnippetService = {
         const userEmail = getAgentEmail();
         if (!userEmail) {
             SoundManager.playError();
-            showToast("Erro: Usuário não identificado.", { error: true });
+            showToast(NO_USER_TOAST[getLanguage()] || NO_USER_TOAST.pt, { error: true });
             return false;
         }
 

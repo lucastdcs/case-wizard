@@ -4,6 +4,8 @@ import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { getLanguage } from '../shared/i18n.js';
 
+const COPY_ERROR_TOAST = { pt: "Falha ao copiar", es: "Error al copiar", en: "Failed to copy" };
+
 export function copyHtmlToClipboard(html) {
     const container = document.createElement('div');
     container.style.position = 'fixed';
@@ -19,7 +21,7 @@ export function copyHtmlToClipboard(html) {
         document.execCommand('copy');
     } catch (err) {
         SoundManager.playError();
-        showToast(getLanguage() === 'es' ? "Error al copiar" : "Falha ao copiar", { error: true });
+        showToast(COPY_ERROR_TOAST[getLanguage()] || COPY_ERROR_TOAST.pt, { error: true });
     }
     selection.removeAllRanges();
     document.body.removeChild(container);
