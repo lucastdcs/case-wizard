@@ -66,6 +66,48 @@ guardados e cancelados na reabertura; (5) o overlay engole cliques durante o fad
 (`pointer-events` só sai quando ele sai do DOM); (6) não abre por cima de overlays
 que mandam na tela. `npm run smoke:palette` trava tudo isso.
 
+## "100% inglês" é uma propriedade do ARQUIVO, não da tela: audite o texto que ele carrega
+
+**Why**: a variante `-en` do Pre-call passou em todo teste de tela (navegador e app
+em PT, tudo em inglês) e o SME respondeu que **não estava em inglês**: ele abriu o
+`.txt` e leu o que há dentro — dicionários PT/ES sem uso, rótulos de screenshot do
+catálogo de tasks, rótulos de CRM em PT/ES, comentários CSS (que são *texto* dentro
+de template literals e sobrevivem à minificação) e `console.warn` em português.
+Eu tinha listado isso como "invisível na tela" e entregado mesmo assim. E havia um
+defeito **visível** que o mock nunca exercitou: `getLanguage() === 'es' ? "Error al
+copiar" : "Falha ao copiar"` — em EN cai no português.
+
+**When to apply**: ao prometer um arquivo "em idioma X" para quem vai LER o arquivo.
+Corte no build o que a tela não mostra (gere do código real, não copie texto; troque
+com asserção para o build quebrar se a produção mudar) e audite o arquivo
+decodificado: letras acentuadas, `/*`, `console.`, textos PT/ES **derivados da
+produção** e vocabulário sem acento (acento sozinho não pega "Falha ao copiar").
+Prove que a auditoria tem dentes rodando-a contra o build que NÃO deveria passar.
+E teste o caminho de erro (toast de falha), não só o feliz: é lá que mora o texto
+fixo que ninguém traduziu.
+## CHANGELOG: depois da release, entrada nova vai em `[Unreleased]` — confira a seção anterior contra a `main` antes de cortar a próxima
+
+**Why**: duas entradas (os e-mails da Central com a casca do BAU e o fix de quem
+saiu de People) foram escritas dentro da seção `[6.5.0]` por commits que vieram
+**depois** da v6.5.0. Nada quebrou e nenhum teste olha isso: a seção só passou a
+afirmar o que a v6.5.0 nunca levou a produção, e a v6.6.0 sairia sem as duas.
+Pior: o `release.yml` publica a seção `[X.Y.Z]` como corpo da GitHub Release, então
+a nota da v6.5.0 teria ficado errada para sempre. Apareceu só porque, ao cortar
+a v6.6.0, a seção da versão anterior foi comparada com a da `main`.
+
+**When to apply**: ao registrar uma mudança num CHANGELOG cuja versão mais recente
+já foi cortada — a seção certa é `[Unreleased]`, mesmo que ela esteja vazia e o
+`### Fixed` da versão de cima pareça o lugar natural. E, ao cortar uma release,
+antes de fechar o `[Unreleased]`:
+
+```bash
+diff <(git show origin/main:CHANGELOG.md | sed -n '/^## \[X.Y.Z\]/,/^## \[W.V.U\]/p') \
+     <(sed -n '/^## \[X.Y.Z\]/,/^## \[W.V.U\]/p' CHANGELOG.md)
+```
+
+Qualquer linha `>` é entrada que a branch acrescentou a uma versão que a `main`
+já tem: mova para a seção nova.
+
 ## Arquivo avulso: o que o esbuild não poda, entrega; audite o arquivo, não o import
 
 **Why**: ao empacotar só o Pre-call, o `data-service.js` entrou inteiro no
