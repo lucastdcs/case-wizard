@@ -12,6 +12,102 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Seleção por hover: troque a classe do item, nunca reconstrua a lista
+
+**Why**: a palette do Ctrl+K chamava `render()` (que refaz a lista inteira) no
+`mouseenter` de cada item, só para mover o destaque. O navegador, ao ver o DOM
+trocado debaixo do cursor, emite outro `mouseover` — e cada um reconstruía de
+novo: mais de dez reconstruções por segundo **com o mouse parado**. O clique no
+meio disso se perdia (medido: 0 de 18 abriam o módulo; o log mostrava seis
+`mouseover` e nenhum `mousedown`/`click`). O mesmo defeito fazia a seta ↓
+empacar: ela rola a lista, a rolagem põe outro item debaixo do cursor parado, e
+o hover devolvia a seleção. Nada disso aparece lendo o código nem num teste que
+use `Enter`.
+
+**When to apply**: em qualquer lista/menu com seleção por hover. Separe "refazer
+a lista" (muda o conjunto) de "mudar a seleção" (só a classe), e faça o hover
+reagir a `mousemove` **comparando a posição com a anterior**, não a
+`mouseenter`/`mouseover` — esses também disparam quando o conteúdo rola ou é
+trocado sob um cursor parado. O teclado rola com `scrollIntoView`; o hover não.
+
+## Clique por coordenada num item de lista rolável cai no fundo do overlay
+
+**Why**: ao reproduzir o bug acima, medi `boundingBox()` de um item que estava
+**fora da área visível** da lista (ela rola, 340px) e cliquei ali. O `mousedown`
+caiu no fundo do overlay, que fecha a palette — e o teste mostrou "24/24 cliques
+funcionaram" (a palette fechou!) e "o 2º clique do duplo clique vaza para o
+CRM". As duas conclusões eram falsas; o código antigo falhava 18 de 18. O
+`mousedown` registrado em `DIV.cw-palette-overlay` foi o que denunciou.
+
+**When to apply**: ao testar clique por coordenada em lista com `overflow`:
+`locator.scrollIntoViewIfNeeded()`, espere a animação de entrada (a palette
+anima 0,25s e o retângulo medido antes disso está deslocado) e só então meça. E
+meça o **efeito** (o módulo abriu), não "a palette fechou" — fechar é também o
+que o clique no fundo faz. Registre `mousedown`/`click` com o alvo quando o
+resultado não bater com o que você viu.
+
+## Overlay modal sobre um app com listeners globais: confira Esc, Tab e foco, não só o caminho feliz
+
+**Why**: a palette abria bem e funcionava no caminho feliz, mas convivia mal com o
+que já escutava o `document`: o Esc global de `animations.js` fechava também a
+janela de módulo por baixo; o `wizard-shell.js` engole Enter/Esc/Tab na captura e
+deixava a palette muda por cima de um wizard; o Tab saía para os campos do CRM
+atrás do overlay; um timer de 200ms de um fechamento anterior removia o overlay
+**novo** de uma reabertura rápida (palette invisível, scroll travado); o 2º clique
+de um duplo clique caía no CRM durante o fade. E o repo já tinha decidido que a
+pílula não é clicável com o card de processamento no ar — o Ctrl+K furava isso.
+
+**When to apply**: ao criar ou mexer em qualquer overlay/modal: (1) `grep` dos
+listeners de `keydown`/`mousedown` no `document` — quem mais reage a Esc, Tab e
+clique? (2) o Esc precisa de `stopPropagation`; (3) o foco fica preso dentro e
+**volta** a quem o tinha ao desistir; (4) guarda de reentrada em `activate`/`open`
+(toggles de módulo alternam: duas chamadas se desfazem) e timers de fechamento
+guardados e cancelados na reabertura; (5) o overlay engole cliques durante o fade
+(`pointer-events` só sai quando ele sai do DOM); (6) não abre por cima de overlays
+que mandam na tela. `npm run smoke:palette` trava tudo isso.
+
+## "100% inglês" é uma propriedade do ARQUIVO, não da tela: audite o texto que ele carrega
+
+**Why**: a variante `-en` do Pre-call passou em todo teste de tela (navegador e app
+em PT, tudo em inglês) e o SME respondeu que **não estava em inglês**: ele abriu o
+`.txt` e leu o que há dentro — dicionários PT/ES sem uso, rótulos de screenshot do
+catálogo de tasks, rótulos de CRM em PT/ES, comentários CSS (que são *texto* dentro
+de template literals e sobrevivem à minificação) e `console.warn` em português.
+Eu tinha listado isso como "invisível na tela" e entregado mesmo assim. E havia um
+defeito **visível** que o mock nunca exercitou: `getLanguage() === 'es' ? "Error al
+copiar" : "Falha ao copiar"` — em EN cai no português.
+
+**When to apply**: ao prometer um arquivo "em idioma X" para quem vai LER o arquivo.
+Corte no build o que a tela não mostra (gere do código real, não copie texto; troque
+com asserção para o build quebrar se a produção mudar) e audite o arquivo
+decodificado: letras acentuadas, `/*`, `console.`, textos PT/ES **derivados da
+produção** e vocabulário sem acento (acento sozinho não pega "Falha ao copiar").
+Prove que a auditoria tem dentes rodando-a contra o build que NÃO deveria passar.
+E teste o caminho de erro (toast de falha), não só o feliz: é lá que mora o texto
+fixo que ninguém traduziu.
+## CHANGELOG: depois da release, entrada nova vai em `[Unreleased]` — confira a seção anterior contra a `main` antes de cortar a próxima
+
+**Why**: duas entradas (os e-mails da Central com a casca do BAU e o fix de quem
+saiu de People) foram escritas dentro da seção `[6.5.0]` por commits que vieram
+**depois** da v6.5.0. Nada quebrou e nenhum teste olha isso: a seção só passou a
+afirmar o que a v6.5.0 nunca levou a produção, e a v6.6.0 sairia sem as duas.
+Pior: o `release.yml` publica a seção `[X.Y.Z]` como corpo da GitHub Release, então
+a nota da v6.5.0 teria ficado errada para sempre. Apareceu só porque, ao cortar
+a v6.6.0, a seção da versão anterior foi comparada com a da `main`.
+
+**When to apply**: ao registrar uma mudança num CHANGELOG cuja versão mais recente
+já foi cortada — a seção certa é `[Unreleased]`, mesmo que ela esteja vazia e o
+`### Fixed` da versão de cima pareça o lugar natural. E, ao cortar uma release,
+antes de fechar o `[Unreleased]`:
+
+```bash
+diff <(git show origin/main:CHANGELOG.md | sed -n '/^## \[X.Y.Z\]/,/^## \[W.V.U\]/p') \
+     <(sed -n '/^## \[X.Y.Z\]/,/^## \[W.V.U\]/p' CHANGELOG.md)
+```
+
+Qualquer linha `>` é entrada que a branch acrescentou a uma versão que a `main`
+já tem: mova para a seção nova.
+
 ## Arquivo avulso: o que o esbuild não poda, entrega; audite o arquivo, não o import
 
 **Why**: ao empacotar só o Pre-call, o `data-service.js` entrou inteiro no

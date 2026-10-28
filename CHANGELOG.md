@@ -8,6 +8,57 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Pre-call avulso em inglês: o arquivo também é 100% inglês, não só a tela**
+  (ADR-0020). A variante `-en` mostrava tudo em inglês, mas o `.txt` ainda
+  carregava os dicionários PT/ES, os rótulos de screenshot do catálogo de tasks, os
+  rótulos de CRM em PT/ES, comentários CSS e `console.*` em português — e o SME,
+  que abre o arquivo, não o achou em inglês. Agora o build em inglês gera só o
+  dicionário `en` e os nomes das tasks, tira os rótulos PT/ES do CRM, os
+  comentários e todo `console`, e o arquivo cai de 75 para 57 KB. Também corrige o
+  aviso de falha ao copiar, que com a interface em inglês saía como "Falha ao
+  copiar". Consequência: só raspa uma tela do CRM em inglês (o desenho do
+  formulário é idêntico). `npm run smoke:precall-standalone` (32) audita o texto
+  decodificado do arquivo e prova que a auditoria enxerga o português.
+- **Ctrl+K: o clique do mouse num item se perdia.** Passar o mouse sobre um item
+  reconstruía a lista inteira, e o navegador, vendo o DOM trocado debaixo do
+  cursor, emitia outro `mouseover` — mais de dez reconstruções por segundo com o
+  mouse parado, e o clique no meio delas não acontecia (0 de 18 abriam o módulo
+  num teste de clique). O hover agora só troca a classe do item selecionado, e só
+  com movimento real do mouse. Junto sai o outro sintoma do mesmo defeito: a seta
+  ↓ com o cursor em cima da lista empacava no meio dela, porque a rolagem trazia
+  outro item para debaixo do cursor e o hover devolvia a seleção.
+- **Ctrl+K: o teclado morria em silêncio.** O **Tab** saía da palette, passava por
+  trás do overlay e chegava aos campos do CRM (o que se digitasse dali caía no
+  CRM); clicar no rodapé ou na folga da lista tirava o foco do campo e as setas,
+  o Enter e o Esc deixavam de responder. Agora o Tab anda pela lista como a seta
+  (Shift+Tab volta) e nunca sai da palette, o clique dentro dela não tira o foco
+  do campo, e o **Esc devolve o cursor ao campo do CRM** em que o agente estava.
+- **Ctrl+K: o Esc fechava também a janela do módulo aberta por baixo** (o Esc
+  global de `animations.js` via o mesmo evento). Agora só fecha a palette.
+- **Ctrl+K: abrir e fechar em sequência rápida.** Fechar e reabrir em menos de
+  200ms deixava a palette "aberta" por dentro, invisível e com o scroll da página
+  travado (o timer de remoção do fechamento anterior tirava o overlay novo). Enter
+  duplo e duplo clique no item desfaziam a própria ação (os módulos alternam), e
+  um clique nos 200ms depois de fechar atravessava para o CRM. Segurar a tecla
+  abria e fechava a palette em rajada.
+- **Ctrl+K: só Ctrl/Cmd+K puro abre** (Ctrl+Shift+K e Ctrl+Alt+K, que no Windows
+  é o AltGr, também abriam), e **não abre por cima de um diálogo, de um wizard
+  (boas-vindas e novidades) nem do card de processamento** — a pílula já não era
+  clicável com o card no ar, e o Ctrl+K era o caminho que furava essa regra. O
+  atalho agora escuta na captura, para um campo do CRM que dê `stopPropagation`
+  não o engolir.
+- **Ctrl+K: rótulo de atalho com `<` ou tag** era lido como HTML (`Retorno <b>48h</b>`
+  aparecia sem o texto da tag); e em janela baixa (DevTools encaixado, zoom alto)
+  o rodapé da palette saía da tela.
+- Testes: novo `npm run smoke:palette` (23 checagens de mecânica, cada uma numa
+  página limpa; 22 delas falham no código anterior — a outra só trava o hover).
+  `smoke:shortcuts` voltou a
+  passar (12/12): dois testes supunham Configurações fechada, mas o Ctrl+K
+  alterna e o módulo estava aberto, então o Enter o fechava.
+
+## [6.6.0] - 2026-10-27
+
 ### Added
 - **Home dentro do módulo de Links: destaques, subdestaques e prévia ao passar o
   mouse** (ADR-0019). A janela do módulo abre numa home com até **3 destaques**
@@ -129,11 +180,26 @@ versions follow [Semantic Versioning](https://semver.org/).
   com desfoque), peso de fonte 400/500, grade de 4/8px, alvos ≥32px e
   `prefers-reduced-motion` respeitado. Copiar um link confirma no próprio botão,
   com som e vibração (nos três canais); favoritar, com som, vibração e aviso.
+- **E-mails da Central de Conteúdo com a casca do fluxo BAU.** O aviso de
+  "proposta aguardando revisão" era dois parágrafos soltos, sem link nem
+  detalhe. Os três e-mails da Central (proposta, decisão, pendência parada)
+  agora usam `renderBauEmail`: cartão com cor por tipo, campos (módulo, item,
+  ação, autor), botão para a Central, motivo da devolução em callout, preheader,
+  versão em texto puro e texto livre escapado (antes o rótulo e o motivo entravam
+  crus no HTML). Travado em `test:content` (+2).
 - **Notas: "Caso de Portugal?" virou "Caso da Europa?"** (ES: "¿Caso de Europa?",
   EN: "Europe case?"). Só o texto muda — no seletor e na linha que sai na nota.
   O comportamento é o mesmo (liga o campo de consentimento de gravação) e os
   identificadores internos (`CASO_PORTUGAL`, `isPortugalCase`) ficam, porque
   rascunhos já salvos dependem deles.
+
+### Fixed
+- **Quem saiu da empresa seguia recebendo e-mail da Central de Conteúdo.** A
+  baixa na aba Pessoas não tocava em `Content_Access`, e os avisos de proposta,
+  de decisão e de pendência parada liam só essa aba — inclusive endereços que já
+  não existem (bounce para o dono do script). Agora a baixa desativa o acesso
+  (respeitando a trava de governança) e os três envios só vão a quem está em
+  `People`. Travado em `test:people` (+6).
 
 ## [6.5.0] - 2026-10-13
 
@@ -183,15 +249,6 @@ versions follow [Semantic Versioning](https://semver.org/).
 - `npm run test:i18n` (paridade dos dicionários nas três línguas) e
   `npm run smoke:i18n` (qual knob cada lugar lê, no navegador real).
 
-### Changed
-- **E-mails da Central de Conteúdo com a casca do fluxo BAU.** O aviso de
-  "proposta aguardando revisão" era dois parágrafos soltos, sem link nem
-  detalhe. Os três e-mails da Central (proposta, decisão, pendência parada)
-  agora usam `renderBauEmail`: cartão com cor por tipo, campos (módulo, item,
-  ação, autor), botão para a Central, motivo da devolução em callout, preheader,
-  versão em texto puro e texto livre escapado (antes o rótulo e o motivo entravam
-  crus no HTML). Travado em `test:content` (+2).
-
 ### Fixed
 - **Linha em idioma novo contaminava o conteúdo base.** Duas hidratações
   roteavam por "se é ES, tradução; **senão**, base". Como a linha EN tem o mesmo
@@ -214,12 +271,6 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **O seletor de idioma do onboarding ignorava o idioma do perfil.** O foco
   inicial usava `find(...)?.focus() ?? buttons[0].focus()`, e como `focus()`
   devolve `undefined` o fallback rodava **sempre**.
-- **Quem saiu da empresa seguia recebendo e-mail da Central de Conteúdo.** A
-  baixa na aba Pessoas não tocava em `Content_Access`, e os avisos de proposta,
-  de decisão e de pendência parada liam só essa aba — inclusive endereços que já
-  não existem (bounce para o dono do script). Agora a baixa desativa o acesso
-  (respeitando a trava de governança) e os três envios só vão a quem está em
-  `People`. Travado em `test:people` (+6).
 - **A abertura do painel lateral do BAU tremia.** A coluna passava de 454,9px
   para 504,3px — **10,9% de sobra**, contra os ≤3% que a regra de movimento
   previa — e, por ser propriedade de **layout**, o texto refluía na largura
@@ -1212,7 +1263,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - ...
 -->
 
-[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.5.0...HEAD
+[Unreleased]: https://github.com/lucastdcs/case-wizard/compare/v6.6.0...HEAD
+[6.6.0]: https://github.com/lucastdcs/case-wizard/compare/v6.5.0...v6.6.0
 [6.5.0]: https://github.com/lucastdcs/case-wizard/compare/v6.4.0...v6.5.0
 [6.4.0]: https://github.com/lucastdcs/case-wizard/compare/v6.3.3...v6.4.0
 [6.3.3]: https://github.com/lucastdcs/case-wizard/compare/v6.3.2...v6.3.3

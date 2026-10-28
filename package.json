@@ -1,6 +1,6 @@
 {
   "name": "case-wizard",
-  "version": "6.5.0",
+  "version": "6.6.0",
   "description": "TechSol Operations Assistant - Productivity Suite",
   "main": "src/app.js",
   "scripts": {
@@ -33,6 +33,7 @@
     "test:tl-decision": "node scripts/test-tl-decision.mjs",
     "test:precall": "node scripts/test-precall.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
+    "smoke:palette": "node scripts/smoke-palette.mjs",
     "smoke:i18n": "node scripts/smoke-i18n.mjs",
     "smoke:links": "node scripts/smoke-links.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
