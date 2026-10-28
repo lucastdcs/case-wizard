@@ -196,6 +196,41 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
     await page.close();
 }
 
+// ----------------------- troca da interface com o app JÁ montado
+// O perfil (que decide o idioma) chega depois do boot, então o app monta a tela
+// num idioma e é repintado em outro. O que um módulo desenha uma vez só tem de
+// ser repintado pelo handler da troca: o estado vazio do Case Notes e do Email
+// Assistant ficava preso em português, e nenhum teste que SOBE o app já no
+// idioma certo (os blocos acima) enxerga isso.
+{
+    const { page } = await abrirCaseNotes({ ui: 'pt', saida: 'pt' });
+    const trocar = (lang) => page.evaluate((l) =>
+        document.querySelector(`#cw-config-lang-toggle button[data-lang="${l}"]`).click(), lang);
+    const lerVazios = () => page.evaluate(() => ({
+        notes: document.querySelector('#notes-empty-state')?.textContent.replace(/\s+/g, ' ').trim(),
+        email: document.querySelector('.cw-email-preview-content')?.textContent.replace(/\s+/g, ' ').trim(),
+        botoes: Array.from(document.querySelectorAll('#email-assistant-popup .cw-email-preview-actions button'))
+            .map((b) => b.textContent.trim()),
+    }));
+    const ESPERADO = {
+        es: { titulo: '¿Listo para empezar?', copiar: 'Copiar HTML', preencher: 'Rellenar en el CRM' },
+        en: { titulo: 'Ready to start?', copiar: 'Copy HTML', preencher: 'Fill in CRM' },
+        pt: { titulo: 'Pronto para começar?', copiar: 'Copiar HTML', preencher: 'Preencher no CRM' },
+    };
+    for (const lang of ['es', 'en', 'pt']) {
+        await check(`o estado vazio do Case Notes e do Email Assistant seguem a troca para ${lang}`, async () => {
+            await trocar(lang);
+            await page.waitForTimeout(400);
+            const v = await lerVazios();
+            const e = ESPERADO[lang];
+            contem(v.notes, e.titulo, 'estado vazio do Case Notes');
+            contem(v.email, e.titulo, 'estado vazio do Email Assistant');
+            igual(v.botoes.slice(1).join('|'), `${e.copiar}|${e.preencher}`, 'botões do Email Assistant');
+        });
+    }
+    await page.close();
+}
+
 await browser.close();
 console.log(fail ? `\n✗ smoke de idioma: ${fail} falha(s)\n` : '\n✓ smoke de idioma: 0 falhas\n');
 process.exit(fail ? 1 : 0);

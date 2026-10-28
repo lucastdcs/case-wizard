@@ -1161,11 +1161,11 @@ export function initCaseNotesAssistant() {
                 </svg>
             </div>
             <div style="text-align: center;">
-                <div style="font-family: 'Google Sans', sans-serif; font-size: 16px; font-weight: 600; color: ${COLORS.text}; margin-bottom: 4px;">
-                    ${t('pronto_comecar') || 'Pronto para começar?'}
+                <div class="js-empty-title" style="font-family: 'Google Sans', sans-serif; font-size: 16px; font-weight: 600; color: ${COLORS.text}; margin-bottom: 4px;">
+                    ${t('pronto_comecar')}
                 </div>
-                <div style="font-size: 13px; color: ${COLORS.textSub}; line-height: 1.6; opacity: 0.8;">
-                    ${t('selecione_status_ajuda') || 'Selecione um status e substatus para<br>começar a sua nota técnica.'}
+                <div class="js-empty-help" style="font-size: 13px; color: ${COLORS.textSub}; line-height: 1.6; opacity: 0.8;">
+                    ${t('selecione_status_ajuda')}
                 </div>
             </div>
         `;
@@ -1184,6 +1184,13 @@ export function initCaseNotesAssistant() {
             portugalBtns[0].textContent = t('nao');
             portugalBtns[1].textContent = t('sim');
         }
+        // O estado vazio é montado uma vez, no idioma do boot — e o perfil
+        // (que decide o idioma) só chega depois. Sem repintar aqui, ele ficava
+        // preso no idioma errado. A ajuda carrega um <br> do dicionário.
+        const emptyTitle = content.querySelector('.js-empty-title');
+        if (emptyTitle) emptyTitle.textContent = t('pronto_comecar');
+        const emptyHelp = content.querySelector('.js-empty-help');
+        if (emptyHelp) emptyHelp.innerHTML = t('selecione_status_ajuda');
         const lStatus = content.querySelector('.js-label-status');
         if (lStatus) lStatus.textContent = t('status_principal');
         const lSubstatus = content.querySelector('.js-label-substatus');
