@@ -212,20 +212,106 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
         botoes: Array.from(document.querySelectorAll('#email-assistant-popup .cw-email-preview-actions button'))
             .map((b) => b.textContent.trim()),
     }));
+    // Tudo isto está no DOM desde o boot, mesmo com o módulo fechado.
+    const lerNotes = () => page.evaluate(() => {
+        const texto = (sel) => document.querySelector(sel)?.textContent.replace(/\s+/g, ' ').trim();
+        const botoes = Array.from(document.querySelectorAll('#notes-assistant-popup button')).map((b) => b.textContent.trim());
+        return {
+            botoes,
+            sop: Array.from(document.querySelectorAll('#notes-assistant-popup div'))
+                .map((d) => d.textContent.replace(/\s+/g, ' ').trim())
+                .filter((t) => /Out of Scope Check/.test(t) && t.length < 140)
+                .sort((a, b) => a.length - b.length)[0],
+            ajudaTasks: texto('#notes-assistant-popup .cw-helper-text'),
+            placeholder: texto('#main-status-select option[value=""]'),
+            toggleSplit: Array.from(document.querySelectorAll('#notes-assistant-popup [title]'))
+                .map((e) => e.title).find((t) => /Split/.test(t)),
+        };
+    });
+    const lerBau = () => page.evaluate(() => {
+        const texto = (sel) => document.querySelector(sel)?.textContent.replace(/\s+/g, ' ').trim();
+        const nova = document.querySelector('#bau-form-popup select[name="availabilityTimezone"] option[value="America/New_York"]');
+        return {
+            cartao: texto('#bau-opt-full .bau-branching-title'),
+            confirmacao: texto('#bau-step-4 .bau-step-title'),
+            rotulo: texto('#wrapper-advName .bau-label'),
+            fuso: nova?.textContent.trim(),
+        };
+    });
+
     const ESPERADO = {
-        es: { titulo: '¿Listo para empezar?', copiar: 'Copiar HTML', preencher: 'Rellenar en el CRM' },
-        en: { titulo: 'Ready to start?', copiar: 'Copy HTML', preencher: 'Fill in CRM' },
-        pt: { titulo: 'Pronto para começar?', copiar: 'Copiar HTML', preencher: 'Preencher no CRM' },
+        es: {
+            titulo: '¿Listo para empezar?', copiar: 'Copiar HTML', preencher: 'Rellenar en el CRM',
+            voltar: 'Volver', gerar: 'Generar Nota', sop: 'Asegúrate de consultar el', ajuda: 'Atajos para',
+            placeholder: 'Seleccione', toggle: 'Cambiar a Split & Transfer',
+            cartao: 'Abrir caso para BAU', confirmacao: 'Confirma los datos antes de enviar',
+            rotulo: 'Nombre del Anunciante', fuso: 'EE. UU. — Eastern — Nueva York',
+            cancelar: 'Cancelar',
+        },
+        en: {
+            titulo: 'Ready to start?', copiar: 'Copy HTML', preencher: 'Fill in CRM',
+            voltar: 'Back', gerar: 'Generate Note', sop: 'Make sure to check the', ajuda: 'Shortcuts for',
+            placeholder: 'Select', toggle: 'Switch to Split & Transfer',
+            cartao: 'Open a case for BAU', confirmacao: 'Confirm the data before sending',
+            rotulo: 'Advertiser Name', fuso: 'USA — Eastern — New York',
+            cancelar: 'Cancel',
+        },
+        pt: {
+            titulo: 'Pronto para começar?', copiar: 'Copiar HTML', preencher: 'Preencher no CRM',
+            voltar: 'Voltar', gerar: 'Gerar Nota', sop: 'Certifique-se de consultar o', ajuda: 'Atalhos para',
+            placeholder: 'Selecione', toggle: 'Alternar para Split & Transfer',
+            cartao: 'Abrir caso para BAU', confirmacao: 'Confirme os dados antes de enviar',
+            rotulo: 'Nome do Anunciante', fuso: 'EUA — Eastern — Nova York',
+            cancelar: 'Cancelar',
+        },
     };
     for (const lang of ['es', 'en', 'pt']) {
+        const e = ESPERADO[lang];
+        await trocar(lang);
+        await page.waitForTimeout(400);
+
         await check(`o estado vazio do Case Notes e do Email Assistant seguem a troca para ${lang}`, async () => {
-            await trocar(lang);
-            await page.waitForTimeout(400);
             const v = await lerVazios();
-            const e = ESPERADO[lang];
             contem(v.notes, e.titulo, 'estado vazio do Case Notes');
             contem(v.email, e.titulo, 'estado vazio do Email Assistant');
             igual(v.botoes.slice(1).join('|'), `${e.copiar}|${e.preencher}`, 'botões do Email Assistant');
+        });
+
+        await check(`o Split & Transfer e o seletor de tasks do Case Notes seguem a troca para ${lang}`, async () => {
+            const n = await lerNotes();
+            for (const b of [e.voltar, e.gerar]) {
+                if (!n.botoes.includes(b)) throw new Error(`botão "${b}" não achado em ${JSON.stringify(n.botoes.slice(0, 12))}`);
+            }
+            contem(n.sop, e.sop, 'aviso do SOP do Split & Transfer');
+            contem(n.ajudaTasks, e.ajuda, 'ajuda do seletor de tasks');
+            igual(n.placeholder, e.placeholder, 'placeholder do status');
+            igual(n.toggleSplit, e.toggle, 'título do botão de alternar o Split');
+        });
+
+        // O diálogo só existe quando alguém o abre, então nenhuma leitura do DOM
+        // do boot o enxerga: abre-se um de verdade ("Resetar Script" usa o
+        // confirmDialog compartilhado) e lê-se o botão de cancelar.
+        await check(`o diálogo de confirmação compartilhado segue a troca para ${lang}`, async () => {
+            await page.evaluate(() => document.querySelector('#call-script-popup .csa-reset-btn').click());
+            await page.waitForSelector('#cw-conf-cancel');
+            try {
+                igual((await page.locator('#cw-conf-cancel').textContent()).trim(), e.cancelar, 'botão cancelar do diálogo');
+            } finally {
+                // Fecha mesmo falhando: um diálogo esquecido aberto derrubaria os checks seguintes.
+                await page.locator('#cw-conf-cancel').click();
+                await page.waitForSelector('#cw-conf-cancel', { state: 'detached' });
+            }
+        });
+
+        // O formulário BAU é montado uma vez, no boot, e "Novo caso" só o reseta:
+        // com o dashboard na tela (como aqui) ele tem de ser repintado mesmo assim.
+        await check(`o formulário BAU (montado no boot) segue a troca para ${lang}`, async () => {
+            const b = await lerBau();
+            igual(b.cartao, e.cartao, 'cartão "abrir caso"');
+            igual(b.confirmacao, e.confirmacao, 'título da confirmação');
+            igual(b.rotulo, e.rotulo, 'rótulo do primeiro campo');
+            if (!b.fuso) throw new Error('a opção America/New_York sumiu — o value do fuso mudou');
+            contem(b.fuso, e.fuso, 'nome do fuso (só o texto muda, o value é a zona)');
         });
     }
     await page.close();
