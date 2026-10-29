@@ -5,6 +5,7 @@ import { getAgentName } from '../shared/page-data.js';
 import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { getLanguage, getOutputLanguage } from '../shared/i18n.js';
+import { formatTemplateDate } from './email-data.js';
 import { Z } from '../shared/z-layers.js';
 
 const EAS_DICT = {
@@ -624,7 +625,7 @@ export async function runQuickEmail(template) {
         const day = date.getDay();
         if (day === 6) date.setDate(date.getDate() + 2);
         else if (day === 0) date.setDate(date.getDate() + 1);
-        const dataFormatada = date.toLocaleDateString('pt-BR');
+        const dataFormatada = formatTemplateDate(date, getOutputLanguage());
         
         let finalBody = template.body;
         finalBody = finalBody.replace(/\[Nome do Cliente\]/g, pageData.advertiserName || eao('fallbackClient'));

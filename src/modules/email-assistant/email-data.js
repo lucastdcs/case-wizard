@@ -248,6 +248,18 @@ const EMAIL_TEMPLATES_EN = {
 
 // Template de e-mail no idioma ativo. Sem overlay para o idioma (ou sem
 // entrada para este template), devolve o PT original intacto.
+// O valor que entra no token [MM/DD/YYYY] do corpo preenchido automaticamente.
+// É texto que o anunciante lê, então segue o idioma do ATENDIMENTO: PT e ES
+// leem dia/mês/ano; só o EN lê mês/dia/ano - como o próprio nome do token diz.
+// Era `toLocaleDateString('pt-BR')` fixo, e o e-mail EN saía com a data
+// invertida em relação ao token.
+const EMAIL_DATE_LOCALE = { pt: 'pt-BR', es: 'es-ES', en: 'en-US' };
+export function formatTemplateDate(date, lang) {
+    return date.toLocaleDateString(EMAIL_DATE_LOCALE[lang] || EMAIL_DATE_LOCALE.pt, {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+}
+
 export function getEmailTemplate(tpl, lang) {
     const overlay = { es: EMAIL_TEMPLATES_ES, en: EMAIL_TEMPLATES_EN }[lang];
     if (!overlay) return tpl;
