@@ -7,6 +7,19 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [ ] **Usabilidade em inglês — auditoria feita, correção aguardando decisões
+      (2026-10-29).** Levantamento em `docs/I18N-EN-AUDIT.md`, reverificado contra
+      `d5ed21c` (a rodada de i18n já na remota resolveu BAU Form, nomes de fuso,
+      Email Assistant, Split & Transfer e toasts; esses não voltam à lista).
+      Abertos, **reproduzidos** e que gravam idioma errado no caso, também para
+      ES: `NotesState.reset()` força `currentLang = "pt"` (só a 1ª nota da sessão
+      sai certa; atalho do Ctrl+K, Limpar e pós-inserção voltam para PT); a
+      publicação parcial de EN pela Central apaga o EN embutido dos outros
+      cenários (27 → 1); rodapé da nota, data do `[MM/DD/YYYY]` e títulos do
+      Call Script. Ainda em PT: splash, hints do Ctrl+K, datas, ~8 strings do TL
+      Dashboard e a Central (~490). Próximo passo: o Lucas responder as 5
+      decisões da seção G do documento; depois, fase 1 (A1–A6) em PR próprio.
+
 - [~] **Home de Links: destaques, prévia e categorias (2026-10-23, ADR-0019).**
       Pedido do Lucas: agentes reclamam de procurar formulários/planilhas por
       nome dentro de Links. Entregue o desenho inteiro (variante A, painel de

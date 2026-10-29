@@ -179,6 +179,25 @@ diff <(git show origin/main:CHANGELOG.md | sed -n '/^## \[X.Y.Z\]/,/^## \[W.V.U\
 Qualquer linha `>` é entrada que a branch acrescentou a uma versão que a `main`
 já tem: mova para a seção nova.
 
+## i18n: dicionário completo não prova idioma certo — estado que reinicia e espelho parcial voltam a PT
+
+**Why**: três falhas que nenhum teste de dicionário alcança, achadas na auditoria de
+2026-10-29 (`docs/I18N-EN-AUDIT.md`). (1) `NotesState.reset()` fazia
+`currentLang = "pt"`, e `resetModule()` roda em Limpar, em atalho do Ctrl+K e depois
+de inserir a nota: só a 1ª nota da sessão saía no idioma certo, para ES e EN.
+(2) `applyNoteTemplateContent` **troca** o espelho `SCENARIO_EN` pelo que a Central
+serve: publicar o EN de um cenário derrubava os outros 26 para PT (27 → 1).
+(3) Objeto `{PT, ES}` maiúsculo (`GROUP_TITLES[g][csaCurrentLang] || ""`): o EN não
+cai em PT, vira título em branco. Procurar PT por lista de palavras também falha
+(não pegou `Preencher no CRM`); o que não falhou foi renderizar o app em PT/PT e
+EN/EN e listar todo texto idêntico nos dois.
+
+**When to apply**: ao guardar idioma em estado que tem `reset()`, tire-o do reset
+(como `visible`); ao hidratar conteúdo da Central, **mescle** por id, nunca
+substitua o embutido; e ao dar um idioma por pronto, teste-o **depois** de Limpar,
+de um atalho e de uma inserção, não só na primeira abertura. O mapa só-ES está na
+entrada acima.
+
 ## Arquivo avulso: o que o esbuild não poda, entrega; audite o arquivo, não o import
 
 **Why**: ao empacotar só o Pre-call, o `data-service.js` entrou inteiro no
