@@ -16,6 +16,38 @@ versions follow [Semantic Versioning](https://semver.org/).
   rascunhos já salvos dependem deles.
 
 ### Fixed
+- **A nota saía em português a partir do 2º caso da sessão, para agente ES e
+  EN.** `NotesState.reset()` devolvia o idioma da nota para PT, e o reset roda em
+  "Limpar", em todo atalho do Ctrl+K, ao guardar um rascunho e depois de inserir
+  uma nota: só a primeira nota da sessão saía no idioma certo. O idioma do
+  atendimento deixou de ser estado de formulário (como o `visible`, que já ficava
+  fora do reset). Travado em `smoke:i18n` (+15, com os dois knobs no mesmo
+  idioma, passando por Limpar, atalho, nota inserida e o caso seguinte; os de EN
+  e ES falham no código anterior e o controle PT passa nos dois).
+- **Cenários publicados na Central saíam em português para o agente EN — e o
+  teste que devia impedir isso passava verde.** Publicar renomeia os ids dos
+  cenários (`quickfill-x` → `cw-<substatus>-x`), e o espelho EN embutido é
+  chaveado pelos ids antigos: com a Central servindo PT e ES e nenhum EN, **0 de
+  26** cenários achavam o texto em inglês. Pior, publicar o EN de um só cenário
+  substituía o espelho inteiro e derrubava os outros 25. Agora o espelho é o
+  embutido (religado ao publicado pelo `slug`) completado pelo que a Central
+  serve, e o publicado vence; vale igual para o ES. A checagem antiga só contava
+  entradas do espelho; `test:note-templates` passa a consultar pelo id, como o app
+  (+4, três falham no código anterior).
+  **Até esta release chegar, produção segue assim para o EN:** rodar
+  `seedMissingLangsNow()` na planilha resolve na hora (é só dado).
+- **A nota gravada no CRM terminava com `Nota criada através do Cases Wizard.`
+  em português para ES e EN**, e o rótulo de reserva de evidência (`Evidência`)
+  também. Ambos agora seguem o idioma do atendimento; em PT o texto é o mesmo de
+  antes. O rodapé do Pre-call **continua** `Gerado pelo Cases Wizard` nos três
+  idiomas: é decisão da spec (`specs/workflow/precall-checklist.md`).
+- **O `[MM/DD/YYYY]` do e-mail preenchido automaticamente saía sempre em
+  dia/mês/ano.** Segue o idioma do atendimento: PT e ES, dia/mês/ano (igual a
+  antes); EN, mês/dia/ano, como o nome do token diz. Travado em `test:emails`.
+- **Os cartões do Call Script em inglês apareciam sem título** (o mapa só tinha
+  PT e ES e o fallback era texto vazio): `Opening`, `Implementation (Tag
+  Support)` e `Closing`. O mapa foi para `call-script-data.js`, ao lado do
+  roteiro, e nunca devolve vazio. Travado em `test:call-script` (+3).
 - **"Pronto para começar?" ficava em português no Case Notes e no Email
   Assistant, mesmo com a interface em ES ou EN.** O bloco é montado uma vez, no
   boot, e o perfil — que decide o idioma — só chega depois; o handler da troca

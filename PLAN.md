@@ -7,18 +7,24 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
-- [ ] **Usabilidade em inglês — auditoria feita, correção aguardando decisões
-      (2026-10-29).** Levantamento em `docs/I18N-EN-AUDIT.md`, reverificado contra
-      `d5ed21c` (a rodada de i18n já na remota resolveu BAU Form, nomes de fuso,
-      Email Assistant, Split & Transfer e toasts; esses não voltam à lista).
-      Abertos, **reproduzidos** e que gravam idioma errado no caso, também para
-      ES: `NotesState.reset()` força `currentLang = "pt"` (só a 1ª nota da sessão
-      sai certa; atalho do Ctrl+K, Limpar e pós-inserção voltam para PT); a
-      publicação parcial de EN pela Central apaga o EN embutido dos outros
-      cenários (27 → 1); rodapé da nota, data do `[MM/DD/YYYY]` e títulos do
-      Call Script. Ainda em PT: splash, hints do Ctrl+K, datas, ~8 strings do TL
-      Dashboard e a Central (~490). Próximo passo: o Lucas responder as 5
-      decisões da seção G do documento; depois, fase 1 (A1–A6) em PR próprio.
+- [~] **Usabilidade em inglês (2026-10-29).** Levantamento em
+      `docs/I18N-EN-AUDIT.md`, reverificado contra `d5ed21c`.
+      1. [x] **Defeitos que gravavam idioma errado no caso (A1–A6)** — corrigidos,
+         cada um com teste que falha no código anterior: o idioma da nota deixou
+         de zerar no `reset()` (Limpar, atalho do Ctrl+K e nota inserida
+         devolviam PT, também para ES); o espelho EN/ES embutido volta a ser
+         achado depois da publicação (0 de 26 → 26 de 26) e não é mais apagado
+         por EN parcial; rodapé da nota e `Evidência` por idioma; `[MM/DD/YYYY]`
+         do e-mail automático pelo idioma do atendimento; títulos do Call Script
+         em EN. O A3 (rodapé do Pre-call) **não é defeito**: a spec o fixa em PT.
+      2. [ ] **Interface restante (C1–C10)**: splash, hints do Ctrl+K, datas e
+         horas, avisos do e-mail automático, ~8 strings do TL Dashboard.
+      3. [ ] **Guardas** no `test:i18n` (ternário `=== 'es'`, `{PT, ES}` sem EN)
+         e o smoke que compara o app em PT e em EN.
+      4. [ ] **Central** (~490 strings, ADR-0017 fases 2–4) — só se o SME precisar.
+      **Decisões do Lucas pendentes** (seção G do documento): leitura de "não
+      reutilizar nota de outro idioma" e o selo "só PT"; "Nota em: PT" no
+      cabeçalho do Case Notes; hora 24 h × 12 h em EN; data do caminho manual.
 
 - [~] **Home de Links: destaques, prévia e categorias (2026-10-23, ADR-0019).**
       Pedido do Lucas: agentes reclamam de procurar formulários/planilhas por
@@ -634,6 +640,11 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
       **Não é bloqueio para o agente**: o bundle traz o EN embutido e a
       hidratação não o derruba quando a Central não serve aquele idioma. O que
       isso destrava é o SME poder editar o conteúdo EN pela Central.
+      **Correção (2026-10-29): para os cenários de NOTA isto era falso até a
+      correção do A4** (ainda não lançada). A hidratação renomeia os ids dos
+      cenários e o EN embutido não era mais achado: com a Central servindo PT e
+      ES, o agente EN lia os 26 cenários em português. Enquanto a release com a
+      correção não sai, rodar `seedMissingLangsNow()` resolve na hora.
 - [ ] **Publicar a disponibilidade BAU do segmento EN.** `BAU_SEGMENTS` aceita
       `EN` e o editor da Central já mostra o terceiro campo, mas enquanto
       ninguém publicar datas para ele o painel do agente EN cai no primeiro

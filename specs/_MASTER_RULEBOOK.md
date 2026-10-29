@@ -29,7 +29,10 @@ conveniência:
 - **Exceção: texto que o caso carrega mas que não é para o anunciante.** O bloco
   "Pre-call checklist" da nota sai sempre em inglês, nos três idiomas, porque a
   auditoria do SOP o procura por texto (ADR-0018). Só a tela do formulário segue
-  `getLanguage()`.
+  `getLanguage()`. A única linha dessa nota que NÃO é em inglês é o rodapé
+  `Gerado pelo Cases Wizard`, fixo em PT nos três idiomas
+  (`specs/workflow/precall-checklist.md`); o rodapé da nota do Case Notes, ao
+  contrário, segue o idioma do atendimento.
 - **O valor gravado no backend nunca é traduzido.** `Motivo_Abertura`,
   `Task_BAU`, o motivo do descarte e os status/substatus seguem em PT (ou no
   original do CRM) nos três idiomas. Traduzi-los quebra a categorização dos

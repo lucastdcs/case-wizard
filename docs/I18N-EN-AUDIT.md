@@ -1,6 +1,6 @@
 # Auditoria de usabilidade em inglês
 
-**Data**: 2026-10-29 · **Base**: `refactor-structure` @ `d5ed21c` · **Status**: levantamento, nenhuma linha de código alterada.
+**Data**: 2026-10-29 · **Base**: `refactor-structure` @ `d5ed21c` · **Status**: A1, A2, A4, A5 e A6 corrigidos (seção A); A3 reclassificado, não é defeito. Seções C a G seguem abertas.
 
 Pedido: achar tudo que ainda não funciona em EN e avaliar a mudança. Dois relatos do Lucas
 abriram a auditoria — a splash sai em PT com a ferramenta em EN, e um atalho do Ctrl+K
@@ -27,18 +27,18 @@ Por que o `test:i18n` ficou verde com tudo isto aberto: ele só olha dicionário
 string cravada sem dicionário e objeto `{PT, ES}` maiúsculo (o EN vira `undefined || ""`:
 título **em branco**, não PT). Chaves penduradas: **0**.
 
-## A. Defeitos que gravam o idioma errado no caso — **abertos, reverificados**
+## A. Defeitos que gravam o idioma errado no caso — **corrigidos** (exceto o A3, que não é defeito)
 
-Atingem ES também, não só EN. São o que importa primeiro.
+Atingiam ES também, não só EN. Cada correção tem teste que falha no código anterior.
 
-| # | Onde | O que acontece | Esforço |
+| # | Onde | O que acontecia | Correção e trava |
 |---|---|---|---|
-| A1 | `notes/core/notes-state.js:13` | `reset()` faz `currentLang = "pt"`; nada reaplica `getOutputLanguage()`. `resetModule()` (`notes-assistant.js:815`) roda em **Limpar** (`:689`), **guardar rascunho** (`:143`), **depois de inserir a nota** (`:777`) e em **todo atalho do Ctrl+K** (`:992`). Só a 1ª nota da sessão sai no idioma certo; as seguintes, em PT. **Reproduzido em `d5ed21c`**, EN/EN e ES/ES: `Context/What was done:` → `Contexto/O que foi feito:`; corpo `Fiz a primeira tentativa de ligação…`. | S — tirar `currentLang` do `reset()` (mesmo raciocínio do `visible`, comentado na linha 4) |
-| A2 | `notes/core/output-generator.js:140`, `:57` | Rodapé `<i>Nota criada através do Cases Wizard.</i>` e fallback `'Evidência'` cravados em PT: vão para o CRM em toda nota EN/ES. | S |
-| A3 | `notes/precall/precall-data.js:69` | `FOOTER = 'Gerado pelo Cases Wizard'`. A regra (`_MASTER_RULEBOOK` §4, ADR-0018) diz que o Pre-call sai **sempre em inglês**. | S |
-| A4 | `notes/data/note-templates-service.js:94-98` | Se a Central tem o EN de **alguns** cenários, o espelho EN é **trocado inteiro** (`delete` + `assign`). **Reproduzido em `d5ed21c`**: `SCENARIO_EN` 27 → 1 ao publicar 1 cenário; 26 passam a sair em PT para todo agente EN. Gatilho realista enquanto o `seedMissingLangsNow()` não rodar em produção (PLAN → Waiting). Vale igual para ES. | S — mesclar por id em vez de substituir |
-| A5 | `email-assistant/email-automation-service.js:627` | `[MM/DD/YYYY]` preenchido com `toLocaleDateString('pt-BR')` (dd/mm/aaaa) em e-mail ao anunciante, qualquer idioma. | S — locale pelo `getOutputLanguage()` |
-| A6 | `call-script/call-script-assistant.js:148-152`, `:697` | `GROUP_TITLES[g][csaCurrentLang] \|\| ""` só tem `PT`/`ES`: em EN os títulos dos cartões ficam **em branco**. (Lido no código; o mock não abre o roteiro.) | S |
+| A1 | `notes/core/notes-state.js` | `reset()` fazia `currentLang = "pt"`; nada reaplicava `getOutputLanguage()`. `resetModule()` roda em **Limpar**, **guardar rascunho**, **depois de inserir a nota** e em **todo atalho do Ctrl+K**: só a 1ª nota da sessão saía no idioma certo. Reproduzido em EN/EN e ES/ES. | Idioma fora do `reset()`, inicializado no construtor (como o `visible`). `smoke:i18n` +15: percorre Limpar → atalho → nota inserida → caso seguinte em EN, ES e PT (controle). |
+| A2 | `output-generator.js`, `notes-data.js` | Rodapé `Nota criada através do Cases Wizard.` e o reserva `Evidência` cravados em PT: iam para o CRM em toda nota EN/ES. | Chaves `nota_criada_rodape` e `evidencia` nos 3 idiomas; PT idêntico a antes. Travado no mesmo smoke (a nota inserida termina com o rodapé do idioma). |
+| A3 | `notes/precall/precall-data.js:69` | **Não é defeito.** Eu o classifiquei errado: li a regra do rulebook ("Pre-call sai sempre em inglês") e não a exceção da spec. `specs/workflow/precall-checklist.md` define o rodapé `Gerado pelo Cases Wizard` como "a única linha em português, fixa nos três idiomas, fora do bloco auditado"; o ADR-0020 trata o inglês como exceção só do build avulso. | Nada a mudar. `test:precall` e `smoke:precall` já travam o texto. Registrado no rulebook §4 para não repetir o erro. |
+| A4 | `notes/data/note-templates-service.js` | Mais grave do que eu descrevera. Publicar renomeia os ids dos cenários (`quickfill-x` → `cw-<substatus>-x`) e o espelho EN embutido é chaveado pelos ids antigos: com a Central servindo PT+ES e nenhum EN, **0 de 26** cenários achavam o EN (`getScenarioFields` devolve o objeto PT). Publicar o EN de **um** cenário ainda substituía o espelho inteiro e derrubava os outros 25. O teste existente só contava entradas do espelho e passava verde. | Espelho = embutido (religado ao publicado pelo `slug`) completado pelo que a Central serve, o publicado vence; reconstruído a cada hidratação. `test:note-templates` +4: consulta pelo id como o app, e o EN achado é o do mesmo cenário (3 falham antes). |
+| A5 | `email-assistant/email-data.js`, `email-automation-service.js` | `[MM/DD/YYYY]` preenchido com `toLocaleDateString('pt-BR')` fixo, em e-mail ao anunciante. | `formatTemplateDate(data, idiomaDoAtendimento)`: PT e ES dia/mês/ano (igual a antes), EN mês/dia/ano. `test:emails` +1. |
+| A6 | `call-script/call-script-data.js`, `call-script-assistant.js` | `GROUP_TITLES[g][lang] \|\| ""` só tinha PT/ES: o cartão do EN aparecia sem título. **Observado**: o cartão tinha só o contador `0/8`. | Mapa movido para ao lado do roteiro, com EN e fallback PT, nunca vazio. `test:call-script` +3. |
 
 ## B. Já resolvido pela rodada `d5ed21c` (verificado no código e no DOM; não refazer)
 
@@ -88,8 +88,8 @@ idioma é reaplicado em outro.
 
 | Vetor | Hoje | Proposta |
 |---|---|---|
-| Reset volta a PT | A1 | corrigir |
-| Fallback silencioso para PT | `getScenarioFields` (`notes-data.js:698`), `getEmailTemplate` (`email-data.js:251`), A4, seção `meio` do call script ES | ADR de política: chip/modelo sem versão no idioma ganha selo "só PT" (ou fica desabilitado) |
+| Reset volta a PT | A1 | **corrigido** |
+| Fallback silencioso para PT | `getScenarioFields` (`notes-data.js:698`), `getEmailTemplate` (`email-data.js`), seção `meio` do call script ES (o A4 já não deixa o embutido sumir da Central, mas cenário **novo**, sem versão EN, segue em PT em silêncio) | ADR de política: chip/modelo sem versão no idioma ganha selo "só PT" (ou fica desabilitado) |
 | Rascunho e airbag | `collectFullState` grava `currentLang` (`notes-assistant.js:877`), mas `restoreFullState` ignora (`:897-899`). O ADR-0016 deixou isso como "revisitar se aparecer relato". | comparar na restauração; avisar/confirmar se o idioma do rascunho ≠ idioma atual |
 | Atalhos | só guardam o `id` do cenário (**bom**: o texto vem do catálogo no idioma corrente). Os rótulos padrão já são por idioma (rodada nova); o `label`/`alias` que o agente escreve é texto livre | derivar o rótulo do substatus no idioma da interface; gravar `label` só se o agente editou |
 | Minha Biblioteca | snippets são texto livre sem idioma | decisão de produto (etiqueta de idioma + filtro?) — não é bug |
@@ -104,7 +104,7 @@ nova; o risco real é **recair**: o texto novo de amanhã volta a ser PT sem nin
 
 Ordem sugerida (cada fase = um PR contra `refactor-structure`, sem misturar refactor e feature):
 
-1. **Defeitos A1–A6** — ~meio dia com testes. Maior valor: A1 estraga nota de todo agente ES/EN após o 1º caso. Testes: `smoke:i18n` (EN/EN e ES/ES: após Limpar e após atalho, rótulo e corpo no idioma; rodapé), `test:note-templates` (+publicação parcial), `test:call-script`.
+1. ~~**Defeitos A1–A6**~~ — **feito** (seção A). A1 estragava a nota de todo agente ES/EN após o 1º caso; A4 deixava o agente EN com 0 de 26 cenários em inglês quando a Central servia só PT e ES.
 2. **Interface restante** (C1–C10): ~1 dia; a splash é o único item de desenho.
 3. **Guardas que ainda faltam** no `test:i18n`: falhar em `getLanguage()`/`getOutputLanguage()` comparado a `'es'`/`'pt'` fora de `i18n.js` (`timezone-assistant.js:497, 691` ainda tem); falhar em `{PT, ES}` maiúsculo sem `EN`; e um `smoke:i18n-diff` (renderiza PT e EN e lista o que não mudou — é o método que achou o BAU Form inteiro).
 4. **ADR de política de fallback** (seção E) + selo e guarda de rascunho. Decisão antes de código (CLAUDE.md → regime "fork").
@@ -120,11 +120,11 @@ Riscos conhecidos:
 
 ## G. Decisões que dependem do Lucas
 
-1. **Leitura da seção E** está certa? (é a premissa de A4 e da política de fallback)
+1. **Leitura da seção E** está certa? (é a premissa da política de fallback e do selo "só PT")
 2. **Trocar "Language" para EN deve mover "Case Language" junto?** O ADR-0016 disse que não, de propósito (nota EN em caso PT é silencioso e caro). Proposta que mantém o ADR: mostrar no cabeçalho do Case Notes o idioma da nota ("Nota em: PT") com troca em um clique. Hoje, com só a 1ª linha em EN, o formulário inteiro fica em PT sem nenhuma pista visual.
 3. **Hora em EN:** 24 h (`en-GB`, coerente com o ADR-0010) ou 12 h (`en-US`)?
 4. **Central em EN agora**, ou depois do agente?
-5. **Rodapé do Pre-call:** inglês (`Generated by Case Wizard`)? De passagem: os dois rodapés (A2, A3) grafam "Cases Wizard", com "s" — o produto se chama Case Wizard. Corrijo junto ou é de propósito?
+5. **Data do `[MM/DD/YYYY]` no Email Assistant, caminho manual** (`email-assistant.js:674`): sai **sempre** mês/dia/ano, em qualquer idioma — diferente do caminho automático, que segue o idioma do atendimento (A5). É intencional? Para um anunciante PT/ES, `09/05` quer dizer 9 de maio, não 5 de setembro.
 
 ## H. Descartado (não refazer)
 

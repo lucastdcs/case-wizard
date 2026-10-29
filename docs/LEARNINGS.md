@@ -185,18 +185,47 @@ já tem: mova para a seção nova.
 2026-10-29 (`docs/I18N-EN-AUDIT.md`). (1) `NotesState.reset()` fazia
 `currentLang = "pt"`, e `resetModule()` roda em Limpar, em atalho do Ctrl+K e depois
 de inserir a nota: só a 1ª nota da sessão saía no idioma certo, para ES e EN.
-(2) `applyNoteTemplateContent` **troca** o espelho `SCENARIO_EN` pelo que a Central
-serve: publicar o EN de um cenário derrubava os outros 26 para PT (27 → 1).
+(2) Publicar um cenário na Central **renomeia o id** (`quickfill-x` →
+`cw-<substatus>-x`), e o espelho EN embutido, chaveado pelo id antigo, deixava de
+ser achado: com a Central servindo PT e ES, **0 de 26** cenários saíam em inglês.
+Publicar o EN de um só ainda trocava o espelho inteiro (27 → 1). O teste que devia
+impedir isso contava entradas do espelho e passava verde com o app lendo PT.
 (3) Objeto `{PT, ES}` maiúsculo (`GROUP_TITLES[g][csaCurrentLang] || ""`): o EN não
 cai em PT, vira título em branco. Procurar PT por lista de palavras também falha
 (não pegou `Preencher no CRM`); o que não falhou foi renderizar o app em PT/PT e
 EN/EN e listar todo texto idêntico nos dois.
 
 **When to apply**: ao guardar idioma em estado que tem `reset()`, tire-o do reset
-(como `visible`); ao hidratar conteúdo da Central, **mescle** por id, nunca
-substitua o embutido; e ao dar um idioma por pronto, teste-o **depois** de Limpar,
-de um atalho e de uma inserção, não só na primeira abertura. O mapa só-ES está na
-entrada acima.
+(como `visible`); ao hidratar conteúdo da Central, ligue o embutido ao publicado
+pelo `scenarioSlug` e **mescle**, nunca substitua; teste **consultando pelo id,
+como o app**, não contando entradas; e ao dar um idioma por pronto, teste-o
+**depois** de Limpar, de um atalho e de uma inserção, não só na primeira abertura.
+O mapa só-ES está na entrada acima.
+
+## Antes de chamar um texto de defeito, procure-o em `specs/`
+
+**Why**: a auditoria de idioma classificou o rodapé do Pre-call (`Gerado pelo Cases
+Wizard`, em PT) como defeito, porque o rulebook diz que a nota do Pre-call sai
+sempre em inglês. A spec da feature (`specs/workflow/precall-checklist.md`) diz o
+contrário, de propósito: é "a única linha em português, fixa nos três idiomas",
+travada em `test:precall` e `smoke:precall`, e o build em inglês a troca por texto
+exato. Só apareceu ao buscar o literal antes de corrigir; mexer teria quebrado três
+testes e contrariado a spec, que prevalece sobre o código.
+
+**When to apply**: antes de "corrigir" qualquer texto que pareça estar no idioma
+errado, rode `grep -rn "<o literal>" specs docs scripts`. Se a spec o fixa, o
+defeito é do auditor. A regra geral do rulebook não revoga a exceção da feature.
+
+## `check` assíncrono num harness síncrono passa sem rodar a asserção
+
+**Why**: em `test-note-templates.mjs`, `check(nome, fn)` chama `fn()` sem `await`.
+Escrever `check('...', async () => { ... })` imprime ✓ na hora, e a asserção rejeita
+depois, solta. O teste novo nasceu assim: verde, sem verificar nada.
+
+**When to apply**: antes de usar `async` dentro de um `check`, leia a definição dele
+no arquivo. Se for síncrono, faça o `await` **fora** e passe o resultado para um
+`check` síncrono. E rode o teste novo contra o código anterior (um `git worktree` em
+`HEAD`): se não falha lá, não está testando o que diz.
 
 ## Arquivo avulso: o que o esbuild não poda, entrega; audite o arquivo, não o import
 
