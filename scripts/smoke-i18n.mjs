@@ -50,16 +50,30 @@ const browser = await chromium.launch({ headless: true, executablePath });
 
 // Sobe o app com os dois idiomas JÁ divergentes: é o estado que o ADR-0016
 // tornou possível, e o único em que uma religação errada aparece.
-async function abrirCaseNotes({ ui, saida }) {
+async function abrirCaseNotes({ ui, saida, comEditor = false }) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.route('**script.google.com/**', (route) => route.abort());
     page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
     await page.goto('file://' + resolve(raiz, 'mock-crm.html'));
-    await page.evaluate(([u, s]) => {
+    await page.evaluate(([u, s, editor]) => {
         localStorage.setItem('cw_onboarding_seen_v1', 'true');
         localStorage.setItem('cw_ui_lang', u);
         localStorage.setItem('cw_output_lang', s);
-    }, [ui, saida]);
+
+        // O mock não tem editor de notas; este é o mesmo gatilho que o CRM tem
+        // (o botão "description" que abre o cartão), como no smoke:precall.
+        if (editor) {
+            document.querySelector('.content').insertAdjacentHTML('beforeend',
+                '<material-fab id="mock-note-fab"><i class="material-icons-extended">description</i></material-fab>');
+            document.getElementById('mock-note-fab').addEventListener('click', () => {
+                const ed = document.createElement('div');
+                ed.className = 'mock-note-editor';
+                ed.style.cssText = 'position:fixed;left:-9999px;top:0';
+                ed.contentEditable = 'true';
+                document.body.appendChild(ed);
+            });
+        }
+    }, [ui, saida, comEditor]);
     await page.addScriptTag({ content: script });
 
     // A pílula só aparece depois da animação de abertura; o Ctrl+K é
@@ -315,6 +329,100 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
         });
     }
     await page.close();
+}
+
+// ------------- o idioma da nota sobrevive ao "reinício" do Case Notes (A1, A2)
+// Os blocos acima sobem o app e olham a PRIMEIRA nota - o único momento em que
+// o idioma estava certo. NotesState.reset() devolvia o idioma da nota para PT, e
+// resetModule() roda em "Limpar", em todo atalho do Ctrl+K e depois de inserir
+// uma nota: do 2º caso em diante a nota saía em PT para um agente ES ou EN, sem
+// nenhum aviso. Por isso o teste percorre a sessão inteira, com os DOIS knobs
+// no mesmo idioma - o que o ADR-0016 diz ser o caso comum.
+{
+    const NOTA = {
+        pt: { contexto: 'Contexto/O que foi feito:', corpo: 'Fiz a primeira tentativa de ligação', rodape: 'Nota criada através do Cases Wizard.' },
+        es: { contexto: 'Contexto/Qué se hizo:', corpo: 'Hice el primer intento de llamada', rodape: 'Nota creada a través de Cases Wizard.' },
+        en: { contexto: 'Context/What was done:', corpo: 'I made the first call attempt', rodape: 'Note created through Cases Wizard.' },
+    };
+    const SUBSTATUS = 'NI_Attempted_Contact';
+
+    const escolherSubstatus = async (page) => {
+        await page.selectOption('#main-status-select', 'NI');
+        await page.waitForTimeout(600);
+        await page.selectOption('#sub-status-select', SUBSTATUS);
+        await page.waitForTimeout(1500);
+    };
+    // Rótulo do campo "Contexto" no idioma esperado e em NENHUM dos outros.
+    const confereRotulo = async (page, lang, onde) => {
+        const ls = (await rotulos(page)).join(' | ');
+        contem(ls, NOTA[lang].contexto, `rótulo do campo (${onde})`);
+        for (const outro of Object.keys(NOTA).filter((l) => l !== lang)) {
+            if (ls.includes(NOTA[outro].contexto)) {
+                throw new Error(`${onde}: rótulo em ${outro} com a nota em ${lang}: ${ls.slice(0, 160)}`);
+            }
+        }
+    };
+    const dispararAtalhoPadrao = async (page) => {
+        await page.keyboard.press('Control+k');
+        await page.waitForSelector('.cw-palette-overlay.active');
+        await page.keyboard.press('Enter'); // o 1º item é o atalho padrão "NI Attempted"
+        // Com a nota suja, o atalho pede confirmação antes de substituí-la.
+        const ok = page.locator('#cw-conf-ok');
+        try { await ok.waitFor({ state: 'visible', timeout: 2500 }); await ok.click(); } catch (e) { /* nota limpa: sem diálogo */ }
+        await page.waitForTimeout(4000);
+    };
+
+    for (const lang of ['en', 'es', 'pt']) {
+        const e = NOTA[lang];
+        const { page } = await abrirCaseNotes({ ui: lang, saida: lang, comEditor: true });
+        await escolherSubstatus(page);
+
+        await check(`${lang}/${lang}: a 1ª nota da sessão sai em ${lang} (controle)`, () =>
+            confereRotulo(page, lang, '1ª abertura'));
+
+        await check(`${lang}/${lang}: depois de "Limpar" a nota continua em ${lang}`, async () => {
+            await page.click('.js-btn-reset');
+            await page.waitForTimeout(500);
+            await escolherSubstatus(page);
+            await confereRotulo(page, lang, 'depois de Limpar');
+        });
+
+        await check(`${lang}/${lang}: o atalho do Ctrl+K abre a nota em ${lang}, rótulos e texto do cenário`, async () => {
+            await dispararAtalhoPadrao(page);
+            await confereRotulo(page, lang, 'atalho do Ctrl+K');
+            const corpo = await page.locator('#field-CONTEXTO_CALL').inputValue();
+            contem(corpo, e.corpo, 'texto do cenário aplicado pelo atalho');
+            for (const outro of Object.keys(NOTA).filter((l) => l !== lang)) {
+                if (corpo.includes(NOTA[outro].corpo)) throw new Error(`texto do cenário em ${outro} com a nota em ${lang}`);
+            }
+        });
+
+        // A nota inserida é o que de fato vai para o CRM: o rodapé fecha o texto
+        // e também é do idioma do atendimento (A2).
+        await check(`${lang}/${lang}: a nota inserida no CRM termina com o rodapé em ${lang}`, async () => {
+            await page.evaluate(() => { const c = document.getElementById('email-automation-checkbox'); if (c) c.checked = false; });
+            await page.click('.js-btn-generate');
+            await page.waitForFunction(() => /Cases Wizard/.test(document.querySelector('.mock-note-editor')?.innerText || ''), null, { timeout: 15000 });
+            const nota = (await page.evaluate(() => document.querySelector('.mock-note-editor').innerText)).trim();
+            contem(nota, e.contexto, 'rótulo na nota inserida');
+            if (!nota.endsWith(e.rodape)) throw new Error(`rodapé esperado ${JSON.stringify(e.rodape)}, a nota termina em ${JSON.stringify(nota.slice(-60))}`);
+            for (const outro of Object.keys(NOTA).filter((l) => l !== lang)) {
+                if (nota.includes(NOTA[outro].rodape)) throw new Error(`rodapé em ${outro} na nota em ${lang}`);
+            }
+        });
+
+        await check(`${lang}/${lang}: depois de inserir a nota, o próximo caso continua em ${lang}`, async () => {
+            // Inserir a nota fecha o Case Notes: reabre pela pílula, como o agente.
+            await page.waitForTimeout(1500);
+            await page.evaluate(() => document.getElementById('cw-btn-notes').click());
+            await page.waitForSelector('#notes-assistant-popup #main-status-select', { state: 'visible', timeout: 8000 });
+            await page.waitForTimeout(800);
+            await escolherSubstatus(page);
+            await confereRotulo(page, lang, 'depois de inserir a nota');
+        });
+
+        await page.close();
+    }
 }
 
 await browser.close();

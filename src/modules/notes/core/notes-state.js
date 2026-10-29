@@ -7,10 +7,16 @@ export class NotesState {
         // janela real - o clique seguinte no X invertia pro lado errado e
         // REABRIA o módulo. Ver isModuleOpen() em shared/animations.js.
         this.visible = false;
+        // O idioma da nota também NÃO é estado de formulário: é o idioma do
+        // atendimento (ADR-0016), que quem muda é Configurações, não o "Limpar".
+        // Zerá-lo no reset() fazia só a 1ª nota da sessão sair no idioma certo -
+        // depois de Limpar, de um atalho do Ctrl+K ou de inserir uma nota, os
+        // rótulos e o texto do cenário voltavam para PT, para ES e para EN.
+        this.currentLang = "pt";
         this.reset();
     }
     reset() {
-        this.currentCaseType = "bau"; this.currentLang = "pt"; this.isPortugalCase = false;
+        this.currentCaseType = "bau"; this.isPortugalCase = false;
         this.consent = false; this.tagSupportUsed = false; this.forcedScreenshots = new Set();
         this.isSplitView = false; this.currentStatus = "";
         this.currentSubStatus = ""; this.formData = {}; this.activeTasks = [];
