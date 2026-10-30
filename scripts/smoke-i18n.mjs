@@ -425,6 +425,44 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
     }
 }
 
+// ------------------------------------------ datas e horas na tela (C3)
+// O eco do horário do BAU Form e as horas do Timezone liam o locale `pt-BR` (o
+// Timezone, `es-ES` para ES); a data do detalhe do caso, também. O formato da
+// data em si está em `test:i18n`; aqui, o que só o navegador mostra. 14:00 em
+// Nova York (setembro, horário de verão) são 15:00 em Brasília, no mesmo dia.
+{
+    const ECO = { pt: /05\/09,? 15:00/, es: /5\/9,? 15:00/, en: /05 Sept?,? 15:00/ };
+    for (const lang of ['en', 'es', 'pt']) {
+        const { page } = await abrirCaseNotes({ ui: lang, saida: lang });
+
+        await check(`${lang}: o eco "Nova York -> Brasília" do BAU Form usa o formato do idioma`, async () => {
+            const eco = await page.evaluate(() => {
+                const tz = document.querySelector('select[name="availabilityTimezone"]');
+                const set = (el, v) => { el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); };
+                set(document.querySelector('input[name="availability_1_date"]'), '2026-09-05');
+                set(document.querySelector('select[name="availability_1_time"]'), '14:00');
+                set(tz, 'America/New_York');
+                return document.querySelector('#bau-availability-echo')?.textContent.replace(/\s+/g, ' ').trim();
+            });
+            if (!ECO[lang].test(eco || '')) throw new Error(`eco ${JSON.stringify(eco)} não casa com ${ECO[lang]}`);
+            if (lang === 'en' && /\b\d\d\/\d\d\b/.test(eco)) throw new Error('EN com dia/mês numérico ambíguo: ' + eco);
+        });
+
+        if (lang === 'en') {
+            // O Timezone descobre a hora lendo o texto antes do ":" - com 12 h
+            // ("3:27 PM") o status aberto/fechado dos cartões erraria em silêncio.
+            await check('en: as horas do Timezone são 24 h (o status aberto/fechado depende disso)', async () => {
+                await page.evaluate(() => document.getElementById('cw-btn-timezone').click());
+                await page.waitForTimeout(1800);
+                const texto = await page.evaluate(() => document.querySelector('#timezone-popup').innerText);
+                if (/\b(AM|PM)\b/i.test(texto)) throw new Error('hora em 12 h no Timezone');
+                if (!/\b\d{2}:\d{2}\b/.test(texto)) throw new Error('nenhuma hora HH:MM no Timezone');
+            });
+        }
+        await page.close();
+    }
+}
+
 // ------------------------------------------- o Ctrl+K nos três idiomas (C2)
 // 11 das 12 linhas ficavam em PT com a ferramenta em EN: o hint só existia em
 // PT/ES (menos o Pre-call) e cinco rótulos eram texto fixo. Confere as 10 linhas

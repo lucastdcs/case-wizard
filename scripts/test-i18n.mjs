@@ -244,7 +244,58 @@ let resolucoes = 0;
     }
 }
 
-console.log(`\ni18n: ${checked} dicionário(s) verificado(s) em ${LANGS.join('/')}; ${mirrors} par(es) _ES/_EN; ${resolucoes} caso(s) de resolução do idioma`);
+// --- Datas na tela (shared/utils.js :: formatToLocalUserDate) ---
+//
+// Era `pt-BR` + " às " + "Data indisponível" cravados: o TL e o agente em EN ou
+// ES liam a data do BAU Form em português. Em EN o mês sai por extenso curto,
+// porque 05/09 é 5 de setembro ou 9 de maio conforme o leitor. A data é local
+// e sem fuso (2026-09-05T14:30:00), então o resultado não depende da máquina.
+let formatosDeData = 0;
+{
+    const bundle = await build({
+        entryPoints: [join(SRC, 'modules/shared/utils.js')],
+        bundle: true, write: false, format: 'cjs', platform: 'node', logLevel: 'silent',
+    });
+    const carregar = (lang) => {
+        const store = { cw_ui_lang: lang };
+        globalThis.localStorage = {
+            getItem: (k) => (k in store ? store[k] : null),
+            setItem: (k, v) => { store[k] = String(v); },
+            removeItem: (k) => { delete store[k]; },
+        };
+        globalThis.window = { location: { hostname: 'localhost' }, addEventListener() {}, matchMedia: () => ({ matches: false }) };
+        globalThis.document = {
+            createElement: () => ({ style: {}, classList: { add() {} }, appendChild() {} }),
+            body: { appendChild() {}, contains: () => false }, head: { appendChild() {} },
+            getElementById: () => null, addEventListener() {}, querySelector: () => null,
+        };
+        const m = { exports: {} };
+        // eslint-disable-next-line no-new-func
+        new Function('module', 'exports', 'require', bundle.outputFiles[0].text)(m, m.exports, () => { throw new Error('require'); });
+        return m.exports.formatToLocalUserDate;
+    };
+    const DATA = '2026-09-05T14:30:00';
+    const casos = {
+        pt: { ok: /^05\/09\/2026 às 14:30$/, vazio: 'Data indisponível' },
+        es: { ok: /^05\/09\/2026 a las 14:30$/, vazio: 'Fecha no disponible' },
+        en: { ok: /^05 Sept? 2026 at 14:30$/, vazio: 'Date unavailable' },
+    };
+    for (const [lang, e] of Object.entries(casos)) {
+        const fmt = carregar(lang);
+        const problemas = [];
+        const ok = fmt(DATA);
+        if (!e.ok.test(ok)) problemas.push(`data: veio ${JSON.stringify(ok)}`);
+        for (const entrada of ['N/A', 'undefined', '', 'lixo']) {
+            if (fmt(entrada) !== e.vazio) problemas.push(`${JSON.stringify(entrada)} -> ${JSON.stringify(fmt(entrada))}, esperado ${JSON.stringify(e.vazio)}`);
+        }
+        const lista = fmt(`N/A | ${DATA} | ${DATA}`);
+        if (lista !== `${ok} | ${ok}`) problemas.push(`lista com pipe: ${JSON.stringify(lista)}`);
+        formatosDeData++;
+        if (problemas.length) failures.push({ id: `shared/utils.js :: formatToLocalUserDate [${lang}]`, kind: 'resolve', detail: problemas.join('; ') });
+    }
+}
+
+console.log(`\ni18n: ${checked} dicionário(s) verificado(s) em ${LANGS.join('/')}; ${mirrors} par(es) _ES/_EN; ${resolucoes} caso(s) de resolução do idioma; ${formatosDeData} idioma(s) de formato de data`);
 
 if (!failures.length) {
     console.log('OK — todos os dicionários têm as três línguas com o mesmo conjunto de chaves.\n');

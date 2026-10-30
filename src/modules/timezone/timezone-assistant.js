@@ -5,7 +5,7 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
-import { getLanguage, onLanguageChange } from "../shared/i18n.js";
+import { getLanguage, getLocale, onLanguageChange } from "../shared/i18n.js";
 import { TIMEZONE_HUBS, hubName as hubNameIn, hubLabel as hubLabelIn } from "../shared/timezones.js";
 
 const PINNED_STORAGE_KEY = "cw_timezone_pinned";
@@ -494,7 +494,7 @@ export function initTimezoneAssistant() {
 
         filteredHubs.forEach(hub => {
             const isPinned = pinnedHubs.includes(hub.id);
-            const timeString = now.toLocaleTimeString(getLanguage() === 'es' ? 'es-ES' : 'pt-BR', { timeZone: hub.zone, hour: '2-digit', minute: '2-digit' });
+            const timeString = now.toLocaleTimeString(getLocale(), { timeZone: hub.zone, hour: '2-digit', minute: '2-digit' });
             const hour = parseInt(timeString.split(':')[0]);
             const status = getBusinessStatus(hour);
             const isNight = hour < 6 || hour > 18;
@@ -688,7 +688,7 @@ export function initTimezoneAssistant() {
             timeInputBR.value = timeStr;
             slider.value = (hours * 60) + minutes;
 
-            const clientTimeString = plannerDate.toLocaleTimeString(getLanguage() === 'es' ? 'es-ES' : 'pt-BR', {
+            const clientTimeString = plannerDate.toLocaleTimeString(getLocale(), {
                 timeZone: hub.zone, hour: '2-digit', minute: '2-digit'
             });
             clientDisplay.textContent = clientTimeString;

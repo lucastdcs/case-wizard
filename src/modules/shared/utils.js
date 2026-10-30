@@ -3,7 +3,7 @@
 import { captureNameWithMagic, getSmartGreeting } from "./page-data.js";
 import { SoundManager } from "./sound-manager.js";
 import { esperar, clamp } from "./dom-utils.js";
-import { getLanguage } from "./i18n.js";
+import { getLanguage, getLocale, getMonthStyle } from "./i18n.js";
 import { Z } from "./z-layers.js";
 import { AUTHOR_CREDIT } from "./config.js";
 
@@ -1048,39 +1048,50 @@ export function makeResizable(element, handle) {
   handle.onmouseleave = () => handle.style.opacity = "0.6";
 }
 
+// "às" e o texto de reserva fazem parte da frase na tela (interface).
+const DATE_TEXT = {
+  pt: { unavailable: "Data indisponível", at: "às" },
+  es: { unavailable: "Fecha no disponible", at: "a las" },
+  en: { unavailable: "Date unavailable", at: "at" },
+};
+
 /**
- * Formata uma string de data ISO para um formato amigável ao usuário.
+ * Formata uma string de data ISO para um formato amigável ao usuário, no idioma
+ * da INTERFACE: "05/09/2026 às 14:30" (PT), "05 Sept 2026 at 14:30" (EN).
  * @param {string} isoString - A data no formato ISO 8601.
- * @returns {string} - Data formatada como DD/MM/YYYY às HH:MM ou fallback.
+ * @returns {string} - Data formatada ou o texto de "indisponível".
  */
 export function formatToLocalUserDate(isoString) {
-  if (!isoString || isoString === "N/A" || isoString === "undefined") return "Data indisponível";
+  const lang = getLanguage();
+  const txt = DATE_TEXT[lang] || DATE_TEXT.pt;
+  if (!isoString || isoString === "N/A" || isoString === "undefined") return txt.unavailable;
 
   // Suporte para múltiplas datas separadas por pipe (comum no campo availability)
   if (String(isoString).includes(' | ')) {
     return isoString.split(' | ')
       .map(part => formatToLocalUserDate(part.trim()))
-      .filter(f => f !== "Data indisponível")
+      .filter(f => f !== txt.unavailable)
       .join(' | ');
   }
 
   try {
     const date = new Date(isoString);
-    if (isNaN(date.getTime())) return "Data indisponível";
+    if (isNaN(date.getTime())) return txt.unavailable;
 
-    const datePart = date.toLocaleDateString('pt-BR', {
+    const locale = getLocale(lang);
+    const datePart = date.toLocaleDateString(locale, {
       day: '2-digit',
-      month: '2-digit',
+      month: getMonthStyle(lang),
       year: 'numeric'
     });
-    const timePart = date.toLocaleTimeString('pt-BR', {
+    const timePart = date.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit'
     });
 
-    return `${datePart} às ${timePart}`;
+    return `${datePart} ${txt.at} ${timePart}`;
   } catch (e) {
-    return "Data indisponível";
+    return txt.unavailable;
   }
 }
 

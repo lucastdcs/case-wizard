@@ -11,7 +11,7 @@ import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.
 import { FORM_CONFIG, bauTaskOptions } from './bau-form-config.js';
 import { loadTasks } from '../notes/data/tasks-service.js';
 import { bft, bfOptionText } from './bau-form-i18n.js';
-import { getLanguage, onLanguageChange } from '../shared/i18n.js';
+import { getLanguage, getLocale, getMonthStyle, onLanguageChange } from '../shared/i18n.js';
 import { TIMEZONE_HUBS, DEFAULT_TIMEZONE, withZoneOffset, offsetMinutesForWallTime, formatOffset, zoneFromCrmValue, hubName, hubLabel } from '../shared/timezones.js';
 
 // Grade de horários do agendamento, em 24h. Faixa e passo são decisão de
@@ -1703,8 +1703,8 @@ export function initBAUForm() {
         const instante = new Date(carimbado);
         if (isNaN(instante.getTime())) { echo.innerHTML = ''; return; }
 
-        const emBrasilia = new Intl.DateTimeFormat('pt-BR', {
-            timeZone: DEFAULT_TIMEZONE, day: '2-digit', month: '2-digit',
+        const emBrasilia = new Intl.DateTimeFormat(getLocale(), {
+            timeZone: DEFAULT_TIMEZONE, day: '2-digit', month: getMonthStyle(),
             hour: '2-digit', minute: '2-digit', hour12: false,
         }).format(instante);
 

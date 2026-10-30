@@ -40,6 +40,22 @@ const PROFILE_LANG_MAP = { "PT-BR": "pt", "PT": "pt", "ES": "es", "EN": "en" };
 // estes três valores — ver specs/data-models/db-schema.md.
 const PROFILE_LANG_CODES = { pt: "PT-BR", es: "ES", en: "EN" };
 
+// Locale (BCP-47) da INTERFACE para formatar data e hora na tela. O EN usa
+// en-GB de propósito: 24 h, como o resto do produto (ADR-0010) - e o Timezone
+// descobre a hora lendo o texto antes do ":", o que quebraria com "3:27 PM".
+const LOCALES = { pt: "pt-BR", es: "es-ES", en: "en-GB" };
+
+export function getLocale(lang = getLanguage()) {
+    return LOCALES[lang] || LOCALES[DEFAULT_LANG];
+}
+
+// 05/09 é 5 de setembro para PT e ES, e 9 de maio para quem lê em inglês
+// americano: em EN o mês vai por extenso curto ("05 Sept"), como o resumo do
+// TL já faz.
+export function getMonthStyle(lang = getLanguage()) {
+    return lang === "en" ? "short" : "2-digit";
+}
+
 export function toProfileLangCode(lang) {
     return PROFILE_LANG_CODES[lang] || PROFILE_LANG_CODES[DEFAULT_LANG];
 }
