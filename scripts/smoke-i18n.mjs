@@ -578,6 +578,13 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
             const achados = (await linhasDaPaleta(page)).map(([l]) => l);
             if (!achados.includes(acha)) throw new Error(`${JSON.stringify(acha)} não está em ${JSON.stringify(achados)}`);
         });
+        // O selo "Dev" só existe em build de desenvolvimento (é o que o smoke
+        // roda); o title dele é desenhado uma vez e tem de ser repintado na troca.
+        await check(`${lang}: o tooltip do selo DEV${lang !== abreEm ? ' (troca depois do boot)' : ''}`, async () => {
+            const ESPERADO_TITULO = { pt: 'Ambiente de desenvolvimento — implantação …', es: 'Entorno de desarrollo — implementación …', en: 'Development environment — deployment …' };
+            const titulo = await page.evaluate(() => document.querySelector('#cw-env-tag')?.getAttribute('title'));
+            if (!titulo || !titulo.startsWith(ESPERADO_TITULO[lang])) throw new Error(`title ${JSON.stringify(titulo)} não começa com ${JSON.stringify(ESPERADO_TITULO[lang])}`);
+        });
         await page.close();
     }
 }
