@@ -93,6 +93,10 @@ aviso de falha ao copiar em `notes-bridge.js`, o build quebrou. Quem só roda
 **When to apply**: ao editar `notes-bridge.js`, `header-factory.js`, `crm-labels.js`
 ou `precall-data.js`, rode `npm run smoke:precall-standalone`; se o trecho mudou,
 atualize a troca no build junto (como na mudança de `COPY_ERROR_TOAST`).
+O mesmo vale ao **importar um nome novo de `shared/i18n.js`** em qualquer módulo do
+grafo do Pre-call (ex.: `utils.js` passou a importar `getLocale`): o build avulso
+troca o `i18n.js` por `src/precall-standalone-i18n-en.js`, que precisa exportar o
+nome — senão o build falha, de propósito, e só `smoke:precall-standalone` mostra.
 
 ## Conflito de CHANGELOG: confira em QUAL seção ele caiu antes de resolver
 
@@ -220,6 +224,20 @@ diff <(git show origin/main:CHANGELOG.md | sed -n '/^## \[X.Y.Z\]/,/^## \[W.V.U\
 
 Qualquer linha `>` é entrada que a branch acrescentou a uma versão que a `main`
 já tem: mova para a seção nova.
+
+## Editar com Python `open().read()` num arquivo CRLF reescreve o arquivo inteiro
+
+**Why**: dois arquivos do repo (`step-tasks.js`, `snippet-service.js`) usam CRLF. Um
+script Python que lia com `open(p).read()` e gravava com `open(p,'w')` normalizou
+tudo para LF: o `git diff` mostrou 2164 e 342 linhas "alteradas" por uma troca de 4 e
+6 linhas. Nada falhou — testes, build e smokes passam com qualquer fim de linha —, e
+só o `git diff --stat` denunciou. Era uma reescrita em massa feita sem querer, num
+projeto cuja regra é diff cirúrgico.
+
+**When to apply**: antes de editar um arquivo por script, conte `grep -c $'\r$' arquivo`.
+Se for > 0, leia e grave com `open(p, newline='', encoding='utf-8')` e case os trechos
+com `\r\n`. Depois de qualquer edição em lote, rode `git diff --stat`: um arquivo com
+centenas de linhas para uma mudança pequena é fim de linha. A ferramenta Edit preserva.
 
 ## i18n: dicionário completo não prova idioma certo — estado que reinicia e espelho parcial voltam a PT
 

@@ -27,6 +27,43 @@ versions follow [Semantic Versioning](https://semver.org/).
   rascunhos já salvos dependem deles.
 
 ### Fixed
+- **A abertura (splash) saía sempre em português**, até com a ferramenta em EN
+  ou ES: prefixo, as 15 frases, o selo de sexta e o nome de reserva ganharam
+  dicionário pt/es/en. E, como a splash roda **antes** de o perfil chegar (o
+  e-mail que o busca é capturado dentro dela), quem depende só do perfil a veria
+  no idioma errado em todo boot: o último idioma de perfil aplicado agora fica
+  guardado (`cw_profile_lang`) e vale já na carga seguinte, abaixo da escolha
+  manual. O primeiro boot de todos continua em PT. Travado em `test:i18n` (+6,
+  resolução do idioma) e `smoke:i18n` (+4, com o relógio fixado numa sexta de
+  manhã).
+- **Ctrl+K: 11 das 12 linhas ficavam em português com a ferramenta em EN.** O
+  hint só existia em PT/ES e cinco rótulos eram texto fixo. Os nomes são os que
+  cada módulo mostra no cabeçalho (`Links Central`, `My Library`, `Settings`…),
+  resolvidos na hora de desenhar, e a busca acha por qualquer idioma ("biblioteca"
+  encontra "My Library"). `smoke:i18n` +9.
+- **Datas e horas na tela estavam em `pt-BR`**: o detalhe do caso no BAU Form
+  (`05/09/2026 às 14:30`), o eco do horário (Nova York → Brasília) e, no Timezone,
+  tudo que não fosse ES. Agora seguem o idioma da interface; em EN o mês sai por
+  extenso curto (`05 Sept 2026 at 14:30`), porque 05/09 é 5 de setembro ou 9 de
+  maio conforme o leitor, e a hora é 24 h — o Timezone lê a hora pelo texto antes
+  do `:`, que quebraria com `3:27 PM`. PT não muda; no eco do BAU Form o ES passa
+  a mostrar `5/9` em vez de `05/09`. `test:i18n` +3, `smoke:i18n` +4.
+- **Erros do BAU que chegavam ao toast do agente sempre em português**, com o
+  prefixo `Error:` do roteador (timeout, conexão, falha de envio/edição, "não é o
+  dono", "já processado pelo TL", "não encontrado"). O servidor passa a mandar um
+  `code` estável junto do texto e o cliente traduz por ele; o texto em português
+  vira só o reserva, então backend antigo e código desconhecido mostram o que
+  mostravam. Contrato em `specs/data-models/api-payloads.md`. **Exige `clasp
+  push`** para o `code` chegar; os erros de cliente (timeout, conexão) já saem
+  traduzidos só com o front. `test:tl-decision` +6, `test:jsonp` +6.
+- **Strings que nenhum dicionário alcançava:** os avisos flutuantes do e-mail
+  automático sobre os campos Para e Bcc (quatro pontos), o aviso do Win Criteria
+  no seletor de tasks, a dica de erro do CID sob o campo do BAU Form (gravada uma
+  vez e nunca repintada), a etiqueta "Mídia" dos snippets da biblioteca, o
+  tooltip do selo DEV e os rótulos `Data 1…3`/`Hora 1…3` do modelo de reagendamento
+  em EN (o seed da Central foi regenerado). Travados em `smoke:i18n` (+12) e
+  `test:emails` (+1). O título padrão "Sem título" da biblioteca também ganhou
+  idiomas, mas a UI exige título e esse default não é alcançável hoje.
 - **A nota saía em português a partir do 2º caso da sessão, para agente ES e
   EN.** `NotesState.reset()` devolvia o idioma da nota para PT, e o reset roda em
   "Limpar", em todo atalho do Ctrl+K, ao guardar um rascunho e depois de inserir

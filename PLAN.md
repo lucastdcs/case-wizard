@@ -41,14 +41,23 @@ This file differs from the long-term roadmap: it describes what is happening **n
          por EN parcial; rodapé da nota e `Evidência` por idioma; `[MM/DD/YYYY]`
          do e-mail automático pelo idioma do atendimento; títulos do Call Script
          em EN. O A3 (rodapé do Pre-call) **não é defeito**: a spec o fixa em PT.
-      2. [ ] **Interface restante (C1–C10)**: splash, hints do Ctrl+K, datas e
-         horas, avisos do e-mail automático, ~8 strings do TL Dashboard.
+      2. [x] **Interface restante (C1–C10)** — corrigida, cada uma com teste que
+         falha no código anterior: splash (e o último idioma de perfil guardado
+         para o 1º frame do boot seguinte), Ctrl+K, datas e horas (EN em 24 h, mês
+         curto), avisos do e-mail automático, aviso do Win Criteria, dica do CID,
+         etiqueta de mídia, rótulos do reagendamento EN, tooltip do selo DEV e os
+         erros do BAU por `code`. **Falta `clasp push`** para o `code` dos erros
+         chegar (o front já funciona sem ele, com o texto PT de reserva).
+      2b. [ ] **Backend**: ~8 strings do TL Dashboard, `Código.js`, `BAU_Dashboard.js`,
+         `BAU_Alerts.js`.
       3. [ ] **Guardas** no `test:i18n` (ternário `=== 'es'`, `{PT, ES}` sem EN)
          e o smoke que compara o app em PT e em EN.
       4. [ ] **Central** (~490 strings, ADR-0017 fases 2–4) — só se o SME precisar.
       **Decisões do Lucas pendentes** (seção G do documento): leitura de "não
       reutilizar nota de outro idioma" e o selo "só PT"; "Nota em: PT" no
-      cabeçalho do Case Notes; hora 24 h × 12 h em EN; data do caminho manual.
+      cabeçalho do Case Notes; Central em EN agora ou depois; data do caminho
+      manual do Email Assistant. (Hora em EN deixou de ser decisão: 24 h, porque o
+      Timezone lê a hora pelo texto.)
 
 - [~] **Home de Links: destaques, prévia e categorias (2026-10-23, ADR-0019).**
       Pedido do Lucas: agentes reclamam de procurar formulários/planilhas por
