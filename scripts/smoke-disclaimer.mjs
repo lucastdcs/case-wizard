@@ -39,6 +39,9 @@ const pecaIsolada = (await build({
                     setLanguage(lang || "pt", { persist: false });
                     showQaDisclaimer();
                 },
+                // Troca de idioma com o app aberto (Configurações, ou o perfil
+                // chegando tarde): o cartão tem de acompanhar.
+                trocar: (lang) => setLanguage(lang, { persist: false }),
             };
         `,
         resolveDir: raiz,
@@ -227,6 +230,35 @@ for (const [lang, esperado] of Object.entries({
         igual(await calada.evaluate(() => window.__osc), 0, 'osciladores');
     });
     await calada.close();
+}
+
+// ------------------------------------------------- troca de idioma ao vivo
+{
+    const page = await novaPagina({ script: pecaIsolada, relogioFalso: true });
+    await mostrar(page, 'pt');
+
+    await check('trocar o idioma com o cartão aberto repinta título, texto e botão', async () => {
+        await page.evaluate(() => window.__cw.trocar('en'));
+        const t = await page.evaluate(() => ({
+            titulo: document.querySelector('.cw-qa-notice-title').textContent,
+            texto: document.querySelector('.cw-qa-notice-text').textContent,
+            botao: document.querySelector('.cw-qa-notice-btn').textContent,
+        }));
+        igual(t.titulo, 'Quality reminder', 'título');
+        igual(t.botao, 'Got it', 'botão');
+        verdade(t.texto.startsWith('Follow the QA guidelines'), 'texto: ' + t.texto);
+    });
+
+    await check('depois de dispensado, trocar o idioma não repinta o cartão removido (sem ouvinte vazado)', async () => {
+        await page.evaluate(() => { window.__velho = document.querySelector('.cw-qa-notice'); });
+        await page.click('.cw-qa-notice-btn');
+        await page.clock.runFor(300);
+        await page.evaluate(() => window.__cw.trocar('es'));
+        igual(await presente(page), 0, 'avisos');
+        igual(await page.evaluate(() => window.__velho.querySelector('.cw-qa-notice-title').textContent),
+            'Quality reminder', 'título do cartão já removido');
+    });
+    await page.close();
 }
 
 // ----------------------------------------------------- tempo e dispensa

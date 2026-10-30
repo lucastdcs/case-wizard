@@ -17,7 +17,7 @@ versions follow [Semantic Versioning](https://semver.org/).
   (no primeiro uso o relógio não corre por baixo do modal), no idioma da
   interface, com um som curto de duas notas que respeita o mudo de Configurações.
   Some sozinho em 12s; mouse ou teclado dentro dele seguram o relógio, e "Entendi"
-  dispensa. `npm run smoke:disclaimer` (31 asserções).
+  dispensa. `npm run smoke:disclaimer` (33 asserções).
 
 ### Changed
 - **Notas: "Caso de Portugal?" virou "Caso da Europa?"** (ES: "¿Caso de Europa?",

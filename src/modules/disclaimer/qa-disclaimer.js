@@ -13,7 +13,7 @@
 // tela segue clicável por baixo. Some sozinho, e fica parado enquanto o mouse
 // ou o foco estiverem nele (um aviso que some enquanto se lê falha em acessibilidade).
 
-import { createTranslator } from "../shared/i18n.js";
+import { createTranslator, onLanguageChange } from "../shared/i18n.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { Z } from "../shared/z-layers.js";
 
@@ -111,7 +111,7 @@ export function showQaDisclaimer() {
     // role="status" já implica aria-live="polite": o leitor de tela lê o aviso
     // sem tirar o foco de onde o agente está.
     card.setAttribute("role", "status");
-    // Estrutura estática; todo texto entra por textContent logo abaixo.
+    // Estrutura estática; todo texto entra por textContent em paint().
     card.innerHTML = `
         <svg class="cw-qa-notice-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-6h2v6Zm0-8h-2V7h2v2Z"/>
@@ -122,10 +122,16 @@ export function showQaDisclaimer() {
         </div>
         <div class="cw-qa-notice-actions"><button type="button" class="cw-qa-notice-btn"></button></div>
     `;
-    card.querySelector(".cw-qa-notice-title").textContent = dt("title");
-    card.querySelector(".cw-qa-notice-text").textContent = dt("text");
     const btn = card.querySelector(".cw-qa-notice-btn");
-    btn.textContent = dt("ok");
+    // O idioma pode mudar com o cartão na tela (Configurações, ou o perfil
+    // chegando tarde): o que o módulo desenha uma vez tem de ser repintado.
+    const paint = () => {
+        card.querySelector(".cw-qa-notice-title").textContent = dt("title");
+        card.querySelector(".cw-qa-notice-text").textContent = dt("text");
+        btn.textContent = dt("ok");
+    };
+    paint();
+    const stopListening = onLanguageChange(paint);
 
     let remaining = SHOW_MS;
     let startedAt = 0;
@@ -150,6 +156,7 @@ export function showQaDisclaimer() {
         if (gone) return;
         gone = true;
         clearTimeout(timer);
+        stopListening();
         card.classList.remove("open");
         card.classList.add("closing");
         setTimeout(() => card.remove(), EXIT_MS);
