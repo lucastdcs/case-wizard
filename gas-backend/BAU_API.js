@@ -1,4 +1,15 @@
 
+// Erro com um CÓDIGO estável além do texto em português. O texto é o que o
+// agente via em qualquer idioma; o código deixa o cliente (que sabe o idioma da
+// interface) mostrar a mensagem traduzida. O texto continua sendo o reserva:
+// cliente antigo ou código que o cliente não conhece mostram o texto de hoje.
+// O roteador (doGet, em Código.js) devolve `code` junto de `error`.
+function erroComCodigo_(code, message) {
+  const e = new Error(message);
+  e.code = code;
+  return e;
+}
+
 function handleBAUEscalation(ss, p) {
   const lock = LockService.getScriptLock();
   try {
@@ -75,7 +86,7 @@ function handleBAUEscalation(ss, p) {
 }
 
 function getAgentCases(ss, userEmail) {
-  if (!userEmail) throw new Error("Email do agente é obrigatório.");
+  if (!userEmail) throw erroComCodigo_('AGENT_EMAIL_REQUIRED', "Email do agente é obrigatório.");
   
   const sheet = getOrCreateSheet(ss, SHEET_BAU_FORM);
   // Leitura não cria coluna — ver a nota em getPendingBAUCases (BAU_Dashboard.js).
@@ -157,14 +168,14 @@ function deleteBAUCase(ss, p) {
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]) === String(p.id)) {
         if (String(data[i][2]).toLowerCase().trim() !== userEmail) {
-          throw new Error("Acesso negado. Você não é o dono deste caso.");
+          throw erroComCodigo_('BAU_NOT_OWNER_DELETE', "Acesso negado. Você não é o dono deste caso.");
         }
         
         sheet.getRange(i + 1, 4).setValue("CANCELED_BY_AGENT");
         return { status: 'success', message: 'Caso cancelado com sucesso.' };
       }
     }
-    throw new Error("Caso não encontrado.");
+    throw erroComCodigo_('BAU_NOT_FOUND', "Caso não encontrado.");
   } finally {
     lock.releaseLock();
   }
@@ -188,11 +199,11 @@ function update_bau_case(ss, p) {
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]) === String(p.id)) {
         if (String(data[i][2]).toLowerCase().trim() !== userEmail) {
-          throw new Error("Acesso negado. Você só pode editar seus próprios casos.");
+          throw erroComCodigo_('BAU_NOT_OWNER_EDIT', "Acesso negado. Você só pode editar seus próprios casos.");
         }
         const currentStatus = String(data[i][3]);
         if (!currentStatus.includes("PENDING")) {
-          throw new Error("Este caso já foi processado pelo TL e não pode mais ser alterado.");
+          throw erroComCodigo_('BAU_ALREADY_PROCESSED', "Este caso já foi processado pelo TL e não pode mais ser alterado.");
         }
         
         let newStatus = currentStatus;
@@ -288,7 +299,7 @@ function update_bau_case(ss, p) {
         return { status: 'success', message: 'Caso atualizado com sucesso.' };
       }
     }
-    throw new Error("Caso não encontrado.");
+    throw erroComCodigo_('BAU_NOT_FOUND', "Caso não encontrado.");
   } finally {
     lock.releaseLock();
   }

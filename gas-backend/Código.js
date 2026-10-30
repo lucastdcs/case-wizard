@@ -441,7 +441,7 @@ function doGet(e) {
     }
 
   } catch (err) {
-    result = { status: 'error', error: err.toString() };
+    result = { status: 'error', error: err.toString(), code: err.code || '' };
   }
 
   // ---------------------------------------------------------

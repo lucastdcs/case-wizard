@@ -149,5 +149,63 @@ check('valor que apenas CONTÉM "null" não é apagado', () => {
     igual(celulaTexto('Nullable Corp'), 'Nullable Corp', 'nome de anunciante');
 });
 
+// --- Erros que o agente lê num toast ---
+//
+// Os erros do servidor chegam com um `code` (BAU_API.js, erroComCodigo_) e o
+// cliente mostra a mensagem do idioma da INTERFACE. O texto em português que o
+// servidor manda é só o reserva: backend antigo (sem `code`) ou um código que o
+// cliente não conhece. O módulo guarda o idioma em estado global, então cada
+// idioma é uma cópia nova do bundle, importada com o seu localStorage.
+console.log('\n--- Erros do servidor: traduzidos por código ---');
+
+const tela = {};
+for (const lang of ['pt', 'es', 'en']) {
+    const store = { cw_ui_lang: lang };
+    globalThis.localStorage = {
+        getItem: (k) => (k in store ? store[k] : null),
+        setItem: (k, v) => { store[k] = String(v); },
+        removeItem: (k) => { delete store[k]; },
+    };
+    console.log = () => {};
+    tela[lang] = (await import(
+        'data:text/javascript;base64,' + Buffer.from(outputFiles[0].text + `\n// idioma: ${lang}\n`).toString('base64')
+    )).serverErrorMessage;
+    console.log = logOriginal;
+}
+
+const ESPERADO_POR_CODIGO = {
+    BAU_NOT_OWNER_EDIT: { pt: 'Acesso negado. Você só pode editar seus próprios casos.', es: 'Acceso denegado. Solo puedes editar tus propios casos.', en: 'Access denied. You can only edit your own cases.' },
+    BAU_ALREADY_PROCESSED: { pt: 'Este caso já foi processado pelo TL e não pode mais ser alterado.', es: 'Este caso ya fue procesado por el TL y no se puede modificar.', en: 'This case has already been processed by the TL and can no longer be changed.' },
+    BAU_NOT_FOUND: { pt: 'Caso não encontrado.', es: 'Caso no encontrado.', en: 'Case not found.' },
+};
+for (const [code, porIdioma] of Object.entries(ESPERADO_POR_CODIGO)) {
+    check(`${code}: cada idioma lê o seu`, () => {
+        for (const [lang, texto] of Object.entries(porIdioma)) {
+            // O servidor sempre manda o texto em português junto; o código manda.
+            igual(tela[lang]({ status: 'error', error: 'Error: texto em português do servidor', code }, 'BAU_SEND_FAILED'), texto, `${code} em ${lang}`);
+        }
+    });
+}
+
+check('a mensagem em português do PT é a de antes (nada mudou para quem já usava)', () => {
+    // As mesmas frases que o servidor mandava, agora vindas do dicionário.
+    igual(tela.pt({ code: 'BAU_NOT_FOUND' }, 'BAU_SEND_FAILED'), 'Caso não encontrado.', 'caso não encontrado');
+    igual(tela.pt({}, 'BAU_SEND_FAILED'), 'Falha na operação BAU', 'reserva de envio');
+    igual(tela.pt({}, 'BAU_UPDATE_FAILED'), 'Falha na atualização BAU', 'reserva de edição');
+});
+
+check('backend antigo (sem code) e código desconhecido mostram o texto do servidor', () => {
+    for (const lang of ['pt', 'es', 'en']) {
+        igual(tela[lang]({ status: 'error', error: 'Error: Caso não encontrado.' }, 'BAU_SEND_FAILED'), 'Error: Caso não encontrado.', `sem code em ${lang}`);
+        igual(tela[lang]({ status: 'error', error: 'Error: algo novo', code: 'CODIGO_NOVO' }, 'BAU_SEND_FAILED'), 'Error: algo novo', `código desconhecido em ${lang}`);
+    }
+});
+
+check('sem texto nem código, a mensagem de reserva da operação, no idioma', () => {
+    igual(tela.en({}, 'BAU_SEND_FAILED'), 'BAU operation failed', 'envio em en');
+    igual(tela.es({}, 'BAU_UPDATE_FAILED'), 'Falló la actualización BAU', 'edição em es');
+    igual(tela.en(null, 'BAU_READ_FAILED'), 'Error returned by the read API', 'leitura em en, resposta nula');
+});
+
 console.log('\n' + (falhas ? '✗' : '✓') + ` ${falhas} falhas\n`);
 process.exit(falhas ? 1 : 0);

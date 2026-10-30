@@ -1,6 +1,7 @@
 // src/modules/shared/data-service.js
 
 import { getAgentEmail } from './page-data.js'; 
+import { getLanguage } from './i18n.js';
 
 // --- ROTEAMENTO DE AMBIENTE ---------------------------------------------
 //
@@ -117,6 +118,63 @@ export function buildQueryString(params = {}) {
         .join('&');
 }
 
+// --- ERROS QUE CHEGAM AO AGENTE -------------------------------------------
+//
+// Estas mensagens vão parar num toast (bau-form-assistant.js, errorPrefix), na
+// hora do erro: seguem o idioma da INTERFACE. Os de servidor chegam com um
+// `code` (BAU_API.js, erroComCodigo_); o texto em português que o servidor manda
+// é só o reserva para backend antigo ou código que este mapa ainda não conhece.
+const DS_ERRORS = {
+    pt: {
+        TIMEOUT: "Timeout: A API demorou muito para responder. (Apps Script bloqueado ou erro 500)",
+        CONNECTION: "Erro de conexão JSONP.",
+        BAU_SEND_FAILED: "Falha na operação BAU",
+        BAU_READ_FAILED: "Erro retornado pela API de leitura",
+        BAU_UPDATE_FAILED: "Falha na atualização BAU",
+        BAU_NOT_OWNER_EDIT: "Acesso negado. Você só pode editar seus próprios casos.",
+        BAU_NOT_OWNER_DELETE: "Acesso negado. Você não é o dono deste caso.",
+        BAU_ALREADY_PROCESSED: "Este caso já foi processado pelo TL e não pode mais ser alterado.",
+        BAU_NOT_FOUND: "Caso não encontrado.",
+        AGENT_EMAIL_REQUIRED: "Email do agente é obrigatório.",
+    },
+    es: {
+        TIMEOUT: "Tiempo agotado: la API tardó demasiado en responder. (Apps Script bloqueado o error 500)",
+        CONNECTION: "Error de conexión JSONP.",
+        BAU_SEND_FAILED: "Falló la operación BAU",
+        BAU_READ_FAILED: "Error devuelto por la API de lectura",
+        BAU_UPDATE_FAILED: "Falló la actualización BAU",
+        BAU_NOT_OWNER_EDIT: "Acceso denegado. Solo puedes editar tus propios casos.",
+        BAU_NOT_OWNER_DELETE: "Acceso denegado. No eres el dueño de este caso.",
+        BAU_ALREADY_PROCESSED: "Este caso ya fue procesado por el TL y no se puede modificar.",
+        BAU_NOT_FOUND: "Caso no encontrado.",
+        AGENT_EMAIL_REQUIRED: "El correo del agente es obligatorio.",
+    },
+    en: {
+        TIMEOUT: "Timeout: the API took too long to respond. (Apps Script blocked or error 500)",
+        CONNECTION: "JSONP connection error.",
+        BAU_SEND_FAILED: "BAU operation failed",
+        BAU_READ_FAILED: "Error returned by the read API",
+        BAU_UPDATE_FAILED: "BAU update failed",
+        BAU_NOT_OWNER_EDIT: "Access denied. You can only edit your own cases.",
+        BAU_NOT_OWNER_DELETE: "Access denied. You are not the owner of this case.",
+        BAU_ALREADY_PROCESSED: "This case has already been processed by the TL and can no longer be changed.",
+        BAU_NOT_FOUND: "Case not found.",
+        AGENT_EMAIL_REQUIRED: "The agent's email is required.",
+    },
+};
+
+function dsError(code) {
+    return DS_ERRORS[getLanguage()]?.[code] ?? DS_ERRORS.pt[code];
+}
+
+// A mensagem de uma resposta de erro do servidor: pelo `code`, traduzida; sem
+// código conhecido, o texto que o servidor mandou; sem nada, a mensagem de
+// reserva da operação.
+export function serverErrorMessage(response, fallbackCode) {
+    if (response?.code && DS_ERRORS.pt[response.code]) return dsError(response.code);
+    return response?.error || response?.message || dsError(fallbackCode);
+}
+
 function jsonpFetch(operation, params = {}) {
     return new Promise((resolve, reject) => {
         const callbackName = 'cw_cb_' + Math.round(100000 * Math.random());
@@ -127,7 +185,7 @@ function jsonpFetch(operation, params = {}) {
         const timeoutId = setTimeout(() => {
             if (document.body.contains(script)) document.body.removeChild(script);
             delete window[callbackName];
-            reject(new Error("Timeout: A API demorou muito para responder. (Apps Script bloqueado ou erro 500)"));
+            reject(new Error(dsError('TIMEOUT')));
         }, 15000); 
 
         window[callbackName] = (data) => {
@@ -147,7 +205,7 @@ function jsonpFetch(operation, params = {}) {
             clearTimeout(timeoutId);
             if (document.body.contains(script)) document.body.removeChild(script);
             delete window[callbackName];
-            reject(new Error("Erro de conexão JSONP."));
+            reject(new Error(dsError('CONNECTION')));
         };
 
         document.body.appendChild(script);
@@ -336,7 +394,7 @@ sendBAUEscalation: async (payload, userEmail) => {
                 return response;
             }
             // AGORA SIM ELE VAI MOSTRAR O ERRO REAL DO APPS SCRIPT:
-            throw new Error(response?.error || response?.message || "Falha na operação BAU");
+            throw new Error(serverErrorMessage(response, 'BAU_SEND_FAILED'));
         } catch (e) {
             console.error("Erro JSONP (BAU):", e);
             throw e;
@@ -360,7 +418,7 @@ sendBAUEscalation: async (payload, userEmail) => {
             }
 
             if (response && response.status === 'error') {
-                throw new Error(response.message || "Erro retornado pela API de leitura");
+                throw new Error(serverErrorMessage(response, 'BAU_READ_FAILED'));
             }
 
             return [];
@@ -403,7 +461,7 @@ sendBAUEscalation: async (payload, userEmail) => {
                 console.log("Sucesso: update_bau");
                 return response;
             }
-            throw new Error(response?.error || response?.message || "Falha na atualização BAU");
+            throw new Error(serverErrorMessage(response, 'BAU_UPDATE_FAILED'));
         } catch (e) {
             console.error("Erro JSONP (Update BAU):", e);
             throw e;
