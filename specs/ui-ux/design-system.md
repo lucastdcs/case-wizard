@@ -110,6 +110,27 @@ Todo gesto que produz um resultado invisível — copiar, sobretudo — confirma
 Um controle com `cursor: pointer` e nenhum estado de `:hover` é um defeito, não
 um descuido: é o detalhe que faz uma tela parecer montada em vez de desenhada.
 
+## Aviso de passagem: o que a pessoa lê sem parar o que está fazendo
+
+Para o que **informa** e não pede decisão (o lembrete de qualidade do boot é a
+referência viva — `modules/disclaimer/`), o toast não serve: some em 4s, sem
+pausa, sem botão, e toca o som de *sucesso*. O padrão é um cartão não modal:
+
+- **Nunca bloqueia o CRM**: sem fundo escurecido, sem trava de rolagem, sem roubar
+  o foco, sem ouvir o Esc (é do CRM). Só o cartão capta o mouse; o resto da tela
+  segue clicável por baixo. `role="status"`, não `role="dialog"`.
+- **Canto inferior esquerdo**, a 24px — o lado oposto da pílula. Vidro claro,
+  conteúdo sólido por tom, sombra em duas camadas e anel claro no lugar de borda.
+- **Some sozinho (~12s), mas pausa** com mouse ou foco dentro dele, e ao soltar
+  nunca volta com menos de 4s. Um aviso que some enquanto se lê falha em
+  acessibilidade (WCAG 2.2.1). O botão diz a ação ("Entendi"), não "OK".
+- **Som próprio e baixo**, mais baixo que o `playReady`, descendente (o `playReady`
+  sobe e diz "pronto"; este diz "repare"). Nunca o som de sucesso, e sempre atrás
+  do mudo global do `SoundManager`.
+- **Espera a vez**: se há modal na tela (splash, tour, novidades), o aviso entra
+  depois — com o modal aberto o relógio correria por baixo dele e ninguém leria.
+  Quem espera usa a promessa de fechamento do modal, não polling de classe.
+
 ## Separação: espaço antes de tom, tom antes de borda
 
 Borda cinza chapada em volta de toda caixa é o sinal mais forte de tela

@@ -12,6 +12,48 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Esperar um modal: a promessa de fechamento tem de resolver também no caminho em que ele nunca abre
+
+**Why**: o lembrete de qualidade do boot (ADR-0021) precisa esperar o tour e o
+changelog saírem da tela, então os dois passaram a devolver uma promessa que
+resolve no `onClose` do `openWizardShell`. O buraco estava na casca: com lista
+vazia de slides ela avisa no console e **retorna sem abrir nada e sem chamar
+`onClose`**. O changelog lê os slides de `RELEASE_NOTES`, que é dado editado à mão
+a cada release — uma release sem slides deixaria a promessa pendente para sempre,
+e o lembrete que "tem de aparecer em todo boot" nunca apareceria. Sem erro, sem
+log vermelho: só a ausência de algo. Foi achado lendo o `close()` da casca antes
+de escrever o teste; nenhum smoke cobria "release sem slides".
+
+```js
+return new Promise(resolve => {
+    if (!slides.length) resolve();   // a casca não abre e não chama onClose
+    openWizardShell({ slides, onClose: () => { /* ... */ resolve(); } });
+});
+```
+
+**When to apply**: sempre que algo depender de "o modal X fechou". Antes de confiar
+na promessa, liste os caminhos de saída da casca e pergunte, de cada um, se ele
+chama o callback: abrir, não abrir (lista vazia, guarda de versão), fechar por
+Esc, por botão, por "Pular". E combine com `Promise.allSettled`, não `all` — o
+lembrete não pode depender de nenhum modal ter dado certo.
+
+## Playwright `clock` falseia os timers, não as transições de CSS
+
+**Why**: o smoke do lembrete usa `page.clock` para provar o "some aos 12s" sem
+esperar 12s. Mas a transição de entrada (`translateY` 8px→0, 280ms) corre no
+compositor, em tempo **real**. Medir `getBoundingClientRect()` logo depois de
+`clock.runFor(100)` pegou o cartão no meio do deslize: margem inferior de 22,6px
+em vez de 24. O produto estava certo e a asserção, não — e o número quebrado
+parece um defeito de layout, o que manda quem lê procurar no CSS.
+
+**When to apply**: ao medir posição, tamanho ou opacidade de algo que anima, com o
+relógio falso. Avance o relógio para o que é lógica (timers, `requestAnimationFrame`)
+e **espere em tempo real** (`page.waitForTimeout`) a duração da transição antes de
+medir. Para provar que uma asserção de tempo é de verdade, mude o código e veja-a
+reprovar: foi o que fez as quatro mutações do lembrete (sem espera pelos modais,
+foco roubado, som ignorando o mudo, mouse sem segurar o relógio), cada uma caindo
+exatamente nas asserções esperadas.
+
 ## Repintar "só se a view for X" é bug quando o elemento não é reconstruído
 
 **Why**: o handler de troca de idioma do BAU Form repintava os campos dentro de

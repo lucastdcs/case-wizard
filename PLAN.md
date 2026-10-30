@@ -7,6 +7,30 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Lembrete de qualidade em todo boot (2026-10-30, ADR-0021).** Pedido do
+      Lucas: avisar o agente, a cada abertura, de que deve seguir as diretrizes de
+      QA e o SOP do segmento do caso — o Case Wizard só ajuda a preencher, a
+      qualidade é do agente —, sem atrapalhar o CRM, no design do projeto e com
+      um som leve. Entregue como **cartão não modal** no canto inferior esquerdo
+      (`src/modules/disclaimer/`), e não como `showToast()`: sem fundo escurecido,
+      sem roubar o foco, 12s com pausa por mouse/foco, "Entendi" para dispensar,
+      idioma da interface, `SoundManager.playNotice()` (respeita o mudo). Entra só
+      depois de splash, tour e changelog, e para isso `initOnboarding()` e
+      `checkAndShowChangelog()` passaram a devolver uma promessa de fechamento.
+      Texto encurtado em relação ao pedido (PT, ES e EN). Só frontend.
+      `smoke:disclaimer` (a peça isolada + o app inteiro: primeiro uso, versão
+      nova, rotina) e quatro mutações que derrubam as asserções certas.
+      **Falta confirmar:**
+      - **no CRM real**, o que o canto inferior esquerdo cobre: no `mock-crm.html`
+        ele cobre ~60px do painel de dados por até 12s (um clique em "Entendi" ou
+        a espera liberam). Se cobrir algo que o agente usa o tempo todo, o próximo
+        passo é mudar de canto, não encolher o cartão;
+      - **o texto** com quem responde por QA (é lembrete, não orientação — não cita
+        regra nenhuma) e a revisão de ES/EN por falante nativo, no mesmo item de
+        revisão do espanhol abaixo;
+      - ao fechar a release: nota de versão do modal do agente (`RELEASE_NOTES`)
+        contando que o aviso existe — o `CHANGELOG` já tem.
+
 - [~] **Usabilidade em inglês (2026-10-29).** Levantamento em
       `docs/I18N-EN-AUDIT.md`, reverificado contra `d5ed21c`.
       1. [x] **Defeitos que gravavam idioma errado no caso (A1–A6)** — corrigidos,
