@@ -199,7 +199,7 @@ const EMAIL_TEMPLATES_EN = {
     name: "Rescheduling Proposal",
     category: "Attempts & Scheduling",
     subject: "Consultation Rescheduling",
-    labels: { "[Seu Nome]": "Signature" },
+    labels: { "[DATA 1]": "Date 1", "[HORA 1]": "Time 1", "[DATA 2]": "Date 2", "[HORA 2]": "Time 2", "[DATA 3]": "Date 3", "[HORA 3]": "Time 3", "[Seu Nome]": "Signature" },
     template: "<p>Hello, how are you?</p><br><p>Here are the next available dates:</p><ul><li><strong>[DATA 1] at [HORA 1]</strong></li><li><strong>[DATA 2] at [HORA 2]</strong></li><li><strong>[DATA 3] at [HORA 3]</strong></li></ul><br><p>Please note that if there is no reply to this email within the next 48 hours, the case will be closed.</p><p>My calendar is dynamic, so a consultation can be booked for the available days at any time. The sooner you can reply, the more likely it is that the date and time will be secured.</p><br><p>Best regards,</p><p><strong>[Seu Nome]</strong><br>Cognizant Technical Solutions Team, on behalf of Google.</p>"
   },
   "max_reschedules": {

@@ -204,6 +204,26 @@ check('Central sem linhas EN não derruba o overlay EN embutido', () => {
     }
 });
 
+// --- Rótulos dos campos no EN ---
+//
+// O overlay traduz só os rótulos que lista em `labels`; o que ele esquece cai
+// no PT sem erro nenhum. Foi assim que "Data 1…3" e "Hora 1…3" do modelo de
+// reagendamento apareciam em português no formulário do agente EN. Rótulo igual
+// ao PT só passa se for neutro (sigla, URL, link).
+check('nenhum rótulo de campo do EN ficou igual ao do PT', () => {
+    const NEUTRO = /^(URL|Link|ID|CID|AM|Email|E-mail)$/i;
+    for (const base of originalPt) {
+        const en = originalEnView.find((t) => t.id === base.id);
+        if (!en) throw new Error('sem visão EN para ' + base.id);
+        base.placeholders.forEach((p, i) => {
+            const rotuloEn = en.placeholders[i].label;
+            if (rotuloEn === p.label && !NEUTRO.test(p.label)) {
+                throw new Error(`${base.id} ${p.key}: o rótulo EN é o do PT ("${p.label}")`);
+            }
+        });
+    }
+});
+
 // --- A data que entra no token [MM/DD/YYYY] ---
 //
 // Era `toLocaleDateString('pt-BR')` fixo: o e-mail em inglês saía com
