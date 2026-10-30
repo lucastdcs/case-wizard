@@ -9,6 +9,7 @@ import { initLinksAssistant } from './modules/links/links-assistant.js';
 import { initBroadcastAssistant } from './modules/broadcast/broadcast-assistant.js'; 
 import { initOnboarding } from './modules/onboarding/onboarding-wizard.js';
 import { checkAndShowChangelog } from './modules/changelog/changelog-wizard.js';
+import { showQaDisclaimer } from './modules/disclaimer/qa-disclaimer.js';
 import { initTimezoneAssistant } from './modules/timezone/timezone-assistant.js';
 import { initPersonalLibrary } from './modules/personal-library/personal-library-assistant.js'; // [NOVO]
 import { initConfigsAssistant } from './modules/configs/configs-assistant.js';
@@ -159,11 +160,19 @@ function initApp() {
 
             languagePromise.finally(() => {
                 // 2. Verifica Tutoriais / Changelog
-                initOnboarding();
+                const onboardingClosed = Promise.resolve().then(() => initOnboarding());
 
-                setTimeout(() => {
-                    checkAndShowChangelog(APP_VERSION);
-                }, 500);
+                const changelogClosed = new Promise(resolve => {
+                    setTimeout(() => resolve(checkAndShowChangelog(APP_VERSION)), 500);
+                });
+
+                // 3. Lembrete de qualidade - em todo boot, mas só quando nada
+                // mais disputa a atenção: splash, tour e changelog primeiro.
+                // `allSettled` e não `all`: um modal que falhe não pode
+                // engolir o lembrete. Os 1.2s deixam o chime da pílula e o
+                // toast de fechamento dos modais terminarem antes do som dele.
+                Promise.allSettled([splashDone, onboardingClosed, changelogClosed])
+                    .then(() => setTimeout(showQaDisclaimer, 1200));
             });
 
         }, 2500);
