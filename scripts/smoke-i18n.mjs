@@ -425,6 +425,67 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
     }
 }
 
+// --------------------------------------------------- a splash de abertura (C1)
+// A saudação não consultava idioma nenhum: PT até com a ferramenta em EN ou ES.
+// E ela roda ANTES de o perfil chegar (o e-mail que o busca é capturado dentro
+// dela), então quem depende só do perfil precisa do último idioma guardado.
+// O relógio é fixado numa sexta de manhã: prefixo, selo e a frase (uma de duas)
+// ficam determinísticos.
+{
+    const SAUDACAO = {
+        pt: { prefixo: 'Bom dia,', frases: ['O último gás antes do descanso.', 'Vamos fechar com chave de ouro.'], selo: '🎉 Sextou!' },
+        es: { prefixo: 'Buenos días,', frases: ['El último empujón antes del descanso.', 'Cerremos con broche de oro.'], selo: '🎉 ¡Es viernes!' },
+        en: { prefixo: 'Good morning,', frases: ['Last push before the break.', "Let's close the week strong."], selo: "🎉 It's Friday!" },
+    };
+
+    async function lerSplash(chaves) {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+        await page.route('**script.google.com/**', (route) => route.abort());
+        page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
+        await page.clock.setFixedTime(new Date('2026-10-30T09:00:00'));
+        await page.goto('file://' + resolve(raiz, 'mock-crm.html'));
+        await page.evaluate((c) => {
+            localStorage.setItem('cw_onboarding_seen_v1', 'true');
+            for (const [k, v] of Object.entries(c)) localStorage.setItem(k, v);
+        }, chaves);
+        await page.addScriptTag({ content: script });
+
+        const lido = { prefixo: '', frase: '', selo: '' };
+        const inicio = Date.now();
+        while (Date.now() - inicio < 12000) {
+            const f = await page.evaluate(() => {
+                const s = document.getElementById('techsol-splash-screen');
+                if (!s) return null;
+                const txt = (sel) => s.querySelector(sel)?.textContent.trim() || '';
+                return { prefixo: txt('#p1'), frase: txt('#p3'), selo: txt('.sextou-badge') };
+            });
+            if (f) for (const k of Object.keys(lido)) if (f[k]) lido[k] = f[k];
+            await page.waitForTimeout(250);
+        }
+        await page.close();
+        return lido;
+    }
+
+    const confereSplash = (lido, lang) => {
+        const e = SAUDACAO[lang];
+        igual(lido.prefixo, e.prefixo, 'prefixo da saudação');
+        if (!e.frases.includes(lido.frase)) throw new Error(`frase ${JSON.stringify(lido.frase)} não é uma das de ${lang}: ${JSON.stringify(e.frases)}`);
+        igual(lido.selo, e.selo, 'selo de sexta');
+        for (const outro of Object.keys(SAUDACAO).filter((l) => l !== lang)) {
+            if (lido.prefixo === SAUDACAO[outro].prefixo || lido.selo === SAUDACAO[outro].selo) throw new Error(`splash em ${outro} com a ferramenta em ${lang}`);
+        }
+    };
+
+    await check('splash: escolha manual da interface em en', async () =>
+        confereSplash(await lerSplash({ cw_ui_lang: 'en', cw_output_lang: 'en' }), 'en'));
+    await check('splash: só o último perfil guardado (es), sem escolha manual, já abre em es', async () =>
+        confereSplash(await lerSplash({ cw_profile_lang: 'es' }), 'es'));
+    await check('splash: só o último perfil guardado (en), sem escolha manual, já abre em en', async () =>
+        confereSplash(await lerSplash({ cw_profile_lang: 'en' }), 'en'));
+    await check('splash: sem nada guardado abre em pt (controle)', async () =>
+        confereSplash(await lerSplash({}), 'pt'));
+}
+
 await browser.close();
 console.log(fail ? `\n✗ smoke de idioma: ${fail} falha(s)\n` : '\n✓ smoke de idioma: 0 falhas\n');
 process.exit(fail ? 1 : 0);

@@ -844,7 +844,7 @@ export async function playStartupAnimation() {
             <div id="p2" class="text-name"></div>
             <div id="p3" class="text-footer"></div>
             <div id="p-sextou" style="width: 100%; text-align: center; display: none;">
-                <div class="sextou-badge">🎉 Sextou!</div>
+                <div class="sextou-badge"></div>
             </div>
         </div>
         <div class="credit-pro">created by <span>${AUTHOR_CREDIT}</span></div>
@@ -899,6 +899,7 @@ SoundManager.playStartup();
       void elSextou.offsetWidth;
       const badge = elSextou.querySelector(".sextou-badge");
       if (badge) {
+        badge.textContent = data.fridayBadge;
         badge.style.opacity = "1";
         badge.style.transform = "scale(1)";
       }

@@ -19,6 +19,7 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { build } from 'esbuild';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const SRC = join(ROOT, 'src');
@@ -198,7 +199,52 @@ for (const file of walk(SRC)) {
     }
 }
 
-console.log(`\ni18n: ${checked} dicionário(s) verificado(s) em ${LANGS.join('/')}; ${mirrors} par(es) _ES/_EN`);
+// --- Resolução do idioma (shared/i18n.js) ---
+//
+// Override manual > último idioma de perfil aplicado > "pt". O perfil só chega
+// depois do boot (o e-mail que o busca é capturado dentro da splash), então sem
+// o passo do meio um agente ES/EN que nunca tocou em Configurações veria a
+// splash em português em todo boot. Avalia o módulo real, com um localStorage
+// falso por cenário (o estado do módulo é global, por isso um bundle novo cada).
+let resolucoes = 0;
+{
+    const bundle = await build({
+        entryPoints: [join(SRC, 'modules/shared/i18n.js')],
+        bundle: true, write: false, format: 'cjs', platform: 'node', logLevel: 'silent',
+    });
+    const carregar = (store) => {
+        globalThis.localStorage = {
+            getItem: (k) => (k in store ? store[k] : null),
+            setItem: (k, v) => { store[k] = String(v); },
+            removeItem: (k) => { delete store[k]; },
+        };
+        const m = { exports: {} };
+        // eslint-disable-next-line no-new-func
+        new Function('module', 'exports', bundle.outputFiles[0].text)(m, m.exports);
+        return m.exports;
+    };
+    const casos = [
+        ['sem nada guardado, abre em pt', {}, null, { ui: 'pt', out: 'pt' }],
+        ['o último perfil aplicado vale já no boot seguinte', { cw_profile_lang: 'es' }, null, { ui: 'es', out: 'es' }],
+        ['o override manual da interface vence o perfil guardado', { cw_profile_lang: 'es', cw_ui_lang: 'en' }, null, { ui: 'en', out: 'es' }],
+        ['valor guardado inválido é ignorado', { cw_profile_lang: 'xx' }, null, { ui: 'pt', out: 'pt' }],
+        ['o perfil que chega vira o idioma, sem virar escolha manual', {}, { defaultLanguage: 'EN' }, { ui: 'en', out: 'en', guarda: 'en', manual: false }],
+        ['o perfil que chega não atropela a escolha manual, mas é guardado', { cw_ui_lang: 'pt' }, { defaultLanguage: 'EN' }, { ui: 'pt', out: 'en', guarda: 'en' }],
+    ];
+    for (const [nome, store, perfil, esperado] of casos) {
+        const m = carregar(store);
+        if (perfil) m.applyProfileLanguage(perfil);
+        const veio = { ui: m.getLanguage(), out: m.getOutputLanguage() };
+        const problemas = [];
+        for (const k of ['ui', 'out']) if (veio[k] !== esperado[k]) problemas.push(`${k}: esperado ${esperado[k]}, veio ${veio[k]}`);
+        if ('guarda' in esperado && store.cw_profile_lang !== esperado.guarda) problemas.push(`cw_profile_lang guardado: ${store.cw_profile_lang}`);
+        if (esperado.manual === false && ('cw_ui_lang' in store || 'cw_output_lang' in store)) problemas.push('o perfil virou escolha manual');
+        resolucoes++;
+        if (problemas.length) failures.push({ id: `shared/i18n.js :: ${nome}`, kind: 'resolve', detail: problemas.join('; ') });
+    }
+}
+
+console.log(`\ni18n: ${checked} dicionário(s) verificado(s) em ${LANGS.join('/')}; ${mirrors} par(es) _ES/_EN; ${resolucoes} caso(s) de resolução do idioma`);
 
 if (!failures.length) {
     console.log('OK — todos os dicionários têm as três línguas com o mesmo conjunto de chaves.\n');
@@ -207,6 +253,7 @@ if (!failures.length) {
 
 console.error(`\n${failures.length} falha(s):\n`);
 for (const f of failures) {
+    if (f.kind === 'resolve') console.error(`  FALHA  ${f.id}: ${f.detail}`);
     if (f.kind === 'parse') console.error(`  ERRO   ${f.id}: não foi possível avaliar o literal — ${f.detail}`);
     if (f.kind === 'missing-mirror') console.error(`  FALTA  ${f.id}: ${f.detail}`);
     if (f.kind === 'missing-lang') console.error(`  FALTA  ${f.id}: idioma "${f.detail}" ausente (${f.count} chaves a traduzir)`);

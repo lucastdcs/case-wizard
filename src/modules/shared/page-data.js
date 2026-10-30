@@ -5,6 +5,12 @@ import { lerCampo, lerCampoTodos, acharRotulo } from './crm-labels.js';
 import { resolveAM, ldapLogado } from './am-resolver.js';
 import { getCaseContext } from './case-context.js';
 import { getCaseLogFacts } from './case-log-parser.js';
+import { getLanguage } from './i18n.js';
+
+// Nome de reserva quando nem o menu de perfil nem o LDAP o entregam. A splash o
+// traduz (ver getSmartGreeting); `getAgentName()` o devolve cru, porque aquele
+// valor entra na assinatura do e-mail.
+const FALLBACK_AGENT_NAME = "Consultor";
 
 // Variável que guarda o nome para usar nos emails depois
 let cachedAgentName = "";
@@ -84,7 +90,7 @@ export async function captureNameWithMagic() {
             document.querySelector('a[aria-label*="Account"]');
 
         if (!btn) {
-            cachedAgentName = nomeDoLdap || "Consultor";
+            cachedAgentName = nomeDoLdap || FALLBACK_AGENT_NAME;
             return cachedAgentName;
         }
 
@@ -92,7 +98,7 @@ export async function captureNameWithMagic() {
         btn.click();
         await esperar(150); // Tempo para o Angular renderizar o menu
 
-        let name = nomeDoLdap || "Consultor";
+        let name = nomeDoLdap || FALLBACK_AGENT_NAME;
 
         // 1. Captura o NOME
         const elName = document.querySelector('profile-details .name');
@@ -120,14 +126,14 @@ export async function captureNameWithMagic() {
 
     } catch (e) {
         console.warn("Sherlock falhou:", e);
-        cachedAgentName = nomeDoLdap || "Consultor";
+        cachedAgentName = nomeDoLdap || FALLBACK_AGENT_NAME;
         return cachedAgentName;
     }
 }
 
 // --- 2. GETTERS ---
 export function getAgentName() {
-    return cachedAgentName || "Consultor";
+    return cachedAgentName || FALLBACK_AGENT_NAME;
 }
 
 // NOVO: Retorna o email capturado
@@ -136,48 +142,89 @@ export function getAgentEmail() {
 }
 
 // --- 3. ENGINE DE SAUDAÇÃO ---
+//
+// A splash é a tela do agente, não texto de caso: segue o idioma da INTERFACE.
+// `friday` é o selo do easter egg de sexta ("Sextou").
+const GREETING_DICT = {
+    pt: {
+        morning: "Bom dia", afternoon: "Boa tarde", evening: "Boa noite",
+        friday: "🎉 Sextou!", fallbackName: "Consultor",
+        night: ["Guerreiro da madrugada.", "O mundo dorme, você avança.", "Foco total."],
+        mondayMorning: ["Vamos definir o tom da semana.", "Nova semana, novas conquistas."],
+        fridayMorning: ["O último gás antes do descanso.", "Vamos fechar com chave de ouro."],
+        weekdayMorning: ["Que seu dia seja produtivo.", "Foco e café para hoje."],
+        afternoonPhrases: ["Mantenha o ritmo.", "Tarde produtiva pela frente.", "Seguimos avançando."],
+        eveningPhrases: ["Encerrando o dia com produtividade.", "Excelente dedicação."],
+        weekend: ["Sua dedicação no fim de semana é inspiradora.", "Trabalho excepcional."],
+    },
+    es: {
+        morning: "Buenos días", afternoon: "Buenas tardes", evening: "Buenas noches",
+        friday: "🎉 ¡Es viernes!", fallbackName: "Consultor",
+        night: ["Guerrero de la madrugada.", "El mundo duerme, tú avanzas.", "Enfoque total."],
+        mondayMorning: ["Vamos a marcar el ritmo de la semana.", "Nueva semana, nuevos logros."],
+        fridayMorning: ["El último empujón antes del descanso.", "Cerremos con broche de oro."],
+        weekdayMorning: ["Que tu día sea productivo.", "Enfoque y café para hoy."],
+        afternoonPhrases: ["Mantén el ritmo.", "Una tarde productiva por delante.", "Seguimos avanzando."],
+        eveningPhrases: ["Cerrando el día con productividad.", "Excelente dedicación."],
+        weekend: ["Tu dedicación el fin de semana es inspiradora.", "Trabajo excepcional."],
+    },
+    en: {
+        morning: "Good morning", afternoon: "Good afternoon", evening: "Good evening",
+        friday: "🎉 It's Friday!", fallbackName: "Consultant",
+        night: ["Night owl mode on.", "The world sleeps, you move forward.", "Full focus."],
+        mondayMorning: ["Let's set the tone for the week.", "New week, new wins."],
+        fridayMorning: ["Last push before the break.", "Let's close the week strong."],
+        weekdayMorning: ["Have a productive day.", "Focus and coffee for today."],
+        afternoonPhrases: ["Keep the pace.", "A productive afternoon ahead.", "We keep moving forward."],
+        eveningPhrases: ["Wrapping up the day productively.", "Excellent dedication."],
+        weekend: ["Your weekend dedication is inspiring.", "Outstanding work."],
+    },
+};
+
 export function getSmartGreeting(name) {
+    const g = GREETING_DICT[getLanguage()] || GREETING_DICT.pt;
     const now = new Date();
     const h = now.getHours();
     const d = now.getDay();
 
-    let prefix = "Olá";
+    let prefix;
     let iconSVG = "";
 
     if (h >= 5 && h < 12) {
-        prefix = "Bom dia";
+        prefix = g.morning;
         iconSVG = `<svg class="weather-icon" viewBox="0 0 24 24" fill="none" stroke="#FBBC05" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.93 19.07l1.41-1.41"></path><path d="M17.66 6.34l1.41-1.41"></path></svg>`;
     } else if (h >= 12 && h < 18) {
-        prefix = "Boa tarde";
+        prefix = g.afternoon;
         iconSVG = `<svg class="weather-icon" viewBox="0 0 24 24" fill="none" stroke="#EA4335" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M17.66 17.66l1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M4.93 19.07l1.41-1.41"></path><path d="M17.66 6.34l1.41-1.41"></path></svg>`;
     } else {
-        prefix = "Boa noite";
+        prefix = g.evening;
         iconSVG = `<svg class="weather-icon" viewBox="0 0 24 24" fill="none" stroke="#8AB4F8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
     }
 
     let phrases = [];
     if (h >= 0 && h < 5) {
-        phrases = ["Guerreiro da madrugada.", "O mundo dorme, você avança.", "Foco total."];
+        phrases = g.night;
     } else if (h < 12) {
-        if (d === 1) phrases = ["Vamos definir o tom da semana.", "Nova semana, novas conquistas."];
-        else if (d === 5) phrases = ["O último gás antes do descanso.", "Vamos fechar com chave de ouro."];
-        else phrases = ["Que seu dia seja produtivo.", "Foco e café para hoje."];
+        if (d === 1) phrases = g.mondayMorning;
+        else if (d === 5) phrases = g.fridayMorning;
+        else phrases = g.weekdayMorning;
     } else if (h < 18) {
-        phrases = ["Mantenha o ritmo.", "Tarde produtiva pela frente.", "Seguimos avançando."];
+        phrases = g.afternoonPhrases;
     } else {
-        phrases = ["Encerrando o dia com produtividade.", "Excelente dedicação."];
+        phrases = g.eveningPhrases;
     }
 
-    if (d === 0 || d === 6) phrases = ["Sua dedicação no fim de semana é inspiradora.", "Trabalho excepcional."];
+    if (d === 0 || d === 6) phrases = g.weekend;
 
     const randomSuffix = phrases[Math.floor(Math.random() * phrases.length)];
 
     return {
         prefix: `${prefix},`,
-        name: name,
+        name: name === FALLBACK_AGENT_NAME ? g.fallbackName : name,
         suffix: randomSuffix,
         icon: iconSVG,
-        isFriday: (d === 5)
+        isFriday: (d === 5),
+        fridayBadge: g.friday
     };
 }
 

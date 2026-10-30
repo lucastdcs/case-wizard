@@ -18,9 +18,16 @@
 //   1. Override manual salvo neste navegador
 //   2. profile.defaultLanguage vindo da planilha "People" (coluna Segmento)
 //   3. "pt" como padrão de segurança
+//
+// O passo 2 só chega DEPOIS do boot (o e-mail que busca o perfil é capturado
+// dentro da splash), então a splash e tudo que se desenha antes dele sairia no
+// idioma errado para quem depende só do perfil. Por isso o último idioma de
+// perfil aplicado fica guardado e vale como passo 2 já na carga seguinte:
+// continua abaixo do override manual e é regravado a cada perfil que chega.
 
 const STORAGE_KEY = "cw_ui_lang";
 const OUTPUT_STORAGE_KEY = "cw_output_lang";
+const PROFILE_STORAGE_KEY = "cw_profile_lang";
 export const SUPPORTED_LANGS = ["pt", "es", "en"];
 const DEFAULT_LANG = "pt";
 
@@ -55,7 +62,7 @@ export function isSupportedLang(lang) {
 // cópias do mesmo bloco de listeners.
 function createLangChannel(storageKey, label) {
     let manualOverride = readStoredLang(storageKey);
-    let currentLang = manualOverride || DEFAULT_LANG;
+    let currentLang = manualOverride || readStoredLang(PROFILE_STORAGE_KEY) || DEFAULT_LANG;
     const listeners = new Set();
 
     return {
@@ -127,6 +134,9 @@ export function applyProfileLanguage(profile) {
     const raw = String(profile?.defaultLanguage || "").toUpperCase();
     const lang = PROFILE_LANG_MAP[raw];
     if (!lang) return;
+    try {
+        if (typeof localStorage !== "undefined") localStorage.setItem(PROFILE_STORAGE_KEY, lang);
+    } catch (e) { /* localStorage indisponível: o próximo boot só volta ao padrão */ }
     setLanguage(lang, { persist: false });
     setOutputLanguage(lang, { persist: false });
 }
