@@ -7,7 +7,7 @@
 // faria.
 
 import { SoundManager } from './sound-manager.js';
-import { lockBodyScroll, unlockBodyScroll } from './dom-utils.js';
+import { lockBodyScroll, unlockBodyScroll, clamp } from './dom-utils.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
 import { ShortcutService } from './shortcut-service.js';
 
@@ -41,10 +41,14 @@ function injectStyles() {
             z-index: 2147483647;
             display: flex; align-items: flex-start; justify-content: center;
             padding-top: 14vh;
-            opacity: 0; pointer-events: none;
+            opacity: 0;
             transition: opacity 0.2s ease;
         }
-        .cw-palette-overlay.active { opacity: 1; pointer-events: auto; }
+        /* Sem pointer-events: none no estado fechado: o overlay fica no DOM
+           por 200ms depois de fechar, e nesse intervalo ele precisa continuar
+           engolindo o clique. Sem isso, o 2º clique de um duplo clique num item
+           atravessava a palette e caía no CRM. */
+        .cw-palette-overlay.active { opacity: 1; }
 
         .cw-palette {
             width: 560px; max-width: 90vw;
@@ -68,7 +72,10 @@ function injectStyles() {
         .cw-palette-input { flex: 1; border: none; outline: none; background: transparent; font-size: 16px; color: #202124; font-family: inherit; }
         .cw-palette-input::placeholder { color: #9AA0A6; }
 
-        .cw-palette-list { max-height: 340px; overflow-y: auto; padding: 8px; }
+        /* O teto de 340px não olhava a janela: com o DevTools encaixado ou
+           zoom alto o rodapé saía da tela (overlay não rola). 86vh - 130px é o
+           que sobra depois do respiro de cima (14vh), da busca e do rodapé. */
+        .cw-palette-list { max-height: min(340px, calc(86vh - 130px)); overflow-y: auto; padding: 8px; }
         .cw-palette-item { display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 12px; cursor: pointer; transition: background 0.1s ease; }
         .cw-palette-item.selected { background: #E8F0FE; }
         .cw-palette-item-icon { width: 32px; height: 32px; border-radius: 9px; background: #F1F3F4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #5F6368; transition: background-color 0.1s ease, color 0.1s ease; }
@@ -130,6 +137,14 @@ function cpt(key) {
     return CP_DICT[lang]?.[key] ?? CP_DICT.pt[key];
 }
 
+// `label` e `hint` de uma ação são um texto fixo (nome de produto, ou texto que
+// o agente escreveu) ou um `{ pt, es, en }`. Resolvidos na hora de DESENHAR, não
+// na de montar a lista: o perfil, que decide o idioma, chega depois do boot.
+const pick = (v) => (typeof v === 'string' ? v : (v[getLanguage()] || v.pt));
+// Para a busca: todas as versões juntas, então quem digita "biblioteca" acha
+// "My Library" e quem digita "library" acha "Minha Biblioteca".
+const everyVersion = (v) => (typeof v === 'string' ? v : Object.values(v).join(' '));
+
 export function initCommandPalette(actions) {
     injectStyles();
 
@@ -147,7 +162,7 @@ export function initCommandPalette(actions) {
     // Configurações ou no próprio Case Notes.
     //
     // O `label` e o `alias` são escritos pelo próprio agente, então não têm
-    // versão por idioma; só o hint, que é texto nosso, tem as duas.
+    // versão por idioma; só o hint, que é texto nosso, tem as três.
     function noteShortcuts() {
         if (typeof actions.toggleNotes !== 'function' ||
             typeof actions.toggleNotes.openWithPreset !== 'function') return [];
@@ -155,8 +170,8 @@ export function initCommandPalette(actions) {
         return ShortcutService.list().map((shortcut) => ({
             id: `shortcut-${shortcut.id}`,
             label: shortcut.label,
-            hint: { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada' },
-            keywords: `nota atalho atajo preset ${shortcut.alias || ''}`,
+            hint: { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada', en: 'Note shortcut · opens pre-filled' },
+            keywords: `nota atalho atajo note shortcut preset ${shortcut.alias || ''}`,
             icon: ICONS.bolt,
             group: 'shortcuts',
             isPreset: true,
@@ -167,21 +182,21 @@ export function initCommandPalette(actions) {
         }));
     }
 
-    // label fica em português mesmo pra ES: são os nomes dos módulos, e a
-    // maioria já é em inglês (Case Notes, Call Script...) ou é curta o
-    // bastante (Avisos, Configurações) pra não valer duplicar; só o hint
-    // (descrição) e as keywords de busca variam por idioma.
+    // O `label` é nome de produto (Case Notes, Call Script...) ou o nome que o
+    // próprio módulo mostra no cabeçalho naquele idioma: o palette e o módulo
+    // aberto têm de concordar. O hint (descrição) e as keywords de busca variam
+    // por idioma.
     const MODULE_ACTIONS = [
-        { id: 'notes', label: 'Case Notes', hint: { pt: 'Montar a nota técnica do caso', es: 'Armar la nota técnica del caso' }, keywords: 'notas nota caso anotacoes anotaciones', icon: ICONS.notes, run: actions.toggleNotes },
+        { id: 'notes', label: 'Case Notes', hint: { pt: 'Montar a nota técnica do caso', es: 'Armar la nota técnica del caso', en: 'Build the technical note for the case' }, keywords: 'notas nota caso anotacoes anotaciones notes case', icon: ICONS.notes, run: actions.toggleNotes },
         { id: 'precall', label: 'Pre-call Checklist', hint: { pt: 'Checklist antes da ligação, direto na nota', es: 'Checklist antes de la llamada, directo en la nota', en: 'Checklist before the call, straight into the note' }, keywords: 'precall pre call checklist ligacao llamada verificacao verificacion', icon: ICONS.precall, run: actions.togglePrecall },
-        { id: 'bauform', label: 'BAU Form', hint: { pt: 'Solicitação de criação/descarte BAU', es: 'Solicitud de creación/descarte BAU' }, keywords: 'bau formulario solicitacao solicitud criacao creacion descarte', icon: ICONS.bauform, run: actions.toggleBAUForm },
-        { id: 'email', label: 'Email Assistant', hint: { pt: 'Templates inteligentes de e-mail', es: 'Plantillas inteligentes de correo' }, keywords: 'email e-mail correio correo template plantilla', icon: ICONS.email, run: actions.toggleEmail },
-        { id: 'script', label: 'Call Script', hint: { pt: 'Guia interativo de chamada', es: 'Guía interactiva de llamada' }, keywords: 'script roteiro guion chamada llamada ligacao', icon: ICONS.script, run: actions.toggleScript },
-        { id: 'links', label: 'Central de Links', hint: { pt: 'Ferramentas, SOPs e atalhos', es: 'Herramientas, SOPs y atajos' }, keywords: 'links atalhos atajos ferramentas herramientas sop sops', icon: ICONS.links, run: actions.toggleLinks },
-        { id: 'library', label: 'Minha Biblioteca', hint: { pt: 'Snippets e respostas salvas', es: 'Snippets y respuestas guardadas' }, keywords: 'biblioteca snippets respostas respuestas salvas guardadas', icon: ICONS.library, run: actions.toggleLibrary },
-        { id: 'timezone', label: 'Fusos Horários', hint: { pt: 'Monitoramento e planejador de chamada', es: 'Monitoreo y planificador de llamada' }, keywords: 'fuso horario timezone', icon: ICONS.timezone, run: actions.toggleTimezone },
-        { id: 'broadcast', label: 'Avisos', hint: { pt: 'Comunicados e disponibilidade BAU', es: 'Comunicados y disponibilidad BAU' }, keywords: 'avisos broadcast comunicados disponibilidade disponibilidad', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
-        { id: 'configs', label: 'Configurações', hint: { pt: 'Perfil, som e preferências', es: 'Perfil, sonido y preferencias' }, keywords: 'configuracoes configuracion config preferencias perfil som sonido', icon: ICONS.configs, run: actions.toggleConfigs },
+        { id: 'bauform', label: 'BAU Form', hint: { pt: 'Solicitação de criação/descarte BAU', es: 'Solicitud de creación/descarte BAU', en: 'Request to create/discard a BAU case' }, keywords: 'bau formulario solicitacao solicitud criacao creacion descarte form request create discard', icon: ICONS.bauform, run: actions.toggleBAUForm },
+        { id: 'email', label: 'Email Assistant', hint: { pt: 'Templates inteligentes de e-mail', es: 'Plantillas inteligentes de correo', en: 'Smart email templates' }, keywords: 'email e-mail correio correo template plantilla', icon: ICONS.email, run: actions.toggleEmail },
+        { id: 'script', label: 'Call Script', hint: { pt: 'Guia interativo de chamada', es: 'Guía interactiva de llamada', en: 'Interactive call guide' }, keywords: 'script roteiro guion chamada llamada ligacao call', icon: ICONS.script, run: actions.toggleScript },
+        { id: 'links', label: { pt: 'Central de Links', es: 'Central de Enlaces', en: 'Links Central' }, hint: { pt: 'Ferramentas, SOPs e atalhos', es: 'Herramientas, SOPs y atajos', en: 'Tools, SOPs and shortcuts' }, keywords: 'links enlaces atalhos atajos ferramentas herramientas tools shortcuts sop sops', icon: ICONS.links, run: actions.toggleLinks },
+        { id: 'library', label: { pt: 'Minha Biblioteca', es: 'Mi Biblioteca', en: 'My Library' }, hint: { pt: 'Snippets e respostas salvas', es: 'Snippets y respuestas guardadas', en: 'Saved snippets and replies' }, keywords: 'biblioteca library snippets respostas respuestas replies salvas guardadas saved', icon: ICONS.library, run: actions.toggleLibrary },
+        { id: 'timezone', label: { pt: 'Fusos Horários', es: 'Husos Horarios', en: 'Time Zones' }, hint: { pt: 'Monitoramento e planejador de chamada', es: 'Monitoreo y planificador de llamada', en: 'Monitoring and call planner' }, keywords: 'fuso horario husos timezone time zone clock', icon: ICONS.timezone, run: actions.toggleTimezone },
+        { id: 'broadcast', label: { pt: 'Avisos', es: 'Avisos', en: 'Broadcast' }, hint: { pt: 'Comunicados e disponibilidade BAU', es: 'Comunicados y disponibilidad BAU', en: 'Announcements and BAU availability' }, keywords: 'avisos broadcast comunicados announcements notices disponibilidade disponibilidad availability', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
+        { id: 'configs', label: { pt: 'Configurações', es: 'Configuración', en: 'Settings' }, hint: { pt: 'Perfil, som e preferências', es: 'Perfil, sonido y preferencias', en: 'Profile, sound and preferences' }, keywords: 'configuracoes configuracion config settings preferencias preferences perfil profile som sonido sound', icon: ICONS.configs, run: actions.toggleConfigs },
     ].map(a => ({ ...a, group: 'modules' }));
 
     // Os atalhos do agente vêm primeiro: são dele, e são o que ele repete
@@ -190,13 +205,24 @@ export function initCommandPalette(actions) {
     function buildActions() {
         return [...noteShortcuts(), ...MODULE_ACTIONS]
             .filter(a => typeof a.run === 'function')
-            .map(a => ({ ...a, _haystack: normalize(`${a.label} ${a.hint.pt} ${a.hint.es} ${a.keywords}`) }));
+            .map(a => ({ ...a, _haystack: normalize(`${everyVersion(a.label)} ${everyVersion(a.hint)} ${a.keywords}`) }));
     }
+
+    // Overlays que mandam na tela e têm o próprio teclado (diálogos, wizards de
+    // onboarding/novidades, card de processamento). A pílula já não é clicável
+    // enquanto o card de processamento está no ar (.cw-pill.cw-busy); sem esta
+    // lista, o Ctrl+K era o caminho que furava essa regra e abria módulo por
+    // cima de uma automação rodando, ou ficava mudo atrás do wizard, que engole
+    // Enter/Esc/Tab na captura do document.
+    const BLOCKING_OVERLAYS = '.cw-dialog-overlay, .cw-wiz-overlay, .cw-ob-lang-overlay, .cw-processing-card';
 
     let isOpen = false;
     let selectedIndex = 0;
     let allActions = buildActions();
     let filtered = allActions;
+    let itemEls = [];
+    let removeTimer = null;
+    let previouslyFocused = null;
 
     const overlay = document.createElement('div');
     overlay.className = 'cw-palette-overlay';
@@ -224,8 +250,32 @@ export function initCommandPalette(actions) {
     const input = palette.querySelector('.cw-palette-input');
     const list = palette.querySelector('.cw-palette-list');
 
+    // Clicar em qualquer ponto da palette que não seja o campo (rodapé,
+    // cabeçalho de grupo, folga da lista) tirava o foco do input para o body, e
+    // as setas/Enter/Esc morriam em silêncio: o teclado só escuta quem está
+    // focado. O mousedown sem ação padrão mantém o foco no input; o click nos
+    // itens continua chegando normalmente.
+    palette.addEventListener('mousedown', (e) => { if (e.target !== input) e.preventDefault(); });
+
+    // Muda só QUAL item está selecionado, sem tocar na lista. Antes a seleção
+    // era feita reconstruindo a lista inteira, e o hover chamava isso a cada
+    // mouseenter: o navegador, ao ver o DOM trocado debaixo do cursor, emitia
+    // outro mouseover, que reconstruía de novo - mais de dez reconstruções por
+    // segundo com o mouse PARADO. O clique no item se perdia no meio delas.
+    function select(idx, { scroll = false } = {}) {
+        selectedIndex = idx;
+        itemEls.forEach((el, i) => el.classList.toggle('selected', i === idx));
+        if (scroll && itemEls[idx]) itemEls[idx].scrollIntoView({ block: 'nearest' });
+    }
+
+    function move(delta) {
+        if (!filtered.length) return;
+        select(clamp(selectedIndex + delta, 0, filtered.length - 1), { scroll: true });
+    }
+
     function render() {
         list.innerHTML = '';
+        itemEls = [];
         if (filtered.length === 0) {
             list.innerHTML = `<div class="cw-palette-empty">${cpt('empty')}</div>`;
             return;
@@ -234,7 +284,6 @@ export function initCommandPalette(actions) {
         // mas ficam fora de `filtered`, que continua sendo só a lista de ações.
         // É o que mantém a navegação por setas (selectedIndex) linear - inserir
         // cabeçalho como item quebraria o índice a cada busca.
-        const itemEls = [];
         let grupoAnterior = null;
 
         filtered.forEach((action, idx) => {
@@ -248,34 +297,63 @@ export function initCommandPalette(actions) {
             }
 
             const item = document.createElement('div');
-            item.className = 'cw-palette-item' + (idx === selectedIndex ? ' selected' : '');
+            item.className = 'cw-palette-item';
+            item.dataset.idx = idx;
             item.innerHTML = `
                 <span class="cw-palette-item-icon${action.isPreset ? ' cw-palette-item-icon--preset' : ''}">${action.icon}</span>
                 <span class="cw-palette-item-text">
-                    <span class="cw-palette-item-label">${action.label}</span>
-                    <span class="cw-palette-item-hint">${action.hint[getLanguage()] || action.hint.pt}</span>
+                    <span class="cw-palette-item-label"></span>
+                    <span class="cw-palette-item-hint"></span>
                 </span>
             `;
-            item.onmouseenter = () => { selectedIndex = idx; render(); };
-            item.onclick = () => activate(idx);
+            // textContent, não interpolação: o rótulo do atalho é digitado pelo
+            // agente, e um "<" ou um "<b>" nele era lido como HTML.
+            item.querySelector('.cw-palette-item-label').textContent = pick(action.label);
+            item.querySelector('.cw-palette-item-hint').textContent = pick(action.hint);
             list.appendChild(item);
             itemEls.push(item);
         });
-        const selectedEl = itemEls[selectedIndex];
-        if (selectedEl) selectedEl.scrollIntoView({ block: 'nearest' });
+        select(selectedIndex, { scroll: true });
     }
 
+    // O mousemove também dispara quando a lista rola ou é reconstruída debaixo
+    // de um cursor parado. Sem comparar a posição, uma seta ↓ que rolava a lista
+    // devolvia a seleção ao item sob o cursor - e a navegação por teclado
+    // empacava no meio da lista sempre que o mouse estava em cima dela.
+    let lastMouse = { x: -1, y: -1 };
+    list.addEventListener('mousemove', (e) => {
+        if (e.clientX === lastMouse.x && e.clientY === lastMouse.y) return;
+        lastMouse = { x: e.clientX, y: e.clientY };
+        const item = e.target.closest('.cw-palette-item');
+        if (item) select(Number(item.dataset.idx));
+    });
+    list.addEventListener('click', (e) => {
+        const item = e.target.closest('.cw-palette-item');
+        if (item) activate(Number(item.dataset.idx));
+    });
+
     function activate(idx) {
+        // Já fechada = já ativou. O Enter duplo e o duplo clique chegam aqui
+        // duas vezes dentro dos 200ms em que o overlay ainda existe, e como os
+        // módulos alternam (abre/fecha), a 2ª chamada desfazia a 1ª.
+        if (!isOpen) return;
         const action = filtered[idx];
         if (!action) return;
         SoundManager.playClick();
-        close();
+        // O foco não volta ao campo do CRM: a ação que vai rodar assume a tela.
+        close({ restoreFocus: false });
         action.run();
     }
 
     function open() {
         if (isOpen) return;
+        // Cancela a remoção agendada por um close() de menos de 200ms atrás.
+        // Sem isso, abrir logo depois de fechar (Ctrl+K duas vezes seguidas)
+        // deixava o timer antigo tirar o overlay NOVO do DOM: a palette ficava
+        // "aberta" por dentro, invisível, com o scroll da página travado.
+        clearTimeout(removeTimer);
         isOpen = true;
+        previouslyFocused = document.activeElement;
         // Relê os atalhos a cada abertura: o agente pode ter criado ou apagado
         // um segundos atrás, em Configurações ou no Case Notes.
         allActions = buildActions();
@@ -287,17 +365,26 @@ export function initCommandPalette(actions) {
         document.body.appendChild(overlay);
         SoundManager.playGenieOpen();
         requestAnimationFrame(() => {
+            // Fechou antes do frame: não pode reativar nem tomar o foco de volta
+            // do campo para onde o close() acabou de devolvê-lo.
+            if (!isOpen) return;
             overlay.classList.add('active');
             input.focus();
         });
     }
 
-    function close() {
+    function close({ restoreFocus = true } = {}) {
         if (!isOpen) return;
         isOpen = false;
         unlockBodyScroll();
         overlay.classList.remove('active');
-        setTimeout(() => overlay.remove(), 200);
+        removeTimer = setTimeout(() => overlay.remove(), 200);
+        // Esc/clique no fundo = desistiu: devolve o cursor ao campo do CRM em
+        // que o agente estava digitando, em vez de largá-lo no body.
+        if (restoreFocus && previouslyFocused && document.contains(previouslyFocused)) {
+            try { previouslyFocused.focus({ preventScroll: true }); } catch (_) { /* elemento não focável */ }
+        }
+        previouslyFocused = null;
     }
 
     function toggle() {
@@ -313,32 +400,44 @@ export function initCommandPalette(actions) {
         render();
     });
 
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowDown') {
+    // No overlay, e não só no input: qualquer coisa focada dentro da palette
+    // continua respondendo ao teclado.
+    overlay.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Tab') {
+            // O Tab anda pela lista como a seta (Shift+Tab volta) e nunca sai
+            // daqui. Antes ele passava pela lista e depois pelos campos do CRM
+            // por trás do overlay - o que o agente digitasse a partir daí caía
+            // no CRM, e as setas e o Enter da palette não respondiam mais.
             e.preventDefault();
-            selectedIndex = Math.min(selectedIndex + 1, filtered.length - 1);
-            render();
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            selectedIndex = Math.max(selectedIndex - 1, 0);
-            render();
+            move(e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey) ? -1 : 1);
         } else if (e.key === 'Enter') {
             e.preventDefault();
             activate(selectedIndex);
         } else if (e.key === 'Escape') {
             e.preventDefault();
+            // O Esc global de animations.js fecha a janela de módulo aberta;
+            // sem isto, fechar a palette fechava também o módulo por baixo.
+            e.stopPropagation();
             close();
         }
     });
 
     // Ctrl/Cmd+K abre de qualquer lugar - mesmo padrão que Slack/Linear/Notion
     // já consagraram, sobrepondo o atalho nativo do navegador de propósito.
+    // Captura (`true`), como no wizard-shell: um campo do CRM que dê
+    // stopPropagation no keydown não pode engolir o atalho antes de chegar aqui.
     document.addEventListener('keydown', (e) => {
-        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-            e.preventDefault();
-            toggle();
-        }
-    });
+        // Só Ctrl/Cmd+K puro: Ctrl+Shift+K e Ctrl+Alt+K (AltGr no Windows) são
+        // de outras coisas e também abriam a palette.
+        if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+        if (typeof e.key !== 'string' || e.key.toLowerCase() !== 'k') return;
+
+        e.preventDefault();
+        // Tecla segurada repete o keydown: abria e fechava em rajada, com som.
+        if (e.repeat) return;
+        if (!isOpen && document.querySelector(BLOCKING_OVERLAYS)) return;
+        toggle();
+    }, true);
 
     onLanguageChange(() => {
         overlay.setAttribute('aria-label', cpt('ariaLabel'));

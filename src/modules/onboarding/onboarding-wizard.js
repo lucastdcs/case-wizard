@@ -288,30 +288,37 @@ function askLanguage() {
     });
 }
 
+// Resolve quando o tour sai da tela (ou já na hora, se não há tour a mostrar):
+// app.js espera por isto para o lembrete de qualidade não competir com ele.
 export function initOnboarding() {
     // Trava de "já viu". Fica antes de qualquer trabalho de DOM: para a
     // esmagadora maioria dos boots, esta função não deve fazer nada.
-    if (localStorage.getItem(SEEN_KEY)) return;
+    if (localStorage.getItem(SEEN_KEY)) return Promise.resolve();
 
     // Marca como visto na ABERTURA, não no fechamento. Se a pessoa fechar a
     // aba no meio do tour, ela não deve reencontrar o mesmo tour no próximo
     // boot - o objetivo é apresentar o app uma vez, não completar um fluxo.
     localStorage.setItem(SEEN_KEY, "true");
 
-    askLanguage().then(showSlides);
+    return askLanguage().then(showSlides);
 }
 
 function showSlides(lang) {
     const slides = SLIDES_BY_LANG[lang] || SLIDES_BY_LANG.pt;
     const ob = OB_DICT[lang] || OB_DICT.pt;
 
-    openWizardShell({
-        slides,
-        idPrefix: "cw-onboarding",
-        nextLabel: ob.next,
-        finalLabel: ob.start,
-        skipLabel: ob.skip,
-        onSkip: () => confirmDialog(ob.skipConfirm),
-        onClose: () => showToast(ob.readyToast)
+    return new Promise(resolve => {
+        openWizardShell({
+            slides,
+            idPrefix: "cw-onboarding",
+            nextLabel: ob.next,
+            finalLabel: ob.start,
+            skipLabel: ob.skip,
+            onSkip: () => confirmDialog(ob.skipConfirm),
+            onClose: () => {
+                showToast(ob.readyToast);
+                resolve();
+            }
+        });
     });
 }

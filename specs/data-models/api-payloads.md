@@ -74,6 +74,17 @@ Por `google.script.run`, a partir do `TLDashboard.html`.
 - **Bloqueio de Data Wiping:** Ao editar, o `bau-form.js` **NÃO DEVE** injetar fallbacks de string vazia (`|| ""`) para campos que o usuário não interagiu ou que não existem na tela atual.
 - Se o campo não foi modificado ou não faz parte do fluxo, não o envie no payload ou envie estritamente como `undefined`. Isso permite que o Back-end saiba que deve manter o dado original da planilha.
 
+## Resposta de erro do agente (`create_bau`, `update_bau`, `read_agent_bau`)
+`{ status: 'error', error: 'Error: <texto em português>', code: '<CODIGO>' }`.
+- O **`code` é o contrato**; o texto em português é o reserva. O front traduz pelo
+  `code` no idioma da INTERFACE (`serverErrorMessage`, em `data-service.js`) e só
+  mostra o `error` do servidor quando o `code` falta (backend antigo) ou não é
+  conhecido. Código novo no servidor exige a frase nos três idiomas no front.
+- Códigos hoje: `BAU_NOT_OWNER_EDIT`, `BAU_NOT_OWNER_DELETE`,
+  `BAU_ALREADY_PROCESSED`, `BAU_NOT_FOUND`, `AGENT_EMAIL_REQUIRED`. Erro sem código
+  chega com `code: ''`. O servidor os cria com `erroComCodigo_` (`BAU_API.js`) e o
+  roteador (`Código.js`) os devolve.
+
 ## Diretório de pessoas (módulo `people` da Central)
 
 Estas ops **não existem no roteador JSONP** e não devem ser adicionadas a ele:

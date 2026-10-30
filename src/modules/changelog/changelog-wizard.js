@@ -44,6 +44,8 @@ function ct(key) {
  * Decide se o modal de novidades deve aparecer neste boot.
  *
  * @param {string} currentAppVersion APP_VERSION de src/app.js.
+ * @returns {Promise<void>|undefined} Resolve quando o modal sai da tela;
+ *   `undefined` quando não havia o que mostrar.
  */
 export function checkAndShowChangelog(currentAppVersion) {
     const lastSeenVersion = localStorage.getItem(LAST_VERSION_KEY);
@@ -72,7 +74,7 @@ export function checkAndShowChangelog(currentAppVersion) {
         return;
     }
 
-    initChangelogModal(currentAppVersion);
+    return initChangelogModal(currentAppVersion);
 }
 
 // Achata os slides para o idioma ativo. Campo sem tradução cai no PT em vez de
@@ -93,17 +95,27 @@ function initChangelogModal(version) {
     // ela merece rever o que mudou no próximo boot. É o oposto da regra do
     // Onboarding (que grava na abertura) e de propósito - aqui o conteúdo é
     // informação que se perde, lá é uma apresentação que cansa se repetir.
-    openWizardShell({
-        slides: slidesNoIdioma(),
-        idPrefix: "cw-changelog",
-        badge: ct("updateBadge")(version),
-        nextLabel: ct("nextBtn"),
-        finalLabel: ct("doneBtn"),
-        // Sem "Pular": são poucos slides e é a única vez que essa informação
-        // aparece. Esc ainda fecha, e os dots deixam ir direto ao fim.
-        onClose: () => {
-            localStorage.setItem(LAST_VERSION_KEY, version);
-            showToast(ct("updatedToast")(version));
-        }
+    const slides = slidesNoIdioma();
+
+    return new Promise(resolve => {
+        // Sem slides a casca avisa no console e retorna sem abrir nada - e sem
+        // chamar onClose. Resolver aqui é o que impede quem espera este modal
+        // (o lembrete de qualidade, em app.js) de esperar para sempre.
+        if (!slides.length) resolve();
+
+        openWizardShell({
+            slides,
+            idPrefix: "cw-changelog",
+            badge: ct("updateBadge")(version),
+            nextLabel: ct("nextBtn"),
+            finalLabel: ct("doneBtn"),
+            // Sem "Pular": são poucos slides e é a única vez que essa informação
+            // aparece. Esc ainda fecha, e os dots deixam ir direto ao fim.
+            onClose: () => {
+                localStorage.setItem(LAST_VERSION_KEY, version);
+                showToast(ct("updatedToast")(version));
+                resolve();
+            }
+        });
     });
 }

@@ -47,7 +47,7 @@ const mod = { exports: {} };
 // eslint-disable-next-line no-new-func
 new Function('module', 'exports', 'require', bundled.outputFiles[0].text)(mod, mod.exports, require);
 
-const { csaChecklistData, applyCallScriptContent } = mod.exports;
+const { csaChecklistData, applyCallScriptContent, groupTitle } = mod.exports;
 
 // Snapshot do roteiro original ANTES de qualquer hidratação.
 const original = JSON.parse(JSON.stringify(csaChecklistData));
@@ -141,5 +141,35 @@ check('quebras de linha dentro de um passo sobrevivem', () => {
 });
 
 const total = Object.values(original).flatMap(g => Object.values(g).flat()).length;
+// --- Títulos dos cartões ---
+//
+// O cartão de uma seção sem título aparece em branco: `GROUP_TITLES[g][lang] ||
+// ""` não tinha o EN, e nenhum erro avisava. A regra checada aqui vale para
+// qualquer idioma que um dia entre em `csaChecklistData`: toda seção que o
+// roteiro tem, no idioma que ele tem, precisa ter título - e título no idioma
+// do roteiro, não o do PT repetido.
+check('toda seção do roteiro tem título no idioma do roteiro', () => {
+    for (const [combinada, secoes] of Object.entries(original)) {
+        const lang = combinada.split(' ')[0];
+        for (const secao of Object.keys(secoes)) {
+            const titulo = groupTitle(secao, lang);
+            if (!titulo) throw new Error(`"${combinada}" / ${secao}: cartão sem título`);
+            if (lang !== 'PT' && titulo === groupTitle(secao, 'PT')) {
+                throw new Error(`"${combinada}" / ${secao}: o título é o do PT ("${titulo}")`);
+            }
+        }
+    }
+});
+
+check('os títulos do EN são os esperados', () => {
+    const veio = ['inicio', 'meio', 'fim'].map((s) => groupTitle(s, 'EN')).join(' | ');
+    if (veio !== 'Opening | Implementation (Tag Support) | Closing') throw new Error('veio: ' + veio);
+});
+
+check('idioma sem título cai no PT, nunca em branco', () => {
+    if (groupTitle('inicio', 'XX') !== 'Abertura') throw new Error('idioma desconhecido deveria cair no PT');
+    if (groupTitle('secao-que-nao-existe', 'EN') !== '') throw new Error('seção inexistente deveria ser vazia');
+});
+
 console.log('\n' + (fail ? '✗' : '✓') + ` round-trip de ${total} passos, ${fail} falhas\n`);
 process.exit(fail ? 1 : 0);

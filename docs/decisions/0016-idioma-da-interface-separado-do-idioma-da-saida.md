@@ -100,3 +100,15 @@ o diálogo de remover campo seguem a interface.
   paralelos por id, dicionário replicado no Apps Script — continua valendo.
 - Cobertura: `npm run test:i18n` (paridade dos dicionários) e
   `npm run smoke:i18n` (qual knob cada lugar lê, no navegador).
+- **Atualização 2026-10-30 — o passo 2 da ordem de resolução.** O
+  `profile.defaultLanguage` só chega depois do boot (o e-mail que busca o perfil é
+  capturado dentro da splash), então a splash e tudo desenhado antes dele saía no
+  idioma errado para quem depende só do perfil. O último idioma de perfil aplicado
+  agora fica em `cw_profile_lang` e vale já na carga seguinte. A ordem passa a ser:
+  override manual → último perfil aplicado → `pt`; o perfil que chega continua
+  vencendo o guardado e nunca vira escolha manual. O 1º boot de um navegador novo
+  segue em PT. Travado em `test:i18n` (resolução do idioma) e `smoke:i18n` (splash).
+- **Atualização 2026-10-30 — o idioma da nota não é estado de formulário.**
+  `NotesState.reset()` o devolvia para PT, e o reset roda em Limpar, em todo atalho
+  do Ctrl+K e depois de inserir a nota: só a 1ª nota da sessão saía no idioma do
+  atendimento. Ele agora vive fora do `reset()`, como a visibilidade.

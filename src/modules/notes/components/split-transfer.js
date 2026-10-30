@@ -5,7 +5,7 @@ import { showToast } from "../../shared/utils.js";
 import { copyHtmlToClipboard, ensureNoteCardIsOpen, triggerInputEvents } from "../notes-bridge.js";
 import { SoundManager } from "../../shared/sound-manager.js";
 import { enableFilledCheck } from "../../shared/dom-utils.js";
-import { getLanguage } from "../../shared/i18n.js";
+import { getLanguage, onLanguageChange } from "../../shared/i18n.js";
 
 // Labels dos campos ficam em inglês de propósito (já eram assim antes desta
 // tradução) - só o chrome próprio do componente (botões/placeholders/toasts)
@@ -16,6 +16,13 @@ const ST_DICT = {
     pt: {
         back: "Voltar",
         generateNote: "Gerar Nota",
+        sopBefore: "Certifique-se de consultar o",
+        sopAfter: "antes de transferir.",
+        autoFill: "Auto-Preencher Dados da Página",
+        fetchingData: "Buscando dados...",
+        technicalData: "Dados Técnicos",
+        contactAndIssue: "Contato & Problema",
+        ccCopies: "Cópias (CC)",
         describeIssuePlaceholder: "Descreva o erro, passos para reproduzir...",
         whatTestedPlaceholder: "O que você já testou?",
         fieldsFilledToast: (n) => `${n} campos preenchidos!`,
@@ -28,6 +35,13 @@ const ST_DICT = {
     es: {
         back: "Volver",
         generateNote: "Generar Nota",
+        sopBefore: "Asegúrate de consultar el",
+        sopAfter: "antes de transferir.",
+        autoFill: "Autocompletar Datos de la Página",
+        fetchingData: "Buscando datos...",
+        technicalData: "Datos Técnicos",
+        contactAndIssue: "Contacto y Problema",
+        ccCopies: "Copias (CC)",
         describeIssuePlaceholder: "Describe el error, pasos para reproducirlo...",
         whatTestedPlaceholder: "¿Qué ya probaste?",
         fieldsFilledToast: (n) => `¡${n} campos completados!`,
@@ -40,6 +54,13 @@ const ST_DICT = {
     en: {
         back: "Back",
         generateNote: "Generate Note",
+        sopBefore: "Make sure to check the",
+        sopAfter: "before transferring.",
+        autoFill: "Auto-Fill Page Data",
+        fetchingData: "Fetching data...",
+        technicalData: "Technical Data",
+        contactAndIssue: "Contact & Issue",
+        ccCopies: "Copies (CC)",
         describeIssuePlaceholder: "Describe the error, steps to reproduce...",
         whatTestedPlaceholder: "What have you already tested?",
         fieldsFilledToast: (n) => `${n} fields filled in!`,
@@ -56,6 +77,15 @@ function st(key) {
 }
 
 export function createSplitTransferComponent(onBack) {
+    // O componente é montado uma vez, no boot, e o idioma da interface pode
+    // mudar depois (o perfil chega do backend). Todo texto do chrome passa por
+    // localize(): roda agora e de novo a cada troca.
+    const localized = [];
+    function localize(apply) {
+        apply();
+        localized.push(apply);
+    }
+
     // --- 1. LAYOUT & STRUCTURE ---
     const container = document.createElement("div");
     container.style.cssText = "display: flex; flex-direction: column; height: 100%; width: 100%; background: #F8F9FA; overflow: hidden; position: relative;";
@@ -203,20 +233,23 @@ export function createSplitTransferComponent(onBack) {
     // A. Warning Banner
     const banner = document.createElement("div");
     banner.style.cssText = styles.banner;
-    banner.innerHTML = `
-        <span>⚠️</span>
-        <div>
-            <b>Out of Scope Check:</b><br>
-            Certifique-se de consultar o <a href="#" style="color:inherit;text-decoration:underline;">SOP</a> antes de transferir.
-        </div>
-    `;
+    localize(() => {
+        banner.innerHTML = `
+            <span>⚠️</span>
+            <div>
+                <b>Out of Scope Check:</b><br>
+                ${st('sopBefore')} <a href="#" style="color:inherit;text-decoration:underline;">SOP</a> ${st('sopAfter')}
+            </div>
+        `;
+    });
     scrollArea.appendChild(banner);
 
     // B. Magic Fill Button
     const magicContainer = document.createElement("div");
     magicContainer.style.marginBottom = "24px";
     const btnMagic = document.createElement("button");
-    btnMagic.innerHTML = `✨ &nbsp; Auto-Preencher Dados da Página`;
+    const showMagicLabel = () => { btnMagic.innerHTML = `✨ &nbsp; ${st('autoFill')}`; };
+    localize(showMagicLabel);
     btnMagic.style.cssText = "width:100%; padding:10px; border:1px dashed #1a73e8; background:#F0F7FF; color:#1a73e8; border-radius:8px; font-weight:600; cursor:pointer; font-size:13px; transition:all 0.2s;";
     
     btnMagic.onmouseover = () => btnMagic.style.background = "#E1EFFF";
@@ -225,10 +258,17 @@ export function createSplitTransferComponent(onBack) {
     magicContainer.appendChild(btnMagic);
     scrollArea.appendChild(magicContainer);
 
+    function createSectionTitle(section, icon, key) {
+        const title = document.createElement("div");
+        title.style.cssText = styles.sectionTitle;
+        localize(() => { title.textContent = `${icon} ${st(key)}`; });
+        section.appendChild(title);
+    }
+
     // C. Technical Data
     const techSection = document.createElement("div");
     techSection.style.cssText = styles.section;
-    techSection.innerHTML = `<div style="${styles.sectionTitle}">🛠️ Dados Técnicos</div>`;
+    createSectionTitle(techSection, "🛠️", 'technicalData');
     scrollArea.appendChild(techSection);
 
     createField({ id: "cid", label: "Ads CID", placeholder: "000-000-0000", required: true, parent: techSection });
@@ -262,7 +302,7 @@ export function createSplitTransferComponent(onBack) {
     // D. Contact & Issue
     const contactSection = document.createElement("div");
     contactSection.style.cssText = styles.section;
-    contactSection.innerHTML = `<div style="${styles.sectionTitle}">📞 Contato & Problema</div>`;
+    createSectionTitle(contactSection, "📞", 'contactAndIssue');
     scrollArea.appendChild(contactSection);
 
     createField({ id: "name", label: "Advertiser Name", required: true, autocomplete: "name", parent: contactSection });
@@ -271,14 +311,18 @@ export function createSplitTransferComponent(onBack) {
     createField({ id: "email", label: "Contact Email", type: "email", autocomplete: "email", parent: contactSection });
     createField({ id: "callback", label: "Preferred Callback Time (Timezone)", parent: contactSection });
     
-    createField({ id: "desc", label: "Detailed Issue Description", type: "textarea", placeholder: st('describeIssuePlaceholder'), required: true, parent: contactSection });
-    createField({ id: "checks", label: "Troubleshooting Performed", type: "textarea", placeholder: st('whatTestedPlaceholder'), parent: contactSection });
+    createField({ id: "desc", label: "Detailed Issue Description", type: "textarea", required: true, parent: contactSection });
+    createField({ id: "checks", label: "Troubleshooting Performed", type: "textarea", parent: contactSection });
+    localize(() => {
+        fields.desc.input.placeholder = st('describeIssuePlaceholder');
+        fields.checks.input.placeholder = st('whatTestedPlaceholder');
+    });
     createField({ id: "screens", label: "Screenshots (Links)", type: "textarea", parent: contactSection });
 
     // E. CC Contacts
     const copySection = document.createElement("div");
     copySection.style.cssText = styles.section;
-    copySection.innerHTML = `<div style="${styles.sectionTitle}">📧 Cópias (CC)</div>`;
+    createSectionTitle(copySection, "📧", 'ccCopies');
     scrollArea.appendChild(copySection);
 
     createField({ id: "cc_adv", label: "Advertiser Contact", parent: copySection });
@@ -290,12 +334,12 @@ export function createSplitTransferComponent(onBack) {
     footer.style.cssText = "padding: 16px 24px; background: rgba(255,255,255,0.95); border-top: 1px solid #E0E0E0; display: flex; justify-content: space-between; align-items: center; position: absolute; bottom: 0; left: 0; width: 100%; box-sizing: border-box; z-index: 20;";
 
     const btnBack = document.createElement("button");
-    btnBack.innerHTML = st('back');
+    localize(() => { btnBack.textContent = st('back'); });
     btnBack.style.cssText = "border:none; background:transparent; color:#5F6368; font-weight:600; cursor:pointer; padding: 8px;";
     btnBack.onclick = onBack;
 
     const btnGenerate = document.createElement("button");
-    btnGenerate.textContent = st('generateNote');
+    localize(() => { btnGenerate.textContent = st('generateNote'); });
     btnGenerate.style.cssText = "padding: 10px 24px; background: #1a73e8; color: #fff; border: none; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: all 0.2s;";
     
     footer.appendChild(btnBack);
@@ -307,8 +351,7 @@ export function createSplitTransferComponent(onBack) {
 
     // Magic Fill Logic
     btnMagic.onclick = async () => {
-        const oldText = btnMagic.innerHTML;
-        btnMagic.innerHTML = "⏳ Buscando dados...";
+        btnMagic.innerHTML = `⏳ ${st('fetchingData')}`;
         
         try {
             const data = await getPageData();
@@ -351,7 +394,7 @@ export function createSplitTransferComponent(onBack) {
             console.error(e);
             showToast(st('readPageErrorToast'));
         } finally {
-            btnMagic.innerHTML = oldText;
+            showMagicLabel();
         }
     };
 
@@ -442,5 +485,7 @@ ${getVal('checks')}
             showToast(st('copiedOpenNoteToast'));
         }
     };
+
+    onLanguageChange(() => localized.forEach((apply) => apply()));
     return container;
 }

@@ -229,51 +229,113 @@ check('nenhum cenário preenche campo que o substatus não tem', () => {
 // segue servindo só PT/ES por um tempo indeterminado — e é nesse estado que o
 // agente EN vive até alguém traduzir pela tela.
 //
-// Zerar o espelho nesse caso derrubaria o fallback embutido e o agente EN
-// leria tudo em português, sem erro nenhum.
-{
+// O que se confere é o que o app FAZ: procurar o texto do cenário publicado
+// pelo id dele, como `getScenarioFields` faz. Contar entradas do espelho (a
+// versão anterior desta checagem) passava verde com 0 de 26 cenários achando o
+// EN: o espelho embutido é chaveado por `quickfill-*` e a publicação renomeia
+// os ids para `cw-<substatus>-<nome>`.
+async function hidratar(linhas) {
     for (const k of Object.keys(store)) delete store[k];
     store['cw_content_note_template'] = JSON.stringify(
-        seed.items
-            .filter((it) => it.lang !== 'EN')
-            .map((it, idx) => ({
-                id: 'itm_' + idx, key: it.key, field: it.field, lang: it.lang,
-                label: it.label, value: it.value, sortOrder: it.sortOrder ?? idx,
-            }))
+        linhas.map((it, idx) => ({
+            id: 'itm_' + idx, key: it.key, field: it.field, lang: it.lang,
+            label: it.label, value: it.value, sortOrder: it.sortOrder ?? idx,
+        }))
     );
-
-    const semEnBundle = await build({
+    const b = await build({
         entryPoints: [resolve(here, '../src/modules/notes/data/note-templates-service.js')],
         bundle: true,
         write: false,
         format: 'cjs',
         platform: 'node',
         logLevel: 'silent',
-        footer: { js: 'module.exports.__en = SCENARIO_EN; module.exports.__es = SCENARIO_ES;' },
+        footer: { js: 'module.exports.__en = SCENARIO_EN; module.exports.__es = SCENARIO_ES; module.exports.__sc = scenarioSnippets;' },
     });
-    const semEnMod = { exports: {} };
+    const m = { exports: {} };
     // eslint-disable-next-line no-new-func
-    new Function('module', 'exports', 'require', semEnBundle.outputFiles[0].text)(semEnMod, semEnMod.exports, require);
+    new Function('module', 'exports', 'require', b.outputFiles[0].text)(m, m.exports, require);
+    await m.exports.loadNoteTemplates();
+    return { en: m.exports.__en, es: m.exports.__es, sc: m.exports.__sc };
+}
 
-    const enAntes = Object.keys(semEnMod.exports.__en).length;
-    await semEnMod.exports.loadNoteTemplates();
+// O texto embutido de um cenário publicado: o mesmo slug, no espelho que o
+// código traz de fábrica (instância separada, nunca reescrita).
+const { SCENARIO_EN: EN_DE_FABRICA, SCENARIO_ES: ES_DE_FABRICA, scenarioSlug } = notesMod.exports;
+const deFabrica = (mapa, idPublicado, substatus) => {
+    const slug = scenarioSlug(idPublicado, substatus);
+    const id = Object.keys(mapa).find((k) => scenarioSlug(k, substatus) === slug);
+    return id ? mapa[id] : undefined;
+};
 
-    check('Central sem linhas EN não derruba o EN embutido', () => {
-        const depoisEnSemCentral = Object.keys(semEnMod.exports.__en).length;
-        if (depoisEnSemCentral !== enAntes) {
-            throw new Error(
-                `o fallback EN foi de ${enAntes} para ${depoisEnSemCentral} cenários — ` +
-                'o agente EN cairia no português'
-            );
+{
+    const semEn = await hidratar(seed.items.filter((it) => it.lang !== 'EN'));
+
+    check('Central sem linhas EN: todo cenário publicado ainda acha o EN', () => {
+        const ids = Object.keys(semEn.sc);
+        const sem = ids.filter((id) => !semEn.en[id]);
+        if (sem.length) {
+            throw new Error(`${sem.length} de ${ids.length} cenários publicados sem EN (cairiam no português): ${sem.slice(0, 3).join(', ')}`);
+        }
+    });
+
+    check('e o EN achado é o embutido do MESMO cenário, não o de outro', () => {
+        for (const [id, sc] of Object.entries(semEn.sc)) {
+            const esperado = deFabrica(EN_DE_FABRICA, id, sc.substatus[0]);
+            if (JSON.stringify(semEn.en[id]) !== JSON.stringify(esperado)) {
+                throw new Error(`${id}: o EN veio diferente do embutido de mesmo slug`);
+            }
         }
     });
 
     check('mas o ES publicado continua vencendo o embutido', () => {
         // O contrário também tem de valer: idioma que a Central SERVE manda,
         // senão uma correção publicada nunca chegaria ao agente.
-        if (!Object.keys(semEnMod.exports.__es).length) {
+        if (!Object.keys(semEn.es).length) {
             throw new Error('o espelho ES ficou vazio com linhas ES publicadas');
         }
+        const primeiro = seed.items.find((it) => it.lang === 'ES');
+        const publicado = JSON.parse(primeiro.value).fields;
+        const achado = Object.values(semEn.es).find((o) => Object.entries(publicado).every(([k, v]) => o[k] === v));
+        if (!achado) throw new Error(`o ES publicado de "${primeiro.label}" não chegou ao espelho`);
+    });
+}
+
+// --- A Central serve o EN de UM cenário só ---
+//
+// Quem traduz pela tela publica um cenário de cada vez. Antes, o primeiro EN
+// publicado SUBSTITUÍA o espelho inteiro: os outros 26 cenários passavam a sair
+// em português para todo agente EN, sem erro nenhum.
+{
+    const SENTINELA = 'SENTINELA-EN-PUBLICADO';
+    const umEn = seed.items.find((it) => it.lang === 'EN');
+    const valor = JSON.parse(umEn.value);
+    valor.fields['field-REASON_COMMENTS'] = SENTINELA;
+    const linhas = [
+        ...seed.items.filter((it) => it.lang !== 'EN'),
+        { ...umEn, value: JSON.stringify(valor) },
+    ];
+    const parcial = await hidratar(linhas);
+
+    check('EN publicado só para um cenário: o publicado vence, só nele', () => {
+        const vencedores = Object.entries(parcial.en).filter(([, o]) => o['field-REASON_COMMENTS'] === SENTINELA);
+        if (vencedores.length !== 1) throw new Error(`${vencedores.length} cenários com o texto publicado (esperado 1)`);
+        if (!parcial.sc[vencedores[0][0]]) throw new Error('o EN publicado ficou numa chave que não é cenário');
+    });
+
+    check('EN publicado só para um cenário: os demais seguem em EN', () => {
+        const ids = Object.keys(parcial.sc);
+        const sem = ids.filter((id) => !parcial.en[id]);
+        if (sem.length) {
+            throw new Error(`${sem.length} de ${ids.length} cenários caíram para o português depois de publicar 1 EN`);
+        }
+    });
+
+    // O await fica FORA do check: o check deste arquivo é síncrono, e um
+    // callback async passaria verde sem que a asserção rodasse.
+    const outra = await hidratar(linhas);
+    check('hidratar de novo (cache, depois rede) não acumula nem perde entradas', () => {
+        const de = Object.keys(parcial.en).sort().join();
+        if (Object.keys(outra.en).sort().join() !== de) throw new Error('o espelho mudou entre duas hidratações iguais');
     });
 }
 

@@ -3,7 +3,7 @@
 import { captureNameWithMagic, getSmartGreeting } from "./page-data.js";
 import { SoundManager } from "./sound-manager.js";
 import { esperar, clamp } from "./dom-utils.js";
-import { getLanguage } from "./i18n.js";
+import { getLanguage, getLocale, getMonthStyle } from "./i18n.js";
 import { Z } from "./z-layers.js";
 import { AUTHOR_CREDIT } from "./config.js";
 
@@ -844,7 +844,7 @@ export async function playStartupAnimation() {
             <div id="p2" class="text-name"></div>
             <div id="p3" class="text-footer"></div>
             <div id="p-sextou" style="width: 100%; text-align: center; display: none;">
-                <div class="sextou-badge">🎉 Sextou!</div>
+                <div class="sextou-badge"></div>
             </div>
         </div>
         <div class="credit-pro">created by <span>${AUTHOR_CREDIT}</span></div>
@@ -899,6 +899,7 @@ SoundManager.playStartup();
       void elSextou.offsetWidth;
       const badge = elSextou.querySelector(".sextou-badge");
       if (badge) {
+        badge.textContent = data.fridayBadge;
         badge.style.opacity = "1";
         badge.style.transform = "scale(1)";
       }
@@ -1047,39 +1048,50 @@ export function makeResizable(element, handle) {
   handle.onmouseleave = () => handle.style.opacity = "0.6";
 }
 
+// "às" e o texto de reserva fazem parte da frase na tela (interface).
+const DATE_TEXT = {
+  pt: { unavailable: "Data indisponível", at: "às" },
+  es: { unavailable: "Fecha no disponible", at: "a las" },
+  en: { unavailable: "Date unavailable", at: "at" },
+};
+
 /**
- * Formata uma string de data ISO para um formato amigável ao usuário.
+ * Formata uma string de data ISO para um formato amigável ao usuário, no idioma
+ * da INTERFACE: "05/09/2026 às 14:30" (PT), "05 Sept 2026 at 14:30" (EN).
  * @param {string} isoString - A data no formato ISO 8601.
- * @returns {string} - Data formatada como DD/MM/YYYY às HH:MM ou fallback.
+ * @returns {string} - Data formatada ou o texto de "indisponível".
  */
 export function formatToLocalUserDate(isoString) {
-  if (!isoString || isoString === "N/A" || isoString === "undefined") return "Data indisponível";
+  const lang = getLanguage();
+  const txt = DATE_TEXT[lang] || DATE_TEXT.pt;
+  if (!isoString || isoString === "N/A" || isoString === "undefined") return txt.unavailable;
 
   // Suporte para múltiplas datas separadas por pipe (comum no campo availability)
   if (String(isoString).includes(' | ')) {
     return isoString.split(' | ')
       .map(part => formatToLocalUserDate(part.trim()))
-      .filter(f => f !== "Data indisponível")
+      .filter(f => f !== txt.unavailable)
       .join(' | ');
   }
 
   try {
     const date = new Date(isoString);
-    if (isNaN(date.getTime())) return "Data indisponível";
+    if (isNaN(date.getTime())) return txt.unavailable;
 
-    const datePart = date.toLocaleDateString('pt-BR', {
+    const locale = getLocale(lang);
+    const datePart = date.toLocaleDateString(locale, {
       day: '2-digit',
-      month: '2-digit',
+      month: getMonthStyle(lang),
       year: 'numeric'
     });
-    const timePart = date.toLocaleTimeString('pt-BR', {
+    const timePart = date.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit'
     });
 
-    return `${datePart} às ${timePart}`;
+    return `${datePart} ${txt.at} ${timePart}`;
   } catch (e) {
-    return "Data indisponível";
+    return txt.unavailable;
   }
 }
 
@@ -1164,6 +1176,17 @@ function createBaseDialog() {
     return dialog;
 }
 
+// Os diálogos são montados sob demanda, então ler o idioma na hora de abrir
+// basta — não há tela viva para repintar na troca.
+const DIALOG_DICT = {
+    pt: { cancel: 'Cancelar', confirm: 'Confirmar', delete: 'Excluir' },
+    es: { cancel: 'Cancelar', confirm: 'Confirmar', delete: 'Eliminar' },
+    en: { cancel: 'Cancel', confirm: 'Confirm', delete: 'Delete' },
+};
+function dialogText(key) {
+    return (DIALOG_DICT[getLanguage()] || DIALOG_DICT.pt)[key];
+}
+
 export function alertDialog(message) {
     return new Promise((resolve) => {
         const overlay = createBaseOverlay();
@@ -1199,13 +1222,12 @@ export function confirmDialog(message, opts = {}) {
         const dialog = createBaseDialog();
 
         const confirmColor = opts.danger ? '#FF3B30' : '#007AFF';
-        const defaultDangerText = getLanguage() === 'es' ? 'Eliminar' : 'Excluir';
-        const confirmText = opts.confirmText || (opts.danger ? defaultDangerText : 'Confirmar');
+        const confirmText = opts.confirmText || dialogText(opts.danger ? 'delete' : 'confirm');
 
         dialog.innerHTML = `
             <div style="font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #202124; line-height: 1.4;">${message}</div>
             <div style="display: flex; gap: 10px;">
-                <button id="cw-conf-cancel" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #DADCE0; background: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; color: #5F6368;">Cancelar</button>
+                <button id="cw-conf-cancel" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #DADCE0; background: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; color: #5F6368;">${dialogText('cancel')}</button>
                 <button id="cw-conf-ok" style="flex: 1; padding: 12px; border-radius: 12px; border: none; background: ${confirmColor}; color: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px;">${confirmText}</button>
             </div>
         `;
@@ -1242,7 +1264,7 @@ export function promptDialog(message, defaultValue = "") {
             <div style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #202124; text-align: left;">${message}</div>
             <input type="text" id="cw-prompt-input" value="${defaultValue}" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #DADCE0; margin-bottom: 20px; box-sizing: border-box; font-family: inherit; font-size: 14px; outline: none;">
             <div style="display: flex; gap: 10px;">
-                <button id="cw-prompt-cancel" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #DADCE0; background: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; color: #5F6368;">Cancelar</button>
+                <button id="cw-prompt-cancel" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #DADCE0; background: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; color: #5F6368;">${dialogText('cancel')}</button>
                 <button id="cw-prompt-ok" style="flex: 1; padding: 12px; border-radius: 12px; border: none; background: #007AFF; color: white; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px;">OK</button>
             </div>
         `;

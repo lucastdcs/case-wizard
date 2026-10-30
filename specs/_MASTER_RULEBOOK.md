@@ -29,7 +29,10 @@ conveniência:
 - **Exceção: texto que o caso carrega mas que não é para o anunciante.** O bloco
   "Pre-call checklist" da nota sai sempre em inglês, nos três idiomas, porque a
   auditoria do SOP o procura por texto (ADR-0018). Só a tela do formulário segue
-  `getLanguage()`.
+  `getLanguage()`. A única linha dessa nota que NÃO é em inglês é o rodapé
+  `Gerado pelo Cases Wizard`, fixo em PT nos três idiomas
+  (`specs/workflow/precall-checklist.md`); o rodapé da nota do Case Notes, ao
+  contrário, segue o idioma do atendimento.
 - **O valor gravado no backend nunca é traduzido.** `Motivo_Abertura`,
   `Task_BAU`, o motivo do descarte e os status/substatus seguem em PT (ou no
   original do CRM) nos três idiomas. Traduzi-los quebra a categorização dos
@@ -58,4 +61,16 @@ operacional em **mapa paralelo chaveado por id** (`SCENARIO_EN`,
 intocado. Registro em EN: **EN-US corporativo neutro**.
 
 `npm run test:i18n` trava a paridade dos dicionários e `npm run smoke:i18n`
-trava qual knob cada lugar lê. Chave nova sem as três línguas reprova.
+trava qual knob cada lugar lê. Chave nova sem as três línguas reprova. Todo
+mapa `X_ES` precisa de um `X_EN` com as mesmas chaves e propriedades — um mapa só
+de ES é o formato da época do PT/ES, e deixa o inglês caindo em português sem
+erro (é o que o `test:i18n` também reprova).
+
+**Texto de tela montado no boot passa por dois lugares**: o dicionário **e** o
+handler de `onLanguageChange` do módulo. O perfil (que decide o idioma) chega
+depois do boot, então o que o módulo desenha uma vez só fica no idioma errado se
+ninguém o repintar. O `smoke:i18n` troca o idioma com o app aberto e lê o texto.
+
+**Nomes de país e cidade** (`shared/timezones.js`) são texto de tela, não valor:
+o catálogo é em PT, e `hubName(hub, lang)` / `hubLabel(hub, lang)` dão a exibição
+por idioma. O que se grava continua sendo a zona IANA.

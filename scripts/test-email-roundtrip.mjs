@@ -43,7 +43,7 @@ const mod = { exports: {} };
 // eslint-disable-next-line no-new-func
 new Function('module', 'exports', 'require', bundled.outputFiles[0].text)(mod, mod.exports, require);
 
-const { EMAIL_TEMPLATES, applyEmailContent, getEmailTemplate } = mod.exports;
+const { EMAIL_TEMPLATES, applyEmailContent, getEmailTemplate, formatTemplateDate } = mod.exports;
 
 // Snapshot ANTES de qualquer hidratação, incluindo a visão em ES que o módulo
 // entrega hoje (é ela que o agente vê, não o overlay cru).
@@ -202,6 +202,42 @@ check('Central sem linhas EN não derruba o overlay EN embutido', () => {
             throw new Error(`${orig.id}: a visão EN caiu para outro idioma sem linha EN publicada`);
         }
     }
+});
+
+// --- Rótulos dos campos no EN ---
+//
+// O overlay traduz só os rótulos que lista em `labels`; o que ele esquece cai
+// no PT sem erro nenhum. Foi assim que "Data 1…3" e "Hora 1…3" do modelo de
+// reagendamento apareciam em português no formulário do agente EN. Rótulo igual
+// ao PT só passa se for neutro (sigla, URL, link).
+check('nenhum rótulo de campo do EN ficou igual ao do PT', () => {
+    const NEUTRO = /^(URL|Link|ID|CID|AM|Email|E-mail)$/i;
+    for (const base of originalPt) {
+        const en = originalEnView.find((t) => t.id === base.id);
+        if (!en) throw new Error('sem visão EN para ' + base.id);
+        base.placeholders.forEach((p, i) => {
+            const rotuloEn = en.placeholders[i].label;
+            if (rotuloEn === p.label && !NEUTRO.test(p.label)) {
+                throw new Error(`${base.id} ${p.key}: o rótulo EN é o do PT ("${p.label}")`);
+            }
+        });
+    }
+});
+
+// --- A data que entra no token [MM/DD/YYYY] ---
+//
+// Era `toLocaleDateString('pt-BR')` fixo: o e-mail em inglês saía com
+// 05/09/2026 onde o token pede mês/dia/ano (09/05/2026). 5 de setembro, de
+// propósito: dia e mês diferentes e de um dígito, para a inversão e o zero à
+// esquerda aparecerem.
+check('o token [MM/DD/YYYY] sai no formato do idioma do atendimento', () => {
+    const data = new Date(2026, 8, 5);
+    const esperado = { pt: '05/09/2026', es: '05/09/2026', en: '09/05/2026' };
+    for (const [lang, texto] of Object.entries(esperado)) {
+        const veio = formatTemplateDate(data, lang);
+        if (veio !== texto) throw new Error(`${lang}: esperado ${texto}, veio ${veio}`);
+    }
+    if (formatTemplateDate(data, 'xx') !== esperado.pt) throw new Error('idioma desconhecido deveria cair no PT');
 });
 
 console.log('\n' + (fail ? '✗' : '✓') + ` round-trip de ${EMAIL_TEMPLATES.length} modelos (PT + ES + EN), ${fail} falhas\n`);

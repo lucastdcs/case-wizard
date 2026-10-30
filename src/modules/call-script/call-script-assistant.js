@@ -14,7 +14,7 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { getPageData } from "../shared/page-data.js";
 
-import { csaChecklistData, hydrateCallScriptFromContentCentral } from "./call-script-data.js";
+import { csaChecklistData, groupTitle, hydrateCallScriptFromContentCentral } from "./call-script-data.js";
 import {
     getLanguage, onLanguageChange,
     getOutputLanguage, onOutputLanguageChange,
@@ -143,12 +143,6 @@ const COLORS = {
     dangerBg: "#FCE8E6",
     success: "#34A853",
     successBg: "#E6F4EA"
-};
-
-const GROUP_TITLES = {
-    inicio: { PT: "Abertura", ES: "Apertura" },
-    meio: { PT: "Implementação (Tag Support)", ES: "Implementación" },
-    fim: { PT: "Fechamento", ES: "Cierre" }
 };
 
 // --- FOLHA DE ESTILOS DEDICADA ---
@@ -620,6 +614,7 @@ export function initCallScriptAssistant() {
       if (finalCopyBtn) finalCopyBtn.textContent = ct('copyFinalMessage');
       const resetLabel = resetBtn.querySelector('.js-csa-reset-label');
       if (resetLabel) resetLabel.textContent = ct('resetScript');
+      resizeHandle.title = ct('resize');
       csaBuildChecklist();
   });
 
@@ -693,7 +688,7 @@ export function initCallScriptAssistant() {
 
     const cardTitle = document.createElement("div");
     cardTitle.className = "csa-card-title";
-    cardTitle.textContent = GROUP_TITLES[groupKey][csaCurrentLang] || "";
+    cardTitle.textContent = groupTitle(groupKey, csaCurrentLang);
 
     const counter = document.createElement("span");
     counter.className = "csa-card-counter";

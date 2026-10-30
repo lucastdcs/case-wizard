@@ -5,6 +5,7 @@ import { getAgentName } from '../shared/page-data.js';
 import { esperar, simularCliqueReal } from '../shared/dom-utils.js';
 import { SoundManager } from '../shared/sound-manager.js';
 import { getLanguage, getOutputLanguage } from '../shared/i18n.js';
+import { formatTemplateDate } from './email-data.js';
 import { Z } from '../shared/z-layers.js';
 
 const EAS_DICT = {
@@ -17,6 +18,8 @@ const EAS_DICT = {
         cannedResponseButtonNotFound: "Botão Canned Response não encontrado.",
         emailFilledSuccess: "Email preenchido com sucesso!",
         editorFocusError: "Erro ao focar no editor.",
+        verifyEmailWarning: "<strong>Verifique o e-mail:</strong> O CRM pode traduzir caracteres incorretamente.",
+        amCcWarning: "<strong>Atenção:</strong> Verifique se o e-mail do AM deve estar em cópia.",
         // Fallbacks que entram no CORPO do e-mail quando o scraping não
         // encontra o dado — por isso seguem o idioma, não são só UI.
         fallbackClient: "Cliente",
@@ -31,6 +34,8 @@ const EAS_DICT = {
         cannedResponseButtonNotFound: "Botón Canned Response no encontrado.",
         emailFilledSuccess: "¡Email completado con éxito!",
         editorFocusError: "Error al enfocar el editor.",
+        verifyEmailWarning: "<strong>Verifica el correo:</strong> El CRM puede traducir los caracteres de forma incorrecta.",
+        amCcWarning: "<strong>Atención:</strong> Verifica si el correo del AM debe ir en copia.",
         fallbackClient: "Cliente",
         fallbackSite: "su sitio",
     },
@@ -43,6 +48,8 @@ const EAS_DICT = {
         cannedResponseButtonNotFound: "Canned Response button not found.",
         emailFilledSuccess: "Email filled in successfully!",
         editorFocusError: "Error focusing the editor.",
+        verifyEmailWarning: "<strong>Check the email address:</strong> The CRM may translate characters incorrectly.",
+        amCcWarning: "<strong>Heads up:</strong> Check whether the AM's email should be in CC.",
         fallbackClient: "Customer",
         fallbackSite: "your site",
     },
@@ -443,7 +450,7 @@ export async function runEmailAutomation(cannedResponseText) {
         const toInput = document.querySelector('input[aria-label="Enter To email address"]');
         if (toInput) {
             await fillField(toInput, pageData.clientEmail);
-            createFloatingWarning(toInput, "<strong>Verifique o e-mail:</strong> O CRM pode traduzir caracteres incorretamente.");
+            createFloatingWarning(toInput, eat('verifyEmailWarning'));
         }
     }
 
@@ -452,8 +459,7 @@ export async function runEmailAutomation(cannedResponseText) {
         const bccInput = document.querySelector('input[aria-label="Enter Bcc email address"]');
         if (bccInput) {
             await fillField(bccInput, pageData.internalEmail);
-            const warningMsg = `<strong>Atenção:</strong> Verifique se o e-mail do AM deve estar em cópia.`;
-            createFloatingWarning(bccInput, warningMsg);
+            createFloatingWarning(bccInput, eat('amCcWarning'));
         }
     }
     // ============================================================
@@ -585,7 +591,7 @@ export async function runQuickEmail(template) {
         const toInput = document.querySelector('input[aria-label="Enter To email address"]');
         if (toInput) {
             await fillField(toInput, pageData.clientEmail);
-            createFloatingWarning(toInput, "<strong>Verifique o e-mail:</strong> O CRM pode traduzir caracteres incorretamente.");
+            createFloatingWarning(toInput, eat('verifyEmailWarning'));
         }
     }
 
@@ -593,8 +599,7 @@ export async function runQuickEmail(template) {
         const bccInput = document.querySelector('input[aria-label="Enter Bcc email address"]');
         if (bccInput) {
             await fillField(bccInput, pageData.internalEmail);
-            const warningMsg = `<strong>Atenção:</strong> Verifique se o e-mail do AM deve estar em cópia.`;
-            createFloatingWarning(bccInput, warningMsg);
+            createFloatingWarning(bccInput, eat('amCcWarning'));
         }
     }
 
@@ -624,7 +629,7 @@ export async function runQuickEmail(template) {
         const day = date.getDay();
         if (day === 6) date.setDate(date.getDate() + 2);
         else if (day === 0) date.setDate(date.getDate() + 1);
-        const dataFormatada = date.toLocaleDateString('pt-BR');
+        const dataFormatada = formatTemplateDate(date, getOutputLanguage());
         
         let finalBody = template.body;
         finalBody = finalBody.replace(/\[Nome do Cliente\]/g, pageData.advertiserName || eao('fallbackClient'));

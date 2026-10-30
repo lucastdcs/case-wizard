@@ -47,3 +47,4 @@ No ADR needed for trivial choices or implementation details.
 | [0018](0018-precall-checklist-no-case-notes.md) | Pre-call Checklist: sub-recurso do Case Notes, com a nota em inglês fixo | Accepted | 2026-10-23 |
 | [0019](0019-home-de-links-destaques-e-categorias.md) | Home de Links: destaques com janela, prévia no link e categorias criadas pela Central | Accepted | 2026-10-23 |
 | [0020](0020-precall-checklist-build-avulso.md) | Pre-call Checklist: build avulso, sem backend, com o favorito dentro do arquivo | Accepted | 2026-10-27 |
+| [0021](0021-lembrete-de-qualidade-no-boot.md) | Lembrete de qualidade no boot: cartão não modal, depois dos modais | Accepted | 2026-10-30 |

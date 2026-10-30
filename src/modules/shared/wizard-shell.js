@@ -41,6 +41,7 @@ const SHELL_DICT = {
         done: "Concluir",
         dotsGroup: "Navegação entre os slides",
         report: "Reportar bug ou sugestão",
+        createdBy: "criado por",
         slideLabel: (i, n) => `Slide ${i} de ${n}`,
         announce: (i, n, title, text) => `Slide ${i} de ${n}: ${title}. ${text}`,
     },
@@ -51,6 +52,7 @@ const SHELL_DICT = {
         done: "Finalizar",
         dotsGroup: "Navegación entre las diapositivas",
         report: "Reportar error o sugerencia",
+        createdBy: "creado por",
         slideLabel: (i, n) => `Diapositiva ${i} de ${n}`,
         announce: (i, n, title, text) => `Diapositiva ${i} de ${n}: ${title}. ${text}`,
     },
@@ -61,6 +63,7 @@ const SHELL_DICT = {
         done: "Finish",
         dotsGroup: "Slide navigation",
         report: "Report a bug or suggestion",
+        createdBy: "created by",
         slideLabel: (i, n) => `Slide ${i} of ${n}`,
         announce: (i, n, title, text) => `Slide ${i} of ${n}: ${title}. ${text}`,
     },
@@ -495,7 +498,7 @@ export function openWizardShell({
     const creditEl = document.createElement("span");
     // textContent no nome, não innerHTML: a regra do projeto não abre exceção
     // por o dado vir de uma constante do próprio código.
-    creditEl.append(getLanguage() === "es" ? "creado por " : "criado por ");
+    creditEl.append(`${wt("createdBy")} `);
     const creditName = document.createElement("span");
     creditName.className = "cw-wiz-credit-name";
     creditName.textContent = AUTHOR_CREDIT;

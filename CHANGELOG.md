@@ -8,6 +8,184 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Lembrete de qualidade em todo boot** (ADR-0021). Um cartão no canto inferior
+  esquerdo lembra o agente de seguir as diretrizes de QA e o SOP do segmento do
+  caso, e de que o Case Wizard só ajuda a preencher — a qualidade do tratamento é
+  do agente. Não é modal: sem fundo escurecido, sem tirar o foco de quem digita,
+  e o CRM segue clicável por baixo. Aparece só depois da splash e do tour/novidades
+  (no primeiro uso o relógio não corre por baixo do modal), no idioma da
+  interface, com um som curto de duas notas que respeita o mudo de Configurações.
+  Some sozinho em 12s; mouse ou teclado dentro dele seguram o relógio, e "Entendi"
+  dispensa. `npm run smoke:disclaimer` (33 asserções).
+
+### Changed
+- **Notas: "Caso de Portugal?" virou "Caso da Europa?"** (ES: "¿Caso de Europa?",
+  EN: "Europe case?"). Só o texto muda — no seletor e na linha que sai na nota.
+  O comportamento é o mesmo (liga o campo de consentimento de gravação) e os
+  identificadores internos (`CASO_PORTUGAL`, `isPortugalCase`) ficam, porque
+  rascunhos já salvos dependem deles.
+
+### Fixed
+- **A abertura (splash) saía sempre em português**, até com a ferramenta em EN
+  ou ES: prefixo, as 15 frases, o selo de sexta e o nome de reserva ganharam
+  dicionário pt/es/en. E, como a splash roda **antes** de o perfil chegar (o
+  e-mail que o busca é capturado dentro dela), quem depende só do perfil a veria
+  no idioma errado em todo boot: o último idioma de perfil aplicado agora fica
+  guardado (`cw_profile_lang`) e vale já na carga seguinte, abaixo da escolha
+  manual. O primeiro boot de todos continua em PT. Travado em `test:i18n` (+6,
+  resolução do idioma) e `smoke:i18n` (+4, com o relógio fixado numa sexta de
+  manhã).
+- **Ctrl+K: 11 das 12 linhas ficavam em português com a ferramenta em EN.** O
+  hint só existia em PT/ES e cinco rótulos eram texto fixo. Os nomes são os que
+  cada módulo mostra no cabeçalho (`Links Central`, `My Library`, `Settings`…),
+  resolvidos na hora de desenhar, e a busca acha por qualquer idioma ("biblioteca"
+  encontra "My Library"). `smoke:i18n` +9.
+- **Datas e horas na tela estavam em `pt-BR`**: o detalhe do caso no BAU Form
+  (`05/09/2026 às 14:30`), o eco do horário (Nova York → Brasília) e, no Timezone,
+  tudo que não fosse ES. Agora seguem o idioma da interface; em EN o mês sai por
+  extenso curto (`05 Sept 2026 at 14:30`), porque 05/09 é 5 de setembro ou 9 de
+  maio conforme o leitor, e a hora é 24 h — o Timezone lê a hora pelo texto antes
+  do `:`, que quebraria com `3:27 PM`. PT não muda; no eco do BAU Form o ES passa
+  a mostrar `5/9` em vez de `05/09`. `test:i18n` +3, `smoke:i18n` +4.
+- **Erros do BAU que chegavam ao toast do agente sempre em português**, com o
+  prefixo `Error:` do roteador (timeout, conexão, falha de envio/edição, "não é o
+  dono", "já processado pelo TL", "não encontrado"). O servidor passa a mandar um
+  `code` estável junto do texto e o cliente traduz por ele; o texto em português
+  vira só o reserva, então backend antigo e código desconhecido mostram o que
+  mostravam. Contrato em `specs/data-models/api-payloads.md`. **Exige `clasp
+  push`** para o `code` chegar; os erros de cliente (timeout, conexão) já saem
+  traduzidos só com o front. `test:tl-decision` +6, `test:jsonp` +6.
+- **Strings que nenhum dicionário alcançava:** os avisos flutuantes do e-mail
+  automático sobre os campos Para e Bcc (quatro pontos), o aviso do Win Criteria
+  no seletor de tasks, a dica de erro do CID sob o campo do BAU Form (gravada uma
+  vez e nunca repintada), a etiqueta "Mídia" dos snippets da biblioteca, o
+  tooltip do selo DEV e os rótulos `Data 1…3`/`Hora 1…3` do modelo de reagendamento
+  em EN (o seed da Central foi regenerado). Travados em `smoke:i18n` (+12) e
+  `test:emails` (+1). O título padrão "Sem título" da biblioteca também ganhou
+  idiomas, mas a UI exige título e esse default não é alcançável hoje.
+- **A nota saía em português a partir do 2º caso da sessão, para agente ES e
+  EN.** `NotesState.reset()` devolvia o idioma da nota para PT, e o reset roda em
+  "Limpar", em todo atalho do Ctrl+K, ao guardar um rascunho e depois de inserir
+  uma nota: só a primeira nota da sessão saía no idioma certo. O idioma do
+  atendimento deixou de ser estado de formulário (como o `visible`, que já ficava
+  fora do reset). Travado em `smoke:i18n` (+15, com os dois knobs no mesmo
+  idioma, passando por Limpar, atalho, nota inserida e o caso seguinte; os de EN
+  e ES falham no código anterior e o controle PT passa nos dois).
+- **Cenários publicados na Central saíam em português para o agente EN — e o
+  teste que devia impedir isso passava verde.** Publicar renomeia os ids dos
+  cenários (`quickfill-x` → `cw-<substatus>-x`), e o espelho EN embutido é
+  chaveado pelos ids antigos: com a Central servindo PT e ES e nenhum EN, **0 de
+  26** cenários achavam o texto em inglês. Pior, publicar o EN de um só cenário
+  substituía o espelho inteiro e derrubava os outros 25. Agora o espelho é o
+  embutido (religado ao publicado pelo `slug`) completado pelo que a Central
+  serve, e o publicado vence; vale igual para o ES. A checagem antiga só contava
+  entradas do espelho; `test:note-templates` passa a consultar pelo id, como o app
+  (+4, três falham no código anterior).
+  **Até esta release chegar, produção segue assim para o EN:** rodar
+  `seedMissingLangsNow()` na planilha resolve na hora (é só dado).
+- **A nota gravada no CRM terminava com `Nota criada através do Cases Wizard.`
+  em português para ES e EN**, e o rótulo de reserva de evidência (`Evidência`)
+  também. Ambos agora seguem o idioma do atendimento; em PT o texto é o mesmo de
+  antes. O rodapé do Pre-call **continua** `Gerado pelo Cases Wizard` nos três
+  idiomas: é decisão da spec (`specs/workflow/precall-checklist.md`).
+- **O `[MM/DD/YYYY]` do e-mail preenchido automaticamente saía sempre em
+  dia/mês/ano.** Segue o idioma do atendimento: PT e ES, dia/mês/ano (igual a
+  antes); EN, mês/dia/ano, como o nome do token diz. Travado em `test:emails`.
+- **Os cartões do Call Script em inglês apareciam sem título** (o mapa só tinha
+  PT e ES e o fallback era texto vazio): `Opening`, `Implementation (Tag
+  Support)` e `Closing`. O mapa foi para `call-script-data.js`, ao lado do
+  roteiro, e nunca devolve vazio. Travado em `test:call-script` (+3).
+- **"Pronto para começar?" ficava em português no Case Notes e no Email
+  Assistant, mesmo com a interface em ES ou EN.** O bloco é montado uma vez, no
+  boot, e o perfil — que decide o idioma — só chega depois; o handler da troca
+  repintava rótulos e botões, mas não ele. No Email Assistant o texto nem passava
+  pelo dicionário, e junto dele estavam "Copiar HTML", "Preencher no CRM",
+  "Carregando...", "Nenhum resultado para…" e os dois textos do Smart CR (hint e
+  prévia). Tudo foi para o `EMAIL_DICT` (PT/ES/EN) e é repintado na troca, sem
+  tocar no que o agente já digitou. Travado em `smoke:i18n` (+3, e os de ES/EN
+  falham no código anterior).
+- **Português que sobrava com a interface em ES ou EN — segunda rodada da
+  auditoria de idioma.** Achado comparando o texto de cada módulo aberto já no
+  idioma certo com o aberto em PT e trocado depois:
+  - **BAU Form: com a interface em EN, todo rótulo e toda opção saíam em
+    português** (só existia mapa de ES). E o formulário, montado uma vez no boot,
+    só era repintado com a tela do formulário aberta — quem tinha o dashboard na
+    tela quando o perfil trocava o idioma abria "Novo caso" no idioma errado.
+    Agora há EN e o repaint inclui os cartões de escolha, o título da
+    confirmação, o bloco de disponibilidade e o botão de buscar SE ID.
+  - **Case Notes:** o Split & Transfer (aviso do SOP, "Auto-Preencher Dados da
+    Página", títulos de seção, botões, placeholders) e a ajuda e a busca do
+    seletor de tasks eram montados no boot e nunca repintados; os placeholders dos
+    selects de status, o título do botão do Split e 4 toasts estavam cravados em
+    PT. A prévia ao passar o mouse num cenário usava o idioma da **interface**,
+    mas o que vai para a nota segue o do **atendimento** — com os dois
+    divergentes a prévia mostrava um texto e a nota gravava outro (ADR-0016).
+  - **Todo o app:** o "Cancelar" e o "Confirmar" dos diálogos de confirmação
+    estavam cravados em PT (e o "Excluir" caía em PT em EN); o "Cancelar" e o
+    "Cancelado!" do card de processamento tinham tradução pronta no
+    dicionário e ninguém a usava; o aviso de falha ao copiar e a assinatura dos
+    tutoriais caíam em PT em EN; o erro crítico de boot e o de "usuário não
+    identificado" também.
+  - **Fusos:** nomes de país e de cidade ("Bolívia", "Colômbia", "EUA", "Nova
+    York") saíam em PT em ES e EN. Passam a ter exibição por idioma no catálogo
+    compartilhado, e o seletor de fuso do BAU Form usa os mesmos nomes — só o
+    texto, o `value` segue sendo a zona IANA. Os atalhos padrão do Ctrl+K ganham
+    nome e apelido por idioma, e a categoria "Pessoal" do Email Assistant e o
+    título do puxador de redimensionar do Call Script também.
+  Travado em `smoke:i18n` (+9: Case Notes, BAU Form e o diálogo de confirmação a
+  cada troca de idioma; no código anterior os de ES e EN falham), `test:i18n` (todo `X_ES` exige um
+  `X_EN` com as mesmas chaves) e `test:timezones` (+3, nenhum nome em português
+  em ES/EN). O build avulso do Pre-call em inglês acompanha a nova forma do aviso
+  de falha ao copiar.
+- **Pre-call avulso em inglês: o arquivo também é 100% inglês, não só a tela**
+  (ADR-0020). A variante `-en` mostrava tudo em inglês, mas o `.txt` ainda
+  carregava os dicionários PT/ES, os rótulos de screenshot do catálogo de tasks, os
+  rótulos de CRM em PT/ES, comentários CSS e `console.*` em português — e o SME,
+  que abre o arquivo, não o achou em inglês. Agora o build em inglês gera só o
+  dicionário `en` e os nomes das tasks, tira os rótulos PT/ES do CRM, os
+  comentários e todo `console`, e o arquivo cai de 75 para 57 KB. Também corrige o
+  aviso de falha ao copiar, que com a interface em inglês saía como "Falha ao
+  copiar". Consequência: só raspa uma tela do CRM em inglês (o desenho do
+  formulário é idêntico). `npm run smoke:precall-standalone` (32) audita o texto
+  decodificado do arquivo e prova que a auditoria enxerga o português.
+- **Ctrl+K: o clique do mouse num item se perdia.** Passar o mouse sobre um item
+  reconstruía a lista inteira, e o navegador, vendo o DOM trocado debaixo do
+  cursor, emitia outro `mouseover` — mais de dez reconstruções por segundo com o
+  mouse parado, e o clique no meio delas não acontecia (0 de 18 abriam o módulo
+  num teste de clique). O hover agora só troca a classe do item selecionado, e só
+  com movimento real do mouse. Junto sai o outro sintoma do mesmo defeito: a seta
+  ↓ com o cursor em cima da lista empacava no meio dela, porque a rolagem trazia
+  outro item para debaixo do cursor e o hover devolvia a seleção.
+- **Ctrl+K: o teclado morria em silêncio.** O **Tab** saía da palette, passava por
+  trás do overlay e chegava aos campos do CRM (o que se digitasse dali caía no
+  CRM); clicar no rodapé ou na folga da lista tirava o foco do campo e as setas,
+  o Enter e o Esc deixavam de responder. Agora o Tab anda pela lista como a seta
+  (Shift+Tab volta) e nunca sai da palette, o clique dentro dela não tira o foco
+  do campo, e o **Esc devolve o cursor ao campo do CRM** em que o agente estava.
+- **Ctrl+K: o Esc fechava também a janela do módulo aberta por baixo** (o Esc
+  global de `animations.js` via o mesmo evento). Agora só fecha a palette.
+- **Ctrl+K: abrir e fechar em sequência rápida.** Fechar e reabrir em menos de
+  200ms deixava a palette "aberta" por dentro, invisível e com o scroll da página
+  travado (o timer de remoção do fechamento anterior tirava o overlay novo). Enter
+  duplo e duplo clique no item desfaziam a própria ação (os módulos alternam), e
+  um clique nos 200ms depois de fechar atravessava para o CRM. Segurar a tecla
+  abria e fechava a palette em rajada.
+- **Ctrl+K: só Ctrl/Cmd+K puro abre** (Ctrl+Shift+K e Ctrl+Alt+K, que no Windows
+  é o AltGr, também abriam), e **não abre por cima de um diálogo, de um wizard
+  (boas-vindas e novidades) nem do card de processamento** — a pílula já não era
+  clicável com o card no ar, e o Ctrl+K era o caminho que furava essa regra. O
+  atalho agora escuta na captura, para um campo do CRM que dê `stopPropagation`
+  não o engolir.
+- **Ctrl+K: rótulo de atalho com `<` ou tag** era lido como HTML (`Retorno <b>48h</b>`
+  aparecia sem o texto da tag); e em janela baixa (DevTools encaixado, zoom alto)
+  o rodapé da palette saía da tela.
+- Testes: novo `npm run smoke:palette` (23 checagens de mecânica, cada uma numa
+  página limpa; 22 delas falham no código anterior — a outra só trava o hover).
+  `smoke:shortcuts` voltou a
+  passar (12/12): dois testes supunham Configurações fechada, mas o Ctrl+K
+  alterna e o módulo estava aberto, então o Enter o fechava.
+
 ## [6.6.0] - 2026-10-27
 
 ### Added

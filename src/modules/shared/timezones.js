@@ -59,6 +59,66 @@ export const TIMEZONE_HUBS = [
     { id: 'pr', name: 'Porto Rico', flag: '🇵🇷', zone: 'America/Puerto_Rico', label: 'San Juan', region: 'na' }
 ];
 
+// O catálogo acima é escrito em português, que é a língua da operação — mas
+// nome de país e de cidade é texto de TELA, e na interface em ES ou EN o agente
+// lê "Bolívia", "EUA", "Nova York". Só se listam os que diferem do português,
+// por idioma e por id. Isto é exibição: o que o BAU grava é a zona IANA.
+// O idioma entra como argumento, e não lido aqui, para o módulo seguir puro.
+const HUB_TEXT = {
+    es: {
+        es: { name: 'España' },
+        bo: { name: 'Bolivia' },
+        co: { name: 'Colombia' },
+        ec: { name: 'Ecuador' },
+        py: { name: 'Paraguay', label: 'Asunción' },
+        uy: { name: 'Uruguay', label: 'Montevideo' },
+        ni: { name: 'Nicaragua', label: 'Managua' },
+        pr: { name: 'Puerto Rico' },
+        gt: { label: 'C. de Guatemala' },
+        pa: { label: 'C. de Panamá' },
+        'us-et': { name: 'EE. UU. — Eastern', label: 'Nueva York' },
+        'us-ct': { name: 'EE. UU. — Central' },
+        'us-mt': { name: 'EE. UU. — Mountain' },
+        'us-az': { name: 'EE. UU. — Arizona' },
+        'us-pt': { name: 'EE. UU. — Pacific' },
+        'us-ak': { name: 'EE. UU. — Alaska' },
+        'us-hi': { name: 'EE. UU. — Hawái' },
+    },
+    en: {
+        pt: { label: 'Lisbon' },
+        es: { name: 'Spain' },
+        br: { name: 'Brazil — Brasília' },
+        'br-am': { name: 'Brazil — Amazonas' },
+        'br-ac': { name: 'Brazil — Acre' },
+        bo: { name: 'Bolivia' },
+        co: { name: 'Colombia' },
+        ec: { name: 'Ecuador' },
+        py: { name: 'Paraguay', label: 'Asunción' },
+        uy: { name: 'Uruguay', label: 'Montevideo' },
+        'us-et': { name: 'USA — Eastern', label: 'New York' },
+        'us-ct': { name: 'USA — Central' },
+        'us-mt': { name: 'USA — Mountain' },
+        'us-az': { name: 'USA — Arizona' },
+        'us-pt': { name: 'USA — Pacific' },
+        'us-ak': { name: 'USA — Alaska' },
+        'us-hi': { name: 'USA — Hawaii' },
+        mx: { name: 'Mexico' },
+        gt: { label: 'Guatemala City' },
+        ni: { name: 'Nicaragua', label: 'Managua' },
+        pa: { name: 'Panama', label: 'Panama City' },
+        do: { name: 'Dominican Rep.' },
+        pr: { name: 'Puerto Rico' },
+    },
+};
+
+export function hubName(hub, lang) {
+    return HUB_TEXT[lang]?.[hub.id]?.name ?? hub.name;
+}
+
+export function hubLabel(hub, lang) {
+    return HUB_TEXT[lang]?.[hub.id]?.label ?? hub.label;
+}
+
 export const DEFAULT_TIMEZONE = 'America/Sao_Paulo';
 
 // Deslocamento, em minutos, de uma zona IANA num INSTANTE dado.

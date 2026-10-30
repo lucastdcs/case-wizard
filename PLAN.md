@@ -7,6 +7,58 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Lembrete de qualidade em todo boot (2026-10-30, ADR-0021).** Pedido do
+      Lucas: avisar o agente, a cada abertura, de que deve seguir as diretrizes de
+      QA e o SOP do segmento do caso — o Case Wizard só ajuda a preencher, a
+      qualidade é do agente —, sem atrapalhar o CRM, no design do projeto e com
+      um som leve. Entregue como **cartão não modal** no canto inferior esquerdo
+      (`src/modules/disclaimer/`), e não como `showToast()`: sem fundo escurecido,
+      sem roubar o foco, 12s com pausa por mouse/foco, "Entendi" para dispensar,
+      idioma da interface, `SoundManager.playNotice()` (respeita o mudo). Entra só
+      depois de splash, tour e changelog, e para isso `initOnboarding()` e
+      `checkAndShowChangelog()` passaram a devolver uma promessa de fechamento.
+      Texto encurtado em relação ao pedido (PT, ES e EN). Só frontend.
+      `smoke:disclaimer` (a peça isolada + o app inteiro: primeiro uso, versão
+      nova, rotina) e quatro mutações que derrubam as asserções certas.
+      **Falta confirmar:**
+      - **no CRM real**, o que o canto inferior esquerdo cobre: no `mock-crm.html`
+        ele cobre ~60px do painel de dados por até 12s (um clique em "Entendi" ou
+        a espera liberam). Se cobrir algo que o agente usa o tempo todo, o próximo
+        passo é mudar de canto, não encolher o cartão;
+      - **o texto** com quem responde por QA (é lembrete, não orientação — não cita
+        regra nenhuma) e a revisão de ES/EN por falante nativo, no mesmo item de
+        revisão do espanhol abaixo;
+      - ao fechar a release: nota de versão do modal do agente (`RELEASE_NOTES`)
+        contando que o aviso existe — o `CHANGELOG` já tem.
+
+- [~] **Usabilidade em inglês (2026-10-29).** Levantamento em
+      `docs/I18N-EN-AUDIT.md`, reverificado contra `d5ed21c`.
+      1. [x] **Defeitos que gravavam idioma errado no caso (A1–A6)** — corrigidos,
+         cada um com teste que falha no código anterior: o idioma da nota deixou
+         de zerar no `reset()` (Limpar, atalho do Ctrl+K e nota inserida
+         devolviam PT, também para ES); o espelho EN/ES embutido volta a ser
+         achado depois da publicação (0 de 26 → 26 de 26) e não é mais apagado
+         por EN parcial; rodapé da nota e `Evidência` por idioma; `[MM/DD/YYYY]`
+         do e-mail automático pelo idioma do atendimento; títulos do Call Script
+         em EN. O A3 (rodapé do Pre-call) **não é defeito**: a spec o fixa em PT.
+      2. [x] **Interface restante (C1–C10)** — corrigida, cada uma com teste que
+         falha no código anterior: splash (e o último idioma de perfil guardado
+         para o 1º frame do boot seguinte), Ctrl+K, datas e horas (EN em 24 h, mês
+         curto), avisos do e-mail automático, aviso do Win Criteria, dica do CID,
+         etiqueta de mídia, rótulos do reagendamento EN, tooltip do selo DEV e os
+         erros do BAU por `code`. **Falta `clasp push`** para o `code` dos erros
+         chegar (o front já funciona sem ele, com o texto PT de reserva).
+      2b. [ ] **Backend**: ~8 strings do TL Dashboard, `Código.js`, `BAU_Dashboard.js`,
+         `BAU_Alerts.js`.
+      3. [ ] **Guardas** no `test:i18n` (ternário `=== 'es'`, `{PT, ES}` sem EN)
+         e o smoke que compara o app em PT e em EN.
+      4. [ ] **Central** (~490 strings, ADR-0017 fases 2–4) — só se o SME precisar.
+      **Decisões do Lucas pendentes** (seção G do documento): leitura de "não
+      reutilizar nota de outro idioma" e o selo "só PT"; "Nota em: PT" no
+      cabeçalho do Case Notes; Central em EN agora ou depois; data do caminho
+      manual do Email Assistant. (Hora em EN deixou de ser decisão: 24 h, porque o
+      Timezone lê a hora pelo texto.)
+
 - [~] **Home de Links: destaques, prévia e categorias (2026-10-23, ADR-0019).**
       Pedido do Lucas: agentes reclamam de procurar formulários/planilhas por
       nome dentro de Links. Entregue o desenho inteiro (variante A, painel de
@@ -57,8 +109,13 @@ This file differs from the long-term roadmap: it describes what is happening **n
       **Build avulso (2026-10-27, ADR-0020):** `npm run build:precall` gera um
       arquivo só com raspagem + formulário (`dist/precall-standalone.js` e o
       favorito `dist/precall-bookmarklet.txt`) para enviar ao SME que valida as
-      duas dúvidas acima; `smoke:precall-standalone` (29, com a variante `-en`). Falta: o SME rodar no
+      duas dúvidas acima; `smoke:precall-standalone` (32, com a variante `-en`). Falta: o SME rodar no
       CRM ao vivo — a captura e o Trusted Types só foram provados no mock.
+      **Achado fora do escopo, não corrigido (2026-10-27):** `notes-bridge.js`
+      mostra o aviso de falha ao copiar como `getLanguage() === 'es' ? "Error al
+      copiar" : "Falha ao copiar"` — com a interface em **inglês** o aviso sai em
+      português, no app inteiro, não só no avulso. O build `-en` troca a linha; no
+      app falta um mapa pt/es/en.
 
 - [~] **Idiomas na Central de Conteúdo + novidades da versão (2026-10-14,
       ADR-0017).** Seletor de idioma da **interface** (PT/ES/EN) no topo,
@@ -195,6 +252,31 @@ This file differs from the long-term roadmap: it describes what is happening **n
       do Apps Script — o gatilho ainda não existe (mesma nota do `Backup.js`).
 
 ## Done (esta sessão)
+
+- [x] **Mecânica do Ctrl+K (2026-10-28).** Revisão pedida pelo Lucas ("o uso está
+      pobre; confunde com o Tab; quebra ao selecionar com o mouse"), só de
+      mecânica de uso, sem feature nova. Reproduzido em navegador real antes de
+      mexer; o detalhe está no CHANGELOG `[Unreleased] → Fixed`. Causa do clique
+      perdido: o hover reconstruía a lista inteira (>10×/s com o mouse parado).
+      Travado em `npm run smoke:palette` (23 checagens; 22 falham no código
+      anterior). De quebra, `smoke:shortcuts` estava vermelho (as "2 falhas
+      conhecidas" citadas na release v6.6.0: 2 testes supunham Configurações
+      fechada, mas o Ctrl+K alterna) e voltou a 12/12. Ver `docs/LEARNINGS.md` (três
+      entradas novas, uma delas sobre um erro meu de teste).
+      **Achados que NÃO entraram, para decidir:**
+      - **Escolher na palette um módulo que já está aberto o FECHA** (os módulos
+        alternam, como o ícone da pílula), e a lista não diz quais estão abertos.
+        Quem usa a palette para "ir para" o Case Notes que está atrás de outra
+        janela o fecha sem querer. Opções: marcar "aberto" na linha e trazer para a
+        frente em vez de fechar (a pílula já tem o estado `.active`). É decisão de
+        produto — mudaria o contrato que `smoke:shortcuts` usa para alternar.
+      - **Dicas em inglês**: só o Pre-call tem `hint.en`. Com a interface em EN, os
+        outros nove módulos e o "Atalho de nota" mostram a dica em português.
+      - **Acessibilidade**: a lista não declara `role="listbox"`/`option` nem
+        `aria-activedescendant`; leitor de tela não anuncia o item selecionado.
+      - **Não verificado no CRM real** (só no `mock-crm.html`): o Ctrl+K escutando na
+        captura e a devolução do foco. Dentro de um `<iframe>` do CRM o `keydown`
+        não chega ao `document` do topo e o atalho não abre — não testado.
 
 - [~] **Release v6.6.0 cortada (2026-10-27), aguardando revisão do PR para a
       `main`.** Os 19 commits de `refactor-structure` desde a v6.5.0: home de
@@ -376,6 +458,38 @@ This file differs from the long-term roadmap: it describes what is happening **n
       Travado por `npm run test:scraping` (8/20 → 46/46 asserções).
 
 ## Up next
+
+- [~] **Idioma: português que sobrava com a interface em ES/EN (auditoria de
+      2026-10-28).** Nasceu do "Pronto para começar?" preso em PT no Case Notes e no
+      Email Assistant. Tudo o que a busca achou de defeito real foi consertado e
+      está no CHANGELOG `[Unreleased]`: o BAU Form (que em EN saía **inteiro** em PT
+      e só era repintado com o formulário aberto), o Split & Transfer e o seletor de
+      tasks do Case Notes, os diálogos de confirmação e toasts compartilhados, os
+      nomes de país e cidade dos fusos, os atalhos padrão do Ctrl+K e a categoria
+      "Pessoal" do Email Assistant. A prévia de cenário também usava o knob errado
+      (interface em vez de atendimento). Travado em `smoke:i18n` (+12: troca com o
+      app aberto no Case Notes, Email, BAU Form e diálogo), `test:i18n` (todo `X_ES`
+      exige `X_EN`) e `test:timezones`.
+      **Falta:**
+      - Conferir no CRM real, com o bookmarklet de dev, em ES e EN: o BAU Form e o
+        Split & Transfer só foram provados no `mock-crm.html`.
+      - Revisão por falante nativo do texto novo — junta-se à pendência de revisão
+        do espanhol em *Waiting / blocked*: Split & Transfer, `atalhos_ajuda`, os
+        toasts do Case Notes e do Email Assistant, `EE. UU.`/`Nueva York` nos fusos.
+        No EN do BAU Form (`FIELD_EN`, `OPTION_TEXT_EN`), as escolhas menos óbvias
+        são "Support Language" e "Child Case generated during support".
+      - A auditoria (subir já no idioma-alvo × subir em PT e trocar pelo
+        `#cw-config-lang-toggle`; comparar o texto de cada `*-popup`) segue sendo um
+        script descartável: o `smoke:i18n` cobre só os módulos acima. Decidir se
+        vale virar checagem permanente — o ruído (lista de fusos pelo relógio, regex
+        de PT casando espanhol) exige triagem a olho.
+      **Não era erro, embora a busca marque:** os passos do Call Script e as
+      opções/valores do BAU Form (conteúdo do atendimento ou valor gravado — ADR-0016,
+      rulebook §4); o "Novo Item/Salvar" da Biblioteca (DOM do editor, reescrito a
+      cada abertura); o "Carregando…" do Call Script (milissegundos, antes da 1ª
+      leitura); e o `pt-BR`/`es-ES` do horário no Time Zone, que escolhe o formato
+      24h (o `en-US` mostraria AM/PM) — se o EN precisar de outro, é decisão de
+      produto.
 
 - [ ] **Central de Conteúdo em PT/ES/EN (decidido em 2026-10-13).** A rodada do
       inglês cobriu a dimensão de CONTEÚDO da Central (seletor de idioma dos
@@ -559,6 +673,11 @@ Raw ideas, captured before they're lost (e.g. via `/groundrules:idea`). Not yet 
       **Não é bloqueio para o agente**: o bundle traz o EN embutido e a
       hidratação não o derruba quando a Central não serve aquele idioma. O que
       isso destrava é o SME poder editar o conteúdo EN pela Central.
+      **Correção (2026-10-29): para os cenários de NOTA isto era falso até a
+      correção do A4** (ainda não lançada). A hidratação renomeia os ids dos
+      cenários e o EN embutido não era mais achado: com a Central servindo PT e
+      ES, o agente EN lia os 26 cenários em português. Enquanto a release com a
+      correção não sai, rodar `seedMissingLangsNow()` resolve na hora.
 - [ ] **Publicar a disponibilidade BAU do segmento EN.** `BAU_SEGMENTS` aceita
       `EN` e o editor da Central já mostra o terceiro campo, mas enquanto
       ninguém publicar datas para ele o painel do agente EN cai no primeiro

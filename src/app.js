@@ -9,6 +9,7 @@ import { initLinksAssistant } from './modules/links/links-assistant.js';
 import { initBroadcastAssistant } from './modules/broadcast/broadcast-assistant.js'; 
 import { initOnboarding } from './modules/onboarding/onboarding-wizard.js';
 import { checkAndShowChangelog } from './modules/changelog/changelog-wizard.js';
+import { showQaDisclaimer } from './modules/disclaimer/qa-disclaimer.js';
 import { initTimezoneAssistant } from './modules/timezone/timezone-assistant.js';
 import { initPersonalLibrary } from './modules/personal-library/personal-library-assistant.js'; // [NOVO]
 import { initConfigsAssistant } from './modules/configs/configs-assistant.js';
@@ -17,7 +18,7 @@ import { initBAUForm } from './modules/bau-form/bau-form-assistant.js';
 // Importação do Serviço de Dados
 import { DataService, fetchUserProfile } from './modules/shared/data-service.js';
 import { getAgentEmail, setUserProfile } from './modules/shared/page-data.js';
-import { applyProfileLanguage } from './modules/shared/i18n.js';
+import { applyProfileLanguage, getLanguage } from './modules/shared/i18n.js';
 import { UserPrefsService } from './modules/shared/user-prefs-service.js';
 
 // 2. Importação do Núcleo Compartilhado
@@ -27,6 +28,12 @@ import { initGlobalStylesAndFont, playStartupAnimation, showToast } from './modu
 
 // --- Gerenciador de Som ---
 import { SoundManager } from './modules/shared/sound-manager.js';
+
+const BOOT_ERROR_TOAST = {
+    pt: "Erro crítico ao iniciar o Case Wizard.",
+    es: "Error crítico al iniciar Case Wizard.",
+    en: "Critical error starting Case Wizard.",
+};
 
 function initApp() {
     // Se já iniciou, só toca a animação de novo e sai (evita duplicidade)
@@ -153,11 +160,19 @@ function initApp() {
 
             languagePromise.finally(() => {
                 // 2. Verifica Tutoriais / Changelog
-                initOnboarding();
+                const onboardingClosed = Promise.resolve().then(() => initOnboarding());
 
-                setTimeout(() => {
-                    checkAndShowChangelog(APP_VERSION);
-                }, 500);
+                const changelogClosed = new Promise(resolve => {
+                    setTimeout(() => resolve(checkAndShowChangelog(APP_VERSION)), 500);
+                });
+
+                // 3. Lembrete de qualidade - em todo boot, mas só quando nada
+                // mais disputa a atenção: splash, tour e changelog primeiro.
+                // `allSettled` e não `all`: um modal que falhe não pode
+                // engolir o lembrete. Os 1.2s deixam o chime da pílula e o
+                // toast de fechamento dos modais terminarem antes do som dele.
+                Promise.allSettled([splashDone, onboardingClosed, changelogClosed])
+                    .then(() => setTimeout(showQaDisclaimer, 1200));
             });
 
         }, 2500);
@@ -165,7 +180,7 @@ function initApp() {
     } catch (error) {
         console.error("Erro fatal na inicialização:", error);
         SoundManager.playError();
-        showToast("Erro crítico ao iniciar o Case Wizard.", { error: true });
+        showToast(BOOT_ERROR_TOAST[getLanguage()] || BOOT_ERROR_TOAST.pt, { error: true });
     }
 }
 

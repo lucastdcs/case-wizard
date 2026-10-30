@@ -17,6 +17,7 @@ const CC_DICT = {
         drag: "Arrastar",
         cancel: "Cancelar",
         cancelledToast: "Cancelado!",
+        devEnvTitle: (fingerprint, endpoint) => `Ambiente de desenvolvimento — implantação …${fingerprint} (${endpoint})`,
     },
     es: {
         milestoneToast: (count) => `🔥 ¡${count} casos hoy!`,
@@ -25,6 +26,7 @@ const CC_DICT = {
         drag: "Arrastrar",
         cancel: "Cancelar",
         cancelledToast: "¡Cancelado!",
+        devEnvTitle: (fingerprint, endpoint) => `Entorno de desarrollo — implementación …${fingerprint} (${endpoint})`,
     },
     en: {
         milestoneToast: (count) => `🔥 ${count} cases today!`,
@@ -33,6 +35,7 @@ const CC_DICT = {
         drag: "Drag",
         cancel: "Cancel",
         cancelledToast: "Cancelled!",
+        devEnvTitle: (fingerprint, endpoint) => `Development environment — deployment …${fingerprint} (${endpoint})`,
     },
 };
 function cct(key) {
@@ -776,7 +779,7 @@ export function initCommandCenter(actions, splashDone) {
   function envBadgeHtml() {
     const info = getBackendInfo();
     if (!info.isDev) return "";
-    const titulo = `Ambiente de desenvolvimento — implantação …${info.fingerprint} (${info.endpoint})`;
+    const titulo = cct('devEnvTitle')(info.fingerprint, info.endpoint);
     return `<div id="cw-env-tag" class="cw-env-badge" title="${titulo}">Dev</div>`;
   }
 
@@ -846,6 +849,11 @@ export function initCommandCenter(actions, splashDone) {
     if (casesTodayEl) casesTodayEl.title = cct('casesToday');
     const dragEl = pill.querySelector('.js-cc-drag');
     if (dragEl) dragEl.title = cct('drag');
+    const envTag = pill.querySelector('#cw-env-tag');
+    if (envTag) {
+      const info = getBackendInfo();
+      envTag.title = cct('devEnvTitle')(info.fingerprint, info.endpoint);
+    }
   });
 
   // 3. LISTENERS
@@ -1167,12 +1175,12 @@ export function triggerProcessingAnimation() {
 
   const abortBtn = document.createElement('div');
   abortBtn.className = 'cw-abort-btn';
-  abortBtn.textContent = 'Cancelar';
+  abortBtn.textContent = cct('cancel');
   abortBtn.onclick = (e) => {
     e.stopPropagation();
     window._CW_ABORT_PROCESS = true;
     SoundManager.stopThinking();
-    showToast('Cancelado!', { duration: 3000 });
+    showToast(cct('cancelledToast'), { duration: 3000 });
     dismissCard();
   };
   card.appendChild(abortBtn);

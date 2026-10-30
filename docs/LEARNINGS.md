@@ -12,6 +12,196 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Esperar um modal: a promessa de fechamento tem de resolver também no caminho em que ele nunca abre
+
+**Why**: o lembrete de qualidade do boot (ADR-0021) precisa esperar o tour e o
+changelog saírem da tela, então os dois passaram a devolver uma promessa que
+resolve no `onClose` do `openWizardShell`. O buraco estava na casca: com lista
+vazia de slides ela avisa no console e **retorna sem abrir nada e sem chamar
+`onClose`**. O changelog lê os slides de `RELEASE_NOTES`, que é dado editado à mão
+a cada release — uma release sem slides deixaria a promessa pendente para sempre,
+e o lembrete que "tem de aparecer em todo boot" nunca apareceria. Sem erro, sem
+log vermelho: só a ausência de algo. Foi achado lendo o `close()` da casca antes
+de escrever o teste; nenhum smoke cobria "release sem slides".
+
+```js
+return new Promise(resolve => {
+    if (!slides.length) resolve();   // a casca não abre e não chama onClose
+    openWizardShell({ slides, onClose: () => { /* ... */ resolve(); } });
+});
+```
+
+**When to apply**: sempre que algo depender de "o modal X fechou". Antes de confiar
+na promessa, liste os caminhos de saída da casca e pergunte, de cada um, se ele
+chama o callback: abrir, não abrir (lista vazia, guarda de versão), fechar por
+Esc, por botão, por "Pular". E combine com `Promise.allSettled`, não `all` — o
+lembrete não pode depender de nenhum modal ter dado certo.
+
+## Playwright `clock` falseia os timers, não as transições de CSS
+
+**Why**: o smoke do lembrete usa `page.clock` para provar o "some aos 12s" sem
+esperar 12s. Mas a transição de entrada (`translateY` 8px→0, 280ms) corre no
+compositor, em tempo **real**. Medir `getBoundingClientRect()` logo depois de
+`clock.runFor(100)` pegou o cartão no meio do deslize: margem inferior de 22,6px
+em vez de 24. O produto estava certo e a asserção, não — e o número quebrado
+parece um defeito de layout, o que manda quem lê procurar no CSS.
+
+**When to apply**: ao medir posição, tamanho ou opacidade de algo que anima, com o
+relógio falso. Avance o relógio para o que é lógica (timers, `requestAnimationFrame`)
+e **espere em tempo real** (`page.waitForTimeout`) a duração da transição antes de
+medir. Para provar que uma asserção de tempo é de verdade, mude o código e veja-a
+reprovar: foi o que fez as quatro mutações do lembrete (sem espera pelos modais,
+foco roubado, som ignorando o mudo, mouse sem segurar o relógio), cada uma caindo
+exatamente nas asserções esperadas.
+
+## Repintar "só se a view for X" é bug quando o elemento não é reconstruído
+
+**Why**: o handler de troca de idioma do BAU Form repintava os campos dentro de
+`if (currentView === 'form')`, com o comentário "form já é reconstruído a cada
+navegação". Não é: o formulário é montado **uma vez**, no boot, e "Novo caso" só o
+reseta. Como o perfil chega depois do boot, um agente de ES/EN com o dashboard na
+tela abria o formulário inteiro em português. O comentário descrevia o que o
+autor imaginava, não o código, e ninguém o confrontou.
+
+**When to apply**: antes de condicionar um repaint à view atual, confirme no
+código que a view **é** reconstruída ao entrar (procure o `innerHTML =`/`createElement`
+na navegação, não o comentário). Dúvida: repinte sempre — repintar texto é barato,
+e deixar de repintar é silencioso.
+
+## Mapa de idioma só de ES: o inglês cai em português, sem erro nenhum
+
+**Why**: `bft()`/`bfOptionText()` do BAU Form faziam `if (getLanguage() !== 'es')
+return texto-em-PT`, e `utils.js`, `wizard-shell.js` e `notes-bridge.js` tinham
+`getLanguage() === 'es' ? ES : PT`. Todos são do tempo do PT/ES: o inglês entrou
+depois e herdou o `else`. Resultado: com a interface em EN, **todo rótulo e opção
+do BAU Form** e o "Cancelar" de cada diálogo de confirmação saíam em PT. O
+`smoke:i18n` e o `test:i18n` passavam, porque só viam dicionários `{pt,es,en}`.
+
+**When to apply**: `grep -rnE "=== ?['\"]es['\"]|!== ?['\"]es['\"]" src` a cada rodada
+de idioma novo. O `test:i18n` agora reprova `X_ES` sem `X_EN` (chaves e
+propriedades). Para texto novo use sempre um mapa por idioma com fallback ao PT
+(`MAPA[getLanguage()] || MAPA.pt`), nunca um ternário de dois idiomas.
+
+## Build que troca texto exato: mexeu na linha, rode o smoke do avulso
+
+**Why**: o build em inglês do Pre-call troca trechos de produção **por texto
+exato** (`TROCAS`, em `scripts/build-precall-standalone.mjs`) e falha se achar
+0 — de propósito, para não entregar português ao SME. Ao reescrever o ternário do
+aviso de falha ao copiar em `notes-bridge.js`, o build quebrou. Quem só roda
+`test:*` e os smokes do app não vê: o erro aparece em `smoke:precall-standalone`.
+
+**When to apply**: ao editar `notes-bridge.js`, `header-factory.js`, `crm-labels.js`
+ou `precall-data.js`, rode `npm run smoke:precall-standalone`; se o trecho mudou,
+atualize a troca no build junto (como na mudança de `COPY_ERROR_TOAST`).
+O mesmo vale ao **importar um nome novo de `shared/i18n.js`** em qualquer módulo do
+grafo do Pre-call (ex.: `utils.js` passou a importar `getLocale`): o build avulso
+troca o `i18n.js` por `src/precall-standalone-i18n-en.js`, que precisa exportar o
+nome — senão o build falha, de propósito, e só `smoke:precall-standalone` mostra.
+
+## Conflito de CHANGELOG: confira em QUAL seção ele caiu antes de resolver
+
+**Why**: ao integrar a remota, resolvi o conflito mantendo os dois lados e nem
+olhei o cabeçalho da seção — a remota já tinha cortado a v6.6.0 (o `[Unreleased]`
+virou `[6.6.0]`), e a entrada de uma mudança **do dia** ficou dentro de uma versão
+já lançada, dizendo que ela saiu na 6.6.0. Os testes não pegam isso
+(`test:dash-changelog` só confere versões), e sem a marca de conflito o arquivo
+parece certo. Só apareceu ao ler as seções na hora de escrever a entrada seguinte.
+
+**When to apply**: em todo merge que conflita no `CHANGELOG.md`. Depois de
+resolver, rode `grep -n '^## ' CHANGELOG.md` e confirme que a sua entrada está sob
+`[Unreleased]` e não sob uma versão com data; se a remota trouxe um release
+novo, o conflito quase sempre é esse.
+
+## Troca de idioma em tempo real: o que o módulo desenha uma vez tem de ser repintado — e teste que sobe no idioma certo não vê isso
+
+**Why**: "Pronto para começar?" ficava em português no Case Notes e no Email
+Assistant com a interface em ES/EN. O app monta os módulos no boot, num idioma, e
+o perfil (que decide o idioma) só chega depois do backend. O `onLanguageChange`
+repinta o que está na lista dele, e o estado vazio não estava — no Email ele nem
+passava pelo `EMAIL_DICT`. O `smoke:i18n` já existia e passava: ele grava o idioma
+no `localStorage` **antes** do boot, então tudo sobe no idioma certo e o caminho
+"montado em PT, repintado em ES" nunca rodava.
+
+**When to apply**: ao criar texto de tela num módulo (estado vazio, placeholder,
+título, botão), ele entra no dicionário **e** no handler de troca; ao revisar um
+`onLanguageChange`, compare com tudo o que o módulo desenha uma vez. Para provar,
+troque o idioma com o app aberto — clicar `#cw-config-lang-toggle button[data-lang=…]`
+pelo DOM funciona com o popup fechado — e leia o texto. Ao repintar, mexa só no
+texto: não refaça o que carrega digitação do agente (campos de formulário).
+
+## Seleção por hover: troque a classe do item, nunca reconstrua a lista
+
+**Why**: a palette do Ctrl+K chamava `render()` (que refaz a lista inteira) no
+`mouseenter` de cada item, só para mover o destaque. O navegador, ao ver o DOM
+trocado debaixo do cursor, emite outro `mouseover` — e cada um reconstruía de
+novo: mais de dez reconstruções por segundo **com o mouse parado**. O clique no
+meio disso se perdia (medido: 0 de 18 abriam o módulo; o log mostrava seis
+`mouseover` e nenhum `mousedown`/`click`). O mesmo defeito fazia a seta ↓
+empacar: ela rola a lista, a rolagem põe outro item debaixo do cursor parado, e
+o hover devolvia a seleção. Nada disso aparece lendo o código nem num teste que
+use `Enter`.
+
+**When to apply**: em qualquer lista/menu com seleção por hover. Separe "refazer
+a lista" (muda o conjunto) de "mudar a seleção" (só a classe), e faça o hover
+reagir a `mousemove` **comparando a posição com a anterior**, não a
+`mouseenter`/`mouseover` — esses também disparam quando o conteúdo rola ou é
+trocado sob um cursor parado. O teclado rola com `scrollIntoView`; o hover não.
+
+## Clique por coordenada num item de lista rolável cai no fundo do overlay
+
+**Why**: ao reproduzir o bug acima, medi `boundingBox()` de um item que estava
+**fora da área visível** da lista (ela rola, 340px) e cliquei ali. O `mousedown`
+caiu no fundo do overlay, que fecha a palette — e o teste mostrou "24/24 cliques
+funcionaram" (a palette fechou!) e "o 2º clique do duplo clique vaza para o
+CRM". As duas conclusões eram falsas; o código antigo falhava 18 de 18. O
+`mousedown` registrado em `DIV.cw-palette-overlay` foi o que denunciou.
+
+**When to apply**: ao testar clique por coordenada em lista com `overflow`:
+`locator.scrollIntoViewIfNeeded()`, espere a animação de entrada (a palette
+anima 0,25s e o retângulo medido antes disso está deslocado) e só então meça. E
+meça o **efeito** (o módulo abriu), não "a palette fechou" — fechar é também o
+que o clique no fundo faz. Registre `mousedown`/`click` com o alvo quando o
+resultado não bater com o que você viu.
+
+## Overlay modal sobre um app com listeners globais: confira Esc, Tab e foco, não só o caminho feliz
+
+**Why**: a palette abria bem e funcionava no caminho feliz, mas convivia mal com o
+que já escutava o `document`: o Esc global de `animations.js` fechava também a
+janela de módulo por baixo; o `wizard-shell.js` engole Enter/Esc/Tab na captura e
+deixava a palette muda por cima de um wizard; o Tab saía para os campos do CRM
+atrás do overlay; um timer de 200ms de um fechamento anterior removia o overlay
+**novo** de uma reabertura rápida (palette invisível, scroll travado); o 2º clique
+de um duplo clique caía no CRM durante o fade. E o repo já tinha decidido que a
+pílula não é clicável com o card de processamento no ar — o Ctrl+K furava isso.
+
+**When to apply**: ao criar ou mexer em qualquer overlay/modal: (1) `grep` dos
+listeners de `keydown`/`mousedown` no `document` — quem mais reage a Esc, Tab e
+clique? (2) o Esc precisa de `stopPropagation`; (3) o foco fica preso dentro e
+**volta** a quem o tinha ao desistir; (4) guarda de reentrada em `activate`/`open`
+(toggles de módulo alternam: duas chamadas se desfazem) e timers de fechamento
+guardados e cancelados na reabertura; (5) o overlay engole cliques durante o fade
+(`pointer-events` só sai quando ele sai do DOM); (6) não abre por cima de overlays
+que mandam na tela. `npm run smoke:palette` trava tudo isso.
+
+## "100% inglês" é uma propriedade do ARQUIVO, não da tela: audite o texto que ele carrega
+
+**Why**: a variante `-en` do Pre-call passou em todo teste de tela (navegador e app
+em PT, tudo em inglês) e o SME respondeu que **não estava em inglês**: ele abriu o
+`.txt` e leu o que há dentro — dicionários PT/ES sem uso, rótulos de screenshot do
+catálogo de tasks, rótulos de CRM em PT/ES, comentários CSS (que são *texto* dentro
+de template literals e sobrevivem à minificação) e `console.warn` em português.
+Eu tinha listado isso como "invisível na tela" e entregado mesmo assim. E havia um
+defeito **visível** que o mock nunca exercitou: `getLanguage() === 'es' ? "Error al
+copiar" : "Falha ao copiar"` — em EN cai no português.
+
+**When to apply**: ao prometer um arquivo "em idioma X" para quem vai LER o arquivo.
+Corte no build o que a tela não mostra (gere do código real, não copie texto; troque
+com asserção para o build quebrar se a produção mudar) e audite o arquivo
+decodificado: letras acentuadas, `/*`, `console.`, textos PT/ES **derivados da
+produção** e vocabulário sem acento (acento sozinho não pega "Falha ao copiar").
+Prove que a auditoria tem dentes rodando-a contra o build que NÃO deveria passar.
+E teste o caminho de erro (toast de falha), não só o feliz: é lá que mora o texto
+fixo que ninguém traduziu.
 ## CHANGELOG: depois da release, entrada nova vai em `[Unreleased]` — confira a seção anterior contra a `main` antes de cortar a próxima
 
 **Why**: duas entradas (os e-mails da Central com a casca do BAU e o fix de quem
@@ -34,6 +224,68 @@ diff <(git show origin/main:CHANGELOG.md | sed -n '/^## \[X.Y.Z\]/,/^## \[W.V.U\
 
 Qualquer linha `>` é entrada que a branch acrescentou a uma versão que a `main`
 já tem: mova para a seção nova.
+
+## Editar com Python `open().read()` num arquivo CRLF reescreve o arquivo inteiro
+
+**Why**: dois arquivos do repo (`step-tasks.js`, `snippet-service.js`) usam CRLF. Um
+script Python que lia com `open(p).read()` e gravava com `open(p,'w')` normalizou
+tudo para LF: o `git diff` mostrou 2164 e 342 linhas "alteradas" por uma troca de 4 e
+6 linhas. Nada falhou — testes, build e smokes passam com qualquer fim de linha —, e
+só o `git diff --stat` denunciou. Era uma reescrita em massa feita sem querer, num
+projeto cuja regra é diff cirúrgico.
+
+**When to apply**: antes de editar um arquivo por script, conte `grep -c $'\r$' arquivo`.
+Se for > 0, leia e grave com `open(p, newline='', encoding='utf-8')` e case os trechos
+com `\r\n`. Depois de qualquer edição em lote, rode `git diff --stat`: um arquivo com
+centenas de linhas para uma mudança pequena é fim de linha. A ferramenta Edit preserva.
+
+## i18n: dicionário completo não prova idioma certo — estado que reinicia e espelho parcial voltam a PT
+
+**Why**: três falhas que nenhum teste de dicionário alcança, achadas na auditoria de
+2026-10-29 (`docs/I18N-EN-AUDIT.md`). (1) `NotesState.reset()` fazia
+`currentLang = "pt"`, e `resetModule()` roda em Limpar, em atalho do Ctrl+K e depois
+de inserir a nota: só a 1ª nota da sessão saía no idioma certo, para ES e EN.
+(2) Publicar um cenário na Central **renomeia o id** (`quickfill-x` →
+`cw-<substatus>-x`), e o espelho EN embutido, chaveado pelo id antigo, deixava de
+ser achado: com a Central servindo PT e ES, **0 de 26** cenários saíam em inglês.
+Publicar o EN de um só ainda trocava o espelho inteiro (27 → 1). O teste que devia
+impedir isso contava entradas do espelho e passava verde com o app lendo PT.
+(3) Objeto `{PT, ES}` maiúsculo (`GROUP_TITLES[g][csaCurrentLang] || ""`): o EN não
+cai em PT, vira título em branco. Procurar PT por lista de palavras também falha
+(não pegou `Preencher no CRM`); o que não falhou foi renderizar o app em PT/PT e
+EN/EN e listar todo texto idêntico nos dois.
+
+**When to apply**: ao guardar idioma em estado que tem `reset()`, tire-o do reset
+(como `visible`); ao hidratar conteúdo da Central, ligue o embutido ao publicado
+pelo `scenarioSlug` e **mescle**, nunca substitua; teste **consultando pelo id,
+como o app**, não contando entradas; e ao dar um idioma por pronto, teste-o
+**depois** de Limpar, de um atalho e de uma inserção, não só na primeira abertura.
+O mapa só-ES está na entrada acima.
+
+## Antes de chamar um texto de defeito, procure-o em `specs/`
+
+**Why**: a auditoria de idioma classificou o rodapé do Pre-call (`Gerado pelo Cases
+Wizard`, em PT) como defeito, porque o rulebook diz que a nota do Pre-call sai
+sempre em inglês. A spec da feature (`specs/workflow/precall-checklist.md`) diz o
+contrário, de propósito: é "a única linha em português, fixa nos três idiomas",
+travada em `test:precall` e `smoke:precall`, e o build em inglês a troca por texto
+exato. Só apareceu ao buscar o literal antes de corrigir; mexer teria quebrado três
+testes e contrariado a spec, que prevalece sobre o código.
+
+**When to apply**: antes de "corrigir" qualquer texto que pareça estar no idioma
+errado, rode `grep -rn "<o literal>" specs docs scripts`. Se a spec o fixa, o
+defeito é do auditor. A regra geral do rulebook não revoga a exceção da feature.
+
+## `check` assíncrono num harness síncrono passa sem rodar a asserção
+
+**Why**: em `test-note-templates.mjs`, `check(nome, fn)` chama `fn()` sem `await`.
+Escrever `check('...', async () => { ... })` imprime ✓ na hora, e a asserção rejeita
+depois, solta. O teste novo nasceu assim: verde, sem verificar nada.
+
+**When to apply**: antes de usar `async` dentro de um `check`, leia a definição dele
+no arquivo. Se for síncrono, faça o `await` **fora** e passe o resultado para um
+`check` síncrono. E rode o teste novo contra o código anterior (um `git worktree` em
+`HEAD`): se não falha lá, não está testando o que diz.
 
 ## Arquivo avulso: o que o esbuild não poda, entrega; audite o arquivo, não o import
 

@@ -372,6 +372,43 @@ export const SoundManager = {
         });
     },
 
+    // NOTICE (Aviso de passagem)
+    // Para o lembrete de qualidade do boot (modules/disclaimer). Duas notas
+    // DESCENDENTES (Sol -> Mi): o playReady sobe e diz "pronto", este desce e
+    // diz "repare" sem soar como alerta. Mais baixo que o playReady - toca em
+    // todo boot, então tem de ser o som que menos cansa. Não reaproveita o
+    // playNotification porque o Broadcast já o toca no boot quando há aviso novo,
+    // e os dois chegariam em sequência com o mesmo timbre.
+    playNotice: () => {
+        if (muted) return;
+        const ctx = getContext();
+        if (!ctx) return;
+        const t = ctx.currentTime;
+
+        const notes = [
+            { freq: 783.99, at: 0,    dur: 0.22, vol: 0.2 },  // G5
+            { freq: 659.25, at: 0.11, dur: 0.34, vol: 0.18 }, // E5
+        ];
+
+        notes.forEach((n) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.value = n.freq;
+
+            const start = t + n.at;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(MASTER_GAIN * n.vol, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + n.dur);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + n.dur + 0.05);
+        });
+    },
+
     // 7. THINKING (Loop de Espera)
     // Ref: o balanço das 3 bolinhas do Processing Center.
     // Um arpejo de 3 notas (acorde maior, sem tensão) tão baixo que só
