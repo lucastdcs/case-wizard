@@ -50,15 +50,16 @@ const browser = await chromium.launch({ headless: true, executablePath });
 
 // Sobe o app com os dois idiomas JÁ divergentes: é o estado que o ADR-0016
 // tornou possível, e o único em que uma religação errada aparece.
-async function abrirCaseNotes({ ui, saida, comEditor = false }) {
+async function abrirCaseNotes({ ui, saida, comEditor = false, storage = {} }) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.route('**script.google.com/**', (route) => route.abort());
     page.on('pageerror', (e) => { console.log('  ! erro de página: ' + e.message); fail++; });
     await page.goto('file://' + resolve(raiz, 'mock-crm.html'));
-    await page.evaluate(([u, s, editor]) => {
+    await page.evaluate(([u, s, editor, extra]) => {
         localStorage.setItem('cw_onboarding_seen_v1', 'true');
         localStorage.setItem('cw_ui_lang', u);
         localStorage.setItem('cw_output_lang', s);
+        for (const [k, v] of Object.entries(extra)) localStorage.setItem(k, v);
 
         // O mock não tem editor de notas; este é o mesmo gatilho que o CRM tem
         // (o botão "description" que abre o cartão), como no smoke:precall.
@@ -73,7 +74,7 @@ async function abrirCaseNotes({ ui, saida, comEditor = false }) {
                 document.body.appendChild(ed);
             });
         }
-    }, [ui, saida, comEditor]);
+    }, [ui, saida, comEditor, storage]);
     await page.addScriptTag({ content: script });
 
     // A pílula só aparece depois da animação de abertura; o Ctrl+K é
@@ -421,6 +422,57 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
             await confereRotulo(page, lang, 'depois de inserir a nota');
         });
 
+        await page.close();
+    }
+}
+
+// --------------------------- textos soltos do Case Notes, BAU Form e Biblioteca
+// Três textos cravados em PT que nenhum dicionário alcançava: o aviso do Win
+// Criteria na lista de screenshots, a dica de erro do CID sob o campo (o toast
+// já era traduzido; a dica era gravada uma vez, na criação) e a etiqueta de
+// mídia dos snippets da biblioteca. O EN abre em pt e troca depois do boot,
+// que é como o perfil faz.
+{
+    const ESPERADO = {
+        pt: { aviso: 'Os screenshots seguem as diretrizes atuais do Win Criteria e políticas de Tag Support.', cid: 'Formato de CID incorreto', midia: 'Mídia' },
+        es: { aviso: 'Los screenshots siguen las directrices actuales de Win Criteria y las políticas de Tag Support.', cid: 'Formato de CID incorrecto', midia: 'Multimedia' },
+        en: { aviso: 'Screenshots follow the current Win Criteria guidelines and Tag Support policies.', cid: 'Incorrect CID format', midia: 'Media' },
+    };
+    // Um snippet rico com imagem; _pendingSync impede a sincronia de descartá-lo.
+    const BIBLIOTECA = JSON.stringify([{
+        id: 'local_teste', type: 'general', title: 'Teste', subject: '', isCode: false, isRich: true,
+        content: '<p>texto</p><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">',
+        updated: new Date().toISOString(), _pendingSync: true,
+    }]);
+
+    for (const [lang, abreEm] of [['es', 'es'], ['pt', 'pt'], ['en', 'pt']]) {
+        const e = ESPERADO[lang];
+        const { page } = await abrirCaseNotes({ ui: abreEm, saida: abreEm, storage: { cw_personal_library_v1: BIBLIOTECA } });
+        if (lang !== abreEm) {
+            await page.evaluate((l) => document.querySelector(`#cw-config-lang-toggle button[data-lang="${l}"]`).click(), lang);
+            await page.waitForTimeout(400);
+        }
+
+        await check(`${lang}: o aviso do Win Criteria na lista de screenshots`, async () => {
+            await page.selectOption('#main-status-select', 'SO');
+            await page.waitForTimeout(600);
+            await page.selectOption('#sub-status-select', 'SO_Implementation_Only');
+            await page.waitForTimeout(1500);
+            await page.evaluate(() => document.querySelector('[data-id="quickfill-gtm-install"]').click());
+            await page.waitForTimeout(1200);
+            const avisos = await page.$$eval('#notes-assistant-popup .cw-info-banner', (els) => els.map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
+            if (!avisos.some((a) => a.includes(e.aviso))) throw new Error(`não achei ${JSON.stringify(e.aviso)} em ${JSON.stringify(avisos)}`);
+        });
+
+        await check(`${lang}: a dica de erro do CID sob o campo${lang !== abreEm ? ' (troca depois do boot)' : ''}`, async () => {
+            igual(await page.evaluate(() => document.querySelector('#bau-cid-error')?.textContent.trim()), e.cid, 'dica do CID');
+        });
+
+        await check(`${lang}: a etiqueta de mídia do snippet`, async () => {
+            await page.evaluate(() => document.getElementById('cw-btn-library').click());
+            await page.waitForSelector('#library-popup .cw-lib-media-tag', { timeout: 8000 });
+            igual(await page.locator('#library-popup .cw-lib-media-tag').first().textContent().then((t) => t.trim()), e.midia, 'etiqueta de mídia');
+        });
         await page.close();
     }
 }

@@ -888,9 +888,7 @@ export function createStepTasksComponent(onUpdateCallback, t, notesState) {
     disclaimer.className = "cw-info-banner";
     disclaimer.innerHTML = `
             <span style="font-size:14px">ℹ️</span>
-            <span>
-                Os screenshots seguem as diretrizes atuais do Win Criteria e políticas de Tag Support.
-            </span>
+            <span>${t('screenshots_aviso')}</span>
         `;
     screenList.appendChild(disclaimer);
 

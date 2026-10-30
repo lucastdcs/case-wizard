@@ -6,6 +6,10 @@ import { showToast } from "../shared/utils.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { getLanguage } from "../shared/i18n.js";
 
+// Vira o título GRAVADO do snippet quando o agente o deixa em branco, então
+// segue o idioma da interface no momento de salvar.
+const UNTITLED = { pt: "Sem título", es: "Sin título", en: "Untitled" };
+
 const NO_USER_TOAST = {
     pt: "Erro: Usuário não identificado.",
     es: "Error: usuario no identificado.",
@@ -56,7 +60,7 @@ export const SnippetService = {
         const newSnippet = {
             id: snippet.id || ("local_" + Date.now()), // ID temporário se for novo
             type: snippet.type || 'general',
-            title: snippet.title || 'Sem título',
+            title: snippet.title || UNTITLED[getLanguage()] || UNTITLED.pt,
             content: snippet.content || '',
             subject: snippet.subject || '',
             isCode: snippet.isCode || false,

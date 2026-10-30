@@ -608,6 +608,13 @@ function createField(fieldConfig) {
 }
 
 
+// Texto do erro do CID, no idioma da interface. O toast de validação já lia
+// `bft(..., 'error')`; a dica em linha sob o campo era gravada uma vez, na
+// criação, com o texto do config (PT) - e nunca repintada.
+function cidErrorText(fieldConfig) {
+    return bft(fieldConfig, 'error') || fieldConfig?.validation?.error || '';
+}
+
 export function initBAUForm() {
     injectStyles();
 
@@ -771,7 +778,7 @@ export function initBAUForm() {
                     errorHint.id = 'bau-cid-error';
                     errorHint.className = 'bau-cid-error-hint';
                     errorHint.style.display = 'none';
-                    errorHint.textContent = 'Formato de CID incorreto';
+                    errorHint.textContent = cidErrorText(stepConfig.fields.find(f => f.id === 'cid'));
                     cidWrapper.appendChild(errorHint);
                 }
             } else {
@@ -2219,6 +2226,10 @@ export function initBAUForm() {
                 }
                 const input = wrapper.querySelector('input, textarea, select');
                 if (input && fieldConfig.placeholder) input.placeholder = bft(fieldConfig, 'placeholder');
+                if (fieldId === 'cid') {
+                    const cidHint = wrapper.querySelector('#bau-cid-error');
+                    if (cidHint) cidHint.textContent = cidErrorText(fieldConfig);
+                }
                 if (fieldConfig.type === 'datetime-group') repaintAvailability(wrapper, fieldConfig);
                 if (fieldConfig.type === 'text-with-button') {
                     const lookupBtn = wrapper.querySelector('.bau-mini-btn-input');
