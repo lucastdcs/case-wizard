@@ -425,6 +425,73 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
     }
 }
 
+// ------------------------------------------- o Ctrl+K nos três idiomas (C2)
+// 11 das 12 linhas ficavam em PT com a ferramenta em EN: o hint só existia em
+// PT/ES (menos o Pre-call) e cinco rótulos eram texto fixo. Confere as 10 linhas
+// de módulo, inteiras (rótulo + hint), e a busca entre idiomas: o agente que
+// digita "biblioteca" com a ferramenta em EN acha "My Library".
+{
+    const MODULOS = {
+        pt: [
+            ['Case Notes', 'Montar a nota técnica do caso'], ['Pre-call Checklist', 'Checklist antes da ligação, direto na nota'],
+            ['BAU Form', 'Solicitação de criação/descarte BAU'], ['Email Assistant', 'Templates inteligentes de e-mail'],
+            ['Call Script', 'Guia interativo de chamada'], ['Central de Links', 'Ferramentas, SOPs e atalhos'],
+            ['Minha Biblioteca', 'Snippets e respostas salvas'], ['Fusos Horários', 'Monitoramento e planejador de chamada'],
+            ['Avisos', 'Comunicados e disponibilidade BAU'], ['Configurações', 'Perfil, som e preferências'],
+        ],
+        es: [
+            ['Case Notes', 'Armar la nota técnica del caso'], ['Pre-call Checklist', 'Checklist antes de la llamada, directo en la nota'],
+            ['BAU Form', 'Solicitud de creación/descarte BAU'], ['Email Assistant', 'Plantillas inteligentes de correo'],
+            ['Call Script', 'Guía interactiva de llamada'], ['Central de Enlaces', 'Herramientas, SOPs y atajos'],
+            ['Mi Biblioteca', 'Snippets y respuestas guardadas'], ['Husos Horarios', 'Monitoreo y planificador de llamada'],
+            ['Avisos', 'Comunicados y disponibilidad BAU'], ['Configuración', 'Perfil, sonido y preferencias'],
+        ],
+        en: [
+            ['Case Notes', 'Build the technical note for the case'], ['Pre-call Checklist', 'Checklist before the call, straight into the note'],
+            ['BAU Form', 'Request to create/discard a BAU case'], ['Email Assistant', 'Smart email templates'],
+            ['Call Script', 'Interactive call guide'], ['Links Central', 'Tools, SOPs and shortcuts'],
+            ['My Library', 'Saved snippets and replies'], ['Time Zones', 'Monitoring and call planner'],
+            ['Broadcast', 'Announcements and BAU availability'], ['Settings', 'Profile, sound and preferences'],
+        ],
+    };
+    const DICA_ATALHO = { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada', en: 'Note shortcut · opens pre-filled' };
+    const linhasDaPaleta = (page) => page.$$eval('.cw-palette-item', (els) => els.map((e) => [
+        e.querySelector('.cw-palette-item-label').textContent.trim(),
+        e.querySelector('.cw-palette-item-hint').textContent.trim(),
+    ]));
+
+    // [idioma, idioma de abertura, busca entre idiomas e o que ela deve achar]
+    for (const [lang, abreEm, busca, acha] of [
+        ['es', 'es', 'settings', 'Configuración'],
+        ['pt', 'pt', 'library', 'Minha Biblioteca'],
+        // O caso real: o app sobe em pt e o perfil troca o idioma depois do boot.
+        ['en', 'pt', 'biblioteca', 'My Library'],
+    ]) {
+        const { page } = await abrirCaseNotes({ ui: abreEm, saida: abreEm });
+        if (lang !== abreEm) {
+            await page.evaluate((l) => document.querySelector(`#cw-config-lang-toggle button[data-lang="${l}"]`).click(), lang);
+            await page.waitForTimeout(400);
+        }
+        await page.keyboard.press('Control+k');
+        await page.waitForSelector('.cw-palette-overlay.active');
+        const linhas = await linhasDaPaleta(page);
+
+        await check(`palette ${lang}${lang !== abreEm ? ` (troca depois do boot, vinda de ${abreEm})` : ''}: os 10 módulos, rótulo e hint, no idioma`, async () => {
+            igual(JSON.stringify(linhas.slice(-10)), JSON.stringify(MODULOS[lang]), 'linhas de módulo');
+        });
+        await check(`palette ${lang}: o hint dos atalhos do agente também`, async () => {
+            for (const [, hint] of linhas.slice(0, -10)) igual(hint, DICA_ATALHO[lang], 'hint do atalho');
+        });
+        await check(`palette ${lang}: digitar "${busca}" (outro idioma) acha "${acha}"`, async () => {
+            await page.fill('.cw-palette-input', busca);
+            await page.waitForTimeout(300);
+            const achados = (await linhasDaPaleta(page)).map(([l]) => l);
+            if (!achados.includes(acha)) throw new Error(`${JSON.stringify(acha)} não está em ${JSON.stringify(achados)}`);
+        });
+        await page.close();
+    }
+}
+
 // --------------------------------------------------- a splash de abertura (C1)
 // A saudação não consultava idioma nenhum: PT até com a ferramenta em EN ou ES.
 // E ela roda ANTES de o perfil chegar (o e-mail que o busca é capturado dentro

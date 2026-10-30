@@ -137,6 +137,14 @@ function cpt(key) {
     return CP_DICT[lang]?.[key] ?? CP_DICT.pt[key];
 }
 
+// `label` e `hint` de uma ação são um texto fixo (nome de produto, ou texto que
+// o agente escreveu) ou um `{ pt, es, en }`. Resolvidos na hora de DESENHAR, não
+// na de montar a lista: o perfil, que decide o idioma, chega depois do boot.
+const pick = (v) => (typeof v === 'string' ? v : (v[getLanguage()] || v.pt));
+// Para a busca: todas as versões juntas, então quem digita "biblioteca" acha
+// "My Library" e quem digita "library" acha "Minha Biblioteca".
+const everyVersion = (v) => (typeof v === 'string' ? v : Object.values(v).join(' '));
+
 export function initCommandPalette(actions) {
     injectStyles();
 
@@ -154,7 +162,7 @@ export function initCommandPalette(actions) {
     // Configurações ou no próprio Case Notes.
     //
     // O `label` e o `alias` são escritos pelo próprio agente, então não têm
-    // versão por idioma; só o hint, que é texto nosso, tem as duas.
+    // versão por idioma; só o hint, que é texto nosso, tem as três.
     function noteShortcuts() {
         if (typeof actions.toggleNotes !== 'function' ||
             typeof actions.toggleNotes.openWithPreset !== 'function') return [];
@@ -162,8 +170,8 @@ export function initCommandPalette(actions) {
         return ShortcutService.list().map((shortcut) => ({
             id: `shortcut-${shortcut.id}`,
             label: shortcut.label,
-            hint: { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada' },
-            keywords: `nota atalho atajo preset ${shortcut.alias || ''}`,
+            hint: { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada', en: 'Note shortcut · opens pre-filled' },
+            keywords: `nota atalho atajo note shortcut preset ${shortcut.alias || ''}`,
             icon: ICONS.bolt,
             group: 'shortcuts',
             isPreset: true,
@@ -174,21 +182,21 @@ export function initCommandPalette(actions) {
         }));
     }
 
-    // label fica em português mesmo pra ES: são os nomes dos módulos, e a
-    // maioria já é em inglês (Case Notes, Call Script...) ou é curta o
-    // bastante (Avisos, Configurações) pra não valer duplicar; só o hint
-    // (descrição) e as keywords de busca variam por idioma.
+    // O `label` é nome de produto (Case Notes, Call Script...) ou o nome que o
+    // próprio módulo mostra no cabeçalho naquele idioma: o palette e o módulo
+    // aberto têm de concordar. O hint (descrição) e as keywords de busca variam
+    // por idioma.
     const MODULE_ACTIONS = [
-        { id: 'notes', label: 'Case Notes', hint: { pt: 'Montar a nota técnica do caso', es: 'Armar la nota técnica del caso' }, keywords: 'notas nota caso anotacoes anotaciones', icon: ICONS.notes, run: actions.toggleNotes },
+        { id: 'notes', label: 'Case Notes', hint: { pt: 'Montar a nota técnica do caso', es: 'Armar la nota técnica del caso', en: 'Build the technical note for the case' }, keywords: 'notas nota caso anotacoes anotaciones notes case', icon: ICONS.notes, run: actions.toggleNotes },
         { id: 'precall', label: 'Pre-call Checklist', hint: { pt: 'Checklist antes da ligação, direto na nota', es: 'Checklist antes de la llamada, directo en la nota', en: 'Checklist before the call, straight into the note' }, keywords: 'precall pre call checklist ligacao llamada verificacao verificacion', icon: ICONS.precall, run: actions.togglePrecall },
-        { id: 'bauform', label: 'BAU Form', hint: { pt: 'Solicitação de criação/descarte BAU', es: 'Solicitud de creación/descarte BAU' }, keywords: 'bau formulario solicitacao solicitud criacao creacion descarte', icon: ICONS.bauform, run: actions.toggleBAUForm },
-        { id: 'email', label: 'Email Assistant', hint: { pt: 'Templates inteligentes de e-mail', es: 'Plantillas inteligentes de correo' }, keywords: 'email e-mail correio correo template plantilla', icon: ICONS.email, run: actions.toggleEmail },
-        { id: 'script', label: 'Call Script', hint: { pt: 'Guia interativo de chamada', es: 'Guía interactiva de llamada' }, keywords: 'script roteiro guion chamada llamada ligacao', icon: ICONS.script, run: actions.toggleScript },
-        { id: 'links', label: 'Central de Links', hint: { pt: 'Ferramentas, SOPs e atalhos', es: 'Herramientas, SOPs y atajos' }, keywords: 'links atalhos atajos ferramentas herramientas sop sops', icon: ICONS.links, run: actions.toggleLinks },
-        { id: 'library', label: 'Minha Biblioteca', hint: { pt: 'Snippets e respostas salvas', es: 'Snippets y respuestas guardadas' }, keywords: 'biblioteca snippets respostas respuestas salvas guardadas', icon: ICONS.library, run: actions.toggleLibrary },
-        { id: 'timezone', label: 'Fusos Horários', hint: { pt: 'Monitoramento e planejador de chamada', es: 'Monitoreo y planificador de llamada' }, keywords: 'fuso horario timezone', icon: ICONS.timezone, run: actions.toggleTimezone },
-        { id: 'broadcast', label: 'Avisos', hint: { pt: 'Comunicados e disponibilidade BAU', es: 'Comunicados y disponibilidad BAU' }, keywords: 'avisos broadcast comunicados disponibilidade disponibilidad', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
-        { id: 'configs', label: 'Configurações', hint: { pt: 'Perfil, som e preferências', es: 'Perfil, sonido y preferencias' }, keywords: 'configuracoes configuracion config preferencias perfil som sonido', icon: ICONS.configs, run: actions.toggleConfigs },
+        { id: 'bauform', label: 'BAU Form', hint: { pt: 'Solicitação de criação/descarte BAU', es: 'Solicitud de creación/descarte BAU', en: 'Request to create/discard a BAU case' }, keywords: 'bau formulario solicitacao solicitud criacao creacion descarte form request create discard', icon: ICONS.bauform, run: actions.toggleBAUForm },
+        { id: 'email', label: 'Email Assistant', hint: { pt: 'Templates inteligentes de e-mail', es: 'Plantillas inteligentes de correo', en: 'Smart email templates' }, keywords: 'email e-mail correio correo template plantilla', icon: ICONS.email, run: actions.toggleEmail },
+        { id: 'script', label: 'Call Script', hint: { pt: 'Guia interativo de chamada', es: 'Guía interactiva de llamada', en: 'Interactive call guide' }, keywords: 'script roteiro guion chamada llamada ligacao call', icon: ICONS.script, run: actions.toggleScript },
+        { id: 'links', label: { pt: 'Central de Links', es: 'Central de Enlaces', en: 'Links Central' }, hint: { pt: 'Ferramentas, SOPs e atalhos', es: 'Herramientas, SOPs y atajos', en: 'Tools, SOPs and shortcuts' }, keywords: 'links enlaces atalhos atajos ferramentas herramientas tools shortcuts sop sops', icon: ICONS.links, run: actions.toggleLinks },
+        { id: 'library', label: { pt: 'Minha Biblioteca', es: 'Mi Biblioteca', en: 'My Library' }, hint: { pt: 'Snippets e respostas salvas', es: 'Snippets y respuestas guardadas', en: 'Saved snippets and replies' }, keywords: 'biblioteca library snippets respostas respuestas replies salvas guardadas saved', icon: ICONS.library, run: actions.toggleLibrary },
+        { id: 'timezone', label: { pt: 'Fusos Horários', es: 'Husos Horarios', en: 'Time Zones' }, hint: { pt: 'Monitoramento e planejador de chamada', es: 'Monitoreo y planificador de llamada', en: 'Monitoring and call planner' }, keywords: 'fuso horario husos timezone time zone clock', icon: ICONS.timezone, run: actions.toggleTimezone },
+        { id: 'broadcast', label: { pt: 'Avisos', es: 'Avisos', en: 'Broadcast' }, hint: { pt: 'Comunicados e disponibilidade BAU', es: 'Comunicados y disponibilidad BAU', en: 'Announcements and BAU availability' }, keywords: 'avisos broadcast comunicados announcements notices disponibilidade disponibilidad availability', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
+        { id: 'configs', label: { pt: 'Configurações', es: 'Configuración', en: 'Settings' }, hint: { pt: 'Perfil, som e preferências', es: 'Perfil, sonido y preferencias', en: 'Profile, sound and preferences' }, keywords: 'configuracoes configuracion config settings preferencias preferences perfil profile som sonido sound', icon: ICONS.configs, run: actions.toggleConfigs },
     ].map(a => ({ ...a, group: 'modules' }));
 
     // Os atalhos do agente vêm primeiro: são dele, e são o que ele repete
@@ -197,7 +205,7 @@ export function initCommandPalette(actions) {
     function buildActions() {
         return [...noteShortcuts(), ...MODULE_ACTIONS]
             .filter(a => typeof a.run === 'function')
-            .map(a => ({ ...a, _haystack: normalize(`${a.label} ${a.hint.pt} ${a.hint.es} ${a.keywords}`) }));
+            .map(a => ({ ...a, _haystack: normalize(`${everyVersion(a.label)} ${everyVersion(a.hint)} ${a.keywords}`) }));
     }
 
     // Overlays que mandam na tela e têm o próprio teclado (diálogos, wizards de
@@ -300,8 +308,8 @@ export function initCommandPalette(actions) {
             `;
             // textContent, não interpolação: o rótulo do atalho é digitado pelo
             // agente, e um "<" ou um "<b>" nele era lido como HTML.
-            item.querySelector('.cw-palette-item-label').textContent = action.label;
-            item.querySelector('.cw-palette-item-hint').textContent = action.hint[getLanguage()] || action.hint.pt;
+            item.querySelector('.cw-palette-item-label').textContent = pick(action.label);
+            item.querySelector('.cw-palette-item-hint').textContent = pick(action.hint);
             list.appendChild(item);
             itemEls.push(item);
         });
