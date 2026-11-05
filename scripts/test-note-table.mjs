@@ -23,10 +23,10 @@ import { readFileSync } from 'node:fs';
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
-async function load(entry) {
+async function load(entry, plugins = []) {
     const out = await build({
         entryPoints: [resolve(here, entry)], bundle: true, write: false,
-        format: 'cjs', platform: 'node', logLevel: 'silent',
+        format: 'cjs', platform: 'node', logLevel: 'silent', plugins,
     });
     const mod = { exports: {} };
     // eslint-disable-next-line no-new-func
@@ -652,6 +652,137 @@ check('o arquivo do Apps Script carrega a MESMA semente do JSON (nenhum dos dois
     igual(payload, seed, 'ContentSeed_NoteLayouts.js × note-layouts-seed.json');
     ok(/function seedNoteLayoutsNow\(\)/.test(gas), 'seedNoteLayoutsNow()');
 });
+
+console.log('\nServiço de hidratação (note-table-service.js)');
+
+// A Central é trocada por uma falsa no próprio bundle: o teste decide o que o
+// cache tem e o que a rede devolve (ou se ela cai).
+const central = { cache: {}, net: {}, offline: false, calls: [] };
+globalThis.__central = central;
+const stubData = {
+    name: 'stub-data-service',
+    setup(b) {
+        b.onLoad({ filter: /data-service\.js$/ }, () => ({
+            contents: `export const DataService = {
+                getCachedContent: (m) => globalThis.__central.cache[m] ?? null,
+                fetchContentModule: async (m) => {
+                    const c = globalThis.__central; c.calls.push(m);
+                    if (c.offline) return c.cache[m] ?? null;
+                    return c.net[m] ?? [];
+                },
+            };`,
+            loader: 'js',
+        }));
+    },
+};
+const loadService = () => load('../src/modules/notes-table/note-table-service.js', [stubData]);
+const asCentral = (items) => items.map((it, i) => ({ id: 'itm_' + i, field: '', ...it }));
+const [seedBlocks, seedLayouts] = seed;
+const warns = [];
+const origWarn = console.warn;
+const quiet = async (fn) => { console.warn = (...a) => warns.push(a.join(' ')); try { return await fn(); } finally { console.warn = origWarn; } };
+const svcChecks = [];
+const checkAsync = (name, fn) => svcChecks.push([name, fn]);
+
+checkAsync('estado real da planilha (módulos criados, nada publicado): o agente vê o embutido inteiro', async () => {
+    Object.assign(central, { cache: {}, net: { note_blocks: [], note_layouts: [] }, offline: false, calls: [] });
+    const S = await loadService();
+    const cat = await S.loadNoteCatalog();
+    igual(cat, EMB, 'catálogo');
+    igual(S.isCatalogFromCentral(), false, 'veio da Central?');
+    igual(central.calls.sort(), ['note_blocks', 'note_layouts'], 'módulos pedidos');
+});
+
+checkAsync('offline e sem cache: o embutido, sem lançar', async () => {
+    Object.assign(central, { cache: {}, net: {}, offline: true, calls: [] });
+    const S = await loadService();
+    igual(await S.loadNoteCatalog(), EMB, 'catálogo');
+});
+
+checkAsync('round-trip semente → serviço = embutido (a semente publicada não muda nada para o agente)', async () => {
+    Object.assign(central, { cache: {}, net: { note_blocks: asCentral(seedBlocks.items), note_layouts: asCentral(seedLayouts.items) }, offline: false, calls: [] });
+    const S = await loadService();
+    const cat = await S.loadNoteCatalog();
+    igual(cat, EMB, 'catálogo');
+    igual(S.isCatalogFromCentral(), true, 'veio da Central?');
+});
+
+checkAsync('publicar só um bloco muda só aquele bloco (mescla pelo id)', async () => {
+    const interim = JSON.parse(seedBlocks.items.find((i) => i.key === 'interim').value);
+    interim.sections[0].rows.find((r) => r.id === 'case_comments').label.pt = 'Comentários do caso:';
+    Object.assign(central, { cache: {}, net: { note_blocks: asCentral([{ key: 'interim', lang: 'ALL', label: 'Interim', value: JSON.stringify(interim), sortOrder: 0 }]), note_layouts: [] }, offline: false, calls: [] });
+    const S = await loadService();
+    const cat = await S.loadNoteCatalog();
+    igual(cat.blocks.interim, interim, 'bloco publicado');
+    const rest = Object.keys(EMB.blocks).filter((k) => k !== 'interim');
+    igual(rest.map((k) => cat.blocks[k]), rest.map((k) => EMB.blocks[k]), 'os outros blocos');
+    igual(cat.segments, EMB.segments, 'segmentos');
+    ok(R.renderNoteHtml(cat, M.createNoteState({ seg: 'sbse', substatus: 'NI - Awaiting Inputs', active: ['interim'] }), { lang: 'pt' }).includes('Comentários do caso:'), 'rótulo PT na nota');
+});
+
+checkAsync('item corrompido não derruba os outros', async () => {
+    const items = asCentral(seedBlocks.items).map((it) => (it.key === 'general' ? { ...it, value: '{quebrado' } : it));
+    Object.assign(central, { cache: {}, net: { note_blocks: items, note_layouts: asCentral(seedLayouts.items) }, offline: false, calls: [] });
+    const S = await loadService();
+    const cat = await quiet(() => S.loadNoteCatalog());
+    igual(cat, EMB, 'catálogo (o general corrompido cai no embutido)');
+    ok(warns.some((w) => w.includes("'general' ilegível")), 'sem aviso');
+});
+
+checkAsync('kind/type desconhecido: a linha (ou seção) some com console.warn, e nada lança', async () => {
+    warns.length = 0;
+    const general = JSON.parse(seedBlocks.items.find((i) => i.key === 'general').value);
+    general.sections[0].rows.splice(1, 0, { id: 'nova_linha', label: { en: 'Brand new:' }, type: 'dropdown', required: true, na: true, visible: true });
+    general.sections.push({ kind: 'carousel', title: 'X', rows: [] });
+    const audit = JSON.parse(seedBlocks.items.find((i) => i.key === 'audit').value);
+    audit.sections[0].columns[2].type = 'slider';
+    Object.assign(central, { cache: {}, net: { note_blocks: asCentral([
+        { key: 'general', lang: 'ALL', label: 'General', value: JSON.stringify(general), sortOrder: 0 },
+        { key: 'audit', lang: 'ALL', label: 'Audit', value: JSON.stringify(audit), sortOrder: 1 },
+    ]), note_layouts: [] }, offline: false, calls: [] });
+    const S = await loadService();
+    const cat = await quiet(() => S.loadNoteCatalog());
+    igual(M.blockRows(cat.blocks.general).map((r) => r.id), M.blockRows(EMB.blocks.general).map((r) => r.id), 'linhas do general');
+    igual(cat.blocks.general.sections.length, 2, 'seções do general');
+    igual(cat.blocks.audit.sections.map((s) => s.kind), ['kv'], 'seção por CID com coluna desconhecida');
+    ok(warns.some((w) => w.includes("'nova_linha' de tipo 'dropdown'")), 'aviso da linha');
+    ok(warns.some((w) => w.includes("'carousel' desconhecida")), 'aviso da seção');
+    const st = M.createNoteState({ substatus: 'SO - Implementation Only', active: ['general'] });
+    M.applyAuto(cat, st, CTX);
+    ok(R.renderNoteHtml(cat, st, { lang: 'en' }).includes('Call Summary:'), 'a nota continua saindo');
+});
+
+checkAsync('segmento que cita bloco desconhecido perde só aquele bloco', async () => {
+    warns.length = 0;
+    const all = JSON.parse(seedLayouts.items.find((i) => i.key === 'all').value);
+    all.blocks.splice(2, 0, { b: 'bloco_futuro', title: 'Futuro' });
+    Object.assign(central, { cache: {}, net: { note_blocks: [], note_layouts: asCentral([{ key: 'all', lang: 'ALL', label: 'ALL TASKS', value: JSON.stringify(all), sortOrder: 0 }]) }, offline: false, calls: [] });
+    const S = await loadService();
+    const cat = await quiet(() => S.loadNoteCatalog());
+    igual(cat.segments[0].blocks.map((p) => p.b), ['general', 'before', 'impl', 'after', 'consult'], 'blocos do ALL TASKS');
+    ok(warns.some((w) => w.includes("'bloco_futuro' desconhecido")), 'sem aviso');
+});
+
+checkAsync('cache primeiro, rede depois: o assinante é avisado a cada aplicação', async () => {
+    const interim = JSON.parse(seedBlocks.items.find((i) => i.key === 'interim').value);
+    interim.name = 'Do cache';
+    const net = JSON.parse(JSON.stringify(interim)); net.name = 'Da rede';
+    Object.assign(central, {
+        cache: { note_blocks: asCentral([{ key: 'interim', value: JSON.stringify(interim) }]) },
+        net: { note_blocks: asCentral([{ key: 'interim', value: JSON.stringify(net) }]), note_layouts: [] }, offline: false, calls: [],
+    });
+    const S = await loadService();
+    const seen = [];
+    await S.loadNoteCatalog((c) => seen.push(c.blocks.interim.name));
+    igual(seen, ['Do cache', 'Da rede'], 'avisos');
+    igual(S.getNoteCatalog().blocks.interim.name, 'Da rede', 'catálogo final');
+});
+
+for (const [name, fn] of svcChecks) {
+    total++;
+    try { await fn(); console.log('  ✓ ' + name); }
+    catch (e) { console.log('  ✗ ' + name + '\n      ' + e.message); fail++; }
+}
 
 console.log(`\n${total - fail}/${total} checagens ok`);
 process.exit(fail ? 1 : 0);
