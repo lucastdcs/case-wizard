@@ -181,6 +181,40 @@ This file differs from the long-term roadmap: it describes what is happening **n
       realmente lançado**; a tela batendo com `hero.png`/`europe.png`; antes/depois entregue;
       CHANGELOG e docs vivos atualizados no mesmo PR.
 
+- [~] **Pílula com gaveta e layout por agente (2026-11-05, ADR-0023).** Pedido do
+      Lucas: a pílula cresce a cada módulo, o agente deveria organizar os ícones em
+      Configurações e nem todos precisam estar nela — uma gaveta para o resto. Medido:
+      com 10 botões a pílula aberta mede 641px e perde 56px no topo num viewport de
+      650px; agora 7 fixados + Mais = 533px. Entregue (só frontend, sem backend):
+      1. [x] **Modelo** `shared/pill-layout.js` (teto de 7 fixados, padrão, tolerância a
+         dado estranho, módulo novo → fim da gaveta, `move()` síncrono com `saved`
+         assíncrono): `test:pill-layout` (22).
+      2. [x] **Pílula** (`command-center.js`): botões de uma tabela, criados uma vez e
+         movidos; botão Mais + gaveta irmã da pílula; Mais espelha módulo guardado
+         aberto e aviso pendente; genie sai/volta pelo Mais; cascata por `--cw-i`.
+      3. [x] **Configurações → Pílula e Gaveta** (`configs/pill-section.js`, pt/es/en):
+         arrastar, setas, botão de mover, contador `n/7`, restaurar com confirmação.
+      4. [x] `smoke:pill-layout` (14) no navegador, incluindo a sincronia com uma nuvem
+         simulada por JSONP; 19 mutações do código de produção, cada uma derrubando a
+         asserção certa.
+      5. [x] **Defeito achado no caminho e corrigido**: `UserPrefsService.sync()` ficava
+         preso sem e-mail e nunca ia à nuvem (o Links o chama no init do módulo). Afeta
+         também atalhos e favoritos; `test:shortcuts` +1.
+      **Falta confirmar / decidir (do Lucas):**
+      - **a composição padrão**: Biblioteca, Fusos e Configurações na gaveta e os outros
+        sete fixados é palpite meu de uso, sem dado. Muda a pílula de **todo** agente no
+        próximo boot — se houver telemetria de abertura por módulo, é o que decide;
+      - **o teto de 7** (vem da medição a 650px; com a pílula arrastada para cima caberiam 8);
+      - **nota de versão** (`RELEASE_NOTES`) avisando que três ícones foram para a gaveta
+        e que o Ctrl+K continua alcançando tudo — ao fechar a release;
+      - **no CRM real**: onde a gaveta cai sobre o painel do caso (ela abre para dentro da
+        tela, a 12px da pílula) e se a captura de identidade chega antes do `sync()` do
+        boot (no mock chega aos 0,6s; o `sync()` roda aos 2,5s).
+      **Fora do escopo, de propósito:** unificar os nomes de módulo com a lista do
+      `command-palette.js` (hoje em dois lugares); `resize` e `Tab`/foco da gaveta não têm
+      asserção própria; ordenar a pílula por uso (descartado no ADR); a pílula em duas
+      colunas.
+
 - [~] **Lembrete de qualidade em todo boot (2026-10-30, ADR-0021).** Pedido do
       Lucas: avisar o agente, a cada abertura, de que deve seguir as diretrizes de
       QA e o SOP do segmento do caso — o Case Wizard só ajuda a preencher, a

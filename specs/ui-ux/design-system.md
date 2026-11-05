@@ -265,6 +265,20 @@ precisa digitar**, e o formulário nunca pode mentir sobre de que caso é:
   `role="tab"` + `aria-selected` no app, alvo ≥32px, o selecionado é o único com
   fundo. É a versão Apple do "chip de filtro" do Material: uma só
   escolha, sem rolagem.
+- **Pílula e gaveta (ADR-0023):** a pílula mostra **no máximo 7** módulos fixados
+  — é o que cabe num viewport de 650px (7 + Mais = 533px; com 10 botões ela
+  media 641px e perdia o topo). O resto mora na **gaveta**, atrás do botão de
+  grade: ícone **e nome** (o nome é o que desambigua num lugar com vários
+  ícones), 3 colunas, aberta **para dentro da tela** e com a base alinhada à do
+  botão. A gaveta é um elemento **irmão** da pílula, nunca filho (a pílula é
+  fixed, arrastável e tem regras em todo filho direto; dentro dela o vidro
+  aninhado também não borra o que está atrás). Fecha por clique fora, Esc (só
+  ela), escolha, recolher, arrastar e resize; o mouse nela segura o
+  auto-fechamento. **O que mora na gaveta não pode ficar mudo nem invisível:** o
+  botão Mais acende (`.active`) com um módulo guardado aberto e mostra o ponto de
+  aviso quando algum tem pendência. A ordem dos ícones é **escolha do agente**:
+  nada de reordenar sozinho por uso — num dock a memória muscular vale mais, e
+  `:nth-child` com posição fixa não serve (a cascata usa `--cw-i`).
 - **Vidro só na casca:** superfícies translúcidas (`rgba(248,249,250,.88)` +
   blur) valem para a janela e o trilho; o conteúdo dentro continua sólido e
   recuado por tom, não por borda. Tudo o que anima declara as propriedades

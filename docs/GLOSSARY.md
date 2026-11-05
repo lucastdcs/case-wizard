@@ -19,7 +19,9 @@ Keep definitions short and precise. The goal: a new developer (or Claude) quickl
 
 **CID** — Customer/case identifier captured live during a call (Call Script Assistant) or from the CRM page.
 
-**Command Center** — The floating pill UI (`src/modules/shared/command-center.js`) that is the app's main entry point, surfacing every module and drag-repositionable on screen.
+**Command Center** — The floating pill UI (`src/modules/shared/command-center.js`) that is the app's main entry point, drag-repositionable on screen. It shows the modules the agent **pinned** (up to 7, in the agent's order) plus a grid-shaped **More** button that opens the **Drawer**; every module is still one `Ctrl/Cmd+K` away.
+
+**Drawer (Gaveta)** — The popover behind the Command Center's More button that holds the modules the agent did not pin (icon + name). A sibling element of the pill, not a child. The More button mirrors what happens inside it: an open stowed module, or a pending notice. The pinned/drawer split is the agent's **pill layout** (`shared/pill-layout.js`, ADR-0023), edited in Configurações → Pílula e Gaveta.
 
 **Command Palette** — The `Ctrl/Cmd+K` quick-search overlay (`command-palette.js`) that calls the same toggle functions as clicking a Command Center icon, without duplicating open/close logic. It lists two groups: the agent's own **Shortcuts** first, then the modules.
 

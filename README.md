@@ -34,7 +34,7 @@ A productivity and automation suite for a corporate CRM, delivered as a JavaScri
 - **My Library** — personal snippets (notes, emails, general text), synced across devices via Google Sheets.
 - **Broadcast Center** — read-only feed of operational announcements, published from the Content Center. Tracks what's been read in `localStorage`, filters by the segment the agent serves, and parses emoji shortcodes. Carries a secondary **BAU availability** strip: the flag of the agent's own segment, a swap to the other one, and two dates per segment — the nearer one in amber, full availability in green.
 - **Links Hub** — curated shortcuts to internal tools and forms. Opens on a **home** with up to three highlighted links (title, blurb and a display window set in the Content Center), plus the agent's **favorites**, **recents** and what **just left the spotlight**; the searchable library, grouped by category, is one click away. A fixed **preview pane** follows the mouse and keyboard focus ("what it is", "when to use it"). Categories — including new ones — and highlights are managed in the Content Center, not in code.
-- **Command Center & Command Palette** — a floating pill that surfaces every module, plus a `Ctrl/Cmd+K` quick-search that calls the same toggle functions as clicking an icon.
+- **Command Center & Command Palette** — a floating pill with the modules each agent pins (up to 7, in their own order) and a **More** button that opens a drawer with the rest; arranged in Settings → *Pill & Drawer* and stored per person like the shortcuts. Plus a `Ctrl/Cmd+K` quick-search that reaches every module through the same toggle functions as clicking an icon.
 - **Per-agent Ctrl+K shortcuts** — each agent configures their own quick commands (status + substatus + scenarios), created either by capturing a Case Notes screen they already built or from a builder in Settings. Stored per person in the backend so they follow the agent across machines.
 - **Onboarding & Changelog wizards** — first-run tutorial slides and a "what's new" popup shown automatically when the app version changes.
 - **Sound UX & Material Look** — audio feedback for success/error/notification events, a cinematic startup sound, and CSS-in-JS components styled to blend into Google's native UI.
@@ -190,7 +190,7 @@ The bookmarklet — in the production variant — creates a `trustedTypes` polic
 3. Initializes the sound engine and global hover/click audio listeners.
 4. Kicks off async data fetching (tips) and resolves the agent's profile, which sets both the interface language and the segment they serve. Each module fetches its own content after that.
 5. Initializes every module, collecting each one's control functions (e.g. `toggleNotes`).
-6. Mounts the floating Command Center pill, wiring each module's toggle into it.
+6. Mounts the floating Command Center pill, wiring each module's toggle into it and laying the buttons out as the agent arranged them (pinned on the pill, the rest in the drawer).
 
 ### Backend & Data Flow
 

@@ -31,6 +31,81 @@ um clique, confira primeiro **qual** elemento o seletor achou. Nunca escreva
 testa. E prove que a asserção tem dentes mutando o código e vendo-a reprovar (aqui, com
 3 mutações; cada uma derrubou só a checagem esperada).
 
+## Serviço que persiste na nuvem: devolva a decisão síncrona, deixe só a persistência assíncrona
+
+**Why**: o `move()` da pílula esperava `UserPrefsService.set()` antes de repintar a tela
+de Configurações, tocar o clique e devolver o foco ao botão. O `set()` grava o cache
+local na hora e **só então** espera o JSONP (até 15s de watchdog). No mock o agente tem
+e-mail, então a espera existia: o foco do teclado sumia por uma duração que dependia da
+rede, e o smoke passava ou falhava conforme essa duração — o primeiro sintoma foi um
+teste intermitente, não um defeito visível. A correção está na API: `move()` devolve
+`{ ok, saved }` já com os ouvintes avisados, e só `saved` (a nuvem) é uma promessa.
+
+**When to apply**: ao escrever qualquer serviço sobre `UserPrefsService` (ou outro cache
+otimista + nuvem). Pergunte do que cada coisa que a UI faz *depende*: repintar, focar,
+tocar som e mostrar recusa dependem da decisão, não da nuvem. Teste com a asserção "o
+ouvinte já foi avisado antes de a função retornar a promessa" (`test:pill-layout`).
+
+## `return` dentro de um async IIFE roda antes da atribuição: a promessa memorizada fica presa
+
+**Why**: `UserPrefsService.sync()` faz `syncPromise = (async () => { if (!email) return
+...; })()`. Um async IIFE roda **síncrono até o primeiro `await`**, então o `return`
+precoce (e qualquer `syncPromise = null` que se pusesse ali) acontece antes de a
+atribuição terminar — a promessa resolvida fica gravada para sempre. O Links chama
+`sync()` no init do módulo, antes da identidade ser capturada, e daí em diante o
+`sync()` do boot (2,5s depois, já com e-mail) recebia essa promessa e nunca ia à nuvem:
+atalhos, favoritos e o layout da pílula de uma máquina nova não chegavam, sem erro.
+Achado porque o smoke da sincronia não via `get_user_prefs` na rede.
+
+**When to apply**: em toda memoização por promessa (`if (p) return p; p = (async () =>
+{...})()`). O caso "nada a fazer" tem de ser decidido **fora** do async IIFE e devolver
+sem memorizar. Teste o caminho "primeira chamada sem pré-condição, segunda com".
+
+## Playwright: `dragTo()` não completa HTML5 drag, e `boundingBox()` não rola
+
+**Why**: o arraste da lista de Configurações parecia quebrado. Instrumentando os
+eventos: `dragTo()` dispara `dragstart` e para — sem os movimentos intermediários o
+Chromium nunca emite `dragenter`/`drop`. Com `mouse.move(..., { steps })` o produto
+funcionava. Depois falhou de novo no viewport de 650px: a janela de Configurações rola
+e o alvo estava fora da área visível, e `boundingBox()` devolve a caixa sem rolar.
+
+**When to apply**: ao testar arrastar-e-soltar HTML5, use mouse manual em passos
+(down → move pequeno → move ao alvo em `steps` → up) e traga origem e alvo para a área
+visível antes de medir. Antes de culpar o produto, instrumente `dragstart/dragenter/drop`.
+
+## Clique por coordenada perto de canto arredondado cai fora do elemento
+
+**Why**: o teste "clicar na gaveta não põe o módulo em idle" falhou *com* a correção no
+lugar. O ponto `left+4, top+4` fica no canto de um painel com `border-radius: 22px`,
+fora da curva — o clique passa para a página por baixo, e "idle" era o comportamento
+certo para ele. Parecia defeito do produto; era a coordenada.
+
+**When to apply**: clique por coordenada em painel arredondado: use o meio de uma borda,
+não o canto. Se uma asserção falha com a correção presente, desconfie primeiro de onde
+o clique de fato caiu (`document.elementFromPoint`).
+
+## Reordenar ícones: troque `:nth-child` por índice em variável CSS
+
+**Why**: a cascata de abrir/fechar da pílula dava o atraso pelo índice posicional
+(`:nth-child(5..15)`). Qualquer ordem dinâmica a quebra em silêncio, e ela já errava em
+desenvolvimento: o selo "Dev" é um filho a mais e empurrava todos os índices em 1. Agora
+cada item recebe `--cw-i` e a pílula `--cw-n` (gravados por `applyLayout()`), e o CSS
+calcula o atraso.
+
+**When to apply**: sempre que a ordem de elementos irmãos virar dado (preferência do
+agente, lista vinda da Central). Meça também o efeito do crescimento: a pílula aberta
+perdia o topo da tela a 650px de viewport com 10 botões (641px); cada módulo novo soma
+~54px, e é esse número que decide o teto de fixados.
+
+## `confirmDialog` só resolve 300ms depois do clique: espere ele sair do DOM
+
+**Why**: o teste "restaurar padrão" lia o estado 150ms depois de clicar OK e via a
+pílula ainda customizada — o `close()` do diálogo anima a saída e só então resolve a
+promessa (`setTimeout 300`). O produto estava certo; a espera fixa, não.
+
+**When to apply**: em smoke de qualquer fluxo com `confirmDialog`/`alertDialog`, espere
+o botão ficar `detached`, não um tempo.
+
 ## Esperar um modal: a promessa de fechamento tem de resolver também no caminho em que ele nunca abre
 
 **Why**: o lembrete de qualidade do boot (ADR-0021) precisa esperar o tour e o

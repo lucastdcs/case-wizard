@@ -9,6 +9,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Pílula com gaveta e layout por agente** (ADR-0023). A pílula crescia ~54px por
+  módulo: com 10 botões media 641px e, num viewport de notebook (650px), perdia o
+  topo — o punho de arrastar ficava fora da tela. Agora ela mostra os módulos que o
+  agente **fixou** (até 7, na ordem dele) e um botão de grade que abre uma
+  **gaveta** com o resto, ícone e nome. Em **Configurações → Pílula e Gaveta** o
+  agente arrasta (ou usa as setas, ou o botão de mover) entre as duas listas e vê a
+  pílula mudar na hora; o layout é por pessoa e acompanha o agente entre máquinas,
+  como os atalhos do Ctrl+K. Padrão: tudo como antes, menos Biblioteca, Fusos e
+  Configurações, que vão para a gaveta. O botão Mais acende quando um módulo
+  guardado está aberto ou tem aviso pendente (Avisos não lidos, rascunho do Case
+  Notes), e o Ctrl+K continua alcançando tudo. `npm run test:pill-layout` (22) e
+  `npm run smoke:pill-layout` (14).
 - **Lembrete de qualidade em todo boot** (ADR-0021). Um cartão no canto inferior
   esquerdo lembra o agente de seguir as diretrizes de QA e o SOP do segmento do
   caso, e de que o Case Wizard só ajuda a preencher — a qualidade do tratamento é
@@ -20,6 +32,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   dispensa. `npm run smoke:disclaimer` (33 asserções).
 
 ### Changed
+- **As dicas da pílula seguem o idioma da interface.** "Configurações" e "Avisos"
+  eram texto fixo em português com a ferramenta em ES/EN; agora os dez módulos usam
+  os mesmos nomes do Ctrl+K nos três idiomas. A cascata de abrir/fechar da pílula
+  passou a vir do índice de cada ícone, não de `:nth-child` com posição fixa (que
+  já dava o atraso ao item errado em desenvolvimento, por causa do selo "Dev").
 - **Notas: "Caso de Portugal?" virou "Caso da Europa?"** (ES: "¿Caso de Europa?",
   EN: "Europe case?"). Só o texto muda — no seletor e na linha que sai na nota.
   O comportamento é o mesmo (liga o campo de consentimento de gravação) e os
@@ -27,6 +44,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   rascunhos já salvos dependem deles.
 
 ### Fixed
+- **`UserPrefsService.sync()` nunca ia à nuvem depois de chamado sem e-mail.** O
+  Links o chama no init do módulo, antes de a identidade do agente ser capturada;
+  esse `return` precoce deixava a promessa resolvida presa, e o `sync()` do boot
+  (2,5s depois, já com e-mail) recebia essa mesma promessa. Atalhos do Ctrl+K,
+  favoritos e o layout da pílula de uma máquina nova não chegavam, sem erro algum.
+  Travado em `test:shortcuts` (+1), que reprova no serviço anterior.
 - **A abertura (splash) saía sempre em português**, até com a ferramenta em EN
   ou ES: prefixo, as 15 frases, o selo de sexta e o nome de reserva ganharam
   dicionário pt/es/en. E, como a splash roda **antes** de o perfil chegar (o
