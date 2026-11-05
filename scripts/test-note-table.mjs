@@ -778,6 +778,37 @@ checkAsync('cache primeiro, rede depois: o assinante é avisado a cada aplicaç�
     igual(S.getNoteCatalog().blocks.interim.name, 'Da rede', 'catálogo final');
 });
 
+// ---- Rascunhos: o DraftService do Case Notes continua igual, e o novo tem chave própria ----
+const lsStore = {};
+globalThis.localStorage = { getItem: (k) => (k in lsStore ? lsStore[k] : null), setItem: (k, v) => { lsStore[k] = String(v); }, removeItem: (k) => { delete lsStore[k]; } };
+const DS = await load('../src/modules/notes/drafts/draft-service.js');
+
+checkAsync('DraftService do Case Notes: mesmas chaves, teto de 5, airbag de 12h e só com sub-status', async () => {
+    for (const k of Object.keys(lsStore)) delete lsStore[k];
+    const D = DS.DraftService;
+    for (let i = 0; i < 7; i++) D.save({ subStatus: 'S' + i });
+    igual([D.getCount(), D.getAll().map((d) => d.subStatus).join(','), Object.keys(lsStore)], [5, 'S6,S5,S4,S3,S2', ['cw_notes_parking_lot']], 'parking lot');
+    D.saveEmergency({ subStatus: 'X', a: 1 });
+    igual([D.getEmergency(), Object.keys(lsStore).sort()], [{ subStatus: 'X', a: 1 }, ['cw_notes_emergency_save', 'cw_notes_parking_lot']], 'airbag');
+    D.saveEmergency({ a: 1 });
+    igual(D.getEmergency(), null, 'airbag sem sub-status');
+    lsStore.cw_notes_emergency_save = JSON.stringify({ timestamp: Date.now() - 13 * 3600e3, data: { subStatus: 'velho' } });
+    igual([D.getEmergency(), 'cw_notes_emergency_save' in lsStore], [null, false], 'airbag vencido');
+    lsStore.cw_notes_parking_lot = '{quebrado';
+    igual(D.getAll(), [], 'parking lot corrompido');
+});
+
+checkAsync('a nota em tabela guarda em chaves próprias e não lê nem apaga os rascunhos do Case Notes', async () => {
+    for (const k of Object.keys(lsStore)) delete lsStore[k];
+    DS.DraftService.save({ subStatus: 'antigo' });
+    DS.DraftService.saveEmergency({ subStatus: 'antigo' });
+    const N = DS.createDraftService({ storageKey: 'cw_notetable_parking_lot', emergencyKey: 'cw_notetable_emergency_save' });
+    igual([N.getCount(), N.getEmergency()], [0, null], 'o novo não lê o antigo');
+    N.save({ subStatus: 'novo' }); N.saveEmergency({ subStatus: 'novo' }); N.clearEmergency();
+    igual([DS.DraftService.getCount(), DS.DraftService.getEmergency()], [1, { subStatus: 'antigo' }], 'o antigo segue intacto');
+    igual(Object.keys(lsStore).sort(), ['cw_notes_emergency_save', 'cw_notes_parking_lot', 'cw_notetable_parking_lot'], 'chaves');
+});
+
 for (const [name, fn] of svcChecks) {
     total++;
     try { await fn(); console.log('  ✓ ' + name); }
