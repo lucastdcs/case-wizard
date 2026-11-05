@@ -272,7 +272,7 @@ check('ADMIN concede acesso a um QA', () => {
     const s = api.getContentSession();
     eq(s.role, 'QA');
     eq(s.canApprove, false);
-    eq(s.proposableModules, ['call_script', 'note_template', 'task_screenshots']);
+    eq(s.proposableModules, ['call_script', 'note_template', 'task_screenshots', 'note_blocks', 'note_layouts']);
   });
 });
 
@@ -1343,6 +1343,149 @@ check('seedTasksNow() migra o catálogo embutido', () => {
 
   // Semear duas vezes não duplica.
   eq(freshCtx.seedTasksNow().status, 'skipped');
+});
+
+// =========================================================
+//  NOTA EM TABELA (note_blocks e note_layouts, ADR-0022)
+// =========================================================
+
+console.log('\n--- Nota em tabela: blocos e segmentos ---');
+
+const NOTE_SEED = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'seeds', 'note-layouts-seed.json'), 'utf8'));
+const noteBlock = (key) => JSON.parse(NOTE_SEED[0].items.find((i) => i.key === key).value);
+const blockValue = (mut) => { const b = noteBlock('interim'); if (mut) mut(b); return JSON.stringify(b); };
+const saveBlock = (key, value, extra) => api.saveContentDraft(Object.assign({
+  module: 'note_blocks', key: key, lang: 'ALL', label: 'Bloco de teste', value: value
+}, extra || {}));
+
+// Contexto novo com a semente da nota no ar: é o estado em que a Central vai editar.
+function ctxComNota() {
+  const freshSS = new FakeSpreadsheet();
+  const c = vm.createContext({
+    SpreadsheetApp: { getActiveSpreadsheet: () => freshSS },
+    Session: { getActiveUser: () => ({ getEmail: () => 'lucaste@google.com' }), getScriptTimeZone: () => 'America/Sao_Paulo' },
+    MailApp: { sendEmail: () => { } }, Logger: { log: () => { } }, Utilities: UTILITIES_STUB,
+    CacheService: sandbox.CacheService, LockService: sandbox.LockService, handleLog: () => { }, console,
+  });
+  // Os mesmos arquivos do contexto principal: saveContentDraft() desvia para o
+  // PeopleAPI e lê o catálogo de campos, como no Apps Script.
+  [CORE_SRC, SRC, PEOPLE_SRC, FIELDS_SRC].forEach((f) => vm.runInContext(fs.readFileSync(f, 'utf8'), c));
+  vm.runInContext('handleLog = function () {};', c);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'gas-backend', 'ContentSeed_NoteLayouts.js'), 'utf8'), c);
+  return c;
+}
+
+check('os conjuntos do servidor (kind, type, coluna por CID, id) são os mesmos do app', () => {
+  const { buildSync } = require('esbuild');
+  const out = buildSync({
+    entryPoints: [path.join(__dirname, '..', 'src', 'modules', 'notes-table', 'note-table-model.js')],
+    bundle: true, write: false, format: 'cjs', platform: 'node', logLevel: 'silent',
+  });
+  const mod = { exports: {} };
+  new Function('module', 'exports', out.outputFiles[0].text)(mod, mod.exports);
+  const M = mod.exports;
+  eq(vm.runInContext('NOTE_SECTION_KINDS', ctx), M.SECTION_KINDS, 'kinds:');
+  eq(vm.runInContext('NOTE_ROW_TYPES', ctx), M.ROW_TYPES, 'types:');
+  eq(vm.runInContext('NOTE_CID_COLUMN_TYPES', ctx), M.CID_COLUMN_TYPES, 'colunas por CID:');
+  eq(String(vm.runInContext('NOTE_ROW_ID_RE', ctx)), String(M.ROW_ID_PATTERN), 'id de linha:');
+});
+
+check('seedNoteLayoutsNow() semeia blocos e segmentos, e tudo passa na própria validação', () => {
+  const c = ctxComNota();
+  const res = c.seedNoteLayoutsNow();
+  eq(res.map((r) => r.status), ['success', 'success']);
+  eq(res.map((r) => r.seeded), [11, 3], 'os 11 blocos e os 3 segmentos:');
+  const blocos = c.listContentItems('note_blocks');
+  const segs = c.listContentItems('note_layouts');
+  // Toda linha semeada tem de passar na validação que a Central aplica ao editar —
+  // senão a migração publicaria algo que a tela recusaria depois.
+  blocos.forEach((i) => c.assertValidNoteBlock_(i.key, i.id, i.value));
+  segs.forEach((i) => c.assertValidNoteLayout_(i.key, i.id, i.value));
+  eq(c.seedNoteLayoutsNow().map((r) => r.status), ['skipped', 'skipped'], 'semear de novo não duplica:');
+});
+
+check('leitura pública: os dois módulos chegam no lote modules=a,b (o boot do agente)', () => {
+  const c = ctxComNota();
+  c.seedNoteLayoutsNow();
+  const r = c.handleContentPublicRead({ modules: 'note_blocks,note_layouts' });
+  eq(r.status, 'success');
+  eq(r.modules.note_blocks.length, 11);
+  eq(r.modules.note_layouts.map((i) => i.key), ['all', 'sbse', 'mms']);
+});
+
+check('QA propõe bloco (como note_template); WFM não', () => {
+  as('quality1', () => {
+    const d = saveBlock('bloco_qa', blockValue());
+    verdadeiro(!!d.draftId, 'rascunho não criado');
+    api.discardContentDraft(d.draftId);
+  });
+  as('wfm1', () => throws(() => saveBlock('bloco_wfm', blockValue()), /não edita o módulo/));
+});
+
+check('formato inválido é recusado: JSON malformado, chave fora do formato', () => {
+  throws(() => saveBlock('bloco_x', '{sem json'), /JSON malformado/);
+  ['Bloco', 'b', 'bloco-x', '1bloco', ''].forEach((k) => throws(() => saveBlock(k, blockValue()), /Chave de bloco inválida/, 'chave "' + k + '":'));
+});
+
+check('kind ou type desconhecido é recusado (o bundle no ar não saberia desenhar)', () => {
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].kind = 'grid'; })), /tipo de seção desconhecido 'grid'/);
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[0].type = 'dropdown'; })), /tipo de linha desconhecido 'dropdown'/);
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[0].when = { idioma: 'pt' }; })), /condição desconhecida 'idioma'/);
+});
+
+check('id de linha duplicado ou fora do formato é recusado', () => {
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[1].id = b.sections[0].rows[0].id; })), /se repete no bloco/);
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[0].id = 'Case Comments'; })), /id de linha inválido/);
+});
+
+check('grade que não fecha é recusada', () => {
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.widths = [30, 47, 22]; })), /somam 99%/);
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.widths = [30, 70]; })), /cada uma das 3 colunas/);
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.widths = [40, 40, 20]; })), /pelo menos 22%/);
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.cols = 7; b.widths = [10, 10, 10, 10, 20, 18, 22]; })), /3, 4, 5 ou 6 colunas/);
+  // Grupo é grupo | rótulo | valor | comentário: só fecha em 4 colunas.
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].kind = 'group'; b.sections[0].group = 'X:'; })), /só existe em grade de 4 colunas/);
+  // Seção por CID: uma coluna por coluna da grade.
+  const audit = noteBlock('audit');
+  audit.sections[0].columns.pop();
+  throws(() => saveBlock('bloco_x', JSON.stringify(audit)), /exatamente 6 colunas/);
+});
+
+check('bloco sem nenhuma linha obrigatória é recusado (a nota sairia toda NA)', () => {
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows.forEach((r) => { r.required = false; }); })), /ao menos uma linha obrigatória/);
+});
+
+check('rótulo em inglês (o texto do padrão) é obrigatório', () => {
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[0].label = { en: '', pt: 'Sub-status:' }; })), /rótulo em inglês/);
+});
+
+check('id de linha é imutável: renomear ou remover uma linha de um bloco no ar é recusado', () => {
+  const c = ctxComNota();
+  c.seedNoteLayoutsNow();
+  const noAr = c.listContentItems('note_blocks').find((i) => i.key === 'interim');
+  const salvar = (mut) => c.saveContentDraft({ module: 'note_blocks', itemId: noAr.id, key: 'interim', lang: 'ALL', label: 'Interim', value: blockValue(mut) });
+  throws(() => salvar((b) => { b.sections[0].rows[2].id = 'comments'; }), /não muda nem some: case_comments/);
+  throws(() => salvar((b) => { b.sections[0].rows.splice(3, 1); }), /não muda nem some: gam/);
+  throws(() => c.saveContentDraft({ module: 'note_blocks', itemId: noAr.id, key: 'interim_v2', lang: 'ALL', label: 'X', value: blockValue() }), /chave de bloco não muda/);
+  throws(() => c.saveContentDraft({ module: 'note_blocks', key: 'interim', lang: 'ALL', label: 'X', value: blockValue() }), /Já existe bloco com a chave 'interim'/);
+  // O que a Central edita de verdade continua passando: rótulo, tradução, NA, visível.
+  const d = salvar((b) => { b.sections[0].rows[2].label.pt = 'Comentários do caso:'; b.sections[0].rows[3].visible = false; });
+  verdadeiro(!!d.draftId, 'edição legítima foi barrada');
+});
+
+check('segmento só aponta para bloco que existe no ar, sem repetir', () => {
+  const c = ctxComNota();
+  c.seedNoteLayoutsNow();
+  const seg = JSON.parse(NOTE_SEED[1].items.find((i) => i.key === 'sbse').value);
+  const salvar = (mut) => { const s = JSON.parse(JSON.stringify(seg)); mut(s); return c.saveContentDraft({ module: 'note_layouts', key: 'novo_seg', lang: 'ALL', label: 'Novo', value: JSON.stringify(s) }); };
+  throws(() => salvar((s) => { s.blocks.push({ b: 'fase_inexistente', title: 'X' }); }), /'fase_inexistente' não existe no ar/);
+  throws(() => salvar((s) => { s.blocks.push({ b: 'audit', title: 'De novo' }); }), /aparece duas vezes/);
+  throws(() => salvar((s) => { s.select = 'todos'; }), /'multi'.*'single'/);
+  throws(() => salvar((s) => { s.always = ['general']; }), /'always' só pode citar/);
+  const d = salvar(() => { });
+  verdadeiro(!!d.draftId, 'segmento válido foi barrado');
+  // Sem nenhum bloco no ar (a planilha de hoje), nenhum segmento passa.
+  throws(() => api.saveContentDraft({ module: 'note_layouts', key: 'seg_x', lang: 'ALL', label: 'X', value: JSON.stringify(seg) }), /não existe no ar/);
 });
 
 // =========================================================
@@ -2503,7 +2646,7 @@ check('a prévia devolve a sessão do papel escolhido', () => {
   eq(p.preview, true);
   eq(p.realRole, 'ADMIN', 'a prévia diz de quem ela é:');
   eq(p.ldap, 'lucaste', 'a identidade real não muda:');
-  eq(p.proposableModules, ['call_script', 'note_template', 'task_screenshots']);
+  eq(p.proposableModules, ['call_script', 'note_template', 'task_screenshots', 'note_blocks', 'note_layouts']);
   eq(p.canManageAccess, false);
 });
 
