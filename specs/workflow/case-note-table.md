@@ -3,7 +3,8 @@
 
 Fonte: o padrão novo de notas (Docs "Template notas", "Template 2 e 3" e "Status", do Drive do
 Lucas) e as decisões dele de 2026-11-05. Decisão em
-`docs/decisions/0022-nota-em-tabela-catalogo-na-central.md`. Alvo visual:
+`docs/decisions/0022-nota-em-tabela-catalogo-na-central.md` e, para a convivência com o módulo antigo,
+`docs/decisions/0024-nota-em-tabela-modulo-novo-ao-lado-do-antigo.md`. Alvo visual:
 `docs/media/case-notes-table/` (os cinco PNGs `01-comeco` a `05-prints` e o protótipo `preview.html`).
 
 **Esta spec vence o protótipo.** O `CATALOG` do `preview.html` é a semente dos dados, mas se
@@ -11,8 +12,9 @@ os dois divergirem, vale este arquivo.
 
 ## 1. O texto da nota é contrato
 
-A nota sai como **uma ou mais tabelas HTML** e substitui, para todos, o formato antigo
-(`<b>rótulo</b><br>valor`). Quem audita lê a tabela, os rótulos e o `NA`. Mudar um rótulo,
+A nota sai como **uma ou mais tabelas HTML**. É o formato do **módulo novo** (`notetable`); o Case Notes
+atual **continua vivo e gerando o formato antigo** (`<b>rótulo</b><br>valor`), sem mudança (ADR-0024).
+Quem audita lê a tabela, os rótulos e o `NA`. Mudar um rótulo,
 a ordem ou um valor muda a métrica sem erro em lugar nenhum — por isso o texto vem do
 catálogo (aprovado na Central), nunca de string solta no código.
 
@@ -25,6 +27,9 @@ catálogo (aprovado na Central), nunca de string solta no código.
   mostra a lacuna (`PT 0/16`). **Nunca cai em PT** (learning: "Mapa de idioma só de ES").
 - O texto digitado pelo agente entra como **texto, escapado**: `<` e `&` não viram marcação.
 - Valor de várias linhas mantém as quebras (`<br>`), sem linha em branco no meio.
+- **Negrito dentro de um valor:** `**texto**` vira `<b>texto</b>`, **depois** do escape, e é a **única**
+  marcação aceita (nada de itálico, link ou lista). Asteriscos sem par ficam literais. É o que dá o título em
+  negrito dos blocos do resumo (§9, "Cenários rápidos").
 
 ## 2. Segmentos, blocos e fases
 
@@ -390,6 +395,17 @@ Cada linha tem a própria condição (tabela do bloco `extras`, §4). Pontos que
 - **Tag Support** só com ACT ou ECW marcadas; nasce em `No`. Com `Yes`, cada task ACT/ECW em
   **Task types** leva o aviso do Win Criteria (`ts_output_disclaimer` do dicionário), como hoje, e o
   motivo some. Com `No`, o motivo é opcional. O lembrete do Form fica na dica.
+  **Tudo igual ao módulo atual (decisão do Lucas, "continue como é hoje"):** com `Yes`, o Tag Support
+  **dispensa os prints** de ACT/ECW, então as linhas de print dessas tasks em Before, Implementation e After
+  viram `NA` **automático, com a marca Auto**. **"Incluir mesmo assim"** (`forcedScreenshots`, já no
+  `step-tasks.js`) religa os prints da task forçada, e o aviso sai de Task types nessa task. Com `Yes` em só
+  uma das duas tasks, só as linhas dela mudam; as linhas `onlyFor: ecw` seguem a ECW.
+- **Evidências por task do Win Criteria** (o `SCREENSHOTS_LIST` antigo, módulo `task_screenshots`) seguem
+  **como no módulo atual**: o seletor de tasks e a lista de prints da task são o `step-tasks.js` reaproveitado,
+  **sem mudança**. O que o agente anexa ali vai para a tabela **Additional Details**, uma linha `link` por
+  print, `<task> — <rótulo>`, depois das demais linhas do bloco. **ACT e ECW não repetem a lista**: o print
+  delas é pedido pelas linhas de fase (Before, Implementation, After); pedir o mesmo print duas vezes é
+  defeito. As demais tasks (GA4, GTM, e as que o Win Criteria acrescentar) mantêm a lista de hoje.
 - **Evidências de contato** (3 linhas) só em `NI - Attempted Contact`; **Call attempt** só em
   `IN - Not Reachable`.
 - **Europe case?** só no caso europeu (§6).
@@ -408,6 +424,22 @@ tabela: a tela". Aqui ficam só as regras de comportamento que ela implementa:
   interruptor do **Caso da Europa** (Sim deixa o resumo em âmbar). Só o tipo **fora do padrão** aparece: a linha Nota e a faixa fixa
   citam "ECL SBS-E" em azul; no padrão não citam nada. Com a linha em foco, a dica diz que o tipo está lá dentro. **General** não é
   chip (sempre ligado).
+- **Tasks:** o seletor e a lista de prints por task são o **`step-tasks.js` do módulo atual, reaproveitado sem
+  mudança** (os quatro chips do protótipo são só um substituto visual). As tasks vêm **pré-marcadas** do CRM
+  (`Appointment tasks`, multivalorado) **só quando o texto é reconhecido com segurança** (na tela traduzida o
+  campo vem em texto traduzido, não na chave `ads_conversion_tracking`); a linha mostra o resumo com a marca
+  Auto e "Alterar", e cai no seletor de hoje quando não reconhece. **Nos tipos ECL a linha Tasks some** (a nota
+  ECL não tem "Task types"), e o Tag Support some junto.
+- **Blocos pré-selecionados** (não só um ponto de sugestão): com `Appointment time` **= hoje** (no fuso do
+  agente) ligam Before e Implementation; com data **anterior**, After; Consult continua pela regra do
+  sub-status. O CRM entrega a data em texto que varia com o idioma (`2026-Set-10 12:00:00 UTC` na tela original):
+  o parse é tolerante a PT/ES/EN e, **se falhar, nada é pré-selecionado**. O agente liga e desliga os chips como
+  hoje.
+- **Idioma, Fluxo e Europa:** o **idioma** da nota vem automático do `Business language` do CRM (já lido por
+  `captureLanguage`), com fallback para o idioma da interface; o agente pode trocar. O **Fluxo** (BAU ou LM, dois
+  fluxos de atendimento) o agente troca na linha Nota, e o **padrão de cada agente** é a preferência
+  `notes_default_flow` (`bau|lm`, padrão `bau`) em Configurações. A **Europa é sempre o agente quem marca**: não
+  há leitura automática (decisão do Lucas).
 - **Sub-status** é um seletor com busca por nome **ou atalho** (`ts so verif`); texto fora da lista é aceito (os `PI - …`).
 - **Tipo padrão (o que abre sem trocar):** preferência do agente via `UserPrefsService`, chaves `notes_default_segment`
   (`all|sbse|mms|last`) e `notes_last_segment`. Opção em Configurações ("Case Notes · abrir em"). Sem preferência → `all`.
@@ -436,6 +468,12 @@ tabela: a tela". Aqui ficam só as regras de comportamento que ela implementa:
   edição, `saveEmergency`): os dois ficam.
 - **Cenários rápidos:** o protótipo mostra 3 chips fixos de exemplo. No app valem os de `getScenariosFor(subStatus, caseType)`:
   0 a 5 por sub-status (27 no total). A linha só aparece quando há ao menos um; com mais de 3, vira um menu.
+  **Para onde vai cada campo do cenário** (decisão do Lucas): o que for **print (SS)** vai para **Additional**
+  (`call_attempt`, evidências de contato, linhas por task, Additional Screenshots); `REASON_COMMENTS` vai para
+  `substatus_reason`; `DIA` para `next_followup`; **todo o resto de texto é condensado no campo-resumo do bloco**
+  (`call_summary`, `case_comments` ou `oncall_comments`), em **blocos, cada um com o título em negrito**:
+  `**Contexto da call:** texto`, uma linha por bloco, com o título no idioma do atendimento. Combinar vários
+  cenários acrescenta blocos; não sobrescreve o que o agente digitou.
 - **Intenção de projeto, ainda não desenhada no protótipo:** a gaveta abre para a esquerda (a janela mora ao lado do dock; hoje
   `right: 100px` em `notes-popup.js`). A gaveta precisa de 536px à esquerda da janela, então a tela precisa de ~1196px; abaixo
   disso (ou com a janela arrastada para a borda esquerda) ela **sobrepõe a janela** em vez de sair da tela. O protótipo só mostra
@@ -462,5 +500,7 @@ frontend antes do dado).
 - Mapa Sales Program → segmento (adiado pelo Lucas).
 - Lista de sub-status `PI - …` (deixada de fora por ora).
 - Alinhar `SUBSTATUS_TEMPLATES` ao arquivo Status (§7: etapa separada).
-- Evidências por task do Win Criteria para as tasks que não são ACT/ECW: **decisão em aberto**
-  (PLAN.md → "Decisões em aberto").
+- Quando o módulo novo vira o padrão e o antigo se aposenta (ADR-0024: outra decisão).
+- Migrar rascunhos do formato antigo (o novo tem rascunhos próprios e não lê os antigos).
+- Colar vários links de uma vez e ler a Europa ou o Fluxo do CRM (o Lucas disse que não: um link por vez,
+  Europa sempre manual, Fluxo por preferência).

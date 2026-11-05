@@ -2,7 +2,7 @@
 # 0022 — Nota em tabela: catálogo de blocos na Central, estrutura no código
 
 **Date**: 2026-11-05
-**Status**: Accepted — decisões do Lucas de 2026-11-05; implementação pendente (ver `PLAN.md`)
+**Status**: Accepted — decisões do Lucas de 2026-11-05; item 1 revisto pelo [ADR-0024](0024-nota-em-tabela-modulo-novo-ao-lado-do-antigo.md) (módulo novo ao lado do antigo); implementação em andamento (ver `PLAN.md`)
 
 ## Context
 
@@ -17,7 +17,8 @@ para o catálogo de tasks. Os overheads querem controle sobre o que a nota tem.
 
 ## Decision
 
-1. A nota passa a ser **tabela HTML**, no lugar do formato atual, **para todos**.
+1. A nota passa a ser **tabela HTML**. ~~No lugar do formato atual, para todos~~ **Revisto (ADR-0024):** a tabela é
+   um **módulo novo**, ao lado do Case Notes atual, que continua vivo e intocado.
 2. O padrão vira **dado da Central**: o módulo `note_blocks` (o corpo das tabelas: seções e linhas) e
    o módulo `note_layouts` (os segmentos: quais blocos, em que ordem, com que título e sugestão).
    Passam pela fila de aprovação, com versão e rollback, como o resto do catálogo (ADR-0012 e
