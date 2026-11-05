@@ -110,7 +110,11 @@ This file differs from the long-term roadmap: it describes what is happening **n
          `extras` sempre por último; célula pendente **nunca** na saída. **Prove que as asserções têm
          dentes:** mute o código (≥ 5 mutações: consentimento, Europa, dias úteis, LM, ordem do
          extras) e veja a asserção certa reprovar; registre no PR.
-      2. **Catálogo embutido + gerador da semente.** `src/modules/notes-table/note-table-data.js`:
+      2. [x] **Catálogo embutido + gerador da semente.** *(feito: catálogo gerado do `CATALOG` do
+         protótipo por script, não redigitado; `test:note-table` o compara linha a linha com as
+         tabelas da spec §4 e prova o round-trip semente → catálogo e JSON × arquivo do Apps
+         Script; 4 mutações pegas. O round-trip pelo serviço entra no passo 4. As dicas viraram
+         `hint: { pt, es, en }` (texto de tela, cai no PT).)* `src/modules/notes-table/note-table-data.js`:
          copie o `CATALOG` do `preview.html` (segmentos e os 11 blocos, `extras` incluído);
          `label.en` completo, `pt`/`es` vazios por ora (passo 8). `scripts/generate-note-layouts-seed.mjs`
          gera `gas-backend/seeds/note-layouts-seed.json` e `gas-backend/ContentSeed_NoteLayouts.js`
