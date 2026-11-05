@@ -15,8 +15,10 @@ This file differs from the long-term roadmap: it describes what is happening **n
       **COMECE AQUI (quem for executar):**
       1. Leia, nesta ordem: `specs/workflow/case-note-table.md` (o contrato; vence tudo),
          `docs/decisions/0022-nota-em-tabela-catalogo-na-central.md` (o porquê),
-         `docs/media/case-notes-table/hero.png` e `europe.png` (o alvo visual) e `preview.html`
-         (protótipo interativo: abra no navegador e use). Depois o `docs/LEARNINGS.md` **inteiro**:
+         `docs/media/case-notes-table/01-comeco.png` … `04-pendencias.png` (o alvo visual) e
+         `preview.html` (protótipo interativo: abra no navegador e use; é referência, a spec vence),
+         e a seção "Case Notes em tabela: a tela" de `specs/ui-ux/design-system.md` (medidas e
+         tokens). Depois o `docs/LEARNINGS.md` **inteiro**:
          as entradas de "Armadilhas" abaixo valem aqui.
       2. **Você não precisa do Drive do Lucas.** Tudo do padrão (rótulos, ordem, regras) está no
          `CATALOG` do `preview.html` e na spec. Não invente texto do padrão.
@@ -83,7 +85,9 @@ This file differs from the long-term roadmap: it describes what is happening **n
          espelho vazio. **Teste no estado real da planilha** (módulos ainda não publicados): o
          agente vê o embutido.
       5. **UI do agente (substitui o formulário e a saída).** Casca em `notes-popup.js` e
-         `notes-assistant.js`; janela de duas colunas (spec §9); siga `specs/ui-ux/design-system.md`.
+         `notes-assistant.js`; **uma janela só, com a prévia da nota numa gaveta atrás dela** (aba
+         na borda esquerda, um clique revela), barra de pendências e linha "Nota" recolhida
+         (spec §9); siga `specs/ui-ux/design-system.md`, seção "Case Notes em tabela: a tela".
          Reaproveite sem reescrever: a captura (`page-data.js`: `captureCID`, `captureSpeakeasyID`,
          `appointmentTasks`; a auto-busca de `case-log-scraper.js`), `copyHtmlToClipboard` /
          `ensureNoteCardIsOpen` / `insertHTML` (`notes-bridge.js`), `runEmailAutomation` depois de
@@ -91,7 +95,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
          Apague o código que **este** PR deixar órfão (`form-builder.js`, `output-generator.js`) e só
          ele; `SUBSTATUS_TEMPLATES` continua (alimenta cenários, e-mail e tasks). `NotesState`: o
          idioma **fora** do `reset()` (learning 2026-10-29).
-         **Pronto quando** tudo das spec §5 a §9 funciona, a tela bate com `hero.png`/`europe.png`
+         **Pronto quando** tudo das spec §5 a §9 funciona, a tela bate com `01-comeco.png`…`04-pendencias.png`
          e a troca de idioma com a janela aberta repinta.
       6. **Configurações.** Opção "Case Notes · abrir em" (`all|sbse|mms|last`) em
          `src/modules/configs/configs-assistant.js`; preferência `notes_default_segment` e
@@ -178,7 +182,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
       **Definição de pronto:** todos os `test:*` verdes (inclusive `test:note-table`);
       `smoke:note-table`, `smoke:content`, `smoke:i18n` e `smoke:wizards` verdes **com o Chromium
-      realmente lançado**; a tela batendo com `hero.png`/`europe.png`; antes/depois entregue;
+      realmente lançado**; a tela batendo com `01-comeco.png`…`04-pendencias.png`; antes/depois entregue;
       CHANGELOG e docs vivos atualizados no mesmo PR.
 
 - [~] **Pílula com gaveta e layout por agente (2026-11-05, ADR-0023).** Pedido do

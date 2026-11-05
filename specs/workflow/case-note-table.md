@@ -4,7 +4,7 @@
 Fonte: o padrão novo de notas (Docs "Template notas", "Template 2 e 3" e "Status", do Drive do
 Lucas) e as decisões dele de 2026-11-05. Decisão em
 `docs/decisions/0022-nota-em-tabela-catalogo-na-central.md`. Alvo visual:
-`docs/media/case-notes-table/` (`hero.png`, `europe.png` e o protótipo `preview.html`).
+`docs/media/case-notes-table/` (os quatro PNGs `01-comeco` a `04-pendencias` e o protótipo `preview.html`).
 
 **Esta spec vence o protótipo.** O `CATALOG` do `preview.html` é a semente dos dados, mas se
 os dois divergirem, vale este arquivo.
@@ -60,7 +60,8 @@ sugestão (etiqueta "sugerido"); o agente liga e desliga. O bloco `general` é `
 - Tags permitidas: `table`, `colgroup`, `col`, `tbody`, `tr`, `th`, `td`, `div`, `br`.
   **Só estilo inline**: nenhum `class`, `<style>` ou `<script>` (o editor do CRM não conhece o CSS
   do CW). Um teste trava isso.
-- **Grade:** cada bloco declara `cols` (3, 4, 5 ou 6) e `widths` (percentuais, somando 100).
+- **Grade:** cada bloco declara `cols` (3, 4, 5 ou 6) e `widths` (percentuais, somando 100), com a **coluna de
+  comentários em pelo menos 22%** (abaixo disso "Additional Comments (Optional)" parte a palavra numa tabela de ~456px).
   Nada disso se deduz das seções: o General details do ALL TASKS tem 4 colunas sem ter tabela por
   CID. Em toda linha a soma dos `colspan` (descontados os `rowspan` de cima) é `cols`.
 - Seção chave-valor: última coluna = "Additional Comments (Optional)"; rótulo ocupa
@@ -76,7 +77,7 @@ sugestão (etiqueta "sugerido"); o agente liga e desliga. O bloco `general` é `
 - Título da fase: `div` 13px, negrito, `#1a73e8`, `margin:16px 0 6px 0`. Entre tabelas, um `div` de
   10px. Rodapé: `div` itálico 12px `#5f6368` com `nota_criada_rodape` no idioma do atendimento.
 - **A prévia viva marca a célula pendente** (fundo `#fef7e0`, texto "pendente"). Isso **nunca**
-  vai para a saída: Copiar e Inserir ficam bloqueados enquanto houver pendência.
+  vai para a saída: Copiar e Preencher não inserem enquanto houver pendência (§5).
 - **Ainda não provado no CRM real:** o que o editor preserva de `colgroup` (larguras),
   `border-radius`, `overflow:hidden` e fundos coloridos. O Lucas já cola tabela com sucesso, mas
   com o estilo do outro projeto. Antes de qualquer release, ele cola uma caixa do `preview.html`
@@ -95,7 +96,7 @@ rótulos; "Sub-status Reason :" sem o espaço; o rótulo do consentimento ganhou
 templates; as linhas só-ECW **não** imprimem "(only for ECW)" (a condição é metadado da linha); o
 título "Interim…" usa o cabeçalho completo do padrão.
 
-#### `general` — General details  ·  grade de 4 colunas, larguras [14, 14, 52, 20]%
+#### `general` — General details  ·  grade de 4 colunas, larguras [16, 16, 46, 22]%
 
 *Seção kv — General Details (Mandatory)*
 
@@ -123,7 +124,7 @@ título "Interim…" usa o cabeçalho completo do padrão.
 | `gam` | GAM: | link | sim | sim | — |
 | `extra_general` | Additional Screenshots: | link | não | sim | — |
 
-#### `before` — Before implementation  ·  grade de 4 colunas, larguras [22, 28, 32, 18]%
+#### `before` — Before implementation  ·  grade de 4 colunas, larguras [22, 28, 28, 22]%
 
 *Seção group — Screenshots (Mandatory) · grupo “Before implementation:”*
 
@@ -135,7 +136,7 @@ título "Interim…" usa o cabeçalho completo do padrão.
 | `b_diag` | Tag Diagnostics: | link | sim | sim | só com ECW |
 | `b_qual` | EC Qualdash: | link | sim | sim | — |
 
-#### `impl` — Implementation  ·  grade de 4 colunas, larguras [22, 28, 32, 18]%
+#### `impl` — Implementation  ·  grade de 4 colunas, larguras [22, 28, 28, 22]%
 
 *Seção group — Screenshots (Mandatory) · grupo “Implementation:”*
 
@@ -151,7 +152,7 @@ título "Interim…" usa o cabeçalho completo do padrão.
 | `i_hit` | “Hit Sent” in Tag Assistant OR Network Header 200 OK: | link | sim | sim | — |
 | `i_extra` | Additional Screenshots: | link | não | sim | — |
 
-#### `after` — After implementation  ·  grade de 4 colunas, larguras [22, 28, 32, 18]%
+#### `after` — After implementation  ·  grade de 4 colunas, larguras [22, 28, 28, 22]%
 
 *Seção group — Screenshots (Mandatory) · grupo “After implementation:”*
 
@@ -163,7 +164,7 @@ título "Interim…" usa o cabeçalho completo do padrão.
 | `a_bid` | Bidding Optimization: | link | sim | sim | — |
 | `a_extra` | Additional Screenshots: | link | não | sim | — |
 
-#### `consult` — Consult routing path  ·  grade de 4 colunas, larguras [22, 26, 34, 18]%
+#### `consult` — Consult routing path  ·  grade de 4 colunas, larguras [22, 26, 30, 22]%
 
 *Seção group — Screenshots (Mandatory) · grupo “Consult Routing Path & SME Approval:”*
 
@@ -172,7 +173,7 @@ título "Interim…" usa o cabeçalho completo do padrão.
 | `c_path` | Consult Routing Path: | link | sim | sim | — |
 | `c_sme` | SME Approval: | link | sim | sim | — |
 
-#### `audit` — Readiness Audit  ·  grade de 6 colunas, larguras [14, 17, 12, 16, 23, 18]%
+#### `audit` — Readiness Audit  ·  grade de 6 colunas, larguras [12, 15, 11, 15, 25, 22]%
 
 *Seção por CID — CID-Level Details (uma linha por CID)*
 
@@ -226,7 +227,7 @@ título "Interim…" usa o cabeçalho completo do padrão.
 | `gam` | GAM Ping, if any: | link | sim | sim | — |
 | `extra_all` | All Additional Screenshots: | link | não | sim | — |
 
-#### `interim` — Interim check-ins  ·  grade de 3 colunas, larguras [30, 50, 20]%
+#### `interim` — Interim check-ins  ·  grade de 3 colunas, larguras [30, 48, 22]%
 
 *Seção kv — General Details (Mandatory)*
 
@@ -238,7 +239,7 @@ título "Interim…" usa o cabeçalho completo do padrão.
 | `gam` | GAM Ping, if any: | link | sim | sim | — |
 | `extra_all` | All Additional Screenshots: | link | não | sim | — |
 
-#### `triage` — Initial Triage  ·  grade de 3 colunas, larguras [30, 50, 20]%
+#### `triage` — Initial Triage  ·  grade de 3 colunas, larguras [30, 48, 22]%
 
 *Seção kv — General Details (Mandatory)*
 
@@ -270,7 +271,7 @@ título "Interim…" usa o cabeçalho completo do padrão.
 | `case_comments` | Case Comments: | long | sim | não | — |
 | `gam` | GAM Ping, if any: | link | sim | sim | — |
 
-#### `extras` — Additional details  ·  grade de 3 colunas, larguras [34, 46, 20]%
+#### `extras` — Additional details  ·  grade de 3 colunas, larguras [32, 46, 22]%
 
 *Seção kv — Additional Details*
 
@@ -292,8 +293,10 @@ título "Interim…" usa o cabeçalho completo do padrão.
 - **Toda linha obrigatória fecha com valor ou `NA` explícito.** Vazio **não** vira `NA` em silêncio
   (o formato antigo imprimia `N/A` sozinho). Linha opcional vazia sai `NA`. Linha sem
   `na` (Date, Sub-status, Call Summary…) não tem botão NA.
-- Copiar e Inserir ficam **bloqueados** com "Faltam N: …". "Marcar o restante como NA" marca só
-  as linhas obrigatórias que aceitam NA e ainda estão pendentes.
+- **Preencher** e **Copiar** não inserem com linha pendente: o clique abre a **faixa de pendências** ("N pendentes",
+  **Próxima** e **Marcar o restante como NA**) e marca as linhas. A tela fica calma até essa tentativa. "Marcar o restante
+  como NA" marca **só** as linhas obrigatórias que aceitam NA e ainda estão pendentes; Date, Sub-status, Call Summary e
+  as demais sem NA continuam pendentes. O estado no rodapé ("N pendentes" / "Pronta para preencher") faz o mesmo ao clique.
 - `date`: `AAAA-MM-DD`; atalhos Hoje, +2, +3 e +5 **dias úteis**. Sem `<input type=date>` (o locale do
   navegador decide o que se vê; ADR-0010). Formato inválido marca o campo; não bloqueia sozinho.
 - `link`: URL `http(s)` ou `NA`; formato inválido só marca o campo.
@@ -392,13 +395,27 @@ Cada linha tem a própria condição (tabela do bloco `extras`, §4). Pontos que
 
 ## 9. Fluxo, segmento padrão e janela
 
-- **Fluxo (BAU/LM)** e **Caso da Europa** continuam no topo, com o efeito que já têm.
+O desenho da tela (medidas, componentes, estados) está em **`specs/ui-ux/design-system.md`**, seção "Case Notes em
+tabela: a tela". Aqui ficam só as regras de comportamento que ela implementa:
+
+- **Janela única** de 560×760 (a mesma casca do Case Notes de hoje) e **gaveta da prévia atrás dela**, aberta por uma aba com
+  o número de pendências. Não há painel fixo de prévia nem janela de duas colunas.
+- **Contexto no topo:** o segmento (segmentado, sempre visível, com a legenda somente leitura "Sales program na tela" vinda de
+  `captureSalesProgram()`, que **não escolhe o template sozinha**), depois um cartão com **Sub-status**, **Tasks**, **Blocos**
+  (ou **Fase**) e **Nota**. A linha **Nota** vem recolhida e resume `idioma · fluxo · Europa`; aberta, mostra Idioma (PT|ES|EN),
+  Fluxo (BAU|LM) e o interruptor do **Caso da Europa** (Sim deixa o resumo em âmbar). **General** não é chip (sempre ligado).
+- **Sub-status** é um seletor com busca por nome **ou atalho** (`ts so verif`); texto fora da lista é aceito (os `PI - …`).
 - **Segmento padrão:** preferência do agente via `UserPrefsService`, chaves `notes_default_segment`
   (`all|sbse|mms|last`) e `notes_last_segment`. Opção em Configurações. Sem preferência → `all`.
-- **Sales program da tela:** mostra-se, somente leitura (`captureSalesProgram()`, ex. "SMB Grow"),
-  porque ajuda o agente a escolher o segmento. **Não escolhe o template sozinho.**
-- Janela de duas colunas (formulário | prévia viva), ≥ 900px; abaixo disso a prévia vira aba (mesma
-  regra do BAU Form e de Links, ADR-0019). Medidor de progresso e "Faltam N" ficam sobre a prévia.
+- **Só o que pede atenção fica à vista:** linhas com valor automático ou padrão (Date, Follow-up, CID, Consent) vão para o
+  cartão recolhido "Preenchido automaticamente"; opcionais ficam em "Mais opções · N"; linhas derivadas (sub-status, Europa)
+  não aparecem; a dica de uma linha só aparece com ela em foco.
+- **Gaveta:** aberta pela aba (ou fechada por Esc), com o conteúdo `inert` quando fechada. A linha em foco acende a linha da nota
+  e clicar numa linha da nota leva ao campo.
+- **Faixa de contexto** fixa ao rolar além do contexto; **faixa de pendências** só depois de tentar preencher.
+- **Intenção de projeto, ainda não desenhada no protótipo:** a gaveta abre para a esquerda (a janela mora ao lado do dock); se
+  a janela for arrastada para perto da borda esquerda da tela, ela espelha para a direita. O protótipo só mostra a abertura
+  à esquerda.
 
 ## 10. O que a Central controla e o que fica no código
 

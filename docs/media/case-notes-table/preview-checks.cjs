@@ -1,202 +1,250 @@
 // docs/media/case-notes-table/preview-checks.cjs
 //
-// ROTEIRO de comportamento do protótipo `preview.html` (52 checagens). NÃO é teste de produção:
-// os seletores são os do protótipo. Serve para (1) ver o protótipo verde antes de portar e
-// (2) listar, uma a uma, as regras que `scripts/smoke-note-table.mjs` precisa provar na tela real.
-// As asserções foram validadas por mutação (5 regras quebradas, cada uma reprovou a checagem certa).
+// ROTEIRO do protótipo `preview.html`. NÃO é teste de produção: os seletores são os do protótipo.
+// Serve para (1) ver o protótipo verde antes de portar e (2) listar, uma a uma, as regras de comportamento
+// E de desenho que `scripts/smoke-note-table.mjs` precisa provar na tela real.
+// Duas famílias: COMPORTAMENTO (regras da spec) e DESENHO (grade de 4/8px, pesos 400/500, sem borda
+// chapada, alvos >= 32px, `transition` sem `all`), medidas no DOM renderizado, não olhadas no print.
+// As asserções foram validadas por mutação (regras quebradas de propósito reprovam a checagem certa).
 //
 // Uso (na raiz): CW_CHROMIUM=/opt/pw-browsers/chromium node docs/media/case-notes-table/preview-checks.cjs
-// Prints de depuração vão para a pasta temporária do sistema, não para o repositório.
 const { chromium } = require('playwright');
 const path = require('path');
-const fs = require('fs');
-const os = require('os');
-const SP = path.join(os.tmpdir(), 'note-table-preview-checks');
-fs.mkdirSync(SP, { recursive: true });
 const FILE = 'file://' + (process.env.PREVIEW_FILE || path.join(__dirname, 'preview.html'));
 const results = [];
 const check = (name, ok, extra = '') => { results.push([ok, name, extra]); console.log((ok ? 'PASS ' : 'FAIL ') + name + (extra ? '  [' + extra + ']' : '')); };
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CW_CHROMIUM || undefined });
-  const ctx = await browser.newContext({ viewport: { width: 1300, height: 900 }, deviceScaleFactor: Number(process.argv[2] || 1) });
-  const page = await ctx.newPage();
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   await page.goto(FILE);
+  const row = id => page.locator(`#form [data-row="${id}"]`);
+  const pick = async name => { await page.click('#pick'); await page.locator('#pop .opt', { hasText: name }).click(); };
+  const val = id => page.evaluate(i => resolved(allRows().find(r => r.id === i)), id);
+  const openNota = async () => { if (!(await page.evaluate(() => st.ctxOpen))) await page.locator('#ctx .pick').nth(1).click(); };
 
-  // 1. estado inicial
-  check('abre em ALL TASKS com o bloco General details', await page.evaluate(() => st.seg === 'all' && st.active.has('general') && st.active.size === 1));
-  check('Date e CID chegam como Auto', await page.locator('[data-row="date"] .tag-auto').count() === 1 && await page.locator('[data-row="cid"] .tag-auto').count() === 1);
-  const generalRows = await page.evaluate(() => document.querySelectorAll('#preview table')[0].rows.length);
-  // 11 + 5 linhas + 2 cabeçalhos de seção = 18, igual ao template de origem
-  check('General details tem 18 linhas (como o template)', generalRows === 18, 'veio ' + generalRows);
-  check('Inserir bloqueado enquanto há pendência', await page.locator('#bInsert').isDisabled());
+  // ================= COMPORTAMENTO =================
+  // --- começo e seletor de sub-status ---
+  check('abre em ALL TASKS, idioma EN, fluxo BAU, sem sub-status', await page.evaluate(() => st.seg === 'all' && st.lang === 'en' && st.flow === 'bau' && st.substatus === ''));
+  check('sem sub-status: só o estado vazio, nenhum campo da nota', await page.locator('#form .empty-s').count() === 1 && await page.locator('#form .row').count() === 0);
+  check('Preencher bloqueado e a gaveta fechada ao abrir', await page.locator('#bFill.blocked').count() === 1 && !(await page.locator('#drawer.open').count()));
+  await page.click('#pick'); await page.fill('#pop input', 'ts so verif');
+  check('buscar pelo ATALHO (ts so verif) acha o sub-status', await page.locator('#pop .opt').count() === 1 && (await page.locator('#pop .opt').innerText()).includes('SO - Implementation Only'));
+  await page.keyboard.press('Enter');
+  check('Enter escolhe o primeiro resultado', await page.evaluate(() => st.substatus === 'SO - Implementation Only'));
+  await page.click('#pick'); await page.fill('#pop input', 'PI - Audit In Progress');
+  check('texto fora da lista oferece "Usar …" (os PI se digitam)', (await page.locator('#pop .opt').first().innerText()).includes('Usar'));
+  await page.keyboard.press('Enter');
+  check('sub-status PI digitado vale, com aviso de "fora da lista"', await page.evaluate(() => st.substatus === 'PI - Audit In Progress') && (await page.locator('#ctx .cw>.fn').innerText()).includes('Fora da lista'));
+  await pick('SO - Implementation Only');
+  check('com sub-status oficial a dica diz que o follow-up não se aplica', (await page.locator('#ctx .cw>.fn').innerText()).includes('não se aplica'));
 
-  // 2. regras por sub-status
-  await page.fill('#subIn', 'NI - In Consult');
-  const fu = await page.evaluate(() => ensure('next_followup').v);
+  // --- regras automáticas (spec §6 e §7) ---
+  await pick('NI - In Consult');
   const d3 = await page.evaluate(() => addBusinessDays(3));
-  check('NI - In Consult sugere follow-up em 3 dias úteis', fu === d3, `${fu} vs ${d3}`);
-  await page.fill('#subIn', 'SO - Implementation Only');
-  check('SO tem follow-up NA automático', await page.evaluate(() => ensure('next_followup').na === true && ensure('next_followup').auto === true));
-  await page.fill('#subIn', 'IN - Not Reachable');
+  check('NI - In Consult sugere follow-up em 3 dias úteis', await page.evaluate(() => ensure('next_followup').v) === d3);
+  await pick('IN - Not Reachable');
   check('IN - Not Reachable marca o consentimento como NA', await page.evaluate(() => ensure('consent').na === true));
-  await page.fill('#subIn', 'SO - Implementation Only');
-  check('SO volta a pedir o consentimento', await page.evaluate(() => ensure('consent').na === false));
-
-  // 3. blocos sugeridos por task (ACT já marcada)
-  const sug = await page.locator('.bcard .tag', { hasText: 'sugerido' }).count();
-  check('ACT sugere Before, Implementation e After', sug === 3, 'sugeridos: ' + sug);
-  const card = (re) => page.locator('.bcard').filter({ has: page.locator('.t', { hasText: re }) });
-  for (const re of [/^Before implementation/, /^Implementation/, /^After implementation/]) await card(re).click();
-  check('4 blocos ativos', await page.evaluate(() => st.active.size === 4));
-  check('linhas só-ECW ocultas sem ECW', await page.locator('[data-row="b_diag"]').count() === 0 && await page.locator('[data-row="i_ec"]').count() === 0);
-  await page.locator('#taskChips .chip', { hasText: 'ECW4' }).click();
-  check('com ECW as linhas só-ECW aparecem', await page.locator('[data-row="b_diag"]').count() === 1 && await page.locator('[data-row="i_em"]').count() === 1);
-  await page.locator('#taskChips .chip', { hasText: 'ECW4' }).click();
-
-  // 4. preencher e inserir
-  await page.locator('#scenChips .chip').first().click();
-  check('cenário preenche Call Summary e Sub-status Reason', await page.evaluate(() => ensure('call_summary').v.length > 20 && ensure('substatus_reason').v.length > 10));
-  await page.click('[data-row="speakeasy"] button:has-text("Auto busca")');
-  check('fora da Europa o consentimento já vem Yes, com "Alterar" e sem botões', await page.locator('[data-row="consent"] button:has-text("Alterar")').count() === 1 && await page.locator('[data-row="consent"] .yn').count() === 0 && await page.evaluate(() => resolved(allRows().find(r => r.id === 'consent')) === 'Yes'));
-  await page.fill('[data-row="impl_tags"] input', 'Purchase_Shopify');
-  await page.fill('[data-row="website"] input', 'https://example.com/ss/1');
-  await page.fill('[data-row="date"] input', '05/11/2026');
-  check('data fora de AAAA-MM-DD marca o campo como inválido', await page.locator('[data-row="date"] input.bad').count() === 1);
-  await page.fill('[data-row="date"] input', await page.evaluate(() => todayISO()));
-  check('data válida limpa a marca', await page.locator('[data-row="date"] input.bad').count() === 0);
-  const missBefore = await page.evaluate(() => missingList().length);
-  check('ainda há pendências antes do NA em lote', missBefore > 5, 'faltam ' + missBefore);
-  await page.waitForTimeout(2800);
-  await page.evaluate(() => { document.querySelector('#paneForm').scrollTop = 0; });
-  await page.screenshot({ path: SP + '/shot-agent-flow.png' });
-  await page.evaluate(() => { document.querySelector('#paneForm').scrollTop = document.querySelector('[data-row="date"]').offsetTop - 30; });
-  await page.screenshot({ path: SP + '/shot-agent-partial.png' });
-  await page.click('#bNaRest');
-  const missAfter = await page.evaluate(() => missingList());
-  check('NA em lote resolve o que aceita NA', missAfter.length === 0, missAfter.join(' | '));
-  check('Inserir liberado', await page.locator('#bInsert').isEnabled());
-  await page.screenshot({ path: SP + '/shot-agent-all.png' });
-  await page.click('#bInsert');
-  const ov = await page.evaluate(() => {
-    const t = [...document.querySelectorAll('#crmEd table')];
-    return { tables: t.length, pending: document.querySelector('#crmEd').innerHTML.includes('pendente'), hasClass: /\sclass=/.test(document.querySelector('#crmEd').innerHTML), na: document.querySelector('#crmEd').textContent.includes('NA') };
-  });
-  check('nota inserida tem 5 tabelas (4 blocos + Additional Details), sem "pendente" e sem class', ov.tables === 5 && !ov.pending && !ov.hasClass, JSON.stringify(ov));
-  await page.screenshot({ path: SP + '/shot-insert.png' });
-  await page.click('#crmClose');
-
-  // 4b. campos do formato anterior, como tabela no fim da nota
-  check('Additional Details é a última tabela da nota', await page.evaluate(() => { const t = [...document.querySelectorAll('#preview table')]; return t[t.length - 1].textContent.includes('Additional Details'); }));
-  check('ALL TASKS não imprime título acima das tabelas', ((await page.locator('#preview').innerHTML()).match(/margin:16px 0 6px 0/g) || []).length === 0);
+  await pick('SO - Implementation Only');
+  check('SO volta a ter o consentimento em Yes (padrão)', await page.evaluate(() => ensure('consent').na === false && ensure('consent').v === 'Yes' && ensure('consent').defaulted === true));
   const bd = await page.evaluate(() => { const bad = []; for (let n = 1; n <= 15; n++) { const d = new Date(addBusinessDays(n) + 'T12:00:00'); if ([0, 6].includes(d.getDay())) bad.push(n); } return { bad, zero: addBusinessDays(0) === todayISO() }; });
   check('dias úteis nunca caem em fim de semana', bd.bad.length === 0 && bd.zero, JSON.stringify(bd));
-  check('BAU mostra On Call', await page.locator('[data-row="oncall"]').count() === 1);
-  await page.locator('#flowSel button', { hasText: 'LM' }).click();
-  check('LM esconde On Call', await page.locator('[data-row="oncall"]').count() === 0);
-  await page.locator('#flowSel button', { hasText: 'BAU' }).click();
-  await page.fill('#subIn', 'NI - Attempted Contact');
-  check('NI - Attempted Contact mostra as 3 evidências de contato', await page.locator('[data-row^="ev_"]').count() === 3);
-  await page.fill('#subIn', 'IN - Not Reachable');
-  check('IN - Not Reachable mostra Call attempt e não as evidências', await page.locator('[data-row="call_attempt"]').count() === 1 && await page.locator('[data-row^="ev_"]').count() === 0);
-  await page.fill('#subIn', 'SO - Implementation Only');
-  check('Tag Support nasce em No, com motivo opcional', await page.evaluate(() => ensure('ts_used').v === 'No') && await page.locator('[data-row="ts_reason"]').count() === 1);
-  await page.locator('[data-row="ts_used"] .yn button:has-text("Yes")').click();
-  const tsTxt = await page.locator('#preview').innerText();
-  check('Tag Support Yes: o motivo some e a task leva o aviso do Win Criteria', await page.locator('[data-row="ts_reason"]').count() === 0 && tsTxt.includes('Tag created/verified by Tag Support'));
-  await page.locator('[data-row="ts_used"] .yn button:has-text("No")').click();
-  await page.locator('#taskChips .chip', { hasText: 'Ads Conversion Tracking' }).click();
-  check('sem ACT/ECW o Tag Support some', await page.locator('[data-row="ts_used"]').count() === 0);
-  await page.locator('#taskChips .chip', { hasText: 'Ads Conversion Tracking' }).click();
-  check('GTM/GA4 é obrigatório em SO', await page.locator('[data-row="gtm_ga4"] .req').count() === 1);
-  await page.fill('#subIn', 'IN - Infeasible');
-  check('em IN - Infeasible a linha GTM/GA4 some e vira o chip "+ GTM/GA4 verified"', await page.locator('[data-row="gtm_ga4"]').count() === 0 && await page.locator('#blocksForm .chip', { hasText: 'GTM/GA4 verified' }).count() === 1);
-  await page.locator('#blocksForm .chip', { hasText: 'GTM/GA4 verified' }).click();
-  check('o chip traz a linha, agora opcional', await page.locator('[data-row="gtm_ga4"]').count() === 1 && await page.locator('[data-row="gtm_ga4"] .req').count() === 0);
-  await page.fill('#subIn', 'SO - Implementation Only');
-  // consentimento: Alterar -> No, e a regra da Europa (começa sem resposta)
-  await page.locator('[data-row="consent"] button:has-text("Alterar")').click();
-  await page.locator('[data-row="consent"] .yn button:has-text("No")').click();
-  check('Alterar permite marcar No', await page.evaluate(() => resolved(allRows().find(r => r.id === 'consent')) === 'No'));
+
+  // --- cartão automático ---
+  const autoTxt = await page.locator('.auto-h').innerText();
+  check('"Preenchido automaticamente" reúne Date, Follow-up, CID e Consent (4)', autoTxt.includes('4') && (await page.locator('.auto-sum').innerText()).includes('CID 123-456-7890') && (await page.locator('.auto-sum').innerText()).includes('Consent Yes'));
+  check('as linhas automáticas NÃO aparecem soltas no formulário (menos para ler)', await row('date').count() === 0 && await row('cid').count() === 0);
+  await page.click('.auto-h');
+  check('abrir o cartão mostra as linhas, editáveis, com a marca Auto', await row('date').count() === 1 && await row('date').locator('.tag').count() === 1);
+  await row('date').locator('input').fill('2026-12-01');
+  check('editar uma linha automática tira a marca Auto', await row('date').locator('.tag').count() === 0);
+  await page.click('.auto-h');
+
+  // --- contexto: blocos, tasks, Nota ---
+  check('o chip General não existe (é sempre ligado); os outros 4 sim', await page.locator('#ctx .chip', { hasText: 'General' }).count() === 0 && await page.locator('#ctx .row.chiprow').nth(1).locator('.chip').count() === 4);
+  check('ACT sugere Before, Implementation e After (ponto no chip)', await page.locator('#ctx .row.chiprow').nth(1).locator('.dot').count() === 3);
+  await page.locator('#ctx .chip', { hasText: /^Before/ }).click();
+  await page.locator('#ctx .chip', { hasText: /^Implementation/ }).click();
+  await page.locator('#ctx .chip', { hasText: /^After/ }).click();
+  check('4 blocos ativos (General + 3)', await page.evaluate(() => st.active.size === 4));
+  check('sugestão some do chip já ligado', await page.locator('#ctx .row.chiprow').nth(1).locator('.dot').count() === 0);
+  check('linhas só-ECW ocultas sem ECW', await row('b_diag').count() === 0 && await row('i_ec').count() === 0 && !(await page.evaluate(() => noteHtml(false))).includes('Tag Diagnostics:'));
+  await page.locator('#ctx .chip', { hasText: 'ECW' }).click();
+  check('com ECW as linhas só-ECW entram na nota', (await page.evaluate(() => noteHtml(false))).includes('Tag Diagnostics:'));
+  await page.locator('#ctx .chip', { hasText: 'ECW' }).click();
+
+  // --- pendência e preenchimento ---
+  const n0 = await page.evaluate(() => missingList().length);
+  check('há pendências no começo e o rodapé diz quantas', n0 > 8 && (await page.locator('#sTxt').innerText()).startsWith(String(n0)));
+  check('antes de tentar preencher, a faixa de pendências não aparece (tela calma)', await page.locator('#pbar.on').count() === 0 && await page.locator('#form .row.pending').count() === 0);
+  await row('speakeasy').locator('button:has-text("Auto busca")').click();
+  await row('impl_tags').locator('input').fill('Purchase_Shopify');
+  await row('website').locator('input').fill('https://example.com/ss/1');
+  await row('qplus').locator('input').fill('https://example.com/ss/2');
+  await row('gam').locator('input').fill('not-a-url');
+  check('link fora do formato marca a linha como inválida', await row('gam').evaluate(e => e.classList.contains('bad')));
+  await row('gam').locator('input').fill('https://example.com/ss/3');
+  check('link válido limpa a marca', !(await row('gam').evaluate(e => e.classList.contains('bad'))));
+  await page.click('#bFill');
+  check('Preencher com pendência não insere: abre a faixa de pendências e marca as linhas', await page.locator('#pbar.on').count() === 1 && (await page.locator('#pTxt').innerText()).includes('pendente') && await page.locator('#form .row.pending').count() > 0 && !(await page.locator('#toast').innerText()).includes('inserido'));
+  await page.click('#pNext');
+  check('"Próxima" leva o foco a outra linha pendente', await page.evaluate(() => !!document.activeElement.closest('.row.pending')));
+  await page.click('#pNa');
+  const rest = await page.evaluate(() => missingList().sort().join(' | '));
+  check('"Marcar o restante como NA" resolve o que aceita NA e deixa só o que não aceita', rest === 'Call Summary | Sub-status Reason', rest);
+  check('"Marcar o restante como NA" não marca NA nas linhas que não aceitam (Call Summary, Sub-status Reason)', await page.evaluate(() => ensure('call_summary').na === false && ensure('substatus_reason').na === false && ensure('date').na === false));
+  check('NA é um clique e vira "Desfazer"', await (async () => { await row('gvc').locator('.na').click(); const t = await row('gvc').locator('.na').innerText(); await row('gvc').locator('.na').click(); return t === 'NA'; })());
+  await page.locator('#form .chips .chip').first().click();
+  check('cenário preenche Call Summary e Sub-status Reason', await page.evaluate(() => ensure('call_summary').v.length > 20 && ensure('substatus_reason').v.length > 10));
+  check('resolvendo as linhas (valor ou NA), não sobra pendência e a faixa some', await page.evaluate(() => missingList().length) === 0 && await page.locator('#pbar.on').count() === 0);
+  check('rodapé vira "Pronta para preencher" e Preencher libera', (await page.locator('#sTxt').innerText()) === 'Pronta para preencher' && await page.locator('#bFill.blocked').count() === 0);
+  await page.click('#bFill');
+  check('Preencher com tudo resolvido confirma', (await page.locator('#toast').innerText()).includes('inserido'));
+
+  // --- nota gerada (contrato HTML, spec §3) ---
+  const out = await page.evaluate(() => noteHtml(false));
+  const tags = [...new Set([...out.matchAll(/<([a-z0-9]+)[ >]/g)].map(m => m[1]))].sort().join(',');
+  check('nota só com tags permitidas, sem class/style/script/data-row', /^(br,)?col,colgroup,div,table,tbody,td,th,tr$/.test(tags) && !/\sclass=|<style|<script|data-row/.test(out), tags);
+  check('Additional Details é a última tabela da nota', await page.evaluate(() => { const w = document.createElement('div'); w.innerHTML = noteHtml(false); const t = w.querySelectorAll('table'); return t[t.length - 1].textContent.includes('Additional Details'); }));
+  check('ALL TASKS não imprime título acima das tabelas', !/margin:16px 0 6px 0/.test(out));
+  check('rodapé da nota segue o idioma da nota (EN) e muda com o seletor', out.includes('Note created through Cases Wizard.') && await (async () => { await page.evaluate(() => { st.lang = 'pt'; }); const o = await page.evaluate(() => noteHtml(false)); await page.evaluate(() => { st.lang = 'en'; }); return o.includes('Nota criada através do Cases Wizard.') && o.includes('Call Summary:'); })());
+
+  // --- Nota (idioma, fluxo, Europa) e consentimento ---
   await page.click('#bClear');
-  await page.locator('#euSel button', { hasText: 'Sim' }).click();
-  check('Europa: sem padrão, o agente precisa marcar', await page.evaluate(() => resolved(allRows().find(r => r.id === 'consent')) === null) && await page.locator('[data-row="consent"] .tag.warn').count() === 1);
-  check('Europa: aparece a linha "Europe case?" com Yes', await page.locator('[data-row="europe_case"]').count() === 1 && (await page.locator('#preview').innerText()).includes('Europe case?'));
-  await page.screenshot({ path: SP + '/shot-europe-raw.png' });
-  await page.locator('#euSel button', { hasText: 'Não' }).click();
-  check('Europa desligada: volta o padrão Yes e a linha some', await page.evaluate(() => resolved(allRows().find(r => r.id === 'consent')) === 'Yes') && await page.locator('[data-row="europe_case"]').count() === 0);
+  check('Limpar volta ao estado vazio', await page.evaluate(() => st.substatus === '' && Object.keys(st.vals).length >= 0) && await page.locator('#form .empty-s').count() === 1);
+  await pick('SO - Implementation Only');
+  check('linha "Nota" recolhida mostra idioma, fluxo e Europa', (await page.locator('#ctx .pick').nth(1).innerText()).includes('EN · BAU · Fora da Europa') && await page.locator('#ctx [role=switch]').count() === 0);
+  await openNota();
+  check('abrir a linha Nota mostra Idioma, Fluxo e o interruptor da Europa', await page.locator('#ctx [role=switch]').count() === 1 && await page.locator('#ctx [role=radiogroup][aria-label="Idioma"]').count() === 1);
+  await page.locator('#ctx [role=switch]').click();
+  check('Europa: sem padrão; o agente precisa marcar', await val('consent') === null && await page.locator('#form [data-row="consent"] .tag.warn').count() === 1);
+  check('Europa: resumo fica em âmbar e a linha "Europe case?" entra na nota', (await page.locator('#ctx .pick').nth(1).innerText()).includes('Caso da Europa') && (await page.evaluate(() => noteHtml(false))).includes('Europe case?'));
+  await page.locator('#form [data-row="consent"] .seg button', { hasText: 'No' }).click();
+  check('Europa: o agente marca No e vale', await val('consent') === 'No');
+  await page.locator('#ctx [role=switch]').click();
+  check('fora da Europa o consentimento marcado à mão é preservado', await val('consent') === 'No');
+  await page.click('#bClear'); await pick('SO - Implementation Only');
+  check('fora da Europa o consentimento já vem Yes, escondido atrás de "Alterar"', await val('consent') === 'Yes');
+  await page.click('.auto-h');
+  check('"Alterar" está dentro do cartão automático e revela Yes/No', await row('consent').locator('button:has-text("Alterar")').count() === 1 && await row('consent').locator('.seg').count() === 0);
+  await row('consent').locator('button:has-text("Alterar")').click();
+  await row('consent').locator('.seg button', { hasText: 'No' }).click();
+  check('Alterar permite marcar No', await val('consent') === 'No');
+  await page.click('#bClear'); await pick('SO - Implementation Only');
+  await openNota();
+  await page.locator('#ctx [role=radiogroup][aria-label="Fluxo"] button', { hasText: 'LM' }).click();
+  await page.click('.auto-h');
+  const lm = await page.evaluate(() => noteHtml(false));
+  check('LM tira o On Call da nota; BAU devolve', !lm.includes('On Call signaled') && await (async () => { await page.locator('#ctx [role=radiogroup][aria-label="Fluxo"] button', { hasText: 'BAU' }).click(); return (await page.evaluate(() => noteHtml(false))).includes('On Call signaled'); })());
 
-  // 5. SBS-E e MMS
-  await page.locator('#segSel button', { hasText: 'SBS-E' }).click();
-  check('SBS-E é de uma fase por nota, começa na Phase 1', await page.evaluate(() => st.active.size === 1 && st.active.has('audit')));
-  await page.locator('.bcard', { hasText: 'Phase 2: Implementation Call' }).click();
-  check('Phase 2 troca o bloco (não soma)', await page.evaluate(() => st.active.size === 1 && st.active.has('impl_call')));
-  check('fases do SBS-E imprimem o título acima da tabela', ((await page.locator('#preview').innerHTML()).match(/margin:16px 0 6px 0/g) || []).length === 1);
-  await page.locator('.cidtbl input[type=text]').nth(0).waitFor();
-  await page.locator('button:has-text("+ CID")').click();
-  const cidInputs = await page.locator('.cidtbl tr').count();
-  check('CID: cabeçalho + 2 linhas', cidInputs === 3, 'tr=' + cidInputs);
-  await page.locator('.bcard', { hasText: 'Interim' }).click();
-  await page.locator('.bcard', { hasText: 'Phase 2: Implementation Call' }).click();
-  check('lista de CIDs sobrevive à troca de fase', await page.evaluate(() => st.cids.length === 2));
-  await page.waitForTimeout(2800);
-  await page.evaluate(() => { document.querySelector('#paneForm').scrollTop = 0; });
-  await page.screenshot({ path: SP + '/shot-agent-sbse.png' });
-  await page.locator('#segSel button', { hasText: 'MMS' }).click();
-  check('MMS tem 5 fases', await page.locator('.bcard').count() === 5);
+  // --- Additional Details: Tag Support, GTM/GA4, evidências ---
+  await page.click('#bClear'); await pick('SO - Implementation Only');
+  check('Tag Support nasce em No e aparece só com ACT/ECW', await page.evaluate(() => ensure('ts_used').v === 'No') && await row('ts_used').count() === 1);
+  await row('ts_used').locator('.seg button', { hasText: 'Yes' }).click();
+  check('Tag Support Yes: a task leva o aviso do Win Criteria', (await page.evaluate(() => noteHtml(false))).includes('Tag created/verified by Tag Support'));
+  await row('ts_used').locator('.seg button', { hasText: 'No' }).click();
+  await page.locator('#ctx .chip', { hasText: 'ACT' }).click();
+  check('sem ACT/ECW o Tag Support some', await row('ts_used').count() === 0);
+  await page.locator('#ctx .chip', { hasText: 'ACT' }).click();
+  check('GTM/GA4 é obrigatório em SO (linha à vista)', await row('gtm_ga4').count() === 1);
+  await pick('IN - Infeasible');
+  check('em IN - Infeasible o GTM/GA4 sai da nota e vira "+" dentro de Mais opções', !(await page.evaluate(() => noteHtml(false))).includes('GTM/GA4 verified:') && await row('gtm_ga4').count() === 0);
+  await pick('NI - Attempted Contact');
+  await page.locator('#form .more').last().click();
+  check('NI - Attempted Contact traz as 3 evidências de contato (em Mais opções)', await page.locator('#form [data-row^="ev_"]').count() === 3);
+  await pick('IN - Not Reachable');
+  check('IN - Not Reachable traz Call attempt e não as evidências', await row('call_attempt').count() === 1 && await page.locator('#form [data-row^="ev_"]').count() === 0);
 
-  // 6. integridade da grade de todos os blocos de todos os segmentos
+  // --- SBS-E e MMS ---
+  await page.locator('#ctx [role=radiogroup][aria-label="Segmento do cliente"] button', { hasText: 'SBS-E' }).click();
+  check('SBS-E: uma fase por nota (3 chips), começa na Phase 1', await page.evaluate(() => st.active.size === 1 && st.active.has('audit')) && await page.locator('#ctx .row.chiprow').nth(1).locator('.chip').count() === 3);
+  await page.locator('#ctx .chip', { hasText: 'Phase 2' }).click();
+  check('Phase 2 troca o bloco (não soma) e imprime o título acima da tabela', await page.evaluate(() => st.active.size === 1 && st.active.has('impl_call')) && ((await page.evaluate(() => noteHtml(false))).match(/margin:16px 0 6px 0/g) || []).length === 1);
+  check('seção por CID: uma lista pequena por CID, com TBW e CID', await page.locator('#form [data-row="cid:0:tbw"]').count() === 1 && await page.locator('#form [data-row="cid:0:cid"]').count() === 1);
+  await page.locator('#form .chip', { hasText: '+ CID' }).click();
+  check('+ CID acrescenta o segundo CID e o botão de remover aparece', await page.evaluate(() => st.cids.length === 2) && await page.locator('#form [aria-label="Remover CID 1"]').count() === 1);
+  await page.locator('#ctx .chip', { hasText: 'Interim' }).click();
+  await page.locator('#ctx .chip', { hasText: 'Phase 2' }).click();
+  check('a lista de CIDs sobrevive à troca de fase', await page.evaluate(() => st.cids.length === 2));
+  await page.locator('#ctx [role=radiogroup][aria-label="Segmento do cliente"] button', { hasText: 'MMS' }).click();
+  check('MMS tem 5 fases', await page.locator('#ctx .row.chiprow').nth(1).locator('.chip').count() === 5);
+  await page.locator('#ctx [role=radiogroup][aria-label="Segmento do cliente"] button', { hasText: 'ALL TASKS' }).click();
+
+  // --- gaveta (prévia) ---
+  await pick('SO - Implementation Only');
+  check('gaveta fechada: conteúdo inerte (fora da ordem do Tab), aba à vista com o nº de pendências', await page.evaluate(() => document.querySelector('#dIn').hasAttribute('inert')) && /^\d+$/.test((await page.locator('#tBadge').innerText()).trim()));
+  await page.click('#tab');
+  check('clicar na aba abre a gaveta (aria-expanded) e o conteúdo deixa de ser inerte', await page.locator('#drawer.open').count() === 1 && (await page.locator('#tab').getAttribute('aria-expanded')) === 'true' && !(await page.evaluate(() => document.querySelector('#dIn').hasAttribute('inert'))));
+  await row('call_summary').locator('textarea').focus();
+  check('a linha em foco acende a linha correspondente da nota', await page.locator('#preview tr.hl[data-row="call_summary"]').count() === 1);
+  await page.locator('#preview tr[data-row="impl_tags"]').click();
+  check('clicar numa linha da nota leva ao campo do formulário', await page.evaluate(() => document.activeElement && document.activeElement.id === 'f-impl_tags'));
+  await page.keyboard.press('Escape');
+  check('Esc fecha a gaveta', await page.locator('#drawer.open').count() === 0);
+
+  // --- faixa fixa de contexto ---
+  await page.evaluate(() => { document.querySelector('#body').scrollTop = document.querySelector('#ctxEnd').offsetTop + 120; });
+  await page.waitForTimeout(350);
+  check('rolando além do contexto aparece a faixa fixa com segmento, fluxo, idioma e sub-status', await page.locator('#sticky.on').count() === 1 && (await page.locator('#sticky').innerText()).includes('SO - Implementation Only'));
+  await page.click('#sticky'); await page.waitForTimeout(600);
+  check('clicar na faixa volta ao topo', await page.evaluate(() => document.querySelector('#body').scrollTop < 8));
+
+  // --- grade e larguras do catálogo ---
   const grid = await page.evaluate(() => {
-    const bad = [];
-    const jobs = []; for (const s of CATALOG.segments) for (const p of s.blocks) jobs.push([s.key, p]); jobs.push(['all', { b: 'extras', title: '' }]);
-    ignoreWhen = true;
+    const bad = []; const jobs = [];
+    for (const s of CATALOG.segments) for (const p of s.blocks) jobs.push([s.key, p]);
+    jobs.push(['all', { b: 'extras', title: '' }]); ignoreWhen = true;
     for (const [skey, p] of jobs) {
       st.seg = skey; st.tasks = new Set(['ads_enhanced_conversions']);
       const wrap = document.createElement('div'); wrap.innerHTML = blockTable(p, true);
-      const t = wrap.querySelector('table'); const N = t.querySelectorAll('col').length;
-      const w = [...t.querySelectorAll('col')].reduce((a, c) => a + parseInt(c.style.width), 0);
+      const t = wrap.querySelector('table'); const N = t.querySelectorAll('col').length; const ws = [...t.querySelectorAll('col')].map(c => parseInt(c.style.width));
       const occ = [];
       [...t.rows].forEach((r, ri) => { occ[ri] = occ[ri] || []; let c = 0; for (const cell of r.cells) { while (occ[ri][c]) c++; for (let k = 0; k < cell.rowSpan; k++) { occ[ri + k] = occ[ri + k] || []; for (let j = 0; j < cell.colSpan; j++) occ[ri + k][c + j] = 1; } c += cell.colSpan; } });
       const ok = [...t.rows].every((r, ri) => occ[ri].length === N && [...Array(N).keys()].every(c => occ[ri][c]));
-      if (!ok || w !== 100) bad.push(`${skey}/${p.b} N=${N} soma=${w} ok=${ok}`);
+      const sum = ws.reduce((a, b) => a + b, 0);
+      if (!ok || sum !== 100 || ws[N - 1] < 22) bad.push(`${skey}/${p.b} N=${N} soma=${sum} últ=${ws[N - 1]} grade=${ok}`);
     }
-    ignoreWhen = false;
-    st.seg = 'mms'; st.tasks = new Set(['ads_conversion_tracking']);
+    ignoreWhen = false; st.seg = 'all'; st.tasks = new Set(['ads_conversion_tracking']);
     return bad;
   });
-  check('toda tabela fecha a grade e soma 100% nas larguras', grid.length === 0, grid.join(' | '));
+  check('toda tabela fecha a grade, soma 100% e a coluna de comentários tem >= 22%', grid.length === 0, grid.join(' | '));
 
-  // 7. Central edita o mesmo catálogo
-  await page.locator('#segSel button', { hasText: 'ALL TASKS' }).click();
-  await page.click('.tabs button[data-view="central"]');
-  await page.locator('.rt tr').nth(2).locator('input').first().fill('Date (YYYY-MM-DD):');
-  await page.locator('.rt tr').filter({ has: page.locator('input[value="Additional information:"]') }).locator('input[aria-label="visible"]').uncheck();
-  check('prévia da Central reflete a edição', (await page.locator('#cpreview').innerText()).includes('Date (YYYY-MM-DD):'));
-  await page.screenshot({ path: SP + '/shot-central.png' });
-  await page.locator('#rail button', { hasText: 'Additional details' }).click();
-  check('Central: Additional details mostra todas as linhas na prévia', (await page.locator('#cpreview').innerText()).includes('Contact evidence: Call 1'));
-  await page.locator('#rail button', { hasText: 'Phase 2: Implementation Call' }).click();
-  const hasTitle = async () => (await page.locator('#cpreview').innerText()).includes('Phase 2: Implementation Call');
-  check('Central: título acima da tabela ligado no SBS-E', await hasTitle());
-  await page.locator('#cmain input[type=checkbox]').first().uncheck();
-  check('Central: desligar o título tira a linha da prévia', !(await hasTitle()));
-  await page.locator('#cmain input[type=checkbox]').first().check();
-  await page.click('.tabs button[data-view="agent"]');
-  const txt = await page.locator('#preview').innerText();
-  check('a edição da Central chegou na tela do agente', txt.includes('Date (YYYY-MM-DD):') && !txt.includes('Additional information'));
-
-  // 8. padrão do segmento nas Configurações
-  await page.click('#gear');
-  await page.check('input[name=dflt][value=mms]');
-  await page.reload();
-  check('Configurações: reabre no segmento padrão (MMS)', await page.evaluate(() => st.seg === 'mms'));
-  await page.click('#gear'); await page.check('input[name=dflt][value=last]');
-  await page.locator('#segSel button', { hasText: 'SBS-E' }).click();
-  await page.reload();
-  check('Configurações: "o último que usei" lembra o SBS-E', await page.evaluate(() => st.seg === 'sbse'));
+  // ================= DESENHO (medido no DOM renderizado) =================
+  await page.evaluate(() => { st.seg = 'all'; resetActive(); st.substatus = 'SO - Implementation Only'; st.autoOpen = true; Object.keys(st.more).length; ['general.0', 'general.1', 'impl.0', 'extras.0'].forEach(k => { st.more[k] = true; }); st.ctxOpen = true; applyAuto(); render(); setDrawer(true); });
+  await page.waitForTimeout(700);
+  const lint = await page.evaluate(() => {
+    const out = { spacing: [], font: [], weight: [], border: [], target: [], trans: [], tab: 0, radius: [] };
+    const ok4 = v => { const n = parseFloat(v); return Number.isNaN(n) || n === 0 || n === 1 || n === 2 || n % 4 === 0; };
+    const scope = [...document.querySelectorAll('#win *, #drawer *')].filter(e => !e.closest('#preview') && !e.closest('svg') && e.getClientRects().length);
+    for (const e of scope) {
+      const cs = getComputedStyle(e);
+      for (const p of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'rowGap', 'columnGap']) {
+        const v = cs[p]; if (v === 'normal' || v.includes('%') || v === 'auto') continue;
+        if (!ok4(v) && !(p.startsWith('margin') && e.matches('.auto-h .c,.quick'))) out.spacing.push(`${e.className || e.tagName}:${p}=${v}`);
+      }
+      if (e.childNodes.length && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) {
+        const fs = parseFloat(cs.fontSize); if (![11, 12, 13, 14, 15, 16].includes(fs)) out.font.push(`${e.className || e.tagName}:${fs}`);
+        const fw = parseInt(cs.fontWeight); if (![400, 500].includes(fw)) out.weight.push(`${e.className || e.tagName}:${fw}`);
+      }
+      const bw = ['borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth'].some(k => parseFloat(cs[k]) > 0);
+      if (bw && !e.matches('.win,.hdr')) out.border.push(e.className || e.tagName);
+      if (e.matches('button') && !e.closest('svg')) { const r = e.getBoundingClientRect(); if (r.width < 32 || r.height < 32) out.target.push(`${e.className || e.id}:${Math.round(r.width)}x${Math.round(r.height)}`); }
+    }
+    for (const sh of document.styleSheets) for (const r of sh.cssRules) { const t = r.style && r.style.transition; if (t && /(^|,)\s*all\b/.test(t)) out.trans.push(r.selectorText); }
+    out.reduced = [...document.styleSheets].some(sh => [...sh.cssRules].some(r => r.media && /prefers-reduced-motion/.test(r.media.mediaText)));
+    out.tabular = getComputedStyle(document.querySelector('#form [data-row="speakeasy"] input') || document.body).fontVariantNumeric;
+    return out;
+  });
+  check('DESENHO · todo padding, margem e gap na grade de 4px (insets de 1-2px permitidos)', lint.spacing.length === 0, lint.spacing.slice(0, 6).join(' | '));
+  check('DESENHO · só os degraus de fonte 11, 12, 13, 14, 15 e 16', lint.font.length === 0, lint.font.slice(0, 6).join(' | '));
+  check('DESENHO · só pesos 400 e 500 (600/700 é assinatura de painel antigo)', lint.weight.length === 0, lint.weight.slice(0, 6).join(' | '));
+  check('DESENHO · nenhuma borda chapada na casca (separa-se por espaço, tom e hairline)', lint.border.length === 0, lint.border.slice(0, 6).join(' | '));
+  check('DESENHO · todo botão tem alvo de pelo menos 32x32', lint.target.length === 0, lint.target.slice(0, 6).join(' | '));
+  check('DESENHO · nenhum `transition: all` e há prefers-reduced-motion', lint.trans.length === 0 && lint.reduced, lint.trans.join(' | '));
+  check('DESENHO · CID e Speakeasy em algarismos tabulares', /tabular-nums/.test(await page.evaluate(() => getComputedStyle(document.querySelector('#form .rv.sp input')).fontVariantNumeric)));
 
   check('sem erros de console', errors.length === 0, errors.join(' | '));
   const bad = results.filter(r => !r[0]);

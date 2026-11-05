@@ -12,6 +12,30 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Mockup de tela: parta do CSS e das telas reais do app, não de um "visual bonito" — e meça com um lint no DOM
+
+**Why**: o primeiro PNG do novo Case Notes (2026-11-05) foi recusado pelo Lucas por
+parecer "estilizado por IA": cabeçalho, cores, espaçamentos e raios inventados, dois
+painéis lado a lado com a prévia sempre à mostra e densidade alta. A tela certa saiu de
+outro caminho: ler os tokens reais (`SHADOW.apple`, `HEADER_STYLE`, `stylePopup`, os
+SVGs de `header-factory.js`), copiar a estrutura das telas irmãs (Call Script, E-mail),
+esconder a prévia numa gaveta atrás da janela e deixar o contexto recolhido
+(divulgação progressiva). A régua para "cada espaçamento, fonte, borda" foi um lint
+medido no DOM (grade de 4/8px, pesos 400/500, `tabular-nums`, `transition` nomeando
+propriedades); ele achou defeitos reais que o olho não via (padding de 6px herdado do
+navegador em `<button>`, input do Speakeasy sem tabular).
+Um mutante de teste (marcar NA em linhas que não aceitam NA) passou 78/78 até uma
+asserção de **estado** (`na === false` nessas linhas) ser adicionada: checar só o que
+aparece na tela não pega regra violada que ainda não aparece.
+
+**When to apply**: ao desenhar qualquer tela nova do CW (PNG, protótipo ou spec de UI).
+Antes de desenhar, abra o CSS/JS da tela mais parecida e use os mesmos tokens; mostre
+só o que o agente precisa naquele instante; rode o lint de medidas no protótipo. Para
+provar que uma asserção tem dentes, quebre a regra de propósito (mutante) e confirme
+que o teste falha exatamente nela.
+
+---
+
 ## Playwright: `hasText` casa por substring sem diferenciar caixa, e `.catch(() => {})` num passo faz o check passar sem rodar
 
 **Why**: ao montar o preview do novo Case Notes (2026-11-05), três falhas de uma só

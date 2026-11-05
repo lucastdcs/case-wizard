@@ -284,3 +284,91 @@ precisa digitar**, e o formulário nunca pode mentir sobre de que caso é:
   recuado por tom, não por borda. Tudo o que anima declara as propriedades
   (`transition: transform, opacity…`), nunca `all`, e respeita
   `prefers-reduced-motion`.
+
+## Case Notes em tabela: a tela (irmã mais velha do Case Notes)
+
+Referência viva: `docs/media/case-notes-table/` (`01-comeco.png` a `04-pendencias.png` e o `preview.html`).
+É a mesma casca do Case Notes de hoje, com **menos informação por vez**: a carga cognitiva sobe com o
+que está na tela, e o agente precisa de velocidade ao preencher. O contrato da nota está em
+`specs/workflow/case-note-table.md`; esta seção só trata do desenho.
+
+**Princípio — só o que pede a atenção do agente fica à vista:**
+
+- o que o sistema já sabe vira **um resumo** ("Preenchido automaticamente"), com os valores à vista para conferir;
+- o que raramente muda vira **uma linha recolhida** ("Nota": idioma, fluxo e Caso da Europa);
+- o que é opcional fica atrás de **"Mais opções · N"**;
+- a dica de um campo aparece **só quando ele está em foco**, no vão sob o cartão (sem deslocar nada);
+- a tela fica **calma até o agente tentar preencher**: só então as linhas pendentes ganham a marca âmbar;
+- a **prévia da nota** é uma gaveta **atrás da janela**, aberta por uma aba, e não um painel fixo.
+
+### Casca (reaproveita `stylePopup` e `HEADER_STYLE`; nada novo)
+
+| Parte | Medida |
+|---|---|
+| Janela | 560×760, redimensionável, raio 20, `SHADOW.apple`, borda `1px rgba(255,255,255,.7)`, fundo `rgba(255,255,255,.98)` |
+| Cabeçalho | 56, padding `0 20`, vidro escuro `rgba(28,28,32,.85)` + blur 12, "G" de 20, título 16/500 com `letter-spacing:.5px`, 4 botões de 32 (shuffle = Split & Transfer, histórico = rascunhos, ajuda, fechar), linha Google de 2 (`opacity:.8`). Os SVG são os do código. |
+| Corpo | fundo tonal `#f5f5f7`, padding 24, rolagem própria, seções separadas por 24 |
+| Rodapé | branco, padding `12 24 0`, sombra `0 -1px 0` hairline; linha de 40 + crédito de 28 (`created by …`, 11px `#9aa0a6`) |
+
+### Tokens e escala (todos já existem em `notes-styles.js` e `header-factory.js`)
+
+- **Cor:** primária `#1a73e8` (ação, foco, seleção), texto `#202124`/`#3c4043`, secundário `#5f6368`, dica `#9aa0a6`
+  (só decoração e placeholder; o `NA` usa `#74777c` para ter contraste), tons `#f5f5f7` (fundo), `#f8f9fa`, `#f1f3f4`
+  (chip, hover) e `#e8e8ed` (trilho do segmentado), âmbar `#b06000`/`#fef7e0`/`#fbbc05`, verde `#188038`/`#34a853`.
+  Cor só onde ela tem função; **nenhuma borda cinza chapada** na casca.
+- **Separação:** espaço, depois tom, depois sombra curta; a divisão entre linhas é uma hairline
+  `rgba(60,64,67,.12)` com recuo de 16 à esquerda, que **nunca fica pendurada** (só entre irmãos).
+- **Grade de 4/8px:** todo padding, margem e gap é múltiplo de 4 (insets de 1 a 2px só dentro de controle,
+  como o botão do interruptor).
+- **Degraus de fonte:** 11 (eyebrow em caixa alta, `letter-spacing:1px`), 12 (rótulo, dica, legenda), 13 (chip,
+  controle), 14 (botão), 15 (valor), 16 (título da janela). **Pesos 400 e 500**, nunca 600/700.
+- **Algarismos tabulares** em CID e Speakeasy.
+
+### Componentes
+
+| Componente | Medida e regra |
+|---|---|
+| Eyebrow | 11/500 caixa alta + hairline que preenche a linha (assinatura do CW); margem de baixo 8 |
+| Controle segmentado | trilho `#e8e8ed`, raio 12, padding 4, botões de 32 e raio 8; **só o selecionado tem fundo** (branco, sombra `0 1px 2px`); `role="radiogroup"` com setas |
+| Cartão | branco, raio 16; linha com `min-height:52`, padding `8 16`; rótulo 12/500 `#5f6368` à esquerda (136; 88 no cartão de contexto), valor 15/400 `#202124` sem moldura de campo |
+| Linha de texto longo | rótulo em cima, `textarea` que cresce (mínimo 44), padding `12 16` |
+| Foco da linha | fundo `#f8f9fa` + barra de 2 em `#1a73e8` à esquerda (substitui o contorno do campo) |
+| Linha pendente | barra de 2 em `#fbbc05` e rótulo em `#b06000`, **só depois de tentar preencher** |
+| `NA` | botão de texto 12/500, alvo 32; ligado: fundo `#e8f0fe`, texto "Desfazer", e o valor vira "NA" |
+| Chip | 32 de altura, raio 16, 13/500, tonal (`#f1f3f4`); selecionado `#e8f0fe` + `#1967d2`. Sugestão = ponto de 12 com anel branco de 2 no canto do chip (não ocupa largura) |
+| Seletor de sub-status | linha do cartão que abre um popover de vidro: busca (por nome **ou atalho**, ex. `ts so verif`), grupos Need Info, Solution Offered, Inactive, Assigned, Discarded, atalho à direita (12px tabular), Enter escolhe o primeiro, setas navegam, Esc fecha. Texto que não casa oferece `Usar “…”` (os `PI - …` se digitam) |
+| Interruptor | 52×32, botão de 28, `role="switch"` |
+| "Preenchido automaticamente" | cabeçalho de 52 com ícone de check; recolhido mostra `Date`, `Follow-up`, `CID`, `Consent` com o valor; aberto lista as linhas editáveis com a marca **Auto** (check + texto, `title` com a explicação); editar tira a marca e a linha passa para a lista normal |
+| "Mais opções · N" | linha de 44, 13/500; chevron gira 180° |
+| Faixa de contexto | 48, vidro `rgba(245,245,247,.94)` + blur 20, aparece (deslize de `transform`, .25s) ao rolar além do contexto; mostra segmento · fluxo · idioma · sub-status; um clique volta ao topo |
+| Faixa de pendências | 48, `#fef7e0`, texto 13/500 `#b06000`; só aparece depois de tentar preencher ou clicar no status; ações **Próxima** (texto) e **Marcar o restante como NA** (tonal); substitui a faixa de contexto enquanto está no ar |
+| Rodapé | estado à esquerda (ponto âmbar "N pendentes" ou verde "Pronta para preencher"), depois **Limpar** e **Guardar** (texto), **Copiar** (tonal) e **Preencher** (primário, sombra `0 4px 12px rgba(26,115,232,.3)`). Com pendência, Preencher e Copiar ficam com aparência bloqueada **mas clicáveis**: o clique abre a faixa de pendências em vez de ficar mudo |
+| Botões | 36 de altura, raio 18, 14/500; de ícone ou de texto curto, alvo mínimo 32×32 |
+
+### Gaveta da prévia
+
+- Fica **atrás** da janela: 560 de largura, 24 deles escondidos sob a janela, raio `20 0 0 20`, fundo `#f1f3f4` (tonal, recuado),
+  sombra `0 8px 24px rgba(0,0,0,.08)`, padding `24 48 24 24`. Abre para a **esquerda** (a janela mora ao lado do dock). *Intenção,
+  ainda não desenhada no protótipo:* se a janela for arrastada para perto da borda esquerda da tela, espelha para a direita.
+- **Aba** de 32×112 colada à borda esquerda da janela (e da gaveta, quando aberta), mesmo vidro escuro do cabeçalho, com
+  o ícone da nota, o chevron e um selo de 20: **número de pendências** (âmbar) ou **check** (verde, pronta). `aria-expanded`,
+  `aria-controls`, rótulo com a contagem. Fechada, o conteúdo é `inert` (fora da ordem do Tab); Esc fecha.
+- Dentro: eyebrow "Prévia da nota" + selo de estado (24 de altura) e o **cartão da nota**, o único elemento elevado da tela
+  (branco, raio 12, sombra `0 4px 12px rgba(0,0,0,.05)`): é o que o agente leva para o CRM.
+- **Ligação formulário ↔ nota:** a linha em foco acende a linha correspondente da nota (`#e8f0fe`); clicar numa linha da nota
+  leva o foco ao campo (abrindo o que estiver recolhido). Só a prévia viva traz `data-row`; a saída nunca.
+- **Movimento:** só o `transform` da gaveta (e o botão do interruptor) usa a curva elástica `cubic-bezier(.34,1.56,.64,1)`;
+  cor, fundo e opacidade usam `.2s` com a curva padrão. Um overshoot por transição. Com `prefers-reduced-motion` tudo cai para ~0.
+
+### Comportamento da tela (resumo; o contrato está na spec)
+
+Sem sub-status, só o contexto e um estado vazio. Segmento sempre visível e com a legenda somente leitura "Sales program na tela";
+**General** não é chip (está sempre ligado); `Fase` é escolha única nos segmentos por fase. Linhas derivadas (sub-status, Europa)
+não aparecem no formulário; "Task types" só aparece se não houver task. Cada seção é um cartão; seções depois da primeira levam um
+sub-título de 12/500. O que o agente digitou nunca é sobrescrito por captura.
+
+### Como isto é medido
+
+`docs/media/case-notes-table/preview-checks.cjs` mede, no DOM renderizado, a grade de 4px, os degraus e pesos de fonte, a ausência de
+borda chapada na casca, o alvo mínimo de 32px, `transition` sem `all` e os algarismos tabulares, além do comportamento. Foi validado
+quebrando de propósito cada regra (padding de 10px, peso 700, borda, `transition: all`, alvo de 28px).
