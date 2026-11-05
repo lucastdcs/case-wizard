@@ -1,0 +1,848 @@
+<!doctype html>
+<!--
+  REFERÊNCIA VISUAL do novo Case Notes (nota em tabela). NÃO é código de produção.
+  - Contrato: specs/workflow/case-note-table.md (vence este arquivo em qualquer divergência).
+  - Decisão: docs/decisions/0022-nota-em-tabela-catalogo-na-central.md.
+  - O objeto CATALOG abaixo é a SEMENTE do catálogo (segmentos, blocos, linhas, regras).
+    Reaproveite a LÓGICA (matches, rowVisible, rowRequired, resolved, applyAuto,
+    addBusinessDays, blockTable), não a estrutura: aqui é um arquivo só, com estado global.
+  - Dados de exemplo. Os rótulos PT/ES estão vazios de propósito (ver PLAN.md).
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preview — Case Notes com tabela</title>
+<style>
+:root{
+  --primary:#1a73e8; --primary-bg:#e8f0fe; --text:#202124; --sub:#5f6368; --border:#dadce0;
+  --input:#f8f9fa; --surface:#fff; --err:#d93025; --warn:#b06000; --warn-bg:#fef7e0; --ok:#188038;
+  --font:"Google Sans",Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font);color:var(--text);background:#eef1f6;min-height:100vh;
+  background-image:radial-gradient(900px 500px at 12% 8%,#dbe7ff 0,transparent 60%),radial-gradient(800px 500px at 92% 30%,#fde7e9 0,transparent 55%),radial-gradient(700px 500px at 40% 100%,#e0f3e6 0,transparent 55%)}
+button{font-family:inherit}
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:1240px;margin:0 auto;padding:14px 16px 0}
+.brand{font-weight:700;font-size:14px}
+.tabs{display:flex;gap:4px;background:rgba(255,255,255,.7);border:1px solid var(--border);border-radius:100px;padding:3px}
+.tabs button{border:0;background:transparent;padding:7px 16px;border-radius:100px;font-size:12.5px;font-weight:700;color:var(--sub);cursor:pointer}
+.tabs button.on{background:var(--primary);color:#fff}
+.tabs button:not(.on):hover{background:rgba(0,0,0,.05);color:var(--text)}
+.legend{font-size:12px;color:var(--sub)}
+main{max-width:1240px;margin:0 auto;padding:14px 16px 40px}
+[hidden]{display:none!important}
+
+/* ---------- janela do agente (liquid glass) ---------- */
+.win{height:800px;display:flex;flex-direction:column;background:rgba(255,255,255,.86);backdrop-filter:blur(18px);
+  border:1px solid rgba(255,255,255,.75);border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,.12);overflow:hidden;position:relative}
+.gline{height:3px;background:linear-gradient(to right,#4285F4,#EA4335,#FBBC05,#34A853)}
+.win-head{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid #f1f3f4}
+.win-head h2{margin:0;font-size:16px}
+.win-head .ver{font-size:11px;color:var(--sub)}
+.sp{flex:1}
+.iconbtn{width:32px;height:32px;border-radius:50%;border:0;background:var(--input);color:var(--sub);cursor:pointer;display:grid;place-items:center;font-size:15px}
+.iconbtn:hover{background:var(--primary-bg);color:var(--primary)}
+.pop{position:absolute;right:18px;top:56px;width:290px;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 24px rgba(0,0,0,.12);padding:14px 16px;z-index:20}
+.pop h4{margin:0 0 4px;font-size:13px}.pop p{margin:0 0 10px;font-size:12px;color:var(--sub)}
+.pop label{display:flex;gap:8px;align-items:center;font-size:13px;padding:5px 0;cursor:pointer}
+.body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr)}
+.pane-form{overflow:auto;padding:18px 22px 28px;background:var(--surface)}
+.pane-prev{display:flex;flex-direction:column;min-height:0;background:#f8f9fa;border-left:1px solid #eceff1}
+.prev-head{padding:14px 18px 10px}
+.prev-body{flex:1;overflow:auto;padding:0 18px 12px}
+.prev-foot{padding:12px 18px;border-top:1px solid #eceff1;background:rgba(255,255,255,.7);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.st{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--sub);margin:0 0 8px}
+.sec{margin-bottom:20px}
+.seg{display:flex;background:var(--input);padding:3px;border-radius:100px;border:1px solid var(--border);gap:2px}
+.seg button{flex:1;border:0;background:transparent;padding:7px 6px;font-size:12px;font-weight:700;border-radius:100px;color:var(--sub);cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--primary);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.seg button:not(.on):hover{background:rgba(0,0,0,.04);color:var(--text)}
+.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:12px;color:var(--sub)}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;color:var(--primary);background:var(--primary-bg);border-radius:100px;padding:2px 8px;vertical-align:middle}
+.tag.warn{color:var(--warn);background:var(--warn-bg)}
+.inp{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:12px;background:var(--input);font:13px var(--font);color:var(--text);outline:none;transition:border-color .2s,background .2s}
+.inp:focus{border-color:var(--primary);background:#fff}
+.inp:disabled{background:#eceff1;color:var(--sub)}
+.inp.bad{border-color:var(--err)}
+textarea.inp{min-height:62px;resize:vertical}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--border);background:#fff;border-radius:100px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer}
+.chip:hover{background:var(--primary-bg)}
+.chip.on{background:var(--primary-bg);border-color:var(--primary);color:var(--primary)}
+.bcard{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer}
+.bcard:hover{background:#fafbff}
+.bcard.on{border-color:var(--primary);background:var(--primary-bg)}
+.bcard .t{font-weight:700;font-size:13px}.bcard .w{font-size:11.5px;color:var(--sub);margin-top:2px}
+.bcard .chk{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);flex:none;margin-top:1px;display:grid;place-items:center;font-size:12px;color:#fff;background:#fff}
+.bcard.on .chk{background:var(--primary);border-color:var(--primary)}
+.bcard.lock{cursor:default}
+.bhead{display:flex;align-items:baseline;gap:8px;margin:18px 0 6px;padding-top:14px;border-top:1px solid #eceff1}
+.bhead b{font-size:14px}.bhead span{font-size:11.5px;color:var(--sub)}
+.shead{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--sub);margin:12px 0 2px}
+.frow{padding:9px 0;border-bottom:1px solid #f1f3f4}
+.frow .lbl{display:flex;gap:6px;align-items:center;font-weight:700;font-size:12.5px;margin-bottom:6px}
+.frow .req{color:var(--err)}
+.frow .ctl{display:flex;gap:6px;align-items:flex-start}
+.frow .ctl .grow{flex:1;min-width:0}
+.frow .hint{font-size:11.5px;color:var(--sub);margin-top:5px;line-height:1.4}
+.frow .sub{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.pill{border:1px solid var(--border);background:#fff;border-radius:100px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--sub);cursor:pointer;white-space:nowrap}
+.pill:hover{background:var(--primary-bg);color:var(--primary)}
+.pill.on{background:#3c4043;border-color:#3c4043;color:#fff}
+.yn{display:flex;gap:4px}
+.yn .pill.on{background:var(--primary);border-color:var(--primary)}
+.derived{padding:9px 12px;border-radius:12px;background:var(--input);border:1.5px dashed var(--border);font-size:13px;min-height:38px;color:var(--text)}
+.derived.empty{color:var(--sub);font-style:italic}
+.cidtbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+.cidtbl th{font-size:10.5px;text-align:left;color:var(--sub);padding:4px 4px;font-weight:700}
+.cidtbl td{padding:3px 3px;vertical-align:top}
+.cidtbl .inp{padding:6px 8px;font-size:12px;border-radius:8px}
+.meter{height:6px;border-radius:6px;background:#e3e6ea;overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;background:var(--primary);transition:width .3s}
+.meter.full i{background:var(--ok)}
+.btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer}
+.btn:hover:not(:disabled){background:var(--primary-bg)}
+.btn.pri{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.pri:hover:not(:disabled){background:#1666d0}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.missing{font-size:12px;color:var(--warn);margin:2px 0 0}
+.note{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#323232;color:#fff;border-radius:12px;padding:10px 18px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:100}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.crm{position:fixed;inset:0;background:rgba(32,33,36,.45);z-index:50;display:grid;place-items:center;padding:20px}
+.crm-card{width:min(820px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.25)}
+.crm-card header{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px}
+.crm-card .ed{padding:16px 18px}
+
+/* ---------- Central (esboço) ---------- */
+.central{display:grid;grid-template-columns:236px minmax(0,1.3fr) minmax(0,1fr);height:800px;border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,.12);background:#fff}
+.rail{background:#202124;color:#e8eaed;padding:16px 12px;overflow:auto}
+.rail h3{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#9aa0a6;margin:14px 8px 6px}
+.rail .grp{font-size:12.5px;font-weight:700;margin:12px 8px 4px;color:#fff}
+.rail button{display:block;width:100%;text-align:left;background:transparent;border:0;color:#e8eaed;padding:7px 10px;border-radius:10px;font-size:12.5px;cursor:pointer}
+.rail button:hover{background:rgba(255,255,255,.08)}
+.rail button.on{background:rgba(138,180,248,.2);color:#8ab4f8}
+.rail .dim{color:#9aa0a6;font-size:12px;padding:5px 10px}
+.cmain{overflow:auto;padding:18px 20px;border-right:1px solid #eceff1}
+.cprev{overflow:auto;padding:18px 18px;background:#f8f9fa}
+#cpreview{zoom:.75}
+.cmain h2{margin:0 0 2px;font-size:17px}
+.cbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.cov{font-size:12px;color:var(--sub);display:flex;gap:12px;flex-wrap:wrap}
+.cov b{color:var(--text)}.cov .gap{color:var(--warn)}
+.banner{font-size:12px;background:var(--primary-bg);color:#174ea6;border-radius:12px;padding:8px 12px;margin:8px 0}
+.field{margin:10px 0}.field label{display:block;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--sub);margin-bottom:4px}
+.rt{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.rt .code{white-space:normal;word-break:break-word}
+.rt th{font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--sub);text-align:left;padding:6px 4px;position:sticky;top:0;background:#fff}
+.rt td{padding:4px 3px;border-top:1px solid #f1f3f4;vertical-align:middle}
+.rt .inp{padding:6px 8px;font-size:12px;border-radius:8px}
+.rt tr.hid td{opacity:.45}
+.rt .sech td{background:var(--primary-bg);font-weight:700;font-size:11.5px;padding:6px 8px;border-radius:6px}
+.code{font:11px ui-monospace,Menlo,monospace;background:#f1f3f4;border-radius:6px;padding:2px 6px;color:var(--sub);white-space:nowrap}
+.pillstate{font-size:11px;font-weight:700;background:var(--warn-bg);color:var(--warn);border-radius:100px;padding:3px 10px}
+.guards{font-size:12px;color:var(--sub);margin:14px 0 0;padding:10px 12px;border:1px dashed var(--border);border-radius:12px;line-height:1.5}
+@media (max-width:900px){
+  .body{grid-template-columns:1fr}.win{height:auto}.pane-prev{border-left:0;border-top:1px solid #eceff1}
+  .central{grid-template-columns:1fr;height:auto}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">Case Wizard · preview do novo Case Notes</div>
+  <nav class="tabs" role="tablist" aria-label="Visão">
+    <button data-view="agent" class="on" role="tab" aria-selected="true">Agente · Case Notes</button>
+    <button data-view="central" role="tab" aria-selected="false">Central de Conteúdo · Notas (esboço)</button>
+  </nav>
+  <div class="legend">Dados de exemplo. Nada aqui grava em lugar nenhum. A Central edita o mesmo catálogo que o agente lê.</div>
+</header>
+<main>
+  <section id="view-agent">
+    <div class="win" id="win">
+      <div class="gline"></div>
+      <div class="win-head">
+        <h2>Case Notes</h2><span class="ver">preview</span>
+        <span class="sp"></span>
+        <button class="iconbtn" id="gear" title="Configurações do Case Notes" aria-label="Configurações do Case Notes" aria-haspopup="true">&#9881;</button>
+      </div>
+      <div class="pop" id="pop" hidden>
+        <h4>Case Notes · abrir em</h4>
+        <p>Segmento do cliente que o Case Notes mostra ao abrir. Você ainda troca na própria tela.</p>
+        <label><input type="radio" name="dflt" value="all"> ALL TASKS</label>
+        <label><input type="radio" name="dflt" value="sbse"> ECL SBS-E</label>
+        <label><input type="radio" name="dflt" value="mms"> ECL MMS</label>
+        <label><input type="radio" name="dflt" value="last"> O último que usei</label>
+      </div>
+      <div class="body">
+        <div class="pane-form" id="paneForm">
+          <div class="sec">
+            <div class="st">Segmento do cliente</div>
+            <div class="seg" id="segSel"></div>
+            <div class="meta">
+              <span>Sales program na tela: <b>SMB Grow</b> <span class="tag">Auto</span></span>
+              <span id="dfltNote"></span>
+            </div>
+          </div>
+          <div class="sec" style="display:flex;gap:12px">
+            <div style="flex:1"><div class="st">Fluxo</div><div class="seg" id="flowSel"></div></div>
+            <div style="flex:1"><div class="st">Caso da Europa</div><div class="seg" id="euSel"></div></div>
+          </div>
+          <div class="sec">
+            <div class="st">Sub-status</div>
+            <input class="inp" id="subIn" list="subList" placeholder="Escolha ou digite o sub-status exato do Q+" autocomplete="off">
+            <datalist id="subList"></datalist>
+            <div class="meta" id="subMeta"></div>
+          </div>
+          <div class="sec">
+            <div class="st">Tasks do atendimento</div>
+            <div class="chips" id="taskChips"></div>
+            <div class="meta">Vêm marcadas do caso (<code class="code">appointmentTasks</code>) e definem quais blocos e linhas fazem sentido.</div>
+          </div>
+          <div class="sec">
+            <div class="st">Cenários comuns</div>
+            <div class="chips" id="scenChips"></div>
+          </div>
+          <div class="sec">
+            <div class="st" id="blocksTitle">Blocos desta nota</div>
+            <div id="blockCards"></div>
+          </div>
+          <div id="blocksForm"></div>
+        </div>
+        <div class="pane-prev">
+          <div class="prev-head">
+            <div class="st" style="margin:0">Prévia da nota</div>
+            <div class="meter" id="meter"><i style="width:0"></i></div>
+            <div class="missing" id="missing"></div>
+            <button class="pill" id="bNaRest" type="button" title="Marca como NA as linhas que aceitam NA e ainda não foram resolvidas" style="margin-top:8px">Marcar o restante como NA</button>
+          </div>
+          <div class="prev-body"><div class="note" id="preview"></div></div>
+          <div class="prev-foot">
+            <button class="btn" id="bClear">Limpar</button>
+            <button class="btn" id="bDraft">Guardar rascunho</button>
+            <span class="sp"></span>
+            <button class="btn" id="bCopy">Copiar</button>
+            <button class="btn pri" id="bInsert">Inserir na nota</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-central" hidden>
+    <div class="central">
+      <aside class="rail" id="rail"></aside>
+      <div class="cmain" id="cmain"></div>
+      <div class="cprev"><div class="st">Prévia como o agente vê</div><div class="note" id="cpreview"></div></div>
+    </div>
+  </section>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<div class="crm" id="crm" hidden>
+  <div class="crm-card"><header>Nova nota · Connect Cases <span class="sp"></span><button class="iconbtn" id="crmClose" aria-label="Fechar">&times;</button></header><div class="ed" id="crmEd"></div></div>
+</div>
+
+<script>
+/* ======================================================================
+   CATÁLOGO — é isto que a Central publicaria (módulos note_blocks e note_layouts).
+   A tela do agente e o esboço da Central leem ESTE objeto; nada abaixo é desenhado à mão.
+   ====================================================================== */
+const C={primary:'#1a73e8',primaryBg:'#e8f0fe',text:'#202124',textSub:'#5f6368',border:'#dadce0',bgInput:'#f8f9fa',surface:'#fff'};
+const FONT="'Google Sans', Roboto, Arial, sans-serif";
+const CAPTURED={cid:'123-456-7890',salesProgram:'SMB Grow',speakeasy:'P100000000381267617'};
+const TASKS=[
+  {k:'ads_conversion_tracking',n:'Ads Conversion Tracking',short:'ACT'},
+  {k:'ads_enhanced_conversions',n:'Ads Enhanced Conversions (ECW4)',short:'ECW'},
+  {k:'ga4_event_tracking',n:'Analytics Event Tracking (GA4)'},
+  {k:'gtm_installation',n:'GTM Installation'}];
+// Lista do arquivo "Status" (sem os PI, que ficaram de fora). fu = regra de follow-up: número = dias; 'na'; 'optional'|'customer'|'policy' = o agente decide.
+const SUBSTATUS=[
+  ['AS - Acceptable Reschedule','optional'],['AS - Reschedule 1','optional'],
+  ['NI - Awaiting Inputs','customer'],['NI - In Consult',3],['NI - Awaiting Validation',2],['NI - Attempted Contact','policy'],
+  ['DC - Test Case','na'],['DC - Not Needed','na'],['DC - No response (Hybrid case)','na'],['DC - Out of Scope','na'],['DC - Authentication Failed','na'],
+  ['IN - Infeasible','na'],['IN - Not Reachable','na'],['IN - Not Interested','na'],['IN - Not Ready','na'],['IN - Out of Scope - Rerouted','na'],
+  ['IN - Reschedule Limit Exceeded','na'],['IN - Troubleshooting [Transferred]','na'],['IN - Instruction Shared','na'],
+  ['SO - Implementation Only','na'],['SO - Educational Only','na'],['SO - Troubleshooting Only','na']];
+const CONSENT_NA=['NI - Attempted Contact','IN - Not Reachable'];
+const SCEN=[
+  {n:'Implementação concluída, aguardando validação',sum:'Implemented the conversion tag on the call and validated it with the advertiser. Waiting for conversions to be recorded.',reason:'Implementation completed; awaiting conversion data to validate.'},
+  {n:'Anunciante não atendeu',sum:'Dialed the advertiser twice with no answer. Left a voicemail and sent a follow-up email.',reason:'No response from the advertiser after the attempted contact.'},
+  {n:'Reagendamento pedido pelo anunciante',sum:'Advertiser asked to reschedule because the developer was unavailable. New appointment to be booked.',reason:'Advertiser requested a reschedule with an acceptable reason.'}];
+
+// row(): helper para declarar linhas. required = precisa estar resolvida (valor ou NA explícito).
+const TS_TARGETS_CAT=['ads_conversion_tracking','ads_enhanced_conversions'];
+const R=(id,en,type,o={})=>Object.assign({id,label:{en,pt:'',es:''},type,required:true,na:true,visible:true,hint:''},o);
+const CIDCOL=(id,en,type,o={})=>Object.assign({id,label:{en,pt:'',es:''},type,required:true},o);
+
+const CATALOG={
+  blocks:{
+    general:{name:'General details',cols:4,widths:[14,14,52,20],sections:[
+      {kind:'kv',title:'General Details (Mandatory)',rows:[
+        R('date','Date:','date',{auto:'today',na:false,hint:'Data da call, da tentativa de contato ou do follow-up (YYYY-MM-DD).'}),
+        R('speakeasy','Speakeasy ID:','speakeasy',{hint:'ID exato da sessão do SpeakEasy. Várias ligações: separe por vírgula. NA para atendimento offline ou só por e-mail.'}),
+        R('substatus','Sub-status:','derived',{auto:'substatus',na:false,hint:'Vem do campo Sub-status no topo.'}),
+        R('next_followup','Next Follow-Up Date:','date',{auto:'followup',hint:'Data do próximo follow-up, ou NA.'}),
+        R('task_types','Task types:','derived',{auto:'tasks',hint:'Vêm das tasks marcadas. NA só se nenhuma task esteve envolvida.'}),
+        R('impl_tags','Implemented tags:','text',{hint:'Nome exato das conversion actions criadas, verificadas ou corrigidas, separados por vírgula (ex.: Phone_call, lead_form). NA se não se aplica.'}),
+        R('cid','CID:','cid',{auto:'cid',hint:'CID de 10 dígitos (XXX-XXX-XXXX) confirmado com o anunciante. Vários: separe por vírgula.'}),
+        R('consent','Checked and obtained recording consent from the customer before proceeding with the call?','yesno',{auto:'consent',hint:'Fora da Europa o padrão é Yes (a alternativa fica em "Alterar"). No caso da Europa o agente marca. NA para NI - Attempted Contact e IN - Not Reachable.'}),
+        R('call_summary','Call Summary:','long',{na:false,hint:'Resumo curto do que aconteceu na call ou no e-mail.'}),
+        R('substatus_reason','Sub-status Reason:','long',{na:false,hint:'Justificativa exata do sub-status escolhido.'}),
+        R('additional_info','Additional information:','long',{required:false,hint:'Opcional. Vazio sai como NA.'})]},
+      {kind:'kv',title:'Screenshots (Mandatory)',rows:[
+        R('website','Website URL worked upon:','link',{hint:'Print do Tag Assistant mostrando o site conectado. NA só se nenhuma task esteve envolvida.'}),
+        R('qplus','Q+ entry:','link',{hint:'Link do print do Q+ preenchido ao fechar ou transferir o caso.'}),
+        R('gvc','GVC Chat:','link',{hint:'Print do chat do Meet se houve links ou instruções. Senão, NA.'}),
+        R('gam','GAM:','link',{hint:'Print do ping ao Seller/GAM logo após a call, com resultado, status e próximos passos.'}),
+        R('extra_general','Additional Screenshots:','link',{required:false,hint:'Opcional. Qualquer print extra exigido pelo cenário.'})]}]},
+    before:{name:'Before implementation',cols:4,widths:[22,28,32,18],sections:[
+      {kind:'group',title:'Screenshots (Mandatory)',group:'Before implementation:',rows:[
+        R('b_status','Google Ads Conversion Status:','link',{hint:'Status de rastreamento Unverified, Needs attention ou Tag inactive, com CID, nome da conversão e horário visíveis.'}),
+        R('b_dup','Duplicate Tags / Repeat Rate:','link',{hint:'Tabela de conversões com repeat rate elevado (> 1,3 ou > 2,0) antes de remover tags duplicadas.'}),
+        R('b_bid','Bidding Optimization:','link',{hint:'Configuração mostrando a otimização de ação inicial (Secondary ou Primary).'}),
+        R('b_diag','Tag Diagnostics:','link',{onlyFor:['ecw'],hint:'Só ECW. Print do alerta antes da correção.'}),
+        R('b_qual','EC Qualdash:','link',{hint:'go/ec-qual-dash com Coverage Rate baixo (< 0,7) antes de remover tags duplicadas.'})]}]},
+    impl:{name:'Implementation',cols:4,widths:[22,28,32,18],sections:[
+      {kind:'group',title:'Screenshots (Mandatory)',group:'Implementation:',rows:[
+        R('i_status','Google Ads Conversion Status:','link',{hint:'Resumo de conversões mostrando a transição do status, com CID e nome da conversão iguais.'}),
+        R('i_settings','Google Ads Conversion Settings:','link',{hint:'Categoria, otimização, contagem, valor, atribuição e Tag Setup (Conversion ID e Label).'}),
+        R('i_gtm','GTM / Website Backend:','link',{hint:'Tag de conversão + Conversion Linker + gatilho no GTM, ou gtag.js manual.'}),
+        R('i_fired','Tag Assistant Tag Fired:','link',{hint:'Tags disparadas com Conversion ID, Label e Value/Currency dinâmicos.'}),
+        R('i_ec','Google Ads EC Settings:','link',{onlyFor:['ecw'],hint:'Só ECW. Enhanced conversions ligado e método escolhido.'}),
+        R('i_terms','Customer Data Terms Accepted:','link',{hint:'Termos de dados do cliente aceitos no Google Ads.'}),
+        R('i_em','Error-Free em Parameter OR ecsid PII Stitching:','link',{onlyFor:['ecw'],hint:'Só ECW. Parâmetro em com hash SHA-256 válido (nunca em.e0), ou 2 prints com ecsid igual.'}),
+        R('i_hit','“Hit Sent” in Tag Assistant OR Network Header 200 OK:','link',{hint:'Hit para googleadservices.com com o Label certo e 200 OK.'}),
+        R('i_extra','Additional Screenshots:','link',{required:false,hint:'Opcional.'})]}]},
+    after:{name:'After implementation',cols:4,widths:[22,28,32,18],sections:[
+      {kind:'group',title:'Screenshots (Mandatory)',group:'After implementation:',rows:[
+        R('a_status','Google Ads Conversion Status:','link',{hint:'Resumo de conversões na janela de validação de 2 a 3 dias.'}),
+        R('a_diag','Tag Diagnostics / EC Qualdash:','link',{onlyFor:['ecw'],hint:'Só ECW. Tag Diagnostics do dia 7 em "Recording enhanced conversions" e/ou EC Qualdash.'}),
+        R('a_dup','Duplicate Tags / Repeat Rate:','link',{hint:'Repeat rate normalizado (~1,0) após 2 dias (ACT) ou 7 dias (ECW).'}),
+        R('a_bid','Bidding Optimization:','link',{hint:'Otimização de ação atualizada depois da mudança.'}),
+        R('a_extra','Additional Screenshots:','link',{required:false,hint:'Opcional.'})]}]},
+    consult:{name:'Consult routing path',cols:4,widths:[22,26,34,18],sections:[
+      {kind:'group',title:'Screenshots (Mandatory)',group:'Consult Routing Path & SME Approval:',rows:[
+        R('c_path','Consult Routing Path:','link',{hint:'Print confirmando o roteamento para a fila certa de M&A.'}),
+        R('c_sme','SME Approval:','link',{hint:'Print ou nota registrada com a aprovação do SME para Split & Transfer ou Discard.'})]}]},
+    audit:{name:'Readiness Audit',cols:6,widths:[14,17,12,16,23,18],sections:[
+      {kind:'cid',title:'CID-Level Details',columns:[CIDCOL('tbw','To Be Worked?','tbw'),CIDCOL('cid','CID','cid'),CIDCOL('mcc','Under MCC?','yn'),CIDCOL('outcome','Audit Outcome','text'),CIDCOL('alink','Audit Link','link'),CIDCOL('sme','SME sign-off','smeyes')]},
+      {kind:'kv',title:'General Details (Mandatory)',rows:[
+        R('substatus','Current case Sub-Status:','derived',{auto:'substatus',na:false,hint:'Vem do campo Sub-status no topo.'}),
+        R('next_followup','Next Follow up Date:','date',{auto:'followup',hint:'Data do próximo follow-up, ou NA.'}),
+        R('case_comments','Case Comments:','long',{na:false,hint:'O que aconteceu no caso, com todos os detalhes e próximos passos.'}),
+        R('audit_ss','Audit Screenshots:','link',{hint:'Link do print da auditoria.'}),
+        R('gam','GAM Ping, if any:','link',{hint:'Print do ping ao GAM, se houve.'})]}]},
+    impl_call:{name:'Implementation Call',cols:4,widths:[18,22,36,24],sections:[
+      {kind:'cid',title:'CID-Level Details',columns:[CIDCOL('tbw','To Be Worked?','tbw'),CIDCOL('cid','CID','cid'),CIDCOL('tag','Tag implemented?','text'),CIDCOL('caseid','Case ID mapping','text')]},
+      {kind:'kv',title:'General Details (Mandatory)',rows:[
+        R('substatus','Current case Sub-status:','derived',{auto:'substatus',na:false,hint:'Vem do campo Sub-status no topo.'}),
+        R('substatus_reason','Sub-status Reason:','long',{na:false,hint:'Breve explicação do uso desse sub-status.'}),
+        R('next_followup','Next Follow up Date:','date',{auto:'followup',hint:'Data do próximo follow-up, ou NA.'}),
+        R('speakeasy','Speakeasy ID:','speakeasy',{hint:'ID exato da sessão do SpeakEasy.'}),
+        R('oncall_comments','On Call Comments:','long',{na:false,hint:'O que aconteceu na call, com todos os detalhes e próximos passos.'}),
+        R('consent','Checked and obtained recording consent from the customer before proceeding with the call?','yesno',{auto:'consent',hint:'Fora da Europa o padrão é Yes (a alternativa fica em "Alterar"). No caso da Europa o agente marca. NA para NI - Attempted Contact e IN - Not Reachable.'})]},
+      {kind:'kv',title:'Screenshots (Mandatory)',rows:[
+        R('oncall_ss','On Call Screenshot:','link',{hint:'Print mostrando o On Call e a data e hora do computador.'}),
+        R('access_ss','Account verification access level:','link',{hint:'Print do Google Ads, GTM e/ou GA4 mostrando o nível de acesso do anunciante.'}),
+        R('gam','GAM Ping, if any:','link',{hint:'Print do ping ao GAM, se houve.'}),
+        R('extra_all','All Additional Screenshots:','link',{required:false,hint:'Opcional. Todo print necessário ao andamento do caso.'})]}]},
+    interim:{name:'Interim check-ins',cols:3,widths:[30,50,20],sections:[
+      {kind:'kv',title:'General Details (Mandatory)',rows:[
+        R('substatus','Current case Sub-Status:','derived',{auto:'substatus',na:false,hint:'Vem do campo Sub-status no topo.'}),
+        R('next_followup','Next Follow up Date:','date',{auto:'followup',hint:'Data do próximo follow-up, ou NA.'}),
+        R('case_comments','Case Comments:','long',{na:false,hint:'O que aconteceu no caso, com todos os detalhes e próximos passos.'}),
+        R('gam','GAM Ping, if any:','link',{hint:'Print do ping ao GAM, se houve.'}),
+        R('extra_all','All Additional Screenshots:','link',{required:false,hint:'Opcional.'})]}]},
+    triage:{name:'Initial Triage',cols:3,widths:[30,50,20],sections:[
+      {kind:'kv',title:'General Details (Mandatory)',rows:[
+        R('substatus','Current case Sub-Status:','derived',{auto:'substatus',na:false,hint:'Vem do campo Sub-status no topo.'}),
+        R('next_followup','Next Follow up Date:','date',{auto:'followup',hint:'Data do próximo follow-up, ou NA.'}),
+        R('case_comments','Case Comments:','long',{na:false,hint:'O que aconteceu no caso, com todos os detalhes e próximos passos.'}),
+        R('gam','GAM Ping, if any:','link',{hint:'Print do ping ao GAM, se houve.'})]}]},
+    eligibility:{name:'Eligibility Verification',cols:5,widths:[16,17,20,25,22],sections:[
+      {kind:'cid',title:'CID-Level Details',columns:[CIDCOL('tbw','To Be Worked?','tbw'),CIDCOL('cid','CID','cid'),CIDCOL('mcc','Under MCC?','yn'),CIDCOL('elig','Eligibility Status','text'),CIDCOL('galactic','Galactic Screenshots','link')]},
+      {kind:'kv',title:'General Details (Mandatory)',rows:[
+        R('substatus','Current case Sub-Status:','derived',{auto:'substatus',na:false,hint:'Vem do campo Sub-status no topo.'}),
+        R('next_followup','Next Follow up Date:','date',{auto:'followup',hint:'Data do próximo follow-up, ou NA.'}),
+        R('case_comments','Case Comments:','long',{na:false,hint:'O que aconteceu no caso, com todos os detalhes e próximos passos.'}),
+        R('gam','GAM Ping, if any:','link',{hint:'Print do ping ao GAM, se houve.'})]}]},
+    // Campos do formato anterior que continuam, como tabela no FIM de toda nota. Cada linha tem a regra de quando aparece.
+    extras:{name:'Additional details',cols:3,widths:[34,46,20],sections:[
+      {kind:'kv',title:'Additional Details',rows:[
+        R('europe_case','Europe case?','derived',{auto:'europe',na:false,when:{europe:true},hint:'Marcado em "Caso da Europa", no topo.'}),
+        R('oncall','On Call signaled on time?','text',{required:false,when:{flow:'bau'},hint:'Como aparece na tela do caso. Não existe no fluxo LM.'}),
+        R('gtm_ga4','GTM/GA4 verified:','text',{optIn:true,required:false,requiredWhen:{substatusAny:['SO - Implementation Only','SO - Educational Only','SO - Troubleshooting Only','NI - Awaiting Validation']},hint:'Obrigatório quando houve implementação ou validação; opcional nos demais.'}),
+        R('ts_used','Used Tag Support?','yesno',{default:'No',na:false,when:{tasksAny:TS_TARGETS_CAT},hint:'Só para ACT e ECW. Com Yes, a task leva o aviso do Win Criteria. Lembre-se de preencher o Form.'}),
+        R('ts_reason','Reason:','text',{required:false,when:{tasksAny:TS_TARGETS_CAT,rowIs:{id:'ts_used',v:'No'}},hint:'Por que o Tag Support não foi usado.'}),
+        R('call_attempt','Call attempt:','link',{when:{substatusAny:['IN - Not Reachable']},hint:'Link da evidência da tentativa de ligação.'}),
+        R('ev_call1','Contact evidence: Call 1','link',{required:false,when:{substatusAny:['NI - Attempted Contact']},hint:'Evidência da primeira ligação.'}),
+        R('ev_call2','Contact evidence: Call 2','link',{required:false,when:{substatusAny:['NI - Attempted Contact']},hint:'Evidência da segunda ligação.'}),
+        R('ev_msg','Contact evidence: Message to the AM','link',{required:false,when:{substatusAny:['NI - Attempted Contact']},hint:'Evidência da mensagem ao AM.'})]}]}
+  },
+  // Cada segmento escolhe e ordena blocos. O corpo da tabela é do bloco (compartilhado); título, "quando usar" e sugestão são do segmento.
+  segments:[
+    {key:'all',name:'ALL TASKS',select:'multi',showTitle:false,always:['general'],blocks:[
+      {b:'general',title:'General details',when:'Sempre. Vale para toda call, tentativa de contato ou fechamento no mesmo dia.'},
+      {b:'before',title:'Before implementation',when:'Só ACT e ECW. Depois de appointments e fechamentos no mesmo dia.',suggest:{tasksAny:['ads_conversion_tracking','ads_enhanced_conversions']}},
+      {b:'impl',title:'Implementation',when:'Só ACT e ECW. Depois de appointments e fechamentos no mesmo dia.',suggest:{tasksAny:['ads_conversion_tracking','ads_enhanced_conversions']}},
+      {b:'after',title:'After implementation',when:'Só ACT e ECW. Em follow-ups ou ao fechar depois da janela (não é o dia do appointment).',suggest:{tasksAny:['ads_conversion_tracking','ads_enhanced_conversions']}},
+      {b:'consult',title:'Consult routing path',when:'Ao consultar ou transferir o caso para M&A.',suggest:{substatusAny:['IN - Troubleshooting [Transferred]','IN - Out of Scope - Rerouted']}}]},
+    {key:'sbse',name:'ECL SBS-E',select:'single',showTitle:true,blocks:[
+      {b:'audit',title:'Phase 1: Readiness Audit',when:'Depois da auditoria concluída E revisada/aprovada pelo SME.'},
+      {b:'impl_call',title:'Phase 2: Implementation Call',when:'Depois da call de implementação.'},
+      {b:'interim',title:'Interim Check-Ins or Pre-Impl. Closure: Seller/Advertiser Engagement & Updates',when:'Ao fechar o caso no pre-call ou ao fazer follow-up com seller/anunciante.'}]},
+    {key:'mms',name:'ECL MMS',select:'single',showTitle:true,blocks:[
+      {b:'triage',title:'Phase 0: Initial Triage',when:'Depois do e-mail FR (CR 0A) enviado, mas com os CIDs ainda por confirmar.'},
+      {b:'eligibility',title:'Phase 1: Eligibility Verification',when:'FR enviado e elegibilidade dos CIDs confirmados checada no Galactic.'},
+      {b:'audit',title:'Phase 2: Readiness Audit & Scheduling',when:'Depois da auditoria concluída E revisada/aprovada pelo SME.'},
+      {b:'impl_call',title:'Phase 3: Pre-Implementation Call',when:'Depois da call de pre-implementação (3-way) ou ao fechar depois dela.'},
+      {b:'interim',title:'Interim Check-Ins or Pre-Impl. Closure: Seller/Advertiser Engagement & Updates',when:'Ao fechar na pré-implementação ou ao fazer follow-up com seller/anunciante.'}]}
+  ]
+};
+
+/* ======================================================================
+   Utilidades
+   ====================================================================== */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function h(tag,a={},...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(a)){if(k==='class')e.className=v;else if(k==='style')e.style.cssText=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v===true)e.setAttribute(k,'');else if(v!==false&&v!=null)e.setAttribute(k,v);}for(const c of kids.flat()){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;}
+const pad=n=>String(n).padStart(2,'0');
+const fmt=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const todayISO=()=>fmt(new Date());
+// dias úteis: pula sábado e domingo; feriados não entram (o CRM não os informa)
+const addBusinessDays=n=>{const d=new Date();let left=n;while(left>0){d.setDate(d.getDate()+1);const w=d.getDay();if(w!==0&&w!==6)left--}return fmt(d)};
+const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return fmt(d)};
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),2400)}
+const seg=k=>CATALOG.segments.find(s=>s.key===k);
+const lbl=r=>r.label.en;
+
+/* ======================================================================
+   Estado do agente
+   ====================================================================== */
+const st={seg:'all',flow:'bau',europe:false,optIn:new Set(),substatus:'',tasks:new Set(['ads_conversion_tracking']),active:new Set(),vals:{},cids:[]};
+const newCid=()=>({tbw:'TBW',cid:'',mcc:'',outcome:'',alink:'',sme:'YES',tag:'',caseid:'',elig:'',galactic:''});
+st.cids=[Object.assign(newCid(),{cid:CAPTURED.cid,auto:true})];
+const ensure=id=>st.vals[id]||(st.vals[id]={v:'',na:false,comment:'',commentOpen:false,touched:false,auto:false});
+const hasTask=k=>k==='ecw'?st.tasks.has('ads_enhanced_conversions'):st.tasks.has(k);
+let ignoreWhen=false; // a prévia da Central mostra todas as linhas, sem filtrar pelo estado do agente
+function matches(w){
+  if(!w)return true;
+  if(w.flow&&st.flow!==w.flow)return false;
+  if(w.europe!==undefined&&st.europe!==w.europe)return false;
+  if(w.substatusAny&&!w.substatusAny.includes(st.substatus))return false;
+  if(w.tasksAny&&!w.tasksAny.some(k=>st.tasks.has(k)))return false;
+  if(w.rowIs&&ensure(w.rowIs.id).v!==w.rowIs.v)return false;
+  return true;
+}
+const rowRequired=r=>r.requiredWhen?matches(r.requiredWhen):r.required;
+function rowVisible(r){
+  if(!r.visible)return false;
+  if(ignoreWhen)return true;
+  if(r.onlyFor&&!r.onlyFor.every(hasTask))return false;
+  if(!matches(r.when))return false;
+  if(r.optIn&&!st.optIn.has(r.id)&&!(r.requiredWhen&&matches(r.requiredWhen)))return false;
+  return true;
+}
+const subRule=()=>{const f=SUBSTATUS.find(s=>s[0]===st.substatus);return f?f[1]:null};
+function allRows(){const out=[];for(const b of Object.values(CATALOG.blocks))for(const s of b.sections)if(s.rows)out.push(...s.rows);return out}
+function applyAuto(){
+  for(const r of allRows()){
+    const s=ensure(r.id);
+    if(r.default!==undefined&&!s.touched&&!s.v&&!s.na)s.v=r.default;
+    if(!r.auto||r.type==='derived'||s.touched)continue;
+    if(r.auto==='today'){s.v=todayISO();s.auto=true}
+    else if(r.auto==='cid'){s.v=CAPTURED.cid;s.auto=true}
+    else if(r.auto==='followup'){const f=subRule();
+      if(typeof f==='number'){s.v=addBusinessDays(f);s.na=false;s.auto=true}
+      else if(f==='na'){s.v='';s.na=true;s.auto=true}
+      else{if(s.auto){s.v='';s.na=false}s.auto=false}}
+    else if(r.auto==='consent'){
+      // NA nos dois sub-status sem call; no caso da Europa o agente marca; nos demais vale Yes (a alternativa fica escondida)
+      if(CONSENT_NA.includes(st.substatus)){s.na=true;s.auto=true;s.defaulted=false}
+      else if(st.europe){s.na=false;s.auto=false;if(s.defaulted)s.v='';s.defaulted=false}
+      else{s.na=false;s.auto=false;s.v='Yes';s.defaulted=true}}
+  }
+}
+function placements(){return seg(st.seg).blocks}
+function isSuggested(p){
+  if(!p.suggest)return false;
+  if(p.suggest.tasksAny&&p.suggest.tasksAny.some(k=>st.tasks.has(k)))return true;
+  if(p.suggest.substatusAny&&p.suggest.substatusAny.includes(st.substatus))return true;
+  return false;
+}
+function activePlacements(){const s=seg(st.seg);return s.blocks.filter(p=>st.active.has(p.b))}
+const EXTRAS={b:'extras',title:''};
+function activeAll(){return activePlacements().length?[...activePlacements(),EXTRAS]:[]}
+function resetActive(){
+  const s=seg(st.seg);st.active=new Set();
+  if(s.select==='multi')(s.always||[]).forEach(b=>st.active.add(b));
+  else st.active.add(s.blocks[0].b);
+}
+const TS_TARGETS=TS_TARGETS_CAT;
+const TS_DISCLAIMER='Tag created/verified by Tag Support, as the note automatically added to the case indicates. I am not including the screenshots, in line with the Win Criteria guidance.';
+function tasksText(){const ts=ensure('ts_used').v==='Yes';return TASKS.filter(t=>st.tasks.has(t.k)).map(t=>ts&&TS_TARGETS.includes(t.k)?`${t.n} - ${TS_DISCLAIMER}`:t.n).join(', ')}
+function resolved(r){
+  const s=ensure(r.id);
+  if(r.type==='derived'){
+    if(r.auto==='substatus')return st.substatus||null;
+    if(r.auto==='europe')return 'Yes';
+    if(r.auto==='tasks'){const t=tasksText();if(t)return t;return s.na?'NA':null}
+  }
+  if(s.na&&r.na!==false)return 'NA';
+  const v=(s.v||'').trim();
+  if(v)return v;
+  return rowRequired(r)?null:'NA';
+}
+
+/* ======================================================================
+   Tabela da nota (tags com estilo inline, o que vai para o editor)
+   ====================================================================== */
+function td({col,row,span=1,rowspan=1,head,bg,bold,color,valign='top'},html){
+  const b=`1px solid ${C.border}`;
+  const stl=[`padding:8px 12px`,`font-size:13px`,`line-height:1.45`,`vertical-align:${valign}`,`word-break:break-word`,`overflow-wrap:anywhere`,
+    row>0?`border-top:${b}`:'',col>0?`border-left:${b}`:'',`background-color:${bg||C.surface}`,`color:${color||C.text}`,(bold||head)?'font-weight:700':'font-weight:400','text-align:left'].filter(Boolean).join(';');
+  const tag=head?'th':'td';
+  return `<${tag}${span>1?` colspan="${span}"`:''}${rowspan>1?` rowspan="${rowspan}"`:''} style="${stl}">${html}</${tag}>`;
+}
+function renderGrid(rows){
+  const busy=[];let out='';
+  rows.forEach((cells,r)=>{busy[r]=busy[r]||[];let c=0,html='';
+    for(const cell of cells){while(busy[r][c])c++;const span=cell.span||1,rs=cell.rowspan||1;
+      for(let k=0;k<rs;k++){busy[r+k]=busy[r+k]||[];for(let j=0;j<span;j++)busy[r+k][c+j]=true}
+      html+=td({...cell,col:c,row:r},cell.html);c+=span}
+    out+=`<tr>${html}</tr>`});
+  return out;
+}
+const PENDING_BG='#fef7e0';
+const pendingHtml='<span style="color:#b06000;font-style:italic">pendente</span>';
+const valHtml=v=>esc(v).replace(/\n/g,'<br>');
+function cidCellValue(col,cr){
+  if(col.type==='smeyes')return cr.sme||'YES';
+  return (cr[col.id]||'').trim();
+}
+function blockTable(p,live){
+  const blk=CATALOG.blocks[p.b],N=blk.cols,rows=[];
+  for(const sec of blk.sections){
+    if(sec.kind==='cid'){
+      rows.push([{span:N,head:true,bg:C.primaryBg,html:esc(sec.title)}]);
+      rows.push(sec.columns.map(c=>({head:true,bg:C.bgInput,color:C.textSub,html:esc(lbl(c))})));
+      if(!st.cids.length)rows.push([{span:N,bg:live?PENDING_BG:null,html:live?pendingHtml:'NA'}]);
+      for(const cr of st.cids)rows.push(sec.columns.map((c,i)=>{
+        const v=cidCellValue(c,cr);
+        if(!v&&live)return {bold:i===0,bg:PENDING_BG,html:pendingHtml};
+        return {bold:i===0,html:valHtml(v||'NA')}}));
+    } else {
+      const vis=sec.rows.filter(rowVisible);if(!vis.length)continue;
+      if(sec.kind==='group'){
+        rows.push([{span:N-1,head:true,bg:C.primaryBg,html:esc(sec.title)},{head:true,bg:C.bgInput,color:C.textSub,html:'Additional Comments (Optional)'}]);
+        vis.forEach((r,i)=>{const v=resolved(r),s=ensure(r.id),line=[];
+          if(i===0)line.push({rowspan:vis.length,bold:true,bg:C.bgInput,color:C.primary,valign:'middle',html:esc(sec.group)});
+          line.push({bold:true,html:esc(lbl(r))},v===null?{bg:live?PENDING_BG:null,html:live?pendingHtml:'NA'}:{html:valHtml(v)},{html:valHtml(s.comment||'')});
+          rows.push(line)});
+      } else {
+        const ls=N===3?1:2,vs=N-ls-1;
+        rows.push([{span:N-1,head:true,bg:C.primaryBg,html:esc(sec.title)},{head:true,bg:C.bgInput,color:C.textSub,html:'Additional Comments (Optional)'}]);
+        for(const r of vis){const v=resolved(r),s=ensure(r.id);
+          rows.push([{span:ls,bold:true,bg:C.bgInput,html:esc(lbl(r))},v===null?{span:vs,bg:live?PENDING_BG:null,html:live?pendingHtml:'NA'}:{span:vs,html:valHtml(v)},{html:valHtml(s.comment||'')}])}
+      }
+    }
+  }
+  const tableStyle=`width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;border:1px solid ${C.border};border-radius:12px;overflow:hidden;font-family:${FONT};margin:0 0 4px 0`;
+  if(!rows.length)return '';
+  const cg=`<colgroup>${blk.widths.map(w=>`<col style="width:${w}%">`).join('')}</colgroup>`;
+  const heading=(seg(st.seg).showTitle&&p.title)?`<div style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.primary};margin:16px 0 6px 0">${esc(p.title)}</div>`:'';
+  return `${heading}<table style="${tableStyle}">${cg}<tbody>${renderGrid(rows)}</tbody></table>`;
+}
+const FOOT='Note created through Cases Wizard.';
+function noteHtml(live){
+  const parts=activeAll().map(p=>blockTable(p,live)).filter(Boolean);
+  if(!parts.length)return '';
+  return parts.join('<div style="height:10px"></div>')+`<div style="font-family:${FONT};font-size:12px;font-style:italic;color:${C.textSub};margin-top:8px">${FOOT}</div>`;
+}
+function missingList(){
+  const out=[];
+  for(const p of activeAll()){
+    const blk=CATALOG.blocks[p.b];
+    for(const sec of blk.sections){
+      if(sec.kind==='cid'){
+        if(!st.cids.length)out.push('CID-Level Details: ao menos 1 CID');
+        st.cids.forEach((cr,i)=>sec.columns.forEach(c=>{if(c.required&&!cidCellValue(c,cr))out.push(`CID ${i+1}: ${lbl(c).replace(/[:?]\s*$/,'')}`)}));
+      } else for(const r of sec.rows.filter(rowVisible))if(resolved(r)===null)out.push(lbl(r).replace(/[:?]\s*$/,''));
+    }
+  }
+  return out;
+}
+
+/* ======================================================================
+   Tela do agente
+   ====================================================================== */
+function renderSeg(){
+  const box=$('#segSel');box.innerHTML='';
+  CATALOG.segments.forEach(s=>box.append(h('button',{class:s.key===st.seg?'on':'',type:'button',onclick:()=>setSeg(s.key)},s.name)));
+  const d=store.get('cwp_default')||'all';
+  $('#dfltNote').innerHTML=`Abre em: <b>${d==='last'?'o último usado':seg(d).name}</b>`;
+}
+function setSeg(k){
+  st.seg=k;store.set('cwp_last',k);resetActive();applyAuto();renderAll();
+}
+function renderSubMeta(){
+  const f=subRule(),m=$('#subMeta');
+  if(!st.substatus){m.textContent='Lista oficial (go/tsStatuses). Os sub-status PI podem ser digitados à mão.';return}
+  const known=SUBSTATUS.some(s=>s[0]===st.substatus);
+  if(!known){m.innerHTML='<span class="tag warn">Fora da lista</span> Confirme que está idêntico ao Q+.';return}
+  const t=typeof f==='number'?`Follow-up sugerido: ${f} dias úteis`:f==='na'?'Follow-up: não se aplica':f==='optional'?'Follow-up: opcional':f==='customer'?'Follow-up: conforme o cliente':'Follow-up: conforme a política';
+  m.textContent=t;
+}
+function renderTasks(){
+  const b=$('#taskChips');b.innerHTML='';
+  TASKS.forEach(t=>b.append(h('button',{class:'chip'+(st.tasks.has(t.k)?' on':''),type:'button',onclick:()=>{st.tasks.has(t.k)?st.tasks.delete(t.k):st.tasks.add(t.k);renderAll()}},t.n)));
+}
+function renderScen(){
+  const b=$('#scenChips');b.innerHTML='';
+  SCEN.forEach(sc=>b.append(h('button',{class:'chip',type:'button',onclick:()=>{
+    const put=(ids,text)=>{const id=ids.find(i=>allRows().some(r=>r.id===i&&activeRowIds().has(i)));if(id){const s=ensure(id);s.v=text;s.na=false;s.touched=true;s.auto=false}};
+    put(['call_summary','case_comments','oncall_comments'],sc.sum);put(['substatus_reason'],sc.reason);
+    renderForm();refresh();toast('Cenário aplicado nos campos de texto.')}},sc.n)));
+}
+function activeRowIds(){const set=new Set();for(const p of activeAll())for(const sec of CATALOG.blocks[p.b].sections)if(sec.rows)for(const r of sec.rows.filter(rowVisible))set.add(r.id);return set}
+function renderBlockCards(){
+  const s=seg(st.seg),box=$('#blockCards');box.innerHTML='';
+  $('#blocksTitle').textContent=s.select==='multi'?'Blocos desta nota':'Fase desta nota';
+  s.blocks.forEach(p=>{
+    const locked=s.select==='multi'&&(s.always||[]).includes(p.b),on=st.active.has(p.b),sug=isSuggested(p);
+    const card=h('button',{class:'bcard'+(on?' on':'')+(locked?' lock':''),type:'button',onclick:()=>{
+      if(locked)return;
+      if(s.select==='single'){st.active=new Set([p.b])}else{on?st.active.delete(p.b):st.active.add(p.b)}
+      renderAll()}},
+      h('span',{class:'chk'},on?'✓':''),
+      h('span',{},h('div',{class:'t'},p.title,' ',sug&&!on?h('span',{class:'tag'},'sugerido'):null,locked?h('span',{class:'tag'},'sempre'):null),h('div',{class:'w'},p.when)));
+    box.append(card);
+  });
+}
+function mkRowCtl(r){
+  const s=ensure(r.id),wrap=h('div',{class:'ctl'});
+  let main,extraBtn=null;
+  const touch=()=>{s.touched=true;s.defaulted=false;s.auto=false;$$('.tag-auto',rowEl).forEach(e=>e.remove())};
+  const rowEl=h('div',{class:'frow','data-row':r.id});
+  if(r.type==='derived'){
+    const v=resolved(r);
+    main=h('div',{class:'derived grow'+(v?'':' empty')},v||(r.auto==='tasks'?'Nenhuma task marcada':'Escolha o sub-status no topo'));
+  } else if(r.type==='yesno'){
+    if(r.auto==='consent'&&!st.europe&&s.defaulted&&!s.na&&!s.altOpen){
+      main=h('div',{class:'derived grow'},'Yes');
+      extraBtn=h('button',{class:'pill',type:'button',onclick:()=>{s.altOpen=true;renderForm()}},'Alterar');
+    } else {
+      main=h('div',{class:'yn grow'});
+      ['Yes','No'].forEach(o=>main.append(h('button',{class:'pill'+(s.v===o&&!s.na?' on':''),type:'button',onclick:()=>{touch();s.v=o;s.na=false;renderForm();refresh()}},o)));
+    }
+  } else if(r.type==='long'){
+    main=h('textarea',{class:'inp grow',rows:'2',oninput:e=>{touch();s.v=e.target.value;refresh()}});main.value=s.v;
+  } else {
+    main=h('input',{class:'inp grow',type:'text',autocomplete:'off',placeholder:r.type==='date'?'AAAA-MM-DD':r.type==='cid'?'XXX-XXX-XXXX':r.type==='link'?'https://…':'',
+      oninput:e=>{touch();s.v=e.target.value;validate(r,e.target);refresh()}});
+    main.value=s.v;
+    if(r.type==='cid')main.addEventListener('blur',e=>{const d=e.target.value.replace(/\D/g,'');if(d.length===10){e.target.value=s.v=`${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;refresh()}});
+  }
+  if(main.tagName==='INPUT'||main.tagName==='TEXTAREA')main.disabled=!!(s.na&&r.na!==false);
+  wrap.append(main);if(extraBtn)wrap.append(extraBtn);
+  if(r.type==='speakeasy')wrap.append(h('button',{class:'pill',type:'button',onclick:()=>{touch();s.v=CAPTURED.speakeasy;s.na=false;renderForm();refresh();toast('Speakeasy ID encontrado no case log.')}},'Auto busca'));
+  if((r.na!==false&&r.type!=='derived'||(r.type==='derived'&&r.auto==='tasks'))&&!extraBtn)
+    wrap.append(h('button',{class:'pill'+(s.na?' on':''),type:'button',title:'Marcar esta linha como NA',onclick:()=>{touch();s.na=!s.na;renderForm();refresh()}},'NA'));
+  const lab=h('div',{class:'lbl'},lbl(r),rowRequired(r)?h('span',{class:'req','aria-hidden':'true'},'*'):h('span',{class:'tag',style:'background:#f1f3f4;color:#5f6368'},'opcional'),s.auto?h('span',{class:'tag tag-auto'},'Auto'):null,s.defaulted?h('span',{class:'tag tag-auto'},'Padrão'):null,(st.europe&&r.auto==='consent'&&!s.na)?h('span',{class:'tag warn'},'Caso da Europa: marque'):null);
+  rowEl.append(lab,wrap);
+  if(r.type==='date'){
+    const q=h('div',{class:'sub'});
+    [['Hoje',0],['+2 úteis',2],['+3 úteis',3],['+5 úteis',5]].forEach(([t,n])=>q.append(h('button',{class:'pill',type:'button',onclick:()=>{touch();s.v=addBusinessDays(n);s.na=false;renderForm();refresh()}},t)));
+    rowEl.append(q);
+  }
+  if(r.hint)rowEl.append(h('div',{class:'hint'},r.hint));
+  const cm=h('div',{class:'sub'});
+  if(s.commentOpen||s.comment){const ta=h('input',{class:'inp',type:'text',placeholder:'Additional Comments (Optional)',oninput:e=>{s.comment=e.target.value;refresh()}});ta.value=s.comment;cm.append(ta)}
+  else cm.append(h('button',{class:'pill',type:'button',onclick:()=>{s.commentOpen=true;renderForm();const i=$(`[data-row="${r.id}"] .sub input`);i&&i.focus()}},'+ comentário'));
+  rowEl.append(cm);
+  return rowEl;
+}
+function validate(r,el){
+  const v=el.value.trim();let bad=false;
+  if(v&&r.type==='date')bad=!/^\d{4}-\d{2}-\d{2}$/.test(v);
+  if(v&&r.type==='link'&&v.toUpperCase()!=='NA')bad=!/^https?:\/\/\S+$/i.test(v);
+  el.classList.toggle('bad',bad);
+}
+function renderCidEditor(sec){
+  const box=h('div',{});
+  const tbl=h('table',{class:'cidtbl'});
+  tbl.append(h('tr',{},sec.columns.map(c=>h('th',{},lbl(c))),h('th',{})));
+  st.cids.forEach((cr,i)=>{
+    const tr=h('tr',{});
+    sec.columns.forEach(c=>{
+      let ctl;
+      if(c.type==='tbw'){ctl=h('select',{class:'inp',onchange:e=>{cr.tbw=e.target.value;refresh()}},h('option',{},'TBW'),h('option',{},'N-TBW'));ctl.value=cr.tbw}
+      else if(c.type==='yn'){ctl=h('select',{class:'inp',onchange:e=>{cr.mcc=e.target.value;refresh()}},h('option',{value:''},'—'),h('option',{},'YES'),h('option',{},'NO'));ctl.value=cr.mcc}
+      else if(c.type==='smeyes'){ctl=h('select',{class:'inp',onchange:e=>{cr.sme=e.target.value;refresh()}},h('option',{},'YES'),h('option',{},'NO'));ctl.value=cr.sme||'YES'}
+      else{ctl=h('input',{class:'inp',type:'text',placeholder:c.type==='cid'?'XXX-XXX-XXXX':c.type==='link'?'https://…':'',oninput:e=>{cr[c.id]=e.target.value;cr.auto=false;refresh()}});ctl.value=cr[c.id]||'';
+        if(c.type==='cid')ctl.addEventListener('blur',e=>{const d=e.target.value.replace(/\D/g,'');if(d.length===10){e.target.value=cr[c.id]=`${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;refresh()}})}
+      tr.append(h('td',{},ctl));
+    });
+    tr.append(h('td',{},h('button',{class:'pill',type:'button','aria-label':`Remover CID ${i+1}`,onclick:()=>{st.cids.splice(i,1);renderForm();refresh()}},'×')));
+    tbl.append(tr);
+  });
+  box.append(tbl);
+  const add=h('button',{class:'pill',type:'button',style:'margin-top:8px',onclick:()=>{if(st.cids.length>=6){toast('Máximo de 6 CIDs, como no template.');return}st.cids.push(newCid());renderForm();refresh()}},'+ CID');
+  box.append(add,h('span',{class:'hint',style:'margin-left:8px;font-size:11.5px;color:#5f6368'},'A lista de CIDs fica com o caso: troque de fase e ela continua aqui.'));
+  return box;
+}
+function optInRows(){return CATALOG.blocks.extras.sections.flatMap(s=>s.rows).filter(r=>r.optIn&&r.visible&&!st.optIn.has(r.id)&&!(r.requiredWhen&&matches(r.requiredWhen)))}
+function renderForm(){
+  const box=$('#blocksForm'),scroll=$('#paneForm').scrollTop;box.innerHTML='';
+  for(const p of activeAll()){
+    const blk=CATALOG.blocks[p.b],isX=p.b==='extras';
+    const vis=blk.sections.flatMap(s=>s.rows?s.rows.filter(rowVisible):[1]);
+    if(isX&&!vis.length&&!optInRows().length)continue;
+    box.append(h('div',{class:'bhead'},h('b',{},isX?'Additional details':p.title),isX?h('span',{},'no fim da nota'):null));
+    for(const sec of blk.sections){
+      if(!isX)box.append(h('div',{class:'shead'},sec.title+(sec.group?` · ${sec.group.replace(/:$/,'')}`:'')));
+      if(sec.kind==='cid'){box.append(renderCidEditor(sec));continue}
+      for(const r of sec.rows.filter(rowVisible))box.append(mkRowCtl(r));
+    }
+    if(isX&&optInRows().length)box.append(h('div',{class:'chips',style:'margin-top:10px'},optInRows().map(r=>h('button',{class:'chip',type:'button',onclick:()=>{st.optIn.add(r.id);renderForm();refresh()}},'+ '+lbl(r).replace(/:$/,'')))));
+  }
+  $('#paneForm').scrollTop=scroll;
+}
+function refresh(){
+  const live=noteHtml(true);
+  $('#preview').innerHTML=live||'<div style="color:#5f6368;font-size:13px">Escolha um bloco para ver a nota.</div>';
+  const miss=missingList(),total=Math.max(1,countRequired()),done=Math.max(0,total-miss.length);
+  const m=$('#meter');m.classList.toggle('full',!miss.length);m.firstElementChild.style.width=Math.round(done/total*100)+'%';
+  $('#missing').textContent=miss.length?`Faltam ${miss.length}: ${miss.slice(0,3).join(', ')}${miss.length>3?'…':''}`:'Tudo resolvido. Pronta para inserir.';
+  $('#missing').style.color=miss.length?'':'#188038';
+  $('#bNaRest').hidden=!miss.length;
+  $('#bInsert').disabled=!!miss.length||!activePlacements().length;$('#bCopy').disabled=$('#bInsert').disabled;
+  $('#bInsert').title=miss.length?'Resolva as linhas pendentes (valor ou NA).':'';
+}
+function countRequired(){
+  let n=0;
+  for(const p of activeAll())for(const sec of CATALOG.blocks[p.b].sections){
+    if(sec.kind==='cid'){n+=1+st.cids.length*sec.columns.filter(c=>c.required).length}
+    else n+=sec.rows.filter(r=>rowVisible(r)&&rowRequired(r)).length}
+  return n;
+}
+function renderFlow(){
+  const f=$('#flowSel'),e=$('#euSel');f.innerHTML='';e.innerHTML='';
+  [['bau','BAU'],['lm','LM']].forEach(([k,t])=>f.append(h('button',{class:st.flow===k?'on':'',type:'button',onclick:()=>{st.flow=k;applyAuto();renderAll()}},t)));
+  [[false,'Não'],[true,'Sim']].forEach(([k,t])=>e.append(h('button',{class:st.europe===k?'on':'',type:'button',onclick:()=>{st.europe=k;applyAuto();renderAll()}},t)));
+}
+function renderAll(){renderFlow();renderSeg();renderSubMeta();renderTasks();renderScen();renderBlockCards();renderForm();refresh()}
+
+/* ações */
+$('#subIn').addEventListener('input',e=>{st.substatus=e.target.value.trim();applyAuto();renderSubMeta();renderBlockCards();renderForm();refresh()});
+$('#bClear').onclick=()=>{st.vals={};st.optIn=new Set();st.substatus='';$('#subIn').value='';st.cids=[Object.assign(newCid(),{cid:CAPTURED.cid,auto:true})];resetActive();applyAuto();renderAll();toast('Formulário limpo.')};
+$('#bDraft').onclick=()=>toast('Rascunho guardado. Reabre com os mesmos campos, blocos e CIDs.');
+$('#bNaRest').onclick=()=>{
+  let n=0;
+  for(const p of activeAll())for(const sec of CATALOG.blocks[p.b].sections){if(!sec.rows)continue;
+    for(const r of sec.rows.filter(rowVisible)){if(r.type==='derived'&&r.auto==='substatus')continue;
+      const s=ensure(r.id);if(rowRequired(r)&&r.na!==false&&resolved(r)===null){s.na=true;n++}}}
+  renderForm();refresh();toast(n?`${n} linha(s) marcadas como NA.`:'Nada para marcar como NA.');
+};
+function copyHtml(html){
+  const c=h('div',{style:'position:fixed;left:-9999px'});c.innerHTML=html;document.body.append(c);
+  const r=document.createRange();r.selectNodeContents(c);const s=getSelection();s.removeAllRanges();s.addRange(r);
+  let ok=false;try{ok=document.execCommand('copy')}catch(e){}
+  s.removeAllRanges();c.remove();return ok;
+}
+$('#bCopy').onclick=()=>{copyHtml(noteHtml(false));toast('Nota copiada.')};
+$('#bInsert').onclick=()=>{const html=noteHtml(false);copyHtml(html);$('#crmEd').innerHTML=html;$('#crm').hidden=false;toast('Texto inserido e copiado!')};
+$('#crmClose').onclick=()=>{$('#crm').hidden=true};
+$('#gear').onclick=()=>{const p=$('#pop');p.hidden=!p.hidden;const d=store.get('cwp_default')||'all';$$('input[name=dflt]').forEach(i=>i.checked=i.value===d)};
+$$('input[name=dflt]').forEach(i=>i.addEventListener('change',()=>{store.set('cwp_default',i.value);renderSeg();toast('Padrão salvo nas suas preferências.')}));
+
+/* ======================================================================
+   Central (esboço): edita o mesmo CATALOG
+   ====================================================================== */
+const cs={seg:'all',b:'general'};
+const TYPES=['text','long','date','yesno','link','cid','speakeasy','derived'];
+function usedIn(b){if(b==='extras')return ['Todos os segmentos (tabela no fim da nota)'];const o=[];CATALOG.segments.forEach(s=>s.blocks.forEach(p=>{if(p.b===b)o.push(`${s.name} (${p.title})`)}));return o}
+function renderRail(){
+  const r=$('#rail');r.innerHTML='';
+  r.append(h('div',{class:'grp'},'Notas'));
+  CATALOG.segments.forEach(s=>{
+    r.append(h('h3',{},s.name+' · '+(s.select==='multi'?'vários blocos':'uma fase por nota')));
+    s.blocks.forEach(p=>r.append(h('button',{class:(cs.seg===s.key&&cs.b===p.b)?'on':'',onclick:()=>{cs.seg=s.key;cs.b=p.b;renderCentral()}},p.title)));
+  });
+  r.append(h('h3',{},'Todas as notas · fim da nota'));
+  r.append(h('button',{class:cs.seg==='*'?'on':'',onclick:()=>{cs.seg='*';cs.b='extras';renderCentral()}},'Additional details'));
+  r.append(h('div',{class:'grp'},'Também configuráveis'));
+  ['Sub-status e follow-up','Cenários comuns','Tasks e evidências','Padrões do segmento'].forEach(t=>r.append(h('div',{class:'dim'},t)));
+}
+function whenText(r){const a=[],w=r.when;if(r.onlyFor)a.push('só '+r.onlyFor.join(','));
+  if(w){if(w.flow)a.push('fluxo '+w.flow.toUpperCase());if(w.europe)a.push('Europa');if(w.substatusAny)a.push(w.substatusAny.length+' sub-status');if(w.tasksAny)a.push('ACT/ECW');if(w.rowIs)a.push(w.rowIs.id+'='+w.rowIs.v)}
+  if(r.optIn)a.push('opcional (+)');if(r.requiredWhen)a.push('obrig. em '+r.requiredWhen.substatusAny.length+' sub-status');if(r.default!==undefined)a.push('padrão '+r.default);return a.join(' · ')}
+function coverage(blk){
+  const rows=blk.sections.flatMap(s=>s.rows||[]).concat(blk.sections.flatMap(s=>s.columns||[]));
+  const c=l=>rows.filter(r=>(r.label[l]||'').trim()).length;
+  return {n:rows.length,en:c('en'),pt:c('pt'),es:c('es')};
+}
+function renderCentral(){
+  renderRail();
+  const isX=cs.seg==='*',s=isX?null:seg(cs.seg),p=isX?{b:'extras',title:'Additional details',when:''}:s.blocks.find(x=>x.b===cs.b),blk=CATALOG.blocks[cs.b],m=$('#cmain');m.innerHTML='';
+  const cov=coverage(blk),used=usedIn(cs.b);
+  m.append(h('h2',{},p.title),
+    h('div',{class:'cbar'},h('span',{class:'pillstate'},'Rascunho · não publicado'),h('span',{class:'code'},'bloco: '+cs.b),
+      h('span',{class:'sp'}),
+      h('button',{class:'btn',onclick:()=>toast('Rascunho salvo. Só o seu usuário vê.')},'Salvar rascunho'),
+      h('button',{class:'btn pri',onclick:()=>toast('Enviado para aprovação. Quem aprova vê o diff palavra a palavra.')},'Enviar para aprovação')),
+    h('div',{class:'cov'},h('span',{},'Linhas: ',h('b',{},cov.n)),h('span',{},'EN ',h('b',{},`${cov.en}/${cov.n}`)),
+      h('span',{class:cov.pt<cov.n?'gap':''},'PT ',h('b',{},`${cov.pt}/${cov.n}`)),h('span',{class:cov.es<cov.n?'gap':''},'ES ',h('b',{},`${cov.es}/${cov.n}`))));
+  if(used.length>1)m.append(h('div',{class:'banner'},'Este bloco é usado em: '+used.join(' · ')+'. O corpo da tabela é o mesmo nos segmentos; título e “quando usar” são de cada segmento.'));
+  if(!isX)m.append(h('div',{class:'field'},h('label',{},'Título que o agente vê (neste segmento)'),h('input',{class:'inp',value:p.title,oninput:e=>{p.title=e.target.value;cPreview();renderRail()}})),
+    h('div',{class:'field'},h('label',{style:'display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:12.5px;color:#202124;font-weight:600'},h('input',{type:'checkbox',checked:!!s.showTitle,onchange:e=>{s.showTitle=e.target.checked;cPreview()}}),'Mostrar o título acima da tabela, em ',s.name)),
+    h('div',{class:'field'},h('label',{},'Quando usar (dica ao agente, não vai para a nota)'),h('textarea',{class:'inp',oninput:e=>{p.when=e.target.value}},p.when)));
+  else m.append(h('div',{class:'banner'},'Cada linha tem a própria condição (coluna Tipo). O agente só vê a linha quando a condição é verdadeira. Esta tabela fecha toda nota, em todos os segmentos.'));
+  const tbl=h('table',{class:'rt'});
+  tbl.append(h('tr',{},['Rótulo EN','PT','ES','Tipo','Obrig.','NA','Visível'].map((t,i)=>h('th',{style:`width:${[30,15,15,17,8,7,8][i]}%`},t))));
+  const cell=(row,lang)=>h('td',{},h('input',{class:'inp',placeholder:lang==='en'?'':'sem tradução',value:row.label[lang],oninput:e=>{row.label[lang]=e.target.value;cPreview()},onchange:renderCentral}));
+  const chk=(row,k)=>h('td',{},h('input',{type:'checkbox',checked:!!row[k]&&row[k]!==false,'aria-label':k,onchange:e=>{row[k]=e.target.checked;cPreview();renderCentral()}}));
+  blk.sections.forEach(sec=>{
+    tbl.append(h('tr',{class:'sech'},h('td',{colspan:'7'},sec.title+(sec.group?` · ${sec.group}`:'')+(sec.kind==='cid'?' · uma linha por CID':''))));
+    (sec.rows||[]).forEach(row=>{
+      const tr=h('tr',{class:row.visible?'':'hid'},cell(row,'en'),cell(row,'pt'),cell(row,'es'),
+        h('td',{},h('span',{class:'code'},row.type+(whenText(row)?' · '+whenText(row):''))),chk(row,'required'),
+        h('td',{},h('input',{type:'checkbox',checked:row.na!==false,'aria-label':'aceita NA',onchange:e=>{row.na=e.target.checked;cPreview()}})),chk(row,'visible'));
+      tbl.append(tr);
+    });
+    (sec.columns||[]).forEach(row=>{
+      tbl.append(h('tr',{},cell(row,'en'),cell(row,'pt'),cell(row,'es'),h('td',{},h('span',{class:'code'},'coluna · '+row.type)),chk(row,'required'),h('td',{},'—'),h('td',{},'—')));
+    });
+  });
+  m.append(h('div',{style:'margin-top:12px'},tbl));
+  m.append(h('div',{class:'guards'},h('b',{},'O que o servidor impõe, qualquer que seja a edição'),h('br',{}),
+    '· o id da linha não muda (os rascunhos dos agentes apontam para ele) · a grade fecha em todas as linhas · tipo e coluna só dos que o app sabe desenhar · ao menos uma linha obrigatória por bloco · toda mudança passa pela fila de aprovação, fica versionada e volta atrás com um clique.'));
+  cPreview();
+}
+function cPreview(){
+  const isX=cs.seg==='*';
+  const p=isX?{b:'extras',title:''}:seg(cs.seg).blocks.find(x=>x.b===cs.b);
+  const saved=st.seg;if(!isX)st.seg=cs.seg;ignoreWhen=true;
+  $('#cpreview').innerHTML=blockTable(p,false)+`<div style="font-family:${FONT};font-size:12px;font-style:italic;color:${C.textSub};margin-top:8px">${FOOT}</div>`;
+  ignoreWhen=false;st.seg=saved;
+}
+
+/* navegação */
+$$('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  $$('.tabs button').forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-selected',x===b)});
+  const v=b.dataset.view;$('#view-agent').hidden=v!=='agent';$('#view-central').hidden=v!=='central';
+  if(v==='central')renderCentral();else{applyAuto();renderAll()}
+}));
+
+/* início */
+(function init(){
+  $('#subList').append(...SUBSTATUS.map(s=>h('option',{value:s[0]})));
+  let d=store.get('cwp_default')||'all';if(d==='last')d=store.get('cwp_last')||'all';
+  st.seg=seg(d)?d:'all';resetActive();applyAuto();renderAll();
+})();
+</script>
+</body>
+</html>

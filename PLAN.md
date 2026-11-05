@@ -7,50 +7,179 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
-- [~] **Novo padrão de nota em tabela (2026-11-05) — desenho, ainda sem código.**
-      Pedido do Lucas: o padrão de notas mudou (outro projeto, "Case Notes Tool").
-      A saída do Case Notes deixa de ser `rótulo+valor` e passa a ser **tabela
-      HTML** com a estrutura do padrão novo, com o estilo do CW. Três templates,
-      escolhidos pelo **segmento do cliente (= Sales Program)**: ALL TASKS (5
-      blocos), ECL SBS-E (3 fases) e ECL MMS (5 fases). Fontes, no Drive do Lucas:
-      docs "Template notas", "Template 2 e 3" e "Status".
-      **Decidido pelo Lucas:**
-      - substitui o formato atual **para todos**; sai **no idioma do atendimento**;
-        HTML colado pelo `insertHTML` (ele já testou: o CRM aceita a tabela);
-      - o **agente escolhe** o segmento; as Configurações guardam o padrão de
-        abertura (preferência do agente, `UserPrefsService`) — **sem coluna nova na
-        People** (a `Segment` dela é idioma pt/es/en, não serve);
-      - data `YYYY-MM-DD`; os defeitos do template original serão corrigidos;
-        sub-status `PI - …` **fora por ora** (campo livre);
-      - **tudo o que der, configurável na Central** (os overheads querem controle).
-      **Desenho proposto** (preview aprovado a olho, não versionado):
-      - o corpo da tabela é do **bloco** (10 únicos; 3 deles repetem entre SBS-E e
-        MMS); título, "quando usar" e sugestão são do **segmento**. Três formas de
-        seção: chave-valor, uma linha por CID, grupo com `rowspan`. A largura da
-        grade e das colunas é declarada por bloco (não se deduz das seções);
-      - linha = valor **ou NA explícito**, nunca NA silencioso (hoje o campo vazio
-        sai `N/A` sozinho); só `Additional information`/extras são opcionais;
-      - módulos novos da Central (`note_blocks`, `note_layouts`), no molde do
-        ADR-0012/0013; id da linha imutável; o servidor valida a grade, o tipo e a
-        coluna; o bundle leva o catálogo como fallback; **frontend antes do dado**
-        (learning de 2026-10-23: um bundle antigo não sabe desenhar `kind` novo);
-      - janela de duas colunas (formulário | prévia viva) como no BAU Form.
-      **Em aberto (perguntar ao Lucas antes de codar):**
-      - o que **some** com a troca e não tem lugar no padrão novo: `ON_CALL`,
-        `GTM_GA4_VERIFICADO`, o Tag Support (dispensa de screenshots em ACT/ECW),
-        o fluxo LM, "Caso da Europa" e as evidências de contato (AC/NR). Manter,
-        mapear ou aposentar?
-      - alinhar os sub-status ao arquivo Status (`SO - Educational Only`; **um só**
-        `IN - Out of Scope - Rerouted`, com as 3 variantes como respostas
-        prontas; faltam `IN - Reschedule Limit Exceeded`, `IN - Instruction Shared`
-        e os 5 `DC`; `DC - Other` não existe lá) — etapa **separada** da tabela;
-      - mapa Sales Program → template (a captura existe: `captureSalesProgram`,
-        ex. "SMB Grow"); rótulo impresso sem o "(only for ECW)"; título da fase
-        acima da tabela; follow-up em dias corridos ou úteis;
-      - ~100 traduções de rótulo (51 rótulos únicos × PT e ES) a revisar por
-        falante nativo.
-      Antes do código: spec em `specs/workflow/` (contrato do texto, como o
-      Pre-call) e ADR.
+- [~] **Nota em tabela — padrão novo (2026-11-05, ADR-0022). PRONTO PARA EXECUTAR.**
+      Trocar a saída do Case Notes (`rótulo+valor`) por **tabelas HTML** do padrão novo (3 templates,
+      um por segmento do cliente), com o catálogo editável na Central. **Só o desenho está pronto:
+      nenhuma linha de código de produção foi escrita.**
+
+      **COMECE AQUI (quem for executar):**
+      1. Leia, nesta ordem: `specs/workflow/case-note-table.md` (o contrato; vence tudo),
+         `docs/decisions/0022-nota-em-tabela-catalogo-na-central.md` (o porquê),
+         `docs/media/case-notes-table/hero.png` e `europe.png` (o alvo visual) e `preview.html`
+         (protótipo interativo: abra no navegador e use). Depois o `docs/LEARNINGS.md` **inteiro**:
+         as entradas de "Armadilhas" abaixo valem aqui.
+      2. **Você não precisa do Drive do Lucas.** Tudo do padrão (rótulos, ordem, regras) está no
+         `CATALOG` do `preview.html` e na spec. Não invente texto do padrão.
+      3. O `preview.html` é **referência, não código de produção** (arquivo único, estado global).
+         Reaproveite a LÓGICA (`matches`, `rowVisible`, `rowRequired`, `resolved`, `applyAuto`,
+         `addBusinessDays`, `blockTable`), não a estrutura. O `preview-checks.cjs` (52 checagens)
+         ao lado dele é o roteiro de comportamento: rode-o para vê-lo verde e use-o como lista do
+         que a tela real precisa provar.
+      4. Regras do repo: PRs pequenos contra `refactor-structure`, commits atômicos
+         (`feat:`/`test:`/`docs:`), refactor e feature separados, **sem dependência nova**, JS
+         vanilla, CSS-in-JS. Rode tudo com `CW_CHROMIUM=/opt/pw-browsers/chromium` e confirme que
+         o smoke não morreu no launch (aviso do CLAUDE.md). Commit e push seguem o CLAUDE.md e as
+         instruções da sua sessão; nunca em `main`.
+      5. Antes de cada passo, releia "Decisões em aberto". Se o passo depende de uma que está sem
+         resposta, **pare e pergunte ao Lucas**; o default entre parênteses só vale se ele disser
+         "segue o padrão".
+
+      **Já decidido pelo Lucas (não reabra):**
+      - substitui o formato atual **para todos**; rótulos **no idioma do atendimento**; HTML colado
+        pelo `insertHTML` (ele já testou: o CRM aceita tabela);
+      - segmento = **Sales Program, escolhido pelo agente**; o padrão de abertura fica nas
+        Configurações; **sem coluna nova na People**. O mapa Sales Program → segmento foi
+        **adiado: não implemente** (só o chip somente leitura com o Sales Program da tela);
+      - data `AAAA-MM-DD`; follow-up em **dias úteis**; sub-status `PI - …` **fora por ora**
+        (campo livre);
+      - campos do formato antigo continuam, **como linhas no fim da nota** (tabela "Additional
+        Details", spec §8); consentimento: `NA` nos dois sub-status sem call, **no Caso da Europa o
+        agente marca**, nos demais **`Yes` por padrão com "Alterar" escondido** (spec §6);
+      - título da fase impresso nos segmentos por fase e **não** no ALL TASKS; "(only for ECW)" não
+        é impresso; defeitos do template original corrigidos (spec §4);
+      - **tudo configurável na Central**, com a divisão "o quê = Central, como = código" (spec §10).
+
+      **Passos (um PR por passo, nesta ordem; cada um fecha com os testes que cita):**
+      1. **Modelo e renderizador puros + teste.** Crie `src/modules/notes/table/note-table-model.js`
+         (sem DOM; o estado entra por parâmetro, nada global): condições (`matches`, `rowVisible`,
+         `rowRequired`), `resolveRow`, `missingList`, `applyAuto` (hoje, CID, follow-up,
+         consentimento: spec §6 e §7), `addBusinessDays`, texto das tasks com o aviso do Tag Support
+         (§8); e `note-table-render.js` (catálogo + estado → string HTML, spec §3). Crie
+         `scripts/test-note-table.mjs` e `"test:note-table"` no `package.json`.
+         **Pronto quando** o teste cobre: a grade fecha em todo bloco (soma de `colspan` = `cols`;
+         larguras somam 100); HTML só com as tags permitidas e sem `class`/`style`/`script`; dias
+         úteis (nunca fim de semana, inclusive cruzando um); consentimento nos 3 ramos;
+         `when`/`requiredWhen`/`optIn`; NA em lote; `extras` sempre por último; célula pendente
+         **nunca** na saída. **Prove que as asserções têm dentes:** mute o código (≥ 5 mutações:
+         consentimento, Europa, dias úteis, LM, ordem do extras) e veja a asserção certa reprovar;
+         registre no PR.
+      2. **Catálogo embutido + gerador da semente.** `src/modules/notes/table/note-table-data.js`:
+         copie o `CATALOG` do `preview.html` (segmentos e os 11 blocos, `extras` incluído);
+         `label.en` completo, `pt`/`es` vazios por ora (passo 8). `scripts/generate-note-layouts-seed.mjs`
+         gera `gas-backend/seeds/note-layouts-seed.json` e `gas-backend/ContentSeed_NoteLayouts.js`
+         (`seedNoteLayoutsNow()`), script `seed:note-layouts`; molde: `generate-tasks-seed.mjs`.
+         **Pronto quando** um teste de round-trip semente → serviço = embutido (molde `test:tasks`).
+      3. **Backend (Apps Script).** `gas-backend/ContentAPI.js`: acrescente `note_blocks` e
+         `note_layouts` a `CONTENT_MODULES`; validação no servidor conforme spec §10
+         (`assertValidNoteBlock_`, `assertValidNoteLayout_`); `id` de linha imutável depois de
+         criado. Papéis: ADR-0013 (módulo novo herda o preset), no molde de `note_template` e
+         `task_screenshots`. Leitura pública no lote `modules=a,b,c`. `npm run test:content` ganha
+         casos: formato inválido, id duplicado, grade que não fecha, `kind`/`type` desconhecido,
+         id alterado. **Não publique nada.**
+      4. **Serviço de hidratação (front).** `note-table-service.js` no molde de
+         `tasks-service.js`/`note-templates-service.js`: lê os dois módulos, mescla com o embutido
+         **pelo id**, um item corrompido não derruba os outros, e **`kind`/`type` desconhecido ⇒
+         ignora a linha com `console.warn`, nunca lança**. Espelho que a Central não serviu não é
+         espelho vazio. **Teste no estado real da planilha** (módulos ainda não publicados): o
+         agente vê o embutido.
+      5. **UI do agente (substitui o formulário e a saída).** Casca em `notes-popup.js` e
+         `notes-assistant.js`; janela de duas colunas (spec §9); siga `specs/ui-ux/design-system.md`.
+         Reaproveite sem reescrever: a captura (`page-data.js`: `captureCID`, `captureSpeakeasyID`,
+         `appointmentTasks`; a auto-busca de `case-log-scraper.js`), `copyHtmlToClipboard` /
+         `ensureNoteCardIsOpen` / `insertHTML` (`notes-bridge.js`), `runEmailAutomation` depois de
+         inserir, a aba Split & Transfer, os rascunhos (`draft-service.js`) e os cenários rápidos.
+         Apague o código que **este** PR deixar órfão (`form-builder.js`, `output-generator.js`) e só
+         ele; `SUBSTATUS_TEMPLATES` continua (alimenta cenários, e-mail e tasks). `NotesState`: o
+         idioma **fora** do `reset()` (learning 2026-10-29).
+         **Pronto quando** tudo das spec §5 a §9 funciona, a tela bate com `hero.png`/`europe.png`
+         e a troca de idioma com a janela aberta repinta.
+      6. **Configurações.** Opção "Case Notes · abrir em" (`all|sbse|mms|last`) em
+         `src/modules/configs/configs-assistant.js`; preferência `notes_default_segment` e
+         `notes_last_segment` via `UserPrefsService` (molde: `links_fav`); textos PT/ES/EN.
+         `npm run test:prefs`.
+      7. **Central (telas).** Em `gas-backend/ContentDashboard_Catalog.html` (+ `_I18n`): lista por
+         segmento; editor de bloco (a tabela de linhas da aba "Central" do `preview.html`: rótulo
+         EN/PT/ES, obrigatória, aceita NA, visível; tipo e condições **só leitura**); colocação
+         (título, quando usar, `showTitle`); o bloco `extras`; contadores de cobertura por idioma; e
+         a prévia "como o agente vê" com o **mesmo** renderizador do app. O HTML do Apps Script não
+         importa módulo ES: gere o include a partir do mesmo fonte **ou** copie e prove com um teste
+         dourado que as duas saídas são idênticas. **Nunca duas versões soltas.** `smoke:content`
+         ganha casos.
+      8. **Idiomas.** Rascunhe os rótulos PT e ES do catálogo (51 rótulos únicos) e marque como
+         **não revisados** em "Waiting". Chrome da tela em dicionário `{pt, es, en}`; rótulo da tabela
+         por `getOutputLanguage()`, chrome por `getLanguage()`; rótulo sem tradução cai no EN, nunca
+         no PT. `test:i18n` e `smoke:i18n` com os dois knobs **divergentes**.
+      9. **Smoke e prova.** `scripts/smoke-note-table.mjs` + `"smoke:note-table"` sobre
+         `mock-crm.html` (o editor de nota do mock é montado como em `smoke-precall.mjs` e precisa
+         aceitar a tabela via `insertHTML`). Reproduza os cenários do `preview-checks.cjs`. Ajuste
+         `smoke:wizards`, `smoke:i18n` e `smoke:shortcuts` se quebrarem. **Entregue um
+         antes/depois (behavior diff) e screenshots.**
+      10. **Docs e release.** README (Key Features), `docs/ARCHITECTURE.md`,
+          `specs/data-models/api-payloads.md` (payload de `note_blocks`/`note_layouts`),
+          `CHANGELOG.md [Unreleased]`, slide no `RELEASE_NOTES` do agente e nas notas da Central.
+          **Ordem de implantação** (learning 2026-10-23): frontend no ar → `seedNoteLayoutsNow()` →
+          conferir na Central → só então publicar. Nunca o contrário.
+
+      **Decisões em aberto** (pergunte ao Lucas antes do passo indicado; o default entre parênteses é
+      uma proposta, não uma decisão):
+      - **P1 (passo 5):** as **evidências por task do Win Criteria** (o `SCREENSHOTS_LIST` antigo,
+        módulo `task_screenshots`) das tasks que **não** são ACT/ECW não têm lugar no padrão novo,
+        que só tem linhas de evidência para ACT/ECW e "Additional Screenshots". (Default: continuam,
+        como linhas "<task> — <rótulo>" em `Additional details`, lidas do módulo `task_screenshots`
+        que já existe; ACT/ECW usam só as linhas por fase.)
+      - **P2 (passo 5):** com Tag Support = Yes em ACT/ECW, o que fazer com as linhas de evidência
+        Before/Impl/After? (Default: só o aviso entra em Task types, como hoje; as linhas seguem
+        obrigatórias e o agente usa NA.)
+      - **P3 (passo 5):** como os 26 cenários rápidos preenchem as linhas novas. (Default:
+        `REASON_COMMENTS` → `substatus_reason`; os demais campos de texto do cenário viram linhas
+        "• …" dentro de `call_summary`/`case_comments`/`oncall_comments`, conforme o bloco; `DIA` →
+        `next_followup`; `TENTATIVA_LIGACAO` → `call_attempt`.)
+      - **P4 (passo 5):** rascunhos salvos no formato antigo. (Default: abrem com o aviso "formato
+        antigo" e podem ser descartados; não migrar.)
+      - **P5 (passo 8):** `Yes`/`No`/`NA` em inglês nos três idiomas. (Default: sim, são os valores
+        do padrão.)
+      - **P6 (passo 1):** `DC - No response (Hybrid case)` e `DC - Authentication Failed` têm o
+        follow-up vazio no arquivo Status; o catálogo assume `NA`. (Default: manter.)
+      - **Adiados, não implemente:** o mapa Sales Program → segmento; a lista `PI - …`; alinhar
+        `SUBSTATUS_TEMPLATES` ao arquivo Status (etapa separada, **depois** desta; lista das
+        divergências na spec §7).
+
+      **Armadilhas que já custaram caro neste repo** (cada uma é uma entrada do `docs/LEARNINGS.md`):
+      - *Dado que um bundle antigo não sabe desenhar* (2026-10-23): `kind`/`type` novo na Central
+        quebra a tela do agente antigo. Ignore com aviso; frontend antes do dado.
+      - *Semear não é sincronizar*: `seedContentModule()` só escreve em módulo vazio. Para acrescentar
+        depois, use o molde de `seedMissingLangsNow()`.
+      - *Idioma novo: roteie por idioma explícito, nunca por "senão é a base"* e *Mapa só de ES*:
+        nada de ternário `=== 'es'`.
+      - *Texto tem dono*: o rótulo da tabela sai no caso (atendimento); o chrome fica na tela
+        (interface). Teste com os knobs divergentes.
+      - *Troca de idioma em tempo real*: o que o módulo desenha uma vez entra no `onLanguageChange`.
+      - *Estado que reinicia*: idioma fora do `reset()`; teste **depois** de Limpar, de um atalho e
+        de uma inserção.
+      - *Formulário que se preenche por raspagem*: decida "mudou o caso?" **antes** da captura lenta;
+        Copiar e Inserir parados durante a captura; nada capturado sobrescreve o digitado.
+      - *Raspagem de SPA*: escope ao container ativo, nunca ao `document`.
+      - *Overlay/modal*: Esc, Tab, foco e reentrada (o `smoke:palette` trava).
+      - *Build que troca texto exato*: se editar `notes-bridge.js`, `header-factory.js`,
+        `crm-labels.js` ou `precall-data.js`, rode `npm run smoke:precall-standalone`.
+      - *Playwright* (2026-11-05): `hasText` casa por substring sem diferenciar caixa, e
+        `.catch(() => {})` dentro de um check o faz passar sem rodar. Mute o código e veja a
+        asserção reprovar.
+      - *Editar por script um arquivo CRLF reescreve o arquivo inteiro* (`step-tasks.js`,
+        `snippet-service.js`): use Edit ou `newline=''`.
+      - *Antes de chamar um texto de defeito, procure-o em `specs/`.*
+
+      **Waiting (Lucas):**
+      - **Colar uma caixa do `preview.html` num card de nota do CRM real** e dizer o que o editor
+        preservou (`colgroup`, `border-radius`, `overflow`, fundos). **Bloqueia o release**, não o
+        desenvolvimento.
+      - Revisão por falante nativo dos rótulos PT e ES (~100 textos).
+      - Depois do release: `seedNoteLayoutsNow()` na planilha, na ordem do passo 10.
+
+      **Definição de pronto:** todos os `test:*` verdes (inclusive `test:note-table`);
+      `smoke:note-table`, `smoke:content`, `smoke:i18n` e `smoke:wizards` verdes **com o Chromium
+      realmente lançado**; a tela batendo com `hero.png`/`europe.png`; antes/depois entregue;
+      CHANGELOG e docs vivos atualizados no mesmo PR.
 
 - [~] **Lembrete de qualidade em todo boot (2026-10-30, ADR-0021).** Pedido do
       Lucas: avisar o agente, a cada abertura, de que deve seguir as diretrizes de
