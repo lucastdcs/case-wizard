@@ -12,6 +12,25 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Playwright: `hasText` casa por substring sem diferenciar caixa, e `.catch(() => {})` num passo faz o check passar sem rodar
+
+**Why**: ao montar o preview do novo Case Notes (2026-11-05), três falhas de uma só
+rodada eram defeitos do **teste**, não do produto. (1) `locator('.bcard', { hasText:
+'Implementation' }).first()` também casa o cartão "Before implementation" — a busca é
+por substring e ignora maiúsculas —, então o clique desligou o bloco que o passo
+anterior tinha ligado, e as asserções seguintes falharam por um motivo que parecia ser
+do produto. (2) Um check "data inválida marca o campo" fazia
+`page.fill(...).catch(() => {})` num campo que estava **desabilitado**: o timeout era
+engolido e o check devolvia `true`. Passava sem verificar nada, e só apareceu porque
+reli o teste ao corrigir a falha (1).
+
+**When to apply**: ao localizar um item por texto, use regex ancorada (`{ hasText:
+/^Implementation/ }`) ou filtre por um filho; diante de "N falhas em cascata" depois de
+um clique, confira primeiro **qual** elemento o seletor achou. Nunca escreva
+`.catch(() => {})` dentro de um check: se o passo pode falhar, ele faz parte do que se
+testa. E prove que a asserção tem dentes mutando o código e vendo-a reprovar (aqui, com
+3 mutações; cada uma derrubou só a checagem esperada).
+
 ## Esperar um modal: a promessa de fechamento tem de resolver também no caminho em que ele nunca abre
 
 **Why**: o lembrete de qualidade do boot (ADR-0021) precisa esperar o tour e o

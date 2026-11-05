@@ -7,6 +7,51 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
+- [~] **Novo padrão de nota em tabela (2026-11-05) — desenho, ainda sem código.**
+      Pedido do Lucas: o padrão de notas mudou (outro projeto, "Case Notes Tool").
+      A saída do Case Notes deixa de ser `rótulo+valor` e passa a ser **tabela
+      HTML** com a estrutura do padrão novo, com o estilo do CW. Três templates,
+      escolhidos pelo **segmento do cliente (= Sales Program)**: ALL TASKS (5
+      blocos), ECL SBS-E (3 fases) e ECL MMS (5 fases). Fontes, no Drive do Lucas:
+      docs "Template notas", "Template 2 e 3" e "Status".
+      **Decidido pelo Lucas:**
+      - substitui o formato atual **para todos**; sai **no idioma do atendimento**;
+        HTML colado pelo `insertHTML` (ele já testou: o CRM aceita a tabela);
+      - o **agente escolhe** o segmento; as Configurações guardam o padrão de
+        abertura (preferência do agente, `UserPrefsService`) — **sem coluna nova na
+        People** (a `Segment` dela é idioma pt/es/en, não serve);
+      - data `YYYY-MM-DD`; os defeitos do template original serão corrigidos;
+        sub-status `PI - …` **fora por ora** (campo livre);
+      - **tudo o que der, configurável na Central** (os overheads querem controle).
+      **Desenho proposto** (preview aprovado a olho, não versionado):
+      - o corpo da tabela é do **bloco** (10 únicos; 3 deles repetem entre SBS-E e
+        MMS); título, "quando usar" e sugestão são do **segmento**. Três formas de
+        seção: chave-valor, uma linha por CID, grupo com `rowspan`. A largura da
+        grade e das colunas é declarada por bloco (não se deduz das seções);
+      - linha = valor **ou NA explícito**, nunca NA silencioso (hoje o campo vazio
+        sai `N/A` sozinho); só `Additional information`/extras são opcionais;
+      - módulos novos da Central (`note_blocks`, `note_layouts`), no molde do
+        ADR-0012/0013; id da linha imutável; o servidor valida a grade, o tipo e a
+        coluna; o bundle leva o catálogo como fallback; **frontend antes do dado**
+        (learning de 2026-10-23: um bundle antigo não sabe desenhar `kind` novo);
+      - janela de duas colunas (formulário | prévia viva) como no BAU Form.
+      **Em aberto (perguntar ao Lucas antes de codar):**
+      - o que **some** com a troca e não tem lugar no padrão novo: `ON_CALL`,
+        `GTM_GA4_VERIFICADO`, o Tag Support (dispensa de screenshots em ACT/ECW),
+        o fluxo LM, "Caso da Europa" e as evidências de contato (AC/NR). Manter,
+        mapear ou aposentar?
+      - alinhar os sub-status ao arquivo Status (`SO - Educational Only`; **um só**
+        `IN - Out of Scope - Rerouted`, com as 3 variantes como respostas
+        prontas; faltam `IN - Reschedule Limit Exceeded`, `IN - Instruction Shared`
+        e os 5 `DC`; `DC - Other` não existe lá) — etapa **separada** da tabela;
+      - mapa Sales Program → template (a captura existe: `captureSalesProgram`,
+        ex. "SMB Grow"); rótulo impresso sem o "(only for ECW)"; título da fase
+        acima da tabela; follow-up em dias corridos ou úteis;
+      - ~100 traduções de rótulo (51 rótulos únicos × PT e ES) a revisar por
+        falante nativo.
+      Antes do código: spec em `specs/workflow/` (contrato do texto, como o
+      Pre-call) e ADR.
+
 - [~] **Lembrete de qualidade em todo boot (2026-10-30, ADR-0021).** Pedido do
       Lucas: avisar o agente, a cada abertura, de que deve seguir as diretrizes de
       QA e o SOP do segmento do caso — o Case Wizard só ajuda a preencher, a
