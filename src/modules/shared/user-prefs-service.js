@@ -101,9 +101,17 @@ export const UserPrefsService = {
     sync() {
         if (syncPromise) return syncPromise;
 
+        // Sem e-mail não há o que buscar - e nada pode ser memorizado: o async
+        // abaixo roda síncrono até o primeiro await, então um `return` dentro
+        // dele aconteceria ANTES de `syncPromise` ser atribuída e a promessa
+        // resolvida ficaria presa. Foi o que acontecia: o Links chama sync() no
+        // init do módulo, antes de a identidade ser capturada, e daí em diante
+        // toda chamada (a do boot incluída) recebia essa promessa e nunca ia à
+        // nuvem.
+        if (!getAgentEmail()) return Promise.resolve(loadLocal());
+
         syncPromise = (async () => {
             const userEmail = getAgentEmail();
-            if (!userEmail) return loadLocal();
 
             try {
                 // Escrita pendente: o local é a versão boa: tenta empurrá-la de
