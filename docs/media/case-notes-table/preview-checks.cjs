@@ -25,10 +25,16 @@ const check = (name, ok, extra = '') => { results.push([ok, name, extra]); conso
   const pick = async name => { await page.click('#pick'); await page.locator('#pop .opt', { hasText: name }).click(); };
   const val = id => page.evaluate(i => resolved(allRows().find(r => r.id === i)), id);
   const openNota = async () => { if (!(await page.evaluate(() => st.ctxOpen))) await page.locator('#ctx .pick').nth(1).click(); };
+  const setSeg = async name => { await openNota(); await page.locator('#ctx [role=radiogroup][aria-label="Tipo de nota"] button', { hasText: name }).click(); };
 
   // ================= COMPORTAMENTO =================
   // --- começo e seletor de sub-status ---
   check('abre em ALL TASKS, idioma EN, fluxo BAU, sem sub-status', await page.evaluate(() => st.seg === 'all' && st.lang === 'en' && st.flow === 'bau' && st.substatus === ''));
+  check('o seletor de tipo de nota NÃO está no topo: some da tela até abrir a linha "Nota"', await page.locator('#ctx [role=radiogroup][aria-label="Tipo de nota"]').count() === 0 && !(await page.locator('#ctx').innerText()).includes('Segmento'));
+  check('no tipo padrão, nem a linha "Nota" nem a faixa fixa citam ALL TASKS (só o que foge do padrão aparece)', !(await page.locator('#ctx .pick').nth(1).innerText()).includes('ALL TASKS') && !(await page.locator('#sticky').innerText()).includes('ALL TASKS'));
+  await openNota();
+  check('dentro de "Nota" estão os 3 tipos, com o Sales program lido do CRM como pista', await page.locator('#ctx [role=radiogroup][aria-label="Tipo de nota"] button').count() === 3 && (await page.locator('#ctx .cap2').innerText()).includes('umm_scaled'));
+  await page.locator('#ctx .pick').nth(1).click();
   check('sem sub-status: só o estado vazio, nenhum campo da nota', await page.locator('#form .empty-s').count() === 1 && await page.locator('#form .row').count() === 0);
   check('Preencher bloqueado e a gaveta fechada ao abrir', await page.locator('#bFill.blocked').count() === 1 && !(await page.locator('#drawer.open').count()));
   await page.click('#pick'); await page.fill('#pop input', 'ts so verif');
@@ -159,7 +165,8 @@ const check = (name, ok, extra = '') => { results.push([ok, name, extra]); conso
   check('IN - Not Reachable traz Call attempt e não as evidências', await row('call_attempt').count() === 1 && await page.locator('#form [data-row^="ev_"]').count() === 0);
 
   // --- SBS-E e MMS ---
-  await page.locator('#ctx [role=radiogroup][aria-label="Segmento do cliente"] button', { hasText: 'SBS-E' }).click();
+  await setSeg('SBS-E');
+  check('fora do padrão, a linha "Nota" e a faixa fixa passam a citar o tipo (ECL SBS-E)', (await page.locator('#ctx .pick').nth(1).innerText()).includes('ECL SBS-E') && (await page.locator('#sticky').innerText()).includes('ECL SBS-E'));
   check('SBS-E: uma fase por nota (3 chips), começa na Phase 1', await page.evaluate(() => st.active.size === 1 && st.active.has('audit')) && await page.locator('#ctx .row.chiprow').nth(1).locator('.chip').count() === 3);
   await page.locator('#ctx .chip', { hasText: 'Phase 2' }).click();
   check('Phase 2 troca o bloco (não soma) e imprime o título acima da tabela', await page.evaluate(() => st.active.size === 1 && st.active.has('impl_call')) && ((await page.evaluate(() => noteHtml(false))).match(/margin:16px 0 6px 0/g) || []).length === 1);
@@ -169,9 +176,9 @@ const check = (name, ok, extra = '') => { results.push([ok, name, extra]); conso
   await page.locator('#ctx .chip', { hasText: 'Interim' }).click();
   await page.locator('#ctx .chip', { hasText: 'Phase 2' }).click();
   check('a lista de CIDs sobrevive à troca de fase', await page.evaluate(() => st.cids.length === 2));
-  await page.locator('#ctx [role=radiogroup][aria-label="Segmento do cliente"] button', { hasText: 'MMS' }).click();
+  await setSeg('MMS');
   check('MMS tem 5 fases', await page.locator('#ctx .row.chiprow').nth(1).locator('.chip').count() === 5);
-  await page.locator('#ctx [role=radiogroup][aria-label="Segmento do cliente"] button', { hasText: 'ALL TASKS' }).click();
+  await setSeg('ALL TASKS');
 
   // --- gaveta (prévia) ---
   await pick('SO - Implementation Only');
@@ -211,6 +218,48 @@ const check = (name, ok, extra = '') => { results.push([ok, name, extra]); conso
     return bad;
   });
   check('toda tabela fecha a grade, soma 100% e a coluna de comentários tem >= 22%', grid.length === 0, grid.join(' | '));
+
+  await page.evaluate(() => { st.vals = {}; applyAuto(); render(); });
+  await row('speakeasy').locator('button:has-text("Auto busca")').click();
+  check('o Speakeasy ID capturado cabe inteiro no campo (nenhum dígito cortado) e o chip some', await row('speakeasy').locator('input').evaluate(e => e.scrollWidth <= e.clientWidth + 1 && e.value.length === 19) && await row('speakeasy').locator('.chip').isHidden());
+  // --- linhas de print (links): o grosso da nota. Colar avança, o estado aparece, NA e comentário só em foco ---
+  await page.evaluate(() => { st.seg = 'all'; resetActive(); st.tasks = new Set(['ads_conversion_tracking']); st.substatus = 'SO - Implementation Only'; st.active.add('before'); st.active.add('impl'); st.vals = {}; st.more = {}; st.optIn = new Set(); applyAuto(); render(); document.activeElement && document.activeElement.blur(); });
+  await page.mouse.move(40, 600);
+  const opac = id => row(id).locator('.na').evaluate(e => getComputedStyle(e).opacity);
+  check('NA e comentário ficam invisíveis em repouso (17 "NA" iguais viravam ruído)', await opac('b_status') === '0' && await row('b_status').locator('.cmt').evaluate(e => getComputedStyle(e).opacity) === '0');
+  await row('b_status').locator('input').focus();
+  await page.waitForTimeout(260);   // a opacidade transiciona em 150ms
+  check('em foco a linha mostra NA e comentário', await opac('b_status') === '1' && await row('b_status').locator('.cmt').evaluate(e => getComputedStyle(e).opacity) === '1');
+  await page.keyboard.insertText('https://example.com/ss/1');
+  await row('b_status').locator('input').dispatchEvent('paste');   // paste simulado: o Chromium sem permissão de clipboard não cola de verdade
+  await page.waitForTimeout(60);
+  check('colar um link válido mostra o ✓ na linha', await row('b_status').locator('.rv.ok .ck').count() === 1);
+  check('colar um link válido leva o foco ao próximo campo vazio', await page.evaluate(() => document.activeElement && document.activeElement.id === 'f-b_dup'));
+  await page.keyboard.press('Enter');
+  check('Enter pula para o próximo campo vazio, sem preencher nem marcar NA nada', await page.evaluate(() => document.activeElement && document.activeElement.id === 'f-b_bid') && await val('b_dup') === null);
+  await page.keyboard.type('na');
+  check('digitar "na" numa linha que aceita NA vira NA (maiúsculo) e resolve a linha', await val('b_bid') === 'NA' && !(await page.evaluate(() => missingList().includes('Bidding Optimization'))));
+  await row('call_summary').locator('textarea').fill('na');
+  check('digitar "NA" onde o padrão não aceita NA (Call Summary) marca o campo', await row('call_summary').evaluate(e => e.classList.contains('bad')));
+  await row('call_summary').locator('textarea').fill('');
+  await page.mouse.move(40, 600);
+  await row('b_qual').locator('.na').click();
+  await page.mouse.move(40, 600); await page.evaluate(() => document.activeElement && document.activeElement.blur()); await page.waitForTimeout(260);
+  check('NA marcado fica visível mesmo em repouso (o estado nunca se esconde)', await opac('b_qual') === '1');
+  await row('b_qual').locator('.na').click();
+  // comentário por linha (spec §5): atrás de um ícone, escrito na coluna "Additional Comments" da nota
+  await row('b_status').locator('.cmt').click();
+  check('o ícone de comentário abre um campo na própria linha, com o foco', await row('b_status').locator('.cmrow input').count() === 1 && await page.evaluate(() => document.activeElement && document.activeElement.closest('.cmrow') !== null));
+  await page.keyboard.type('Cliente só tinha acesso de leitura');
+  check('o comentário vai para a coluna "Additional Comments" da MESMA linha da nota', await page.evaluate(() => { const tr = document.querySelector('#preview tr[data-row="b_status"]'); return !!tr && tr.lastElementChild.textContent.includes('acesso de leitura'); }));
+  check('com comentário, o ícone fica preenchido e visível em repouso', await row('b_status').locator('.cmt.on').count() === 1);
+  await row('b_status').locator('.cmrow input').fill('');
+  await row('b_status').locator('.cmrow input').blur();
+  await page.waitForTimeout(80);
+  check('comentário esvaziado fecha o campo sozinho', await row('b_status').locator('.cmrow').count() === 0);
+  await page.evaluate(() => { st.tasks = new Set(); render(); });   // sem task, a linha derivada "Task types" aparece no formulário
+  check('linha derivada (Task types, visível sem task marcada) não oferece comentário, só NA', await row('task_types').count() === 1 && await row('task_types').locator('.cmt').count() === 0 && await row('task_types').locator('.na').count() === 1);
+  await page.evaluate(() => { st.tasks = new Set(['ads_conversion_tracking']); render(); });
 
   // ================= DESENHO (medido no DOM renderizado) =================
   await page.evaluate(() => { st.seg = 'all'; resetActive(); st.substatus = 'SO - Implementation Only'; st.autoOpen = true; Object.keys(st.more).length; ['general.0', 'general.1', 'impl.0', 'extras.0'].forEach(k => { st.more[k] = true; }); st.ctxOpen = true; applyAuto(); render(); setDrawer(true); });

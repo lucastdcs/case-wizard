@@ -4,7 +4,7 @@
 Fonte: o padrão novo de notas (Docs "Template notas", "Template 2 e 3" e "Status", do Drive do
 Lucas) e as decisões dele de 2026-11-05. Decisão em
 `docs/decisions/0022-nota-em-tabela-catalogo-na-central.md`. Alvo visual:
-`docs/media/case-notes-table/` (os quatro PNGs `01-comeco` a `04-pendencias` e o protótipo `preview.html`).
+`docs/media/case-notes-table/` (os cinco PNGs `01-comeco` a `05-prints` e o protótipo `preview.html`).
 
 **Esta spec vence o protótipo.** O `CATALOG` do `preview.html` é a semente dos dados, mas se
 os dois divergirem, vale este arquivo.
@@ -303,8 +303,9 @@ título "Interim…" usa o cabeçalho completo do padrão.
 - `cid`: `XXX-XXX-XXXX`, formatado ao sair do campo se tiver 10 dígitos; vários separados por vírgula.
 - Valor automático (data de hoje, CID, tasks, sub-status, follow-up) leva a marca **Auto**; editar
   tira a marca. **Nada capturado sobrescreve o que o agente digitou** (mesma regra do Pre-call).
-- Cada linha tem um comentário opcional (coluna "Additional Comments"), escondido atrás de
-  "+ comentário".
+- Cada linha tem um comentário opcional (coluna "Additional Comments"), escondido atrás de um ícone de
+  balão que só aparece em foco/hover (§9). **O primeiro redesenho do protótipo perdeu isto** e a suíte não
+  pegou; hoje há checagens (campo abre, escreve na linha certa, ícone preenchido, fecha vazio).
 - Lista de CIDs: vive com o **caso** (chave Case ID + CID, como o Pre-call). Trocar de fase mantém a
   lista. Outro caso na tela **zera antes** da captura lenta (learning "Formulário que se preenche
   por raspagem").
@@ -400,22 +401,45 @@ tabela: a tela". Aqui ficam só as regras de comportamento que ela implementa:
 
 - **Janela única** de 560×760 (a mesma casca do Case Notes de hoje) e **gaveta da prévia atrás dela**, aberta por uma aba com
   o número de pendências. Não há painel fixo de prévia nem janela de duas colunas.
-- **Contexto no topo:** o segmento (segmentado, sempre visível, com a legenda somente leitura "Sales program na tela" vinda de
-  `captureSalesProgram()`, que **não escolhe o template sozinha**), depois um cartão com **Sub-status**, **Tasks**, **Blocos**
-  (ou **Fase**) e **Nota**. A linha **Nota** vem recolhida e resume `idioma · fluxo · Europa`; aberta, mostra Idioma (PT|ES|EN),
-  Fluxo (BAU|LM) e o interruptor do **Caso da Europa** (Sim deixa o resumo em âmbar). **General** não é chip (sempre ligado).
+- **Contexto no topo:** um cartão com **Sub-status**, **Tasks**, **Blocos** (ou **Fase**) e **Nota**. **Não há seletor de tipo de
+  nota no topo**: poucos agentes usam ECL SBS-E e ECL MMS, então o tipo mora dentro da linha **Nota**. Ela vem recolhida e resume
+  `idioma · fluxo · Europa`; aberta, mostra **Tipo** (ALL TASKS|ECL SBS-E|ECL MMS, com a pista somente leitura "Sales program no
+  CRM: <valor>" de `captureSalesProgram()`, que **não escolhe o template sozinha**), Idioma (PT|ES|EN), Fluxo (BAU|LM) e o
+  interruptor do **Caso da Europa** (Sim deixa o resumo em âmbar). Só o tipo **fora do padrão** aparece: a linha Nota e a faixa fixa
+  citam "ECL SBS-E" em azul; no padrão não citam nada. Com a linha em foco, a dica diz que o tipo está lá dentro. **General** não é
+  chip (sempre ligado).
 - **Sub-status** é um seletor com busca por nome **ou atalho** (`ts so verif`); texto fora da lista é aceito (os `PI - …`).
-- **Segmento padrão:** preferência do agente via `UserPrefsService`, chaves `notes_default_segment`
-  (`all|sbse|mms|last`) e `notes_last_segment`. Opção em Configurações. Sem preferência → `all`.
+- **Tipo padrão (o que abre sem trocar):** preferência do agente via `UserPrefsService`, chaves `notes_default_segment`
+  (`all|sbse|mms|last`) e `notes_last_segment`. Opção em Configurações ("Case Notes · abrir em"). Sem preferência → `all`.
+  Quem usa ECL todo dia escolhe `sbse`/`mms`/`last` lá e nunca mais abre a linha Nota para isso.
 - **Só o que pede atenção fica à vista:** linhas com valor automático ou padrão (Date, Follow-up, CID, Consent) vão para o
   cartão recolhido "Preenchido automaticamente"; opcionais ficam em "Mais opções · N"; linhas derivadas (sub-status, Europa)
   não aparecem; a dica de uma linha só aparece com ela em foco.
 - **Gaveta:** aberta pela aba (ou fechada por Esc), com o conteúdo `inert` quando fechada. A linha em foco acende a linha da nota
   e clicar numa linha da nota leva ao campo.
-- **Faixa de contexto** fixa ao rolar além do contexto; **faixa de pendências** só depois de tentar preencher.
-- **Intenção de projeto, ainda não desenhada no protótipo:** a gaveta abre para a esquerda (a janela mora ao lado do dock); se
-  a janela for arrastada para perto da borda esquerda da tela, ela espelha para a direita. O protótipo só mostra a abertura
-  à esquerda.
+- **Faixa de contexto** fixa ao rolar além do contexto (sem o tipo, se for o padrão); **faixa de pendências** só depois de tentar
+  preencher.
+- **Linhas de print (links), o grosso da nota** (~17 das ~20 linhas de um ACT com Before e Implementation): colar um link válido
+  mostra ✓ e **leva o foco ao próximo campo vazio**; **Enter** também (sem preencher nem marcar NA nada); a dica da linha seguinte
+  aparece sozinha, dizendo o que o próximo print precisa mostrar. **NA e comentário só aparecem na linha em foco/hover**; o
+  **estado** (NA marcado, comentário feito) fica sempre visível. Digitar `na` num campo que aceita NA vale NA (sai `NA`); digitar
+  NA onde o padrão não aceita (Call Summary, Sub-status Reason) marca o campo. Tab continua passando por comentário e NA
+  (acessibilidade); o caminho rápido é Enter e colar.
+- **Comentário por linha** (§5): ícone de balão na própria linha, só em foco/hover; abre um campo logo abaixo, que escreve na coluna
+  "Additional Comments" da **mesma linha** da nota; fica preenchido e visível quando há texto; esvaziado, fecha sozinho. Linhas
+  derivadas não oferecem comentário.
+- **Speakeasy ID:** o chip "Auto busca" some quando o campo tem valor (o ID tem 19 dígitos e o chip o cortava).
+- **Rodapé (lacuna do protótipo, a portar do Case Notes de hoje):** o rodapé atual tem uma linha **"Preencher e-mail
+  automaticamente"** (caixa marcada por padrão, **só aparece** quando o sub-status tem e-mail; `runEmailAutomation` depois de
+  inserir). O protótipo **não a desenha**. No app novo ela entra como uma linha discreta sobre os botões, só quando se aplica.
+  **Guardar** é o rascunho estacionado (`parkButton`) e **não** se confunde com o autosave de emergência (2 s após a última
+  edição, `saveEmergency`): os dois ficam.
+- **Cenários rápidos:** o protótipo mostra 3 chips fixos de exemplo. No app valem os de `getScenariosFor(subStatus, caseType)`:
+  0 a 5 por sub-status (27 no total). A linha só aparece quando há ao menos um; com mais de 3, vira um menu.
+- **Intenção de projeto, ainda não desenhada no protótipo:** a gaveta abre para a esquerda (a janela mora ao lado do dock; hoje
+  `right: 100px` em `notes-popup.js`). A gaveta precisa de 536px à esquerda da janela, então a tela precisa de ~1196px; abaixo
+  disso (ou com a janela arrastada para a borda esquerda) ela **sobrepõe a janela** em vez de sair da tela. O protótipo só mostra
+  a abertura à esquerda, com espaço de sobra.
 
 ## 10. O que a Central controla e o que fica no código
 

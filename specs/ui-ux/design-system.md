@@ -287,7 +287,7 @@ precisa digitar**, e o formulário nunca pode mentir sobre de que caso é:
 
 ## Case Notes em tabela: a tela (irmã mais velha do Case Notes)
 
-Referência viva: `docs/media/case-notes-table/` (`01-comeco.png` a `04-pendencias.png` e o `preview.html`).
+Referência viva: `docs/media/case-notes-table/` (`01-comeco.png` a `05-prints.png` e o `preview.html`).
 É a mesma casca do Case Notes de hoje, com **menos informação por vez**: a carga cognitiva sobe com o
 que está na tela, e o agente precisa de velocidade ao preencher. O contrato da nota está em
 `specs/workflow/case-note-table.md`; esta seção só trata do desenho.
@@ -334,13 +334,15 @@ que está na tela, e o agente precisa de velocidade ao preencher. O contrato da 
 | Linha de texto longo | rótulo em cima, `textarea` que cresce (mínimo 44), padding `12 16` |
 | Foco da linha | fundo `#f8f9fa` + barra de 2 em `#1a73e8` à esquerda (substitui o contorno do campo) |
 | Linha pendente | barra de 2 em `#fbbc05` e rótulo em `#b06000`, **só depois de tentar preencher** |
-| `NA` | botão de texto 12/500, alvo 32; ligado: fundo `#e8f0fe`, texto "Desfazer", e o valor vira "NA" |
+| Ações da linha (`NA`, comentário) | **só em foco/hover** (opacidade 0 em repouso, `.15s`; sempre visíveis na linha pendente). `NA`: botão de texto 12/500, alvo 32; ligado: fundo `#e8f0fe`, texto "Desfazer", valor "NA" e **sempre visível** (o estado nunca se esconde). Comentário: balão de 20 num alvo de 32; com texto fica preenchido, azul e sempre visível. O campo do comentário abre na própria linha: 32 de altura, raio 8, tom `#f1f3f4`, sem moldura, 13/400. Reservam a largura na linha (não deslocam o valor ao aparecer) |
+| ✓ de link válido | check de 20 em `#188038` à direita do link colado (`http(s)://…`); sem fundo nem borda no campo (o verde-claro do `enableFilledCheck` antigo é de painel antigo). Link inválido: texto `#d93025` |
 | Chip | 32 de altura, raio 16, 13/500, tonal (`#f1f3f4`); selecionado `#e8f0fe` + `#1967d2`. Sugestão = ponto de 12 com anel branco de 2 no canto do chip (não ocupa largura) |
 | Seletor de sub-status | linha do cartão que abre um popover de vidro: busca (por nome **ou atalho**, ex. `ts so verif`), grupos Need Info, Solution Offered, Inactive, Assigned, Discarded, atalho à direita (12px tabular), Enter escolhe o primeiro, setas navegam, Esc fecha. Texto que não casa oferece `Usar “…”` (os `PI - …` se digitam) |
 | Interruptor | 52×32, botão de 28, `role="switch"` |
+| Linha "Nota" | linha do cartão de contexto, recolhida: `idioma · fluxo · Europa` (âmbar se Europa), mais o **tipo** em azul 500 **só se não for o padrão**. Aberta: Tipo (segmentado de 3, com a pista "Sales program no CRM: …" em 12), Idioma, Fluxo e o interruptor da Europa. Com foco, a dica lembra o que há dentro |
 | "Preenchido automaticamente" | cabeçalho de 52 com ícone de check; recolhido mostra `Date`, `Follow-up`, `CID`, `Consent` com o valor; aberto lista as linhas editáveis com a marca **Auto** (check + texto, `title` com a explicação); editar tira a marca e a linha passa para a lista normal |
 | "Mais opções · N" | linha de 44, 13/500; chevron gira 180° |
-| Faixa de contexto | 48, vidro `rgba(245,245,247,.94)` + blur 20, aparece (deslize de `transform`, .25s) ao rolar além do contexto; mostra segmento · fluxo · idioma · sub-status; um clique volta ao topo |
+| Faixa de contexto | 48, vidro `rgba(245,245,247,.98)` + blur 20 (.94 deixava passar o texto que rola por baixo), aparece (deslize de `transform`, .25s) ao rolar além do contexto; mostra [tipo, só se não for o padrão] · fluxo · idioma · sub-status; um clique volta ao topo |
 | Faixa de pendências | 48, `#fef7e0`, texto 13/500 `#b06000`; só aparece depois de tentar preencher ou clicar no status; ações **Próxima** (texto) e **Marcar o restante como NA** (tonal); substitui a faixa de contexto enquanto está no ar |
 | Rodapé | estado à esquerda (ponto âmbar "N pendentes" ou verde "Pronta para preencher"), depois **Limpar** e **Guardar** (texto), **Copiar** (tonal) e **Preencher** (primário, sombra `0 4px 12px rgba(26,115,232,.3)`). Com pendência, Preencher e Copiar ficam com aparência bloqueada **mas clicáveis**: o clique abre a faixa de pendências em vez de ficar mudo |
 | Botões | 36 de altura, raio 18, 14/500; de ícone ou de texto curto, alvo mínimo 32×32 |
@@ -362,8 +364,8 @@ que está na tela, e o agente precisa de velocidade ao preencher. O contrato da 
 
 ### Comportamento da tela (resumo; o contrato está na spec)
 
-Sem sub-status, só o contexto e um estado vazio. Segmento sempre visível e com a legenda somente leitura "Sales program na tela";
-**General** não é chip (está sempre ligado); `Fase` é escolha única nos segmentos por fase. Linhas derivadas (sub-status, Europa)
+Sem sub-status, só o contexto e um estado vazio. O tipo de nota (ALL TASKS, ECL SBS-E, ECL MMS) **não fica no topo**: mora na linha
+"Nota" e só aparece quando foge do padrão do agente. **General** não é chip (está sempre ligado); `Fase` é escolha única nos segmentos por fase. Linhas derivadas (sub-status, Europa)
 não aparecem no formulário; "Task types" só aparece se não houver task. Cada seção é um cartão; seções depois da primeira levam um
 sub-título de 12/500. O que o agente digitou nunca é sobrescrito por captura.
 

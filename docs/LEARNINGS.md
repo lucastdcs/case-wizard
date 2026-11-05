@@ -28,6 +28,13 @@ Um mutante de teste (marcar NA em linhas que não aceitam NA) passou 78/78 até 
 asserção de **estado** (`na === false` nessas linhas) ser adicionada: checar só o que
 aparece na tela não pega regra violada que ainda não aparece.
 
+Um segundo buraco apareceu na revisão seguinte: a spec dizia "comentário por linha, atrás
+de '+ comentário'" e o redesenho **perdeu** o recurso sem nenhuma das 79 checagens reclamar,
+porque elas provavam o que o protótipo tinha, não o que a spec prometia. E o Speakeasy ID
+(19 dígitos) saía **cortado** por um chip que não saía de cima do campo, coisa que só o olho
+no PNG pegou. Depois do redesenho, releia a spec linha a linha contra a tela e olhe cada PNG
+em tamanho real.
+
 **When to apply**: ao desenhar qualquer tela nova do CW (PNG, protótipo ou spec de UI).
 Antes de desenhar, abra o CSS/JS da tela mais parecida e use os mesmos tokens; mostre
 só o que o agente precisa naquele instante; rode o lint de medidas no protótipo. Para

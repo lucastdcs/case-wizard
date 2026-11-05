@@ -15,7 +15,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
       **COMECE AQUI (quem for executar):**
       1. Leia, nesta ordem: `specs/workflow/case-note-table.md` (o contrato; vence tudo),
          `docs/decisions/0022-nota-em-tabela-catalogo-na-central.md` (o porquê),
-         `docs/media/case-notes-table/01-comeco.png` … `04-pendencias.png` (o alvo visual) e
+         `docs/media/case-notes-table/01-comeco.png` … `05-prints.png` (o alvo visual; a 05 é a seção dos prints) e
          `preview.html` (protótipo interativo: abra no navegador e use; é referência, a spec vence),
          e a seção "Case Notes em tabela: a tela" de `specs/ui-ux/design-system.md` (medidas e
          tokens). Depois o `docs/LEARNINGS.md` **inteiro**:
@@ -41,7 +41,11 @@ This file differs from the long-term roadmap: it describes what is happening **n
         pelo `insertHTML` (ele já testou: o CRM aceita tabela);
       - segmento = **Sales Program, escolhido pelo agente**; o padrão de abertura fica nas
         Configurações; **sem coluna nova na People**. O mapa Sales Program → segmento foi
-        **adiado: não implemente** (só o chip somente leitura com o Sales Program da tela);
+        **adiado: não implemente** (só a pista somente leitura com o Sales Program da tela);
+      - **o tipo de nota (ALL TASKS, ECL SBS-E, ECL MMS) não tem seletor no topo** (decisão de
+        2026-11-05): poucos agentes usam os dois ECL, então ele mora dentro da linha "Nota" e só
+        aparece na tela quando foge do padrão; o padrão de cada agente é a opção em Configurações.
+        Regra geral da tela: **só o essencial à vista, o resto escondido com uma pista de que existe**;
       - data `AAAA-MM-DD`; follow-up em **dias úteis**; sub-status `PI - …` **fora por ora**
         (campo livre);
       - campos do formato antigo continuam, **como linhas no fim da nota** (tabela "Additional
@@ -92,10 +96,17 @@ This file differs from the long-term roadmap: it describes what is happening **n
          `appointmentTasks`; a auto-busca de `case-log-scraper.js`), `copyHtmlToClipboard` /
          `ensureNoteCardIsOpen` / `insertHTML` (`notes-bridge.js`), `runEmailAutomation` depois de
          inserir, a aba Split & Transfer, os rascunhos (`draft-service.js`) e os cenários rápidos.
+         **Lacunas do protótipo que o app real tem de cobrir** (spec §9): a linha "Preencher e-mail
+         automaticamente" do rodapé (condicional, marcada por padrão); cenários por
+         `getScenariosFor(subStatus, caseType)` (0 a 5 por sub-status; o protótipo mostra 3 fixos);
+         a gaveta sobrepondo a janela quando a tela tem menos de ~1196px (a janela fica a
+         `right: 100px`); `Guardar` (rascunho estacionado) **e** o autosave de emergência continuam.
+         **Linhas de print:** colar link válido e Enter avançam ao próximo campo vazio; `NA` e
+         comentário só em foco; digitar `na` vale NA; o comentário por linha é da spec §5.
          Apague o código que **este** PR deixar órfão (`form-builder.js`, `output-generator.js`) e só
          ele; `SUBSTATUS_TEMPLATES` continua (alimenta cenários, e-mail e tasks). `NotesState`: o
          idioma **fora** do `reset()` (learning 2026-10-29).
-         **Pronto quando** tudo das spec §5 a §9 funciona, a tela bate com `01-comeco.png`…`04-pendencias.png`
+         **Pronto quando** tudo das spec §5 a §9 funciona, a tela bate com `01-comeco.png`…`05-prints.png`
          e a troca de idioma com a janela aberta repinta.
       6. **Configurações.** Opção "Case Notes · abrir em" (`all|sbse|mms|last`) em
          `src/modules/configs/configs-assistant.js`; preferência `notes_default_segment` e
@@ -144,6 +155,36 @@ This file differs from the long-term roadmap: it describes what is happening **n
         do padrão.)
       - **P6 (passo 1):** `DC - No response (Hybrid case)` e `DC - Authentication Failed` têm o
         follow-up vazio no arquivo Status; o catálogo assume `NA`. (Default: manter.)
+      - **P7 (passo 5):** **blocos pré-selecionados** em vez de só um ponto de sugestão. Hoje, com
+        ACT/ECW, os três (Before, Implementation, After) levam ponto sempre, o que contradiz o
+        "quando usar" de cada um (After é follow-up; Before/Implementation, o dia do appointment).
+        (Default: pré-selecionar por regra: `Appointment time` = hoje → Before + Implementation;
+        data passada → After; Consult continua por sub-status. O CRM entrega esse campo em texto
+        que varia com o idioma, ex. `2026-Set-10 12:00:00 UTC` na tela original: parse tolerante
+        a PT/ES/EN e, se falhar, nada pré-selecionado.)
+      - **P8 (passo 5):** **Tasks lidas do CRM** (`Appointment tasks`, multivalorado). Na tela
+        traduzida o campo vem em texto traduzido, não na chave (`ads_conversion_tracking` →
+        "rastreamento de conversões de anúncios"). (Default: pré-marcar só quando reconhecer com
+        segurança, mostrar a linha como resumo "ACT · Auto" com "Alterar", e cair nos chips de hoje
+        se não reconhecer.)
+      - **P9 (passo 5):** a linha **Tasks** nos tipos ECL. A nota ECL não tem "Task types"; os chips
+        só ligariam o Tag Support. (Default: esconder a linha Tasks e o Tag Support nos tipos ECL.)
+      - **P10 (passo 5):** **Idioma, Europa e Fluxo automáticos.** O CRM mostra `Business language`
+        (hoje já lido por `captureLanguage`), `Sales Region` (`LATAM` no fixture) e `Interaction
+        Type` (`Internal`). (Default: Idioma automático pelo `Business language`, com fallback para o
+        idioma da interface; Europa e Fluxo seguem manuais **até o Lucas dizer quais valores de
+        `Sales Region`/campo do CRM significam Europa e LM**.)
+      - **P11 (passo 5):** **colar vários links de uma vez** (um por linha) preenchendo as próximas
+        linhas vazias em ordem. (Default: não implementar até o Lucas dizer como o link do print
+        chega ao agente hoje: um por vez ou em lista.)
+      - **P12 (passo 5):** o que já está no protótipo e é proposta, não decisão: `NA`/comentário só em
+        foco e Enter/colar avançando. (Default: manter. Para desfazer: tirar a classe `ghost` das duas
+        ações da linha e os dois ouvintes `keydown`/`paste` do campo.)
+      - **Oportunidades de automação, fora deste PR (só registre no ROADMAP se o Lucas quiser):**
+        (a) ler a **última nota CW do caso** no case log (agora é uma tabela com rótulos fixos, logo
+        legível) e pré-preencher o que não muda entre notas (site, tags implementadas; no After, os
+        links de Before/Implementation); (b) **Limpar com "Desfazer"** no toast, hoje um clique
+        apaga ~20 campos; (c) cenários rápidos ordenados pelo que o agente mais usa.
       - **Adiados, não implemente:** o mapa Sales Program → segmento; a lista `PI - …`; alinhar
         `SUBSTATUS_TEMPLATES` ao arquivo Status (etapa separada, **depois** desta; lista das
         divergências na spec §7).
@@ -182,7 +223,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
       **Definição de pronto:** todos os `test:*` verdes (inclusive `test:note-table`);
       `smoke:note-table`, `smoke:content`, `smoke:i18n` e `smoke:wizards` verdes **com o Chromium
-      realmente lançado**; a tela batendo com `01-comeco.png`…`04-pendencias.png`; antes/depois entregue;
+      realmente lançado**; a tela batendo com `01-comeco.png`…`05-prints.png`; antes/depois entregue;
       CHANGELOG e docs vivos atualizados no mesmo PR.
 
 - [~] **Pílula com gaveta e layout por agente (2026-11-05, ADR-0023).** Pedido do
