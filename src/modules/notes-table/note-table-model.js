@@ -48,6 +48,13 @@ export const SUMMARY_ROW_IDS = ['call_summary', 'case_comments', 'oncall_comment
 
 export const EXTRAS_BLOCK = 'extras';
 
+// O que o código sabe desenhar (spec §10). A Central não cria tipo novo: o servidor
+// recusa, e o app ignora com aviso o que não conhecer (learning 2026-10-23).
+export const SECTION_KINDS = ['kv', 'group', 'cid'];
+export const ROW_TYPES = ['text', 'long', 'date', 'yesno', 'link', 'cid', 'speakeasy', 'derived'];
+export const CID_COLUMN_TYPES = ['tbw', 'cid', 'yn', 'text', 'link', 'smeyes'];
+export const ROW_ID_PATTERN = /^[a-z][a-z0-9_]{0,39}$/;
+
 const ECW = 'ads_enhanced_conversions';
 
 export function createNoteState(over = {}) {

@@ -15,7 +15,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   pendências, NA em lote, consentimento e Caso da Europa, follow-up em dias úteis, Tag
   Support dispensando os prints de ACT/ECW, pré-seleção de blocos pela data do
   appointment) e o HTML das tabelas (`note-table-render.js`, só estilo inline, texto do
-  agente escapado, `**x**` como único negrito). `npm run test:note-table`.
+  agente escapado, `**x**` como único negrito). O catálogo embutido (`note-table-data.js`,
+  11 blocos e os 3 segmentos, copiado do protótipo e travado contra a spec §4) e a semente
+  dos módulos `note_blocks` e `note_layouts` (`npm run seed:note-layouts` →
+  `seedNoteLayoutsNow()`, **ainda não rodada na planilha**). `npm run test:note-table`.
 - **Pílula com gaveta e layout por agente** (ADR-0023). A pílula crescia ~54px por
   módulo: com 10 botões media 641px e, num viewport de notebook (650px), perdia o
   topo — o punho de arrastar ficava fora da tela. Agora ela mostra os módulos que o
