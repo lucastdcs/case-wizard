@@ -130,7 +130,10 @@ This file differs from the long-term roadmap: it describes what is happening **n
          `task_screenshots`. Leitura pública no lote `modules=a,b,c`. `npm run test:content` ganha
          casos: formato inválido, id duplicado, grade que não fecha, `kind`/`type` desconhecido,
          id alterado. **Não publique nada** e **não rode `clasp push`/deploy**.
-      4. **Serviço de hidratação (front).** `note-table-service.js` no molde de
+      4. [x] **Serviço de hidratação (front).** *(feito: `test:note-table` 54, com 8 do serviço,
+         inclusive o estado real da planilha e o round-trip semente → serviço = embutido; 5
+         mutações pegas. O serviço devolve um catálogo novo em vez de reescrever o embutido no
+         lugar.)* `note-table-service.js` no molde de
          `tasks-service.js`/`note-templates-service.js`: lê os dois módulos, mescla com o embutido
          **pelo id**, um item corrompido não derruba os outros, e **`kind`/`type` desconhecido ⇒
          ignora a linha com `console.warn`, nunca lança**. Espelho que a Central não serviu não é
