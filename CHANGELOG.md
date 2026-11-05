@@ -9,6 +9,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Nota em tabela (em construção, ainda sem tela; ADR-0022 e ADR-0024).** Módulo novo
+  `notetable` em `src/modules/notes-table/`, ao lado do Case Notes atual, que continua
+  igual. Por ora só a parte pura: as regras da nota (`note-table-model.js`: condições,
+  pendências, NA em lote, consentimento e Caso da Europa, follow-up em dias úteis, Tag
+  Support dispensando os prints de ACT/ECW, pré-seleção de blocos pela data do
+  appointment) e o HTML das tabelas (`note-table-render.js`, só estilo inline, texto do
+  agente escapado, `**x**` como único negrito). `npm run test:note-table`.
 - **Pílula com gaveta e layout por agente** (ADR-0023). A pílula crescia ~54px por
   módulo: com 10 botões media 641px e, num viewport de notebook (650px), perdia o
   topo — o punho de arrastar ficava fora da tela. Agora ela mostra os módulos que o
