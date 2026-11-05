@@ -49,7 +49,11 @@ const CONTENT_MODULES = [
   // home do módulo de Links. São dois módulos e não campos do link porque têm
   // ciclo de vida e regime próprios: a categoria é catálogo (passa pela fila), o
   // destaque é operação (vai ao ar na hora e expira sozinho). Ver ADR-0019.
-  'link_categories', 'link_highlights'
+  'link_categories', 'link_highlights',
+  // Nota em tabela (ADR-0022 e ADR-0024): o corpo das tabelas (blocos) e os
+  // segmentos que os ordenam. Módulos NOVOS, ao lado do note_template, que segue
+  // servindo o Case Notes de hoje.
+  'note_blocks', 'note_layouts'
 ];
 
 // Nome do módulo das tasks, usado nas validações abaixo. Constante em vez de
@@ -157,7 +161,7 @@ const CONTENT_ROLES = {
     // modelos de nota pelo mesmo motivo: correção de conteúdo. Vale como
     // SEMENTE — numa planilha que já tem `Content_Roles`, quem concede é a aba
     // Papéis (ver a herança do preset em normalizeRoleMatrix_).
-    propose: ['call_script', 'note_template', 'task_screenshots'],
+    propose: ['call_script', 'note_template', 'task_screenshots', 'note_blocks', 'note_layouts'],
     approve: false,
     manageAccess: false,
     selfApprove: false
@@ -1272,6 +1276,217 @@ function assertValidTaskKey_(key, itemId) {
 }
 
 // ---------------------------------------------------------
+//  Validação: nota em tabela (note_blocks e note_layouts)
+// ---------------------------------------------------------
+
+// O padrão da nota em tabela (ADR-0022, spec workflow/case-note-table.md §10).
+// A Central controla O QUÊ (rótulos, obrigatória, NA, condições, quais blocos e
+// em que ordem); o código controla COMO se desenha (tipos de seção e de linha,
+// grade). Por isso o servidor recusa tipo que o app não sabe desenhar: um bundle
+// antigo diante de dado novo quebra a tela do agente (learning 2026-10-23).
+// Estes conjuntos espelham note-table-model.js; test:content os compara.
+const CONTENT_NOTE_BLOCK_MODULE = 'note_blocks';
+const CONTENT_NOTE_LAYOUT_MODULE = 'note_layouts';
+const NOTE_SECTION_KINDS = ['kv', 'group', 'cid'];
+const NOTE_ROW_TYPES = ['text', 'long', 'date', 'yesno', 'link', 'cid', 'speakeasy', 'derived'];
+const NOTE_CID_COLUMN_TYPES = ['tbw', 'cid', 'yn', 'text', 'link', 'smeyes'];
+const NOTE_ROW_ID_RE = /^[a-z][a-z0-9_]{0,39}$/;
+const NOTE_KEY_RE = /^[a-z][a-z0-9_]{1,39}$/;
+const NOTE_WHEN_KEYS = ['flow', 'europe', 'substatusAny', 'tasksAny', 'rowIs'];
+// Abaixo de 22% "Additional Comments (Optional)" parte a palavra numa tabela de ~456px.
+const NOTE_COMMENTS_MIN_WIDTH = 22;
+
+function noteLiveRows_(module) {
+  return readContentRows_(SHEET_CONTENT_ITEMS).filter(function (r) {
+    return String(r.Module).trim() === module && String(r.Status).trim() === CONTENT_STATUS.LIVE;
+  });
+}
+
+// A chave do bloco/segmento é identidade, como a da task: o rascunho do agente e
+// os segmentos guardam a string. Formato, única no ar e imutável depois de criada.
+function assertValidNoteKey_(module, key, itemId, oQue) {
+  const chave = String(key || "").trim();
+  if (!NOTE_KEY_RE.test(chave)) {
+    throw new Error(
+      "Chave de " + oQue + " inválida: use de 2 a 40 caracteres entre letras minúsculas, " +
+      "números e '_', começando por letra (ex.: impl_call)."
+    );
+  }
+  const noAr = noteLiveRows_(module);
+  if (itemId) {
+    const alvo = noAr.filter(function (r) { return String(r.ID) === String(itemId); });
+    if (alvo.length && String(alvo[0].Key).trim() !== chave) {
+      throw new Error(
+        "A chave de " + oQue + " não muda: '" + String(alvo[0].Key).trim() + "' é o que os " +
+        "segmentos e os rascunhos do agente já guardam."
+      );
+    }
+    return alvo.length ? alvo[0] : null;
+  }
+  const repetida = noAr.filter(function (r) { return String(r.Key).trim() === chave; });
+  if (repetida.length) {
+    throw new Error("Já existe " + oQue + " com a chave '" + chave + "' (" + String(repetida[0].Label || "") + ").");
+  }
+  return null;
+}
+
+function parseNoteJson_(rawValue, oQue) {
+  try {
+    const v = JSON.parse(rawValue || '{}');
+    if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('não é objeto');
+    return v;
+  } catch (e) {
+    throw new Error("Conteúdo de " + oQue + " inválido (JSON malformado).");
+  }
+}
+
+function assertNoteLabel_(label, onde) {
+  if (!label || typeof label !== 'object' || Array.isArray(label) || !String(label.en || "").trim()) {
+    throw new Error(onde + ": o rótulo em inglês (o texto do padrão) é obrigatório.");
+  }
+  ['pt', 'es', 'en'].forEach(function (l) {
+    if (label[l] !== undefined && typeof label[l] !== 'string') throw new Error(onde + ": rótulo " + l + " precisa ser texto.");
+  });
+}
+
+function assertNoteWhen_(when, onde) {
+  if (when === undefined) return;
+  if (!when || typeof when !== 'object' || Array.isArray(when)) throw new Error(onde + ": condição inválida.");
+  Object.keys(when).forEach(function (k) {
+    if (NOTE_WHEN_KEYS.indexOf(k) === -1) {
+      throw new Error(onde + ": condição desconhecida '" + k + "'. Só existem " + NOTE_WHEN_KEYS.join(", ") + ".");
+    }
+  });
+  ['substatusAny', 'tasksAny'].forEach(function (k) {
+    if (when[k] !== undefined && !Array.isArray(when[k])) throw new Error(onde + ": '" + k + "' precisa ser lista.");
+  });
+}
+
+/**
+ * Valida um BLOCO da nota (o corpo de uma tabela: seções e linhas).
+ *
+ * O que cada regra evita, sem erro visível em lugar nenhum:
+ *   - grade que não fecha: a tabela sai torta no editor do CRM;
+ *   - `kind`/`type` que o código não conhece: o bundle no ar não sabe desenhar;
+ *   - id de linha repetido, renomeado ou removido: o rascunho do agente e as
+ *     condições (`rowIs`) apontam para o id; renomear é perder o que foi digitado.
+ *     Para tirar uma linha da nota use `visible: false`;
+ *   - bloco sem linha obrigatória: a nota sairia inteira de NA.
+ */
+function assertValidNoteBlock_(key, itemId, rawValue) {
+  const atual = assertValidNoteKey_(CONTENT_NOTE_BLOCK_MODULE, key, itemId, 'bloco');
+  const v = parseNoteJson_(rawValue, 'bloco');
+
+  if (!String(v.name || "").trim()) throw new Error("Dê um nome ao bloco.");
+  const cols = v.cols;
+  if ([3, 4, 5, 6].indexOf(cols) === -1) throw new Error("O bloco precisa de 3, 4, 5 ou 6 colunas.");
+  const widths = v.widths;
+  if (!Array.isArray(widths) || widths.length !== cols || widths.some(function (w) { return typeof w !== 'number' || !(w > 0); })) {
+    throw new Error("Declare uma largura positiva (em %) para cada uma das " + cols + " colunas.");
+  }
+  const soma = widths.reduce(function (a, b) { return a + b; }, 0);
+  if (Math.abs(soma - 100) > 0.001) throw new Error("As larguras das colunas somam " + soma + "%, e precisam somar 100%.");
+  if (widths[cols - 1] < NOTE_COMMENTS_MIN_WIDTH) {
+    throw new Error("A coluna de comentários precisa de pelo menos " + NOTE_COMMENTS_MIN_WIDTH + "% (veio " + widths[cols - 1] + "%).");
+  }
+  if (!Array.isArray(v.sections) || !v.sections.length) throw new Error("O bloco precisa de ao menos uma seção.");
+
+  const ids = [];
+  let obrigatorias = 0;
+  v.sections.forEach(function (sec, si) {
+    const onde = "Seção " + (si + 1);
+    if (!sec || NOTE_SECTION_KINDS.indexOf(sec.kind) === -1) {
+      throw new Error(onde + ": tipo de seção desconhecido '" + (sec && sec.kind) + "'. Só existem " + NOTE_SECTION_KINDS.join(", ") + ".");
+    }
+    if (!String(sec.title || "").trim()) throw new Error(onde + ": dê um título à seção.");
+
+    if (sec.kind === 'cid') {
+      // Cabeçalho com colspan = cols e uma célula por coluna: a grade só fecha com uma coluna por coluna da grade.
+      if (!Array.isArray(sec.columns) || sec.columns.length !== cols) {
+        throw new Error(onde + ": a seção por CID precisa de exatamente " + cols + " colunas (a grade do bloco).");
+      }
+      sec.columns.forEach(function (c, ci) {
+        const ondeC = onde + ", coluna " + (ci + 1);
+        if (!c || !NOTE_ROW_ID_RE.test(String(c.id || ""))) throw new Error(ondeC + ": id inválido.");
+        if (NOTE_CID_COLUMN_TYPES.indexOf(c.type) === -1) throw new Error(ondeC + ": tipo de coluna desconhecido '" + c.type + "'.");
+        assertNoteLabel_(c.label, ondeC);
+        if (c.required !== false) obrigatorias++;
+      });
+      return;
+    }
+
+    if (sec.kind === 'group') {
+      if (cols !== 4) throw new Error(onde + ": a seção com grupo só existe em grade de 4 colunas (grupo, rótulo, valor, comentário).");
+      if (!String(sec.group || "").trim()) throw new Error(onde + ": dê o texto da célula de grupo.");
+    }
+    if (!Array.isArray(sec.rows) || !sec.rows.length) throw new Error(onde + ": a seção precisa de ao menos uma linha.");
+    sec.rows.forEach(function (r, ri) {
+      const ondeR = onde + ", linha " + (ri + 1);
+      if (!r || !NOTE_ROW_ID_RE.test(String(r.id || ""))) throw new Error(ondeR + ": id de linha inválido (minúsculas, números e '_').");
+      if (ids.indexOf(r.id) !== -1) throw new Error(ondeR + ": o id '" + r.id + "' se repete no bloco.");
+      ids.push(r.id);
+      if (NOTE_ROW_TYPES.indexOf(r.type) === -1) throw new Error(ondeR + " (" + r.id + "): tipo de linha desconhecido '" + r.type + "'.");
+      assertNoteLabel_(r.label, ondeR + " (" + r.id + ")");
+      ['required', 'na', 'visible', 'optIn'].forEach(function (b) {
+        if (r[b] !== undefined && typeof r[b] !== 'boolean') throw new Error(ondeR + " (" + r.id + "): '" + b + "' precisa ser verdadeiro ou falso.");
+      });
+      assertNoteWhen_(r.when, ondeR + " (" + r.id + ")");
+      assertNoteWhen_(r.requiredWhen, ondeR + " (" + r.id + ")");
+      if (r.required === true || r.requiredWhen) obrigatorias++;
+    });
+  });
+  if (!obrigatorias) throw new Error("O bloco precisa de ao menos uma linha obrigatória.");
+
+  if (atual) {
+    let antes = {};
+    try { antes = JSON.parse(String(atual.Value || '{}')); } catch (e) { antes = {}; }
+    const novos = {};
+    (v.sections || []).forEach(function (s) { (s.rows || s.columns || []).forEach(function (r) { novos[r.id] = true; }); });
+    const sumidos = [];
+    (antes.sections || []).forEach(function (s) {
+      (s.rows || s.columns || []).forEach(function (r) { if (r && r.id && !novos[r.id]) sumidos.push(r.id); });
+    });
+    if (sumidos.length) {
+      throw new Error(
+        "O id de uma linha não muda nem some: " + sumidos.join(", ") + ". Rascunhos e condições apontam para ele. " +
+        "Para tirar uma linha da nota, desmarque 'visível'."
+      );
+    }
+  }
+}
+
+/**
+ * Valida um SEGMENTO (ALL TASKS, ECL SBS-E, ECL MMS): quais blocos, em que ordem,
+ * com que título. Só aponta para bloco que existe e está no ar — um segmento que
+ * cita um bloco inexistente é uma nota que perde uma tabela inteira em silêncio.
+ */
+function assertValidNoteLayout_(key, itemId, rawValue) {
+  assertValidNoteKey_(CONTENT_NOTE_LAYOUT_MODULE, key, itemId, 'segmento');
+  const v = parseNoteJson_(rawValue, 'segmento');
+
+  if (!String(v.name || "").trim()) throw new Error("Dê um nome ao segmento.");
+  if (['multi', 'single'].indexOf(v.select) === -1) throw new Error("A seleção do segmento é 'multi' (vários blocos) ou 'single' (uma fase por nota).");
+  if (v.showTitle !== undefined && typeof v.showTitle !== 'boolean') throw new Error("'showTitle' precisa ser verdadeiro ou falso.");
+  if (!Array.isArray(v.blocks) || !v.blocks.length) throw new Error("O segmento precisa de ao menos um bloco.");
+
+  const noAr = {};
+  noteLiveRows_(CONTENT_NOTE_BLOCK_MODULE).forEach(function (r) { noAr[String(r.Key).trim()] = true; });
+  const vistos = [];
+  v.blocks.forEach(function (p, i) {
+    const b = String((p && p.b) || "").trim();
+    if (!noAr[b]) throw new Error("Bloco " + (i + 1) + ": '" + b + "' não existe no ar em note_blocks.");
+    if (vistos.indexOf(b) !== -1) throw new Error("Bloco " + (i + 1) + ": '" + b + "' aparece duas vezes no segmento.");
+    vistos.push(b);
+    if (p.suggest !== undefined) assertNoteWhen_(p.suggest, "Bloco " + (i + 1) + " (" + b + ")");
+  });
+  if (v.always !== undefined) {
+    if (!Array.isArray(v.always) || v.always.some(function (b) { return vistos.indexOf(b) === -1; })) {
+      throw new Error("'always' só pode citar blocos do próprio segmento.");
+    }
+  }
+}
+
+// ---------------------------------------------------------
 //  Validação: avisos
 // ---------------------------------------------------------
 
@@ -2055,6 +2270,12 @@ function saveContentDraft(payload) {
   }
   if (p.module === CONTENT_LINK_MODULE) {
     assertValidLinkItem_(p.key, String(p.value || ""));
+  }
+  if (p.module === CONTENT_NOTE_BLOCK_MODULE) {
+    assertValidNoteBlock_(p.key, p.itemId, String(p.value || ""));
+  }
+  if (p.module === CONTENT_NOTE_LAYOUT_MODULE) {
+    assertValidNoteLayout_(p.key, p.itemId, String(p.value || ""));
   }
   if (p.module === CONTENT_LINK_CATEGORY_MODULE) {
     assertValidLinkCategory_(p.key, p.itemId, String(p.value || ""));

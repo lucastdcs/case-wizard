@@ -18,7 +18,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   agente escapado, `**x**` como único negrito). O catálogo embutido (`note-table-data.js`,
   11 blocos e os 3 segmentos, copiado do protótipo e travado contra a spec §4) e a semente
   dos módulos `note_blocks` e `note_layouts` (`npm run seed:note-layouts` →
-  `seedNoteLayoutsNow()`, **ainda não rodada na planilha**). `npm run test:note-table`.
+  `seedNoteLayoutsNow()`, **ainda não rodada na planilha**). No backend, os dois módulos
+  novos entram na Central com validação no servidor (`assertValidNoteBlock_`,
+  `assertValidNoteLayout_`: grade que fecha, `kind`/`type` conhecidos, `id` de linha único
+  e imutável, segmento só com blocos no ar) e o preset de QA propõe nos dois.
+  `npm run test:note-table` e `npm run test:content`.
 - **Pílula com gaveta e layout por agente** (ADR-0023). A pílula crescia ~54px por
   módulo: com 10 botões media 641px e, num viewport de notebook (650px), perdia o
   topo — o punho de arrastar ficava fora da tela. Agora ela mostra os módulos que o
