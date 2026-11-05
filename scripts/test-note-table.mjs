@@ -18,6 +18,7 @@ import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -550,6 +551,106 @@ check('seção por CID: uma linha por CID; coluna vazia fica pendente; sem CID, 
     igual(missingKeys(st), [], 'tudo resolvido');
     const html = out(st);
     ok(html.includes('444-555-6666') && (html.match(/>TBW</g) || []).length === 2, 'linhas por CID');
+});
+
+// ================= Catálogo embutido e semente (passo 2) =================
+const { NOTE_TABLE_CATALOG: EMB } = await load('../src/modules/notes-table/note-table-data.js');
+const seedPath = resolve(here, '../gas-backend/seeds/note-layouts-seed.json');
+const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
+const specText = readFileSync(resolve(here, '../specs/workflow/case-note-table.md'), 'utf8');
+
+console.log('\nCatálogo embutido (note-table-data.js) contra a spec §4');
+
+check('todo bloco do catálogo real fecha a grade, soma 100% e dá >= 22% aos comentários', () => {
+    igual(gridProblems(EMB), [], 'problemas de grade');
+});
+
+check('grupo só em grade de 4 colunas; id de linha no formato e único no bloco; kind e type conhecidos', () => {
+    const bad = [];
+    for (const [id, blk] of Object.entries(EMB.blocks)) {
+        const rows = M.blockRows(blk);
+        const seen = new Set();
+        for (const r of rows) {
+            if (seen.has(r.id)) bad.push(`${id}: ${r.id} repetido`);
+            seen.add(r.id);
+            if (!M.ROW_ID_PATTERN.test(r.id)) bad.push(`${id}: id ${r.id}`);
+            if (!M.ROW_TYPES.includes(r.type)) bad.push(`${id}/${r.id}: type ${r.type}`);
+        }
+        for (const s of blk.sections) {
+            if (!M.SECTION_KINDS.includes(s.kind)) bad.push(`${id}: kind ${s.kind}`);
+            if (s.kind === 'group' && blk.cols !== 4) bad.push(`${id}: grupo em ${blk.cols} colunas`);
+            for (const c of s.columns || []) if (!M.CID_COLUMN_TYPES.includes(c.type)) bad.push(`${id}/${c.id}: type ${c.type}`);
+        }
+        if (!rows.some((r) => r.required || r.requiredWhen) && !blk.sections.some((s) => s.kind === 'cid')) bad.push(`${id}: nenhuma linha obrigatória`);
+    }
+    igual(bad, [], 'catálogo');
+});
+
+// Lê as tabelas de linhas da spec §4: o texto da nota é contrato, e a spec vence o protótipo.
+function specRows() {
+    const out = {};
+    let block = null;
+    for (const line of specText.split('\n')) {
+        const h = line.match(/^#### `([a-z_]+)`/);
+        if (h) { block = h[1]; out[block] = out[block] || []; continue; }
+        if (/^## /.test(line)) block = null;
+        const m = block && line.match(/^\| `([a-z0-9_]+)` \| (.+?) \| ([a-z]+) \| (sim|não|conforme regra)( \| (sim|não) \| .*)? \|$/);
+        if (m) out[block].push({ id: m[1], en: m[2].trim(), type: m[3], required: m[4], na: m[6] || null });
+    }
+    return out;
+}
+
+check('cada linha do catálogo bate com a spec §4: id, rótulo EN, tipo, obrigatória e aceita NA, na mesma ordem', () => {
+    const spec = specRows();
+    igual(Object.keys(spec).sort(), Object.keys(EMB.blocks).sort(), 'blocos da spec');
+    const bad = [];
+    for (const [id, blk] of Object.entries(EMB.blocks)) {
+        const cat = blk.sections.flatMap((s) => (s.columns || s.rows).map((r) => ({
+            id: r.id, en: r.label.en, type: r.type,
+            required: r.requiredWhen ? 'conforme regra' : (r.required ? 'sim' : 'não'),
+            na: s.columns ? null : (r.na === false ? 'não' : 'sim'),
+        })));
+        if (JSON.stringify(cat) !== JSON.stringify(spec[id])) bad.push(`${id}:\n        spec:     ${JSON.stringify(spec[id])}\n        catálogo: ${JSON.stringify(cat)}`);
+    }
+    if (bad.length) throw new Error(bad.join('\n      '));
+});
+
+check('segmentos como na spec §2: ordem dos blocos, seleção, título só nas fases, títulos impressos', () => {
+    igual(EMB.segments.map((s) => [s.key, s.select, s.showTitle]), [['all', 'multi', false], ['sbse', 'single', true], ['mms', 'single', true]], 'segmentos');
+    igual(EMB.segments.map((s) => s.blocks.map((p) => p.b)), [
+        ['general', 'before', 'impl', 'after', 'consult'],
+        ['audit', 'impl_call', 'interim'],
+        ['triage', 'eligibility', 'audit', 'impl_call', 'interim'],
+    ], 'blocos por segmento');
+    for (const s of EMB.segments) for (const p of s.blocks) ok(specText.includes(`\`${p.b}\` — ${p.title}`), `título de ${s.key}/${p.b} fora da spec: ${p.title}`);
+    igual(EMB.segments[0].always, ['general'], 'General sempre ligado');
+});
+
+check('rótulos PT e ES vazios por ora (passo 8) e o EN completo', () => {
+    for (const blk of Object.values(EMB.blocks)) for (const s of blk.sections) for (const r of s.columns || s.rows) {
+        ok(r.label.en && r.label.pt === '' && r.label.es === '', `${r.id}: ${JSON.stringify(r.label)}`);
+    }
+});
+
+console.log('\nSemente (note_blocks e note_layouts)');
+
+check('a semente reconstrói o catálogo embutido sem perda (round-trip)', () => {
+    const [blocks, layouts] = seed;
+    igual([blocks.module, layouts.module], ['note_blocks', 'note_layouts'], 'módulos');
+    const rebuilt = {
+        blocks: Object.fromEntries(blocks.items.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((it) => [it.key, JSON.parse(it.value)])),
+        segments: layouts.items.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((it) => ({ key: it.key, ...JSON.parse(it.value) })),
+    };
+    igual(rebuilt, EMB, 'catálogo reconstruído');
+    ok(blocks.items.every((it) => it.lang === 'ALL' && it.label), 'lang/label');
+});
+
+check('o arquivo do Apps Script carrega a MESMA semente do JSON (nenhum dos dois está velho)', () => {
+    const gas = readFileSync(resolve(here, '../gas-backend/ContentSeed_NoteLayouts.js'), 'utf8');
+    // eslint-disable-next-line no-new-func
+    const payload = new Function(gas + '\nreturn CONTENT_SEED_NOTE_LAYOUTS;')();
+    igual(payload, seed, 'ContentSeed_NoteLayouts.js × note-layouts-seed.json');
+    ok(/function seedNoteLayoutsNow\(\)/.test(gas), 'seedNoteLayoutsNow()');
 });
 
 console.log(`\n${total - fail}/${total} checagens ok`);
