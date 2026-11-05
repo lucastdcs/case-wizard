@@ -120,7 +120,10 @@ This file differs from the long-term roadmap: it describes what is happening **n
          gera `gas-backend/seeds/note-layouts-seed.json` e `gas-backend/ContentSeed_NoteLayouts.js`
          (`seedNoteLayoutsNow()`), script `seed:note-layouts`; molde: `generate-tasks-seed.mjs`.
          **Pronto quando** um teste de round-trip semente → serviço = embutido (molde `test:tasks`).
-      3. **Backend (Apps Script).** `gas-backend/ContentAPI.js`: acrescente `note_blocks` e
+      3. [x] **Backend (Apps Script).** *(feito: `test:content` 253, com 13 casos novos; 6 mutações
+         da validação pegas. Ajustadas as duas listas escritas à mão do preset de QA no teste.
+         Nada publicado; mas **todo push nesta branch dispara o `deploy.yml`**, que faz `clasp
+         push` do backend de dev: os módulos passam a existir lá, vazios.)* `gas-backend/ContentAPI.js`: acrescente `note_blocks` e
          `note_layouts` a `CONTENT_MODULES`; validação no servidor conforme spec §10
          (`assertValidNoteBlock_`, `assertValidNoteLayout_`); `id` de linha imutável depois de
          criado. Papéis: ADR-0013 (módulo novo herda o preset), no molde de `note_template` e
