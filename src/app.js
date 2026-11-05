@@ -20,6 +20,7 @@ import { DataService, fetchUserProfile } from './modules/shared/data-service.js'
 import { getAgentEmail, setUserProfile } from './modules/shared/page-data.js';
 import { applyProfileLanguage, getLanguage } from './modules/shared/i18n.js';
 import { UserPrefsService } from './modules/shared/user-prefs-service.js';
+import { PillLayoutService } from './modules/shared/pill-layout.js';
 
 // 2. Importação do Núcleo Compartilhado
 import { initCommandCenter } from './modules/shared/command-center.js';
@@ -138,10 +139,12 @@ function initApp() {
             // sendo hispanofalante, já que o perfil ainda não teria chegado.
             const agentEmail = getAgentEmail();
 
-            // Preferências do agente (hoje: os atalhos do Ctrl+K). Não bloqueia
-            // nada: a tela já abre com o cache local e se atualiza quando a
-            // planilha responder - o Ctrl+K relê a lista a cada abertura.
-            UserPrefsService.sync();
+            // Preferências do agente (atalhos do Ctrl+K e layout da pílula). Não
+            // bloqueia nada: a tela já abre com o cache local e se atualiza
+            // quando a planilha responder - o Ctrl+K relê a lista a cada
+            // abertura. A pílula, que é desenhada uma vez, precisa ser avisada:
+            // numa máquina nova o layout da nuvem chega depois do primeiro frame.
+            UserPrefsService.sync().then(() => PillLayoutService.refresh());
 
             const languagePromise = agentEmail
                 ? fetchUserProfile(agentEmail.split('@')[0])

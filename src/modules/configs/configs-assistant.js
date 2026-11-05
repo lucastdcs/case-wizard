@@ -12,6 +12,7 @@ import {
     getOutputLanguage, setOutputLanguage, onOutputLanguageChange,
 } from "../shared/i18n.js";
 import { createShortcutsSection } from "./shortcuts-section.js";
+import { createPillSection } from "./pill-section.js";
 import { FEEDBACK_FORM_URL, DOCS_URL } from "../shared/config.js";
 
 const CONFIGS_DICT = {
@@ -65,6 +66,17 @@ const CONFIGS_DICT = {
         scSaving: "Salvando…",
         scSaved: "Atalho salvo!",
         scSavedLocal: "Atalho salvo neste navegador (sem conexão com a nuvem).",
+        plSectionTitle: "Pílula e Gaveta",
+        plDesc: "Escolha o que fica fixado na pílula (até {max}) e o que fica guardado na gaveta, atrás do botão de grade. Arraste para reordenar. Tudo continua disponível no Ctrl+K.",
+        plPinnedTitle: "Na pílula",
+        plDrawerTitle: "Na gaveta",
+        plPinnedEmpty: "Nenhum módulo na pílula: só o botão de grade aparece.",
+        plMoveToDrawer: "Guardar na gaveta",
+        plMoveToPill: "Fixar na pílula",
+        plFull: "A pílula comporta no máximo {max} módulos",
+        plReorder: "Reordenar (arraste ou use as setas)",
+        plReset: "Restaurar padrão",
+        plResetConfirm: "Restaurar a pílula e a gaveta para o padrão?",
     },
     es: {
         title: "Configuración",
@@ -116,6 +128,17 @@ const CONFIGS_DICT = {
         scSaving: "Guardando…",
         scSaved: "¡Atajo guardado!",
         scSavedLocal: "Atajo guardado en este navegador (sin conexión con la nube).",
+        plSectionTitle: "Barra flotante y Cajón",
+        plDesc: "Elige qué queda fijado en la barra flotante (hasta {max}) y qué se guarda en el cajón, detrás del botón de cuadrícula. Arrastra para reordenar. Todo sigue disponible en Ctrl+K.",
+        plPinnedTitle: "En la barra",
+        plDrawerTitle: "En el cajón",
+        plPinnedEmpty: "Ningún módulo en la barra: solo aparece el botón de cuadrícula.",
+        plMoveToDrawer: "Guardar en el cajón",
+        plMoveToPill: "Fijar en la barra",
+        plFull: "La barra admite como máximo {max} módulos",
+        plReorder: "Reordenar (arrastra o usa las flechas)",
+        plReset: "Restaurar valores predeterminados",
+        plResetConfirm: "¿Restaurar la barra y el cajón a los valores predeterminados?",
     },
     en: {
         title: "Settings",
@@ -167,6 +190,17 @@ const CONFIGS_DICT = {
         scSaving: "Saving\u2026",
         scSaved: "Shortcut saved!",
         scSavedLocal: "Shortcut saved in this browser (no cloud connection).",
+        plSectionTitle: "Pill & Drawer",
+        plDesc: "Choose what stays pinned on the pill (up to {max}) and what is stowed in the drawer, behind the grid button. Drag to reorder. Everything is still available in Ctrl+K.",
+        plPinnedTitle: "On the pill",
+        plDrawerTitle: "In the drawer",
+        plPinnedEmpty: "No modules on the pill: only the grid button shows.",
+        plMoveToDrawer: "Stow in the drawer",
+        plMoveToPill: "Pin to the pill",
+        plFull: "The pill holds at most {max} modules",
+        plReorder: "Reorder (drag or use the arrows)",
+        plReset: "Restore defaults",
+        plResetConfirm: "Restore the pill and the drawer to the defaults?",
     },
 };
 
@@ -484,6 +518,11 @@ export function initConfigsAssistant() {
     const shortcutsSection = createShortcutsSection(t, COLORS);
     container.appendChild(shortcutsSection);
 
+    // --- SEÇÃO: PÍLULA E GAVETA ---
+    // Mora junto dos atalhos: as duas são "meu espaço de trabalho".
+    const pillSection = createPillSection(t, COLORS);
+    container.appendChild(pillSection);
+
     // --- SEÇÃO: SOM ---
     const soundSection = document.createElement("div");
     soundSection.className = "cw-configs-section";
@@ -583,6 +622,7 @@ export function initConfigsAssistant() {
         syncLangToggleButtons();
 
         shortcutsSection.applyTexts();
+        pillSection.applyTexts();
 
         soundSection.querySelector(".js-sound-section-title").textContent = t('soundSectionTitle');
         soundSection.querySelector(".js-sound-label").textContent = t('soundLabel');
@@ -617,6 +657,7 @@ export function initConfigsAssistant() {
             // sem isto, ele abriria Configurações e não veria o que acabou de
             // salvar.
             shortcutsSection.refresh();
+            pillSection.refresh();
             lockBodyScroll();
             SoundManager.playClick();
         } else {

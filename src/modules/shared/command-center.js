@@ -8,9 +8,11 @@ import { getAgentEmail } from './page-data.js';
 import { esperar, clamp } from './dom-utils.js';
 import { getCaseStreakToday, incrementCaseStreak } from './streak-tracker.js';
 import { getLanguage, onLanguageChange } from './i18n.js';
+import { PillLayoutService, PILL_MODULE_IDS, moduleLabel } from './pill-layout.js';
 
 const CC_DICT = {
     pt: {
+        more: "Mais módulos",
         milestoneToast: (count) => `🔥 ${count} casos hoje!`,
         quickSearch: "Busca rápida: Ctrl/Cmd+K",
         casesToday: "Casos concluídos hoje",
@@ -20,6 +22,7 @@ const CC_DICT = {
         devEnvTitle: (fingerprint, endpoint) => `Ambiente de desenvolvimento — implantação …${fingerprint} (${endpoint})`,
     },
     es: {
+        more: "Más módulos",
         milestoneToast: (count) => `🔥 ¡${count} casos hoy!`,
         quickSearch: "Búsqueda rápida: Ctrl/Cmd+K",
         casesToday: "Casos completados hoy",
@@ -29,6 +32,7 @@ const CC_DICT = {
         devEnvTitle: (fingerprint, endpoint) => `Entorno de desarrollo — implementación …${fingerprint} (${endpoint})`,
     },
     en: {
+        more: "More modules",
         milestoneToast: (count) => `🔥 ${count} cases today!`,
         quickSearch: "Quick search: Ctrl/Cmd+K",
         casesToday: "Cases completed today",
@@ -73,7 +77,34 @@ const CIRCLE_SIZE = 50; // .cw-pill.collapsed width/height
 // colapso pior por fora.
 let collapsePillRef = null;
 
+const ICONS = {
+  check: `<svg viewBox="0 0 24 24" fill="none" stroke="#81C995" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+  notes: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
+  precall: `<svg viewBox="0 0 24 24"><path d="M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11L2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z"/></svg>`,
+  email: `<svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>`,
+  script: `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
+  links: `<svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>`,
+  broadcast: `<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
+  main: `<svg class="cw-logo-base" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>`,
+  // Camada de cima do cross-fade do hover (bug/2 do fogo): mesmo path do
+  // "main", com o gradiente das 4 cores de marca já embutido no próprio
+  // SVG (em vez de mask+background-image, que não animam).
+  mainSpark: `<svg class="cw-logo-spark" viewBox="0 0 24 24"><defs><linearGradient id="cw-spark-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4285F4"/><stop offset="33%" stop-color="#EA4335"/><stop offset="66%" stop-color="#FBBC05"/><stop offset="100%" stop-color="#34A853"/></linearGradient></defs><path fill="url(#cw-spark-grad)" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
+  timezone: `<svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`,
+  library: `<svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>`, // [NOVO]
+  configs: `<svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>`,
+  bauform: `<svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14zm-1-6h-3v3h-2v-3H8v-2h3V8h2v3h3v2z"/></svg>`,
+  // Grade 3x3 ("apps"): o botão que abre a gaveta de módulos guardados.
+  apps: `<svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>`,
+};
+
 // --- FUNÇÕES EXPORTADAS ---
+
+// O mesmo SVG do botão da pílula, para a tela de Configurações mostrar o ícone
+// que o agente reconhece sem duplicar o desenho.
+export function moduleIcon(id) {
+  return ICONS[id] || '';
+}
 
 export function updateNotesBadge(hasDrafts) {
   const btn = document.getElementById('cw-btn-notes');
@@ -349,48 +380,31 @@ export function initCommandCenter(actions, splashDone) {
                     visibility 0s linear 0s;
             }
 
-            /* --- CASCATAS DE ENTRADA ---
-               Índices recalculados pro DOM atual (admin-tag e streak-badge
-               entraram no meio do markup depois que isso foi escrito
-               originalmente, empurrando todo mundo 2 posições - a lista
-               antiga estava aplicando o delay do "Grip" no .cw-main-logo, o
-               do "Notes" no admin-tag, etc. Efeito colateral: o logo ganhava
-               um delay de abertura de 0.15s que não devia existir (ver
-               .cw-pill:not(.collapsed) .cw-main-logo acima, que quer delay
-               0). admin-tag/streak-badge saem da lista de propósito: cada
-               um já tem sua própria transição dedicada. */
-            .cw-pill:not(.collapsed) > *:nth-child(5) { transition-delay: 0.15s; } /* Grip */
-            .cw-pill:not(.collapsed) > *:nth-child(6) { transition-delay: 0.17s; } /* Notes */
-            .cw-pill:not(.collapsed) > *:nth-child(7) { transition-delay: 0.19s; } /* BAU Form */
-            .cw-pill:not(.collapsed) > *:nth-child(8) { transition-delay: 0.21s; } /* Email */
-            .cw-pill:not(.collapsed) > *:nth-child(9) { transition-delay: 0.23s; } /* Script */
-            .cw-pill:not(.collapsed) > *:nth-child(10) { transition-delay: 0.25s; } /* Links */
-            .cw-pill:not(.collapsed) > *:nth-child(11) { transition-delay: 0.27s; } /* Library */
-            .cw-pill:not(.collapsed) > *:nth-child(12) { transition-delay: 0.29s; } /* Timezone */
-            .cw-pill:not(.collapsed) > *:nth-child(13) { transition-delay: 0.31s; } /* Configs */
-            .cw-pill:not(.collapsed) > *:nth-child(14) { transition-delay: 0.33s; } /* Sep */
-            .cw-pill:not(.collapsed) > *:nth-child(15) { transition-delay: 0.35s; } /* Broadcast */
+            /* --- CASCATAS DE ENTRADA E SAÍDA ---
+               O atraso de cada item vem do índice dele (--cw-i, gravado por
+               applyLayout() sempre que o layout muda), e não de :nth-child com
+               posições fixas: a ordem dos ícones agora é escolha do agente, e
+               a lista antiga dava o atraso ao item errado assim que algo saía
+               do lugar (já errava em dev, onde o selo "Dev" empurra todo mundo
+               uma posição). Índices: punho = 0, fixados = 1..n, separador,
+               botão Mais. --cw-n é o último deles.
 
-            /* --- CASCATA DE SAÍDA ---
-               Antes todo o conteúdo sumia de uma vez só (delay 0s pra todo
-               mundo) - os 9 botões se sobrepunham num único flash em vez de
-               cada um ter seu próprio momento. Agora sai em cascata reversa
-               (o último a aparecer na abertura é o primeiro a sumir no
-               fechamento - o mesmo "unwind" de um zíper fechando de baixo
-               pra cima), com folga suficiente entre cada um pra dar tempo de
-               respirar antes da cápsula (que só começa a encolher depois -
-               ver .cw-pill.collapsed acima) entrar em cena. */
-            .cw-pill.collapsed > *:nth-child(15) { transition-delay: 0s; }    /* Broadcast */
-            .cw-pill.collapsed > *:nth-child(14) { transition-delay: 0.02s; } /* Sep */
-            .cw-pill.collapsed > *:nth-child(13) { transition-delay: 0.04s; } /* Configs */
-            .cw-pill.collapsed > *:nth-child(12) { transition-delay: 0.06s; } /* Timezone */
-            .cw-pill.collapsed > *:nth-child(11) { transition-delay: 0.08s; } /* Library */
-            .cw-pill.collapsed > *:nth-child(10) { transition-delay: 0.10s; } /* Links */
-            .cw-pill.collapsed > *:nth-child(9)  { transition-delay: 0.12s; } /* Script */
-            .cw-pill.collapsed > *:nth-child(8)  { transition-delay: 0.14s; } /* Email */
-            .cw-pill.collapsed > *:nth-child(7)  { transition-delay: 0.16s; } /* BAU Form */
-            .cw-pill.collapsed > *:nth-child(6)  { transition-delay: 0.18s; } /* Notes */
-            .cw-pill.collapsed > *:nth-child(5)  { transition-delay: 0.20s; } /* Grip */
+               Entrada: 0.15s + 0.02s por posição, de cima pra baixo.
+               Saída: ordem reversa (o último a entrar é o primeiro a sair - o
+               mesmo "unwind" de zíper de antes), pra cada ícone ter o seu
+               momento antes de a cápsula começar a encolher (delay 0.38s, ver
+               .cw-pill.collapsed). Com 7 fixados --cw-n = 9, ou seja, a
+               cascata de saída dura 0.18s, dentro da folga (era 0.20s). */
+            .cw-pill:not(.collapsed) > .cw-grip,
+            .cw-pill:not(.collapsed) > .cw-btn,
+            .cw-pill:not(.collapsed) > .cw-sep {
+                transition-delay: calc(0.15s + var(--cw-i, 0) * 0.02s);
+            }
+            .cw-pill.collapsed > .cw-grip,
+            .cw-pill.collapsed > .cw-btn,
+            .cw-pill.collapsed > .cw-sep {
+                transition-delay: calc((var(--cw-n, 0) - var(--cw-i, 0)) * 0.02s);
+            }
 
             /* --- ESTILOS DOS BOTÕES --- */
             .cw-btn {
@@ -437,6 +451,67 @@ export function initCommandCenter(actions, splashDone) {
             .cw-btn.broadcast:hover { color: ${COLORS.orange}; filter: drop-shadow(0 0 8px rgba(249, 171, 0, 0.6)); }
             .cw-btn.timezone:hover { color: ${COLORS.teal}; filter: drop-shadow(0 0 8px rgba(0, 191, 165, 0.6)); }
             .cw-btn.configs:hover { color: ${COLORS.gray}; filter: drop-shadow(0 0 8px rgba(154, 160, 166, 0.6)); }
+
+            /* --- BOTÃO MAIS + GAVETA ---
+               A gaveta é um elemento IRMÃO da pílula (filho de <body>), não
+               um filho dela: mesma lição do .cw-processing-card mais abaixo -
+               a pílula é fixed, arrastável, com transição própria e regras
+               em tudo que é filho direto, e abrir algo DENTRO dela significa
+               brigar com esse CSS. Fora, entrada e saída são só opacity +
+               scale, e o fundo pode ser vidro de verdade (backdrop-filter
+               aninhado dentro do da pílula não borra o que está atrás dela).
+
+               "Mais" ganha .active quando um módulo guardado está aberto
+               (reaproveita o ponto de .cw-btn.active::before e faz a pílula
+               não recolher por baixo dele), .open enquanto a gaveta está
+               aberta e .has-signal quando algum módulo guardado tem aviso
+               pendente (Avisos não lidos, rascunho do Case Notes) - sem
+               isso, guardar esses módulos os deixaria mudos. */
+            .cw-btn.more.open,
+            .cw-btn.more.active { color: ${COLORS.iconActive}; background: ${COLORS.glassHighlight}; }
+            .cw-btn.more .cw-more-signal { display: none; }
+            .cw-btn.more.has-signal .cw-more-signal { display: block; }
+
+            .cw-drawer {
+                position: fixed; z-index: 2147483647;
+                display: grid; grid-template-columns: repeat(3, 88px); gap: 2px;
+                padding: 10px; box-sizing: border-box;
+                background: rgba(32, 33, 36, 0.9);
+                backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
+                border: 1px solid ${COLORS.glassBorder}; border-radius: 22px;
+                box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+                font-family: 'Google Sans', Roboto, sans-serif;
+                /* visibility (e não display:none) mantém o layout medível pra
+                   posicionar antes de abrir; também tira os botões do Tab. */
+                opacity: 0; transform: scale(0.92); visibility: hidden; pointer-events: none;
+                transition: opacity 0.18s var(--cw-ease-accelerate),
+                            transform 0.18s var(--cw-ease-accelerate),
+                            visibility 0s linear 0.18s;
+            }
+            .cw-drawer * { box-sizing: border-box; }
+            .cw-drawer.open {
+                opacity: 1; transform: scale(1); visibility: visible; pointer-events: auto;
+                transition: opacity 0.22s var(--cw-ease-standard),
+                            transform 0.28s var(--cw-ease-spring),
+                            visibility 0s;
+            }
+            .cw-drawer-tile {
+                display: flex; flex-direction: column; align-items: center; gap: 4px;
+                padding: 8px 4px 6px; border-radius: 14px; cursor: pointer;
+                transition: background-color 0.15s var(--cw-ease-standard);
+            }
+            .cw-drawer-tile:hover { background: rgba(255,255,255,0.08); }
+            .cw-drawer-label {
+                font-size: 11px; font-weight: 500; line-height: 1.25; color: #E8EAED;
+                text-align: center; max-width: 80px; overflow-wrap: break-word;
+            }
+            /* Aqui o nome já está escrito embaixo do ícone: a dica flutuante só
+               repetiria (e, sem .cw-pill.side-*, ficaria sem posição). */
+            .cw-drawer .cw-btn::after { display: none; }
+            @media (prefers-reduced-motion: reduce) {
+                .cw-drawer, .cw-drawer.open { transition: opacity 0.15s ease !important; transform: none !important; }
+                .cw-drawer-tile { transition: none !important; }
+            }
 
             .cw-btn::before {
                 content: ''; position: absolute; bottom: 2px; left: 50%; width: 4px; height: 4px; border-radius: 50%;
@@ -783,24 +858,6 @@ export function initCommandCenter(actions, splashDone) {
     return `<div id="cw-env-tag" class="cw-env-badge" title="${titulo}">Dev</div>`;
   }
 
-  const ICONS = {
-    check: `<svg viewBox="0 0 24 24" fill="none" stroke="#81C995" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-    notes: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
-    precall: `<svg viewBox="0 0 24 24"><path d="M22 7h-9v2h9V7zm0 8h-9v2h9v-2zM5.54 11L2 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 11zm0 8L2 15.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L5.54 19z"/></svg>`,
-    email: `<svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>`,
-    script: `<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
-    links: `<svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>`,
-    broadcast: `<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
-    main: `<svg class="cw-logo-base" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>`,
-    // Camada de cima do cross-fade do hover (bug/2 do fogo): mesmo path do
-    // "main", com o gradiente das 4 cores de marca já embutido no próprio
-    // SVG (em vez de mask+background-image, que não animam).
-    mainSpark: `<svg class="cw-logo-spark" viewBox="0 0 24 24"><defs><linearGradient id="cw-spark-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4285F4"/><stop offset="33%" stop-color="#EA4335"/><stop offset="66%" stop-color="#FBBC05"/><stop offset="100%" stop-color="#34A853"/></linearGradient></defs><path fill="url(#cw-spark-grad)" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
-    timezone: `<svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`,
-    library: `<svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>`, // [NOVO]
-    configs: `<svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>`,
-    bauform: `<svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14zm-1-6h-3v3h-2v-3H8v-2h3V8h2v3h3v2z"/></svg>`,
-  };
 
   const pill = document.createElement("div");
   pill.id = "cw-floating-trigger";
@@ -819,17 +876,8 @@ export function initCommandCenter(actions, splashDone) {
         <div class="cw-grip js-cc-drag" title="${cct('drag')}">
             <div class="cw-grip-bar"></div>
         </div>
-        <button class="cw-btn notes" id="cw-btn-notes" data-label="Case Notes">${ICONS.notes}</button>
-        <button class="cw-btn precall" id="cw-btn-precall" data-label="Pre-call Checklist">${ICONS.precall}</button>
-        <button class="cw-btn bauform" id="cw-btn-bauform" data-label="BAU Form">${ICONS.bauform}</button>
-        <button class="cw-btn email" id="cw-btn-email" data-label="Email Assistant">${ICONS.email}</button>
-        <button class="cw-btn script" id="cw-btn-script" data-label="Call Script">${ICONS.script}</button>
-        <button class="cw-btn links" id="cw-btn-links" data-label="Links">${ICONS.links}</button>
-        <button class="cw-btn library" id="cw-btn-library" data-label="My Library">${ICONS.library}</button>
-        <button class="cw-btn timezone" id="cw-btn-timezone" data-label="Time Zones">${ICONS.timezone}</button>
-        <button class="cw-btn configs" id="cw-btn-configs" data-label="Configurações">${ICONS.configs}</button>
         <div class="cw-sep"></div>
-        <button class="cw-btn broadcast" id="cw-btn-broadcast" data-label="Avisos">${ICONS.broadcast}</button>
+        <button class="cw-btn more" id="cw-btn-more" aria-expanded="false" aria-controls="cw-drawer">${ICONS.apps}<span class="cw-badge cw-more-signal"></span></button>
         <div class="cw-status-container">
             <div class="cw-dots" id="cw-loader"><span></span><span></span><span></span></div>
             <div class="cw-check" id="cw-success" style="display:none;">${ICONS.check}</div>
@@ -854,6 +902,7 @@ export function initCommandCenter(actions, splashDone) {
       const info = getBackendInfo();
       envTag.title = cct('devEnvTitle')(info.fingerprint, info.endpoint);
     }
+    applyLabels();
   });
 
   // 3. LISTENERS
@@ -868,35 +917,185 @@ export function initCommandCenter(actions, splashDone) {
     actionFn();
   };
 
-  pill.querySelector(".notes").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleNotes); };
-  pill.querySelector(".precall").onclick = (e) => { e.stopPropagation(); toggleModule(actions.togglePrecall); };
-  pill.querySelector(".bauform").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleBAUForm); };
-  pill.querySelector(".email").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleEmail); };
-  pill.querySelector(".script").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleScript); };
-  pill.querySelector(".links").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleLinks); };
-  pill.querySelector(".library").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleLibrary); }; // [NOVO]
-  pill.querySelector(".timezone").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleTimezone); };
-  pill.querySelector(".configs").onclick = (e) => { e.stopPropagation(); toggleModule(actions.toggleConfigs); };
-
-  pill.querySelector(".broadcast").onclick = (e) => {
-    e.stopPropagation();
-    toggleModule(() => {
-      const badge = e.currentTarget.querySelector('.cw-badge');
+  const moduleActions = {
+    notes: actions.toggleNotes,
+    precall: actions.togglePrecall,
+    bauform: actions.toggleBAUForm,
+    email: actions.toggleEmail,
+    script: actions.toggleScript,
+    links: actions.toggleLinks,
+    library: actions.toggleLibrary,
+    timezone: actions.toggleTimezone,
+    configs: actions.toggleConfigs,
+    broadcast: () => {
+      const badge = buttons.broadcast.querySelector('.cw-badge');
       if (badge) badge.remove();
       if (actions.broadcastControl) actions.broadcastControl.toggle();
-    });
+    },
   };
 
-  // Hover sounds for all buttons
-  pill.querySelectorAll('.cw-btn').forEach(btn => {
+  // --- BOTÕES, GAVETA E LAYOUT ---
+  // Cada botão nasce UMA vez e só muda de lugar quando o layout muda (pílula <->
+  // gaveta). É o que faz o estado que ele carrega viajar junto - .active, o
+  // ponto de rascunho do Case Notes, o badge de Avisos não lidos, o onclick - e
+  // o que mantém o id (cw-btn-<módulo>) único e achável por quem o procura:
+  // animations.js (de onde o genie nasce), o Avisos e o BAU Form.
+  const grip = pill.querySelector('.cw-grip');
+  const sep = pill.querySelector('.cw-sep');
+  const more = pill.querySelector('#cw-btn-more');
+
+  const drawer = document.createElement('div');
+  drawer.id = 'cw-drawer';
+  drawer.className = 'cw-drawer';
+  drawer.setAttribute('role', 'group');
+  document.body.appendChild(drawer);
+
+  const buttons = {};
+  const tiles = {};
+  PILL_MODULE_IDS.forEach((id) => {
+    const btn = document.createElement('button');
+    btn.className = `cw-btn ${id}`;
+    btn.id = `cw-btn-${id}`;
+    btn.innerHTML = ICONS[id];
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      toggleModule(moduleActions[id]);
+      // Escolheu, foi: depois do toggle, porque o genie lê a posição do botão
+      // (dentro da gaveta, se for o caso) na hora em que a janela abre.
+      closeDrawer();
+    };
     btn.addEventListener('mouseenter', () => SoundManager.playHover());
+    buttons[id] = btn;
+
+    // O nome fica escrito embaixo do ícone: na gaveta não há a dica flutuante,
+    // e um ícone sozinho é justamente o que o agente já não distingue o
+    // bastante para a pílula ter crescido até aqui.
+    const tile = document.createElement('div');
+    tile.className = 'cw-drawer-tile';
+    tile.appendChild(Object.assign(document.createElement('span'), { className: 'cw-drawer-label' }));
+    tile.onclick = (e) => { if (!e.target.closest('button')) btn.click(); };
+    tiles[id] = tile;
   });
+
+  more.addEventListener('mouseenter', () => SoundManager.playHover());
+
+  function applyLabels() {
+    PILL_MODULE_IDS.forEach((id) => {
+      const name = moduleLabel(id);
+      buttons[id].dataset.label = name;
+      buttons[id].setAttribute('aria-label', name);
+      tiles[id].querySelector('.cw-drawer-label').textContent = name;
+    });
+    more.dataset.label = cct('more');
+    more.setAttribute('aria-label', cct('more'));
+    drawer.setAttribute('aria-label', cct('more'));
+  }
+
+  // Um módulo guardado na gaveta não pode ficar mudo nem invisível: "Mais"
+  // espelha o que acontece lá dentro (módulo aberto, aviso pendente). Observar
+  // a gaveta em vez de pedir a cada módulo que avise é o que mantém o
+  // broadcast-assistant e o updateNotesBadge intactos - eles continuam mexendo
+  // só no botão deles.
+  function syncMoreState() {
+    more.classList.toggle('active', !!drawer.querySelector('.cw-btn.active'));
+    more.classList.toggle('has-signal', !!drawer.querySelector('.cw-badge, .cw-dot-dirty'));
+  }
+  new MutationObserver(syncMoreState).observe(drawer, {
+    subtree: true, childList: true, attributes: true, attributeFilter: ['class'],
+  });
+
+  // Índices (--cw-i / --cw-n) alimentam a cascata de abrir/fechar no CSS.
+  function applyLayout({ pinned, drawer: stowed }) {
+    pinned.forEach((id) => pill.insertBefore(buttons[id], sep));
+
+    drawer.replaceChildren();
+    stowed.forEach((id) => {
+      tiles[id].prepend(buttons[id]);
+      drawer.appendChild(tiles[id]);
+    });
+
+    const flow = [grip, ...pinned.map((id) => buttons[id]), sep, more];
+    flow.forEach((el, i) => el.style.setProperty('--cw-i', i));
+    pill.style.setProperty('--cw-n', flow.length - 1);
+    syncMoreState();
+  }
+
+  let drawerOpen = false;
+
+  function positionDrawer() {
+    const GAP = 12, EDGE = 8;
+    const pillRect = pill.getBoundingClientRect();
+    const moreRect = more.getBoundingClientRect();
+    const width = drawer.offsetWidth, height = drawer.offsetHeight;
+    const toTheLeft = pill.classList.contains('side-right');
+
+    // Abre para dentro da tela, do lado oposto à borda em que a pílula está
+    // encostada, com a base alinhada à do botão Mais (último da pílula).
+    const left = clamp(toTheLeft ? pillRect.left - GAP - width : pillRect.right + GAP,
+      EDGE, window.innerWidth - width - EDGE);
+    const top = clamp(moreRect.bottom - height + 10, EDGE, window.innerHeight - height - EDGE);
+
+    drawer.style.left = `${left}px`;
+    drawer.style.top = `${top}px`;
+    drawer.style.transformOrigin = `${toTheLeft ? width : 0}px ${clamp(moreRect.top + moreRect.height / 2 - top, 0, height)}px`;
+  }
+
+  function onOutsidePointer(e) {
+    if (drawer.contains(e.target) || more.contains(e.target)) return;
+    closeDrawer();
+  }
+
+  // Captura + stopPropagation: o Esc fecha a gaveta e só ela. O listener global
+  // de animations.js (que fecha o módulo aberto) nem chega a ver essa tecla.
+  function onDrawerKey(e) {
+    if (e.key !== 'Escape') return;
+    e.stopPropagation();
+    closeDrawer({ restoreFocus: true });
+  }
+
+  function openDrawer() {
+    if (drawerOpen || pill.classList.contains('collapsed')) return;
+    positionDrawer();
+    drawerOpen = true;
+    drawer.classList.add('open');
+    more.classList.add('open');
+    more.setAttribute('aria-expanded', 'true');
+    document.addEventListener('mousedown', onOutsidePointer, true);
+    document.addEventListener('keydown', onDrawerKey, true);
+  }
+
+  function closeDrawer({ restoreFocus = false } = {}) {
+    if (!drawerOpen) return;
+    drawerOpen = false;
+    drawer.classList.remove('open');
+    more.classList.remove('open');
+    more.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('mousedown', onOutsidePointer, true);
+    document.removeEventListener('keydown', onDrawerKey, true);
+    if (restoreFocus) more.focus();
+  }
+
+  more.onclick = (e) => {
+    e.stopPropagation();
+    SoundManager.playClick();
+    if (drawerOpen) { closeDrawer(); return; }
+    openDrawer();
+    // Aberta pelo teclado (Enter/Espaço no Mais), o foco entra na gaveta.
+    if (e.detail === 0) { const first = drawer.querySelector('button'); if (first) first.focus(); }
+  };
+
+  // Posição calculada na abertura: resize não a corrige, só fecha.
+  window.addEventListener('resize', () => closeDrawer());
 
   if (actions.broadcastControl && actions.broadcastControl.hasUnread) {
     const badge = document.createElement('div');
     badge.className = 'cw-badge';
-    pill.querySelector('.broadcast').appendChild(badge);
+    buttons.broadcast.appendChild(badge);
   }
+
+  applyLabels();
+  applyLayout(PillLayoutService.get());
+  PillLayoutService.onChange(applyLayout);
 
   // --- ABRIR/FECHAR (animação de altura real) ---
   // CSS não sabe interpolar de/para "auto" ou "none" (era o problema do
@@ -962,6 +1161,7 @@ export function initCommandCenter(actions, splashDone) {
 
   function collapsePill(playSound = true) {
     if (pill.classList.contains('collapsed')) return;
+    closeDrawer();
 
     if (prefersReducedMotion()) {
       pill.classList.add('collapsed');
@@ -991,7 +1191,7 @@ export function initCommandCenter(actions, splashDone) {
   // --- LÓGICA DE FECHAMENTO AUTOMÁTICO ---
   let closeTimer = null;
 
-  pill.onmouseleave = () => {
+  function scheduleAutoCollapse() {
     // Durante o carregamento a pílula já está colapsada por conta própria
     // (ver triggerProcessingAnimation) - o timer de 3s não tem nada a fazer.
     if (document.querySelector('.cw-processing-card')) return;
@@ -1007,11 +1207,19 @@ export function initCommandCenter(actions, splashDone) {
       if (isAnyActive) return;
       collapsePill();
     }, 3000);
-  };
+  }
 
-  pill.onmouseenter = () => {
+  function cancelAutoCollapse() {
     if (closeTimer) clearTimeout(closeTimer);
-  };
+  }
+
+  pill.onmouseleave = scheduleAutoCollapse;
+  pill.onmouseenter = cancelAutoCollapse;
+  // A gaveta é irmã da pílula: passar do ícone para ela dispara mouseleave na
+  // pílula, e sem isto a pílula recolheria (levando a gaveta junto) enquanto o
+  // agente ainda escolhe.
+  drawer.onmouseenter = cancelAutoCollapse;
+  drawer.onmouseleave = scheduleAutoCollapse;
 
   // 4. ANIMAÇÃO INICIAL
   (async function startAnimation() {
@@ -1072,6 +1280,7 @@ export function initCommandCenter(actions, splashDone) {
     const dy = e.clientY - startY;
     if (!isDragging && Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
       isDragging = true;
+      closeDrawer();
       pill.classList.add('dragging');
       pill.style.transition = "none";
       if (closeTimer) clearTimeout(closeTimer);
