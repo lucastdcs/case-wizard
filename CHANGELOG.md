@@ -21,7 +21,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   `seedNoteLayoutsNow()`, **ainda não rodada na planilha**). No backend, os dois módulos
   novos entram na Central com validação no servidor (`assertValidNoteBlock_`,
   `assertValidNoteLayout_`: grade que fecha, `kind`/`type` conhecidos, `id` de linha único
-  e imutável, segmento só com blocos no ar) e o preset de QA propõe nos dois.
+  e imutável, segmento só com blocos no ar) e o preset de QA propõe nos dois. No app, o
+  serviço `note-table-service.js` mescla o publicado com o embutido pelo id: item corrompido
+  não derruba os outros, `kind`/`type` desconhecido some com aviso no console e módulo vazio
+  (o estado de hoje da planilha) deixa o agente com o embutido.
   `npm run test:note-table` e `npm run test:content`.
 - **Pílula com gaveta e layout por agente** (ADR-0023). A pílula crescia ~54px por
   módulo: com 10 botões media 641px e, num viewport de notebook (650px), perdia o
