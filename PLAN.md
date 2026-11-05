@@ -91,7 +91,11 @@ This file differs from the long-term roadmap: it describes what is happening **n
       - **tudo configurável na Central**, com a divisão "o quê = Central, como = código" (spec §10).
 
       **Passos (commits atômicos, nesta ordem; cada um fecha com os testes que cita):**
-      1. **Modelo e renderizador puros + teste.** Crie `src/modules/notes-table/note-table-model.js`
+      1. [x] **Modelo e renderizador puros + teste.** *(feito: 39 checagens; 14 mutações do
+         código de produção, cada uma derrubando a checagem certa: consentimento ×2, Europa,
+         dias úteis, LM, ordem do extras, pendente na saída, escape, Tag Support ×2, NA em
+         lote, span do rótulo, tasks no ECL, pré-seleção. Escolha: `na` digitado numa linha
+         que não aceita NA fica **pendente** (o protótipo deixava passar o texto `na`).)* Crie `src/modules/notes-table/note-table-model.js`
          (sem DOM; o estado entra por parâmetro, nada global): condições (`matches`, `rowVisible`,
          `rowRequired`), `resolveRow`, `missingList`, `applyAuto` (hoje, CID, follow-up,
          consentimento: spec §6 e §7), `addBusinessDays`, texto das tasks com o aviso do Tag Support
