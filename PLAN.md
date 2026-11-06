@@ -203,7 +203,15 @@ This file differs from the long-term roadmap: it describes what is happening **n
          importa módulo ES: gere o include a partir do mesmo fonte **ou** copie e prove com um teste
          dourado que as duas saídas são idênticas. **Nunca duas versões soltas.** O editor do
          `note_template` antigo **não muda**. `smoke:content` ganha casos.
-      8. **Idiomas.** Rascunhe os rótulos PT e ES do catálogo (51 rótulos únicos) e marque como
+      8. [x] **Idiomas.** *(feito: 89 rótulos (60 textos únicos) em PT e ES e 74 dicas em ES e EN,
+         RASCUNHO não revisado (ver Waiting). Siglas e nomes de ferramenta ficam (Speakeasy ID, CID,
+         GAM, Tag Diagnostics, EC Qualdash) e "On Call signaled on time?" é igual nos três (espelha o
+         CRM, rulebook §4). Rótulo pelo idioma da nota (`Business language` do CRM, senão
+         `getOutputLanguage()`), cromo por `getLanguage()`; `test:i18n` acha os dicionários novos
+         sozinho; `smoke:i18n` +3 com interface EN, atendimento ES no perfil e nota PT, inclusive
+         depois de trocar a interface e de Limpar. 2 mutações pegas. **Em aberto para o Lucas:** os
+         títulos de seção ("General Details (Mandatory)", "Additional Comments (Optional)") seguem
+         em inglês nos três idiomas, como no padrão; traduzi-los é decisão dele.)* Rascunhe os rótulos PT e ES do catálogo (51 rótulos únicos) e marque como
          **não revisados** em "Waiting". Chrome da tela em dicionário `{pt, es, en}`; rótulo da tabela
          por `getOutputLanguage()`, chrome por `getLanguage()`; rótulo sem tradução cai no EN, nunca
          no PT. `test:i18n` e `smoke:i18n` com os dois knobs **divergentes**.
@@ -269,7 +277,8 @@ This file differs from the long-term roadmap: it describes what is happening **n
       - **Colar uma caixa do `preview.html` num card de nota do CRM real** e dizer o que o editor
         preservou (`colgroup`, `border-radius`, `overflow`, fundos). **Bloqueia o release**, não o
         desenvolvimento.
-      - Revisão por falante nativo dos rótulos PT e ES (~100 textos).
+      - Revisão por falante nativo dos rótulos PT e ES (~100 textos) **e das dicas ES e EN** (74 cada),
+        rascunhadas em 2026-11-06 em `note-table-data.js` (e na semente).
       - Depois do release: `seedNoteLayoutsNow()` na planilha, na ordem do passo 10.
 
       **Definição de pronto:** todos os `test:*` verdes (inclusive `test:note-table`);
