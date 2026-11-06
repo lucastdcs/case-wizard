@@ -646,10 +646,22 @@ check('segmentos como na spec §2: ordem dos blocos, seleção, título só nas 
     igual(EMB.segments[0].always, ['general'], 'General sempre ligado');
 });
 
-check('rótulos PT e ES vazios por ora (passo 8) e o EN completo', () => {
+check('rótulos em EN, PT e ES em toda linha; dicas em PT, ES e EN (passo 8, rascunho não revisado)', () => {
     for (const blk of Object.values(EMB.blocks)) for (const s of blk.sections) for (const r of s.columns || s.rows) {
-        ok(r.label.en && r.label.pt === '' && r.label.es === '', `${r.id}: ${JSON.stringify(r.label)}`);
+        ok(r.label.en && r.label.pt && r.label.es, `${r.id}: ${JSON.stringify(r.label)}`);
+        if (r.hint) ok(r.hint.pt && r.hint.es && r.hint.en, `${r.id}: dica ${JSON.stringify(r.hint)}`);
     }
+});
+
+check('siglas e o que espelha o CRM não se traduzem; os valores Yes/No/NA também não', () => {
+    const all = Object.values(EMB.blocks).flatMap((b) => M.blockRows(b).concat(b.sections.flatMap((s) => s.columns || [])));
+    const by = (id) => all.find((r) => r.id === id).label;
+    for (const id of ['speakeasy', 'oncall']) igual([by(id).pt, by(id).es], [by(id).en, by(id).en], id);
+    const st = M.createNoteState({ substatus: 'SO - Implementation Only', tasks: [ACT], active: ['general', 'before'] });
+    M.applyAuto(EMB, st, CTX);
+    const pt = R.renderNoteHtml(EMB, st, { lang: 'pt' });
+    ok(pt.includes('Resumo da call:') && pt.includes('>Yes<') && pt.includes('>NA<') && pt.includes('Nota criada através do Cases Wizard.'), 'nota PT');
+    ok(!R.renderNoteHtml(EMB, st, { lang: 'es' }).includes('Resumo da call:'), 'nota ES com rótulo PT');
 });
 
 console.log('\nSemente (note_blocks e note_layouts)');

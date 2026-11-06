@@ -213,7 +213,7 @@ await check('Tag Support: Yes dispensa os prints de ACT (NA Auto) e põe o aviso
     await row('ts_used').locator('.nt-seg button', { hasText: 'Yes' }).click();
     const html = await prev();
     ok(html.includes('Tag criada/verificada'), 'sem o aviso do Win Criteria no idioma da nota (PT)');
-    ok(/Google Ads Conversion Status:<\/td><td[^>]*>NA</.test(html), 'print de Before não saiu NA na prévia');
+    ok(/Status da conversão no Google Ads:<\/td><td[^>]*>NA</.test(html), 'print de Before não saiu NA na prévia');
     await page.click(`${POP} .nt-auto-h`);
     ok(await row('b_status').locator('input').count() === 0 && (await row('b_status').innerText()).includes('NA') && await row('b_status').locator('.nt-tag').count() === 1, 'linha de Before sem NA Auto');
     await page.click(`${POP} .nt-auto-h`);
@@ -244,7 +244,8 @@ await check('"Siguiente" leva a outra linha pendente', async () => {
 await check('"Marcar el resto como NA" resolve o que aceita NA e não toca Call Summary nem Sub-status Reason', async () => {
     await page.click(`${POP} .nt-pbar .nt-btn.t`);
     const left = await page.locator(`${POP} .nt-form .nt-row.pending .nt-rl`).allInnerTexts();
-    igual(left.map((s) => s.trim()).sort(), ['Call Summary', 'Sub-status Reason'], 'pendentes');
+    // Os rótulos do formulário são os da nota (atendimento PT), não os da interface (ES).
+    igual(left.map((s) => s.trim()).sort(), ['Motivo do sub-status', 'Resumo da call'], 'pendentes');
 });
 
 await check('cenário rápido: o texto vai ao resumo em blocos com título em negrito e o motivo ao Sub-status Reason', async () => {
@@ -268,7 +269,8 @@ await check('Preencher insere no editor do CRM a tabela do contrato (sem pendent
     await page.click(`${POP} .nt-btn.p`);
     await page.waitForTimeout(4000);
     const html = await editorHtml();
-    ok(html.includes('<table') && html.includes('Additional Details') && html.includes('Call Summary:'), html.slice(0, 200));
+    ok(html.includes('<table') && html.includes('Additional Details') && html.includes('Resumo da call:'), html.slice(0, 200));
+    ok(!html.includes('Resumen de la llamada:') && !html.includes('Call Summary:'), 'rótulo fora do idioma do atendimento');
     ok(html.includes('Nota criada através do Cases Wizard.'), 'rodapé não está em PT');
     ok(!/class=|pendente|data-row|#fef7e0/.test(html), 'marcação de tela vazou');
 });
@@ -290,7 +292,7 @@ await check('Europa: sem padrão de consentimento (marque), resumo em âmbar e "
     await page.click(`${POP} [role=switch]`);
     ok((await page.locator(`${POP} [data-role="note"] .nt-v.warn`).count()) === 1, 'resumo sem âmbar');
     ok(await row('consent').locator('.nt-tag.warn').count() === 1, 'sem a etiqueta');
-    ok((await prev()).includes('Europe case?'), 'linha Europe case?');
+    ok((await prev()).includes('Caso da Europa?'), 'linha Europe case?');
     await row('consent').locator('.nt-seg button', { hasText: 'No' }).click();
     await page.click(`${POP} [role=switch]`);
     await page.click(`${POP} .nt-auto-h`);
@@ -313,7 +315,7 @@ await check('SBS-E: a linha Nota e a faixa citam o tipo; sem linha Tasks; uma fa
     igual(await page.locator(`${POP} [data-ctx="blocks"] .nt-chip`).count(), 3, 'fases');
     await page.locator(`${POP} [data-ctx="blocks"] .nt-chip`, { hasText: 'Phase 2' }).click();
     igual(((await prev()).match(/margin:16px 0 6px 0/g) || []).length, 1, 'títulos');
-    ok(!(await prev()).includes('Used Tag Support?'), 'Tag Support no ECL');
+    ok(!(await prev()).includes('Usou o Tag Support?'), 'Tag Support no ECL');
 });
 
 await check('seção por CID: + CID e a lista sobrevive à troca de fase', async () => {
@@ -373,7 +375,7 @@ await check('colar link válido mostra ✓ e avança; Enter avança sem preenche
     await page.keyboard.press('Enter');
     igual(await page.evaluate(() => document.activeElement.id), 'nt-f-b_bid', 'foco depois do Enter');
     await page.keyboard.type('na');
-    ok(/Bidding Optimization:<\/td><td[^>]*>NA</.test(await prev()), 'na não virou NA');
+    ok(/Otimização de lances:<\/td><td[^>]*>NA</.test(await prev()), 'na não virou NA');
 });
 
 await check('NA onde o padrão não aceita (Call Summary) marca o campo', async () => {

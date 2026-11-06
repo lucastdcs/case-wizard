@@ -655,6 +655,47 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
         confereSplash(await lerSplash({}), 'pt'));
 }
 
+// Nota em tabela (passo 8): o cromo segue a INTERFACE e o rótulo da tabela segue o
+// ATENDIMENTO (o `Business language` do mock é português). Com os knobs divergentes
+// (interface EN, atendimento ES no perfil, nota PT pelo CRM) cada texto tem de ir
+// para o lado dele — e continuar assim depois de trocar a interface com a janela
+// aberta e depois de Limpar (estado que reinicia, learning 2026-10-29).
+{
+    const { page } = await abrirCaseNotes({ ui: 'en', saida: 'es' });
+    await page.evaluate(() => document.getElementById('cw-btn-notetable').click());
+    await page.waitForTimeout(1500);
+    const POP = '#cw-notetable-popup';
+    const verdade = (cond, oque) => { if (!cond) throw new Error(oque); };
+    const ler = () => page.evaluate((p) => ({
+        fill: document.querySelector(`${p} .nt-btn.p`).textContent.trim(),
+        nota: document.querySelector(`${p} [data-role="note"]`).textContent,
+        tabela: document.querySelector(`${p} .nt-note-card`).innerHTML,
+    }), POP);
+    await page.click(`${POP} [data-role="substatus"]`);
+    await page.fill(`${POP} .nt-pop input`, 'ts so verif');
+    await page.keyboard.press('Enter');
+    await check('nota em tabela (interface en, nota pt): botões em EN, rótulos e rodapé da tabela em PT', async () => {
+        const v = await ler();
+        igual(v.fill, 'Fill', 'botão');
+        verdade(v.nota.includes('PT ·'), 'idioma da nota: ' + v.nota);
+        verdade(v.tabela.includes('Resumo da call:') && v.tabela.includes('Nota criada através do Cases Wizard.'), 'tabela fora do PT');
+        verdade(!v.tabela.includes('Call Summary:') && !v.tabela.includes('Resumen de la llamada:'), 'rótulo no idioma errado');
+    });
+    await page.evaluate(() => document.querySelector('#cw-config-lang-toggle button[data-lang="es"]').click());
+    await page.waitForTimeout(400);
+    await check('nota em tabela: trocar a interface para es com a janela aberta repinta só o cromo', async () => {
+        const v = await ler();
+        igual(v.fill, 'Completar', 'botão');
+        verdade(v.tabela.includes('Resumo da call:'), 'a tabela seguiu a interface');
+    });
+    await page.click(`${POP} .nt-foot .nt-btn:not(.t):not(.p) >> nth=0`);
+    await page.waitForTimeout(300);
+    await check('nota em tabela: depois de Limpar, o idioma da nota continua PT (fora do reset)', async () => {
+        verdade((await ler()).nota.includes('PT ·'), 'idioma voltou ao padrão depois de Limpar');
+    });
+    await page.close();
+}
+
 await browser.close();
 console.log(fail ? `\n✗ smoke de idioma: ${fail} falha(s)\n` : '\n✓ smoke de idioma: 0 falhas\n');
 process.exit(fail ? 1 : 0);
