@@ -7,7 +7,7 @@ This file differs from the long-term roadmap: it describes what is happening **n
 
 ## In progress
 
-- [~] **Nota em tabela: módulo novo ao lado do Case Notes atual (2026-11-05, ADR-0022 + ADR-0024). EM EXECUÇÃO.**
+- [~] **Nota em tabela: módulo novo ao lado do Case Notes atual (2026-11-05, ADR-0022 + ADR-0024). PASSOS 1 A 10 FEITOS; falta o que está em Waiting.**
       Acrescentar um **módulo novo de notas** que gera **tabelas HTML** do padrão novo (3 templates, um por
       segmento do cliente), com o catálogo editável na Central. **O Case Notes atual continua vivo e
       intocado** (ADR-0024). Executor: Opus, esforço alto, acionado em 2026-11-05 a pedido do Lucas. Até
@@ -215,13 +215,24 @@ This file differs from the long-term roadmap: it describes what is happening **n
          **não revisados** em "Waiting". Chrome da tela em dicionário `{pt, es, en}`; rótulo da tabela
          por `getOutputLanguage()`, chrome por `getLanguage()`; rótulo sem tradução cai no EN, nunca
          no PT. `test:i18n` e `smoke:i18n` com os dois knobs **divergentes**.
-      9. **Smoke e prova.** `scripts/smoke-note-table.mjs` + `"smoke:note-table"` sobre
+      9. [x] **Smoke e prova.** *(feito: `smoke:note-table` 49/49 com o Chromium lançado (entrou no
+         passo 5 e cresceu nos 6 e 8). **Linha de base do módulo antigo, antes (5551145) e depois (o
+         código final):** os mesmos 36 scripts `test:*`/`smoke:*`, todos exit 0, nenhum smoke morto no
+         launch; comparando linha a linha, todo ✓ de antes continua, exceto 3 renomeados no
+         `smoke:i18n` ("os 10 módulos" → "os 11 módulos", a palette ganhou a Nota em tabela) e a linha
+         de resumo do `test:content` (241 → 253 passaram). Crescimento: `test:content` +12,
+         `test:prefs` +1, `smoke:content` +7, `smoke:i18n` +3; novos `test:note-table` 61 e
+         `smoke:note-table` 49. Capturas da tela real em `docs/media/case-notes-table/app/`.)* `scripts/smoke-note-table.mjs` + `"smoke:note-table"` sobre
          `mock-crm.html` (o editor de nota do mock é montado como em `smoke-precall.mjs` e precisa
          aceitar a tabela via `insertHTML`). Reproduza os cenários do `preview-checks.cjs`. Ajuste
          `smoke:wizards`, `smoke:i18n` e `smoke:shortcuts` se quebrarem **por causa do módulo novo**.
          **Repita a linha de base do módulo antigo** (todos os `test:*` e `smoke:*` de notas) e mostre
          que não mudou. **Entregue um antes/depois (behavior diff) e screenshots.**
-      10. **Docs e release.** README (Key Features: o novo módulo, e que o antigo continua),
+      10. [x] **Docs e release.** *(feito: README, RELEASE.md (ordem de implantação no checklist),
+          ARCHITECTURE, api-payloads e CHANGELOG [Unreleased]. **Divergência:** o slide do
+          `RELEASE_NOTES` do agente e as notas da Central NÃO foram escritos: as duas estruturas são da
+          v6.6.0, já lançada, e anunciar ali seria registrar na versão errada; entram no corte da
+          próxima release, junto com a subida de versão (registrado no RELEASE.md).)* README (Key Features: o novo módulo, e que o antigo continua),
           `docs/ARCHITECTURE.md`, `specs/data-models/api-payloads.md` (payload de
           `note_blocks`/`note_layouts`), `CHANGELOG.md [Unreleased]`, slide no `RELEASE_NOTES` do agente
           e nas notas da Central. **Ordem de implantação** (learning 2026-10-23): frontend no ar →
