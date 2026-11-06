@@ -24,7 +24,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   Em **Configurações → Nota em tabela**, o agente escolhe em que tipo ela abre (ALL TASKS,
   ECL SBS-E, ECL MMS ou o último usado) e o fluxo padrão (BAU ou LM); preferências
   `notes_default_segment`, `notes_last_segment` e `notes_default_flow`, que acompanham o
-  agente entre máquinas. `npm run smoke:note-table`. Por baixo, a parte pura: as regras da nota (`note-table-model.js`: condições,
+  agente entre máquinas. Na **Central**, o destino "Nota em tabela" lista os blocos por
+  segmento com a cobertura de tradução (`PT 0/16`), edita rótulos EN/PT/ES, obrigatória,
+  NA e visível (tipo e condições só leitura), o título impresso e o "quando usar" de cada
+  fase, e mostra a prévia "como o agente vê" com o **mesmo** renderizador do app (include
+  gerado `ContentDashboard_NoteTable.html`, `npm run build:note-table-central`, travado por
+  teste dourado). O editor do `note_template` não mudou. `npm run smoke:note-table`. Por baixo, a parte pura: as regras da nota (`note-table-model.js`: condições,
   pendências, NA em lote, consentimento e Caso da Europa, follow-up em dias úteis, Tag
   Support dispensando os prints de ACT/ECW, pré-seleção de blocos pela data do
   appointment) e o HTML das tabelas (`note-table-render.js`, só estilo inline, texto do
