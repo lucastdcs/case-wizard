@@ -190,7 +190,12 @@ This file differs from the long-term roadmap: it describes what is happening **n
          "Nota em tabela · abrir em" (`all|sbse|mms|last`) e "Nota em tabela · fluxo padrão"
          (`bau|lm`); preferências `notes_default_segment`, `notes_last_segment` e `notes_default_flow`
          via `UserPrefsService` (molde: `links_fav`); textos PT/ES/EN. `npm run test:prefs`.
-      7. **Central (telas).** Em `gas-backend/ContentDashboard_Catalog.html` (+ `_I18n`): lista por
+      7. [x] **Central (telas).** *(feito: destino "Nota em tabela" no trilho do catálogo; o JS em
+         `ContentDashboard_Catalog.html`, o renderizador em `ContentDashboard_NoteTable.html` GERADO do
+         fonte do app (`build:note-table-central`; `test:note-table` reprova include velho e compara a
+         saída da Central com a do app, byte a byte). `smoke:content` +7 sobre a semente real; 5
+         mutações pegas. Texto do painel em PT (como o painel de tasks); `dest_*` e `gate_*` nos três
+         idiomas. Sem prova: o Apps Script real servindo o include.)* Em `gas-backend/ContentDashboard_Catalog.html` (+ `_I18n`): lista por
          segmento; editor de bloco (a tabela de linhas da aba "Central" do `preview.html`: rótulo
          EN/PT/ES, obrigatória, aceita NA, visível; tipo e condições **só leitura**); colocação
          (título, quando usar, `showTitle`); o bloco `extras`; contadores de cobertura por idioma; e
