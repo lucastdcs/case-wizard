@@ -51,6 +51,7 @@
     "smoke:precall": "node scripts/smoke-precall.mjs",
     "smoke:pill-layout": "node scripts/smoke-pill-layout.mjs",
     "smoke:precall-standalone": "node scripts/smoke-precall-standalone.mjs",
+    "smoke:note-table": "node scripts/smoke-note-table.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs",
     "seed:note-layouts": "node scripts/generate-note-layouts-seed.mjs"
   },
