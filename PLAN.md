@@ -182,7 +182,11 @@ This file differs from the long-term roadmap: it describes what is happening **n
          **Pronto quando** tudo das spec §5 a §9 funciona, a tela bate com `01-comeco.png`…`05-prints.png`,
          a troca de idioma com a janela aberta repinta **e o módulo antigo abre e gera nota
          exatamente como antes** (linha de base).
-      6. **Configurações.** Duas opções para o módulo novo em `src/modules/configs/configs-assistant.js`:
+      6. [x] **Configurações.** *(feito: seção própria `configs/notetable-section.js` (no molde de
+         `pill-section.js`, com o visual do seletor de idioma); leitura e regra em
+         `notes-table/note-table-prefs.js`; nota nova (outro caso, Limpar, depois de inserir) abre
+         no tipo e fluxo padrão. `test:prefs` +1 (round-trip das três chaves), `test:note-table` +1,
+         `smoke:note-table` +1; 3 mutações pegas.)* Duas opções para o módulo novo em `src/modules/configs/configs-assistant.js`:
          "Nota em tabela · abrir em" (`all|sbse|mms|last`) e "Nota em tabela · fluxo padrão"
          (`bau|lm`); preferências `notes_default_segment`, `notes_last_segment` e `notes_default_flow`
          via `UserPrefsService` (molde: `links_fav`); textos PT/ES/EN. `npm run test:prefs`.
