@@ -139,7 +139,20 @@ This file differs from the long-term roadmap: it describes what is happening **n
          ignora a linha com `console.warn`, nunca lança**. Espelho que a Central não serviu não é
          espelho vazio. **Teste no estado real da planilha** (módulos ainda não publicados): o
          agente vê o embutido.
-      5. **UI do agente: janela nova, ao lado da antiga.** `src/modules/notes-table/` (assistente +
+      5. [x] **UI do agente: janela nova, ao lado da antiga.** *(feito: `smoke:note-table` 48/48 com o
+         Chromium lançado; 6 mutações da tela pegas. O1-O3 assumidos com o padrão proposto (ver
+         "Em aberto"). Escolhas registradas: (a) o checklist de prints de ACT/ECW do `step-tasks.js`
+         fica de fora **sem editar o componente**: os cartões dessas duas tasks são escondidos no
+         DOM da janela nova, menos o do Tag Support, que carrega o "Incluir mesmo assim"; (b) o
+         adaptador do `step-tasks.js` é uma instância própria de `NotesState` (import da classe,
+         sem editar); (c) rascunhos por `createDraftService` (refactor aditivo do
+         `draft-service.js`, provado igual); (d) o idioma da nota cai no `getOutputLanguage()`
+         quando o CRM não diz o `Business language` (a spec §9 diz "interface"; ADR-0016 e o passo
+         8 dizem atendimento); (e) a linha Tasks é um resumo com "Alterar" que abre o seletor de
+         hoje (o seletor aberto ocupava a tela antes do sub-status); (f) os smokes da pílula, da
+         palette e de idioma tinham listas e contagens escritas à mão e foram ajustados pelo
+         módulo novo. **Sem prova:** o CRM real (a tabela colada num card de nota) e a lista de
+         cenários com mais de 3 itens fora do mock.)* `src/modules/notes-table/` (assistente +
          casca no molde de `notes-popup.js`, **sem editá-lo**); id `notetable`; nome de exibição
          provisório "Nota em tabela" / "Nota en tabla" / "Table note" (ver "Em aberto"). **Registre**
          em `app.js` (`initNoteTable()` devolve o toggle, como `initCaseNotesAssistant`),
@@ -199,11 +212,15 @@ This file differs from the long-term roadmap: it describes what is happening **n
           disso é executado pelo implementador**: só o que o repositório carrega.
 
       **Em aberto** (nada disto trava o passo 1 a 4; pergunte ao Lucas antes do passo 5):
-      - **O1:** nome de exibição do módulo novo ("Nota em tabela" é provisório).
+      - **O1:** nome de exibição do módulo novo ("Nota em tabela" é provisório). *Assumido no passo 5:
+        "Nota em tabela" / "Nota en tabla" / "Table note" (pílula, Ctrl+K, cabeçalho). Trocar é
+        mudar `MODULE_LABELS` em `pill-layout.js`, a ação da palette e o `title` de `note-table-i18n.js`.*
       - **O2:** o novo entra **fora dos fixados** da pílula por padrão (proposta); o agente o fixa se
         quiser. Se o Lucas quiser outro padrão, é a lista de `pill-layout.js`.
+        *Assumido: fim da gaveta (`DEFAULT_LAYOUT.drawer`).*
       - **O3:** como o agente que usa a tabela abre sem passar pelo antigo (atalho próprio?). Hoje: pela
         pílula e pelo Ctrl+K.
+        *Assumido: pílula (gaveta) e Ctrl+K; sem atalho próprio.*
       - **Fora desta entrega:** quando o novo vira o padrão e o antigo se aposenta (ADR-0024).
       - **Oportunidades de automação, fora deste PR (só registre no ROADMAP se o Lucas quiser):**
         (a) ler a **última nota CW do caso** no case log (agora é uma tabela com rótulos fixos, logo

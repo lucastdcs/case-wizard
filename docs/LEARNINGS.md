@@ -12,6 +12,25 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Linha de base e mutação não dividem o checkout: o smoke empacota o `src` na hora em que começa
+
+**Why**: na nota em tabela (2026-11-05) a linha de base do módulo antigo (36 scripts, ~25 min)
+rodou em segundo plano enquanto eu escrevia o backend e mutava o `ContentAPI.js` para provar os
+dentes do `test:content`. O `smoke:people` e o `smoke:content` leem esse arquivo do disco **na
+hora em que sobem**: o horário dos logs mostrou que pelo menos um deles rodou com o arquivo já
+editado (talvez mutado). Os dois passaram, e por isso mesmo a linha de base deixou de provar
+qualquer coisa sobre o "antes". Refiz os dois num `git worktree` limpo do commit de partida, e
+os resultados bateram. O mesmo vale para os smokes do app: cada um faz o `build` do `src/app.js`
+quando começa, então editar um arquivo do `src` no meio de um lote mistura versões entre os
+smokes do lote.
+
+**When to apply**: sempre que rodar uma linha de base (ou um lote de smokes) em segundo plano e
+continuar trabalhando no mesmo checkout. Ou a linha de base roda num `git worktree` do commit de
+partida (`git worktree add --detach <dir> <sha>` + link do `node_modules`), ou nada do que ela lê
+é editado até o lote acabar. Mutação de código é edição: nunca em paralelo com um lote.
+
+---
+
 ## Mockup de tela: parta do CSS e das telas reais do app, não de um "visual bonito" — e meça com um lint no DOM
 
 **Why**: o primeiro PNG do novo Case Notes (2026-11-05) foi recusado pelo Lucas por
