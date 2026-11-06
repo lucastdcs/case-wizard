@@ -480,6 +480,39 @@ await check('DESENHO · todo botão com alvo de pelo menos 32x32', async () => i
 await check('DESENHO · nenhum `transition: all` e há prefers-reduced-motion', async () => { igual(lint.trans, [], 'transition all'); ok(lint.reduced, 'sem reduced-motion'); });
 await check('DESENHO · CID e Speakeasy em algarismos tabulares', async () => ok(/tabular-nums/.test(lint.tabular), lint.tabular));
 
+console.log('\nConfigurações');
+// Abre/fecha um módulo pelo botão da pílula só quando ele não está no estado pedido.
+const janela = async (btn, popupId, aberta) => {
+    const now = await page.evaluate((id) => { const p = document.getElementById(id); return !!(p && (p._cwOpen ?? p.classList.contains('open'))); }, popupId);
+    if (now !== aberta) { await page.evaluate((b) => document.getElementById(b).click(), btn); await page.waitForTimeout(1000); }
+};
+
+await check('Configurações: "Abrir en" SBS-E e fluxo LM valem para a próxima nota (depois de Limpiar)', async () => {
+    await janela('cw-btn-notetable', 'cw-notetable-popup', false);
+    await janela('cw-btn-configs', 'configs-popup', true);
+    const txt = await page.locator('#cw-config-nt-segment').evaluate((e) => e.closest('.cw-configs-section').innerText);
+    ok(txt.includes('Nota en tabla') && txt.includes('Abrir en') && txt.includes('Flujo predeterminado'), txt.slice(0, 120));
+    await page.click('#cw-config-nt-segment button[data-v="sbse"]');
+    await page.click('#cw-config-nt-flow button[data-v="lm"]');
+    ok(await page.locator('#cw-config-nt-segment button.active[data-v="sbse"]').count() === 1, 'botão não marcou');
+    await janela('cw-btn-configs', 'configs-popup', false);
+    await janela('cw-btn-notetable', 'cw-notetable-popup', true);
+    await page.click(`${POP} .nt-btn:has-text("Limpiar")`);
+    const nota = await page.locator(`${POP} [data-role="note"]`).innerText();
+    ok(nota.includes('LM'), 'fluxo padrão não valeu: ' + nota);
+    igual(await page.locator(`${POP} [data-ctx="blocks"] .nt-chip`).count(), 3, 'fases do SBS-E');
+    ok(!nota.includes('ECL SBS-E'), 'o tipo padrão do agente não deveria aparecer como "fora do padrão"');
+    // Volta ao padrão para o resto do roteiro.
+    await janela('cw-btn-notetable', 'cw-notetable-popup', false);
+    await janela('cw-btn-configs', 'configs-popup', true);
+    await page.click('#cw-config-nt-segment button[data-v="all"]');
+    await page.click('#cw-config-nt-flow button[data-v="bau"]');
+    await janela('cw-btn-configs', 'configs-popup', false);
+    await janela('cw-btn-notetable', 'cw-notetable-popup', true);
+    await page.click(`${POP} .nt-btn:has-text("Limpiar")`);
+    ok((await page.locator(`${POP} [data-role="note"]`).innerText()).includes('BAU'), 'não voltou a BAU');
+});
+
 await check('sem erros de página nem de console', async () => igual(errors, [], 'erros'));
 await page.close();
 

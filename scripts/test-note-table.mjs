@@ -828,6 +828,27 @@ checkAsync('a nota em tabela guarda em chaves próprias e não lê nem apaga os 
     igual(Object.keys(lsStore).sort(), ['cw_notes_emergency_save', 'cw_notes_parking_lot', 'cw_notetable_parking_lot'], 'chaves');
 });
 
+// ---- Preferências (passo 6): em que tipo a nota abre e o fluxo padrão ----
+const stubPrefs = {
+    name: 'stub-prefs',
+    setup(b) {
+        b.onLoad({ filter: /data-service\.js$/ }, () => ({ contents: 'export const DataService = { saveUserPrefs: async () => ({}), getUserPrefs: async () => ({}) };', loader: 'js' }));
+        b.onLoad({ filter: /page-data\.js$/ }, () => ({ contents: 'export const getAgentEmail = () => null;', loader: 'js' }));
+    },
+};
+const P = await load('../src/modules/notes-table/note-table-prefs.js', [stubPrefs]);
+
+checkAsync('tipo em que a nota abre: all|sbse|mms, "last" retoma o último, valor estranho cai em ALL TASKS', async () => {
+    const keys = EMB.segments.map((s) => s.key);
+    igual(['all', 'sbse', 'mms'].map((p) => P.resolveOpenSegment(p, 'mms', keys)), ['all', 'sbse', 'mms'], 'fixos');
+    igual(P.resolveOpenSegment('last', 'mms', keys), 'mms', 'último');
+    igual(P.resolveOpenSegment('last', 'apagado', keys), 'all', 'último que não existe mais');
+    igual(P.resolveOpenSegment('ecl', 'mms', keys), 'all', 'valor fora do domínio');
+    igual(P.resolveOpenSegment(null, null, keys), 'all', 'sem preferência');
+    igual([P.resolveFlow('lm'), P.resolveFlow('bau'), P.resolveFlow('LM'), P.resolveFlow(undefined)], ['lm', 'bau', 'bau', 'bau'], 'fluxo');
+    igual([P.PREF_DEFAULT_SEGMENT, P.PREF_LAST_SEGMENT, P.PREF_DEFAULT_FLOW], ['notes_default_segment', 'notes_last_segment', 'notes_default_flow'], 'chaves da spec §9');
+});
+
 for (const [name, fn] of svcChecks) {
     total++;
     try { await fn(); console.log('  ✓ ' + name); }
