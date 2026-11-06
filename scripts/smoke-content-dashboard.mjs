@@ -655,6 +655,104 @@ console.log('\n--- Smoke: Central de Conteúdo ---');
     await page.close();
 }
 
+// ------------------------------------------------------ nota em tabela (ADR-0022)
+//
+// Os itens são a SEMENTE real (note-layouts-seed.json), como a planilha ficará
+// depois de seedNoteLayoutsNow(). O que precisa ser verdade: a lista por segmento
+// diz a cobertura de tradução, o editor deixa mudar só o que é da Central (rótulo,
+// obrigatória, NA, visível) e mostra tipo e condição só para leitura, a prévia sai
+// do MESMO renderizador do app (include gerado) e a proposta vai pelo caminho de
+// sempre, com o id das linhas intacto.
+{
+    const seedNota = JSON.parse(readFileSync(resolve(raiz, 'gas-backend/seeds/note-layouts-seed.json'), 'utf8'));
+    const comoCentral = (payload) => payload.items.map((it, i) => ({
+        id: 'itm_nt_' + payload.module + '_' + i, module: payload.module, key: it.key, field: '', lang: it.lang,
+        label: it.label, value: it.value, version: 1, status: 'live', publishedBy: 'lucaste',
+        publishedAt: '2026-11-05T10:00:00Z', sortOrder: it.sortOrder, lineage: 'itm_nt_' + payload.module + '_' + i,
+    }));
+    const ITENS_NOTA = { note_blocks: comoCentral(seedNota[0]), note_layouts: comoCentral(seedNota[1]) };
+    const sessaoNota = Object.assign({}, SESSOES.admin, { proposableModules: SESSOES.admin.proposableModules.concat(['note_blocks', 'note_layouts']) });
+    SESSOES.adminNota = sessaoNota;
+
+    const vazia = await abrir({ sessao: 'adminNota', hash: '#/notetable' });
+    await check('nota em tabela: sem nada publicado (a planilha de hoje), a tela diz que o app usa o embutido e a ordem de implantação', async () => {
+        await vazia.waitForTimeout(300);
+        const t = await vazia.locator('#ntb-list').textContent();
+        verdade(/catálogo embutido/.test(t) && /seedNoteLayoutsNow/.test(t), t);
+        verdade(await vazia.locator('#tab-notetable').count() === 1, 'sem item no trilho');
+    });
+    await vazia.close();
+
+    const page = await abrir({ sessao: 'adminNota', hash: '#/notetable', itensExtra: ITENS_NOTA });
+    await check('nota em tabela: a lista do ALL TASKS mostra cada bloco com a cobertura de tradução e o Additional Details por último', async () => {
+        await page.waitForTimeout(300);
+        const t = await page.locator('#ntb-list').textContent();
+        verdade(/General details/.test(t) && /Before implementation/.test(t) && /Consult routing path/.test(t), t.slice(0, 200));
+        verdade(/PT 0\/16 · ES 0\/16/.test(t), 'cobertura do general: ' + t.slice(0, 300));
+        const ordem = await page.$$eval('#ntb-list [data-block]', (els) => els.map((e) => e.dataset.block));
+        igual(ordem, ['general', 'before', 'impl', 'after', 'consult', 'extras'], 'blocos');
+    });
+
+    await check('nota em tabela: trocar para ECL SBS-E lista as fases com o título impresso', async () => {
+        await page.click('#ntb-segs button[data-seg="sbse"]');
+        const t = await page.locator('#ntb-list').textContent();
+        verdade(/Phase 1: Readiness Audit/.test(t) && /título impresso/.test(t), t.slice(0, 200));
+    });
+
+    await check('nota em tabela: o editor do bloco mostra id, tipo e condição só para leitura, e a prévia é a tabela do app', async () => {
+        await page.click('#ntb-segs button[data-seg="all"]');
+        await page.click('#ntb-list [data-edit="extras"]');
+        await page.waitForTimeout(150);
+        verdade(await page.locator('.ntb-editor tr[data-row="oncall"] td').nth(0).textContent() === 'oncall', 'id');
+        const cond = await page.locator('.ntb-editor tr[data-row="oncall"] .ntb-cond').textContent();
+        verdade(/fluxo BAU/.test(cond), 'condição: ' + cond);
+        verdade(await page.locator('.ntb-editor tr[data-row="oncall"] input[id$="-type"]').count() === 0, 'tipo editável');
+        const prev = await page.locator('#ntb-preview').innerHTML();
+        verdade(/<table/.test(prev) && /Additional Details/.test(prev) && !/\sclass=/.test(prev), 'prévia: ' + prev.slice(0, 120));
+    });
+
+    await check('nota em tabela: rótulo PT editado aparece na prévia em PT e vai na proposta, com os ids intactos', async () => {
+        await page.fill('.ntb-editor tr[data-row="oncall"] input[id$="-pt"]', 'On Call sinalizado a tempo?');
+        await page.click('.modal .lk-lang button[data-lang="pt"]');
+        verdade((await page.locator('#ntb-preview').textContent()).includes('On Call sinalizado a tempo?'), 'prévia PT');
+        await page.click('.modal .lk-lang button[data-lang="es"]');
+        verdade((await page.locator('#ntb-preview').textContent()).includes('On Call signaled on time?'), 'ES sem tradução não caiu no EN');
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('#ntb-save');
+        await page.waitForTimeout(250);
+        const escrita = await page.evaluate(() => window.__chamadas.filter((c) => c.metodo === 'saveAndSubmitContentDraft').map((c) => c.args[0]));
+        igual(escrita.length, 1, 'propostas');
+        igual([escrita[0].module, escrita[0].key, escrita[0].lang], ['note_blocks', 'extras', 'ALL'], 'destino');
+        const v = JSON.parse(escrita[0].value);
+        const antes = JSON.parse(seedNota[0].items.find((i) => i.key === 'extras').value);
+        const ids = (b) => b.sections.flatMap((s) => (s.rows || s.columns).map((r) => r.id + ':' + r.type));
+        igual(ids(v), ids(antes), 'ids e tipos');
+        igual(v.sections[0].rows.find((r) => r.id === 'oncall').label.pt, 'On Call sinalizado a tempo?', 'rótulo PT');
+    });
+
+    await check('nota em tabela: a colocação edita título e "quando usar" do segmento e propõe em note_layouts', async () => {
+        await page.click('#ntb-segs button[data-seg="sbse"]');
+        await page.click('#ntb-edit-seg');
+        await page.fill('#ntl-when-0', 'Depois da auditoria aprovada pelo SME.');
+        await page.evaluate(() => { window.__chamadas.length = 0; });
+        await page.click('#ntl-save');
+        await page.waitForTimeout(250);
+        const escrita = await page.evaluate(() => window.__chamadas.filter((c) => c.metodo === 'saveAndSubmitContentDraft').map((c) => c.args[0]));
+        igual([escrita.length, escrita[0] && escrita[0].module, escrita[0] && escrita[0].key], [1, 'note_layouts', 'sbse'], 'proposta');
+        igual(JSON.parse(escrita[0].value).blocks[0].when, 'Depois da auditoria aprovada pelo SME.', 'quando usar');
+    });
+    await page.close();
+
+    const qa = await abrir({ sessao: 'qa', hash: '#/notetable', itensExtra: ITENS_NOTA });
+    await check('nota em tabela: quem não propõe vê e confere a prévia, mas não edita', async () => {
+        await qa.waitForTimeout(300);
+        verdade(await qa.locator('#ntb-list [data-edit]').count() === 0, 'botão Editar para quem não propõe');
+        verdade(await qa.locator('#ntb-list [data-preview]').count() > 0, 'sem a prévia');
+        verdade(/não propõe/.test(await qa.locator('#ntb-note').textContent()), 'sem a explicação do papel');
+    });
+    await qa.close();
+}
+
 // ------------------------------------------------------------- tasks (Win Criteria)
 //
 // O que precisa continuar verdadeiro: a lista mostra a cobertura da tradução (é

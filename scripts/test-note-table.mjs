@@ -574,6 +574,7 @@ check('seção por CID: uma linha por CID; coluna vazia fica pendente; sem CID, 
 
 // ================= Catálogo embutido e semente (passo 2) =================
 const { NOTE_TABLE_CATALOG: EMB } = await load('../src/modules/notes-table/note-table-data.js');
+const fresh0 = (over) => { const st = M.createNoteState(over); M.applyAuto(EMB, st, CTX); return st; };
 const seedPath = resolve(here, '../gas-backend/seeds/note-layouts-seed.json');
 const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
 const specText = readFileSync(resolve(here, '../specs/workflow/case-note-table.md'), 'utf8');
@@ -670,6 +671,36 @@ check('o arquivo do Apps Script carrega a MESMA semente do JSON (nenhum dos dois
     const payload = new Function(gas + '\nreturn CONTENT_SEED_NOTE_LAYOUTS;')();
     igual(payload, seed, 'ContentSeed_NoteLayouts.js × note-layouts-seed.json');
     ok(/function seedNoteLayoutsNow\(\)/.test(gas), 'seedNoteLayoutsNow()');
+});
+
+console.log('\nCentral: o mesmo renderizador (include gerado)');
+
+const { buildCentralInclude, CENTRAL_INCLUDE } = await import('./build-note-table-central.mjs');
+const committed = readFileSync(CENTRAL_INCLUDE, 'utf8');
+const freshInclude = await buildCentralInclude();
+
+check('o include da Central é o build atual do renderizador do app (nada de versão solta)', () => {
+    ok(committed === freshInclude, 'gas-backend/ContentDashboard_NoteTable.html está velho: rode npm run build:note-table-central');
+    ok(!/<\?/.test(committed), 'tag de template do Apps Script dentro do include');
+});
+
+check('a Central desenha a mesma nota que o app, byte a byte (prévia viva, saída e cada bloco)', () => {
+    const js = committed.slice(committed.indexOf('<script>') + 8, committed.lastIndexOf('</script>'));
+    // eslint-disable-next-line no-new-func
+    const C = new Function(js + '\nreturn CwNoteTable;')();
+    const states = [
+        fresh0({ substatus: 'SO - Implementation Only', tasks: [ACT], active: ['general', 'before', 'impl', 'after', 'consult'], europe: true }),
+        fresh0({ seg: 'sbse', substatus: 'NI - In Consult', active: ['impl_call'], cids: [M.newCidRow('111-222-3333')] }),
+        fresh0({ seg: 'mms', substatus: 'IN - Not Reachable', active: ['eligibility'], flow: 'lm' }),
+    ];
+    for (const st of states) for (const opts of [{ lang: 'pt' }, { lang: 'en', live: true, pendingLabel: 'pendente' }]) {
+        igual(C.renderNoteHtml(EMB, st, opts), R.renderNoteHtml(EMB, st, opts), `nota ${st.seg}/${opts.lang}`);
+    }
+    for (const id of Object.keys(EMB.blocks)) {
+        const st = C.createNoteState({ cids: [C.newCidRow('123-456-7890')] });
+        igual(C.renderBlockTable(EMB, st, { b: id, title: '' }, { live: true, ignoreWhen: true, lang: 'es' }),
+            R.renderBlockTable(EMB, st, { b: id, title: '' }, { live: true, ignoreWhen: true, lang: 'es' }), `bloco ${id}`);
+    }
 });
 
 console.log('\nServiço de hidratação (note-table-service.js)');
