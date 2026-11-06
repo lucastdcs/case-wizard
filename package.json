@@ -53,7 +53,8 @@
     "smoke:precall-standalone": "node scripts/smoke-precall-standalone.mjs",
     "smoke:note-table": "node scripts/smoke-note-table.mjs",
     "seed:note-templates": "node scripts/generate-note-templates-seed.mjs",
-    "seed:note-layouts": "node scripts/generate-note-layouts-seed.mjs"
+    "seed:note-layouts": "node scripts/generate-note-layouts-seed.mjs",
+    "build:note-table-central": "node scripts/build-note-table-central.mjs"
   },
   "dependencies": {
     "esbuild": "^0.27.4",
