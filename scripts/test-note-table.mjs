@@ -538,6 +538,25 @@ check('sugestão de blocos: ACT/ECW sugerem Before, Implementation e After', () 
     igual(seg.blocks.filter((p) => M.isSuggested(CAT, st, p)).map((p) => p.b), ['before', 'impl', 'after'], 'sugeridos');
 });
 
+check('prints por task entram no fim do Additional Details, só os preenchidos, escapados; somem no ECL', () => {
+    const st = fresh({ substatus: 'SO - Implementation Only', tasks: [GA4] });
+    st.taskPrints = [
+        { label: 'Analytics Event Tracking (GA4) — Evento criado', v: 'https://example.com/ga4/1' },
+        { label: 'Analytics Event Tracking (GA4) — DebugView', v: '  ' },
+        { label: 'GTM <b>x</b> — Tag', v: 'https://example.com/<i>' },
+    ];
+    const t = tablesOf(out(st));
+    const extras = t[t.length - 1];
+    ok(extras.includes('Analytics Event Tracking (GA4) — Evento criado') && !extras.includes('DebugView'), 'linhas');
+    ok(extras.indexOf('On Call signaled on time?') < extras.indexOf('Evento criado'), 'ordem');
+    ok(extras.includes('GTM &lt;b&gt;x&lt;/b&gt; — Tag') && extras.includes('https://example.com/&lt;i&gt;'), 'escape');
+    ok(gridOf(extras).every((r) => r.length === 3 && r.every((x) => x === 1)), 'grade');
+    igual(M.missingList(CAT, st).some((m) => m.key.startsWith('tp_')), false, 'print por task não vira pendência');
+    const ecl = fresh({ seg: 'sbse', active: ['interim'], substatus: 'NI - Awaiting Inputs' });
+    ecl.taskPrints = st.taskPrints;
+    ok(!out(ecl).includes('Evento criado'), 'no ECL');
+});
+
 console.log('\nCIDs (seção por CID)');
 
 check('seção por CID: uma linha por CID; coluna vazia fica pendente; sem CID, pendente', () => {
