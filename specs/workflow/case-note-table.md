@@ -436,7 +436,7 @@ tabela: a tela". Aqui ficam só as regras de comportamento que ela implementa:
   o parse é tolerante a PT/ES/EN e, **se falhar, nada é pré-selecionado**. O agente liga e desliga os chips como
   hoje.
 - **Idioma, Fluxo e Europa:** o **idioma** da nota vem automático do `Business language` do CRM (já lido por
-  `captureLanguage`), com fallback para o idioma da interface; o agente pode trocar. O **Fluxo** (BAU ou LM, dois
+  `captureLanguage`), com fallback para o **idioma de atendimento já configurado** (`getOutputLanguage()`, ADR-0016: o rótulo da nota nunca segue o idioma da interface); o agente pode trocar. O **Fluxo** (BAU ou LM, dois
   fluxos de atendimento) o agente troca na linha Nota, e o **padrão de cada agente** é a preferência
   `notes_default_flow` (`bau|lm`, padrão `bau`) em Configurações. A **Europa é sempre o agente quem marca**: não
   há leitura automática (decisão do Lucas).
