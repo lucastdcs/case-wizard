@@ -223,7 +223,8 @@ await check('seta para baixo percorre a lista toda com o mouse parado em cima de
         await page.waitForTimeout(120);
         trilha.push(await selecionado(page));
     }
-    exige(new Set(trilha).size === 12, 'a seleção empacou: ' + JSON.stringify(trilha));
+    // 12 descidas: sem empacar, cada uma cai num item novo (a lista tem 13 desde a Nota em tabela).
+    exige(new Set(trilha).size === trilha.length, 'a seleção empacou: ' + JSON.stringify(trilha));
     exige(trilha[11] === 'Configurações', 'último item: ' + trilha[11]);
 });
 

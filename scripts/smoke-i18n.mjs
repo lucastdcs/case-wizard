@@ -528,6 +528,7 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
             ['Call Script', 'Guia interativo de chamada'], ['Central de Links', 'Ferramentas, SOPs e atalhos'],
             ['Minha Biblioteca', 'Snippets e respostas salvas'], ['Fusos Horários', 'Monitoramento e planejador de chamada'],
             ['Avisos', 'Comunicados e disponibilidade BAU'], ['Configurações', 'Perfil, som e preferências'],
+            ['Nota em tabela', 'Nota do caso nas tabelas do padrão novo (ALL TASKS, ECL)'],
         ],
         es: [
             ['Case Notes', 'Armar la nota técnica del caso'], ['Pre-call Checklist', 'Checklist antes de la llamada, directo en la nota'],
@@ -535,6 +536,7 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
             ['Call Script', 'Guía interactiva de llamada'], ['Central de Enlaces', 'Herramientas, SOPs y atajos'],
             ['Mi Biblioteca', 'Snippets y respuestas guardadas'], ['Husos Horarios', 'Monitoreo y planificador de llamada'],
             ['Avisos', 'Comunicados y disponibilidad BAU'], ['Configuración', 'Perfil, sonido y preferencias'],
+            ['Nota en tabla', 'Nota del caso en las tablas del estándar nuevo (ALL TASKS, ECL)'],
         ],
         en: [
             ['Case Notes', 'Build the technical note for the case'], ['Pre-call Checklist', 'Checklist before the call, straight into the note'],
@@ -542,6 +544,7 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
             ['Call Script', 'Interactive call guide'], ['Links Central', 'Tools, SOPs and shortcuts'],
             ['My Library', 'Saved snippets and replies'], ['Time Zones', 'Monitoring and call planner'],
             ['Broadcast', 'Announcements and BAU availability'], ['Settings', 'Profile, sound and preferences'],
+            ['Table note', "Case note as the new standard's tables (ALL TASKS, ECL)"],
         ],
     };
     const DICA_ATALHO = { pt: 'Atalho de nota · abre pré-preenchida', es: 'Atajo de nota · abre precompletada', en: 'Note shortcut · opens pre-filled' };
@@ -566,11 +569,13 @@ console.log('\n--- Smoke: idioma da interface x idioma do atendimento ---');
         await page.waitForSelector('.cw-palette-overlay.active');
         const linhas = await linhasDaPaleta(page);
 
-        await check(`palette ${lang}${lang !== abreEm ? ` (troca depois do boot, vinda de ${abreEm})` : ''}: os 10 módulos, rótulo e hint, no idioma`, async () => {
-            igual(JSON.stringify(linhas.slice(-10)), JSON.stringify(MODULOS[lang]), 'linhas de módulo');
+        // Os módulos são as últimas linhas (a Nota em tabela entrou como a 11ª); antes deles, os atalhos.
+        const nMod = MODULOS[lang].length;
+        await check(`palette ${lang}${lang !== abreEm ? ` (troca depois do boot, vinda de ${abreEm})` : ''}: os ${nMod} módulos, rótulo e hint, no idioma`, async () => {
+            igual(JSON.stringify(linhas.slice(-nMod)), JSON.stringify(MODULOS[lang]), 'linhas de módulo');
         });
         await check(`palette ${lang}: o hint dos atalhos do agente também`, async () => {
-            for (const [, hint] of linhas.slice(0, -10)) igual(hint, DICA_ATALHO[lang], 'hint do atalho');
+            for (const [, hint] of linhas.slice(0, -nMod)) igual(hint, DICA_ATALHO[lang], 'hint do atalho');
         });
         await check(`palette ${lang}: digitar "${busca}" (outro idioma) acha "${acha}"`, async () => {
             await page.fill('.cw-palette-input', busca);

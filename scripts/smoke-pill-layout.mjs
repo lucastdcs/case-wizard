@@ -47,7 +47,8 @@ function perto(atual, esperado, tol, oque) {
 }
 
 const PADRAO_FIXADOS = ['notes', 'precall', 'bauform', 'email', 'script', 'links', 'broadcast'];
-const PADRAO_GAVETA = ['library', 'timezone', 'configs'];
+// A nota em tabela (ADR-0024) nasce guardada na gaveta, não fixada (ADR-0023).
+const PADRAO_GAVETA = ['library', 'timezone', 'configs', 'notetable'];
 
 // A API real não responde daqui; cortar na origem evita 15s de watchdog por
 // chamada e deixa o app no caminho "sem nuvem" (só o cache local), que é o que
@@ -328,7 +329,8 @@ await check('módulo da gaveta: Mais espelha, pílula não recolhe, genie sai e 
 await check('módulo guardado não fica mudo: aviso de Avisos e rascunho do Notes acendem o Mais', async (page) => {
     await abrirPilula(page);
     const temSinal = () => classe(page, '#cw-btn-more', 'has-signal');
-    igual(await ordemGaveta(page), ['notes', 'broadcast', 'configs'], 'notes e broadcast guardados');
+    // notetable não estava no layout salvo: entra no fim da gaveta.
+    igual(await ordemGaveta(page), ['notes', 'broadcast', 'configs', 'notetable'], 'notes e broadcast guardados');
     igual(await temSinal(), false, 'sem aviso nenhum');
 
     // O que broadcast-assistant (updateBadge) e updateNotesBadge fazem: mexem só
@@ -356,7 +358,7 @@ await check('persistência: o layout salvo vale no boot; módulo que ele não co
     igual(await ordemPilula(page), ['notes', 'more'], 'pílula do agente');
     // configs e library na ordem dele; o resto, no fim, na ordem histórica.
     igual((await ordemGaveta(page)).slice(0, 2), ['configs', 'library'], 'ordem dele na gaveta');
-    igual((await ordemGaveta(page)).length, 9, 'nenhum módulo ficou inalcançável');
+    igual((await ordemGaveta(page)).length, PADRAO_FIXADOS.length + PADRAO_GAVETA.length - 1, 'nenhum módulo ficou inalcançável');
 }, { prefs: { pillLayout: { pinned: ['notes'], drawer: ['configs', 'library'] } } });
 
 await check('persistência: lixo salvo na nuvem não derruba a pílula (vale o padrão)', async (page) => {
