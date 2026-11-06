@@ -34,7 +34,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   Support dispensando os prints de ACT/ECW, pré-seleção de blocos pela data do
   appointment) e o HTML das tabelas (`note-table-render.js`, só estilo inline, texto do
   agente escapado, `**x**` como único negrito). O catálogo embutido (`note-table-data.js`,
-  11 blocos e os 3 segmentos, copiado do protótipo e travado contra a spec §4) e a semente
+  11 blocos e os 3 segmentos, copiado do protótipo e travado contra a spec §4; rótulos PT/ES
+  e dicas ES/EN em **rascunho ainda não revisado** por falante nativo) e a semente
   dos módulos `note_blocks` e `note_layouts` (`npm run seed:note-layouts` →
   `seedNoteLayoutsNow()`, **ainda não rodada na planilha**). No backend, os dois módulos
   novos entram na Central com validação no servidor (`assertValidNoteBlock_`,
