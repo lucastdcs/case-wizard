@@ -21,6 +21,9 @@ const PREF_KEY = "pillLayout";
 export const PILL_MODULE_IDS = [
     "notes", "precall", "bauform", "email", "script", "links",
     "library", "timezone", "configs", "broadcast",
+    // Nota em tabela (ADR-0024): entra na gaveta, não nos fixados (ADR-0023). O
+    // agente que a usa todo dia a fixa em Configurações.
+    "notetable",
 ];
 
 // 7 é o que cabe: com 10 botões a pílula aberta mede 641px e, num viewport de
@@ -34,7 +37,7 @@ export const MAX_PINNED = 7;
 // Configurações, que descem para a gaveta - os três de uso mais esporádico.
 export const DEFAULT_LAYOUT = {
     pinned: ["notes", "precall", "bauform", "email", "script", "links", "broadcast"],
-    drawer: ["library", "timezone", "configs"],
+    drawer: ["library", "timezone", "configs", "notetable"],
 };
 
 const same = (name) => ({ pt: name, es: name, en: name });
@@ -52,6 +55,7 @@ const MODULE_LABELS = {
     timezone: { pt: "Fusos Horários", es: "Husos Horarios", en: "Time Zones" },
     configs: { pt: "Configurações", es: "Configuración", en: "Settings" },
     broadcast: { pt: "Avisos", es: "Avisos", en: "Broadcast" },
+    notetable: { pt: "Nota em tabela", es: "Nota en tabla", en: "Table note" },
 };
 
 export function moduleLabel(id, lang = getLanguage()) {

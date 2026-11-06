@@ -27,6 +27,7 @@ const ICONS = {
     arrowDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
     arrowUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
     bolt: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`,
+    notetable: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 10.02h5V21h-5zM17 21h3c1.1 0 2-.9 2-2v-9h-5v11zm3-18H5c-1.1 0-2 .9-2 2v3h19V5c0-1.1-.9-2-2-2zM3 19c0 1.1.9 2 2 2h3V10H3v9z"/></svg>`,
 };
 
 function injectStyles() {
@@ -197,6 +198,7 @@ export function initCommandPalette(actions) {
         { id: 'timezone', label: { pt: 'Fusos Horários', es: 'Husos Horarios', en: 'Time Zones' }, hint: { pt: 'Monitoramento e planejador de chamada', es: 'Monitoreo y planificador de llamada', en: 'Monitoring and call planner' }, keywords: 'fuso horario husos timezone time zone clock', icon: ICONS.timezone, run: actions.toggleTimezone },
         { id: 'broadcast', label: { pt: 'Avisos', es: 'Avisos', en: 'Broadcast' }, hint: { pt: 'Comunicados e disponibilidade BAU', es: 'Comunicados y disponibilidad BAU', en: 'Announcements and BAU availability' }, keywords: 'avisos broadcast comunicados announcements notices disponibilidade disponibilidad availability', icon: ICONS.broadcast, run: () => actions.broadcastControl && actions.broadcastControl.toggle() },
         { id: 'configs', label: { pt: 'Configurações', es: 'Configuración', en: 'Settings' }, hint: { pt: 'Perfil, som e preferências', es: 'Perfil, sonido y preferencias', en: 'Profile, sound and preferences' }, keywords: 'configuracoes configuracion config settings preferencias preferences perfil profile som sonido sound', icon: ICONS.configs, run: actions.toggleConfigs },
+        { id: 'notetable', label: { pt: 'Nota em tabela', es: 'Nota en tabla', en: 'Table note' }, hint: { pt: 'Nota do caso nas tabelas do padrão novo (ALL TASKS, ECL)', es: 'Nota del caso en las tablas del estándar nuevo (ALL TASKS, ECL)', en: "Case note as the new standard's tables (ALL TASKS, ECL)" }, keywords: 'nota tabela tabla table note ecl sbs sbse mms all tasks padrao estandar standard', icon: ICONS.notetable, run: actions.toggleNoteTable },
     ].map(a => ({ ...a, group: 'modules' }));
 
     // Os atalhos do agente vêm primeiro: são dele, e são o que ele repete

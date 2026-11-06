@@ -9,9 +9,19 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- **Nota em tabela (em construção, ainda sem tela; ADR-0022 e ADR-0024).** Módulo novo
-  `notetable` em `src/modules/notes-table/`, ao lado do Case Notes atual, que continua
-  igual. Por ora só a parte pura: as regras da nota (`note-table-model.js`: condições,
+- **Nota em tabela (ADR-0022 e ADR-0024; nome provisório "Nota em tabela" / "Nota en tabla" /
+  "Table note").** Módulo novo `notetable` em `src/modules/notes-table/`, ao lado do Case Notes
+  atual, que continua igual. Abre pela gaveta da pílula (não vem fixado) e pelo Ctrl+K. Uma
+  janela só, com a prévia da nota numa gaveta atrás dela: sub-status com busca por nome ou
+  atalho, tasks do appointment pré-marcadas quando reconhecidas (seletor e prints por task do
+  Case Notes, reaproveitados sem mudança; ACT e ECW não repetem a lista de prints), blocos
+  pré-selecionados pela data do appointment, linha "Nota" recolhida (tipo, idioma, fluxo,
+  Caso da Europa), cartão "Preenchido automaticamente", "Mais opções", comentário por linha,
+  colar link e Enter avançando, faixa de pendências com "Marcar o restante como NA",
+  cenários rápidos condensados no resumo com títulos em negrito, Tag Support que dispensa os
+  prints de ACT/ECW, Preencher (insertHTML) e Copiar só sem pendência, e-mail automático,
+  Split & Transfer, rascunhos e airbag próprios (não leem nem apagam os do Case Notes).
+  `npm run smoke:note-table`. Por baixo, a parte pura: as regras da nota (`note-table-model.js`: condições,
   pendências, NA em lote, consentimento e Caso da Europa, follow-up em dias úteis, Tag
   Support dispensando os prints de ACT/ECW, pré-seleção de blocos pela data do
   appointment) e o HTML das tabelas (`note-table-render.js`, só estilo inline, texto do
@@ -49,6 +59,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   dispensa. `npm run smoke:disclaimer` (33 asserções).
 
 ### Changed
+- **`DraftService` virou fábrica** (`createDraftService`), com as mesmas chaves de sempre para o
+  Case Notes: é o que deixa a Nota em tabela ter rascunhos próprios. Comportamento do Case
+  Notes provado igual em `test:note-table`.
 - **As dicas da pílula seguem o idioma da interface.** "Configurações" e "Avisos"
   eram texto fixo em português com a ferramenta em ES/EN; agora os dez módulos usam
   os mesmos nomes do Ctrl+K nos três idiomas. A cascata de abrir/fechar da pílula

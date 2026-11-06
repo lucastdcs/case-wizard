@@ -14,6 +14,7 @@ import { initTimezoneAssistant } from './modules/timezone/timezone-assistant.js'
 import { initPersonalLibrary } from './modules/personal-library/personal-library-assistant.js'; // [NOVO]
 import { initConfigsAssistant } from './modules/configs/configs-assistant.js';
 import { initBAUForm } from './modules/bau-form/bau-form-assistant.js';
+import { initNoteTable } from './modules/notes-table/note-table-assistant.js';
 
 // Importação do Serviço de Dados
 import { DataService, fetchUserProfile } from './modules/shared/data-service.js';
@@ -79,7 +80,9 @@ function initApp() {
             // Categorias criadas pela tela e destaques da home de Links. Ficam
             // aqui, e não só no módulo, pelo mesmo motivo dos outros: um módulo
             // que pede o seu quando é aberto é uma execução a mais por agente.
-            'link_categories', 'link_highlights'
+            'link_categories', 'link_highlights',
+            // Nota em tabela (ADR-0022): os blocos e os segmentos do padrão novo.
+            'note_blocks', 'note_layouts'
         ]);
 
         // C. Animação de Entrada (Aqui o 'Sherlock' começa a buscar o nome)
@@ -98,6 +101,7 @@ function initApp() {
         const toggleLibrary = initPersonalLibrary(); // [NOVO] Inicializa a Biblioteca
         const toggleConfigs = initConfigsAssistant();
         const toggleBAUForm = initBAUForm();
+        const toggleNoteTable = initNoteTable();
         
         const broadcastControl = initBroadcastAssistant();
 
@@ -111,6 +115,7 @@ function initApp() {
             toggleLibrary, // [NOVO] Passa o controle para a pílula
             toggleConfigs,
             toggleBAUForm,
+            toggleNoteTable,
             broadcastControl
         };
 
