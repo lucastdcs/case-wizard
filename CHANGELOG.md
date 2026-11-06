@@ -21,7 +21,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   cenários rápidos condensados no resumo com títulos em negrito, Tag Support que dispensa os
   prints de ACT/ECW, Preencher (insertHTML) e Copiar só sem pendência, e-mail automático,
   Split & Transfer, rascunhos e airbag próprios (não leem nem apagam os do Case Notes).
-  `npm run smoke:note-table`. Por baixo, a parte pura: as regras da nota (`note-table-model.js`: condições,
+  Em **Configurações → Nota em tabela**, o agente escolhe em que tipo ela abre (ALL TASKS,
+  ECL SBS-E, ECL MMS ou o último usado) e o fluxo padrão (BAU ou LM); preferências
+  `notes_default_segment`, `notes_last_segment` e `notes_default_flow`, que acompanham o
+  agente entre máquinas. `npm run smoke:note-table`. Por baixo, a parte pura: as regras da nota (`note-table-model.js`: condições,
   pendências, NA em lote, consentimento e Caso da Europa, follow-up em dias úteis, Tag
   Support dispensando os prints de ACT/ECW, pré-seleção de blocos pela data do
   appointment) e o HTML das tabelas (`note-table-render.js`, só estilo inline, texto do

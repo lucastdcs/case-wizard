@@ -50,6 +50,10 @@ Ctrl+K). Esquema da aba em `db-schema.md`.
   isso, uma queda de rede zeraria o cache local do agente.
 - Sem `user`, ambas as ops falham. Sem e-mail capturado, o cliente opera só com
   o cache local e avisa que salvou apenas no navegador.
+- **Chaves da Nota em tabela** (`notes-table/note-table-prefs.js`): `notes_default_segment`
+  (`all|sbse|mms|last`), `notes_last_segment` (o último tipo usado, para o `last`) e
+  `notes_default_flow` (`bau|lm`). Valor fora do domínio cai no padrão (`all`, `bau`).
+  Não se misturam com as do Case Notes.
 
 ## Decisão do TL (`updateBAUCaseStatus`)
 

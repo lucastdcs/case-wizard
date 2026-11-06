@@ -13,6 +13,7 @@ import {
 } from "../shared/i18n.js";
 import { createShortcutsSection } from "./shortcuts-section.js";
 import { createPillSection } from "./pill-section.js";
+import { createNoteTableSection } from "./notetable-section.js";
 import { FEEDBACK_FORM_URL, DOCS_URL } from "../shared/config.js";
 
 const CONFIGS_DICT = {
@@ -523,6 +524,10 @@ export function initConfigsAssistant() {
     const pillSection = createPillSection(t, COLORS);
     container.appendChild(pillSection);
 
+    // --- SEÇÃO: NOTA EM TABELA (tipo de nota em que abre e fluxo padrão) ---
+    const noteTableSection = createNoteTableSection();
+    container.appendChild(noteTableSection);
+
     // --- SEÇÃO: SOM ---
     const soundSection = document.createElement("div");
     soundSection.className = "cw-configs-section";
@@ -623,6 +628,7 @@ export function initConfigsAssistant() {
 
         shortcutsSection.applyTexts();
         pillSection.applyTexts();
+        noteTableSection.applyTexts();
 
         soundSection.querySelector(".js-sound-section-title").textContent = t('soundSectionTitle');
         soundSection.querySelector(".js-sound-label").textContent = t('soundLabel');
@@ -658,6 +664,7 @@ export function initConfigsAssistant() {
             // salvar.
             shortcutsSection.refresh();
             pillSection.refresh();
+            noteTableSection.refresh();
             lockBodyScroll();
             SoundManager.playClick();
         } else {

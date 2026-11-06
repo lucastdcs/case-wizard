@@ -33,7 +33,7 @@ import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
 import { captureCID, captureSalesProgram, captureLanguage, getCaseId } from "../shared/page-data.js";
 import { lerCampo, lerCampoTodos } from "../shared/crm-labels.js";
 import { getLanguage, onLanguageChange, getOutputLanguage, onOutputLanguageChange } from "../shared/i18n.js";
-import { UserPrefsService } from "../shared/user-prefs-service.js";
+import { openSegment, readFlowPref, rememberSegment } from "./note-table-prefs.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { AUTHOR_CREDIT } from "../shared/config.js";
 import * as M from "./note-table-model.js";
@@ -44,11 +44,6 @@ import { ntt } from "./note-table-i18n.js";
 
 export const NOTE_TABLE_POPUP_ID = "cw-notetable-popup";
 export const NOTE_TABLE_BUTTON_ID = "cw-btn-notetable";
-
-// Preferências do agente (Configurações). Sem valor: ALL TASKS e BAU.
-export const PREF_DEFAULT_SEGMENT = "notes_default_segment";
-export const PREF_LAST_SEGMENT = "notes_last_segment";
-export const PREF_DEFAULT_FLOW = "notes_default_flow";
 
 const drafts = createDraftService({ storageKey: "cw_notetable_parking_lot", emergencyKey: "cw_notetable_emergency_save" });
 
@@ -328,10 +323,9 @@ export function initNoteTable() {
         render();
     }
 
+    // Nota nova (outro caso, Limpar, depois de inserir) abre no tipo e no fluxo padrão do agente.
     function resetForm() {
-        const segKey = st.seg;
-        const flow = st.flow;
-        st = M.createNoteState({ seg: segKey, flow, cids: [M.newCidRow(cap.cid)] });
+        st = M.createNoteState({ seg: defaultSegment(), flow: readFlowPref(), cids: [M.newCidRow(cap.cid)] });
         st.active = M.preselectBlocks(catalog, st.seg, lerCampo("appointmentTime") || "", new Date());
         Object.assign(ui, { ctxOpen: false, autoOpen: false, more: {}, showPending: false, scenOpen: false, pi: 0, blocksTouched: false });
         stepTasks.reset();
@@ -646,11 +640,7 @@ export function initNoteTable() {
         if (f === "na") return ntt("ctxFuNa");
         return ntt("ctxFuAgent");
     }
-    const defaultSegment = () => {
-        const pref = UserPrefsService.get(PREF_DEFAULT_SEGMENT, "all");
-        const key = pref === "last" ? UserPrefsService.get(PREF_LAST_SEGMENT, "all") : pref;
-        return M.findSegment(catalog, key) ? key : "all";
-    };
+    const defaultSegment = () => openSegment(catalog.segments.map((s) => s.key));
 
     function renderCtx() {
         ctxHost.innerHTML = "";
@@ -714,7 +704,7 @@ export function initNoteTable() {
         if (st.seg === k) return;
         st.seg = k;
         st.active = M.preselectBlocks(catalog, k, lerCampo("appointmentTime") || "", new Date());
-        UserPrefsService.set(PREF_LAST_SEGMENT, k).catch(() => {});
+        rememberSegment(k);
         auto(); syncTagSupport(); dirty(); render();
     }
 
@@ -1030,7 +1020,7 @@ export function initNoteTable() {
 
     // Padrões do agente (Configurações): tipo de nota e fluxo.
     st.seg = defaultSegment();
-    st.flow = UserPrefsService.get(PREF_DEFAULT_FLOW, "bau") === "lm" ? "lm" : "bau";
+    st.flow = readFlowPref();
     st.active = M.defaultActive(catalog, st.seg);
     st.cids = [M.newCidRow("")];
     auto();
