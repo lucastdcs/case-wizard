@@ -25,7 +25,8 @@ A productivity and automation suite for a corporate CRM, delivered as a JavaScri
 
 ## Key Features
 
-- **Case Notes** — generates standardized case notes (BAU/LM, PT/ES/EN) from a Status → Sub-status → template flow, with a visual task picker, quick scenarios, implementation tags, automatic Speakeasy ID capture, and an emergency-autosave draft system.
+- **Case Notes** — generates standardized case notes (BAU/LM, PT/ES/EN) from a Status → Sub-status → template flow, with a visual task picker, quick scenarios, implementation tags, automatic Speakeasy ID capture, and an emergency-autosave draft system. Still the default note module, unchanged.
+- **Table note** (`notetable`, new, side by side with Case Notes) — builds the case note as the HTML tables of the new standard (ALL TASKS, ECL SBS-E, ECL MMS), with every required row closed by a value or an explicit `NA`, the note preview in a drawer behind the window, rows pre-filled from the CRM (date, CID, appointment tasks and blocks), Tag Support and consent rules, and its own drafts. The standard (blocks, segments, labels in PT/ES/EN) is edited in the Content Hub (`note_blocks`, `note_layouts`) and validated by the server; the app falls back to its embedded catalog. Opens from the pill drawer or Ctrl+K.
 - **Pre-call Checklist** — short form that writes the "Pre-call checklist" block into the case note before the call (or copies it). Fields the CRM screen already shows — tasks, phone, email, website, CID — arrive filled and marked *Auto*; the block is always written in English, whatever the interface language. Frontend only: nothing is stored.
 - **Email Assistant** — detects and clears "ghost" Gmail drafts before inserting a new one, backed by a template library with placeholders and "Smart CR" shortcuts tied to Case Notes sub-statuses.
 - **Call Script Assistant** — interactive call checklist (PT/ES/EN × BAU/LT) with progress tracking and live capture of the customer's CID/email.
@@ -160,6 +161,7 @@ Note that `clasp push` only updates the editor's HEAD — the live `/exec` and `
 │       ├── email-assistant/         # Gmail draft automation & templates
 │       ├── links/                   # Internal links hub
 │       ├── notes/                   # Case Notes generator (core module, most files)
+│       ├── notes-table/             # Table note (new module): pure rules, HTML renderer, catalog, UI
 │       ├── onboarding/              # First-run tutorial
 │       ├── personal-library/        # Cross-device snippet library
 │       ├── shared/                  # Command center, DOM utils, sound, animations, data service
@@ -233,6 +235,8 @@ There's no `.env` file — this project has no local runtime configuration in th
 | `npm run build` | Bundle `src/app.js` into `dist/bundle.js`, minified (production) |
 | `npm run dev` | Bundle `src/app.js` into `dist/bundle-dev.js`, unminified (debug) |
 | `npm run portfolio` | Run `generate-portfolio.py` via Playwright to regenerate the screenshots/video in `docs/media/` |
+| `npm run seed:note-layouts` | Regenerate the table-note seed (`gas-backend/seeds/note-layouts-seed.json`, `ContentSeed_NoteLayouts.js`) from the embedded catalog |
+| `npm run build:note-table-central` | Regenerate `gas-backend/ContentDashboard_NoteTable.html`, the app's table renderer packaged for the Content Hub |
 | `clasp push` (in `gas-backend/`) | Push local backend changes to the Apps Script project HEAD |
 | `clasp deploy -i <id> -d "<desc>"` (in `gas-backend/`) | Promote a deployment to the current HEAD version |
 
@@ -246,11 +250,12 @@ non-zero on failure, so you run the ones that cover what you touched.
 - **Node harnesses** (`npm run test:*`) stub the browser and Apps Script globals:
   `test:content`, `test:call-script`, `test:emails`, `test:note-templates`,
   `test:shortcuts`, `test:prefs`, `test:people`, `test:deployment-env`,
-  `test:timezones`, `test:jsonp`.
+  `test:timezones`, `test:jsonp`, `test:note-table` (table-note rules, HTML,
+  catalog vs. spec, seed and Content Hub include).
 - **Browser smokes** (`npm run smoke:*`) drive real UI with Playwright.
   `smoke:shortcuts`, `smoke:palette`, `smoke:wizards`, `smoke:disclaimer`,
   `smoke:env-badge`, `smoke:broadcast`, `smoke:bau-scraping`, `smoke:tasks` and
-  `smoke:bau-tasks` run the agent overlay against `mock-crm.html`;
+  `smoke:bau-tasks` and `smoke:note-table` run the agent overlay against `mock-crm.html`;
   `smoke:content` and `smoke:people` load the Apps Script dashboards from disk
   with `google.script.run` doubled.
 
