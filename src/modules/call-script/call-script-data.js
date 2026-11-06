@@ -23,6 +23,22 @@ const TAG_SUPPORT_STEPS_EN = [
     "[If declined] Continue with Screen Sharing"
 ];
 
+// Título do cartão de cada seção do roteiro, pelo idioma do ROTEIRO (as mesmas
+// chaves de `csaChecklistData`). Mora aqui, ao lado do dado, para o teste
+// enxergá-lo: faltava o EN, e `GROUP_TITLES[g][lang] || ""` devolvia texto
+// vazio - o cartão do inglês aparecia sem título, sem nenhum erro.
+const GROUP_TITLES = {
+    inicio: { PT: "Abertura", ES: "Apertura", EN: "Opening" },
+    meio: { PT: "Implementação (Tag Support)", ES: "Implementación", EN: "Implementation (Tag Support)" },
+    fim: { PT: "Fechamento", ES: "Cierre", EN: "Closing" }
+};
+
+// Nunca vazio: idioma sem título cai no PT, como o resto do conteúdo.
+export function groupTitle(groupKey, lang) {
+    const titles = GROUP_TITLES[groupKey];
+    return titles?.[lang] || titles?.PT || "";
+}
+
 export const csaChecklistData = {
     "PT BAU": {
         inicio: [

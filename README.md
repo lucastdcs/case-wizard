@@ -25,7 +25,8 @@ A productivity and automation suite for a corporate CRM, delivered as a JavaScri
 
 ## Key Features
 
-- **Case Notes** — generates standardized case notes (BAU/LM, PT/ES/EN) from a Status → Sub-status → template flow, with a visual task picker, quick scenarios, implementation tags, automatic Speakeasy ID capture, and an emergency-autosave draft system.
+- **Case Notes** — generates standardized case notes (BAU/LM, PT/ES/EN) from a Status → Sub-status → template flow, with a visual task picker, quick scenarios, implementation tags, automatic Speakeasy ID capture, and an emergency-autosave draft system. Still the default note module, unchanged.
+- **Table note** (`notetable`, new, side by side with Case Notes) — builds the case note as the HTML tables of the new standard (ALL TASKS, ECL SBS-E, ECL MMS), with every required row closed by a value or an explicit `NA`, the note preview in a drawer behind the window, rows pre-filled from the CRM (date, CID, appointment tasks and blocks), Tag Support and consent rules, and its own drafts. The standard (blocks, segments, labels in PT/ES/EN) is edited in the Content Hub (`note_blocks`, `note_layouts`) and validated by the server; the app falls back to its embedded catalog. Opens from the pill drawer or Ctrl+K.
 - **Pre-call Checklist** — short form that writes the "Pre-call checklist" block into the case note before the call (or copies it). Fields the CRM screen already shows — tasks, phone, email, website, CID — arrive filled and marked *Auto*; the block is always written in English, whatever the interface language. Frontend only: nothing is stored.
 - **Email Assistant** — detects and clears "ghost" Gmail drafts before inserting a new one, backed by a template library with placeholders and "Smart CR" shortcuts tied to Case Notes sub-statuses.
 - **Call Script Assistant** — interactive call checklist (PT/ES/EN × BAU/LT) with progress tracking and live capture of the customer's CID/email.
@@ -34,7 +35,7 @@ A productivity and automation suite for a corporate CRM, delivered as a JavaScri
 - **My Library** — personal snippets (notes, emails, general text), synced across devices via Google Sheets.
 - **Broadcast Center** — read-only feed of operational announcements, published from the Content Center. Tracks what's been read in `localStorage`, filters by the segment the agent serves, and parses emoji shortcodes. Carries a secondary **BAU availability** strip: the flag of the agent's own segment, a swap to the other one, and two dates per segment — the nearer one in amber, full availability in green.
 - **Links Hub** — curated shortcuts to internal tools and forms. Opens on a **home** with up to three highlighted links (title, blurb and a display window set in the Content Center), plus the agent's **favorites**, **recents** and what **just left the spotlight**; the searchable library, grouped by category, is one click away. A fixed **preview pane** follows the mouse and keyboard focus ("what it is", "when to use it"). Categories — including new ones — and highlights are managed in the Content Center, not in code.
-- **Command Center & Command Palette** — a floating pill that surfaces every module, plus a `Ctrl/Cmd+K` quick-search that calls the same toggle functions as clicking an icon.
+- **Command Center & Command Palette** — a floating pill with the modules each agent pins (up to 7, in their own order) and a **More** button that opens a drawer with the rest; arranged in Settings → *Pill & Drawer* and stored per person like the shortcuts. Plus a `Ctrl/Cmd+K` quick-search that reaches every module through the same toggle functions as clicking an icon.
 - **Per-agent Ctrl+K shortcuts** — each agent configures their own quick commands (status + substatus + scenarios), created either by capturing a Case Notes screen they already built or from a builder in Settings. Stored per person in the backend so they follow the agent across machines.
 - **Onboarding & Changelog wizards** — first-run tutorial slides and a "what's new" popup shown automatically when the app version changes.
 - **Sound UX & Material Look** — audio feedback for success/error/notification events, a cinematic startup sound, and CSS-in-JS components styled to blend into Google's native UI.
@@ -160,6 +161,7 @@ Note that `clasp push` only updates the editor's HEAD — the live `/exec` and `
 │       ├── email-assistant/         # Gmail draft automation & templates
 │       ├── links/                   # Internal links hub
 │       ├── notes/                   # Case Notes generator (core module, most files)
+│       ├── notes-table/             # Table note (new module): pure rules, HTML renderer, catalog, UI
 │       ├── onboarding/              # First-run tutorial
 │       ├── personal-library/        # Cross-device snippet library
 │       ├── shared/                  # Command center, DOM utils, sound, animations, data service
@@ -190,7 +192,7 @@ The bookmarklet — in the production variant — creates a `trustedTypes` polic
 3. Initializes the sound engine and global hover/click audio listeners.
 4. Kicks off async data fetching (tips) and resolves the agent's profile, which sets both the interface language and the segment they serve. Each module fetches its own content after that.
 5. Initializes every module, collecting each one's control functions (e.g. `toggleNotes`).
-6. Mounts the floating Command Center pill, wiring each module's toggle into it.
+6. Mounts the floating Command Center pill, wiring each module's toggle into it and laying the buttons out as the agent arranged them (pinned on the pill, the rest in the drawer).
 
 ### Backend & Data Flow
 
@@ -233,6 +235,8 @@ There's no `.env` file — this project has no local runtime configuration in th
 | `npm run build` | Bundle `src/app.js` into `dist/bundle.js`, minified (production) |
 | `npm run dev` | Bundle `src/app.js` into `dist/bundle-dev.js`, unminified (debug) |
 | `npm run portfolio` | Run `generate-portfolio.py` via Playwright to regenerate the screenshots/video in `docs/media/` |
+| `npm run seed:note-layouts` | Regenerate the table-note seed (`gas-backend/seeds/note-layouts-seed.json`, `ContentSeed_NoteLayouts.js`) from the embedded catalog |
+| `npm run build:note-table-central` | Regenerate `gas-backend/ContentDashboard_NoteTable.html`, the app's table renderer packaged for the Content Hub |
 | `clasp push` (in `gas-backend/`) | Push local backend changes to the Apps Script project HEAD |
 | `clasp deploy -i <id> -d "<desc>"` (in `gas-backend/`) | Promote a deployment to the current HEAD version |
 
@@ -246,11 +250,12 @@ non-zero on failure, so you run the ones that cover what you touched.
 - **Node harnesses** (`npm run test:*`) stub the browser and Apps Script globals:
   `test:content`, `test:call-script`, `test:emails`, `test:note-templates`,
   `test:shortcuts`, `test:prefs`, `test:people`, `test:deployment-env`,
-  `test:timezones`, `test:jsonp`.
+  `test:timezones`, `test:jsonp`, `test:note-table` (table-note rules, HTML,
+  catalog vs. spec, seed and Content Hub include).
 - **Browser smokes** (`npm run smoke:*`) drive real UI with Playwright.
-  `smoke:shortcuts`, `smoke:wizards`, `smoke:env-badge`, `smoke:broadcast`,
-  `smoke:bau-scraping`, `smoke:tasks` and `smoke:bau-tasks` run the agent overlay
-  against `mock-crm.html`;
+  `smoke:shortcuts`, `smoke:palette`, `smoke:wizards`, `smoke:disclaimer`,
+  `smoke:env-badge`, `smoke:broadcast`, `smoke:bau-scraping`, `smoke:tasks` and
+  `smoke:bau-tasks` and `smoke:note-table` run the agent overlay against `mock-crm.html`;
   `smoke:content` and `smoke:people` load the Apps Script dashboards from disk
   with `google.script.run` doubled.
 

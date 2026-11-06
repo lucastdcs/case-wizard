@@ -19,6 +19,7 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { build } from 'esbuild';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const SRC = join(ROOT, 'src');
@@ -153,7 +154,148 @@ for (const file of walk(SRC)) {
     }
 }
 
-console.log(`\ni18n: ${checked} dicionário(s) verificado(s) em ${LANGS.join('/')}`);
+// Pares espelho `X_ES` / `X_EN`: o conteúdo por idioma que não cabe num
+// dicionário `{ pt, es, en }` (cenários, modelos de e-mail, rótulos de campo). Um
+// `X_ES` sem `X_EN` é o formato da época do PT/ES, e o que ele deixa para trás é
+// o inglês caindo em português sem erro nenhum — foi assim que o formulário BAU
+// ficou inteiro em PT com a interface em EN. Cobre também as propriedades de cada
+// entrada: um `tooltip` esquecido no EN volta ao PT do mesmo jeito calado.
+function literalOf(src, name) {
+    const m = new RegExp(`(?:export\\s+)?const\\s+${name}\\s*=\\s*\\{`).exec(src);
+    if (!m) return null;
+    const open = m.index + m[0].length - 1;
+    const close = matchBrace(src, open);
+    if (close === -1) return null;
+    try {
+        return new Function(`"use strict"; return (${src.slice(open, close + 1)});`)();
+    } catch (e) {
+        return null;
+    }
+}
+
+let mirrors = 0;
+for (const file of walk(SRC)) {
+    const rel = relative(ROOT, file);
+    const src = readFileSync(file, 'utf8');
+    for (const m of src.matchAll(/(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)_ES\s*=\s*\{/g)) {
+        const es = literalOf(src, `${m[1]}_ES`);
+        if (!es) continue;
+        mirrors++;
+        const id = `${rel} :: ${m[1]}_ES/_EN`;
+        const en = literalOf(src, `${m[1]}_EN`);
+        if (!en) {
+            failures.push({ id, kind: 'missing-mirror', detail: `${m[1]}_EN não existe` });
+            continue;
+        }
+        const faltam = Object.keys(es).filter(k => !(k in en));
+        if (faltam.length) failures.push({ id, kind: 'missing-keys', detail: 'en', keys: faltam });
+        const props = [];
+        for (const k of Object.keys(es)) {
+            if (!en[k] || typeof es[k] !== 'object' || typeof en[k] !== 'object') continue;
+            const sem = Object.keys(es[k]).filter(p => !(p in en[k]));
+            if (sem.length) props.push(`${k}.${sem.join('/')}`);
+        }
+        if (props.length) failures.push({ id, kind: 'missing-keys', detail: 'en', keys: props });
+    }
+}
+
+// --- Resolução do idioma (shared/i18n.js) ---
+//
+// Override manual > último idioma de perfil aplicado > "pt". O perfil só chega
+// depois do boot (o e-mail que o busca é capturado dentro da splash), então sem
+// o passo do meio um agente ES/EN que nunca tocou em Configurações veria a
+// splash em português em todo boot. Avalia o módulo real, com um localStorage
+// falso por cenário (o estado do módulo é global, por isso um bundle novo cada).
+let resolucoes = 0;
+{
+    const bundle = await build({
+        entryPoints: [join(SRC, 'modules/shared/i18n.js')],
+        bundle: true, write: false, format: 'cjs', platform: 'node', logLevel: 'silent',
+    });
+    const carregar = (store) => {
+        globalThis.localStorage = {
+            getItem: (k) => (k in store ? store[k] : null),
+            setItem: (k, v) => { store[k] = String(v); },
+            removeItem: (k) => { delete store[k]; },
+        };
+        const m = { exports: {} };
+        // eslint-disable-next-line no-new-func
+        new Function('module', 'exports', bundle.outputFiles[0].text)(m, m.exports);
+        return m.exports;
+    };
+    const casos = [
+        ['sem nada guardado, abre em pt', {}, null, { ui: 'pt', out: 'pt' }],
+        ['o último perfil aplicado vale já no boot seguinte', { cw_profile_lang: 'es' }, null, { ui: 'es', out: 'es' }],
+        ['o override manual da interface vence o perfil guardado', { cw_profile_lang: 'es', cw_ui_lang: 'en' }, null, { ui: 'en', out: 'es' }],
+        ['valor guardado inválido é ignorado', { cw_profile_lang: 'xx' }, null, { ui: 'pt', out: 'pt' }],
+        ['o perfil que chega vira o idioma, sem virar escolha manual', {}, { defaultLanguage: 'EN' }, { ui: 'en', out: 'en', guarda: 'en', manual: false }],
+        ['o perfil que chega não atropela a escolha manual, mas é guardado', { cw_ui_lang: 'pt' }, { defaultLanguage: 'EN' }, { ui: 'pt', out: 'en', guarda: 'en' }],
+    ];
+    for (const [nome, store, perfil, esperado] of casos) {
+        const m = carregar(store);
+        if (perfil) m.applyProfileLanguage(perfil);
+        const veio = { ui: m.getLanguage(), out: m.getOutputLanguage() };
+        const problemas = [];
+        for (const k of ['ui', 'out']) if (veio[k] !== esperado[k]) problemas.push(`${k}: esperado ${esperado[k]}, veio ${veio[k]}`);
+        if ('guarda' in esperado && store.cw_profile_lang !== esperado.guarda) problemas.push(`cw_profile_lang guardado: ${store.cw_profile_lang}`);
+        if (esperado.manual === false && ('cw_ui_lang' in store || 'cw_output_lang' in store)) problemas.push('o perfil virou escolha manual');
+        resolucoes++;
+        if (problemas.length) failures.push({ id: `shared/i18n.js :: ${nome}`, kind: 'resolve', detail: problemas.join('; ') });
+    }
+}
+
+// --- Datas na tela (shared/utils.js :: formatToLocalUserDate) ---
+//
+// Era `pt-BR` + " às " + "Data indisponível" cravados: o TL e o agente em EN ou
+// ES liam a data do BAU Form em português. Em EN o mês sai por extenso curto,
+// porque 05/09 é 5 de setembro ou 9 de maio conforme o leitor. A data é local
+// e sem fuso (2026-09-05T14:30:00), então o resultado não depende da máquina.
+let formatosDeData = 0;
+{
+    const bundle = await build({
+        entryPoints: [join(SRC, 'modules/shared/utils.js')],
+        bundle: true, write: false, format: 'cjs', platform: 'node', logLevel: 'silent',
+    });
+    const carregar = (lang) => {
+        const store = { cw_ui_lang: lang };
+        globalThis.localStorage = {
+            getItem: (k) => (k in store ? store[k] : null),
+            setItem: (k, v) => { store[k] = String(v); },
+            removeItem: (k) => { delete store[k]; },
+        };
+        globalThis.window = { location: { hostname: 'localhost' }, addEventListener() {}, matchMedia: () => ({ matches: false }) };
+        globalThis.document = {
+            createElement: () => ({ style: {}, classList: { add() {} }, appendChild() {} }),
+            body: { appendChild() {}, contains: () => false }, head: { appendChild() {} },
+            getElementById: () => null, addEventListener() {}, querySelector: () => null,
+        };
+        const m = { exports: {} };
+        // eslint-disable-next-line no-new-func
+        new Function('module', 'exports', 'require', bundle.outputFiles[0].text)(m, m.exports, () => { throw new Error('require'); });
+        return m.exports.formatToLocalUserDate;
+    };
+    const DATA = '2026-09-05T14:30:00';
+    const casos = {
+        pt: { ok: /^05\/09\/2026 às 14:30$/, vazio: 'Data indisponível' },
+        es: { ok: /^05\/09\/2026 a las 14:30$/, vazio: 'Fecha no disponible' },
+        en: { ok: /^05 Sept? 2026 at 14:30$/, vazio: 'Date unavailable' },
+    };
+    for (const [lang, e] of Object.entries(casos)) {
+        const fmt = carregar(lang);
+        const problemas = [];
+        const ok = fmt(DATA);
+        if (!e.ok.test(ok)) problemas.push(`data: veio ${JSON.stringify(ok)}`);
+        for (const entrada of ['N/A', 'undefined', '', 'lixo']) {
+            if (fmt(entrada) !== e.vazio) problemas.push(`${JSON.stringify(entrada)} -> ${JSON.stringify(fmt(entrada))}, esperado ${JSON.stringify(e.vazio)}`);
+        }
+        const lista = fmt(`N/A | ${DATA} | ${DATA}`);
+        if (lista !== `${ok} | ${ok}`) problemas.push(`lista com pipe: ${JSON.stringify(lista)}`);
+        formatosDeData++;
+        if (problemas.length) failures.push({ id: `shared/utils.js :: formatToLocalUserDate [${lang}]`, kind: 'resolve', detail: problemas.join('; ') });
+    }
+}
+
+console.log(`\ni18n: ${checked} dicionário(s) verificado(s) em ${LANGS.join('/')}; ${mirrors} par(es) _ES/_EN; ${resolucoes} caso(s) de resolução do idioma; ${formatosDeData} idioma(s) de formato de data`);
 
 if (!failures.length) {
     console.log('OK — todos os dicionários têm as três línguas com o mesmo conjunto de chaves.\n');
@@ -162,7 +304,9 @@ if (!failures.length) {
 
 console.error(`\n${failures.length} falha(s):\n`);
 for (const f of failures) {
+    if (f.kind === 'resolve') console.error(`  FALHA  ${f.id}: ${f.detail}`);
     if (f.kind === 'parse') console.error(`  ERRO   ${f.id}: não foi possível avaliar o literal — ${f.detail}`);
+    if (f.kind === 'missing-mirror') console.error(`  FALTA  ${f.id}: ${f.detail}`);
     if (f.kind === 'missing-lang') console.error(`  FALTA  ${f.id}: idioma "${f.detail}" ausente (${f.count} chaves a traduzir)`);
     if (f.kind === 'missing-keys') console.error(`  FALTA  ${f.id} [${f.detail}]: ${f.keys.length} chave(s) — ${f.keys.join(', ')}`);
     if (f.kind === 'extra-keys') console.error(`  SOBRA  ${f.id} [${f.detail}]: ${f.keys.length} chave(s) que PT não tem — ${f.keys.join(', ')}`);

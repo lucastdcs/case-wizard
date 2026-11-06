@@ -47,3 +47,7 @@ No ADR needed for trivial choices or implementation details.
 | [0018](0018-precall-checklist-no-case-notes.md) | Pre-call Checklist: sub-recurso do Case Notes, com a nota em inglês fixo | Accepted | 2026-10-23 |
 | [0019](0019-home-de-links-destaques-e-categorias.md) | Home de Links: destaques com janela, prévia no link e categorias criadas pela Central | Accepted | 2026-10-23 |
 | [0020](0020-precall-checklist-build-avulso.md) | Pre-call Checklist: build avulso, sem backend, com o favorito dentro do arquivo | Accepted | 2026-10-27 |
+| [0021](0021-lembrete-de-qualidade-no-boot.md) | Lembrete de qualidade no boot: cartão não modal, depois dos modais | Accepted | 2026-10-30 |
+| [0022](0022-nota-em-tabela-catalogo-na-central.md) | Nota em tabela: catálogo de blocos na Central, estrutura no código | Accepted | 2026-11-05 |
+| [0023](0023-pilula-com-gaveta-e-layout-por-agente.md) | Pílula com gaveta: fixados na ordem do agente, o resto atrás do botão Mais | **Proposed** | 2026-11-05 |
+| [0024](0024-nota-em-tabela-modulo-novo-ao-lado-do-antigo.md) | Nota em tabela como módulo novo, ao lado do Case Notes atual (revê o item 1 do 0022) | Accepted | 2026-11-05 |

@@ -38,6 +38,15 @@ const EMAIL_DICT = {
         copyErrorToast: "Erro ao copiar e-mail",
         fillErrorToast: "Erro ao preencher e-mail",
         smartCrErrorToast: "Erro ao aplicar Smart CR",
+        personalCategory: "Pessoal",
+        copyHtml: "Copiar HTML",
+        fillInCrm: "Preencher no CRM",
+        loading: "Carregando...",
+        noResults: "Nenhum resultado para",
+        emptyTitle: "Pronto para começar?",
+        emptyHint: "Selecione um template à esquerda para<br>gerar o seu e-mail técnico.",
+        smartCrPreview: "Este atalho irá preencher automaticamente os destinatários e abrir o menu de Canned Responses do CRM.",
+        smartCrHint: "Este é um <b>Smart CR</b>. Clique no botão laranja acima para aplicar o atalho diretamente no CRM.",
     },
     es: {
         headerTitle: "Email Assistant",
@@ -49,6 +58,15 @@ const EMAIL_DICT = {
         copyErrorToast: "Error al copiar el email",
         fillErrorToast: "Error al completar el email",
         smartCrErrorToast: "Error al aplicar Smart CR",
+        personalCategory: "Personal",
+        copyHtml: "Copiar HTML",
+        fillInCrm: "Rellenar en el CRM",
+        loading: "Cargando...",
+        noResults: "Sin resultados para",
+        emptyTitle: "¿Listo para empezar?",
+        emptyHint: "Seleccione una plantilla a la izquierda para<br>generar su email técnico.",
+        smartCrPreview: "Este atajo rellenará automáticamente los destinatarios y abrirá el menú de Canned Responses del CRM.",
+        smartCrHint: "Este es un <b>Smart CR</b>. Haga clic en el botón naranja de arriba para aplicar el atajo directamente en el CRM.",
     },
     en: {
         headerTitle: "Email Assistant",
@@ -60,11 +78,27 @@ const EMAIL_DICT = {
         copyErrorToast: "Error copying the email",
         fillErrorToast: "Error filling in the email",
         smartCrErrorToast: "Error applying Smart CR",
+        personalCategory: "Personal",
+        copyHtml: "Copy HTML",
+        fillInCrm: "Fill in CRM",
+        loading: "Loading...",
+        noResults: "No results for",
+        emptyTitle: "Ready to start?",
+        emptyHint: "Select a template on the left to<br>generate your technical email.",
+        smartCrPreview: "This shortcut will automatically fill in the recipients and open the CRM's Canned Responses menu.",
+        smartCrHint: "This is a <b>Smart CR</b>. Click the orange button above to apply the shortcut directly in the CRM.",
     },
 };
 function et(key) {
     const lang = getLanguage();
     return EMAIL_DICT[lang]?.[key] ?? EMAIL_DICT.pt[key];
+}
+
+// Chave interna do grupo dos snippets pessoais: agrupa a lista, escolhe o ícone
+// e marca o grupo expandido. Nunca é exibida — o rótulo vem de categoryLabel().
+const PERSONAL_CATEGORY = "👤 Pessoal";
+function categoryLabel(category) {
+    return category === PERSONAL_CATEGORY ? `👤 ${et('personalCategory')}` : category;
 }
 
 // --- ESTILOS (Apple Inspired) ---
@@ -266,7 +300,7 @@ function getMatchingSnippets(searchTerm) {
                     placeholders.push({ key: m, label: m.replace('[', '').replace(']', ''), type: m.toLowerCase().includes('data') ? 'date' : 'text', auto: m.toLowerCase().includes('nome') && m.toLowerCase().includes('seu') ? 'agentName' : null });
                 });
             }
-            return { id: s.id || `snippet-${Math.random()}`, name: s.title, category: "👤 Pessoal", subject: s.subject || et('noSubject'), template: s.content, placeholders: placeholders };
+            return { id: s.id || `snippet-${Math.random()}`, name: s.title, category: PERSONAL_CATEGORY, subject: s.subject || et('noSubject'), template: s.content, placeholders: placeholders };
         });
 }
 
@@ -371,8 +405,8 @@ export function initEmailAssistant() {
         return btn;
     }
 
-    const btnCopy = createButton("Copiar HTML");
-    const btnFill = createButton("Preencher no CRM", true);
+    const btnCopy = createButton(et('copyHtml'));
+    const btnFill = createButton(et('fillInCrm'), true);
     const btnSmartCR = createButton("Smart CR");
     btnSmartCR.classList.add("warning");
 
@@ -423,7 +457,7 @@ export function initEmailAssistant() {
     }
 
     async function loadTemplates() {
-        templateList.innerHTML = '<div style="padding: 20px; text-align: center; color: #5f6368;">Carregando...</div>';
+        templateList.innerHTML = '<div style="padding: 20px; text-align: center; color: #5f6368;">' + et('loading') + '</div>';
         templates = await EmailDataService.getTemplates();
         renderTemplateList();
     }
@@ -436,7 +470,7 @@ export function initEmailAssistant() {
         catHeader.setAttribute("aria-expanded", String(isExpanded));
 
         const headerText = document.createElement("span");
-        headerText.textContent = cat;
+        headerText.textContent = categoryLabel(cat);
         catHeader.appendChild(headerText);
 
         const badge = document.createElement("span");
@@ -484,7 +518,7 @@ export function initEmailAssistant() {
 
         const icon = document.createElement("span");
         icon.className = "cw-email-list-icon";
-        icon.innerHTML = template.isSmartCR ? '⚡' : (template.category === '👤 Pessoal' ? '👤' : '📄');
+        icon.innerHTML = template.isSmartCR ? '⚡' : (template.category === PERSONAL_CATEGORY ? '👤' : '📄');
         item.appendChild(icon);
 
         const text = document.createElement("span");
@@ -508,7 +542,7 @@ export function initEmailAssistant() {
             templateList.innerHTML = `
                 <div class="cw-email-list-empty">
                     <div class="cw-email-list-empty-icon">🔍</div>
-                    <div class="cw-email-list-empty-text">Nenhum resultado para "${searchTerm}"</div>
+                    <div class="cw-email-list-empty-text">${et('noResults')} "${searchTerm}"</div>
                 </div>`;
             return;
         }
@@ -562,7 +596,7 @@ export function initEmailAssistant() {
                 fieldsSection.style.display = "block";
                 fieldsSection.innerHTML = `<div class="cw-email-smartcr-hint">
                     <span class="cw-email-smartcr-hint-icon">💡</span>
-                    <span>Este é um <b>Smart CR</b>. Clique no botão laranja acima para aplicar o atalho diretamente no CRM.</span>
+                    <span>${et('smartCrHint')}</span>
                 </div>`;
             } else {
                 fieldsSection.style.display = "none";
@@ -618,17 +652,17 @@ export function initEmailAssistant() {
                         </svg>
                     </div>
                     <div style="font-family: 'Google Sans', sans-serif; font-size: 18px; font-weight: 600; color: ${COLORS.textPrimary}; margin-bottom: 8px;">
-                        Pronto para começar?
+                        ${et('emptyTitle')}
                     </div>
                     <div style="font-size: 14px; color: ${COLORS.textSecondary}; line-height: 1.6; max-width: 280px; margin: 0 auto;">
-                        Selecione um template à esquerda para<br>gerar o seu e-mail técnico.
+                        ${et('emptyHint')}
                     </div>
                 </div>`;
             return;
         }
 
         if (selectedTemplate.isSmartCR) {
-            previewContent.innerHTML = `<div style="padding: 20px; text-align: center;"><div style="font-size: 48px; margin-bottom: 12px;">⚡</div><div style="font-size: 16px; font-weight: 600; color: #202124;">Smart CR: ${selectedTemplate.code}</div><div style="font-size: 14px; color: #5f6368; margin-top: 8px;">Este atalho irá preencher automaticamente os destinatários e abrir o menu de Canned Responses do CRM.</div></div>`;
+            previewContent.innerHTML = `<div style="padding: 20px; text-align: center;"><div style="font-size: 48px; margin-bottom: 12px;">⚡</div><div style="font-size: 16px; font-weight: 600; color: #202124;">Smart CR: ${selectedTemplate.code}</div><div style="font-size: 14px; color: #5f6368; margin-top: 8px;">${et('smartCrPreview')}</div></div>`;
             return;
         }
 
@@ -695,6 +729,17 @@ export function initEmailAssistant() {
         if (helpDescEl) helpDescEl.textContent = et('headerDesc');
         searchInput.placeholder = et('searchPlaceholder');
         previewTitle.textContent = et('previewTitle');
+        btnCopy.textContent = et('copyHtml');
+        btnFill.textContent = et('fillInCrm');
+        // Só repinta o que não carrega o que o agente digitou: sem template,
+        // o estado vazio; com Smart CR, o preview e o hint (não há campos). Um
+        // template comum tem campos preenchidos e o corpo é conteúdo (idioma do
+        // atendimento), então fica como está.
+        if (templates.length) renderTemplateList();
+        if (!selectedTemplate || selectedTemplate.isSmartCR) {
+            renderFields();
+            updatePreview();
+        }
     });
 
     return toggleVisibility;

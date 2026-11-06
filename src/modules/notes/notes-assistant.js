@@ -199,10 +199,11 @@ export function initCaseNotesAssistant() {
     popup.insertBefore(splitContent, credit);
 
     // 6. Header Integration
+    const splitToggleBtn = createSplitToggleButton();
     const headerActions = header.lastElementChild;
     if (headerActions) {
         headerActions.insertBefore(draftsManager.historyBtnWrapper, headerActions.firstChild);
-        headerActions.insertBefore(createSplitToggleButton(), headerActions.firstChild);
+        headerActions.insertBefore(splitToggleBtn, headerActions.firstChild);
     }
     popup.appendChild(draftsManager.drawer);
 
@@ -741,13 +742,13 @@ export function initCaseNotesAssistant() {
         });
         if (missingRequired.length > 0) {
             SoundManager.playError();
-            showToast(`Preencha o campo obrigatório antes de gerar: ${t(missingRequired[0].toLowerCase())}`, { error: true });
+            showToast(`${t('preencha_obrigatorio')}: ${t(missingRequired[0].toLowerCase())}`, { error: true });
             return;
         }
 
         if (templateData?.requiresTasks && stepTasks.getCheckedElements().length === 0) {
             SoundManager.playError();
-            showToast("Selecione ao menos uma tarefa antes de gerar a nota.", { error: true });
+            showToast(t('selecione_task_gerar'), { error: true });
             return;
         }
 
@@ -781,7 +782,7 @@ export function initCaseNotesAssistant() {
             // tinha sido fechado como se tivesse dado certo, deixando o
             // agente sem nenhum aviso de que a nota não foi inserida.
             SoundManager.playError();
-            showToast("Não foi possível abrir a nota no CRM. O conteúdo já está copiado — cole manualmente.", { error: true });
+            showToast(t('nota_nao_abriu'), { error: true });
             toggleVisibility();
         }
         finishLoading();
@@ -1130,7 +1131,7 @@ export function initCaseNotesAssistant() {
         btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>`;
         btn.style.cssText = "width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; color: #9AA0A6; transition: all 0.2s;";
         btn.onclick = (e) => { e.stopPropagation(); toggleSplitView(); };
-        btn.title = "Alternar para Split & Transfer";
+        btn.title = t('alternar_split');
         return btn;
     }
 
@@ -1161,11 +1162,11 @@ export function initCaseNotesAssistant() {
                 </svg>
             </div>
             <div style="text-align: center;">
-                <div style="font-family: 'Google Sans', sans-serif; font-size: 16px; font-weight: 600; color: ${COLORS.text}; margin-bottom: 4px;">
-                    ${t('pronto_comecar') || 'Pronto para começar?'}
+                <div class="js-empty-title" style="font-family: 'Google Sans', sans-serif; font-size: 16px; font-weight: 600; color: ${COLORS.text}; margin-bottom: 4px;">
+                    ${t('pronto_comecar')}
                 </div>
-                <div style="font-size: 13px; color: ${COLORS.textSub}; line-height: 1.6; opacity: 0.8;">
-                    ${t('selecione_status_ajuda') || 'Selecione um status e substatus para<br>começar a sua nota técnica.'}
+                <div class="js-empty-help" style="font-size: 13px; color: ${COLORS.textSub}; line-height: 1.6; opacity: 0.8;">
+                    ${t('selecione_status_ajuda')}
                 </div>
             </div>
         `;
@@ -1184,6 +1185,18 @@ export function initCaseNotesAssistant() {
             portugalBtns[0].textContent = t('nao');
             portugalBtns[1].textContent = t('sim');
         }
+        // O estado vazio é montado uma vez, no idioma do boot — e o perfil
+        // (que decide o idioma) só chega depois. Sem repintar aqui, ele ficava
+        // preso no idioma errado. A ajuda carrega um <br> do dicionário.
+        const emptyTitle = content.querySelector('.js-empty-title');
+        if (emptyTitle) emptyTitle.textContent = t('pronto_comecar');
+        const emptyHelp = content.querySelector('.js-empty-help');
+        if (emptyHelp) emptyHelp.innerHTML = t('selecione_status_ajuda');
+        splitToggleBtn.title = t('alternar_split');
+        const mainPlaceholder = content.querySelector('#main-status-select option[value=""]');
+        if (mainPlaceholder) mainPlaceholder.textContent = t('select_status');
+        const subPlaceholder = content.querySelector('#sub-status-select option[value=""]');
+        if (subPlaceholder) subPlaceholder.textContent = t('select_substatus');
         const lStatus = content.querySelector('.js-label-status');
         if (lStatus) lStatus.textContent = t('status_principal');
         const lSubstatus = content.querySelector('.js-label-substatus');
@@ -1262,7 +1275,7 @@ export function initCaseNotesAssistant() {
             const confirmed = await confirmDialog(t('restaurar_rascunho_confirm'));
             if (confirmed) {
                 restoreFullState(emergencyData);
-                showToast("Sessão restaurada!");
+                showToast(t('sessao_restaurada'));
             } else {
                 DraftService.clearEmergency();
             }

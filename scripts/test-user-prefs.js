@@ -192,6 +192,16 @@ check('blob acima do teto é recusado', () => {
   if (r.status !== 'error') throw new Error('aceitou um payload maior que o teto');
 });
 
+check('as preferências da Nota em tabela (tipo, último tipo, fluxo) fazem o round-trip no blob do agente', () => {
+  // A janela as lê no boot de outra máquina: se o blob não as devolvesse iguais, o
+  // agente de ECL abriria em ALL TASKS sem erro nenhum.
+  const prefs = JSON.stringify({ notes_default_segment: 'last', notes_last_segment: 'mms', notes_default_flow: 'lm' });
+  const s = chamar({ op: 'save_user_prefs', user: 'nota@google.com', prefs });
+  if (s.status !== 'success') throw new Error(JSON.stringify(s));
+  const r = chamar({ op: 'get_user_prefs', user: 'nota@google.com' });
+  if (JSON.stringify(r.prefs) !== prefs) throw new Error('voltou diferente: ' + JSON.stringify(r.prefs));
+});
+
 check('linha corrompida na planilha devolve {} em vez de derrubar o agente', () => {
   // Plausível: alguém edita a planilha na mão, ou uma versão futura grava outra
   // coisa. O agente não pode ficar trancado fora das próprias preferências.

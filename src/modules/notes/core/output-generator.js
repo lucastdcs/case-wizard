@@ -54,7 +54,7 @@ export function generateOutputHtml(state, stepTasks, tagSupport, evidenceData = 
                         let itemsHtml = '';
                         printInputs.forEach(printInput => {
                             const group = printInput.closest('.cw-input-group');
-                            const labelText = group?.querySelector('.cw-input-label')?.textContent || 'Evidência';
+                            const labelText = group?.querySelector('.cw-input-label')?.textContent || t('evidencia');
                             const val = printInput.value.trim();
                             if (val) {
                                itemsHtml += `<li>${labelText} - ${val}</li>`;
@@ -137,7 +137,7 @@ export function generateOutputHtml(state, stepTasks, tagSupport, evidenceData = 
     }
 
     // Add Global Footer
-    htmlOutput += `<i>Nota criada através do Cases Wizard.</i>`;
+    htmlOutput += `<i>${t('nota_criada_rodape')}</i>`;
 
     // Final cleanup: replace excessive breaks
     return htmlOutput.replace(/(<br>\s*){3,}/g, '<br><br>').trim();

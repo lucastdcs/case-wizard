@@ -12,7 +12,32 @@
 // agente vê exatamente o que via antes.
 
 import { DataService } from "../../shared/data-service.js";
-import { scenarioSnippets, SCENARIO_ES, SCENARIO_EN } from "./notes-data.js";
+import { scenarioSnippets, SCENARIO_ES, SCENARIO_EN, scenarioSlug } from "./notes-data.js";
+
+// O que veio embutido, fotografado ANTES da primeira hidratação (que reescreve
+// scenarioSnippets e os espelhos no lugar). O espelho embutido é chaveado pelos
+// ids de código (`quickfill-ni-followup-lm`); publicado, o cenário passa a ter
+// outro id (`cw-ni_attempted_contact-ni-followup-lm`), então o embutido só é achado por
+// aqui: pelo mesmo `scenarioSlug` que reencontra um atalho salvo num mundo
+// quando ele roda no outro.
+const EMBUTIDOS = {
+    ES: { ...SCENARIO_ES },
+    EN: { ...SCENARIO_EN },
+    substatus: Object.fromEntries(
+        Object.entries(scenarioSnippets).map(([id, s]) => [id, s.substatus || []])
+    ),
+};
+
+// O texto embutido, no idioma, do cenário publicado `id` - ou undefined se esse
+// cenário nunca existiu embutido (criado pela tela): aí cai no PT, como sempre.
+function embutidoDoPublicado(lang, id, substatus) {
+    const slug = scenarioSlug(id, substatus[0]);
+    const achado = Object.keys(EMBUTIDOS[lang]).find((embutidoId) => {
+        const subs = EMBUTIDOS.substatus[embutidoId] || [];
+        return scenarioSlug(embutidoId, subs[0]) === slug && substatus.some((s) => subs.includes(s));
+    });
+    return achado ? EMBUTIDOS[lang][achado] : undefined;
+}
 
 // Um id estável por modelo, derivado de substatus + nome. Precisa ser estável
 // porque o chip usa `data-id` e o openWithPreset() procura o chip por ele; e
@@ -86,15 +111,23 @@ export function applyNoteTemplateContent(items) {
     for (const k of Object.keys(scenarioSnippets)) delete scenarioSnippets[k];
     Object.assign(scenarioSnippets, pt);
 
-    // Espelho que a Central não serviu NÃO é espelho vazio: é a Central não
-    // tendo nada a dizer sobre aquele idioma. Zerar nesse caso derrubaria o
-    // fallback embutido e o agente daquele idioma leria tudo em português —
-    // sem erro, como de hábito. Mesma regra que o `if (!pt.length) return
-    // false` acima já aplica à base.
+    // O espelho de cada idioma é o embutido COMPLETADO pelo que a Central serve,
+    // e o publicado vence. Central sem nada num idioma não é "idioma vazio": é a
+    // Central não tendo nada a dizer sobre ele, e o agente daquele idioma lê o
+    // embutido - não o português, sem erro, como de hábito. O mesmo vale para o
+    // idioma servido pela metade (um cenário traduzido na tela não pode derrubar
+    // os outros). É reconstruído a cada chamada, a partir da cópia embutida:
+    // cache e rede aplicam em sequência, e um item removido da Central some.
     for (const [lang, alvo] of [['ES', SCENARIO_ES], ['EN', SCENARIO_EN]]) {
-        if (!Object.keys(espelhos[lang]).length) continue;
+        const novo = {};
+        for (const [id, cenario] of Object.entries(pt)) {
+            const embutido = embutidoDoPublicado(lang, id, cenario.substatus);
+            if (embutido) novo[id] = embutido;
+        }
+        Object.assign(novo, espelhos[lang]);
+
         for (const k of Object.keys(alvo)) delete alvo[k];
-        Object.assign(alvo, espelhos[lang]);
+        Object.assign(alvo, novo);
     }
 
     return true;

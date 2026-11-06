@@ -167,7 +167,13 @@ function getAnchorPoint(buttonId) {
     };
 
     if (!pillCollapsed) {
-        const fromBtn = usable(btn);
+        // Botão numa gaveta fechada: ele continua no layout (a gaveta usa
+        // visibility, não display) e devolveria um retângulo real, mas de algo
+        // que ninguém está vendo. A janela entra e sai do botão Mais.
+        const inClosedDrawer = !!(btn && btn.closest('.cw-drawer:not(.open)'));
+        const fromBtn = inClosedDrawer
+            ? usable(document.getElementById('cw-btn-more'))
+            : usable(btn);
         if (fromBtn) return fromBtn;
     }
     return usable(pill);
@@ -482,7 +488,8 @@ function setupIdleListener(popup, buttonId) {
         const clickInModule = popup.contains(e.target);
         // Verifica se clicou na Pílula inteira (para não dar idle enquanto arrasta ou clica em outro)
         const pill = document.querySelector('.cw-pill');
-        const clickInPill = pill && pill.contains(e.target);
+        const drawer = document.querySelector('.cw-drawer');
+        const clickInPill = (pill && pill.contains(e.target)) || (drawer && drawer.contains(e.target));
 
         if (clickInModule) {
             // Clicou no módulo: FOCA

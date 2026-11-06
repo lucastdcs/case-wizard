@@ -1,0 +1,315 @@
+<!-- ARQUIVO GERADO - não edite à mão. Origem: npm run build:note-table-central
+     (src/modules/notes-table/note-table-render.js e note-table-model.js, os mesmos do app).
+     Expõe window.CwNoteTable para a prévia "como o agente vê" da Central. -->
+<script>
+var CwNoteTable = (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+  // central-entry.js
+  var central_entry_exports = {};
+  __export(central_entry_exports, {
+    NOTE_FOOTER: () => NOTE_FOOTER,
+    blockRows: () => blockRows,
+    createNoteState: () => createNoteState,
+    escapeHtml: () => escapeHtml,
+    labelText: () => labelText,
+    newCidRow: () => newCidRow,
+    renderBlockTable: () => renderBlockTable,
+    renderNoteHtml: () => renderNoteHtml,
+    valueHtml: () => valueHtml
+  });
+
+  // src/modules/notes-table/note-table-model.js
+  var TS_TARGETS = ["ads_conversion_tracking", "ads_enhanced_conversions"];
+  var TS_PRINT_BLOCKS = ["before", "impl", "after"];
+  var EXTRAS_BLOCK = "extras";
+  var ECW = "ads_enhanced_conversions";
+  function createNoteState(over = {}) {
+    return Object.assign({
+      seg: "all",
+      flow: "bau",
+      europe: false,
+      substatus: "",
+      tasks: [],
+      forced: [],
+      active: [],
+      optIn: [],
+      vals: {},
+      cids: [],
+      taskPrints: []
+    }, over);
+  }
+  function newCidRow(cid = "") {
+    return { tbw: "TBW", cid, mcc: "", outcome: "", alink: "", sme: "YES", tag: "", caseid: "", elig: "", galactic: "" };
+  }
+  function rowState(st, id) {
+    if (!st.vals[id]) st.vals[id] = { v: "", na: false, comment: "", touched: false, auto: false, defaulted: false };
+    return st.vals[id];
+  }
+  function findSegment(catalog, key) {
+    return catalog.segments.find((s) => s.key === key) || null;
+  }
+  function segmentUsesTasks(catalog, segKey) {
+    const seg = findSegment(catalog, segKey);
+    if (!seg) return false;
+    return seg.blocks.some((p) => blockRows(catalog.blocks[p.b]).some((r) => r.type === "derived" && r.auto === "tasks"));
+  }
+  function effectiveTasks(catalog, st) {
+    return segmentUsesTasks(catalog, st.seg) ? st.tasks || [] : [];
+  }
+  function taskKeys(catalog, st) {
+    return effectiveTasks(catalog, st).map((t) => t.key);
+  }
+  function hasTask(catalog, st, key) {
+    const keys = taskKeys(catalog, st);
+    return keys.includes(key === "ecw" ? ECW : key);
+  }
+  function blockRows(block) {
+    const out = [];
+    if (!block) return out;
+    for (const sec of block.sections || []) if (sec.rows) out.push(...sec.rows);
+    return out;
+  }
+  function matches(catalog, st, when) {
+    if (!when) return true;
+    if (when.flow && st.flow !== when.flow) return false;
+    if (when.europe !== void 0 && !!st.europe !== when.europe) return false;
+    if (when.substatusAny && !when.substatusAny.includes(st.substatus)) return false;
+    if (when.tasksAny) {
+      const keys = taskKeys(catalog, st);
+      if (!when.tasksAny.some((k) => keys.includes(k))) return false;
+    }
+    if (when.rowIs && rowState(st, when.rowIs.id).v !== when.rowIs.v) return false;
+    return true;
+  }
+  function rowRequired(catalog, st, row) {
+    return row.requiredWhen ? matches(catalog, st, row.requiredWhen) : !!row.required;
+  }
+  function rowVisible(catalog, st, row, opts = {}) {
+    if (row.visible === false) return false;
+    if (opts.ignoreWhen) return true;
+    if (row.onlyFor && !row.onlyFor.every((k) => hasTask(catalog, st, k))) return false;
+    if (!matches(catalog, st, row.when)) return false;
+    if (row.optIn && !(st.optIn || []).includes(row.id) && !(row.requiredWhen && matches(catalog, st, row.requiredWhen))) return false;
+    return true;
+  }
+  function tagSupportActive(catalog, st) {
+    return taskKeys(catalog, st).some((k) => TS_TARGETS.includes(k)) && rowState(st, "ts_used").v === "Yes";
+  }
+  function taskDispensed(catalog, st, key) {
+    return tagSupportActive(catalog, st) && TS_TARGETS.includes(key) && taskKeys(catalog, st).includes(key) && !(st.forced || []).includes(key);
+  }
+  function isTsDispensed(catalog, st, row, blockId) {
+    if (row.type !== "link" || !TS_PRINT_BLOCKS.includes(blockId)) return false;
+    if (!tagSupportActive(catalog, st)) return false;
+    if (row.onlyFor) return row.onlyFor.every((k) => taskDispensed(catalog, st, k === "ecw" ? ECW : k));
+    const targets = taskKeys(catalog, st).filter((k) => TS_TARGETS.includes(k));
+    return targets.length > 0 && targets.every((k) => taskDispensed(catalog, st, k));
+  }
+  function tasksText(catalog, st, tsDisclaimer = "") {
+    return effectiveTasks(catalog, st).map((t) => {
+      if (taskDispensed(catalog, st, t.key)) return `${t.name} - ${tsDisclaimer}`;
+      return t.count > 1 ? `${t.name} (x${t.count})` : t.name;
+    }).join(", ");
+  }
+  function taskPrintRows(catalog, st) {
+    if (!segmentUsesTasks(catalog, st.seg)) return [];
+    return (st.taskPrints || []).filter((p) => p && String(p.v || "").trim()).map((p, i) => ({ id: `tp_${i}`, label: { en: String(p.label || "") }, type: "link", value: String(p.v).trim() }));
+  }
+  var isNaText = (v) => v.trim().toUpperCase() === "NA";
+  function resolveRow(catalog, st, row, ctx = {}) {
+    const s = rowState(st, row.id);
+    const acceptsNa = row.na !== false;
+    if (row.type === "derived") {
+      if (row.auto === "substatus") return st.substatus || null;
+      if (row.auto === "europe") return "Yes";
+      if (row.auto === "tasks") {
+        const t = tasksText(catalog, st, ctx.tsDisclaimer);
+        if (t) return t;
+        return s.na ? "NA" : null;
+      }
+      return null;
+    }
+    if (s.na && acceptsNa) return "NA";
+    const v = String(s.v || "").trim();
+    if (v) {
+      if (isNaText(v)) return acceptsNa ? "NA" : null;
+      return v;
+    }
+    if (ctx.blockId && isTsDispensed(catalog, st, row, ctx.blockId)) return "NA";
+    return rowRequired(catalog, st, row) ? null : "NA";
+  }
+  function cidCellValue(col, cr) {
+    if (col.type === "smeyes") return cr.sme || "YES";
+    if (col.type === "tbw") return cr.tbw || "TBW";
+    return String(cr[col.id] || "").trim();
+  }
+  function activePlacements(catalog, st) {
+    const seg = findSegment(catalog, st.seg);
+    if (!seg) return [];
+    const act = st.active || [];
+    const list = seg.blocks.filter((p) => act.includes(p.b) && p.b !== EXTRAS_BLOCK && catalog.blocks[p.b]);
+    if (!list.length) return [];
+    if (catalog.blocks[EXTRAS_BLOCK]) list.push({ b: EXTRAS_BLOCK, title: "" });
+    return list;
+  }
+  function labelText(label, lang) {
+    if (typeof label === "string") return label;
+    if (!label) return "";
+    return label[lang] || label.en || "";
+  }
+
+  // src/modules/notes-table/note-table-render.js
+  var C = { primary: "#1a73e8", primaryBg: "#e8f0fe", text: "#202124", textSub: "#5f6368", bgInput: "#f8f9fa", surface: "#fff" };
+  var FONT = "'Google Sans', Roboto, Arial, sans-serif";
+  var HAIR = "1px solid rgba(60,64,67,.16)";
+  var PENDING_BG = "#fef7e0";
+  var COMMENTS_HEAD = "Additional Comments (Optional)";
+  var NOTE_FOOTER = {
+    pt: "Nota criada através do Cases Wizard.",
+    es: "Nota creada a través de Cases Wizard.",
+    en: "Note created through Cases Wizard."
+  };
+  function escapeHtml(s) {
+    return String(s != null ? s : "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function valueHtml(v) {
+    return String(v != null ? v : "").replace(/\r\n?/g, "\n").split("\n").filter((line) => line.trim()).map((line) => escapeHtml(line.replace(/\s+$/, "")).replace(/\*\*([^*]+?)\*\*/g, "<b>$1</b>")).join("<br>");
+  }
+  function cellHtml({ row, span = 1, rowspan = 1, head, bg, bold, color, valign = "top", vline }, html) {
+    const style = [
+      "padding:8px 12px",
+      "font-size:13px",
+      "line-height:1.45",
+      `vertical-align:${valign}`,
+      "word-break:break-word",
+      "overflow-wrap:anywhere",
+      row > 0 ? `border-top:${HAIR}` : "",
+      vline ? `border-left:${HAIR}` : "",
+      `background-color:${bg || C.surface}`,
+      `color:${color || C.text}`,
+      bold || head ? "font-weight:700" : "font-weight:400",
+      "text-align:left"
+    ].filter(Boolean).join(";");
+    const tag = head ? "th" : "td";
+    return `<${tag}${span > 1 ? ` colspan="${span}"` : ""}${rowspan > 1 ? ` rowspan="${rowspan}"` : ""} style="${style}">${html}</${tag}>`;
+  }
+  function gridHtml(rows, live) {
+    const busy = [];
+    let out = "";
+    rows.forEach((cells, r) => {
+      busy[r] = busy[r] || [];
+      let c = 0;
+      let html = "";
+      for (const cell of cells) {
+        while (busy[r][c]) c++;
+        const span = cell.span || 1;
+        const rs = cell.rowspan || 1;
+        for (let k = 0; k < rs; k++) {
+          busy[r + k] = busy[r + k] || [];
+          for (let j = 0; j < span; j++) busy[r + k][c + j] = true;
+        }
+        html += cellHtml({ ...cell, row: r, vline: !!cell.vline && c > 0 }, cell.html);
+        c += span;
+      }
+      out += `<tr${live && cells.rowId ? ` data-row="${escapeHtml(cells.rowId)}"` : ""}>${html}</tr>`;
+    });
+    return out;
+  }
+  var withRowId = (cells, rowId) => Object.assign(cells, { rowId });
+  function renderBlockTable(catalog, st, placement, opts = {}) {
+    const blk = catalog.blocks[placement.b];
+    if (!blk) return "";
+    const N = blk.cols;
+    const lang = opts.lang || "en";
+    const live = !!opts.live;
+    const pending = () => live ? { bg: PENDING_BG, html: `<span style="color:#b06000;font-style:italic">${escapeHtml(opts.pendingLabel || "pending")}</span>` } : { html: "NA" };
+    const rows = [];
+    const prints = placement.b === EXTRAS_BLOCK ? taskPrintRows(catalog, st) : [];
+    const lastKv = blk.sections.map((s) => s.kind).lastIndexOf("kv");
+    blk.sections.forEach((sec, si) => {
+      if (sec.kind === "cid") {
+        rows.push([{ span: N, head: true, bg: C.primaryBg, html: escapeHtml(labelText(sec.title, lang)) }]);
+        rows.push(sec.columns.map((c) => ({ head: true, vline: true, bg: C.bgInput, color: C.textSub, html: escapeHtml(labelText(c.label, lang)) })));
+        const cids = st.cids || [];
+        if (!cids.length) rows.push([{ span: N, ...pending() }]);
+        cids.forEach((cr, ci) => rows.push(withRowId(sec.columns.map((c, i) => {
+          const v = cidCellValue(c, cr);
+          if (!v) return { bold: i === 0, vline: true, ...pending() };
+          return { bold: i === 0, vline: true, html: valueHtml(v) };
+        }), `cid:${ci}:${sec.columns[0].id}`)));
+        return;
+      }
+      const vis = (sec.rows || []).filter((r) => rowVisible(catalog, st, r, { ignoreWhen: opts.ignoreWhen }));
+      const extra = si === lastKv ? prints : [];
+      if (!vis.length && !extra.length) return;
+      const head = [
+        { span: N - 1, head: true, bg: C.primaryBg, html: escapeHtml(labelText(sec.title, lang)) },
+        { head: true, vline: true, bg: C.bgInput, color: C.textSub, html: COMMENTS_HEAD }
+      ];
+      rows.push(head);
+      const ctx = { blockId: placement.b, tsDisclaimer: opts.tsDisclaimer };
+      if (sec.kind === "group") {
+        vis.forEach((r, i) => {
+          const v = resolveRow(catalog, st, r, ctx);
+          const line = [];
+          if (i === 0) line.push({ rowspan: vis.length, bold: true, bg: C.bgInput, color: C.primary, valign: "middle", html: escapeHtml(labelText(sec.group, lang)) });
+          line.push({ bold: true, html: escapeHtml(labelText(r.label, lang)) });
+          line.push(v === null ? pending() : { html: valueHtml(v) });
+          line.push({ vline: true, html: valueHtml(rowState(st, r.id).comment) });
+          rows.push(withRowId(line, r.id));
+        });
+      } else {
+        const ls = N === 3 ? 1 : 2;
+        const vs = N - ls - 1;
+        for (const r of vis) {
+          const v = resolveRow(catalog, st, r, ctx);
+          rows.push(withRowId([
+            { span: ls, bold: true, bg: C.bgInput, html: escapeHtml(labelText(r.label, lang)) },
+            v === null ? { span: vs, ...pending() } : { span: vs, html: valueHtml(v) },
+            { vline: true, html: valueHtml(rowState(st, r.id).comment) }
+          ], r.id));
+        }
+        for (const p of extra) {
+          rows.push(withRowId([
+            { span: ls, bold: true, bg: C.bgInput, html: escapeHtml(p.label.en) },
+            { span: vs, html: valueHtml(p.value) },
+            { vline: true, html: "" }
+          ], p.id));
+        }
+      }
+    });
+    if (!rows.length) return "";
+    const tableStyle = `width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;border:${HAIR};border-radius:12px;overflow:hidden;font-family:${FONT};margin:0 0 4px 0`;
+    const cols = `<colgroup>${blk.widths.map((w) => `<col style="width:${w}%">`).join("")}</colgroup>`;
+    const seg = findSegment(catalog, st.seg);
+    const title = labelText(placement.title, lang);
+    const heading = seg && seg.showTitle && title ? `<div style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.primary};margin:16px 0 6px 0">${escapeHtml(title)}</div>` : "";
+    return `${heading}<table style="${tableStyle}">${cols}<tbody>${gridHtml(rows, live)}</tbody></table>`;
+  }
+  function renderNoteHtml(catalog, st, opts = {}) {
+    const lang = opts.lang || "en";
+    const parts = activePlacements(catalog, st).map((p) => renderBlockTable(catalog, st, p, opts)).filter(Boolean);
+    if (!parts.length) return "";
+    const footer = opts.footer || NOTE_FOOTER[lang] || NOTE_FOOTER.en;
+    return parts.join('<div style="height:10px"></div>') + `<div style="font-family:${FONT};font-size:12px;font-style:italic;color:${C.textSub};margin-top:8px">${escapeHtml(footer)}</div>`;
+  }
+  return __toCommonJS(central_entry_exports);
+})();
+</script>

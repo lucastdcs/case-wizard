@@ -11,8 +11,8 @@ import { fetchAndInsertSpeakeasyId } from '../notes/automation/case-log-scraper.
 import { FORM_CONFIG, bauTaskOptions } from './bau-form-config.js';
 import { loadTasks } from '../notes/data/tasks-service.js';
 import { bft, bfOptionText } from './bau-form-i18n.js';
-import { getLanguage, onLanguageChange } from '../shared/i18n.js';
-import { TIMEZONE_HUBS, DEFAULT_TIMEZONE, withZoneOffset, offsetMinutesForWallTime, formatOffset, zoneFromCrmValue } from '../shared/timezones.js';
+import { getLanguage, getLocale, getMonthStyle, onLanguageChange } from '../shared/i18n.js';
+import { TIMEZONE_HUBS, DEFAULT_TIMEZONE, withZoneOffset, offsetMinutesForWallTime, formatOffset, zoneFromCrmValue, hubName, hubLabel } from '../shared/timezones.js';
 
 // Grade de horários do agendamento, em 24h. Faixa e passo são decisão de
 // produto (o atendimento acontece em horário comercial estendido do cliente),
@@ -356,6 +356,12 @@ function bt(key) {
     return BAU_DICT[lang]?.[key] ?? BAU_DICT.pt[key];
 }
 
+// Só o texto exibido muda com o idioma; o `value` da opção é a zona IANA.
+function timezoneOptionText(hub) {
+    const lang = getLanguage();
+    return `${hub.flag} ${hubName(hub, lang)} — ${hubLabel(hub, lang)}`;
+}
+
 const ICONS = {
     add: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
     back: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>`,
@@ -511,7 +517,7 @@ function createField(fieldConfig) {
             tzRow.innerHTML = `
                 <span class="bau-field-hint">${bt('clientTimezone')}</span>
                 <select name="availabilityTimezone" class="bau-select">
-                    ${TIMEZONE_HUBS.map(h => `<option value="${h.zone}">${h.flag} ${h.name} — ${h.label}</option>`).join('')}
+                    ${TIMEZONE_HUBS.map(h => `<option value="${h.zone}">${timezoneOptionText(h)}</option>`).join('')}
                 </select>
             `;
             input.appendChild(tzRow);
@@ -601,6 +607,13 @@ function createField(fieldConfig) {
     return wrapper;
 }
 
+
+// Texto do erro do CID, no idioma da interface. O toast de validação já lia
+// `bft(..., 'error')`; a dica em linha sob o campo era gravada uma vez, na
+// criação, com o texto do config (PT) - e nunca repintada.
+function cidErrorText(fieldConfig) {
+    return bft(fieldConfig, 'error') || fieldConfig?.validation?.error || '';
+}
 
 export function initBAUForm() {
     injectStyles();
@@ -765,7 +778,7 @@ export function initBAUForm() {
                     errorHint.id = 'bau-cid-error';
                     errorHint.className = 'bau-cid-error-hint';
                     errorHint.style.display = 'none';
-                    errorHint.textContent = 'Formato de CID incorreto';
+                    errorHint.textContent = cidErrorText(stepConfig.fields.find(f => f.id === 'cid'));
                     cidWrapper.appendChild(errorHint);
                 }
             } else {
@@ -1652,7 +1665,29 @@ export function initBAUForm() {
             return `${d}/${m} ${resto.slice(0, 5)}`;
         }).join('  ·  ');
 
-        return `${texto} — ${hub ? hub.label : zone}`;
+        return `${texto} — ${hub ? hubLabel(hub, getLanguage()) : zone}`;
+    }
+
+    // Repinta só o TEXTO do bloco de disponibilidade na troca de idioma: o fuso
+    // escolhido, as datas e as horas já digitadas ficam onde estão.
+    function repaintAvailability(wrapper, fieldConfig) {
+        const setText = (selector, text) => {
+            const el = wrapper.querySelector(selector);
+            if (el) el.textContent = text;
+        };
+        setText('.bau-timezone-row .bau-field-hint', bt('clientTimezone'));
+        wrapper.querySelectorAll('select[name="availabilityTimezone"] option').forEach(opt => {
+            const hub = TIMEZONE_HUBS.find(h => h.zone === opt.value);
+            if (hub) opt.textContent = timezoneOptionText(hub);
+        });
+        wrapper.querySelectorAll('.bau-availability-field .bau-field-hint').forEach((hint, i) => {
+            if (fieldConfig.fields[i]) hint.textContent = bft(fieldConfig.fields[i], 'label');
+        });
+        const warning = wrapper.querySelector('.bau-disclaimer-text');
+        if (warning) warning.innerHTML = `<strong>${bt('timezoneWarningStrong')}</strong> ${bt('timezoneWarningText')}`;
+        const tzLink = wrapper.querySelector('#bau-open-timezone');
+        if (tzLink) tzLink.innerHTML = `${ICONS.refresh} ${bt('checkTimezone')}`;
+        atualizarEchoDisponibilidade();
     }
 
     // Eco da opção 1 em Brasília. O agente digita no fuso do CLIENTE, e a
@@ -1675,13 +1710,13 @@ export function initBAUForm() {
         const instante = new Date(carimbado);
         if (isNaN(instante.getTime())) { echo.innerHTML = ''; return; }
 
-        const emBrasilia = new Intl.DateTimeFormat('pt-BR', {
-            timeZone: DEFAULT_TIMEZONE, day: '2-digit', month: '2-digit',
+        const emBrasilia = new Intl.DateTimeFormat(getLocale(), {
+            timeZone: DEFAULT_TIMEZONE, day: '2-digit', month: getMonthStyle(),
             hour: '2-digit', minute: '2-digit', hour12: false,
         }).format(instante);
 
         const hub = TIMEZONE_HUBS.find(h => h.zone === zone);
-        echo.innerHTML = bt('echoEquivalence')(hora, hub ? hub.label : zone, emBrasilia);
+        echo.innerHTML = bt('echoEquivalence')(hora, hub ? hubLabel(hub, getLanguage()) : zone, emBrasilia);
     }
 
     // Opções do select de idioma da prévia, lidas do próprio FORM_CONFIG: uma
@@ -2135,9 +2170,12 @@ export function initBAUForm() {
 
     updateWizardState();
 
-    // Retraduz os pedaços fixos (header, botões, tela de sucesso) e refaz a
-    // view atual - dashboard/form/detalhes já são reconstruídos do zero a
-    // cada navegação, então herdam o idioma atual sozinhos na próxima visita.
+    // Retraduz os pedaços fixos (header, botões, tela de sucesso, formulário) e
+    // refaz a view atual. Só dashboard e detalhes são reconstruídos a cada
+    // visita; o FORMULÁRIO é montado uma vez, no boot, e "Novo caso" apenas o
+    // reseta. Como o perfil (que decide o idioma) chega depois do boot, ele
+    // precisa ser repintado mesmo com o dashboard na tela — senão o agente
+    // abre o formulário no idioma errado.
     onLanguageChange(() => {
         const helpTitleEl = popup.querySelector('.cw-help-title');
         if (helpTitleEl) helpTitleEl.textContent = bt('headerTitle');
@@ -2157,38 +2195,60 @@ export function initBAUForm() {
         if (successBackEl) successBackEl.textContent = bt('backToDashboard');
         backBtn.textContent = bt('back');
         nextBtn.textContent = bt('next');
+        const detailPane = popup.querySelector('#bau-md-detail');
+        if (detailPane) detailPane.setAttribute('aria-label', bt('caseDetailsTitle'));
         switchView(currentView);
-        if (currentView === 'form') {
-            form.querySelectorAll('.bau-step').forEach(stepEl => {
-                const stepId = parseInt(stepEl.id.replace('bau-step-', ''), 10);
-                const stepConfig = FORM_CONFIG.steps.find(s => s.id === stepId);
-                if (!stepConfig || stepConfig.isBranching || stepConfig.isConfirmation) return;
-                stepEl.querySelectorAll('.bau-dynamic-input').forEach(wrapper => {
-                    const fieldId = wrapper.id.replace('wrapper-', '');
-                    const fieldConfig = stepConfig.fields?.find(f => f.id === fieldId);
-                    if (!fieldConfig) return;
-                    const label = wrapper.querySelector('.bau-label');
-                    if (label && fieldConfig.label) {
-                        label.textContent = bft(fieldConfig, 'label');
-                        if (fieldConfig.tooltip) label.setAttribute('data-tooltip', bft(fieldConfig, 'tooltip'));
-                    }
-                    const input = wrapper.querySelector('input, textarea, select');
-                    if (input && fieldConfig.placeholder) input.placeholder = bft(fieldConfig, 'placeholder');
-                    if (fieldConfig.type === 'select') {
-                        // Relê a partir do fieldConfig original (options/groups),
-                        // não do textContent já renderizado - senão uma volta
-                        // ES->PT não desfaria a tradução anterior.
-                        const flatOptions = fieldConfig.groups
-                            ? fieldConfig.groups.flatMap(g => g.options)
-                            : (fieldConfig.options || []);
-                        wrapper.querySelectorAll('option').forEach((opt, idx) => {
-                            const original = flatOptions[idx];
-                            if (original) opt.textContent = bfOptionText(original.text);
-                        });
-                    }
-                });
+
+        // O laço de campos mais abaixo só alcança `.bau-dynamic-input`; estes
+        // blocos são fixos e ficariam no idioma do boot.
+        const textOf = (selector, text) => {
+            const el = form.querySelector(selector);
+            if (el) el.textContent = text;
+        };
+        textOf('#bau-opt-full .bau-branching-title', bt('openBauCase'));
+        textOf('#bau-opt-full .bau-branching-subtitle', bt('openBauCaseDesc'));
+        textOf('#bau-opt-discard .bau-branching-title', bt('requestDiscard'));
+        textOf('#bau-opt-discard .bau-branching-subtitle', bt('requestDiscardDesc'));
+        textOf('#bau-step-4 .bau-step-title', bt('confirmDataBeforeSending'));
+
+        form.querySelectorAll('.bau-step').forEach(stepEl => {
+            const stepId = parseInt(stepEl.id.replace('bau-step-', ''), 10);
+            const stepConfig = FORM_CONFIG.steps.find(s => s.id === stepId);
+            if (!stepConfig || stepConfig.isBranching || stepConfig.isConfirmation) return;
+            stepEl.querySelectorAll('.bau-dynamic-input').forEach(wrapper => {
+                const fieldId = wrapper.id.replace('wrapper-', '');
+                const fieldConfig = stepConfig.fields?.find(f => f.id === fieldId);
+                if (!fieldConfig) return;
+                const label = wrapper.querySelector('.bau-label');
+                if (label && fieldConfig.label) {
+                    label.textContent = bft(fieldConfig, 'label');
+                    if (fieldConfig.tooltip) label.setAttribute('data-tooltip', bft(fieldConfig, 'tooltip'));
+                }
+                const input = wrapper.querySelector('input, textarea, select');
+                if (input && fieldConfig.placeholder) input.placeholder = bft(fieldConfig, 'placeholder');
+                if (fieldId === 'cid') {
+                    const cidHint = wrapper.querySelector('#bau-cid-error');
+                    if (cidHint) cidHint.textContent = cidErrorText(fieldConfig);
+                }
+                if (fieldConfig.type === 'datetime-group') repaintAvailability(wrapper, fieldConfig);
+                if (fieldConfig.type === 'text-with-button') {
+                    const lookupBtn = wrapper.querySelector('.bau-mini-btn-input');
+                    if (lookupBtn) lookupBtn.title = bft(fieldConfig, 'buttonTitle') || fieldConfig.button.title;
+                }
+                if (fieldConfig.type === 'select') {
+                    // Relê a partir do fieldConfig original (options/groups),
+                    // não do textContent já renderizado - senão uma volta
+                    // ES->PT não desfaria a tradução anterior.
+                    const flatOptions = fieldConfig.groups
+                        ? fieldConfig.groups.flatMap(g => g.options)
+                        : (fieldConfig.options || []);
+                    wrapper.querySelectorAll('option').forEach((opt, idx) => {
+                        const original = flatOptions[idx];
+                        if (original) opt.textContent = bfOptionText(original.text);
+                    });
+                }
             });
-        }
+        });
         if (currentView === 'dashboard') loadDashboardData();
     });
 

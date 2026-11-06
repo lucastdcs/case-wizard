@@ -32,10 +32,14 @@
     "test:dash-changelog": "node scripts/test-dash-changelog.mjs",
     "test:tl-decision": "node scripts/test-tl-decision.mjs",
     "test:precall": "node scripts/test-precall.mjs",
+    "test:pill-layout": "node scripts/test-pill-layout.mjs",
+    "test:note-table": "node scripts/test-note-table.mjs",
     "smoke:shortcuts": "node scripts/smoke-shortcuts.mjs",
+    "smoke:palette": "node scripts/smoke-palette.mjs",
     "smoke:i18n": "node scripts/smoke-i18n.mjs",
     "smoke:links": "node scripts/smoke-links.mjs",
     "smoke:wizards": "node scripts/smoke-wizards.mjs",
+    "smoke:disclaimer": "node scripts/smoke-disclaimer.mjs",
     "smoke:bau-scraping": "node scripts/smoke-bau-scraping.mjs",
     "smoke:env-badge": "node scripts/smoke-env-badge.mjs",
     "smoke:broadcast": "node scripts/smoke-broadcast.mjs",
@@ -45,8 +49,12 @@
     "smoke:people": "node scripts/smoke-people.mjs",
     "smoke:tl-dash": "node scripts/smoke-tl-dashboard.mjs",
     "smoke:precall": "node scripts/smoke-precall.mjs",
+    "smoke:pill-layout": "node scripts/smoke-pill-layout.mjs",
     "smoke:precall-standalone": "node scripts/smoke-precall-standalone.mjs",
-    "seed:note-templates": "node scripts/generate-note-templates-seed.mjs"
+    "smoke:note-table": "node scripts/smoke-note-table.mjs",
+    "seed:note-templates": "node scripts/generate-note-templates-seed.mjs",
+    "seed:note-layouts": "node scripts/generate-note-layouts-seed.mjs",
+    "build:note-table-central": "node scripts/build-note-table-central.mjs"
   },
   "dependencies": {
     "esbuild": "^0.27.4",

@@ -132,6 +132,9 @@
                     <button class="rail-item" id="tab-tasks" data-tab="tasks" onclick="switchTab('tasks')">
                         <span class="material-symbols-rounded" aria-hidden="true">checklist</span> <span class="rail-label" data-i18n="dest_tasks">Tasks</span>
                     </button>
+                    <button class="rail-item" id="tab-notetable" data-tab="notetable" onclick="switchTab('notetable')">
+                        <span class="material-symbols-rounded" aria-hidden="true">table_chart</span> <span class="rail-label" data-i18n="dest_notetable">Nota em tabela</span>
+                    </button>
                     <button class="rail-item" id="tab-emails" data-tab="emails" onclick="switchTab('emails')">
                         <span class="material-symbols-rounded" aria-hidden="true">mail</span> <span class="rail-label" data-i18n="dest_emails">E-mails</span>
                     </button>
@@ -336,6 +339,26 @@
                     </button>
                 </div>
                 <div class="card" id="tsk-list">
+                    <div class="skeleton"></div>
+                    <div class="skeleton"></div>
+                </div>
+            </section>
+
+            <!-- TAB: Nota em tabela (note_blocks e note_layouts; ADR-0022) -->
+            <section id="pane-notetable" class="hidden">
+                <div class="note" id="ntb-note">
+                    O padrão novo da nota, em tabelas: os <strong>blocos</strong> (o corpo de cada tabela,
+                    compartilhado entre segmentos) e a <strong>colocação</strong> de cada um por segmento
+                    (título impresso e quando usar). O Case Notes de sempre continua no módulo dele.
+                </div>
+                <div class="row-between" style="margin-bottom:14px">
+                    <div>
+                        <div class="card-title">Blocos por segmento</div>
+                        <p class="card-sub" id="ntb-summary">Carregando…</p>
+                    </div>
+                    <div id="ntb-segs" style="display:flex;gap:8px" role="group" aria-label="Segmento"></div>
+                </div>
+                <div class="card" id="ntb-list">
                     <div class="skeleton"></div>
                     <div class="skeleton"></div>
                 </div>
@@ -672,6 +695,7 @@
     </script>
     <?!= include('ContentDashboard_I18n') ?>
     <?!= include('ContentDashboard_Core') ?>
+    <?!= include('ContentDashboard_NoteTable') ?>
     <?!= include('ContentDashboard_Catalog') ?>
     <?!= include('ContentDashboard_Ops') ?>
     <?!= include('ContentDashboard_Governance') ?>

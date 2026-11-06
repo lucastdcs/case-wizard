@@ -50,6 +50,10 @@ Ctrl+K). Esquema da aba em `db-schema.md`.
   isso, uma queda de rede zeraria o cache local do agente.
 - Sem `user`, ambas as ops falham. Sem e-mail capturado, o cliente opera só com
   o cache local e avisa que salvou apenas no navegador.
+- **Chaves da Nota em tabela** (`notes-table/note-table-prefs.js`): `notes_default_segment`
+  (`all|sbse|mms|last`), `notes_last_segment` (o último tipo usado, para o `last`) e
+  `notes_default_flow` (`bau|lm`). Valor fora do domínio cai no padrão (`all`, `bau`).
+  Não se misturam com as do Case Notes.
 
 ## Decisão do TL (`updateBAUCaseStatus`)
 
@@ -73,6 +77,17 @@ Por `google.script.run`, a partir do `TLDashboard.html`.
 ## Construção do Payload (Edição)
 - **Bloqueio de Data Wiping:** Ao editar, o `bau-form.js` **NÃO DEVE** injetar fallbacks de string vazia (`|| ""`) para campos que o usuário não interagiu ou que não existem na tela atual.
 - Se o campo não foi modificado ou não faz parte do fluxo, não o envie no payload ou envie estritamente como `undefined`. Isso permite que o Back-end saiba que deve manter o dado original da planilha.
+
+## Resposta de erro do agente (`create_bau`, `update_bau`, `read_agent_bau`)
+`{ status: 'error', error: 'Error: <texto em português>', code: '<CODIGO>' }`.
+- O **`code` é o contrato**; o texto em português é o reserva. O front traduz pelo
+  `code` no idioma da INTERFACE (`serverErrorMessage`, em `data-service.js`) e só
+  mostra o `error` do servidor quando o `code` falta (backend antigo) ou não é
+  conhecido. Código novo no servidor exige a frase nos três idiomas no front.
+- Códigos hoje: `BAU_NOT_OWNER_EDIT`, `BAU_NOT_OWNER_DELETE`,
+  `BAU_ALREADY_PROCESSED`, `BAU_NOT_FOUND`, `AGENT_EMAIL_REQUIRED`. Erro sem código
+  chega com `code: ''`. O servidor os cria com `erroComCodigo_` (`BAU_API.js`) e o
+  roteador (`Código.js`) os devolve.
 
 ## Diretório de pessoas (módulo `people` da Central)
 
@@ -432,6 +447,75 @@ próprio valor.
   catálogo.
 - **Limites:** nome até 60 caracteres (o cartão do agente não cabe mais), rótulo
   até 300.
+
+## Nota em tabela (`note_blocks`, `note_layouts`)
+
+O padrão da nota em tabela do módulo novo `notetable` (ADR-0022 e ADR-0024; o
+contrato do texto está em `specs/workflow/case-note-table.md`). Dois módulos **novos**:
+o `note_template` continua servindo o Case Notes de hoje, sem mudança. **Um item por
+bloco e um por segmento**, `lang: 'ALL'`: as traduções dos rótulos vivem dentro do
+valor (`label: { pt, es, en }`). Semente: `npm run seed:note-layouts` →
+`seedNoteLayoutsNow()` (blocos antes dos segmentos).
+
+| Campo do item | `note_blocks` | `note_layouts` |
+| :--- | :--- | :--- |
+| `key` | id do bloco (`general`, `impl_call`, `extras`) | id do segmento (`all`, `sbse`, `mms`) |
+| `label` | nome do bloco | nome do segmento (`ALL TASKS`) |
+| `lang` | sempre `ALL` | sempre `ALL` |
+| `sortOrder` | ordem do catálogo | ordem dos segmentos na tela |
+
+Valor de um bloco (o corpo da tabela):
+
+```json
+{
+  "name": "Interim check-ins", "cols": 3, "widths": [30, 48, 22],
+  "sections": [
+    { "kind": "kv", "title": "General Details (Mandatory)", "rows": [
+      { "id": "case_comments", "label": { "en": "Case Comments:", "pt": "", "es": "" },
+        "type": "long", "required": true, "na": false, "visible": true,
+        "hint": { "pt": "O que aconteceu no caso…", "es": "", "en": "" } }
+    ] },
+    { "kind": "cid", "title": "CID-Level Details", "columns": [
+      { "id": "tbw", "label": { "en": "To Be Worked?" }, "type": "tbw", "required": true }
+    ] }
+  ]
+}
+```
+
+Linha: `when` / `requiredWhen` (`flow`, `europe`, `substatusAny`, `tasksAny`, `rowIs`),
+`onlyFor` (`["ecw"]`), `optIn`, `auto` (`today`, `cid`, `followup`, `consent`,
+`substatus`, `tasks`, `europe`) e `default` são metadados de regra; o código os interpreta.
+
+Valor de um segmento:
+
+```json
+{ "name": "ALL TASKS", "select": "multi", "showTitle": false, "always": ["general"],
+  "blocks": [ { "b": "before", "title": "Before implementation", "when": "Só ACT e ECW…",
+                "suggest": { "tasksAny": ["ads_conversion_tracking"] } } ] }
+```
+
+### Regras
+- **O servidor recusa o que o app não sabe desenhar** (`assertValidNoteBlock_`,
+  `assertValidNoteLayout_`, em `saveContentDraft`): `kind` fora de `kv|group|cid`,
+  `type` fora de `text|long|date|yesno|link|cid|speakeasy|derived`, coluna por CID fora
+  de `tbw|cid|yn|text|link|smeyes`, condição com chave desconhecida. Os conjuntos são os
+  mesmos de `note-table-model.js`, e `test:content` os compara.
+- **A grade fecha:** `cols` de 3 a 6, uma largura por coluna somando 100%, a de comentários
+  com pelo menos 22%; seção com grupo só em 4 colunas; seção por CID com uma coluna por
+  coluna da grade.
+- **O `id` da linha é imutável e único no bloco** (`^[a-z][a-z0-9_]{0,39}$`). Editar um bloco
+  no ar sem uma linha que ele tinha é recusado, renomeada ou removida: rascunhos e
+  condições (`rowIs`) apontam para o id. Para tirar uma linha da nota, `visible: false`.
+  A `key` de bloco e de segmento também não muda, e não se repete entre os itens no ar.
+- **Ao menos uma linha obrigatória por bloco**; **rótulo `en` obrigatório** (é o texto
+  do padrão; `pt`/`es` vazios caem no EN, nunca no PT).
+- **O segmento só aponta para blocos no ar**, sem repetir; `always` só cita blocos do
+  próprio segmento.
+- **O app nunca lança** diante de `kind`/`type` desconhecido: ignora a linha com
+  `console.warn` (um dado novo publicado antes do bundle que o desenha).
+- **Leitura pública** como os demais: `?modules=note_blocks,note_layouts` no boot.
+- **Papéis (ADR-0013):** o preset de QA propõe nos dois, como em `note_template` e
+  `task_screenshots`; numa `Content_Roles` já gravada, a casa ausente herda o preset.
 
 ## Busca global (Ctrl+K)
 

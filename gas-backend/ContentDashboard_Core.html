@@ -173,6 +173,7 @@
             callscript: { carregar: function () { loadCallScript(); } },
             notes: { carregar: function () { loadNoteTemplates(); } },
             tasks: { carregar: function () { loadTaskCatalog(); } },
+            notetable: { carregar: function () { loadNoteTable(); } },
             emails: { carregar: function () { loadEmails(); } },
             tips: { carregar: function () { loadTips(); } },
             broadcast: { carregar: function () { loadBroadcast(); }, aoVivo: true },
@@ -472,7 +473,8 @@
             links: 'Links', call_script: 'Call Script', note_template: 'Case Notes',
             task_screenshots: 'Tasks', email_template: 'E-mails', tips: 'Dicas',
             broadcast: 'Avisos', bau_availability: 'Disponibilidade', people: 'Pessoas',
-            link_categories: 'Categorias de link', link_highlights: 'Destaques'
+            link_categories: 'Categorias de link', link_highlights: 'Destaques',
+            note_blocks: 'Nota em tabela (blocos)', note_layouts: 'Nota em tabela (segmentos)'
         };
 
         var FOTO_PADRAO = 'https://fonts.gstatic.com/s/i/googlematerialsymbolsrounded/person/24px.svg';
@@ -954,7 +956,8 @@
             links: 'links', call_script: 'callscript', note_template: 'notes',
             task_screenshots: 'tasks', email_template: 'emails', tips: 'tips',
             broadcast: 'broadcast', bau_availability: 'bau', people: 'people',
-            link_categories: 'links', link_highlights: 'links'
+            link_categories: 'links', link_highlights: 'links',
+            note_blocks: 'notetable', note_layouts: 'notetable'
         };
 
         function destinoDoModulo(module) {
@@ -1111,6 +1114,7 @@
             gate('email_template', null, 'em-note');
             gate('note_template', 'nt-new-btn', 'nt-note');
             gate('task_screenshots', 'tsk-new-btn', 'tsk-note');
+            gate('note_blocks', null, 'ntb-note');
             // Avisos e disponibilidade seguem a mesma regra do resto da tela:
             // quem tem acesso enxerga o que está no ar, e só quem tem o papel vê
             // o caminho de publicar. É o WFM que separa os dois na prática —
