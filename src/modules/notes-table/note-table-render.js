@@ -10,7 +10,7 @@
 // Sem DOM: a mesma função desenha a prévia do agente, a saída e a prévia da Central.
 
 import {
-    activePlacements, cidCellValue, findSegment, labelText, resolveRow, rowState, rowVisible,
+    EXTRAS_BLOCK, activePlacements, cidCellValue, findSegment, labelText, resolveRow, rowState, rowVisible, taskPrintRows,
 } from './note-table-model.js';
 
 const C = { primary: '#1a73e8', primaryBg: '#e8f0fe', text: '#202124', textSub: '#5f6368', bgInput: '#f8f9fa', surface: '#fff' };
@@ -88,7 +88,9 @@ export function renderBlockTable(catalog, st, placement, opts = {}) {
         ? { bg: PENDING_BG, html: `<span style="color:#b06000;font-style:italic">${escapeHtml(opts.pendingLabel || 'pending')}</span>` }
         : { html: 'NA' });
     const rows = [];
-    for (const sec of blk.sections) {
+    const prints = placement.b === EXTRAS_BLOCK ? taskPrintRows(catalog, st) : [];
+    const lastKv = blk.sections.map((s) => s.kind).lastIndexOf('kv');
+    blk.sections.forEach((sec, si) => {
         if (sec.kind === 'cid') {
             rows.push([{ span: N, head: true, bg: C.primaryBg, html: escapeHtml(labelText(sec.title, lang)) }]);
             rows.push(sec.columns.map((c) => ({ head: true, vline: true, bg: C.bgInput, color: C.textSub, html: escapeHtml(labelText(c.label, lang)) })));
@@ -99,10 +101,11 @@ export function renderBlockTable(catalog, st, placement, opts = {}) {
                 if (!v) return { bold: i === 0, vline: true, ...pending() };
                 return { bold: i === 0, vline: true, html: valueHtml(v) };
             }), `cid:${ci}:${sec.columns[0].id}`)));
-            continue;
+            return;
         }
         const vis = (sec.rows || []).filter((r) => rowVisible(catalog, st, r, { ignoreWhen: opts.ignoreWhen }));
-        if (!vis.length) continue;
+        const extra = si === lastKv ? prints : [];
+        if (!vis.length && !extra.length) return;
         const head = [
             { span: N - 1, head: true, bg: C.primaryBg, html: escapeHtml(labelText(sec.title, lang)) },
             { head: true, vline: true, bg: C.bgInput, color: C.textSub, html: COMMENTS_HEAD },
@@ -130,8 +133,15 @@ export function renderBlockTable(catalog, st, placement, opts = {}) {
                     { vline: true, html: valueHtml(rowState(st, r.id).comment) },
                 ], r.id));
             }
+            for (const p of extra) {
+                rows.push(withRowId([
+                    { span: ls, bold: true, bg: C.bgInput, html: escapeHtml(p.label.en) },
+                    { span: vs, html: valueHtml(p.value) },
+                    { vline: true, html: '' },
+                ], p.id));
+            }
         }
-    }
+    });
     if (!rows.length) return '';
     const tableStyle = `width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;border:${HAIR};border-radius:12px;overflow:hidden;font-family:${FONT};margin:0 0 4px 0`;
     const cols = `<colgroup>${blk.widths.map((w) => `<col style="width:${w}%">`).join('')}</colgroup>`;

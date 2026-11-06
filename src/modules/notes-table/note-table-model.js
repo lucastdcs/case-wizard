@@ -60,7 +60,7 @@ const ECW = 'ads_enhanced_conversions';
 export function createNoteState(over = {}) {
     return Object.assign({
         seg: 'all', flow: 'bau', europe: false, substatus: '',
-        tasks: [], forced: [], active: [], optIn: [], vals: {}, cids: [],
+        tasks: [], forced: [], active: [], optIn: [], vals: {}, cids: [], taskPrints: [],
     }, over);
 }
 
@@ -171,6 +171,15 @@ export function tasksText(catalog, st, tsDisclaimer = '') {
         if (taskDispensed(catalog, st, t.key)) return `${t.name} - ${tsDisclaimer}`;
         return t.count > 1 ? `${t.name} (x${t.count})` : t.name;
     }).join(', ');
+}
+
+// Prints por task do step-tasks.js (as tasks que não são ACT/ECW): uma linha `link` por print
+// preenchido, `<task> — <rótulo>`, depois das linhas do Additional Details (spec §8). Somem nos ECL.
+export function taskPrintRows(catalog, st) {
+    if (!segmentUsesTasks(catalog, st.seg)) return [];
+    return (st.taskPrints || [])
+        .filter((p) => p && String(p.v || '').trim())
+        .map((p, i) => ({ id: `tp_${i}`, label: { en: String(p.label || '') }, type: 'link', value: String(p.v).trim() }));
 }
 
 // `na` digitado vale NA só onde a linha aceita NA.
