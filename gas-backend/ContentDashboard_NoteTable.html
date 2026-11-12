@@ -188,6 +188,7 @@ var CwNoteTable = (() => {
   var FONT = "'Google Sans', Roboto, Arial, sans-serif";
   var HAIR = "1px solid rgba(60,64,67,.16)";
   var PENDING_BG = "#fef7e0";
+  var TS_OK = { bg: "#e6f4ea", text: "#137333", accent: "#34a853" };
   var COMMENTS_HEAD = "Additional Comments (Optional)";
   var NOTE_FOOTER = {
     pt: "Nota criada através do Cases Wizard.",
@@ -200,7 +201,7 @@ var CwNoteTable = (() => {
   function valueHtml(v) {
     return String(v != null ? v : "").replace(/\r\n?/g, "\n").split("\n").filter((line) => line.trim()).map((line) => escapeHtml(line.replace(/\s+$/, "")).replace(/\*\*([^*]+?)\*\*/g, "<b>$1</b>")).join("<br>");
   }
-  function cellHtml({ row, span = 1, rowspan = 1, head, bg, bold, color, valign = "top", vline }, html) {
+  function cellHtml({ row, span = 1, rowspan = 1, head, bg, bold, color, valign = "top", vline, accent }, html) {
     const style = [
       "padding:8px 12px",
       "font-size:13px",
@@ -209,7 +210,7 @@ var CwNoteTable = (() => {
       "word-break:break-word",
       "overflow-wrap:anywhere",
       row > 0 ? `border-top:${HAIR}` : "",
-      vline ? `border-left:${HAIR}` : "",
+      accent ? `border-left:4px solid ${accent}` : vline ? `border-left:${HAIR}` : "",
       `background-color:${bg || C.surface}`,
       `color:${color || C.text}`,
       bold || head ? "font-weight:700" : "font-weight:400",
@@ -273,6 +274,16 @@ var CwNoteTable = (() => {
       ];
       rows.push(head);
       const ctx = { blockId: placement.b, tsDisclaimer: opts.tsDisclaimer, lang };
+      const note = opts.tsBlockNote;
+      if (note && note.title && sec.kind === "group" && TS_PRINT_BLOCKS.includes(placement.b) && vis.some((r) => isTsDispensed(catalog, st, r, placement.b))) {
+        rows.push([{
+          span: N,
+          bg: TS_OK.bg,
+          color: TS_OK.text,
+          accent: TS_OK.accent,
+          html: `<div style="font-weight:700">✓ ${escapeHtml(note.title)}</div><div style="font-weight:400;margin-top:2px">${escapeHtml(note.body || "")}</div>`
+        }]);
+      }
       if (sec.kind === "group") {
         vis.forEach((r, i) => {
           const v = resolveRow(catalog, st, r, ctx);

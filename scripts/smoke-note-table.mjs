@@ -240,6 +240,17 @@ await check('Tag Support: Yes dispensa os prints de ACT (NA Auto) e põe o aviso
     const html = await prev();
     ok(html.includes('Tag criada/verificada'), 'sem o aviso do Win Criteria no idioma da nota (PT)');
     ok(/Status da conversão no Google Ads:<\/td><td[^>]*>NA</.test(html), 'print de Before não saiu NA na prévia');
+    // o bloco inteiro ganha um aviso de largura total dizendo POR QUE as linhas são NA (idioma da nota: PT)
+    const avisos = (html.match(/Tag Support utilizado: prints dispensados/g) || []).length;
+    const blocosDePrint = await page.locator(`${POP} [data-ctx="blocks"] .nt-chip[aria-pressed="true"]`).evaluateAll((cs) => cs.filter((c) => /^(Before|Implementation|After)/.test(c.textContent.trim())).length);
+    ok(avisos > 0 && avisos === blocosDePrint, `um aviso por bloco de print ligado: ${avisos} avisos, ${blocosDePrint} blocos`);
+    ok(/Win Criteria/.test(html) && /border-left:4px solid #34a853/.test(html), 'texto do Win Criteria e faixa verde');
+    await page.evaluate((p) => document.querySelector(`${p} .nt-tab`).click(), POP);
+    await page.waitForTimeout(900);
+    await page.locator(`${POP} .nt-note-card table[data-block="impl"]`).evaluate((t) => t.scrollIntoView({ block: 'start' }));
+    await shot('aviso-tag-support');
+    await page.evaluate((p) => document.querySelector(`${p} .nt-tab`).click(), POP);
+    await page.waitForTimeout(500);
     await page.click(`${POP} .nt-auto-h`);
     ok(await row('b_status').locator('input').count() === 0 && (await row('b_status').innerText()).includes('NA') && await row('b_status').locator('.nt-tag').count() === 1, 'linha de Before sem NA Auto');
     await page.click(`${POP} .nt-auto-h`);
@@ -250,6 +261,7 @@ await check('"Incluir mesmo assim" religa os prints da task forçada', async () 
     await page.waitForTimeout(200);
     ok(await row('b_status').locator('input').count() === 1, 'b_status não voltou a pedir o print');
     ok(!(await prev()).includes('Tag criada/verificada'), 'o aviso ficou na task forçada');
+    ok(!(await prev()).includes('Tag Support utilizado: prints dispensados'), 'o aviso do bloco ficou depois de religar os prints');
     await row('ts_used').locator('.nt-seg button', { hasText: 'No' }).click();
 });
 

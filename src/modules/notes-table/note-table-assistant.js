@@ -275,7 +275,8 @@ export function initNoteTable() {
     const hint = (r) => (r.hint && typeof r.hint === "object" ? (r.hint[getLanguage()] || r.hint.pt || "") : String(r.hint || ""));
     const secUi = (t) => M.labelText(t, "en").replace(/\s*\(Mandatory\)/, "").replace(/^General Details$/, "Details");
     const tsDisclaimer = () => (translations[noteLang] || translations.pt).ts_output_disclaimer || "";
-    const ctxOf = () => ({ lang: noteLang, tsDisclaimer: tsDisclaimer() });
+    const tsBlockNote = () => { const d = translations[noteLang] || translations.pt; return { title: d.ts_bloco_titulo || "", body: d.ts_bloco_corpo || "" }; };
+    const ctxOf = () => ({ lang: noteLang, tsDisclaimer: tsDisclaimer(), tsBlockNote: tsBlockNote() });
     const rs = (id) => M.rowState(st, id);
     const resolved = (r, blockId) => M.resolveRow(catalog, st, r, { ...ctxOf(), blockId });
     const visibleRow = (r) => M.rowVisible(catalog, st, r);

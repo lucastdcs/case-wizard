@@ -10,13 +10,15 @@
 // Sem DOM: a mesma função desenha a prévia do agente, a saída e a prévia da Central.
 
 import {
-    EXTRAS_BLOCK, activePlacements, cidCellValue, findSegment, labelText, resolveRow, rowState, rowVisible, taskPrintRows,
+    EXTRAS_BLOCK, TS_PRINT_BLOCKS, activePlacements, cidCellValue, findSegment, isTsDispensed, labelText, resolveRow, rowState, rowVisible, taskPrintRows,
 } from './note-table-model.js';
 
 const C = { primary: '#1a73e8', primaryBg: '#e8f0fe', text: '#202124', textSub: '#5f6368', bgInput: '#f8f9fa', surface: '#fff' };
 const FONT = "'Google Sans', Roboto, Arial, sans-serif";
 const HAIR = '1px solid rgba(60,64,67,.16)';
 const PENDING_BG = '#fef7e0';
+// Aviso do Tag Support nos blocos de print: o verde de sucesso que o Case Notes já usa para o Tag Support.
+const TS_OK = { bg: '#e6f4ea', text: '#137333', accent: '#34a853' };
 const COMMENTS_HEAD = 'Additional Comments (Optional)';
 
 export const NOTE_FOOTER = {
@@ -38,11 +40,11 @@ export function valueHtml(v) {
         .join('<br>');
 }
 
-function cellHtml({ row, span = 1, rowspan = 1, head, bg, bold, color, valign = 'top', vline }, html) {
+function cellHtml({ row, span = 1, rowspan = 1, head, bg, bold, color, valign = 'top', vline, accent }, html) {
     const style = [
         'padding:8px 12px', 'font-size:13px', 'line-height:1.45', `vertical-align:${valign}`,
         'word-break:break-word', 'overflow-wrap:anywhere',
-        row > 0 ? `border-top:${HAIR}` : '', vline ? `border-left:${HAIR}` : '',
+        row > 0 ? `border-top:${HAIR}` : '', accent ? `border-left:4px solid ${accent}` : (vline ? `border-left:${HAIR}` : ''),
         `background-color:${bg || C.surface}`, `color:${color || C.text}`,
         (bold || head) ? 'font-weight:700' : 'font-weight:400', 'text-align:left',
     ].filter(Boolean).join(';');
@@ -77,7 +79,7 @@ function gridHtml(rows, live) {
 
 const withRowId = (cells, rowId) => Object.assign(cells, { rowId });
 
-// opts: { live, lang, pendingLabel, tsDisclaimer, ignoreWhen }
+// opts: { live, lang, pendingLabel, tsDisclaimer, tsBlockNote: { title, body }, ignoreWhen }
 export function renderBlockTable(catalog, st, placement, opts = {}) {
     const blk = catalog.blocks[placement.b];
     if (!blk) return '';
@@ -112,6 +114,13 @@ export function renderBlockTable(catalog, st, placement, opts = {}) {
         ];
         rows.push(head);
         const ctx = { blockId: placement.b, tsDisclaimer: opts.tsDisclaimer, lang };
+        // Prints dispensados pelo Tag Support (linhas viram NA): um aviso de largura total no topo do bloco,
+        // para quem lê depois saber POR QUE a coluna é só NA (Lucas, 2026-11-12). Só com o texto no `opts`.
+        const note = opts.tsBlockNote;
+        if (note && note.title && sec.kind === 'group' && TS_PRINT_BLOCKS.includes(placement.b) && vis.some((r) => isTsDispensed(catalog, st, r, placement.b))) {
+            rows.push([{ span: N, bg: TS_OK.bg, color: TS_OK.text, accent: TS_OK.accent,
+                html: `<div style="font-weight:700">✓ ${escapeHtml(note.title)}</div><div style="font-weight:400;margin-top:2px">${escapeHtml(note.body || '')}</div>` }]);
+        }
         if (sec.kind === 'group') {
             vis.forEach((r, i) => {
                 const v = resolveRow(catalog, st, r, ctx);

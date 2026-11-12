@@ -538,6 +538,29 @@ check('Yes: as linhas de print de Before/Implementation/After viram NA e a task 
     ok(!missingKeys(st).some((k) => /^[bia]_/.test(k)), 'prints ainda pendentes');
 });
 
+check('Yes: cada bloco de print leva um aviso de largura total (tags permitidas, sem class), e só com Yes e com o texto', () => {
+    const NOTE = { title: 'Tag Support used: screenshots not required', body: 'Screenshots were not attached because Tag Support was used. <Win Criteria> & more.' };
+    const mk = (over = {}) => fresh({ substatus: 'SO - Implementation Only', tasks: [ACT], active: ['general', 'before', 'impl', 'after'], ...over });
+    const yes = mk(); M.touchRow(yes, 'ts_used').v = 'Yes';
+    const html = out(yes, { tsBlockNote: NOTE });
+    igual(html.split(NOTE.title).length - 1, 3, 'um aviso em cada bloco de print (Before, Implementation, After)');
+    ok(/<td colspan="4" style="[^"]*border-left:4px solid #34a853[^"]*">\s*<div style="font-weight:700">✓ Tag Support used/.test(html), 'aviso em linha de largura total, com a faixa verde');
+    ok(html.includes('&lt;Win Criteria&gt; &amp; more.'), 'o texto do aviso precisa ser escapado');
+    const tags = [...new Set([...html.matchAll(/<([a-z0-9]+)[\s>]/g)].map((m) => m[1]))].sort();
+    igual(tags, ['col', 'colgroup', 'div', 'table', 'tbody', 'td', 'th', 'tr'], 'tags');
+    ok(!/\sclass=|<style|<script|data-row|data-block/.test(html), 'marcação proibida na saída');
+    // o aviso fica ANTES das linhas do grupo, e o "NA" delas continua
+    const impl = html.slice(html.indexOf('Implementation:'));
+    ok(html.indexOf(NOTE.title) < html.indexOf('Implementation:') && impl.includes('>NA<'), 'ordem do aviso e NA das linhas');
+    // só com Yes, só com o texto, só no bloco com print dispensado
+    const no = mk();
+    ok(!out(no, { tsBlockNote: NOTE }).includes(NOTE.title), 'com No não pode haver aviso');
+    ok(!out(yes).includes('✓'), 'sem o texto no opts o renderizador não inventa nenhum');
+    ok(!out(mk({ active: ['general'] }), { tsBlockNote: NOTE }).includes(NOTE.title), 'General não tem aviso');
+    const forced = mk({ forced: [ACT.key] }); M.touchRow(forced, 'ts_used').v = 'Yes';
+    ok(!out(forced, { tsBlockNote: NOTE }).includes(NOTE.title), '"Incluir mesmo assim" tira o aviso (os prints voltam)');
+});
+
 check('"Incluir mesmo assim" religa os prints da task forçada e tira o aviso dela', () => {
     const st = fresh({ substatus: 'SO - Implementation Only', tasks: [ACT], active: ['general', 'before'] });
     M.touchRow(st, 'ts_used').v = 'Yes';
