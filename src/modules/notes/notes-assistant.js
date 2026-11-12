@@ -480,6 +480,7 @@ export function initCaseNotesAssistant() {
             if (manualBtn) manualBtn.style.display = "none";
             stepTasks.selectionElement.style.display = "none";
             stepTasks.screenshotsElement.style.display = "none";
+            updateTagSupport(); // sem substatus a pergunta some junto com o resto
 
             // Show Empty State
             emptyStateContainer.style.display = "flex";

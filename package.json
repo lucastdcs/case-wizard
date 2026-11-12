@@ -45,6 +45,7 @@
     "smoke:broadcast": "node scripts/smoke-broadcast.mjs",
     "smoke:content": "node scripts/smoke-content-dashboard.mjs",
     "smoke:tasks": "node scripts/smoke-tasks.mjs",
+    "smoke:tag-support": "node scripts/smoke-tag-support.mjs",
     "smoke:bau-tasks": "node scripts/smoke-bau-tasks.mjs",
     "smoke:people": "node scripts/smoke-people.mjs",
     "smoke:tl-dash": "node scripts/smoke-tl-dashboard.mjs",

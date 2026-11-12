@@ -9,12 +9,14 @@ import { SoundManager } from '../shared/sound-manager.js';
 // Estilos locais específicos deste módulo
 const styleContainer = { 
     marginTop: "24px", marginBottom: "16px", padding: "20px",
-    background: "#fff9e6", borderRadius: "20px", border: "1.5px solid #fbbc0540",
+    background: "#fff9e6", borderRadius: "20px", border: "2px solid #fbbc05",
+    borderLeft: "8px solid #f29900",
     display: "none",
-    boxShadow: "0 4px 12px rgba(251, 188, 5, 0.05)"
+    boxShadow: "0 6px 18px rgba(251, 188, 5, 0.18)"
 };
 const styleWarning = { fontSize: "12px", color: "#b06000", marginTop: "8px", lineHeight: "1.4" };
 const styleInputLocal = { width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1.5px solid #dadce0", fontSize: "14px", marginBottom: "16px", boxSizing: "border-box", background: "#fff" };
+const styleHelper = { fontSize: "12px", color: "#5f6368", lineHeight: "1.4", margin: "4px 0 14px 0" };
 const styleRadioGroup = { display: 'flex', gap: '20px', marginBottom: '12px' };
 
 export function createTagSupportModule(t) {
@@ -27,6 +29,12 @@ export function createTagSupportModule(t) {
     mainLabel.className = "js-ts-main-label";
     mainLabel.textContent = t('utilizou_tag_support');
     Object.assign(mainLabel.style, styleLabel, { marginTop: "0" });
+
+    // Por que a pergunta vem antes dos prints: a resposta decide quais prints saem.
+    const helper = document.createElement("div");
+    helper.className = "js-ts-helper";
+    helper.textContent = t('ts_antes_dos_prints');
+    Object.assign(helper.style, styleHelper);
 
     // Radio Buttons Container
     const radioContainer = document.createElement("div");
@@ -71,6 +79,7 @@ export function createTagSupportModule(t) {
     reasonDiv.appendChild(warningText);
 
     container.appendChild(mainLabel);
+    container.appendChild(helper);
     container.appendChild(radioContainer);
     container.appendChild(reasonDiv);
 
@@ -88,29 +97,22 @@ export function createTagSupportModule(t) {
 
     // --- 3. API PÚBLICA (Métodos que o pai vai chamar) ---
 
-    // Decide se mostra ou esconde o módulo baseado nas tasks
+    // A pergunta aparece com qualquer task selecionada e fica SEMPRE antes dos
+    // links/prints (a ordem do DOM está em notes-assistant.js). Quem usa a resposta
+    // é step-tasks.js: o Sim dispensa os prints só de ACT/EC; as demais seguem.
     function updateVisibility(subStatus, selectedTasksArray) {
-        // Reset inicial
         container.style.display = 'none';
 
         if (!subStatus) return;
         if (!selectedTasksArray || selectedTasksArray.length === 0) return;
 
-        // Regra específica: Apenas Ads Conversion Tracking ou Enhanced Conversions
-        const hasTargetTasks = selectedTasksArray.some(t =>
-            t === 'ads_conversion_tracking' || t === 'ads_enhanced_conversions'
-        );
-
-        if (hasTargetTasks) {
-            container.style.display = 'block';
-        } else {
-            reset();
-            notesState.setTagSupportUsed(false);
-        }
+        container.style.display = 'block';
     }
 
     // Gera o texto para a nota final
     function getOutput() {
+        // Visível = a linha sai, sempre (decisão do Lucas, 2026-11-12), tenha o
+        // agente mexido na pergunta ou não.
         if (container.style.display === 'none') return '';
 
         let text = `<br><b>${t('tag_support_output_label')}</b> ${rSim.checked ? `✅ ${t('sim')}` : `❌ ${t('nao')}`}`;
@@ -124,6 +126,7 @@ export function createTagSupportModule(t) {
     function setLanguage(newT) {
         t = newT;
         mainLabel.textContent = t('utilizou_tag_support');
+        helper.textContent = t('ts_antes_dos_prints');
         reasonLabel.textContent = t('motivo_ts');
         lSim.textContent = t('sim');
         lNao.textContent = t('nao');
