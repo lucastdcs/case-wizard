@@ -109,6 +109,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   ela sair da seleção. *Nota em tabela:* o motivo e o "No" são linhas do catálogo (`ts_used_na`,
   `ts_reason_na`, valor fixo no idioma da nota) e o formulário mostra só uma linha avisando; a pergunta
   sobe para um cartão destacado antes dos blocos. `smoke:tag-support` e `smoke:note-table`.
+- **Nota em tabela: aviso nos blocos de print quando o Tag Support dispensa os prints.** Com Tag Support
+  "Yes", as linhas de Before, Implementation e After viram `NA`, e quem lia a nota depois via só uma coluna de
+  NA sem explicação. Cada um desses blocos agora abre com uma **faixa de largura total** (verde, com barra
+  lateral e ✓) dizendo que os prints não foram anexados porque o Tag Support foi utilizado e que, pelo Win
+  Criteria, não são necessários. PT/ES/EN no idioma da nota; só tags e estilo inline permitidos; some com
+  "Incluir mesmo assim". Pedido do Lucas a partir de uma nota real no CRM.
 - **Nota em tabela: o Consult é sugerido depois de gerar o Split & Transfer.** O Doc cita "Dual SO -
   Troubleshooting only + Split & Transfer"; agora, em `SO - Troubleshooting Only`, gerar a nota de
   Split & Transfer faz o chip do Consult aparecer como sugerido (junto das regras antigas). O componente

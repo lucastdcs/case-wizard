@@ -404,7 +404,13 @@ Cada linha tem a própria condição (tabela do bloco `extras`, §4). Pontos que
   idioma da nota; condição `tasksNone`), e o formulário mostra só uma linha informando isso (decisão do Lucas, 2026-11-12). Sem task nenhuma, nada. **No formulário** a pergunta (`ts_used` e, com
   `No`, `ts_reason`) sobe para um **cartão destacado** (fundo âmbar, faixa lateral, linha de ajuda) antes de qualquer
   bloco ou print, porque a resposta decide os prints de ACT/ECW (Lucas, 2026-11-12). **Só a ordem da tela muda:** as
-  linhas continuam no bloco `extras` e saem na tabela Additional Details, a última da nota. Com `Yes`, cada task ACT/ECW em
+  linhas continuam no bloco `extras` e saem na tabela Additional Details, a última da nota.
+  **Aviso nos blocos de print:** quando o Tag Support dispensa os prints (linhas viram `NA` Auto), cada bloco Before, Implementation e After leva, no topo
+  do grupo "Screenshots (Mandatory)", **uma linha de largura total** (`colspan` = colunas do bloco; fundo `#e6f4ea`, texto `#137333`, faixa lateral `#34a853`) com
+  título em negrito ("Tag Support utilizado: prints dispensados") e o motivo (o Win Criteria dispensa os prints das tasks em que ele foi usado), para quem lê
+  a nota depois saber POR QUE a coluna é só NA (Lucas, 2026-11-12). Só tags permitidas e estilo inline. O texto vem do dicionário de notas (`ts_bloco_*`), no
+  idioma da nota, como o aviso de "Task types" (`ts_output_disclaimer`), e só entra com o texto no `opts` (`tsBlockNote`). Some com "Incluir mesmo assim" (os
+  prints voltam) e com `No`. É conteúdo da nota: sai em Preencher e Copiar. Com `Yes`, cada task ACT/ECW em
   **Task types** leva o aviso do Win Criteria (`ts_output_disclaimer` do dicionário), como hoje, e o
   motivo some. Com `No`, o motivo é opcional. O lembrete do Form fica na dica.
   **Tudo igual ao módulo atual (decisão do Lucas, "continue como é hoje"):** com `Yes`, o Tag Support
