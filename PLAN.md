@@ -355,11 +355,18 @@ This file differs from the long-term roadmap: it describes what is happening **n
       com o Tag Support) e, ao clicar, abrir a gaveta da prévia rolando até onde o bloco entra, com o
       aviso "explicação — não vai para a nota". **Revisão contra o Doc "fluxo after implementation
       before" (Drive do Lucas):** rótulos, ordem, marcações só-ECW e `when` do catálogo batem com o Doc;
-      o texto do Doc é a regra (o Lucas: "devemos seguir aquelas regras"). **Divergência achada:** o
-      Consult só é sugerido para `IN - Troubleshooting [Transferred]` e `IN - Out of Scope - Rerouted`;
-      o Doc também cobre `SO - Troubleshooting only + Split & Transfer` (exigiria uma condição de
-      sugestão "Split & Transfer usado" — mesma restrição de `NOTE_WHEN_KEYS`). `MMS only` e `M&A`
-      seguem escondidos, como o Lucas pediu. **Ainda não feito:** o "?" e a rolagem da gaveta.
+      o texto do Doc é a regra (o Lucas: "devemos seguir aquelas regras").
+      1. [x] **O "?" e o painel de explicação** — entregue (`note-table-help.js`, PT/ES/EN, `smoke:note-table`
+         +5, `test:note-table` +5). Texto fora do catálogo de propósito (um segmento publicado na Central
+         substitui o embutido inteiro); passar para a Central é um passo à parte: campo no catálogo +
+         fallback por bloco + semente. As fases ECL (Phase 0–3, Interim) ainda não têm "?".
+      2. [ ] **A prévia na gaveta:** o "?" (ou um botão no painel) abre a gaveta, rola até a tabela do bloco
+         e a destaca; bloco desligado ganha uma tabela "fantasma" na posição certa (pela ordem do
+         segmento), com a faixa "explicação — não vai para a nota". Nunca entra na saída.
+      **Divergência achada:** o Consult só é sugerido para `IN - Troubleshooting [Transferred]` e
+      `IN - Out of Scope - Rerouted`; o Doc também cobre `SO - Troubleshooting only + Split & Transfer`
+      (exigiria uma condição de sugestão "Split & Transfer usado" — mesma restrição de `NOTE_WHEN_KEYS`).
+      `MMS only` e `M&A` seguem escondidos/sem definição, como o Lucas pediu.
 
 - [~] **Lembrete de qualidade em todo boot (2026-10-30, ADR-0021).** Pedido do
       Lucas: avisar o agente, a cada abertura, de que deve seguir as diretrizes de

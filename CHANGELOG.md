@@ -9,6 +9,16 @@ versions follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Nota em tabela: um "?" em cada bloco (Before, Implementation, After, Consult).** Ao lado de
+  cada chip de bloco, o "?" abre um painel com o que o bloco é, quando usar, os sub-status
+  aplicáveis, as tasks (só ACT/ECW nos três primeiros), como o Tag Support o afeta e, no Consult,
+  quando é obrigatório. O texto vem do Doc "fluxo after implementation before" e segue o idioma
+  da **interface** (PT/ES/EN); o painel traz o aviso de que a explicação não vai para a nota, e
+  nada dele entra na saída. Clicar no "?" não liga nem desliga o bloco; Esc fecha só o painel e
+  devolve o foco; trocar o idioma com o painel aberto o repinta. O texto mora em
+  `note-table-help.js`, fora do catálogo, porque um segmento publicado na Central substitui o
+  embutido inteiro. As fases ECL ainda não têm "?". `MMS only` e `M&A` seguem como o Doc os deixa.
+  Falta a prévia: abrir a gaveta rolando até onde o bloco entra (ver `PLAN.md`).
 - **Nota em tabela (ADR-0022 e ADR-0024; nome provisório "Nota em tabela" / "Nota en tabla" /
   "Table note").** Módulo novo `notetable` em `src/modules/notes-table/`, ao lado do Case Notes
   atual, que continua igual. Abre pela gaveta da pílula (não vem fixado) e pelo Ctrl+K. Uma

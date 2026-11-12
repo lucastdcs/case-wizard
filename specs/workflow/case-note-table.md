@@ -450,6 +450,12 @@ tabela: a tela". Aqui ficam só as regras de comportamento que ela implementa:
 - **Só o que pede atenção fica à vista:** linhas com valor automático ou padrão (Date, Follow-up, CID, Consent) vão para o
   cartão recolhido "Preenchido automaticamente"; opcionais ficam em "Mais opções · N"; linhas derivadas (sub-status, Europa)
   não aparecem; a dica de uma linha só aparece com ela em foco.
+- **"?" dos blocos (ajuda):** cada chip de bloco do ALL TASKS (Before, Implementation, After, Consult) tem um botão "?" (alvo de
+  32×32) que abre, na linha do chip, um painel com **o que é, quando usar, sub-status, tasks, Tag Support** (e, no Consult, quando é
+  obrigatório). Um por vez; clicar no "?" **não** liga nem desliga o bloco; Esc fecha só o painel e devolve o foco ao "?". O texto
+  é de **tela**, no idioma da **interface**, tirado do Doc "fluxo after implementation before", e **nunca vai para a nota** (o painel
+  traz o aviso). Mora em `note-table-help.js`, fora do catálogo (um segmento publicado na Central substitui o embutido inteiro).
+  As fases ECL ainda não têm "?": ele só aparece onde há texto. `MMS only` e `M&A` ficam como o Doc os deixa, sem definição.
 - **Gaveta:** aberta pela aba (ou fechada por Esc), com o conteúdo `inert` quando fechada. A linha em foco acende a linha da nota
   e clicar numa linha da nota leva ao campo.
 - **Faixa de contexto** fixa ao rolar além do contexto (sem o tipo, se for o padrão); **faixa de pendências** só depois de tentar
