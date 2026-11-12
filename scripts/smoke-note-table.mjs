@@ -201,6 +201,32 @@ await check('ACT não repete a lista de prints (as linhas de fase pedem); GA4 ma
     ok(vis.some((id) => id.startsWith('name-ga4_event_tracking')) && !vis.some((id) => id.startsWith('name-ads_conversion_tracking')), JSON.stringify(vis));
 });
 
+await check('Tag Support: cartão destacado ANTES dos blocos e dos prints; as linhas não se repetem e a nota não muda de ordem', async () => {
+    const r = await page.evaluate((p) => {
+        const form = document.querySelector(`${p} .nt-form`);
+        const ts = form.querySelector('.nt-ts');
+        const antes = (a, b) => !!(a && b && (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING));
+        return {
+            tem: !!ts,
+            antesDoPrimeiroBloco: antes(ts, form.querySelector('.nt-eyebrow')),
+            antesDosPrints: antes(ts, form.querySelector('.nt-prints')),
+            noCartao: ts ? ts.querySelectorAll('[data-row="ts_used"]').length : 0,
+            noFormulario: form.querySelectorAll('[data-row="ts_used"]').length,
+            titulo: ts ? (ts.querySelector('.nt-ts-h b') || {}).textContent : '',
+            ajuda: ts ? ((ts.querySelector('.nt-ts-h span') || {}).textContent || '').length : 0,
+        };
+    }, POP);
+    ok(r.tem, 'sem o cartão do Tag Support (.nt-ts)');
+    ok(r.antesDoPrimeiroBloco && r.antesDosPrints, 'o cartão devia vir antes do primeiro bloco e dos prints: ' + JSON.stringify(r));
+    igual([r.noCartao, r.noFormulario], [1, 1], 'a linha ts_used no cartão e no formulário todo');
+    igual(r.titulo, 'Tag Support', 'título do cartão');
+    ok(r.ajuda > 20, 'o cartão devia explicar por que vem antes dos prints');
+    // só a ordem do FORMULÁRIO mudou: na nota a pergunta segue na tabela Additional Details (a última).
+    const html = await prev();
+    const iAdd = html.lastIndexOf('Additional Details'), iTs = html.indexOf('Usou o Tag Support?');
+    ok(iTs > iAdd && iAdd > html.indexOf('Implementation:'), 'a linha do Tag Support saiu do Additional Details da nota');
+});
+
 await check('o print colado na lista do GA4 entra no Additional Details como "<task> — <rótulo>"', async () => {
     const inp = page.locator(`${POP} input[id^="screen-ga4_event_tracking-1-0"]`);
     await inp.fill('https://example.com/ga4/1');

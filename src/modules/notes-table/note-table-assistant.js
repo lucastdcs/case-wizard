@@ -70,6 +70,11 @@ const SHORT = {
     consult: "Consult routing path", audit: "Readiness audit", impl_call: "Implementation call", interim: "Interim check-ins",
     triage: "Initial triage", eligibility: "Eligibility verification", extras: "Additional details",
 };
+// A pergunta do Tag Support decide os prints de ACT/ECW, então o FORMULÁRIO a mostra num
+// cartão próprio e destacado, antes de qualquer bloco ou print (Lucas, 2026-11-12). Só a
+// ordem da tela muda: as linhas seguem no bloco `extras`, e a nota sai como sempre.
+const TS_ROWS = ["ts_used", "ts_reason"];
+
 const CHIP = {
     "all.before": "Before", "all.impl": "Implementation", "all.after": "After", "all.consult": "Consult",
     "sbse.audit": "Phase 1 · Audit", "sbse.impl_call": "Phase 2 · Impl. call", "sbse.interim": "Interim",
@@ -525,7 +530,7 @@ export function initNoteTable() {
     // ---- cartão de uma seção (principais + "Mais opções") ----
     function sectionCard(key, sec, blockId, pend, top) {
         const all = secRows(sec, blockId);
-        const rest = all.filter((r) => !isAutoRow(r, blockId));
+        const rest = all.filter((r) => !isAutoRow(r, blockId) && !TS_ROWS.includes(r.id));
         const main = rest.filter((r) => !isOpt(r));
         const opt = rest.filter(isOpt);
         const add = (sec.rows || []).filter((r) => r.optIn && r.visible !== false && !st.optIn.includes(r.id) && !(r.requiredWhen && M.matches(catalog, st, r.requiredWhen)) && M.matches(catalog, st, r.when));
@@ -542,6 +547,13 @@ export function initNoteTable() {
                 add.forEach((r) => card.append(h("div", { class: "nt-row add" }, h("span"), h("button", { class: "nt-add-btn", type: "button", onclick: () => { st.optIn.push(r.id); dirty(); render(); } }, "+ " + labUi(r)), h("span"))));
             }
         }
+        return cw(card, "");
+    }
+
+    function tsCard(rows, pend) {
+        const card = h("div", { class: "nt-card nt-ts" },
+            h("div", { class: "nt-ts-h" }, h("b", {}, ntt("tsTitle")), h("span", {}, ntt("tsHelp"))));
+        rows.forEach(([r, b]) => card.append(mkRow(r, b, pend(r.id))));
         return cw(card, "");
     }
 
@@ -772,6 +784,8 @@ export function initNoteTable() {
         }
         const missKeys = new Set(missing().map((m) => m.key));
         const pend = (id) => ui.showPending && missKeys.has(id);
+        const tsRows = visibleRowsAll().filter(([r]) => TS_ROWS.includes(r.id));
+        if (tsRows.length) formHost.append(tsCard(tsRows, pend));
         const autoRows = [];
         const seen = new Set();
         visibleRowsAll().forEach(([r, b]) => { if (isAutoRow(r, b) && !seen.has(r.id)) { seen.add(r.id); autoRows.push([r, b]); } });

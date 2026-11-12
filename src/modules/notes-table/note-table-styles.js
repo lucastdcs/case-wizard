@@ -57,6 +57,10 @@ const CSS = `
 #cw-notetable-popup .nt-card>*+*{position:relative}
 #cw-notetable-popup .nt-card>*+*::before{content:"";position:absolute;left:16px;right:0;top:0;height:1px;background:var(--hairline)}
 #cw-notetable-popup .nt-card>.nt-auto-sum::before{display:none}
+#cw-notetable-popup .nt-card.nt-ts{background:var(--warn-bg);box-shadow:inset 4px 0 0 #f29900,0 0 0 1px #fbbc05}
+#cw-notetable-popup .nt-ts-h{display:flex;flex-direction:column;gap:2px;padding:12px 16px 8px}
+#cw-notetable-popup .nt-ts-h b{font-size:13px;font-weight:500;line-height:18px;color:var(--warn)}
+#cw-notetable-popup .nt-ts-h span{font-size:12px;line-height:16px;color:var(--sub)}
 #cw-notetable-popup .nt-row:focus-within{background:var(--tone-1)}
 #cw-notetable-popup .nt-row:focus-within::after{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;background:var(--primary)}
 #cw-notetable-popup .nt-row.pending::after{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;background:#fbbc05}
