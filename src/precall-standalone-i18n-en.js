@@ -11,6 +11,11 @@
 export const getLanguage = () => 'en';
 export const onLanguageChange = () => () => {};
 
+// Datas na tela (formatToLocalUserDate, em utils.js): os mesmos valores que o
+// i18n.js devolve para `en` - 24 h e mês por extenso curto. Se mudarem lá, mudam aqui.
+export const getLocale = () => 'en-GB';
+export const getMonthStyle = () => 'short';
+
 // Sem troca de idioma: a entrada só chama `setLanguage` se `isSupportedLang` disser
 // que o idioma do navegador serve, e aqui nenhum serve.
 export const setLanguage = () => {};

@@ -41,6 +41,35 @@ const FIELD_ES = {
     discardReason: { label: 'Motivo del Descarte' },
 };
 
+const FIELD_EN = {
+    advName: { label: 'Advertiser Name', placeholder: 'Advertiser Name' },
+    advLastName: { label: 'Advertiser Last Name', placeholder: 'Advertiser Last Name' },
+    advPhone: { label: 'Advertiser Phone', placeholder: '+55 11 90000-0000' },
+    advEmail: { label: 'Advertiser Email', placeholder: 'email@example.com', error: 'Invalid email format' },
+    cid: { label: 'CID', placeholder: '000-000-0000', tooltip: 'Use the format 000-000-0000 or 10 digits', error: 'Incorrect CID format' },
+    amName: { label: 'Account Manager (AM)', placeholder: 'am@google.com', error: "Enter the AM's email (e.g., am@google.com)" },
+    website: { label: 'Website', placeholder: 'https://www.example.com' },
+    seId: { label: 'Speakeasy ID (SE ID)', placeholder: 'Speakeasy ID', buttonTitle: 'Look up ID automatically' },
+    seId_descarte: { label: 'Speakeasy ID (SE ID)', placeholder: 'Speakeasy ID', buttonTitle: 'Look up ID automatically' },
+    reason: { label: 'What needs to be done in BAU', placeholder: 'Describe the expected actions...' },
+    taskType: { label: 'Tasks for BAU (Select 1 or more)', tooltip: 'Select the types of technical implementation' },
+    nonImplementationReason: { label: 'Reason for Non-Implementation (BAU Justification)' },
+    description_justificativa: { label: 'Justification / Description', placeholder: 'Describe in detail what needs to be done...' },
+    availability: { label: 'Availability (at least 1 option)' },
+    availability_1: { label: 'Option 1 (Priority)' },
+    availability_2: { label: 'Option 2 (Optional)' },
+    availability_3: { label: 'Option 3 (Optional)' },
+    suggestDiscard: { label: 'Should the case be discarded by the TL?' },
+    caseId: { label: 'Case ID', placeholder: 'Case ID' },
+    language: {
+        label: 'Support Language',
+        tooltip: 'Comes from your segment in the People sheet. Change it only when this case is an exception to the rule.',
+    },
+    language_descarte: { label: 'Support Language' },
+    description_descarte: { label: 'Description', placeholder: 'Describe the reason for the discard...' },
+    discardReason: { label: 'Discard Reason' },
+};
+
 // Textos exibidos nos <option> — chaveados pelo `value` original em PT
 // (idêntico ao `text` no config). O `value` enviado ao backend nunca muda.
 const OPTION_TEXT_ES = {
@@ -65,6 +94,32 @@ const OPTION_TEXT_ES = {
     "Inglês (EN)": "Inglés (EN)",
 };
 
+const OPTION_TEXT_EN = {
+    "Selecione um motivo...": "Select a reason...",
+    "Tempo da consultoria esgotado": "Consultation time ran out",
+    "Solicitação de reagendamento pelo anunciante": "Reschedule requested by the advertiser",
+    "Falta de acessos ou backup do site": "Missing access or site backup",
+    "Anunciante indisponível ou não preparado": "Advertiser unavailable or not prepared",
+    "Implementação parcial (nem todas as tasks concluídas)": "Partial implementation (not all tasks completed)",
+    "Solicitação de tarefas (tasks) adicionais": "Request for additional tasks",
+    "Necessidade de novas alterações (fase de acompanhamento)": "Need for new changes (follow-up phase)",
+    "Retorno de contato após prazo de 14 dias expirado": "Contact follow-up after the 14-day deadline expired",
+    "Caso Filho gerado no atendimento": "Child Case generated during support",
+    "3ª Tentativa de contato sem sucesso": "3rd contact attempt unsuccessful",
+    "Apenas o AM presente": "Only the AM present",
+    "Estouro de tempo para conclusão": "Time overrun for completion",
+    "Geração de caso BAU (Reagendamento)": "BAU case generation (Reschedule)",
+    "Sim": "Yes",
+    "Não": "No",
+    "Português (PT-BR)": "Portuguese (PT-BR)",
+    "Espanhol (ES)": "Spanish (ES)",
+    "Inglês (EN)": "English (EN)",
+};
+
+// PT é o texto do próprio config e não precisa de tabela; ES e EN sobrepõem.
+const FIELD_TEXT = { es: FIELD_ES, en: FIELD_EN };
+const OPTION_TEXT = { es: OPTION_TEXT_ES, en: OPTION_TEXT_EN };
+
 function fieldKey(fieldConfig) {
     return fieldConfig?.i18nKey || fieldConfig?.id || fieldConfig?.name;
 }
@@ -72,13 +127,11 @@ function fieldKey(fieldConfig) {
 // label/placeholder/tooltip/buttonTitle/error de um campo do FORM_CONFIG.
 export function bft(fieldConfig, prop) {
     const fallback = fieldConfig?.[prop];
-    if (getLanguage() !== 'es') return fallback;
-    return FIELD_ES[fieldKey(fieldConfig)]?.[prop] ?? fallback;
+    return FIELD_TEXT[getLanguage()]?.[fieldKey(fieldConfig)]?.[prop] ?? fallback;
 }
 
 // Texto exibido de uma <option>/checkbox — o `value` do parâmetro NUNCA é
 // alterado por quem chama isso, só o que aparece pro agente na tela.
 export function bfOptionText(text) {
-    if (getLanguage() !== 'es') return text;
-    return OPTION_TEXT_ES[text] ?? text;
+    return OPTION_TEXT[getLanguage()]?.[text] ?? text;
 }

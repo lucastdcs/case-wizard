@@ -9,16 +9,19 @@ import { initLinksAssistant } from './modules/links/links-assistant.js';
 import { initBroadcastAssistant } from './modules/broadcast/broadcast-assistant.js'; 
 import { initOnboarding } from './modules/onboarding/onboarding-wizard.js';
 import { checkAndShowChangelog } from './modules/changelog/changelog-wizard.js';
+import { showQaDisclaimer } from './modules/disclaimer/qa-disclaimer.js';
 import { initTimezoneAssistant } from './modules/timezone/timezone-assistant.js';
 import { initPersonalLibrary } from './modules/personal-library/personal-library-assistant.js'; // [NOVO]
 import { initConfigsAssistant } from './modules/configs/configs-assistant.js';
 import { initBAUForm } from './modules/bau-form/bau-form-assistant.js';
+import { initNoteTable } from './modules/notes-table/note-table-assistant.js';
 
 // Importação do Serviço de Dados
 import { DataService, fetchUserProfile } from './modules/shared/data-service.js';
 import { getAgentEmail, setUserProfile } from './modules/shared/page-data.js';
-import { applyProfileLanguage } from './modules/shared/i18n.js';
+import { applyProfileLanguage, getLanguage } from './modules/shared/i18n.js';
 import { UserPrefsService } from './modules/shared/user-prefs-service.js';
+import { PillLayoutService } from './modules/shared/pill-layout.js';
 
 // 2. Importação do Núcleo Compartilhado
 import { initCommandCenter } from './modules/shared/command-center.js';
@@ -27,6 +30,12 @@ import { initGlobalStylesAndFont, playStartupAnimation, showToast } from './modu
 
 // --- Gerenciador de Som ---
 import { SoundManager } from './modules/shared/sound-manager.js';
+
+const BOOT_ERROR_TOAST = {
+    pt: "Erro crítico ao iniciar o Case Wizard.",
+    es: "Error crítico al iniciar Case Wizard.",
+    en: "Critical error starting Case Wizard.",
+};
 
 function initApp() {
     // Se já iniciou, só toca a animação de novo e sai (evita duplicidade)
@@ -71,7 +80,9 @@ function initApp() {
             // Categorias criadas pela tela e destaques da home de Links. Ficam
             // aqui, e não só no módulo, pelo mesmo motivo dos outros: um módulo
             // que pede o seu quando é aberto é uma execução a mais por agente.
-            'link_categories', 'link_highlights'
+            'link_categories', 'link_highlights',
+            // Nota em tabela (ADR-0022): os blocos e os segmentos do padrão novo.
+            'note_blocks', 'note_layouts'
         ]);
 
         // C. Animação de Entrada (Aqui o 'Sherlock' começa a buscar o nome)
@@ -90,6 +101,7 @@ function initApp() {
         const toggleLibrary = initPersonalLibrary(); // [NOVO] Inicializa a Biblioteca
         const toggleConfigs = initConfigsAssistant();
         const toggleBAUForm = initBAUForm();
+        const toggleNoteTable = initNoteTable();
         
         const broadcastControl = initBroadcastAssistant();
 
@@ -103,6 +115,7 @@ function initApp() {
             toggleLibrary, // [NOVO] Passa o controle para a pílula
             toggleConfigs,
             toggleBAUForm,
+            toggleNoteTable,
             broadcastControl
         };
 
@@ -131,10 +144,12 @@ function initApp() {
             // sendo hispanofalante, já que o perfil ainda não teria chegado.
             const agentEmail = getAgentEmail();
 
-            // Preferências do agente (hoje: os atalhos do Ctrl+K). Não bloqueia
-            // nada: a tela já abre com o cache local e se atualiza quando a
-            // planilha responder - o Ctrl+K relê a lista a cada abertura.
-            UserPrefsService.sync();
+            // Preferências do agente (atalhos do Ctrl+K e layout da pílula). Não
+            // bloqueia nada: a tela já abre com o cache local e se atualiza
+            // quando a planilha responder - o Ctrl+K relê a lista a cada
+            // abertura. A pílula, que é desenhada uma vez, precisa ser avisada:
+            // numa máquina nova o layout da nuvem chega depois do primeiro frame.
+            UserPrefsService.sync().then(() => PillLayoutService.refresh());
 
             const languagePromise = agentEmail
                 ? fetchUserProfile(agentEmail.split('@')[0])
@@ -153,11 +168,19 @@ function initApp() {
 
             languagePromise.finally(() => {
                 // 2. Verifica Tutoriais / Changelog
-                initOnboarding();
+                const onboardingClosed = Promise.resolve().then(() => initOnboarding());
 
-                setTimeout(() => {
-                    checkAndShowChangelog(APP_VERSION);
-                }, 500);
+                const changelogClosed = new Promise(resolve => {
+                    setTimeout(() => resolve(checkAndShowChangelog(APP_VERSION)), 500);
+                });
+
+                // 3. Lembrete de qualidade - em todo boot, mas só quando nada
+                // mais disputa a atenção: splash, tour e changelog primeiro.
+                // `allSettled` e não `all`: um modal que falhe não pode
+                // engolir o lembrete. Os 1.2s deixam o chime da pílula e o
+                // toast de fechamento dos modais terminarem antes do som dele.
+                Promise.allSettled([splashDone, onboardingClosed, changelogClosed])
+                    .then(() => setTimeout(showQaDisclaimer, 1200));
             });
 
         }, 2500);
@@ -165,7 +188,7 @@ function initApp() {
     } catch (error) {
         console.error("Erro fatal na inicialização:", error);
         SoundManager.playError();
-        showToast("Erro crítico ao iniciar o Case Wizard.", { error: true });
+        showToast(BOOT_ERROR_TOAST[getLanguage()] || BOOT_ERROR_TOAST.pt, { error: true });
     }
 }
 

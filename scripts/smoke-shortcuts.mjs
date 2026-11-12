@@ -248,6 +248,15 @@ await check('apelido com HTML aparece como texto, não é interpretado', async (
 });
 
 await check('a lista de Configurações segue a mesma ordem do Ctrl+K', async () => {
+    // O teste anterior deixou Configurações aberta, e o Ctrl+K alterna: escolher
+    // o mesmo módulo de novo o FECHARIA, e a lista lida abaixo seria a da janela
+    // oculta, com o dado velho. Fecha antes para que o Enter abra e redesenhe.
+    if (await page.locator('#configs-popup.open').count()) {
+        await abrirPalette('configuracoes');
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(900);
+    }
+
     await page.evaluate(() => {
         const prefs = JSON.parse(localStorage.getItem('cw_user_prefs_v1') || '{}');
         prefs.shortcuts = [

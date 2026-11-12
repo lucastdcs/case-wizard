@@ -5,34 +5,15 @@ import { createStandardHeader } from "../shared/header-factory.js";
 import { toggleGenieAnimation, isModuleOpen } from "../shared/animations.js";
 import { SoundManager } from "../shared/sound-manager.js";
 import { lockBodyScroll, unlockBodyScroll } from "../shared/dom-utils.js";
-import { getLanguage, onLanguageChange } from "../shared/i18n.js";
-import { TIMEZONE_HUBS } from "../shared/timezones.js";
+import { getLanguage, getLocale, onLanguageChange } from "../shared/i18n.js";
+import { TIMEZONE_HUBS, hubName as hubNameIn, hubLabel as hubLabelIn } from "../shared/timezones.js";
 
 const PINNED_STORAGE_KEY = "cw_timezone_pinned";
 
-// Nomes/labels em espanhol só onde realmente diferem do português (a
-// maioria dos nomes de país/cidade da América Latina é igual nos dois
-// idiomas, então só listamos as exceções aqui).
-const HUB_ES_OVERRIDES = {
-    es: { name: 'España' },
-    bo: { name: 'Bolivia' },
-    co: { name: 'Colombia' },
-    ec: { name: 'Ecuador' },
-    py: { name: 'Paraguay', label: 'Asunción' },
-    uy: { name: 'Uruguay', label: 'Montevideo' },
-    ni: { name: 'Nicaragua', label: 'Managua' },
-    pr: { name: 'Puerto Rico' },
-    gt: { label: 'C. de Guatemala' },
-    pa: { label: 'C. de Panamá' },
-};
-function hubName(hub) {
-    if (getLanguage() === 'es') return HUB_ES_OVERRIDES[hub.id]?.name ?? hub.name;
-    return hub.name;
-}
-function hubLabel(hub) {
-    if (getLanguage() === 'es') return HUB_ES_OVERRIDES[hub.id]?.label ?? hub.label;
-    return hub.label;
-}
+// Nome e rótulo de exibição por idioma moram no catálogo compartilhado, para o
+// formulário BAU mostrar os mesmos nomes.
+const hubName = (hub) => hubNameIn(hub, getLanguage());
+const hubLabel = (hub) => hubLabelIn(hub, getLanguage());
 
 const TZ_DICT = {
     pt: {
@@ -513,7 +494,7 @@ export function initTimezoneAssistant() {
 
         filteredHubs.forEach(hub => {
             const isPinned = pinnedHubs.includes(hub.id);
-            const timeString = now.toLocaleTimeString(getLanguage() === 'es' ? 'es-ES' : 'pt-BR', { timeZone: hub.zone, hour: '2-digit', minute: '2-digit' });
+            const timeString = now.toLocaleTimeString(getLocale(), { timeZone: hub.zone, hour: '2-digit', minute: '2-digit' });
             const hour = parseInt(timeString.split(':')[0]);
             const status = getBusinessStatus(hour);
             const isNight = hour < 6 || hour > 18;
@@ -707,7 +688,7 @@ export function initTimezoneAssistant() {
             timeInputBR.value = timeStr;
             slider.value = (hours * 60) + minutes;
 
-            const clientTimeString = plannerDate.toLocaleTimeString(getLanguage() === 'es' ? 'es-ES' : 'pt-BR', {
+            const clientTimeString = plannerDate.toLocaleTimeString(getLocale(), {
                 timeZone: hub.zone, hour: '2-digit', minute: '2-digit'
             });
             clientDisplay.textContent = clientTimeString;

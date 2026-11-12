@@ -2207,6 +2207,16 @@
             margin-top: 8px;
         }
 
+        /* Nota em tabela: o editor de linhas e a prévia (a tabela vem com estilo inline, como no CRM). */
+        .ntb-rows { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+        .ntb-rows th { text-align: left; font-weight: 500; color: var(--text-secondary); padding: 6px 8px; }
+        .ntb-rows td { padding: 4px 8px; vertical-align: middle; border-top: 1px solid var(--border, #e8eaed); }
+        .ntb-rows input[type="text"] { width: 100%; min-width: 120px; padding: 6px 8px; font: inherit; }
+        .ntb-cond { color: var(--text-secondary); font-size: 12px; max-width: 220px; }
+        .ntb-editor { max-height: 46vh; overflow: auto; }
+        .ntb-preview { padding: 16px; background: #fff; border-radius: 12px; max-width: 560px; }
+        #ntb-segs button[aria-pressed="true"] { background: var(--primary-bg, #e8f0fe); color: var(--primary, #1a73e8); }
+
         .lk-lang {
             display: inline-flex;
             gap: 4px;

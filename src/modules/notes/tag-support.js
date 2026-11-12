@@ -9,12 +9,14 @@ import { SoundManager } from '../shared/sound-manager.js';
 // Estilos locais específicos deste módulo
 const styleContainer = { 
     marginTop: "24px", marginBottom: "16px", padding: "20px",
-    background: "#fff9e6", borderRadius: "20px", border: "1.5px solid #fbbc0540",
+    background: "#fff9e6", borderRadius: "20px", border: "2px solid #fbbc05",
+    borderLeft: "8px solid #f29900",
     display: "none",
-    boxShadow: "0 4px 12px rgba(251, 188, 5, 0.05)"
+    boxShadow: "0 6px 18px rgba(251, 188, 5, 0.18)"
 };
 const styleWarning = { fontSize: "12px", color: "#b06000", marginTop: "8px", lineHeight: "1.4" };
 const styleInputLocal = { width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1.5px solid #dadce0", fontSize: "14px", marginBottom: "16px", boxSizing: "border-box", background: "#fff" };
+const styleHelper = { fontSize: "12px", color: "#5f6368", lineHeight: "1.4", margin: "4px 0 14px 0" };
 const styleRadioGroup = { display: 'flex', gap: '20px', marginBottom: '12px' };
 
 export function createTagSupportModule(t) {
@@ -27,6 +29,12 @@ export function createTagSupportModule(t) {
     mainLabel.className = "js-ts-main-label";
     mainLabel.textContent = t('utilizou_tag_support');
     Object.assign(mainLabel.style, styleLabel, { marginTop: "0" });
+
+    // Por que a pergunta vem antes dos prints: a resposta decide quais prints saem.
+    const helper = document.createElement("div");
+    helper.className = "js-ts-helper";
+    helper.textContent = t('ts_antes_dos_prints');
+    Object.assign(helper.style, styleHelper);
 
     // Radio Buttons Container
     const radioContainer = document.createElement("div");
@@ -71,6 +79,7 @@ export function createTagSupportModule(t) {
     reasonDiv.appendChild(warningText);
 
     container.appendChild(mainLabel);
+    container.appendChild(helper);
     container.appendChild(radioContainer);
     container.appendChild(reasonDiv);
 
@@ -88,30 +97,43 @@ export function createTagSupportModule(t) {
 
     // --- 3. API PÚBLICA (Métodos que o pai vai chamar) ---
 
-    // Decide se mostra ou esconde o módulo baseado nas tasks
+    // Três estados (Lucas, 2026-11-12):
+    //   'ask'  - há ACT ou EC entre as tasks: a pergunta aparece, SEMPRE antes dos links/prints
+    //            (a ordem do DOM está em notes-assistant.js). Quem usa a resposta é step-tasks.js:
+    //            o Sim dispensa os prints só de ACT/EC; as demais tasks seguem.
+    //   'auto' - há task, mas nenhuma é ACT/EC: sem pergunta; a nota já sai "Não" + o motivo
+    //            "task não se aplica ao uso do TSA".
+    //   'none' - sem task (ou sem substatus): nada.
+    let mode = 'none';
+
     function updateVisibility(subStatus, selectedTasksArray) {
-        // Reset inicial
         container.style.display = 'none';
+        mode = 'none';
 
         if (!subStatus) return;
         if (!selectedTasksArray || selectedTasksArray.length === 0) return;
 
-        // Regra específica: Apenas Ads Conversion Tracking ou Enhanced Conversions
         const hasTargetTasks = selectedTasksArray.some(t =>
             t === 'ads_conversion_tracking' || t === 'ads_enhanced_conversions'
         );
-
         if (hasTargetTasks) {
+            mode = 'ask';
             container.style.display = 'block';
         } else {
+            // Uma resposta antiga (ex.: "Sim" de quando a ACT estava marcada) não vale mais.
             reset();
             notesState.setTagSupportUsed(false);
+            mode = 'auto';
         }
     }
 
     // Gera o texto para a nota final
     function getOutput() {
-        if (container.style.display === 'none') return '';
+        // A linha sai sempre que há task (decisão do Lucas, 2026-11-12): perguntada ou já preenchida.
+        if (mode === 'auto') {
+            return `<br><b>${t('tag_support_output_label')}</b> ❌ ${t('nao')}<br><b>${t('motivo_output_label')}</b> ${t('ts_nao_se_aplica')}<br>`;
+        }
+        if (mode !== 'ask') return '';
 
         let text = `<br><b>${t('tag_support_output_label')}</b> ${rSim.checked ? `✅ ${t('sim')}` : `❌ ${t('nao')}`}`;
         if (rNao.checked && reasonInput.value.trim() !== "") {
@@ -124,6 +146,7 @@ export function createTagSupportModule(t) {
     function setLanguage(newT) {
         t = newT;
         mainLabel.textContent = t('utilizou_tag_support');
+        helper.textContent = t('ts_antes_dos_prints');
         reasonLabel.textContent = t('motivo_ts');
         lSim.textContent = t('sim');
         lNao.textContent = t('nao');

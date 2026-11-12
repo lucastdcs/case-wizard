@@ -74,6 +74,26 @@ Cenários atípicos onde o encerramento imediato é necessário.
 |---|---|
 | *(sem substatus correspondente hoje - código só tem `DC_Other`, que não é isto)* | **Authentication Failed** - falha em todas as tentativas de autenticação da conta com o anunciante; caso precisa ser encerrado. |
 
+## Tag Support e os prints das tasks
+
+A pergunta "Você utilizou o Tag Support?" (Sim/Não + motivo + aviso do
+formulário, `tag-support.js`) **só aparece com `ads_conversion_tracking` (ACT) ou
+`ads_enhanced_conversions` (EC) selecionadas**. Quando aparece, **fica sempre antes
+dos links/prints** e tem destaque (borda cheia, faixa lateral e uma linha dizendo que a
+resposta vem antes dos prints): é um ponto importante do fluxo (decisão do Lucas,
+2026-11-12). Com tasks que não são essas **não há pergunta**: a nota já sai com "Não" e o
+motivo "Task não se aplica ao uso do TSA" (no idioma da interface, ver PLAN).
+
+| Tasks selecionadas | A pergunta | O que o Sim faz |
+|---|---|---|
+| ACT e/ou EC (sozinhas ou com outras) | Aparece, antes dos links/prints | Dispensa os prints **só de ACT/EC**; as demais tasks seguem pedindo os seus. "Incluir mesmo assim" devolve os de uma task. |
+| Task(s), nenhuma ACT/EC | Não aparece | — (a nota já leva "Não" + o motivo; os prints seguem obrigatórios) |
+| Nenhuma task | Não aparece | — (a nota não leva a linha) |
+
+A linha "Utilizou Tag Support?" sai **sempre que há task**: perguntada (ACT/EC) ou já preenchida (as
+outras). Uma resposta "Sim" dada com a ACT marcada **não sobrevive** a ela sair da seleção. Travado em
+`npm run smoke:tag-support`.
+
 ## Gaps conhecidos entre este documento e `SUBSTATUS_TEMPLATES`
 
 Levantado durante a reorganização de snippets (ver histórico de

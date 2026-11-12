@@ -410,6 +410,57 @@ check('a lista do agente devolve o campo, senão a edição abre no padrão', ()
     igual(caso.suggestDiscard, 'Sim', 'com a sugestão gravada');
 });
 
+// ---- Os erros que o agente vê têm um CÓDIGO estável -------------------
+//
+// Os erros de BAU_API.js saíam só como texto em português ("Acesso negado. Você
+// só pode editar...") e iam parar num toast do agente em qualquer idioma. O
+// servidor agora acrescenta um `code`, e o cliente traduz por ele (data-service.js,
+// serverErrorMessage). O texto em português continua sendo o reserva - cliente
+// antigo ou código que o cliente não conhece mostram o que mostravam antes.
+console.log('\n--- Erros do agente: código estável + texto de reserva ---\n');
+
+function erroDe(fn) {
+    try { fn(); } catch (e) { return e; }
+    return null;
+}
+
+check('editar o caso de outro agente: BAU_NOT_OWNER_EDIT', () => {
+    montar([linhaBAU('bau_c1', 'PENDING_TL_CREATION')]);
+    const e = erroDe(() => editar('bau_c1', { user: 'outro@google.com' }));
+    verdade(e !== null, 'devia ter recusado');
+    igual(e.code, 'BAU_NOT_OWNER_EDIT', 'código');
+    verdade(/Acesso negado/.test(e.message), 'o texto em português continua lá');
+});
+
+check('editar um caso que o TL já processou: BAU_ALREADY_PROCESSED', () => {
+    montar([linhaBAU('bau_c2', 'CREATED')]);
+    const e = erroDe(() => editar('bau_c2', {}));
+    verdade(e !== null, 'devia ter recusado');
+    igual(e.code, 'BAU_ALREADY_PROCESSED', 'código');
+});
+
+check('editar um caso que não existe: BAU_NOT_FOUND', () => {
+    montar([linhaBAU('bau_c3', 'PENDING_TL_CREATION')]);
+    igual(erroDe(() => editar('nao_existe', {})).code, 'BAU_NOT_FOUND', 'código');
+});
+
+check('cancelar o caso de outro agente: BAU_NOT_OWNER_DELETE; inexistente: BAU_NOT_FOUND', () => {
+    montar([linhaBAU('bau_c4', 'PENDING_TL_CREATION')]);
+    igual(erroDe(() => api.deleteBAUCase(SS, { id: 'bau_c4', user: 'outro@google.com' })).code, 'BAU_NOT_OWNER_DELETE', 'dono');
+    igual(erroDe(() => api.deleteBAUCase(SS, { id: 'nada', user: 'agente@google.com' })).code, 'BAU_NOT_FOUND', 'inexistente');
+});
+
+check('listar os casos sem e-mail: AGENT_EMAIL_REQUIRED', () => {
+    igual(erroDe(() => api.getAgentCases(SS, '')).code, 'AGENT_EMAIL_REQUIRED', 'código');
+});
+
+check('o roteador devolve o code junto do error', () => {
+    // O doGet inteiro não roda aqui (e-mail, JSONP, conteúdo). O que se trava é
+    // o formato da resposta de erro, no ponto em que ele é montado.
+    verdade(/status: 'error', error: err\.toString\(\), code: err\.code/.test(ler('gas-backend/Código.js')),
+        'o catch do roteador não devolve err.code');
+});
+
 // ---- O e-mail do PEDIDO de descarte -----------------------------------
 //
 // Relatado assim: "o e-mail do descarte parece que estou abrindo um caso, e

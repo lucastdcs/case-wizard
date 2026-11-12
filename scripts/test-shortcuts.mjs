@@ -370,6 +370,32 @@ await checkAsync('sem pendência, a nuvem continua sendo a verdade', async () =>
     if (!depois.some((s) => s.id === 'da-nuvem')) throw new Error('o local não adotou a nuvem');
 });
 
+await checkAsync('sync() sem e-mail não memoriza: a chamada seguinte, já com e-mail, vai à nuvem', async () => {
+    limparPrefs();
+    delete store['cw_user_prefs_pending_v1'];
+
+    let buscas = 0;
+    globalThis.__nuvem = {
+        salvar: async () => true,
+        ler: async () => { buscas++; return { shortcuts: [{ id: 'tardio', payload: { subStatus: 'IN_Not_Reachable' } }] }; },
+    };
+
+    // O Links chama sync() no init do módulo, antes de a identidade do agente
+    // ser capturada. Sem e-mail não há o que buscar...
+    globalThis.__email = undefined;
+    await Prefs.sync();
+    if (buscas !== 0) throw new Error('buscou na nuvem sem saber de quem');
+
+    // ...mas isso não pode ser MEMORIZADO: o sync do boot (2.5s depois, já com
+    // e-mail) recebia a promessa resolvida da primeira chamada e nunca ia à
+    // nuvem - o layout da pílula, os atalhos e os favoritos de uma máquina nova
+    // não chegavam, sem erro nenhum.
+    globalThis.__email = 'ana@google.com';
+    await Prefs.sync();
+    if (buscas !== 1) throw new Error(`esperava 1 busca na nuvem depois que o e-mail chegou, houve ${buscas}`);
+    if (!Prefs.get('shortcuts', []).some((x) => x.id === 'tardio')) throw new Error('o local não adotou a nuvem');
+});
+
 limparPrefs();
 delete store['cw_user_prefs_pending_v1'];
 

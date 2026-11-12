@@ -1968,4 +1968,305 @@
             }, btn, loadTips);
         }
 
+        // --- Nota em tabela (note_blocks e note_layouts; ADR-0022 e ADR-0024) ---
+        //
+        // O que a Central controla é O QUÊ: rótulos EN/PT/ES, obrigatória, aceita
+        // NA, visível; título impresso e "quando usar" de cada fase. O tipo da
+        // linha e as condições são do código e aparecem só para leitura (spec
+        // workflow/case-note-table.md §10). A prévia usa o MESMO renderizador do
+        // app (window.CwNoteTable, include gerado ContentDashboard_NoteTable), então
+        // o que se vê aqui é a tabela que o agente cola no caso.
+        var NTB_ITEMS = [];
+        var NTL_ITEMS = [];
+        var NTB_DRAFTS = [];
+        var NTL_DRAFTS = [];
+        var NTB_SEG = 'all';
+        var NTB_LANGS = [['en', 'EN'], ['pt', 'PT'], ['es', 'ES']];
+        var NTB_PREVIEW_LANG = 'en';
+
+        function loadNoteTable() {
+            var falhou = function (err) {
+                document.getElementById('ntb-list').innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">error</span>' +
+                    '<h2>Não foi possível carregar a nota em tabela</h2><p>' + esc(err.message) + '</p></div>';
+            };
+            google.script.run.withFailureHandler(falhou).withSuccessHandler(function (blocos) {
+                NTB_ITEMS = blocos || [];
+                google.script.run.withFailureHandler(falhou).withSuccessHandler(function (segs) {
+                    NTL_ITEMS = segs || [];
+                    google.script.run
+                        .withSuccessHandler(function (d) {
+                            NTB_DRAFTS = d || [];
+                            google.script.run
+                                .withSuccessHandler(function (d2) { NTL_DRAFTS = d2 || []; delete DRAFTS_OFFLINE.notetable; renderNoteTable(); })
+                                .withFailureHandler(function () { NTL_DRAFTS = []; DRAFTS_OFFLINE.notetable = true; renderNoteTable(); })
+                                .listContentDrafts('note_layouts');
+                        })
+                        .withFailureHandler(function () { NTB_DRAFTS = []; DRAFTS_OFFLINE.notetable = true; renderNoteTable(); })
+                        .listContentDrafts('note_blocks');
+                }).listContentItems('note_layouts');
+            }).listContentItems('note_blocks');
+        }
+
+        function ntbParse(raw) {
+            try { var v = JSON.parse(raw || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; }
+        }
+        function ntbDraft(lista, itemId) {
+            for (var i = 0; i < lista.length; i++) if (lista[i].itemId === itemId) return lista[i];
+            return null;
+        }
+        function ntbBlockItem(key) {
+            for (var i = 0; i < NTB_ITEMS.length; i++) if (NTB_ITEMS[i].key === key) return NTB_ITEMS[i];
+            return null;
+        }
+        // O catálogo como o app o monta (blocos por id + segmentos na ordem), para a prévia.
+        function ntbCatalogo() {
+            var blocks = {};
+            NTB_ITEMS.forEach(function (it) { blocks[it.key] = ntbParse(it.value); });
+            var segments = NTL_ITEMS.slice().sort(function (a, b) { return a.sortOrder - b.sortOrder; }).map(function (it) {
+                var v = ntbParse(it.value); v.key = it.key; return v;
+            });
+            return { blocks: blocks, segments: segments };
+        }
+        function ntbLinhas(blk) {
+            var out = [];
+            (blk.sections || []).forEach(function (s) { (s.rows || s.columns || []).forEach(function (r) { out.push(r); }); });
+            return out;
+        }
+        // "PT 3/16": a lacuna de tradução visível na lista (spec §1). Rótulo sem
+        // tradução cai no EN no app; aqui ele aparece como trabalho pendente.
+        function ntbCobertura(blk) {
+            var linhas = ntbLinhas(blk);
+            var conta = function (l) { return linhas.filter(function (r) { return r.label && String(r.label[l] || '').trim(); }).length; };
+            return { total: linhas.length, pt: conta('pt'), es: conta('es') };
+        }
+        function ntbCondicao(r) {
+            var partes = [];
+            var w = r.when || {};
+            if (w.flow) partes.push('só no fluxo ' + String(w.flow).toUpperCase());
+            if (w.europe !== undefined) partes.push(w.europe ? 'só no Caso da Europa' : 'fora da Europa');
+            if (w.substatusAny) partes.push('só em ' + w.substatusAny.join(', '));
+            if (w.tasksAny) partes.push('só com ACT ou ECW');
+            if (w.rowIs) partes.push('quando ' + w.rowIs.id + ' = ' + w.rowIs.v);
+            if (r.onlyFor) partes.push('só com ECW');
+            if (r.requiredWhen) partes.push('obrigatória em ' + (r.requiredWhen.substatusAny || []).join(', '));
+            if (r.optIn) partes.push('entra pelo "+"');
+            if (r.auto) partes.push('automática (' + r.auto + ')');
+            return partes.join('; ') || '—';
+        }
+
+        function renderNoteTable() {
+            var host = document.getElementById('ntb-list');
+            var summary = document.getElementById('ntb-summary');
+            var chips = document.getElementById('ntb-segs');
+            if (!NTB_ITEMS.length || !NTL_ITEMS.length) {
+                summary.textContent = 'Nada publicado ainda.';
+                chips.innerHTML = '';
+                host.innerHTML =
+                    '<div class="state"><span class="material-symbols-rounded">table_chart</span>' +
+                    '<h2>Nenhum bloco na Central ainda</h2>' +
+                    '<p>Enquanto isso o app segue com o catálogo embutido no código. ' +
+                    'Ordem de implantação: frontend no ar, depois a semeadura (seedNoteLayoutsNow), ' +
+                    'conferir aqui, e só então publicar mudanças.</p></div>';
+                return;
+            }
+            var cat = ntbCatalogo();
+            if (!cat.segments.some(function (s) { return s.key === NTB_SEG; })) NTB_SEG = cat.segments[0].key;
+            var pend = NTB_DRAFTS.length + NTL_DRAFTS.length;
+            summary.textContent = NTB_ITEMS.length + ' blocos e ' + NTL_ITEMS.length + ' segmentos no ar' +
+                (pend ? ' · ' + pend + ' com alteração em andamento' : '');
+            chips.innerHTML = cat.segments.map(function (s) {
+                return '<button type="button" class="btn btn-ghost btn-sm" data-seg="' + esc(s.key) + '" aria-pressed="' +
+                    (s.key === NTB_SEG) + '" onclick="NTB_SEG=\'' + esc(s.key) + '\';renderNoteTable()">' + esc(s.name) + '</button>';
+            }).join('');
+
+            var seg = cat.segments.filter(function (s) { return s.key === NTB_SEG; })[0];
+            var segItem = NTL_ITEMS.filter(function (i) { return i.key === seg.key; })[0];
+            var html = '<div class="cat-head">' + esc(seg.name) + ' <span class="pill draft">' +
+                (seg.select === 'multi' ? 'vários blocos por nota' : 'uma fase por nota') + ' · título ' +
+                (seg.showTitle ? 'impresso' : 'não impresso') + '</span>' + selosDoRascunho(ntbDraft(NTL_DRAFTS, segItem.id)) +
+                (podeEscrever('note_layouts') ? ' <button class="btn btn-ghost btn-sm" id="ntb-edit-seg" onclick="openNoteLayoutEditor(\'' + esc(seg.key) + '\')">Editar colocação</button>' : '') +
+                '</div>';
+            var linhaBloco = function (b, titulo, quando) {
+                var it = ntbBlockItem(b);
+                if (!it) return '<div class="item-row"><div class="item-main"><div class="item-name">' + esc(titulo) +
+                    '</div><div class="item-meta"><code>' + esc(b) + '</code> — bloco fora do ar</div></div></div>';
+                var blk = ntbParse(it.value);
+                var cob = ntbCobertura(blk);
+                var acoes = '<div style="display:flex;gap:8px">' +
+                    '<button class="btn btn-ghost btn-sm" onclick="abrirHistorico(\'' + it.id + '\',\'' + it.lineage + '\',\'note_blocks\')">Histórico</button>' +
+                    '<button class="btn btn-ghost btn-sm" data-preview="' + esc(b) + '" onclick="openNoteBlockEditor(\'' + esc(b) + '\', true)">Como o agente vê</button>' +
+                    (podeEscrever('note_blocks') ? '<button class="btn btn-ghost btn-sm" data-edit="' + esc(b) + '" onclick="openNoteBlockEditor(\'' + esc(b) + '\', false)">Editar bloco</button>' : '') +
+                    '</div>';
+                return '<div class="item-row" data-block="' + esc(b) + '"><div class="item-main">' +
+                    '<div class="item-name">' + esc(titulo) + selosDoRascunho(ntbDraft(NTB_DRAFTS, it.id)) + '</div>' +
+                    '<div class="item-meta"><code>' + esc(b) + '</code> — ' + esc(blk.name || '') + ' · ' + cob.total + ' linhas · ' +
+                    '<span class="ntb-cov">PT ' + cob.pt + '/' + cob.total + ' · ES ' + cob.es + '/' + cob.total + '</span>' +
+                    (quando ? ' · ' + esc(quando) : '') + '</div></div>' + acoes + '</div>';
+            };
+            seg.blocks.forEach(function (p) { html += linhaBloco(p.b, p.title || p.b, p.when); });
+            html += '<div class="cat-head" style="margin-top:22px">Em toda nota, por último</div>';
+            html += linhaBloco('extras', 'Additional Details', 'campos do formato anterior, cada um com a própria condição');
+            host.innerHTML = avisoRascunhosOffline('notetable') + html;
+        }
+
+        // Editor (ou só a prévia) de um bloco: uma linha da tabela por linha da nota.
+        function openNoteBlockEditor(key, soPrevia) {
+            var it = ntbBlockItem(key);
+            if (!it) return;
+            var rascunho = ntbDraft(NTB_DRAFTS, it.id);
+            var blk = ntbParse((rascunho || it).value);
+            var podeEditar = !soPrevia && podeEscrever('note_blocks');
+            var corpo = '';
+            (blk.sections || []).forEach(function (sec, si) {
+                corpo += '<div class="cat-head" style="margin-top:14px">' + esc(sec.title) + (sec.group ? ' · ' + esc(sec.group) : '') + '</div>';
+                var linhas = sec.rows || sec.columns || [];
+                corpo += '<table class="ntb-rows"><thead><tr><th>id</th><th>tipo</th>' +
+                    NTB_LANGS.map(function (l) { return '<th>Rótulo ' + l[1] + '</th>'; }).join('') +
+                    (sec.rows ? '<th>Obrig.</th><th>NA</th><th>Visível</th><th>Condição (código)</th>' : '<th>Obrig.</th>') + '</tr></thead><tbody>';
+                linhas.forEach(function (r) {
+                    var idb = 'ntb-' + si + '-' + r.id;
+                    var lab = r.label || {};
+                    corpo += '<tr data-row="' + esc(r.id) + '"><td><code>' + esc(r.id) + '</code></td><td>' + esc(r.type) + '</td>' +
+                        NTB_LANGS.map(function (l) {
+                            return '<td><input type="text" id="' + idb + '-' + l[0] + '" value="' + esc(lab[l[0]] || '') + '"' +
+                                (podeEditar ? '' : ' disabled') + (l[0] === 'en' ? '' : ' placeholder="cai no EN"') + '></td>';
+                        }).join('');
+                    var caixa = function (suf, on, dis) {
+                        return '<td><input type="checkbox" id="' + idb + '-' + suf + '"' + (on ? ' checked' : '') + (dis || !podeEditar ? ' disabled' : '') + '></td>';
+                    };
+                    if (sec.rows) {
+                        corpo += (r.requiredWhen ? '<td>conforme regra</td>' : caixa('req', r.required === true)) +
+                            caixa('na', r.na !== false) + caixa('vis', r.visible !== false) +
+                            '<td class="ntb-cond">' + esc(ntbCondicao(r)) + '</td>';
+                    } else {
+                        corpo += caixa('req', r.required !== false);
+                    }
+                    corpo += '</tr>';
+                });
+                corpo += '</tbody></table>';
+            });
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:1100px" role="dialog" aria-modal="true" aria-labelledby="ntb-titulo">' +
+                '<h2 id="ntb-titulo">' + (podeEditar ? 'Editar bloco' : 'Como o agente vê') + ' · ' + esc(blk.name || key) + '</h2>' +
+                '<p class="card-sub">Grade de ' + blk.cols + ' colunas (' + (blk.widths || []).join('% · ') + '%). Tipo e condições vêm do código.' +
+                (podeEditar ? ' Isso cria uma proposta: o agente só vê depois da aprovação.' : '') + '</p>' +
+                (rascunho && rascunho.status === 'pending' ? '<div class="note warn" style="margin-top:14px">Este bloco já está em revisão.</div>' : '') +
+                '<div class="ntb-editor">' + corpo + '</div>' +
+                '<div class="cat-head" style="margin-top:22px">Como o agente vê ' +
+                '<span class="lk-lang" role="group" aria-label="Idioma da prévia">' + NTB_LANGS.map(function (l) {
+                    return '<button type="button" data-lang="' + l[0] + '" aria-pressed="' + (l[0] === NTB_PREVIEW_LANG) + '" onclick="ntbPreviewLang(\'' + esc(key) + '\',\'' + l[0] + '\')">' + l[1] + '</button>';
+                }).join('') + '</span></div>' +
+                '<div class="ntb-preview" id="ntb-preview"></div>' +
+                '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">' + (podeEditar ? 'Cancelar' : 'Fechar') + '</button>' +
+                (podeEditar ? '<button class="btn btn-primary" id="ntb-save">Enviar para revisão</button>' : '') + '</div></div></div>';
+            document.querySelectorAll('.ntb-editor input').forEach(function (inp) {
+                inp.addEventListener('input', function () { ntbPintarPrevia(key); });
+                inp.addEventListener('change', function () { ntbPintarPrevia(key); });
+            });
+            if (podeEditar) {
+                document.getElementById('ntb-save').onclick = function () {
+                    submitNoteBlock(it, rascunho, key, this);
+                };
+            }
+            ntbPintarPrevia(key);
+        }
+
+        // O bloco como está nos campos do editor (o que vai virar proposta).
+        function ntbColetar(key) {
+            var it = ntbBlockItem(key);
+            var rascunho = ntbDraft(NTB_DRAFTS, it.id);
+            var blk = ntbParse((rascunho || it).value);
+            (blk.sections || []).forEach(function (sec, si) {
+                (sec.rows || sec.columns || []).forEach(function (r) {
+                    var idb = 'ntb-' + si + '-' + r.id;
+                    var val = function (suf) { var e = document.getElementById(idb + '-' + suf); return e; };
+                    r.label = r.label || {};
+                    NTB_LANGS.forEach(function (l) { var e = val(l[0]); if (e) r.label[l[0]] = e.value.trim(); });
+                    var req = val('req'); if (req && !r.requiredWhen) r.required = req.checked;
+                    var na = val('na'); if (na) r.na = na.checked;
+                    var vis = val('vis'); if (vis) r.visible = vis.checked;
+                });
+            });
+            return blk;
+        }
+
+        function ntbPreviewLang(key, lang) {
+            NTB_PREVIEW_LANG = lang;
+            document.querySelectorAll('.modal .lk-lang button').forEach(function (b) {
+                b.setAttribute('aria-pressed', String(b.getAttribute('data-lang') === lang));
+            });
+            ntbPintarPrevia(key);
+        }
+
+        function ntbPintarPrevia(key) {
+            var host = document.getElementById('ntb-preview');
+            if (!host) return;
+            if (!window.CwNoteTable) { host.innerHTML = '<div class="note warn">Renderizador da nota indisponível.</div>'; return; }
+            var cat = ntbCatalogo();
+            cat.blocks[key] = ntbColetar(key);
+            var seg = cat.segments.filter(function (s) { return s.blocks.some(function (p) { return p.b === key; }); })[0] || cat.segments[0];
+            var lugar = (seg.blocks.filter(function (p) { return p.b === key; })[0]) || { b: key, title: '' };
+            var st = CwNoteTable.createNoteState({ seg: seg.key, cids: [CwNoteTable.newCidRow('123-456-7890')] });
+            host.innerHTML = CwNoteTable.renderBlockTable(cat, st, lugar,
+                { live: true, ignoreWhen: true, lang: NTB_PREVIEW_LANG, pendingLabel: 'pendente' });
+        }
+
+        function submitNoteBlock(it, rascunho, key, btn) {
+            var blk = ntbColetar(key);
+            var semEn = ntbLinhas(blk).filter(function (r) { return !String((r.label || {}).en || '').trim(); });
+            if (semEn.length) return toast('O rótulo EN (o texto do padrão) não pode ficar vazio: ' + semEn.map(function (r) { return r.id; }).join(', '), true);
+            enviarProposta({
+                draftId: rascunho ? rascunho.draftId : '',
+                itemId: it.id,
+                module: 'note_blocks',
+                key: key,
+                lang: 'ALL',
+                label: blk.name || key,
+                value: JSON.stringify(blk),
+                sortOrder: it.sortOrder
+            }, btn, loadNoteTable);
+        }
+
+        // Colocação: o que é do SEGMENTO (título impresso, "quando usar", showTitle).
+        function openNoteLayoutEditor(segKey) {
+            var it = NTL_ITEMS.filter(function (i) { return i.key === segKey; })[0];
+            if (!it) return;
+            var rascunho = ntbDraft(NTL_DRAFTS, it.id);
+            var seg = ntbParse((rascunho || it).value);
+            var linhas = (seg.blocks || []).map(function (p, i) {
+                return '<tr data-block="' + esc(p.b) + '"><td><code>' + esc(p.b) + '</code></td>' +
+                    '<td><input type="text" id="ntl-title-' + i + '" value="' + esc(p.title || '') + '"></td>' +
+                    '<td><input type="text" id="ntl-when-' + i + '" value="' + esc(p.when || '') + '"></td></tr>';
+            }).join('');
+            document.getElementById('modal-root').innerHTML =
+                '<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">' +
+                '<div class="modal" style="max-width:900px" role="dialog" aria-modal="true" aria-labelledby="ntl-titulo">' +
+                '<h2 id="ntl-titulo">Colocação · ' + esc(seg.name || segKey) + '</h2>' +
+                '<p class="card-sub">O corpo da tabela é do bloco (compartilhado entre segmentos); aqui ficam o título impresso e o "quando usar" deste segmento.</p>' +
+                '<label class="fld"><input type="checkbox" id="ntl-showtitle"' + (seg.showTitle ? ' checked' : '') + '> Imprimir o título da fase acima da tabela</label>' +
+                '<table class="ntb-rows"><thead><tr><th>bloco</th><th>Título impresso</th><th>Quando usar</th></tr></thead><tbody>' + linhas + '</tbody></table>' +
+                '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+                '<button class="btn btn-primary" id="ntl-save">Enviar para revisão</button></div></div></div>';
+            document.getElementById('ntl-save').onclick = function () {
+                seg.showTitle = document.getElementById('ntl-showtitle').checked;
+                (seg.blocks || []).forEach(function (p, i) {
+                    p.title = document.getElementById('ntl-title-' + i).value.trim();
+                    p.when = document.getElementById('ntl-when-' + i).value.trim();
+                });
+                if (seg.blocks.some(function (p) { return !p.title; })) return toast('Toda fase precisa de um título.', true);
+                enviarProposta({
+                    draftId: rascunho ? rascunho.draftId : '',
+                    itemId: it.id,
+                    module: 'note_layouts',
+                    key: segKey,
+                    lang: 'ALL',
+                    label: seg.name || segKey,
+                    value: JSON.stringify(seg),
+                    sortOrder: it.sortOrder
+                }, this, loadNoteTable);
+            };
+        }
+
 </script>

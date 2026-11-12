@@ -12,6 +12,7 @@ const LIB_DICT = {
     pt: {
         headerTitle: "Minha Biblioteca",
         headerDesc: "Gerencie seus snippets, textos e templates.",
+        mediaTag: "Mídia",
         tabs: { general: "Geral", note: "Notas", email: "Emails" },
         searchPlaceholder: "Buscar por título ou conteúdo...",
         newItem: "Novo item",
@@ -53,6 +54,7 @@ const LIB_DICT = {
     es: {
         headerTitle: "Mi Biblioteca",
         headerDesc: "Gestiona tus snippets, textos y plantillas.",
+        mediaTag: "Multimedia",
         tabs: { general: "General", note: "Notas", email: "Emails" },
         searchPlaceholder: "Buscar por título o contenido...",
         newItem: "Nuevo elemento",
@@ -94,6 +96,7 @@ const LIB_DICT = {
     en: {
         headerTitle: "My Library",
         headerDesc: "Manage your snippets, texts and templates.",
+        mediaTag: "Media",
         tabs: { general: "General", note: "Notes", email: "Emails" },
         searchPlaceholder: "Search by title or content...",
         newItem: "New item",
@@ -681,7 +684,7 @@ export function initPersonalLibrary() {
             temp.innerHTML = item.content;
             const hasImages = !!temp.querySelector('img');
             previewContent = temp.innerText.substring(0, 200);
-            if (hasImages) mediaTag = `<span class="cw-lib-media-tag">${ICONS.media} Mídia</span>`;
+            if (hasImages) mediaTag = `<span class="cw-lib-media-tag">${ICONS.media} ${libt('mediaTag')}</span>`;
         }
 
         const badges = [
