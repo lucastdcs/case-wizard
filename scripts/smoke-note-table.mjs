@@ -253,6 +253,68 @@ await check('"Incluir mesmo assim" religa os prints da task forçada', async () 
     await row('ts_used').locator('.nt-seg button', { hasText: 'No' }).click();
 });
 
+console.log('\nO "?" de cada bloco');
+
+// A interface está em ES nesta altura (um check anterior espera "Cambiar"); a ajuda segue a
+// interface, não o idioma da nota.
+await check('"?" em cada bloco do ALL TASKS (Before, Implementation, After, Consult); General não é chip e não tem', async () => {
+    const qs = await page.locator(`${POP} .nt-q`).evaluateAll((els) => els.map((e) => e.dataset.q));
+    igual(qs, ['all.before', 'all.impl', 'all.after', 'all.consult'], 'botões de ajuda');
+    ok((await page.locator(`${POP} .nt-q`).nth(2).getAttribute('aria-label')).includes('After'), 'nome acessível do "?"');
+});
+
+await check('"?" abre a explicação do bloco sem ligar nem desligar o bloco, e a explicação não vai para a nota', async () => {
+    const chip = page.locator(`${POP} [data-ctx="blocks"] .nt-chip`, { hasText: /^After/ });
+    const antes = await chip.getAttribute('aria-pressed');
+    await page.locator(`${POP} .nt-q[data-q="all.after"]`).click();
+    igual(await page.locator(`${POP} #cw-nt-help`).count(), 1, 'painéis abertos');
+    const t = await page.locator(`${POP} #cw-nt-help`).innerText();
+    ok(/no vale el día de la cita/i.test(t) && /cuándo usar/i.test(t) && /ACT/.test(t) && /ECW/.test(t) && /tag support/i.test(t), t);
+    ok(/sub-status/i.test(t) && /Awaiting Validation/.test(t), 'sub-status aplicáveis do After: ' + t);
+    ok(/solo para usted/i.test(t), 'faltou o aviso de que não vai para a nota');
+    await shot('ajuda-bloco');
+    igual(await chip.getAttribute('aria-pressed'), antes, 'o "?" não pode ligar nem desligar o bloco');
+    igual(await page.locator(`${POP} .nt-q[data-q="all.after"]`).getAttribute('aria-expanded'), 'true', 'aria-expanded do "?"');
+    const html = await prev();
+    ok(!html.includes('No vale el día') && !html.includes('solo para usted') && !html.includes('Cuándo usar'), 'a explicação vazou para a nota');
+});
+
+await check('Before e Implementation têm o mesmo "quando usar" (como no Doc); o Consult traz o que é obrigatório', async () => {
+    await page.locator(`${POP} .nt-q[data-q="all.before"]`).click();
+    const a = await page.locator(`${POP} #cw-nt-help .nt-help-r`, { hasText: /cuándo usar/i }).innerText();
+    await page.locator(`${POP} .nt-q[data-q="all.impl"]`).click();
+    const b = await page.locator(`${POP} #cw-nt-help .nt-help-r`, { hasText: /cuándo usar/i }).innerText();
+    igual(a, b, 'quando usar de Before × Implementation');
+    await page.locator(`${POP} .nt-q[data-q="all.consult"]`).click();
+    igual(await page.locator(`${POP} #cw-nt-help`).count(), 1, 'um painel por vez');
+    const t = await page.locator(`${POP} #cw-nt-help`).innerText();
+    ok(/obligatorio/i.test(t) && /Split & Transfer/.test(t) && /M&A/.test(t), t);
+    ok(!/MMS/.test(t), 'o "MMS only" fica escondido, como o Lucas pediu');
+});
+
+await check('Esc fecha só a explicação, devolve o foco ao "?" e não fecha a janela; clicar de novo também fecha', async () => {
+    await page.keyboard.press('Escape');
+    igual(await page.locator(`${POP} #cw-nt-help`).count(), 0, 'Esc não fechou a explicação');
+    igual(await page.evaluate(() => document.activeElement && document.activeElement.dataset.q), 'all.consult', 'foco de volta no "?"');
+    ok(await page.locator(POP).isVisible(), 'o Esc fechou a janela inteira');
+    await page.locator(`${POP} .nt-q[data-q="all.consult"]`).click();
+    await page.locator(`${POP} .nt-q[data-q="all.consult"]`).click();
+    igual(await page.locator(`${POP} #cw-nt-help`).count(), 0, 'segundo clique não fechou');
+});
+
+await check('trocar o idioma da interface com a explicação aberta repinta o texto (EN), sem perder o painel', async () => {
+    await page.locator(`${POP} .nt-q[data-q="all.after"]`).click();
+    await page.evaluate(() => document.querySelector('#cw-config-lang-toggle button[data-lang="en"]').click());
+    await page.waitForTimeout(300);
+    const t = await page.locator(`${POP} #cw-nt-help`).innerText();
+    ok(/when to use/i.test(t) && /NOT on the day of the appointment/.test(t) && !/cuándo usar/i.test(t), t);
+    await page.evaluate(() => document.querySelector('#cw-config-lang-toggle button[data-lang="es"]').click());
+    await page.waitForTimeout(300);
+    // Fecha pelo próprio "?": com o foco no botão de idioma (fora da janela) o Esc seria o global e fecharia a janela.
+    await page.locator(`${POP} .nt-q[data-q="all.after"]`).click();
+    igual(await page.locator(`${POP} #cw-nt-help`).count(), 0, 'painel ficou aberto para os próximos checks');
+});
+
 console.log('\nPendências e preenchimento');
 
 await check('Preencher com pendência não insere: abre a faixa e marca as linhas', async () => {

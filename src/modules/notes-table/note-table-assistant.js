@@ -41,6 +41,7 @@ import { renderNoteHtml } from "./note-table-render.js";
 import { getNoteCatalog, loadNoteCatalog } from "./note-table-service.js";
 import { injectNoteTableStyles } from "./note-table-styles.js";
 import { ntt } from "./note-table-i18n.js";
+import { blockHelp, helpLabels } from "./note-table-help.js";
 
 export const NOTE_TABLE_POPUP_ID = "cw-notetable-popup";
 export const NOTE_TABLE_BUTTON_ID = "cw-btn-notetable";
@@ -146,7 +147,7 @@ export function initNoteTable() {
     // formulário, então fica fora do reset() (learning 2026-10-29).
     let noteLang = getOutputLanguage();
     let noteLangManual = false;
-    const ui = { ctxOpen: false, autoOpen: false, more: {}, drawer: false, showPending: false, pick: false, tasksOpen: false, tasksAuto: false, scenOpen: false, draftsOpen: false, pi: 0, split: false, blocksTouched: false };
+    const ui = { helpBlock: null, ctxOpen: false, autoOpen: false, more: {}, drawer: false, showPending: false, pick: false, tasksOpen: false, tasksAuto: false, scenOpen: false, draftsOpen: false, pi: 0, split: false, blocksTouched: false };
     const cap = { caseKey: null, cid: "", salesProgram: "", capturing: false, restoredChecked: false };
     let visible = false;
     let emailAuto = true;
@@ -654,6 +655,50 @@ export function initNoteTable() {
     }
     const defaultSegment = () => openSegment(catalog.segments.map((s) => s.key));
 
+    // ---- o "?" de cada bloco: explica o bloco (só tela; nada disto vai para a nota) ----
+    function withHelp(s, p, name, chip) {
+        if (!blockHelp(p.b)) return chip;
+        const key = `${s.key}.${p.b}`;
+        const ask = helpLabels().ask(name);
+        const q = h("button", { class: "nt-q", type: "button", "data-q": key, "aria-expanded": String(ui.helpBlock === key), "aria-controls": "cw-nt-help", "aria-label": ask, title: ask, onclick: () => toggleHelp(key) }, "?");
+        return h("span", { class: "nt-chipw" }, chip, q);
+    }
+    function helpPanel(s) {
+        if (!ui.helpBlock) return null;
+        const p = s.blocks.find((b) => `${s.key}.${b.b}` === ui.helpBlock);
+        const info = p && blockHelp(p.b);
+        if (!info) return null;
+        const L = helpLabels();
+        const title = M.labelText(p.title, "en");
+        const line = (label, text, cls = "") => (text ? h("div", { class: "nt-help-r" + cls }, h("b", {}, label), h("span", {}, text)) : null);
+        return h("div", { class: "nt-help", id: "cw-nt-help", role: "region", "aria-label": title },
+            h("div", { class: "nt-help-h" }, h("b", {}, title),
+                h("button", { class: "nt-help-x", type: "button", "aria-label": L.close, title: L.close, onclick: closeHelp }, "×")),
+            h("p", { class: "nt-help-w" }, info.what),
+            line(L.flow, info.flow),
+            line(L.when, info.when),
+            h("div", { class: "nt-help-g" }, L.statuses),
+            ...(info.statuses || []).map(([k, v]) => line(k, v, " s")),
+            line(L.tasks, info.tasks),
+            line(L.must, info.must),
+            line(L.ts, info.ts),
+            info.na ? h("div", { class: "nt-help-n" }, info.na) : null,
+            h("div", { class: "nt-help-f" }, L.notInNote));
+    }
+    function focusQ(key) { const q = ctxHost.querySelector(`[data-q="${key}"]`); if (q) q.focus(); }
+    function toggleHelp(key) {
+        ui.helpBlock = ui.helpBlock === key ? null : key;
+        renderCtx(); updateSticky();
+        focusQ(key);
+    }
+    function closeHelp() {
+        const key = ui.helpBlock;
+        if (!key) return;
+        ui.helpBlock = null;
+        renderCtx(); updateSticky();
+        focusQ(key);
+    }
+
     function renderCtx() {
         ctxHost.innerHTML = "";
         const s = seg();
@@ -680,7 +725,8 @@ export function initNoteTable() {
         const chips = s.blocks.filter((p) => !(s.select === "multi" && (s.always || []).includes(p.b))).map((p) => {
             const on = st.active.includes(p.b);
             const sug = M.isSuggested(catalog, st, p) && !on;
-            return h("button", {
+            const name = CHIP[`${s.key}.${p.b}`] || M.labelText(p.title, "en");
+            const chip = h("button", {
                 class: "nt-chip", type: "button", "aria-pressed": String(on), title: (p.when || "") + (sug ? ntt("suggested") : ""),
                 onclick: () => {
                     ui.blocksTouched = true;
@@ -688,9 +734,12 @@ export function initNoteTable() {
                     else st.active = on ? st.active.filter((b) => b !== p.b) : [...st.active, p.b];
                     dirty(); render();
                 },
-            }, CHIP[`${s.key}.${p.b}`] || M.labelText(p.title, "en"), sug ? h("span", { class: "nt-dot", "aria-hidden": "true" }) : null);
+            }, name, sug ? h("span", { class: "nt-dot", "aria-hidden": "true" }) : null);
+            return withHelp(s, p, name, chip);
         });
         card.append(h("div", { class: "nt-row chiprow", "data-ctx": "blocks" }, h("span", { class: "nt-rl" }, s.select === "multi" ? ntt("blocks") : ntt("phase")), h("div", { class: "nt-chips" }, chips), h("span")));
+        const hp = helpPanel(s);
+        if (hp) card.append(hp);
 
         const sum = [noteLang.toUpperCase(), st.flow.toUpperCase(), st.europe ? ntt("inEurope") : ntt("outEurope")].join(" · ");
         const notePick = h("button", { class: "nt-pick", type: "button", "aria-expanded": String(ui.ctxOpen), onclick: () => { ui.ctxOpen = !ui.ctxOpen; render(); } },
@@ -999,12 +1048,13 @@ export function initNoteTable() {
     bCopy.addEventListener("click", doCopy);
     bFill.addEventListener("click", doFill);
     preview.addEventListener("click", (e) => { const tr = e.target.closest("tr[data-row]"); if (tr) focusRow(tr.dataset.row); });
-    // Esc fecha primeiro o que está por cima (seletor, rascunhos, gaveta); só depois a
+    // Esc fecha primeiro o que está por cima (seletor, rascunhos, "?", gaveta); só depois a
     // janela, pelo Esc global de animations.js.
     popup.addEventListener("keydown", (e) => {
         if (e.key !== "Escape") return;
         if (ui.pick) { e.stopPropagation(); closePick(); return; }
         if (ui.draftsOpen) { e.stopPropagation(); ui.draftsOpen = false; renderDrafts(); return; }
+        if (ui.helpBlock) { e.stopPropagation(); closeHelp(); return; }
         if (ui.drawer) { e.stopPropagation(); setDrawer(false); }
     });
 

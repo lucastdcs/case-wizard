@@ -898,5 +898,58 @@ for (const [name, fn] of svcChecks) {
     catch (e) { console.log('  ✗ ' + name + '\n      ' + e.message); fail++; }
 }
 
+console.log('\nA ajuda dos blocos: o "?" (src/modules/notes-table/note-table-help.js)');
+
+// i18n.js lê o idioma do navegador; aqui só queremos o conteúdo, então um localStorage mínimo basta.
+globalThis.localStorage = globalThis.localStorage || { getItem: () => null, setItem() {}, removeItem() {} };
+const H = await load('../src/modules/notes-table/note-table-help.js');
+const LANGS = ['pt', 'es', 'en'];
+const HELPED = ['before', 'impl', 'after', 'consult'];
+
+check('os quatro blocos do ALL TASKS têm ajuda; as fases ECL ainda não (o "?" só aparece onde há texto)', () => {
+    igual(Object.keys(H.BLOCK_HELP), HELPED, 'blocos com ajuda');
+    igual(['general', 'audit', 'impl_call', 'interim', 'triage', 'eligibility', 'nope'].map((b) => H.blockHelp(b, 'pt')), [null, null, null, null, null, null, null], 'blocos sem ajuda');
+});
+
+check('PT, ES e EN têm a mesma estrutura e nenhum texto vazio (nada cai em outro idioma por acaso)', () => {
+    for (const b of HELPED) {
+        const ref = H.BLOCK_HELP[b].pt;
+        for (const l of LANGS) {
+            const h = H.BLOCK_HELP[b][l];
+            igual(Object.keys(h).sort(), Object.keys(ref).sort(), `${b}/${l}: campos`);
+            for (const [k, v] of Object.entries(h)) {
+                if (k === 'statuses') {
+                    igual(v.length, ref.statuses.length, `${b}/${l}: quantidade de grupos de sub-status`);
+                    v.forEach(([a, c]) => ok(a.trim() && c.trim(), `${b}/${l}: sub-status vazio`));
+                } else ok(typeof v === 'string' && v.trim().length >= 5, `${b}/${l}/${k}: vazio`);
+            }
+        }
+    }
+    for (const l of LANGS) igual(Object.keys(H.HELP_LABELS[l]).sort(), Object.keys(H.HELP_LABELS.pt).sort(), `rótulos ${l}`);
+});
+
+check('idioma desconhecido cai no PT, e o aria-label cita o bloco', () => {
+    igual(H.blockHelp('after', 'fr'), H.BLOCK_HELP.after.pt, 'fallback PT');
+    ok(H.helpLabels('fr').ask('After').includes('After'), 'ask() sem o nome do bloco');
+    ok(H.helpLabels('en').ask('After') !== H.helpLabels('es').ask('After'), 'ES e EN iguais');
+});
+
+check('o texto segue o Doc: After não vale no dia do appointment; Before e Implementation têm o mesmo "quando usar"; ACT/ECW só nos três; o Consult diz o que é obrigatório', () => {
+    for (const l of LANGS) {
+        const d = (b) => H.BLOCK_HELP[b][l];
+        igual(d('before').when, d('impl').when, `${l}: Before × Implementation`);
+        igual(d('before').statuses, d('impl').statuses, `${l}: sub-status de Before × Implementation`);
+        ok(d('after').when !== d('before').when, `${l}: After não pode ter o "quando usar" do dia do appointment`);
+        for (const b of ['before', 'impl', 'after']) ok(/ACT/.test(d(b).tasks) && /ECW/.test(d(b).tasks) && d(b).ts, `${l}/${b}: tasks e Tag Support`);
+        ok(!d('consult').ts && /Split & Transfer/.test(d('consult').must) && /NA/.test(d('consult').must), `${l}: Consult`);
+    }
+    ok(/NOT on the day of the appointment/.test(H.BLOCK_HELP.after.en.when), 'EN do After');
+    ok(/Não vale no dia do appointment/.test(H.BLOCK_HELP.after.pt.when), 'PT do After');
+});
+
+check('"MMS only" não aparece em nenhum texto (decisão do Lucas: segue escondido)', () => {
+    ok(!/MMS/.test(JSON.stringify(H.BLOCK_HELP)), 'MMS na ajuda');
+});
+
 console.log(`\n${total - fail}/${total} checagens ok`);
 process.exit(fail ? 1 : 0);
