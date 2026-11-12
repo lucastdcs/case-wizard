@@ -18,7 +18,13 @@ versions follow [Semantic Versioning](https://semver.org/).
   devolve o foco; trocar o idioma com o painel aberto o repinta. O texto mora em
   `note-table-help.js`, fora do catálogo, porque um segmento publicado na Central substitui o
   embutido inteiro. As fases ECL ainda não têm "?". `MMS only` e `M&A` seguem como o Doc os deixa.
-  Falta a prévia: abrir a gaveta rolando até onde o bloco entra (ver `PLAN.md`).
+  **A prévia na gaveta:** com espaço ao lado da janela, o "?" abre a gaveta sozinho e rola a prévia
+  (só ela, não a página do CRM) até a tabela do bloco; se a gaveta sobreporia a janela (~1196px), o
+  painel ganha o botão "Ver na prévia". O bloco **desligado** aparece como tabela "fantasma"
+  (esmaecida e tracejada) na posição do segmento, sem tocar no estado nem nas pendências; o bloco
+  ligado ganha destaque. Uma faixa acima diz "Explicação — não vai para a nota" e o "quando usar".
+  Tudo isso existe só na prévia: Preencher e Copiar renderizam do zero e nada entra na nota (provado
+  com o "?" aberto). O Esc fecha primeiro o que está por cima.
 - **Nota em tabela (ADR-0022 e ADR-0024; nome provisório "Nota em tabela" / "Nota en tabla" /
   "Table note").** Módulo novo `notetable` em `src/modules/notes-table/`, ao lado do Case Notes
   atual, que continua igual. Abre pela gaveta da pílula (não vem fixado) e pelo Ctrl+K. Uma

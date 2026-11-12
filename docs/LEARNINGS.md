@@ -12,6 +12,29 @@ Include the minimal code snippet / command when it is the fix.
 
 ---
 
+## Classe nova em CSS-in-JS: procure o nome antes — a regra antiga pode vencer em silêncio
+
+**Why**: o "fantasma" da prévia (bloco desligado, esmaecido) usou `.nt-ghost`. A classe já existia: é a dos
+botões NA/comentário que só aparecem em foco, com `opacity:0`, declarada **depois** da minha. O bloco ficou
+**invisível** — um buraco em branco na gaveta. Os 59 checks passavam, porque conferiam o DOM (a tabela existe, está
+na ordem, a faixa está colada nela), não o que se vê. Só apareceu olhando a imagem.
+
+**When to apply**: ao criar uma classe, `grep -n "nome" src/**/*.js` (JS e CSS vivem juntos aqui) e prefixe pelo
+recurso (`nt-pv-…`). E em todo estado **visual** novo (esmaecer, destacar, esconder) acrescente ao teste uma leitura
+de `getComputedStyle` (opacidade, altura, outline): "o elemento existe" não prova "o elemento se vê".
+
+## Cortar string por índices: afirme `a <= b` e meça duplicatas
+
+**Why**: reescrevi um trecho do CSS com `s[:a] + novo + s[b:]`, onde `b` (a primeira ocorrência de uma âncora
+genérica, `.nt-row:focus-within`) vinha **antes** de `a`. O resultado repetiu um terço do arquivo e deixou a versão
+antiga das regras por cima da nova. Os testes passaram (regra repetida é quase idempotente) e o erro subiu num commit;
+só apareceu quando uma segunda edição falhou na âncora. Medida: 55 linhas de regra repetidas, contra 0 na base.
+
+**When to apply**: toda edição programática de arquivo por posição — `assert a <= b`, ancore pelo **primeiro trecho
+exclusivo** do bloco que está sendo trocado (não por uma regra genérica que se repete), e depois rode
+`grep -v '^\s*$' arquivo | sort | uniq -d | wc -l` (tem de ser 0 em CSS) e `git diff --stat` (um diff que apaga e
+reescreve centenas de linhas para uma mudança de dez é o sinal).
+
 ## Linha de base e mutação não dividem o checkout: o smoke empacota o `src` na hora em que começa
 
 **Why**: na nota em tabela (2026-11-05) a linha de base do módulo antigo (36 scripts, ~25 min)

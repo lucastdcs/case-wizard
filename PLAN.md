@@ -360,9 +360,13 @@ This file differs from the long-term roadmap: it describes what is happening **n
          +5, `test:note-table` +5). Texto fora do catálogo de propósito (um segmento publicado na Central
          substitui o embutido inteiro); passar para a Central é um passo à parte: campo no catálogo +
          fallback por bloco + semente. As fases ECL (Phase 0–3, Interim) ainda não têm "?".
-      2. [ ] **A prévia na gaveta:** o "?" (ou um botão no painel) abre a gaveta, rola até a tabela do bloco
-         e a destaca; bloco desligado ganha uma tabela "fantasma" na posição certa (pela ordem do
-         segmento), com a faixa "explicação — não vai para a nota". Nunca entra na saída.
+      2. [x] **A prévia na gaveta** — entregue: o "?" abre a gaveta (se couber ao lado; senão, botão "Ver na
+         prévia"), rola até a tabela do bloco e a destaca; bloco desligado vira tabela "fantasma" na posição do
+         segmento, com a faixa "Explicação — não vai para a nota". Só na prévia, provado com o "?" aberto durante o
+         Preencher (`smoke:note-table` 59, `test:note-table` 67). A cópia do renderizador na Central foi regenerada
+         (`npm run build:note-table-central`).
+      3. [ ] **"?" das fases ECL** (Phase 0–3, Interim) e, depois, o texto na Central (campo no catálogo +
+         fallback por bloco + semente). Decisão estrutural a registrar em ADR quando for para a Central.
       **Divergência achada:** o Consult só é sugerido para `IN - Troubleshooting [Transferred]` e
       `IN - Out of Scope - Rerouted`; o Doc também cobre `SO - Troubleshooting only + Split & Transfer`
       (exigiria uma condição de sugestão "Split & Transfer usado" — mesma restrição de `NOTE_WHEN_KEYS`).

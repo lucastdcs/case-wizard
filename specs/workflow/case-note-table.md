@@ -456,6 +456,14 @@ tabela: a tela". Aqui ficam só as regras de comportamento que ela implementa:
   é de **tela**, no idioma da **interface**, tirado do Doc "fluxo after implementation before", e **nunca vai para a nota** (o painel
   traz o aviso). Mora em `note-table-help.js`, fora do catálogo (um segmento publicado na Central substitui o embutido inteiro).
   As fases ECL ainda não têm "?": ele só aparece onde há texto. `MMS only` e `M&A` ficam como o Doc os deixa, sem definição.
+  **Prévia na gaveta:** abrir o "?" mostra **onde o bloco entra**. Com 536px livres à esquerda da janela a gaveta abre sozinha; sem eles
+  (ela sobreporia a janela e esconderia o painel) o painel tem o botão "Ver na prévia". A prévia rola até a tabela do bloco (só o
+  painel dela, nunca a página do CRM; `auto` com `prefers-reduced-motion`). Bloco **desligado** = tabela "fantasma" (esmaecida, tracejada)
+  na posição do segmento, renderizada com o estado + o bloco, sem mexer no estado real nem nas pendências; bloco **ligado** = destaque.
+  Uma faixa antes da tabela diz "Explicação — não vai para a nota", o "quando usar" e, no fantasma, que o bloco ainda não está na nota.
+  `data-block` (âncora) e tudo isto existem **só na prévia viva**, como o `data-row`: a saída vem de `outputHtml()`, que renderiza do
+  zero e nunca lê a prévia. Clicar numa linha do fantasma não leva a campo (o bloco não está no formulário). Esc fecha primeiro o que
+  está por cima: a gaveta sobreposta, depois o painel, depois a gaveta ao lado.
 - **Gaveta:** aberta pela aba (ou fechada por Esc), com o conteúdo `inert` quando fechada. A linha em foco acende a linha da nota
   e clicar numa linha da nota leva ao campo.
 - **Faixa de contexto** fixa ao rolar além do contexto (sem o tipo, se for o padrão); **faixa de pendências** só depois de tentar
