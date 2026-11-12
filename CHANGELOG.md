@@ -81,6 +81,20 @@ versions follow [Semantic Versioning](https://semver.org/).
   O comportamento é o mesmo (liga o campo de consentimento de gravação) e os
   identificadores internos (`CASO_PORTUGAL`, `isPortugalCase`) ficam, porque
   rascunhos já salvos dependem deles.
+- **Notas: a pergunta do Tag Support vem antes dos prints, com destaque, e a
+  linha sai sempre na nota.** Decisões do Lucas de 2026-11-12, nos dois módulos.
+  *Case Notes (módulo atual):* a pergunta aparece com **qualquer** task
+  selecionada (antes sumia e se zerava sem ACT/EC) e fica sempre antes dos
+  links/prints; o cartão ganhou borda cheia, faixa lateral e uma linha dizendo que
+  a resposta vem antes dos prints (PT/ES/EN). O Sim dispensa os prints só de
+  Ads Conversion Tracking e Enhanced Conversions; as demais tasks seguem pedindo.
+  A linha "Utilizou Tag Support?" agora sai **sempre** que a pergunta está visível,
+  tenha o agente mexido nela ou não — notas de casos sem ACT/EC ganham
+  "Utilizou Tag Support? ❌ Não". Também some a pergunta que ficava na tela ao
+  trocar para "sem substatus". `npm run smoke:tag-support` (4 modos de substatus).
+  *Nota em tabela (módulo novo):* a pergunta sobe para um **cartão destacado**
+  antes dos blocos e dos prints (a tabela da nota não muda: a linha segue no
+  Additional Details). Continua só com ACT/ECW marcadas — ver `PLAN.md`.
 
 ### Fixed
 - **`UserPrefsService.sync()` nunca ia à nuvem depois de chamado sem e-mail.** O

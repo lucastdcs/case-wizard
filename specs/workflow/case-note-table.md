@@ -392,7 +392,10 @@ Cada linha tem a própria condição (tabela do bloco `extras`, §4). Pontos que
 - **GTM/GA4** é obrigatória em `SO - *` e `NI - Awaiting Validation` (os antigos `requiresTasks`)
   e opcional nos demais, onde entra pelo chip "+ GTM/GA4 verified" (mesmo padrão dos campos
   opcionais do formulário antigo).
-- **Tag Support** só com ACT ou ECW marcadas; nasce em `No`. Com `Yes`, cada task ACT/ECW em
+- **Tag Support** só com ACT ou ECW marcadas; nasce em `No`. **No formulário** a pergunta (`ts_used` e, com
+  `No`, `ts_reason`) sobe para um **cartão destacado** (fundo âmbar, faixa lateral, linha de ajuda) antes de qualquer
+  bloco ou print, porque a resposta decide os prints de ACT/ECW (Lucas, 2026-11-12). **Só a ordem da tela muda:** as
+  linhas continuam no bloco `extras` e saem na tabela Additional Details, a última da nota. Com `Yes`, cada task ACT/ECW em
   **Task types** leva o aviso do Win Criteria (`ts_output_disclaimer` do dicionário), como hoje, e o
   motivo some. Com `No`, o motivo é opcional. O lembrete do Form fica na dica.
   **Tudo igual ao módulo atual (decisão do Lucas, "continue como é hoje"):** com `Yes`, o Tag Support

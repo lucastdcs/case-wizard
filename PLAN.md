@@ -331,6 +331,36 @@ This file differs from the long-term roadmap: it describes what is happening **n
       asserção própria; ordenar a pílula por uso (descartado no ADR); a pílula em duas
       colunas.
 
+- [~] **Pergunta do Tag Support: sempre antes dos prints, com destaque, linha sempre na nota
+      (2026-11-12).** Decidido pelo Lucas: a pergunta vem **sempre antes do lugar onde se colam os
+      prints**, com destaque, e a linha **sai sempre** na nota. **Entregue nos dois módulos:**
+      Case Notes atual (`tag-support.js`: aparece com qualquer task, sem mover de lugar, cartão
+      destacado e linha de ajuda PT/ES/EN, `getOutput()` sem condição) e Nota em tabela (cartão
+      `.nt-ts` antes dos blocos e dos prints; a tabela da nota não muda). `smoke:tag-support`
+      (módulo atual) e uma checagem nova em `smoke:note-table`; as duas reprovam no código anterior.
+      **Em aberto:**
+      - **Nota em tabela com task que não é ACT/ECW:** lá a pergunta continua só com ACT/ECW
+        (`when: tasksAny`). Estender para "qualquer task" exige um tipo de condição novo no catálogo
+        (`NOTE_WHEN_KEYS` em `ContentAPI.js` + o avaliador da Central em
+        `ContentDashboard_NoteTable.html`) e muda a spec §8 — decisão do Lucas, ver pergunta na sessão;
+      - **premissa medida no módulo atual:** a pergunta *já* ficava antes dos links com ACT/EC
+        (1123px × 1374px, `mock-crm.html`); o que faltava era a posição sem ACT/EC;
+      - achados fora do escopo, não mexidos: `getOutput()` do Tag Support usa o `t` da INTERFACE e
+        não o do atendimento (ADR-0016); em `restoreFullState`, `querySelector('div:last-child')`
+        pega o `divNao` em vez do `reasonDiv` (restaurar rascunho com Sim parece esconder o Não —
+        lido no código, não testado).
+
+- [~] **Blocos Before / Implementation / After / Consult — explicar e pré-visualizar (2026-11-12).**
+      Pedido do Lucas: um "?" em cada bloco (o que é, quando usar, quais status, quais tasks, relação
+      com o Tag Support) e, ao clicar, abrir a gaveta da prévia rolando até onde o bloco entra, com o
+      aviso "explicação — não vai para a nota". **Revisão contra o Doc "fluxo after implementation
+      before" (Drive do Lucas):** rótulos, ordem, marcações só-ECW e `when` do catálogo batem com o Doc;
+      o texto do Doc é a regra (o Lucas: "devemos seguir aquelas regras"). **Divergência achada:** o
+      Consult só é sugerido para `IN - Troubleshooting [Transferred]` e `IN - Out of Scope - Rerouted`;
+      o Doc também cobre `SO - Troubleshooting only + Split & Transfer` (exigiria uma condição de
+      sugestão "Split & Transfer usado" — mesma restrição de `NOTE_WHEN_KEYS`). `MMS only` e `M&A`
+      seguem escondidos, como o Lucas pediu. **Ainda não feito:** o "?" e a rolagem da gaveta.
+
 - [~] **Lembrete de qualidade em todo boot (2026-10-30, ADR-0021).** Pedido do
       Lucas: avisar o agente, a cada abertura, de que deve seguir as diretrizes de
       QA e o SOP do segmento do caso — o Case Wizard só ajuda a preencher, a
