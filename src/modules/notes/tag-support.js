@@ -97,23 +97,43 @@ export function createTagSupportModule(t) {
 
     // --- 3. API PÚBLICA (Métodos que o pai vai chamar) ---
 
-    // A pergunta aparece com qualquer task selecionada e fica SEMPRE antes dos
-    // links/prints (a ordem do DOM está em notes-assistant.js). Quem usa a resposta
-    // é step-tasks.js: o Sim dispensa os prints só de ACT/EC; as demais seguem.
+    // Três estados (Lucas, 2026-11-12):
+    //   'ask'  - há ACT ou EC entre as tasks: a pergunta aparece, SEMPRE antes dos links/prints
+    //            (a ordem do DOM está em notes-assistant.js). Quem usa a resposta é step-tasks.js:
+    //            o Sim dispensa os prints só de ACT/EC; as demais tasks seguem.
+    //   'auto' - há task, mas nenhuma é ACT/EC: sem pergunta; a nota já sai "Não" + o motivo
+    //            "task não se aplica ao uso do TSA".
+    //   'none' - sem task (ou sem substatus): nada.
+    let mode = 'none';
+
     function updateVisibility(subStatus, selectedTasksArray) {
         container.style.display = 'none';
+        mode = 'none';
 
         if (!subStatus) return;
         if (!selectedTasksArray || selectedTasksArray.length === 0) return;
 
-        container.style.display = 'block';
+        const hasTargetTasks = selectedTasksArray.some(t =>
+            t === 'ads_conversion_tracking' || t === 'ads_enhanced_conversions'
+        );
+        if (hasTargetTasks) {
+            mode = 'ask';
+            container.style.display = 'block';
+        } else {
+            // Uma resposta antiga (ex.: "Sim" de quando a ACT estava marcada) não vale mais.
+            reset();
+            notesState.setTagSupportUsed(false);
+            mode = 'auto';
+        }
     }
 
     // Gera o texto para a nota final
     function getOutput() {
-        // Visível = a linha sai, sempre (decisão do Lucas, 2026-11-12), tenha o
-        // agente mexido na pergunta ou não.
-        if (container.style.display === 'none') return '';
+        // A linha sai sempre que há task (decisão do Lucas, 2026-11-12): perguntada ou já preenchida.
+        if (mode === 'auto') {
+            return `<br><b>${t('tag_support_output_label')}</b> ❌ ${t('nao')}<br><b>${t('motivo_output_label')}</b> ${t('ts_nao_se_aplica')}<br>`;
+        }
+        if (mode !== 'ask') return '';
 
         let text = `<br><b>${t('tag_support_output_label')}</b> ${rSim.checked ? `✅ ${t('sim')}` : `❌ ${t('nao')}`}`;
         if (rNao.checked && reasonInput.value.trim() !== "") {

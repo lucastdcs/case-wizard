@@ -10,22 +10,21 @@
 //     tasks, a resposta decide se os prints DESSAS tasks saem. Por isso ela vem
 //     ANTES dos links: o agente responde antes de gastar tempo colando prints que
 //     o Sim dispensaria;
-//   - sem ACT/EC o Sim não muda print nenhum, mas a pergunta continua no mesmo
-//     lugar ("sempre antes do lugar onde colamos os prints", Lucas 2026-11-12) e
-//     a linha dela sai sempre na nota ("sair sempre").
+//   - sem ACT/EC não há pergunta: a nota já sai "Não" + o motivo "task não se aplica
+//     ao uso do TSA" (Lucas 2026-11-12); a pergunta, quando existe, fica sempre antes
+//     do lugar onde colamos os prints e a linha dela sai sempre na nota.
 // Antes, sem ACT/EC o módulo se escondia e se zerava. Nenhum teste olhava a
 // posição da pergunta nem a nota que sai quando ela aparece sem ACT/EC.
 //
 // O QUE ELE PROVA (nos três modos de SO e no NI_Awaiting_Validation)
 //   - só ACT / só EC / ACT + outra task: pergunta visível ANTES dos links; o Sim
 //     tira os prints de ACT/EC e só deles; o Não os devolve;
-//   - nenhuma ACT/EC: pergunta visível ANTES dos links, e os prints seguem
-//     inalterados mesmo com Sim;
-//   - a pergunta acompanha a seleção (some sem task ou sem substatus, fica antes
-//     dos links com qualquer task) sem roubar o foco de quem digita o motivo;
+//   - nenhuma ACT/EC: sem pergunta, e os prints seguem inalterados;
+//   - a pergunta acompanha a seleção (só com ACT/EC; some sem elas, sem task ou sem
+//     substatus) sem roubar o foco de quem digita o motivo;
 //   - o cartão traz o aviso de que a resposta vem antes dos prints (destaque);
-//   - a nota: a linha do Tag Support sai SEMPRE que a pergunta está visível,
-//     com ou sem ACT/EC, tenha o agente mexido nela ou não.
+//   - a nota: a linha do Tag Support sai sempre que há task (perguntada com ACT/EC,
+//     já preenchida sem elas); uma resposta "Sim" antiga não sobrevive à saída da ACT.
 //
 // Uso: npm run smoke:tag-support
 
@@ -229,29 +228,26 @@ for (const modo of MODOS) {
         igual(await prints(GA4), modo.ga4, 'prints da outra task com Não');
     });
 
-    await cada('sem ACT/EC: a pergunta também fica ANTES dos links e o Sim não mexe em print', async () => {
+    await cada('sem ACT/EC: não há pergunta e os prints seguem como estavam', async () => {
         await alternar(GA4);
-        verdade(await antesDosLinks(), 'esperava a pergunta visível antes do bloco de links: ' + JSON.stringify(await lugar()));
+        igual((await lugar()).visivel, false, 'a pergunta não devia aparecer só com uma task que não é ACT/EC');
         igual(await prints(GA4), modo.ga4, 'prints da task que não é ACT/EC');
-
-        await responder('Sim');
-        igual(await prints(GA4), modo.ga4, 'prints da task que não é ACT/EC com Sim');
         igual(await caixasTS(), 0, 'avisos de "não são necessários prints"');
     });
 
-    await cada('a pergunta acompanha a seleção: antes dos links com qualquer task; sem task -> some', async () => {
+    await cada('a pergunta acompanha a seleção: só com ACT/EC, antes dos links; sem elas some; sem task nada', async () => {
         await alternar(GA4);
-        verdade(await antesDosLinks(), 'só GA4: deveria estar antes dos links');
+        igual((await lugar()).visivel, false, 'só GA4: a pergunta devia estar escondida');
         await alternar(EC);
-        verdade(await antesDosLinks(), 'com EC deveria estar antes dos links');
+        verdade(await antesDosLinks(), 'com EC deveria aparecer antes dos links');
         await alternar(EC);
-        verdade(await antesDosLinks(), 'sem EC deveria continuar antes dos links');
+        igual((await lugar()).visivel, false, 'sem EC a pergunta devia sumir');
         await alternar(GA4);
         igual((await lugar()).visivel, false, 'pergunta visível sem nenhuma task');
     });
 
     await cada('destaque: o cartão explica que a resposta vem antes dos prints', async () => {
-        await alternar(GA4);
+        await alternar(EC);
         const info = await page.evaluate((sel) => {
             const c = document.querySelector(sel);
             const h = c && c.querySelector('.js-ts-helper');
@@ -259,7 +255,7 @@ for (const modo of MODOS) {
         }, TS);
         verdade(info.texto.length > 20, 'o cartão devia trazer a linha de ajuda: ' + JSON.stringify(info));
         igual(info.borda, '8px', 'faixa lateral de destaque');
-        await alternar(GA4);
+        await alternar(EC);
     });
 }
 
@@ -269,8 +265,8 @@ const IMPL = MODOS[0];
 await escolherSubstatus(IMPL.status, IMPL.sub);
 const resto = (name, fn) => isolado(name, fn, IMPL);
 
-await resto('mover a pergunta não tira o foco de quem digita o motivo', async () => {
-    await alternar(GA4);
+await resto('marcar outra task não tira o foco de quem digita o motivo', async () => {
+    await alternar(ACT);
     await page.focus(`${TS} input[type="text"]`);
     // .click() por script não move o foco para o cartão, como o mouse moveria.
     await alternar('gtm_installation'); // outra task que não é ACT/EC: a pergunta não se move
@@ -304,28 +300,31 @@ await resto('nota, ACT + outra task, sem tocar na pergunta: a linha sai (há ACT
     verdade(nota.includes(PERGUNTA), 'a nota deveria trazer "' + PERGUNTA + '": ' + nota);
 });
 
-await resto('nota, sem ACT/EC e sem mexer na pergunta: a linha sai sempre (Não)', async () => {
+const MOTIVO_AUTO = 'Task não se aplica ao uso do TSA.';
+
+await resto('nota, sem ACT/EC: já sai "Não" e o motivo "task não se aplica ao uso do TSA", sem pergunta', async () => {
     await alternar(GA4);
-    verdade((await lugar()).visivel, 'a pergunta devia estar visível');
+    igual((await lugar()).visivel, false, 'a pergunta não devia estar visível');
     const nota = await copiarNota();
     verdade(nota.length > 0, 'a cópia da nota não foi capturada');
-    verdade(nota.includes(PERGUNTA) && nota.includes('❌ Não'), 'a nota deveria trazer "' + PERGUNTA + ' ❌ Não" mesmo sem mexer: ' + nota);
-});
-
-await resto('nota, sem ACT/EC e com Sim: a linha sai, sem o texto de "prints dispensados"', async () => {
-    await alternar(GA4);
-    await responder('Sim');
-    const nota = await copiarNota();
-    verdade(nota.includes(PERGUNTA) && nota.includes('✅ Sim'), 'a nota deveria trazer o Sim: ' + nota);
+    verdade(nota.includes(PERGUNTA) && nota.includes('❌ Não'), 'a nota deveria trazer "' + PERGUNTA + ' ❌ Não": ' + nota);
+    verdade(nota.includes(MOTIVO_AUTO), 'a nota deveria trazer o motivo "' + MOTIVO_AUTO + '": ' + nota);
     verdade(!nota.includes(DISCLAIMER_NOTA), 'a GA4 não devia sair como "criada pelo Tag Support": ' + nota);
 });
 
-await resto('nota, sem ACT/EC e com motivo digitado: a linha sai com o motivo', async () => {
+await resto('nota, ACT com Sim e depois sem ACT: a resposta antiga não vale; sai "Não" + o motivo automático', async () => {
+    await alternar(ACT);
+    await responder('Sim');
     await alternar(GA4);
-    await page.fill(`${TS} input[type="text"]`, 'motivo-de-teste-xyz');
+    await alternar(ACT); // fica só a GA4
+    igual((await lugar()).visivel, false, 'a pergunta devia sumir');
     const nota = await copiarNota();
-    verdade(nota.includes(PERGUNTA) && nota.includes('❌ Não'), 'a nota deveria trazer o Não: ' + nota);
-    verdade(nota.includes('motivo-de-teste-xyz'), 'a nota deveria trazer o motivo digitado: ' + nota);
+    verdade(!nota.includes('✅ Sim') && nota.includes('❌ Não') && nota.includes(MOTIVO_AUTO), 'a nota devia sair "Não" + motivo automático: ' + nota);
+});
+
+await resto('nota, sem task nenhuma: sem a linha do Tag Support', async () => {
+    const nota = await copiarNota();
+    verdade(!nota.includes(PERGUNTA), 'sem task não devia haver linha do Tag Support: ' + nota);
 });
 
 await browser.close();
