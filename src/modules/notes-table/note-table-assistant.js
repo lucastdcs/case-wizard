@@ -331,6 +331,7 @@ export function initNoteTable() {
 
     // Nota nova (outro caso, Limpar, depois de inserir) abre no tipo e no fluxo padrão do agente.
     function resetForm() {
+        ui.helpBlock = null;
         st = M.createNoteState({ seg: defaultSegment(), flow: readFlowPref(), cids: [M.newCidRow(cap.cid)] });
         st.active = M.preselectBlocks(catalog, st.seg, lerCampo("appointmentTime") || "", new Date());
         Object.assign(ui, { ctxOpen: false, autoOpen: false, more: {}, showPending: false, scenOpen: false, pi: 0, blocksTouched: false });
@@ -683,19 +684,66 @@ export function initNoteTable() {
             line(L.must, info.must),
             line(L.ts, info.ts),
             info.na ? h("div", { class: "nt-help-n" }, info.na) : null,
+            h("div", { class: "nt-help-a" }, h("button", { class: "nt-na", type: "button", onclick: showInPreview }, ntt("pvOpen"))),
             h("div", { class: "nt-help-f" }, L.notInNote));
     }
+    // O bloco que o "?" aberto explica: { id, title, ghost } (ghost = ainda fora da nota) ou null.
+    function helpTarget() {
+        if (!ui.helpBlock || !st.substatus) return null;
+        const s = seg();
+        const p = s.blocks.find((b) => `${s.key}.${b.b}` === ui.helpBlock);
+        if (!p || !blockHelp(p.b)) return null;
+        return { id: p.b, title: M.labelText(p.title, "en"), ghost: !st.active.includes(p.b) };
+    }
+    // Só na PRÉVIA: bloco desligado entra como tabela "fantasma" na posição do segmento; o bloco
+    // ligado ganha destaque; os dois ganham a faixa de explicação. Nada disto toca no estado nem na
+    // saída: Preencher e Copiar renderizam do zero (outputHtml), sem ler a prévia.
+    function previewView(t) { return t && t.ghost ? { ...st, active: [...st.active, t.id] } : st; }
+    function decoratePreview(t) {
+        if (!t) return;
+        const tbl = preview.querySelector(`table[data-block="${t.id}"]`);
+        if (!tbl) return;
+        const L = helpLabels();
+        const info = blockHelp(t.id);
+        tbl.classList.add(t.ghost ? "nt-pv-ghost" : "nt-pv-hl");
+        const banner = h("div", { class: "nt-pv-note", role: "note" },
+            h("b", {}, ntt("pvExplain")),
+            t.ghost ? h("span", {}, ntt("pvGhost")) : null,
+            info.when ? h("span", {}, h("span", { class: "nt-pv-k" }, L.when + ": "), info.when) : null);
+        tbl.before(banner);
+        if (ui.helpScroll) {
+            ui.helpScroll = false;
+            requestAnimationFrame(() => {
+                // Rola só a prévia (não a página do CRM): a distância é medida dentro dela.
+                const sc = preview.parentElement;
+                const top = banner.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 12;
+                const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                sc.scrollTo({ top: Math.max(0, top), behavior: reduce ? "auto" : "smooth" });
+            });
+        }
+    }
+
     function focusQ(key) { const q = ctxHost.querySelector(`[data-q="${key}"]`); if (q) q.focus(); }
+    // Abrir o "?" abre a gaveta e rola até o bloco, quando ela cabe ao lado da janela (sobreposta, ela
+    // esconderia o próprio painel: aí o botão "Ver na prévia" a abre de propósito). Fechar tira a faixa e
+    // o fantasma; a gaveta fica como o agente a deixou. O foco continua no "?".
     function toggleHelp(key) {
-        ui.helpBlock = ui.helpBlock === key ? null : key;
-        renderCtx(); updateSticky();
+        const opening = ui.helpBlock !== key;
+        ui.helpBlock = opening ? key : null;
+        if (opening) { ui.helpScroll = true; if (!ui.drawer && drawerFits()) setDrawer(true); }
+        renderCtx(); refresh();
         focusQ(key);
+    }
+    function showInPreview() {
+        ui.helpScroll = true;
+        setDrawer(true);
+        refresh();
     }
     function closeHelp() {
         const key = ui.helpBlock;
         if (!key) return;
         ui.helpBlock = null;
-        renderCtx(); updateSticky();
+        renderCtx(); refresh();
         focusQ(key);
     }
 
@@ -866,7 +914,9 @@ export function initNoteTable() {
         const miss = missing();
         const n = miss.length;
         const ready = !n && !!st.substatus && M.activePlacements(catalog, st).length > 0;
-        preview.innerHTML = renderNoteHtml(catalog, st, { ...ctxOf(), live: true, pendingLabel: ntt("pendingCell") }) || "";
+        const target = helpTarget();
+        preview.innerHTML = renderNoteHtml(catalog, previewView(target), { ...ctxOf(), live: true, pendingLabel: ntt("pendingCell") }) || "";
+        decoratePreview(target);
         sTxt.textContent = cap.capturing ? ntt("capturing") : (ready ? ntt("ready") : ntt("pending", n || (st.substatus ? 0 : 1)));
         status.classList.toggle("ready", ready);
         bFill.classList.toggle("blocked", !ready || cap.capturing);
@@ -919,12 +969,12 @@ export function initNoteTable() {
         updateSticky();
     }
 
+    // Sem 536px livres à esquerda (tela de ~1196px ou janela arrastada para a borda), a gaveta
+    // sobrepõe a janela em vez de sair da tela.
+    const drawerFits = () => popup.getBoundingClientRect().left >= 536 + 16;
     function setDrawer(on) {
         ui.drawer = on;
-        // Sem 536px livres à esquerda (tela de ~1196px ou janela arrastada para a borda),
-        // a gaveta sobrepõe a janela em vez de sair da tela.
-        const left = popup.getBoundingClientRect().left;
-        drawer.classList.toggle("over", on && left < 536 + 16);
+        drawer.classList.toggle("over", on && !drawerFits());
         drawer.classList.toggle("open", on);
         tab.setAttribute("aria-expanded", String(on));
         if (on) dIn.removeAttribute("inert"); else dIn.setAttribute("inert", "");
@@ -1047,13 +1097,14 @@ export function initNoteTable() {
     bDraft.addEventListener("click", doPark);
     bCopy.addEventListener("click", doCopy);
     bFill.addEventListener("click", doFill);
-    preview.addEventListener("click", (e) => { const tr = e.target.closest("tr[data-row]"); if (tr) focusRow(tr.dataset.row); });
+    preview.addEventListener("click", (e) => { const tr = e.target.closest("tr[data-row]"); if (tr && !tr.closest(".nt-pv-ghost")) focusRow(tr.dataset.row); });
     // Esc fecha primeiro o que está por cima (seletor, rascunhos, "?", gaveta); só depois a
     // janela, pelo Esc global de animations.js.
     popup.addEventListener("keydown", (e) => {
         if (e.key !== "Escape") return;
         if (ui.pick) { e.stopPropagation(); closePick(); return; }
         if (ui.draftsOpen) { e.stopPropagation(); ui.draftsOpen = false; renderDrafts(); return; }
+        if (ui.drawer && drawer.classList.contains("over")) { e.stopPropagation(); setDrawer(false); return; }
         if (ui.helpBlock) { e.stopPropagation(); closeHelp(); return; }
         if (ui.drawer) { e.stopPropagation(); setDrawer(false); }
     });

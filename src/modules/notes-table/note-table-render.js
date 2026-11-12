@@ -150,7 +150,9 @@ export function renderBlockTable(catalog, st, placement, opts = {}) {
     const heading = (seg && seg.showTitle && title)
         ? `<div style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.primary};margin:16px 0 6px 0">${escapeHtml(title)}</div>`
         : '';
-    return `${heading}<table style="${tableStyle}">${cols}<tbody>${gridHtml(rows, live)}</tbody></table>`;
+    // `data-block` só existe na prévia viva (como o `data-row`): é a âncora do "?" dos blocos para
+    // rolar a gaveta até a tabela. A saída nunca a leva.
+    return `${heading}<table${live ? ` data-block="${escapeHtml(placement.b)}"` : ''} style="${tableStyle}">${cols}<tbody>${gridHtml(rows, live)}</tbody></table>`;
 }
 
 // A nota inteira: as tabelas dos blocos ativos (Additional Details por último) e o rodapé

@@ -275,8 +275,9 @@ await check('"?" abre a explicação do bloco sem ligar nem desligar o bloco, e 
     await shot('ajuda-bloco');
     igual(await chip.getAttribute('aria-pressed'), antes, 'o "?" não pode ligar nem desligar o bloco');
     igual(await page.locator(`${POP} .nt-q[data-q="all.after"]`).getAttribute('aria-expanded'), 'true', 'aria-expanded do "?"');
-    const html = await prev();
-    ok(!html.includes('No vale el día') && !html.includes('solo para usted') && !html.includes('Cuándo usar'), 'a explicação vazou para a nota');
+    // a prévia ganha a faixa de explicação, FORA das tabelas; nenhuma tabela da nota pode carregar o texto
+    const nasTabelas = await page.evaluate((p) => [...document.querySelectorAll(`${p} .nt-note-card table`)].map((t) => t.textContent).join(' '), POP);
+    ok(!/no va en la nota|cuándo usar|solo para usted/i.test(nasTabelas), 'a explicação vazou para dentro de uma tabela da nota');
 });
 
 await check('Before e Implementation têm o mesmo "quando usar" (como no Doc); o Consult traz o que é obrigatório', async () => {
@@ -313,6 +314,83 @@ await check('trocar o idioma da interface com a explicação aberta repinta o te
     // Fecha pelo próprio "?": com o foco no botão de idioma (fora da janela) o Esc seria o global e fecharia a janela.
     await page.locator(`${POP} .nt-q[data-q="all.after"]`).click();
     igual(await page.locator(`${POP} #cw-nt-help`).count(), 0, 'painel ficou aberto para os próximos checks');
+});
+
+console.log('\nA prévia na gaveta (o "?" mostra onde o bloco entra)');
+
+const prevInfo = () => page.evaluate((p) => {
+    const card = document.querySelector(`${p} .nt-note-card`);
+    const g = card.querySelector('table.nt-pv-ghost');
+    const banner = card.querySelector('.nt-pv-note');
+    const sc = card.parentElement.getBoundingClientRect();
+    const b = banner && banner.getBoundingClientRect();
+    return {
+        ids: [...card.querySelectorAll('table[data-block]')].map((t) => t.dataset.block),
+        ghost: g ? g.dataset.block : null,
+        hl: [...card.querySelectorAll('table.nt-pv-hl')].map((t) => t.dataset.block),
+        banner: banner ? banner.textContent : '',
+        colado: !!(banner && banner.nextElementSibling && banner.nextElementSibling.tagName === 'TABLE'),
+        visivel: !!b && b.top >= sc.top - 1 && b.top < sc.bottom,
+    };
+}, POP);
+const drawerOpen = () => page.locator(`${POP} .nt-drawer.open`).count();
+
+await check('bloco DESLIGADO: "Ver na prévia" abre a gaveta e mostra a tabela "fantasma" na posição do segmento, com a faixa, sem mexer na nota', async () => {
+    const chip = page.locator(`${POP} [data-ctx="blocks"] .nt-chip`, { hasText: /^Consult/ });
+    igual(await chip.getAttribute('aria-pressed'), 'false', 'o Consult devia estar desligado');
+    const pendentes = await page.locator(`${POP} .nt-tab .nt-bd`).innerText();
+    await page.locator(`${POP} .nt-q[data-q="all.consult"]`).click();
+    igual(await drawerOpen(), 0, 'sobreposta, a gaveta esconderia o painel: o "?" não a abre à força');
+    await page.locator(`${POP} #cw-nt-help .nt-na`).click();
+    await page.waitForTimeout(900);
+    igual(await drawerOpen(), 1, 'a gaveta não abriu');
+    const r = await prevInfo();
+    igual(r.ghost, 'consult', 'bloco fantasma');
+    igual(r.ids.slice(-2), ['consult', 'extras'], 'ordem: o Consult entra antes do Additional Details');
+    ok(r.colado, 'a faixa devia estar colada na tabela do bloco');
+    ok(/no va en la nota/i.test(r.banner) && /aún no está en la nota/i.test(r.banner) && /cuándo usar/i.test(r.banner), r.banner);
+    ok(r.visivel, 'a faixa não está visível: a gaveta não rolou até o bloco');
+    const v = await page.evaluate((p) => { const g = document.querySelector(`${p} .nt-note-card table.nt-pv-ghost`); const cs = getComputedStyle(g); return { op: parseFloat(cs.opacity), h: g.getBoundingClientRect().height, borda: cs.outlineStyle }; }, POP);
+    ok(v.op > 0.3 && v.op < 1 && v.h > 40 && v.borda === 'dashed', 'o fantasma não se vê (esmaecido, tracejado e com altura): ' + JSON.stringify(v));
+    igual(await chip.getAttribute('aria-pressed'), 'false', 'o "?" não pode ligar o bloco');
+    igual(await page.locator(`${POP} .nt-tab .nt-bd`).innerText(), pendentes, 'o fantasma não pode mexer nas pendências');
+    await shot('previa-fantasma');
+    // clicar numa linha do fantasma não leva a campo nenhum (o bloco nem está no formulário)
+    const auto = await page.locator(`${POP} .nt-auto-h`).getAttribute('aria-expanded');
+    await page.locator(`${POP} table.nt-pv-ghost tr[data-row]`).first().click();
+    igual(await page.locator(`${POP} .nt-auto-h`).getAttribute('aria-expanded'), auto, 'clicar no fantasma mexeu no formulário');
+    // clicar numa célula (não focável) leva o foco ao body, e aí o Esc seria o global: volta o foco à gaveta
+    await page.locator(`${POP} .nt-tab`).focus();
+});
+
+await check('Esc com a gaveta sobreposta fecha primeiro a gaveta (o que está por cima), depois o painel; fechar tira o fantasma e a faixa', async () => {
+    await page.keyboard.press('Escape');
+    igual(await drawerOpen(), 0, 'o Esc não fechou a gaveta');
+    igual(await page.locator(`${POP} #cw-nt-help`).count(), 1, 'o painel tinha de continuar aberto');
+    await page.keyboard.press('Escape');
+    igual(await page.locator(`${POP} #cw-nt-help`).count(), 0, 'o segundo Esc não fechou o painel');
+    const r = await prevInfo();
+    igual([r.ghost, r.banner], [null, ''], 'ficou fantasma ou faixa na prévia');
+    ok(!r.ids.includes('consult'), 'o fantasma continuou na prévia');
+});
+
+await check('bloco LIGADO: o "?" destaca a tabela real, sem fantasma, e a faixa só explica', async () => {
+    const ligado = await page.evaluate((p) => [...document.querySelectorAll(`${p} [data-ctx="blocks"] .nt-chip[aria-pressed="true"]`)].map((c) => c.textContent.trim().replace(/\s+/g, ' ')), POP);
+    ok(ligado.length > 0, 'nenhum bloco ligado para testar');
+    const nome = ligado[0].startsWith('Before') ? 'before' : 'impl';
+    const antes = (await prevInfo()).ids;
+    await page.locator(`${POP} .nt-q[data-q="all.${nome}"]`).click();
+    await page.locator(`${POP} #cw-nt-help .nt-na`).click();
+    await page.waitForTimeout(900);
+    const r = await prevInfo();
+    igual(r.hl, [nome], 'bloco destacado');
+    igual(r.ghost, null, 'não devia haver fantasma');
+    igual(r.ids, antes, 'a prévia ganhou ou perdeu uma tabela');
+    ok(/no va en la nota/i.test(r.banner) && !/aún no está en la nota/i.test(r.banner), r.banner);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    igual(await drawerOpen(), 0, 'gaveta aberta para os próximos checks');
+    igual(await page.locator(`${POP} #cw-nt-help`).count(), 0, 'painel aberto para os próximos checks');
 });
 
 console.log('\nPendências e preenchimento');
@@ -353,14 +431,18 @@ await check('tudo resolvido: "Lista para completar" e Preencher libera', async (
 
 await shot('02-preenchendo');
 
-await check('Preencher insere no editor do CRM a tabela do contrato (sem pendente, sem class), com rodapé no idioma do atendimento', async () => {
+await check('Preencher insere no editor do CRM a tabela do contrato (sem pendente, sem class), com rodapé no idioma do atendimento, mesmo com o "?" aberto', async () => {
+    // com a explicação aberta de um bloco desligado, a prévia tem o fantasma e a faixa; a nota não pode levá-los
+    await page.locator(`${POP} .nt-q[data-q="all.consult"]`).click();
+    ok(await page.evaluate((p) => !!document.querySelector(`${p} .nt-note-card table.nt-pv-ghost`), POP), 'o fantasma devia estar na prévia');
     await page.click(`${POP} .nt-btn.p`);
     await page.waitForTimeout(4000);
     const html = await editorHtml();
     ok(html.includes('<table') && html.includes('Additional Details') && html.includes('Resumo da call:'), html.slice(0, 200));
     ok(!html.includes('Resumen de la llamada:') && !html.includes('Call Summary:'), 'rótulo fora do idioma do atendimento');
     ok(html.includes('Nota criada através do Cases Wizard.'), 'rodapé não está em PT');
-    ok(!/class=|pendente|data-row|#fef7e0/.test(html), 'marcação de tela vazou');
+    ok(!/class=|pendente|data-row|data-block|#fef7e0/.test(html), 'marcação de tela vazou');
+    ok(!html.includes('Consult Routing Path') && !/no va en la nota|Explicación/i.test(html), 'a explicação ou o bloco fantasma vazou para a nota');
 });
 
 console.log('\nNota: Europa, fluxo e tipos');
@@ -616,6 +698,30 @@ await check('a gaveta sobrepõe a janela em vez de sair da tela', async () => {
     await p.waitForTimeout(700);
     const r = await p.evaluate((sel) => document.querySelector(`${sel} .nt-drawer-in`).getBoundingClientRect().left, POP);
     ok(r >= 0, `a gaveta começa em x=${r}`);
+    await p.close();
+});
+
+console.log('\nTela larga (~1920px): a gaveta cabe ao lado da janela');
+const wide = await abrirCrm({ width: 1920, height: 900 });
+await check('o "?" abre a gaveta sozinho, ao lado (sem cobrir a janela), e o Esc fecha primeiro o painel, depois a gaveta', async () => {
+    const p = wide.page;
+    await p.evaluate(() => document.getElementById('cw-btn-notetable').click());
+    await p.waitForTimeout(1500);
+    await p.click(`${POP} [data-role="substatus"]`);
+    await p.locator(`${POP} .nt-pop .nt-opt`, { hasText: /^SO - Implementation Only/ }).first().click();
+    await p.locator(`${POP} .nt-q[data-q="all.consult"]`).click();
+    await p.waitForTimeout(900);
+    igual(await p.locator(`${POP} .nt-drawer.open`).count(), 1, 'a gaveta devia abrir sozinha');
+    igual(await p.locator(`${POP} .nt-drawer.over`).count(), 0, 'com espaço, a gaveta não pode sobrepor a janela');
+    if (shotDir) await p.screenshot({ path: `${shotDir}/previa-tela-larga.png` });
+    ok(await p.evaluate((q) => !!document.querySelector(`${q} .nt-note-card table.nt-pv-ghost[data-block="consult"]`), POP), 'sem fantasma do Consult na prévia');
+    // a janela segue clicável: trocar para outro bloco funciona (a gaveta não cobre os "?")
+    await p.locator(`${POP} .nt-q[data-q="all.after"]`).click();
+    ok(await p.evaluate((q) => !!document.querySelector(`${q} .nt-note-card table.nt-pv-ghost[data-block="after"]`), POP), 'a prévia não seguiu para o After');
+    await p.keyboard.press('Escape');
+    igual([await p.locator(`${POP} #cw-nt-help`).count(), await p.locator(`${POP} .nt-drawer.open`).count()], [0, 1], 'primeiro Esc: fecha o painel e deixa a gaveta');
+    await p.keyboard.press('Escape');
+    igual(await p.locator(`${POP} .nt-drawer.open`).count(), 0, 'segundo Esc não fechou a gaveta');
     await p.close();
 });
 

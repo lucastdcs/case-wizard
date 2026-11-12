@@ -301,7 +301,7 @@ var CwNoteTable = (() => {
     const seg = findSegment(catalog, st.seg);
     const title = labelText(placement.title, lang);
     const heading = seg && seg.showTitle && title ? `<div style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.primary};margin:16px 0 6px 0">${escapeHtml(title)}</div>` : "";
-    return `${heading}<table style="${tableStyle}">${cols}<tbody>${gridHtml(rows, live)}</tbody></table>`;
+    return `${heading}<table${live ? ` data-block="${escapeHtml(placement.b)}"` : ""} style="${tableStyle}">${cols}<tbody>${gridHtml(rows, live)}</tbody></table>`;
   }
   function renderNoteHtml(catalog, st, opts = {}) {
     const lang = opts.lang || "en";

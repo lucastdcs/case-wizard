@@ -123,6 +123,11 @@ const CSS = `
 #cw-notetable-popup .nt-help-r.s b{font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink)}
 #cw-notetable-popup .nt-help-g{margin-bottom:-4px}
 #cw-notetable-popup .nt-help-n,#cw-notetable-popup .nt-help-f{color:var(--hint2)}
+#cw-notetable-popup .nt-help-a{display:flex}
+#cw-notetable-popup .nt-pv-note{display:flex;flex-direction:column;gap:2px;margin:0 0 8px;padding:8px 12px;border-radius:8px;background:var(--primary-bg);color:var(--primary-ink);font-family:var(--font);font-size:12px;line-height:16px}
+#cw-notetable-popup .nt-pv-note b,#cw-notetable-popup .nt-pv-k{font-weight:500}
+#cw-notetable-popup .nt-pv-ghost{opacity:.5;outline:2px dashed var(--primary);outline-offset:4px}
+#cw-notetable-popup .nt-pv-hl{outline:2px solid var(--primary);outline-offset:4px}
 #cw-notetable-popup .nt-row.chiprow{align-items:start;padding:12px 16px}
 #cw-notetable-popup .nt-row.chiprow .nt-rl{padding-top:8px}
 #cw-notetable-popup .nt-card.ctx .nt-row,#cw-notetable-popup .nt-card.ctx .nt-pick{grid-template-columns:88px minmax(0,1fr) auto}

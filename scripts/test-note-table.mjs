@@ -209,12 +209,12 @@ check('seção chave-valor: o rótulo ocupa 1 coluna em grade de 3 e 2 nas demai
     igual(spans('extras', 'oncall'), [1, 1, 1], 'grade de 3');
 });
 
-check('a nota só tem as tags permitidas, sem class, <style>, <script> nem data-row', () => {
+check('a nota só tem as tags permitidas, sem class, <style>, <script>, data-row nem data-block', () => {
     const st = fresh({ substatus: 'SO - Implementation Only', tasks: [ACT], active: ['general', 'before', 'impl', 'after'] });
     const html = out(st);
     const tags = [...new Set([...html.matchAll(/<([a-z0-9]+)[\s>]/g)].map((m) => m[1]))].sort();
     igual(tags, ['col', 'colgroup', 'div', 'table', 'tbody', 'td', 'th', 'tr'], 'tags');
-    ok(!/\sclass=|<style|<script|data-row/.test(html), 'marcação proibida na saída');
+    ok(!/\sclass=|<style|<script|data-row|data-block/.test(html), 'marcação proibida na saída');
 });
 
 check('<b> só nasce de **x** num valor; asterisco sem par fica literal', () => {
@@ -241,6 +241,18 @@ check('texto digitado continua escapado: <script> vira texto, & vira &amp;', () 
 
 check('valor de várias linhas vira <br>, sem linha em branco no meio', () => {
     igual(R.valueHtml('a\n\n\nb\r\nc  '), 'a<br>b<br>c', 'quebras');
+});
+
+check('data-block (a âncora do "?" na gaveta) só existe na prévia viva, uma por tabela, na ordem do segmento', () => {
+    const st = fresh({ substatus: 'SO - Implementation Only', tasks: [ACT], active: ['general', 'before', 'impl', 'after'] });
+    ok(!out(st).includes('data-block'), 'data-block vazou para a saída');
+    const ids = [...live(st).matchAll(/<table data-block="([a-z_]+)"/g)].map((m) => m[1]);
+    igual(ids, ['general', 'before', 'impl', 'after', 'extras'], 'âncoras da prévia');
+    // bloco "fantasma" (ainda desligado) entra na posição do SEGMENTO (não na ordem em que foi ligado)
+    const meio = fresh({ substatus: 'SO - Implementation Only', tasks: [ACT], active: ['general', 'before', 'after'] });
+    const ghost = live({ ...meio, active: [...meio.active, 'impl'] });
+    igual([...ghost.matchAll(/<table data-block="([a-z_]+)"/g)].map((m) => m[1]), ['general', 'before', 'impl', 'after', 'extras'], 'fantasma na posição do segmento');
+    ok(!out(meio).includes('Implementation:'), 'o fantasma não pode entrar na saída real');
 });
 
 check('célula pendente nunca vai para a saída; só a prévia viva a marca', () => {
