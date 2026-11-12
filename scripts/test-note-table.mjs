@@ -110,7 +110,14 @@ const CAT = {
                 Row('gtm_ga4', 'GTM/GA4 verified:', 'text', { optIn: true, required: false, requiredWhen: { substatusAny: ['SO - Implementation Only', 'NI - Awaiting Validation'] } }),
                 Row('ts_used', 'Used Tag Support?', 'yesno', { default: 'No', na: false, when: { tasksAny: TS } }),
                 Row('ts_reason', 'Reason:', 'text', { required: false, when: { tasksAny: TS, rowIs: { id: 'ts_used', v: 'No' } } }),
+                Row('ts_used_na', 'Used Tag Support?', 'derived', { auto: 'fixed', value: 'No', required: false, na: false, when: { tasksNone: TS } }),
+                Row('ts_reason_na', 'Reason:', 'derived', { auto: 'fixed', value: { en: 'Task does not apply to TSA usage.', pt: 'Task não se aplica ao uso do TSA.', es: 'La task no aplica al uso del TSA.' }, required: false, na: false, when: { tasksNone: TS } }),
                 Row('call_attempt', 'Call attempt:', 'link', { when: { substatusAny: ['IN - Not Reachable'] } }),
+            ] },
+        ] },
+        consult: { name: 'Consult routing path', cols: 4, widths: [22, 26, 30, 22], sections: [
+            { kind: 'group', title: 'Screenshots (Mandatory)', group: 'Consult Routing Path & SME Approval:', rows: [
+                Row('c_path', 'Consult Routing Path:', 'link'),
             ] },
         ] },
     },
@@ -120,6 +127,7 @@ const CAT = {
             { b: 'before', title: 'Before implementation', suggest: { tasksAny: TS } },
             { b: 'impl', title: 'Implementation', suggest: { tasksAny: TS } },
             { b: 'after', title: 'After implementation', suggest: { tasksAny: TS } },
+            { b: 'consult', title: 'Consult routing path', suggest: { substatusAny: ['IN - Troubleshooting [Transferred]'], splitAny: ['SO - Troubleshooting Only'] } },
         ] },
         { key: 'sbse', name: 'ECL SBS-E', select: 'single', showTitle: true, blocks: [
             { b: 'impl_call', title: 'Phase 2: Implementation Call' },
@@ -253,6 +261,12 @@ check('data-block (a âncora do "?" na gaveta) só existe na prévia viva, uma p
     const ghost = live({ ...meio, active: [...meio.active, 'impl'] });
     igual([...ghost.matchAll(/<table data-block="([a-z_]+)"/g)].map((m) => m[1]), ['general', 'before', 'impl', 'after', 'extras'], 'fantasma na posição do segmento');
     ok(!out(meio).includes('Implementation:'), 'o fantasma não pode entrar na saída real');
+});
+
+check('data-block-h (o título da fase, âncora da faixa) também só existe na prévia viva', () => {
+    const st = fresh({ seg: 'sbse', substatus: 'SO - Implementation Only', active: ['impl_call'] });
+    ok(!out(st).includes('data-block-h'), 'data-block-h vazou para a saída');
+    ok(live(st).includes('data-block-h="impl_call"'), 'a prévia viva não marcou o título da fase');
 });
 
 check('célula pendente nunca vai para a saída; só a prévia viva a marca', () => {
@@ -477,6 +491,38 @@ check('Task types: nome das tasks, (xN) nas repetidas; sem task fica pendente at
     igual(val(st, 'general', 'task_types'), null, 'sem task');
     M.rowState(st, 'task_types').na = true;
     igual(val(st, 'general', 'task_types'), 'NA', 'NA');
+});
+
+console.log('\nTag Support sem ACT/ECW, e Split & Transfer (spec §8 e §9)');
+
+check('task que não é ACT/ECW: sem pergunta, a nota já sai com "No" e o motivo, no idioma da nota', () => {
+    const st = fresh({ substatus: 'SO - Implementation Only', tasks: [{ key: 'ga4_event_tracking', name: 'GA4', count: 1 }] });
+    const ids = M.visibleRows ? null : null;
+    ok(!M.rowVisible(CAT, st, CAT.blocks.extras.sections[0].rows.find((r) => r.id === 'ts_used')), 'a pergunta não devia existir sem ACT/ECW');
+    for (const [lang, motivo] of [['en', 'Task does not apply to TSA usage.'], ['pt', 'Task não se aplica ao uso do TSA.'], ['es', 'La task no aplica al uso del TSA.']]) {
+        const html = out(st, { lang });
+        ok(html.includes(motivo), `${lang}: o motivo devia sair na nota`);
+        ok(/Used Tag Support\?<\/td>?[^]*?No/.test(html) || html.includes('>No<'), `${lang}: o "No" devia sair na nota`);
+    }
+    ok(M.missingList(CAT, st).every((m) => !/ts_/.test(m.key)), 'as linhas automáticas não podem virar pendência');
+});
+
+check('com ACT/ECW a pergunta existe e as linhas automáticas somem; sem task nenhuma, nenhuma das duas aparece', () => {
+    const rows = CAT.blocks.extras.sections[0].rows;
+    const vis = (st) => rows.filter((r) => /^ts_/.test(r.id) && M.rowVisible(CAT, st, r)).map((r) => r.id);
+    igual(vis(fresh({ substatus: 'SO - Implementation Only', tasks: [ACT] })), ['ts_used', 'ts_reason'], 'com ACT');
+    igual(vis(fresh({ substatus: 'SO - Implementation Only', tasks: [ACT, { key: 'ga4_event_tracking', name: 'GA4', count: 1 }] })), ['ts_used', 'ts_reason'], 'misto');
+    igual(vis(fresh({ substatus: 'SO - Implementation Only', tasks: [{ key: 'ga4_event_tracking', name: 'GA4', count: 1 }] })), ['ts_used_na', 'ts_reason_na'], 'só GA4');
+    igual(vis(fresh({ substatus: 'SO - Implementation Only', tasks: [] })), [], 'sem task');
+});
+
+check('o Consult é sugerido com Split & Transfer usado em SO - Troubleshooting Only, e só nele', () => {
+    const p = CAT.segments[0].blocks.find((b) => b.b === 'consult');
+    const sug = (over) => M.isSuggested(CAT, fresh({ substatus: 'SO - Troubleshooting Only', ...over }), p);
+    igual(sug({}), false, 'sem Split & Transfer não sugere');
+    igual(sug({ splitUsed: true }), true, 'com Split & Transfer sugere');
+    igual(M.isSuggested(CAT, fresh({ substatus: 'SO - Implementation Only', splitUsed: true }), p), false, 'outro sub-status não sugere');
+    igual(M.isSuggested(CAT, fresh({ substatus: 'IN - Troubleshooting [Transferred]' }), p), true, 'a regra antiga segue valendo');
 });
 
 console.log('\nTag Support dispensa os prints de ACT/ECW (spec §8)');
@@ -918,13 +964,18 @@ const H = await load('../src/modules/notes-table/note-table-help.js');
 const LANGS = ['pt', 'es', 'en'];
 const HELPED = ['before', 'impl', 'after', 'consult'];
 
-check('os quatro blocos do ALL TASKS têm ajuda; as fases ECL ainda não (o "?" só aparece onde há texto)', () => {
-    igual(Object.keys(H.BLOCK_HELP), HELPED, 'blocos com ajuda');
-    igual(['general', 'audit', 'impl_call', 'interim', 'triage', 'eligibility', 'nope'].map((b) => H.blockHelp(b, 'pt')), [null, null, null, null, null, null, null], 'blocos sem ajuda');
+check('os blocos do ALL TASKS têm ajuda pelo id; as fases ECL, por segmento+bloco (e só o segmento resolve)', () => {
+    const ecl = ['sbse.audit', 'sbse.impl_call', 'sbse.interim', 'mms.triage', 'mms.eligibility', 'mms.audit', 'mms.impl_call', 'mms.interim'];
+    igual(Object.keys(H.BLOCK_HELP), [...HELPED, ...ecl], 'entradas de ajuda');
+    // o mesmo bloco tem "quando usar" diferente em cada segmento (audit é Phase 1 no SBS-E e Phase 2 no MMS)
+    ok(H.blockHelp('audit', 'pt', 'sbse').statuses === undefined && H.blockHelp('audit', 'pt', 'mms').statuses.length === 1, 'audit: sub-status só no MMS');
+    igual(H.blockHelp('audit', 'pt'), null, 'sem o segmento, a fase ECL não resolve');
+    igual(H.blockHelp('general', 'pt', 'all'), null, 'General não tem chip nem ajuda');
+    igual(H.blockHelp('before', 'pt', 'all'), H.BLOCK_HELP.before.pt, 'ALL TASKS resolve pelo id do bloco');
 });
 
 check('PT, ES e EN têm a mesma estrutura e nenhum texto vazio (nada cai em outro idioma por acaso)', () => {
-    for (const b of HELPED) {
+    for (const b of Object.keys(H.BLOCK_HELP)) {
         const ref = H.BLOCK_HELP[b].pt;
         for (const l of LANGS) {
             const h = H.BLOCK_HELP[b][l];
@@ -957,6 +1008,18 @@ check('o texto segue o Doc: After não vale no dia do appointment; Before e Impl
     }
     ok(/NOT on the day of the appointment/.test(H.BLOCK_HELP.after.en.when), 'EN do After');
     ok(/Não vale no dia do appointment/.test(H.BLOCK_HELP.after.pt.when), 'PT do After');
+});
+
+check('as fases ECL seguem o Doc "Template 2 e 3": quando usar e sub-status por fase, o que o Doc não diz fica de fora', () => {
+    const d = (k, l = 'en') => H.BLOCK_HELP[k][l];
+    ok(/FR email \(CR 0A\).*yet to be confirmed/.test(d('mms.triage').when) && /PI - Eligibility Check In Progress/.test(d('mms.triage').statuses[0][1]), 'Phase 0 do MMS');
+    ok(/Galactic/.test(d('mms.eligibility').when) && /PI - Audit In Progress/.test(d('mms.eligibility').statuses[0][1]), 'Phase 1 do MMS');
+    ok(/PI - Awaiting Appointment/.test(d('mms.audit').statuses[0][1]) && /signed-off by the SME/.test(d('mms.audit').when), 'Phase 2 do MMS');
+    ok(/3-way/.test(d('mms.impl_call').when) && d('mms.impl_call').statuses.length === 3 && d('sbse.impl_call').statuses.length === 3, 'Phase 3 do MMS e Phase 2 do SBS-E dividem os sub-status');
+    ok(d('mms.interim').statuses.length === 2 && /PI - Ineligible/.test(d('mms.interim').statuses[0][1]) && /NI - In Consult/.test(d('mms.interim').statuses[1][1]), 'Interim do MMS');
+    igual(d('sbse.audit').statuses, undefined, 'o Doc não lista sub-status para a auditoria do SBS-E');
+    igual(d('sbse.interim').statuses, undefined, 'nem para o Interim do SBS-E');
+    for (const l of LANGS) ok(Object.keys(H.BLOCK_HELP).filter((k) => /^(sbse|mms)\./.test(k)).every((k) => H.BLOCK_HELP[k][l].one), `${l}: toda fase lembra que a nota leva uma só`);
 });
 
 check('"MMS only" não aparece em nenhum texto (decisão do Lucas: segue escondido)', () => {

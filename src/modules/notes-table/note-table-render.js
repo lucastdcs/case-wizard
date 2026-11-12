@@ -111,7 +111,7 @@ export function renderBlockTable(catalog, st, placement, opts = {}) {
             { head: true, vline: true, bg: C.bgInput, color: C.textSub, html: COMMENTS_HEAD },
         ];
         rows.push(head);
-        const ctx = { blockId: placement.b, tsDisclaimer: opts.tsDisclaimer };
+        const ctx = { blockId: placement.b, tsDisclaimer: opts.tsDisclaimer, lang };
         if (sec.kind === 'group') {
             vis.forEach((r, i) => {
                 const v = resolveRow(catalog, st, r, ctx);
@@ -148,7 +148,7 @@ export function renderBlockTable(catalog, st, placement, opts = {}) {
     const seg = findSegment(catalog, st.seg);
     const title = labelText(placement.title, lang);
     const heading = (seg && seg.showTitle && title)
-        ? `<div style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.primary};margin:16px 0 6px 0">${escapeHtml(title)}</div>`
+        ? `<div${live ? ` data-block-h="${escapeHtml(placement.b)}"` : ''} style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.primary};margin:16px 0 6px 0">${escapeHtml(title)}</div>`
         : '';
     // `data-block` só existe na prévia viva (como o `data-row`): é a âncora do "?" dos blocos para
     // rolar a gaveta até a tabela. A saída nunca a leva.

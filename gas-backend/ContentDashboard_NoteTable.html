@@ -52,7 +52,9 @@ var CwNoteTable = (() => {
       optIn: [],
       vals: {},
       cids: [],
-      taskPrints: []
+      taskPrints: [],
+      // O agente gerou a nota de Split & Transfer neste caso (sinal do Consult, spec §9).
+      splitUsed: false
     }, over);
   }
   function newCidRow(cid = "") {
@@ -95,6 +97,11 @@ var CwNoteTable = (() => {
       const keys = taskKeys(catalog, st);
       if (!when.tasksAny.some((k) => keys.includes(k))) return false;
     }
+    if (when.tasksNone) {
+      const keys = taskKeys(catalog, st);
+      if (!keys.length || when.tasksNone.some((k) => keys.includes(k))) return false;
+    }
+    if (when.splitAny && !(st.splitUsed && when.splitAny.includes(st.substatus))) return false;
     if (when.rowIs && rowState(st, when.rowIs.id).v !== when.rowIs.v) return false;
     return true;
   }
@@ -139,6 +146,7 @@ var CwNoteTable = (() => {
     if (row.type === "derived") {
       if (row.auto === "substatus") return st.substatus || null;
       if (row.auto === "europe") return "Yes";
+      if (row.auto === "fixed") return labelText(row.value, ctx.lang) || null;
       if (row.auto === "tasks") {
         const t = tasksText(catalog, st, ctx.tsDisclaimer);
         if (t) return t;
@@ -264,7 +272,7 @@ var CwNoteTable = (() => {
         { head: true, vline: true, bg: C.bgInput, color: C.textSub, html: COMMENTS_HEAD }
       ];
       rows.push(head);
-      const ctx = { blockId: placement.b, tsDisclaimer: opts.tsDisclaimer };
+      const ctx = { blockId: placement.b, tsDisclaimer: opts.tsDisclaimer, lang };
       if (sec.kind === "group") {
         vis.forEach((r, i) => {
           const v = resolveRow(catalog, st, r, ctx);
@@ -300,7 +308,7 @@ var CwNoteTable = (() => {
     const cols = `<colgroup>${blk.widths.map((w) => `<col style="width:${w}%">`).join("")}</colgroup>`;
     const seg = findSegment(catalog, st.seg);
     const title = labelText(placement.title, lang);
-    const heading = seg && seg.showTitle && title ? `<div style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.primary};margin:16px 0 6px 0">${escapeHtml(title)}</div>` : "";
+    const heading = seg && seg.showTitle && title ? `<div${live ? ` data-block-h="${escapeHtml(placement.b)}"` : ""} style="font-family:${FONT};font-size:13px;font-weight:700;color:${C.primary};margin:16px 0 6px 0">${escapeHtml(title)}</div>` : "";
     return `${heading}<table${live ? ` data-block="${escapeHtml(placement.b)}"` : ""} style="${tableStyle}">${cols}<tbody>${gridHtml(rows, live)}</tbody></table>`;
   }
   function renderNoteHtml(catalog, st, opts = {}) {

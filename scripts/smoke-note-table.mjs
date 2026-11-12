@@ -688,6 +688,77 @@ await check('Configurações: "Abrir en" SBS-E e fluxo LM valem para a próxima 
 await check('sem erros de página nem de console', async () => igual(errors, [], 'erros'));
 await page.close();
 
+console.log('\nTag Support sem ACT/ECW, Split & Transfer e fases ECL (outra tela, só com GA4)');
+const solo = await abrirCrm({ tasks: ['ga4_event_tracking'] });
+const q = solo.page;
+await q.evaluate(() => document.getElementById('cw-btn-notetable').click());
+await q.waitForTimeout(1500);
+await q.click(`${POP} [data-role="substatus"]`);
+await q.locator(`${POP} .nt-pop .nt-opt`, { hasText: /^SO - Troubleshooting Only/ }).first().click();
+
+await check('task que não é ACT/ECW: sem pergunta; a linha informativa avisa e a nota já leva "No" e o motivo (idioma da nota)', async () => {
+    igual(await q.locator(`${POP} .nt-ts`).count(), 0, 'o cartão da pergunta não devia existir');
+    igual(await q.locator(`${POP} .nt-ts-auto`).count(), 1, 'linha informativa');
+    ok(/no aplica a estas tasks/i.test(await q.locator(`${POP} .nt-ts-auto`).innerText()), 'texto da linha informativa');
+    const html = await q.locator(`${POP} .nt-note-card`).innerHTML();
+    ok(html.includes('Task não se aplica ao uso do TSA.'), 'motivo ausente da nota (PT)');
+    ok(/Usou o Tag Support\?<\/td><td[^>]*>No</.test(html), '"No" ausente da nota');
+    ok(!/data-row="ts_used"/.test(await q.locator(`${POP} .nt-form`).innerHTML()), 'a pergunta não pode estar no formulário');
+});
+
+await check('Split & Transfer gerado: o Consult passa a ser sugerido em SO - Troubleshooting Only', async () => {
+    const dot = () => q.locator(`${POP} [data-ctx="blocks"] .nt-chip`, { hasText: /^Consult/ }).locator('.nt-dot').count();
+    igual(await dot(), 0, 'sem Split & Transfer não devia sugerir');
+    await q.evaluate(() => [...document.querySelectorAll('#cw-notetable-popup .nt-hbtn')].find((b) => /split/i.test(b.title)).click());
+    await q.waitForTimeout(700);
+    await q.fill(`${POP} .nt-split #cid`, '123-456-7890');
+    await q.fill(`${POP} .nt-split #name`, 'Acme Corp');
+    await q.fill(`${POP} .nt-split #desc`, 'Teste do Split');
+    await q.locator(`${POP} .nt-split button`).last().click();
+    await q.waitForTimeout(1500);
+    // o rodapé do Split tem Voltar e Gerar, nesta ordem, no fim do DOM (os botões do cabeçalho vêm antes)
+    await q.locator(`${POP} .nt-split button`).nth(-2).click();
+    await q.waitForTimeout(700);
+    igual(await dot(), 1, 'depois do Split & Transfer o Consult devia vir sugerido');
+});
+
+await check('ECL MMS: "?" em cada fase, o painel traz o Doc e o fantasma TROCA a fase (não soma), com a faixa antes do título', async () => {
+    await q.click(`${POP} [data-role="note"]`);
+    await q.locator(`${POP} [role=radiogroup][aria-label="Tipo de nota"] button`, { hasText: 'MMS' }).click();
+    await q.click(`${POP} [data-role="note"]`);
+    igual(await q.locator(`${POP} .nt-q`).evaluateAll((els) => els.map((e) => e.dataset.q)), ['mms.triage', 'mms.eligibility', 'mms.audit', 'mms.impl_call', 'mms.interim'], '"?" por fase');
+    await q.locator(`${POP} .nt-q[data-q="mms.eligibility"]`).click();
+    const painel = await q.locator(`${POP} #cw-nt-help`).innerText();
+    ok(/galactic/i.test(painel) && /PI - Audit In Progress/.test(painel) && /una fase por nota/i.test(painel), painel);
+    await q.locator(`${POP} #cw-nt-help .nt-na`).click();
+    await q.waitForTimeout(900);
+    const r = await q.evaluate((pp) => {
+        const card = document.querySelector(`${pp} .nt-note-card`);
+        const b = card.querySelector('.nt-pv-note');
+        const g = card.querySelector('table.nt-pv-ghost');
+        return { ids: [...card.querySelectorAll('table[data-block]')].map((t) => t.dataset.block), ghost: g ? g.dataset.block : null,
+                 antesDoTitulo: !!(b && b.nextElementSibling && b.nextElementSibling.dataset.blockH === 'eligibility'), banner: b ? b.textContent : '' };
+    }, POP);
+    igual(r.ids, ['eligibility', 'extras'], 'o fantasma devia trocar a fase, não somar');
+    igual(r.ghost, 'eligibility', 'fantasma');
+    ok(r.antesDoTitulo, 'a faixa devia vir antes do título da fase');
+    ok(/no es la fase de la nota/i.test(r.banner), r.banner);
+    if (shotDir) await q.screenshot({ path: `${shotDir}/previa-fase-ecl.png` });
+});
+
+await check('ECL SBS-E: o mesmo bloco (audit) tem outro "quando usar" que no MMS, e a auditoria do SBS-E não inventa sub-status', async () => {
+    await q.keyboard.press('Escape');
+    await q.keyboard.press('Escape');
+    await q.click(`${POP} [data-role="note"]`);
+    await q.locator(`${POP} [role=radiogroup][aria-label="Tipo de nota"] button`, { hasText: 'SBS-E' }).click();
+    await q.click(`${POP} [data-role="note"]`);
+    igual(await q.locator(`${POP} .nt-q`).evaluateAll((els) => els.map((e) => e.dataset.q)), ['sbse.audit', 'sbse.impl_call', 'sbse.interim'], '"?" por fase');
+    await q.locator(`${POP} .nt-q[data-q="sbse.audit"]`).click();
+    const t = await q.locator(`${POP} #cw-nt-help`).innerText();
+    ok(/aprobada por el SME/i.test(t) && !/sub-status/i.test(t), t);
+});
+await solo.page.close();
+
 console.log('\nTela estreita (~1196px)');
 const narrow = await abrirCrm({ width: 1196, height: 800 });
 await check('a gaveta sobrepõe a janela em vez de sair da tela', async () => {

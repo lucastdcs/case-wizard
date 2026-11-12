@@ -61,6 +61,8 @@ export function createNoteState(over = {}) {
     return Object.assign({
         seg: 'all', flow: 'bau', europe: false, substatus: '',
         tasks: [], forced: [], active: [], optIn: [], vals: {}, cids: [], taskPrints: [],
+        // O agente gerou a nota de Split & Transfer neste caso (sinal do Consult, spec §9).
+        splitUsed: false,
     }, over);
 }
 
@@ -115,6 +117,13 @@ export function matches(catalog, st, when) {
         const keys = taskKeys(catalog, st);
         if (!when.tasksAny.some((k) => keys.includes(k))) return false;
     }
+    // Há task marcada e NENHUMA é destas (ex.: nem ACT nem ECW). Sem task nenhuma, não vale.
+    if (when.tasksNone) {
+        const keys = taskKeys(catalog, st);
+        if (!keys.length || when.tasksNone.some((k) => keys.includes(k))) return false;
+    }
+    // Split & Transfer usado E sub-status numa destas listas.
+    if (when.splitAny && !(st.splitUsed && when.splitAny.includes(st.substatus))) return false;
     if (when.rowIs && rowState(st, when.rowIs.id).v !== when.rowIs.v) return false;
     return true;
 }
@@ -192,6 +201,8 @@ export function resolveRow(catalog, st, row, ctx = {}) {
     if (row.type === 'derived') {
         if (row.auto === 'substatus') return st.substatus || null;
         if (row.auto === 'europe') return 'Yes';
+        // Valor constante do catálogo, no idioma da nota (ex.: "No" + o motivo do Tag Support quando a task não é ACT/ECW).
+        if (row.auto === 'fixed') return labelText(row.value, ctx.lang) || null;
         if (row.auto === 'tasks') {
             const t = tasksText(catalog, st, ctx.tsDisclaimer);
             if (t) return t;
@@ -261,6 +272,7 @@ export function isSuggested(catalog, st, placement) {
     const keys = taskKeys(catalog, st);
     if (sg.tasksAny && sg.tasksAny.some((k) => keys.includes(k))) return true;
     if (sg.substatusAny && sg.substatusAny.includes(st.substatus)) return true;
+    if (sg.splitAny && st.splitUsed && sg.splitAny.includes(st.substatus)) return true;
     return false;
 }
 

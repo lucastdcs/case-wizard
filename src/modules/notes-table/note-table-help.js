@@ -18,10 +18,11 @@
 // campo `help` no catálogo sumiria para quem usa um layout publicado. Passar isto
 // para a Central é um passo à parte (campo no catálogo + fallback por bloco).
 //
-// Os blocos das fases ECL (Phase 0 a 3, Interim) ainda não têm ajuda: o "?" só
-// aparece onde há texto.
+// As fases ECL (SBS-E e MMS) vêm do Doc "Template 2 e 3" e são chaveadas por
+// segmento+bloco (`sbse.audit`, `mms.audit`...), porque o mesmo bloco tem "quando usar" e
+// sub-status diferentes em cada segmento. O "?" só aparece onde há texto.
 //
-// Os três dicionários abaixo são DADOS puros {pt, es, en} (o test:i18n confere a
+// Os dicionários abaixo são DADOS puros {pt, es, en} (o test:i18n confere a
 // paridade); a composição por bloco fica na função compose(), no fim.
 
 import { getLanguage } from "../shared/i18n.js";
@@ -140,7 +141,77 @@ const BLOCKS = {
     },
 };
 
+// O que as fases ECL repetem. `{impl}` nos sub-status vira `impl` (Phase 2 do SBS-E e Phase 3 do MMS
+// têm os mesmos sub-status no Doc).
+const ECL_SHARED = {
+    pt: {
+        impl: [["Em andamento", "Todos os NI (Awaiting Inputs, Awaiting Validation etc.)."], ["Implementado", "SO (Implementation, Troubleshooting e Education Only)."], ["Inativo", "IN (Instructions Shared etc.)."]],
+        one: "Uma fase por nota: escolha a que descreve o que você acabou de fazer.",
+    },
+    es: {
+        impl: [["En curso", "Todos los NI (Awaiting Inputs, Awaiting Validation, etc.)."], ["Implementado", "SO (Implementation, Troubleshooting y Education Only)."], ["Inactivo", "IN (Instructions Shared, etc.)."]],
+        one: "Una fase por nota: elija la que describe lo que acaba de hacer.",
+    },
+    en: {
+        impl: [["In progress", "All NI (Awaiting Inputs, Awaiting Validation, etc.)."], ["Implemented", "SO (Implementation, Troubleshooting and Education Only)."], ["Inactive", "IN (Instructions Shared, etc.)."]],
+        one: "One phase per note: pick the one that describes what you just did.",
+    },
+};
+
+const ECL_BLOCKS = {
+    "sbse.audit": {
+        pt: { what: "O registro da auditoria de prontidão: por CID (To Be Worked?, CID, Under MCC?, resultado e link da auditoria e aprovação do SME), os detalhes gerais e os prints da auditoria e do GAM Ping. TBW = CID a trabalhar; N-TBW = não será trabalhado.", when: "Depois que a auditoria é concluída E revisada/aprovada pelo SME." },
+        es: { what: "El registro de la auditoría de preparación: por CID (To Be Worked?, CID, Under MCC?, resultado y enlace de la auditoría y aprobación del SME), los detalles generales y las capturas de la auditoría y del GAM Ping. TBW = CID a trabajar; N-TBW = no se trabajará.", when: "Después de que la auditoría se concluya Y sea revisada/aprobada por el SME." },
+        en: { what: "The record of the readiness audit: per CID (To Be Worked?, CID, Under MCC?, audit outcome and link, and SME sign-off), the general details and the audit and GAM Ping screenshots. TBW = CID to be worked; N-TBW = will not be worked.", when: "After the audit is completed AND reviewed/signed-off by the SME." },
+    },
+    "sbse.impl_call": {
+        pt: { what: "O registro da call de implementação: por CID (To Be Worked?, CID, tag implementada?, mapeamento do Case ID), sub-status e motivo, follow-up, Speakeasy ID, comentários da call, consentimento de gravação e os prints (da call, do nível de acesso da conta, do GAM Ping e os demais).", when: "Depois que a call de implementação é concluída.", statuses: "{impl}" },
+        es: { what: "El registro de la llamada de implementación: por CID (To Be Worked?, CID, ¿etiqueta implementada?, mapeo del Case ID), sub-status y motivo, seguimiento, Speakeasy ID, comentarios de la llamada, consentimiento de grabación y las capturas (de la llamada, del nivel de acceso de la cuenta, del GAM Ping y las demás).", when: "Después de que se concluya la llamada de implementación.", statuses: "{impl}" },
+        en: { what: "The record of the implementation call: per CID (To Be Worked?, CID, tag implemented?, Case ID mapping), sub-status and reason, follow-up, Speakeasy ID, on-call comments, recording consent and the screenshots (on-call, account access level, GAM Ping and the rest).", when: "After the implementation call is completed.", statuses: "{impl}" },
+    },
+    "sbse.interim": {
+        pt: { what: "Os acompanhamentos com o seller ou o anunciante e o fechamento antes da implementação: sub-status, follow-up, comentários do caso, GAM Ping e os demais prints.", when: "Sempre que você fecha o caso na pré-call ou faz follow-up com o seller ou o anunciante nas etapas de implementação." },
+        es: { what: "Los seguimientos con el seller o el anunciante y el cierre antes de la implementación: sub-status, seguimiento, comentarios del caso, GAM Ping y las demás capturas.", when: "Siempre que cierre el caso en la pre-llamada o haga seguimiento con el seller o el anunciante en las etapas de implementación." },
+        en: { what: "The follow-ups with the seller or advertiser and the closure before implementation: sub-status, follow-up, case comments, GAM Ping and the other screenshots.", when: "Whenever you close a case in the pre-call or follow up with the seller or advertiser at the implementation stages." },
+    },
+    "mms.triage": {
+        pt: { what: "O registro da triagem inicial: sub-status, follow-up, comentários do caso e GAM Ping.", when: "Depois que o e-mail FR (CR 0A) é enviado, mas os CIDs ainda não foram confirmados.", flow: "Fases em ordem: 0 Triagem inicial, 1 Verificação de elegibilidade, 2 Auditoria e agendamento, 3 Call de pré-implementação. O Interim cobre os acompanhamentos e fechamentos no meio do caminho.", statuses: [["Sub-status", "PI - Eligibility Check In Progress."]] },
+        es: { what: "El registro del triaje inicial: sub-status, seguimiento, comentarios del caso y GAM Ping.", when: "Después de enviar el correo FR (CR 0A), pero con los CID aún sin confirmar.", flow: "Fases en orden: 0 Triaje inicial, 1 Verificación de elegibilidad, 2 Auditoría y programación, 3 Llamada de pre-implementación. El Interim cubre los seguimientos y cierres intermedios.", statuses: [["Sub-status", "PI - Eligibility Check In Progress."]] },
+        en: { what: "The record of the initial triage: sub-status, follow-up, case comments and GAM Ping.", when: "After the FR email (CR 0A) has been sent BUT the CID(s) are yet to be confirmed.", flow: "Phases in order: 0 Initial Triage, 1 Eligibility Verification, 2 Readiness Audit & Scheduling, 3 Pre-Implementation Call. Interim covers the follow-ups and closures in between.", statuses: [["Sub-status", "PI - Eligibility Check In Progress."]] },
+    },
+    "mms.eligibility": {
+        pt: { what: "A verificação de elegibilidade: por CID (To Be Worked?, CID, Under MCC?, status de elegibilidade e prints do Galactic), sub-status, follow-up, comentários do caso e GAM Ping.", when: "Depois que o e-mail FR (CR 0A) é enviado E a elegibilidade dos CIDs confirmados foi checada no Galactic.", flow: "Fases em ordem: 0 Triagem inicial, 1 Verificação de elegibilidade, 2 Auditoria e agendamento, 3 Call de pré-implementação. O Interim cobre os acompanhamentos e fechamentos no meio do caminho.", statuses: [["Sub-status", "PI - Audit In Progress e PI - Eligibility Check In Progress (CIDs confirmados pelo seller, mas ainda se busca identificar oportunidades específicas de implementação para a TechSol, com base no cenário de Next Step do PCM Power)."]] },
+        es: { what: "La verificación de elegibilidad: por CID (To Be Worked?, CID, Under MCC?, estado de elegibilidad y capturas de Galactic), sub-status, seguimiento, comentarios del caso y GAM Ping.", when: "Después de enviar el correo FR (CR 0A) Y de comprobar en Galactic la elegibilidad de los CID confirmados.", flow: "Fases en orden: 0 Triaje inicial, 1 Verificación de elegibilidad, 2 Auditoría y programación, 3 Llamada de pre-implementación. El Interim cubre los seguimientos y cierres intermedios.", statuses: [["Sub-status", "PI - Audit In Progress y PI - Eligibility Check In Progress (CID confirmados por el seller, pero aún se buscan oportunidades específicas de implementación para TechSol, según el escenario de Next Step de PCM Power)."]] },
+        en: { what: "The eligibility verification: per CID (To Be Worked?, CID, Under MCC?, eligibility status and Galactic screenshots), sub-status, follow-up, case comments and GAM Ping.", when: "After the FR email (CR 0A) has been sent AND the eligibility of the confirmed CID(s) has been checked in Galactic.", flow: "Phases in order: 0 Initial Triage, 1 Eligibility Verification, 2 Readiness Audit & Scheduling, 3 Pre-Implementation Call. Interim covers the follow-ups and closures in between.", statuses: [["Sub-status", "PI - Audit In Progress and PI - Eligibility Check In Progress (CIDs confirmed by the seller, but we are still probing for specific implementation opportunities for TechSol based on the PCM Power Next Step scenario)."]] },
+    },
+    "mms.audit": {
+        pt: { what: "O registro da auditoria de prontidão e do agendamento: por CID (To Be Worked?, CID, Under MCC?, resultado e link da auditoria e aprovação do SME), os detalhes gerais e os prints da auditoria e do GAM Ping. TBW = CID a trabalhar; N-TBW = não será trabalhado.", when: "Depois que a auditoria é concluída E revisada/aprovada pelo SME.", flow: "Fases em ordem: 0 Triagem inicial, 1 Verificação de elegibilidade, 2 Auditoria e agendamento, 3 Call de pré-implementação. O Interim cobre os acompanhamentos e fechamentos no meio do caminho.", statuses: [["Sub-status", "PI - Awaiting Appointment e PI - Appointment Scheduled."]] },
+        es: { what: "El registro de la auditoría de preparación y la programación: por CID (To Be Worked?, CID, Under MCC?, resultado y enlace de la auditoría y aprobación del SME), los detalles generales y las capturas de la auditoría y del GAM Ping. TBW = CID a trabajar; N-TBW = no se trabajará.", when: "Después de que la auditoría se concluya Y sea revisada/aprobada por el SME.", flow: "Fases en orden: 0 Triaje inicial, 1 Verificación de elegibilidad, 2 Auditoría y programación, 3 Llamada de pre-implementación. El Interim cubre los seguimientos y cierres intermedios.", statuses: [["Sub-status", "PI - Awaiting Appointment y PI - Appointment Scheduled."]] },
+        en: { what: "The record of the readiness audit and scheduling: per CID (To Be Worked?, CID, Under MCC?, audit outcome and link, and SME sign-off), the general details and the audit and GAM Ping screenshots. TBW = CID to be worked; N-TBW = will not be worked.", when: "After the audit is completed AND reviewed/signed-off by the SME.", flow: "Phases in order: 0 Initial Triage, 1 Eligibility Verification, 2 Readiness Audit & Scheduling, 3 Pre-Implementation Call. Interim covers the follow-ups and closures in between.", statuses: [["Sub-status", "PI - Awaiting Appointment and PI - Appointment Scheduled."]] },
+    },
+    "mms.impl_call": {
+        pt: { what: "O registro da call de pré-implementação (3-way): por CID (To Be Worked?, CID, tag implementada?, mapeamento do Case ID), sub-status e motivo, follow-up, Speakeasy ID, comentários da call, consentimento de gravação e os prints (da call, do nível de acesso da conta, do GAM Ping e os demais).", when: "Depois que a call de pré-implementação (3-way) é concluída OU ao fechar o caso depois de uma call de pré-implementação bem-sucedida.", flow: "Fases em ordem: 0 Triagem inicial, 1 Verificação de elegibilidade, 2 Auditoria e agendamento, 3 Call de pré-implementação. O Interim cobre os acompanhamentos e fechamentos no meio do caminho.", statuses: "{impl}" },
+        es: { what: "El registro de la llamada de pre-implementación (3-way): por CID (To Be Worked?, CID, ¿etiqueta implementada?, mapeo del Case ID), sub-status y motivo, seguimiento, Speakeasy ID, comentarios de la llamada, consentimiento de grabación y las capturas (de la llamada, del nivel de acceso de la cuenta, del GAM Ping y las demás).", when: "Después de que se concluya la llamada de pre-implementación (3-way) O al cerrar el caso tras una llamada de pre-implementación exitosa.", flow: "Fases en orden: 0 Triaje inicial, 1 Verificación de elegibilidad, 2 Auditoría y programación, 3 Llamada de pre-implementación. El Interim cubre los seguimientos y cierres intermedios.", statuses: "{impl}" },
+        en: { what: "The record of the pre-implementation call (3-way): per CID (To Be Worked?, CID, tag implemented?, Case ID mapping), sub-status and reason, follow-up, Speakeasy ID, on-call comments, recording consent and the screenshots (on-call, account access level, GAM Ping and the rest).", when: "After the 3-way pre-implementation call is completed OR whenever we close a case after a successful pre-implementation call.", flow: "Phases in order: 0 Initial Triage, 1 Eligibility Verification, 2 Readiness Audit & Scheduling, 3 Pre-Implementation Call. Interim covers the follow-ups and closures in between.", statuses: "{impl}" },
+    },
+    "mms.interim": {
+        pt: { what: "Os acompanhamentos com o seller ou o anunciante e o fechamento antes da implementação: sub-status, follow-up, comentários do caso, GAM Ping e os demais prints.", when: "Sempre que você fecha o caso na pré-implementação OU faz follow-up com o seller ou o anunciante, na pré-implementação e na implementação.", flow: "Fases em ordem: 0 Triagem inicial, 1 Verificação de elegibilidade, 2 Auditoria e agendamento, 3 Call de pré-implementação. O Interim cobre os acompanhamentos e fechamentos no meio do caminho.", statuses: [["Fechar na pré-implementação", "PI - Lead Not Ready (Not Reachable, Not Ready, Not Interested) e PI - Ineligible (API, Agency, Bidding, Pitch, Ineligible, Fully Adopted)."], ["Acompanhar", "PI - Eligibility Check In Progress, PI - Awaiting Appointment, NI - Awaiting Inputs e NI - In Consult."]] },
+        es: { what: "Los seguimientos con el seller o el anunciante y el cierre antes de la implementación: sub-status, seguimiento, comentarios del caso, GAM Ping y las demás capturas.", when: "Siempre que cierre el caso en la pre-implementación O haga seguimiento con el seller o el anunciante, en la pre-implementación y en la implementación.", flow: "Fases en orden: 0 Triaje inicial, 1 Verificación de elegibilidad, 2 Auditoría y programación, 3 Llamada de pre-implementación. El Interim cubre los seguimientos y cierres intermedios.", statuses: [["Cerrar en la pre-implementación", "PI - Lead Not Ready (Not Reachable, Not Ready, Not Interested) y PI - Ineligible (API, Agency, Bidding, Pitch, Ineligible, Fully Adopted)."], ["Dar seguimiento", "PI - Eligibility Check In Progress, PI - Awaiting Appointment, NI - Awaiting Inputs y NI - In Consult."]] },
+        en: { what: "The follow-ups with the seller or advertiser and the closure before implementation: sub-status, follow-up, case comments, GAM Ping and the other screenshots.", when: "Whenever we close a case in the pre-implementation stage OR follow up with the seller or advertiser at both the pre-implementation and implementation stages.", flow: "Phases in order: 0 Initial Triage, 1 Eligibility Verification, 2 Readiness Audit & Scheduling, 3 Pre-Implementation Call. Interim covers the follow-ups and closures in between.", statuses: [["Closing in pre-implementation", "PI - Lead Not Ready (Not Reachable, Not Ready, Not Interested) and PI - Ineligible (API, Agency, Bidding, Pitch, Ineligible, Fully Adopted)."], ["Following up", "PI - Eligibility Check In Progress, PI - Awaiting Appointment, NI - Awaiting Inputs and NI - In Consult."]] },
+    },
+};
+
 const LANGS = ["pt", "es", "en"];
+
+// Fase ECL: sem relação com ACT/ECW nem com o Tag Support. `{impl}` vira a lista compartilhada; todas
+// lembram que a nota leva uma fase só.
+function composeEcl(key, lang) {
+    const own = ECL_BLOCKS[key][lang];
+    const sh = ECL_SHARED[lang];
+    const merged = { ...own, one: sh.one };
+    if (own.statuses === "{impl}") merged.statuses = sh.impl;
+    return merged;
+}
 
 // Junta o que o bloco divide com os outros (SHARED) ao que é só dele (BLOCKS). O Consult
 // não divide nada: não é de ACT/ECW e não tem relação com o Tag Support.
@@ -154,7 +225,10 @@ function compose(blockId, lang) {
 }
 
 // Ajuda já composta, por bloco e idioma: { before: { pt, es, en }, ... }.
-export const BLOCK_HELP = Object.fromEntries(Object.keys(BLOCKS).map((b) => [b, Object.fromEntries(LANGS.map((l) => [l, compose(b, l)]))]));
+export const BLOCK_HELP = {
+    ...Object.fromEntries(Object.keys(BLOCKS).map((b) => [b, Object.fromEntries(LANGS.map((l) => [l, compose(b, l)]))])),
+    ...Object.fromEntries(Object.keys(ECL_BLOCKS).map((k) => [k, Object.fromEntries(LANGS.map((l) => [l, composeEcl(k, l)]))])),
+};
 
 // Idioma sem entrada cai no PT, nunca em outro idioma por acaso (learning "Mapa de
 // idioma só de ES").
@@ -162,8 +236,9 @@ export function helpLabels(lang = getLanguage()) {
     return HELP_LABELS[lang] || HELP_LABELS.pt;
 }
 
-// Ajuda do bloco no idioma da interface, ou null quando o bloco não tem (fases ECL).
-export function blockHelp(blockId, lang = getLanguage()) {
-    const h = BLOCK_HELP[blockId];
+// Ajuda do bloco no idioma da interface, ou null quando o bloco não tem. Com o segmento, a entrada
+// `segmento.bloco` (fases ECL) vence a do bloco puro (ALL TASKS).
+export function blockHelp(blockId, lang = getLanguage(), segKey = "") {
+    const h = (segKey && BLOCK_HELP[`${segKey}.${blockId}`]) || BLOCK_HELP[blockId];
     return h ? (h[lang] || h.pt) : null;
 }

@@ -207,7 +207,7 @@ export function initNoteTable() {
         h("div", { class: "nt-credit" }, `created by ${AUTHOR_CREDIT}`));
 
     const splitHost = h("div", { class: "nt-split" });
-    const splitComponent = createSplitTransferComponent(() => toggleSplit());
+    const splitComponent = createSplitTransferComponent(() => toggleSplit(), () => { st.splitUsed = true; dirty(); render(); });
     splitComponent.style.height = "100%";
     splitHost.append(splitComponent);
 
@@ -559,6 +559,11 @@ export function initNoteTable() {
         return cw(card, "");
     }
 
+    // Task que não é ACT/ECW: não há pergunta; só avisa que a nota já leva "No" e o motivo.
+    function tsAutoLine() {
+        return cw(h("div", { class: "nt-card nt-ts-auto" }, h("b", {}, ntt("tsTitle")), h("span", {}, ntt("tsAutoNa"))), "");
+    }
+
     function autoCard(rows, pend) {
         const open = ui.autoOpen;
         const head = h("button", { class: "nt-auto-h", type: "button", "aria-expanded": String(open), onclick: () => { ui.autoOpen = !open; render(); } },
@@ -658,7 +663,7 @@ export function initNoteTable() {
 
     // ---- o "?" de cada bloco: explica o bloco (só tela; nada disto vai para a nota) ----
     function withHelp(s, p, name, chip) {
-        if (!blockHelp(p.b)) return chip;
+        if (!blockHelp(p.b, undefined, s.key)) return chip;
         const key = `${s.key}.${p.b}`;
         const ask = helpLabels().ask(name);
         const q = h("button", { class: "nt-q", type: "button", "data-q": key, "aria-expanded": String(ui.helpBlock === key), "aria-controls": "cw-nt-help", "aria-label": ask, title: ask, onclick: () => toggleHelp(key) }, "?");
@@ -667,7 +672,7 @@ export function initNoteTable() {
     function helpPanel(s) {
         if (!ui.helpBlock) return null;
         const p = s.blocks.find((b) => `${s.key}.${b.b}` === ui.helpBlock);
-        const info = p && blockHelp(p.b);
+        const info = p && blockHelp(p.b, undefined, s.key);
         if (!info) return null;
         const L = helpLabels();
         const title = M.labelText(p.title, "en");
@@ -678,12 +683,13 @@ export function initNoteTable() {
             h("p", { class: "nt-help-w" }, info.what),
             line(L.flow, info.flow),
             line(L.when, info.when),
-            h("div", { class: "nt-help-g" }, L.statuses),
+            info.statuses && info.statuses.length ? h("div", { class: "nt-help-g" }, L.statuses) : null,
             ...(info.statuses || []).map(([k, v]) => line(k, v, " s")),
             line(L.tasks, info.tasks),
             line(L.must, info.must),
             line(L.ts, info.ts),
             info.na ? h("div", { class: "nt-help-n" }, info.na) : null,
+            info.one ? h("div", { class: "nt-help-n" }, info.one) : null,
             h("div", { class: "nt-help-a" }, h("button", { class: "nt-na", type: "button", onclick: showInPreview }, ntt("pvOpen"))),
             h("div", { class: "nt-help-f" }, L.notInNote));
     }
@@ -692,25 +698,29 @@ export function initNoteTable() {
         if (!ui.helpBlock || !st.substatus) return null;
         const s = seg();
         const p = s.blocks.find((b) => `${s.key}.${b.b}` === ui.helpBlock);
-        if (!p || !blockHelp(p.b)) return null;
+        if (!p || !blockHelp(p.b, undefined, s.key)) return null;
         return { id: p.b, title: M.labelText(p.title, "en"), ghost: !st.active.includes(p.b) };
     }
     // Só na PRÉVIA: bloco desligado entra como tabela "fantasma" na posição do segmento; o bloco
     // ligado ganha destaque; os dois ganham a faixa de explicação. Nada disto toca no estado nem na
     // saída: Preencher e Copiar renderizam do zero (outputHtml), sem ler a prévia.
-    function previewView(t) { return t && t.ghost ? { ...st, active: [...st.active, t.id] } : st; }
+    function previewView(t) {
+        if (!t || !t.ghost) return st;
+        // Fase única (ECL): o fantasma é a nota como ficaria TROCANDO de fase, não uma segunda tabela.
+        return { ...st, active: seg().select === "single" ? [t.id] : [...st.active, t.id] };
+    }
     function decoratePreview(t) {
         if (!t) return;
         const tbl = preview.querySelector(`table[data-block="${t.id}"]`);
         if (!tbl) return;
         const L = helpLabels();
-        const info = blockHelp(t.id);
+        const info = blockHelp(t.id, undefined, seg().key);
         tbl.classList.add(t.ghost ? "nt-pv-ghost" : "nt-pv-hl");
         const banner = h("div", { class: "nt-pv-note", role: "note" },
             h("b", {}, ntt("pvExplain")),
-            t.ghost ? h("span", {}, ntt("pvGhost")) : null,
+            t.ghost ? h("span", {}, ntt(seg().select === "single" ? "pvGhostPhase" : "pvGhost")) : null,
             info.when ? h("span", {}, h("span", { class: "nt-pv-k" }, L.when + ": "), info.when) : null);
-        tbl.before(banner);
+        (preview.querySelector(`[data-block-h="${t.id}"]`) || tbl).before(banner);
         if (ui.helpScroll) {
             ui.helpScroll = false;
             requestAnimationFrame(() => {
@@ -883,6 +893,7 @@ export function initNoteTable() {
         const pend = (id) => ui.showPending && missKeys.has(id);
         const tsRows = visibleRowsAll().filter(([r]) => TS_ROWS.includes(r.id));
         if (tsRows.length) formHost.append(tsCard(tsRows, pend));
+        else if (visibleRowsAll().some(([r]) => r.id === "ts_used_na")) formHost.append(tsAutoLine());
         const autoRows = [];
         const seen = new Set();
         visibleRowsAll().forEach(([r, b]) => { if (isAutoRow(r, b) && !seen.has(r.id)) { seen.add(r.id); autoRows.push([r, b]); } });

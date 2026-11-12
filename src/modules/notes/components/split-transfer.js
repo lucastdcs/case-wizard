@@ -76,7 +76,9 @@ function st(key) {
     return ST_DICT[lang]?.[key] ?? ST_DICT.pt[key];
 }
 
-export function createSplitTransferComponent(onBack) {
+// `onGenerated` (opcional): chamado quando a nota de Split & Transfer é gerada. A Nota em tabela o usa
+// para sugerir o Consult (spec §9); sem ele o componente se comporta exatamente como antes.
+export function createSplitTransferComponent(onBack, onGenerated) {
     // O componente é montado uma vez, no boot, e o idioma da interface pode
     // mudar depois (o perfil chega do backend). Todo texto do chrome passa por
     // localize(): roda agora e de novo a cada troca.
@@ -473,6 +475,7 @@ ${getVal('checks')}
 
         const htmlToInsert = template.replace(/\n/g, '<br>');
         copyHtmlToClipboard(htmlToInsert);
+        if (onGenerated) onGenerated();
         
         const editor = await ensureNoteCardIsOpen();
         if (editor) {

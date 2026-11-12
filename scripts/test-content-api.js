@@ -1433,6 +1433,13 @@ check('kind ou type desconhecido é recusado (o bundle no ar não saberia desenh
   throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[0].when = { idioma: 'pt' }; })), /condição desconhecida 'idioma'/);
 });
 
+check('as condições tasksNone e splitAny existem (listas) e uma lista inválida é recusada', () => {
+  const ok = saveBlock('bloco_cond', blockValue((b) => { b.sections[0].rows[0].when = { tasksNone: ['ads_conversion_tracking'], splitAny: ['SO - Troubleshooting Only'] }; }));
+  if (!ok) throw new Error('tasksNone/splitAny deviam ser aceitas');
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[0].when = { tasksNone: 'ads_conversion_tracking' }; })), /'tasksNone' precisa ser lista/);
+  throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[0].when = { splitAny: true }; })), /'splitAny' precisa ser lista/);
+});
+
 check('id de linha duplicado ou fora do formato é recusado', () => {
   throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[1].id = b.sections[0].rows[0].id; })), /se repete no bloco/);
   throws(() => saveBlock('bloco_x', blockValue((b) => { b.sections[0].rows[0].id = 'Case Comments'; })), /id de linha inválido/);

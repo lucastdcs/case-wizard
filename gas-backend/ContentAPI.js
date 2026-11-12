@@ -1292,7 +1292,7 @@ const NOTE_ROW_TYPES = ['text', 'long', 'date', 'yesno', 'link', 'cid', 'speakea
 const NOTE_CID_COLUMN_TYPES = ['tbw', 'cid', 'yn', 'text', 'link', 'smeyes'];
 const NOTE_ROW_ID_RE = /^[a-z][a-z0-9_]{0,39}$/;
 const NOTE_KEY_RE = /^[a-z][a-z0-9_]{1,39}$/;
-const NOTE_WHEN_KEYS = ['flow', 'europe', 'substatusAny', 'tasksAny', 'rowIs'];
+const NOTE_WHEN_KEYS = ['flow', 'europe', 'substatusAny', 'tasksAny', 'tasksNone', 'splitAny', 'rowIs'];
 // Abaixo de 22% "Additional Comments (Optional)" parte a palavra numa tabela de ~456px.
 const NOTE_COMMENTS_MIN_WIDTH = 22;
 
@@ -1357,7 +1357,7 @@ function assertNoteWhen_(when, onde) {
       throw new Error(onde + ": condição desconhecida '" + k + "'. Só existem " + NOTE_WHEN_KEYS.join(", ") + ".");
     }
   });
-  ['substatusAny', 'tasksAny'].forEach(function (k) {
+  ['substatusAny', 'tasksAny', 'tasksNone', 'splitAny'].forEach(function (k) {
     if (when[k] !== undefined && !Array.isArray(when[k])) throw new Error(onde + ": '" + k + "' precisa ser lista.");
   });
 }
