@@ -331,24 +331,19 @@ This file differs from the long-term roadmap: it describes what is happening **n
       asserção própria; ordenar a pílula por uso (descartado no ADR); a pílula em duas
       colunas.
 
-- [~] **Pergunta do Tag Support: sempre antes dos prints, com destaque, linha sempre na nota
-      (2026-11-12).** Decidido pelo Lucas: a pergunta vem **sempre antes do lugar onde se colam os
-      prints**, com destaque, e a linha **sai sempre** na nota. **Entregue nos dois módulos:**
-      Case Notes atual (`tag-support.js`: aparece com qualquer task, sem mover de lugar, cartão
-      destacado e linha de ajuda PT/ES/EN, `getOutput()` sem condição) e Nota em tabela (cartão
-      `.nt-ts` antes dos blocos e dos prints; a tabela da nota não muda). `smoke:tag-support`
-      (módulo atual) e uma checagem nova em `smoke:note-table`; as duas reprovam no código anterior.
-      **Em aberto:**
-      - **Nota em tabela com task que não é ACT/ECW:** lá a pergunta continua só com ACT/ECW
-        (`when: tasksAny`). Estender para "qualquer task" exige um tipo de condição novo no catálogo
-        (`NOTE_WHEN_KEYS` em `ContentAPI.js` + o avaliador da Central em
-        `ContentDashboard_NoteTable.html`) e muda a spec §8 — decisão do Lucas, ver pergunta na sessão;
-      - **premissa medida no módulo atual:** a pergunta *já* ficava antes dos links com ACT/EC
-        (1123px × 1374px, `mock-crm.html`); o que faltava era a posição sem ACT/EC;
-      - achados fora do escopo, não mexidos: `getOutput()` do Tag Support usa o `t` da INTERFACE e
-        não o do atendimento (ADR-0016); em `restoreFullState`, `querySelector('div:last-child')`
-        pega o `divNao` em vez do `reasonDiv` (restaurar rascunho com Sim parece esconder o Não —
-        lido no código, não testado).
+- [~] **Tag Support: só pergunta com ACT/ECW, antes dos prints, com destaque; sem elas "Não" + motivo
+      (2026-11-12).** Decidido pelo Lucas e **entregue nos dois módulos**: a pergunta só existe com ACT ou
+      ECW, sempre antes dos prints e destacada; com outras tasks já vai "Não" e o motivo "Task não se
+      aplica ao uso do TSA"; a linha sai sempre que há task. No módulo novo são linhas do catálogo
+      (`ts_used_na`, `ts_reason_na`) com a condição nova `tasksNone`. **Em aberto:**
+      - o texto do motivo no **módulo antigo** sai no idioma da INTERFACE, não no do atendimento
+        (`getOutput()` usa o `t` da interface, ADR-0016) — achado do agente, não mexido; no módulo novo
+        sai no idioma da nota;
+      - restaurar um rascunho antigo com "Sim" pode esconder a opção "Não"
+        (`querySelector('div:last-child')` em `restoreFullState`) — lido no código, não testado;
+      - **produção:** `seedNoteLayoutsNow()` precisa rodar de novo para a Central receber as linhas novas e
+        a sugestão do Consult (e o backend precisa estar no ar **antes**, pelo vocabulário `tasksNone` /
+        `splitAny`); até lá o app usa o embutido.
 
 - [~] **Blocos Before / Implementation / After / Consult — explicar e pré-visualizar (2026-11-12).**
       Pedido do Lucas: um "?" em cada bloco (o que é, quando usar, quais status, quais tasks, relação
@@ -365,11 +360,11 @@ This file differs from the long-term roadmap: it describes what is happening **n
          segmento, com a faixa "Explicação — não vai para a nota". Só na prévia, provado com o "?" aberto durante o
          Preencher (`smoke:note-table` 59, `test:note-table` 67). A cópia do renderizador na Central foi regenerada
          (`npm run build:note-table-central`).
-      3. [ ] **"?" das fases ECL** (Phase 0–3, Interim) e, depois, o texto na Central (campo no catálogo +
-         fallback por bloco + semente). Decisão estrutural a registrar em ADR quando for para a Central.
-      **Divergência achada:** o Consult só é sugerido para `IN - Troubleshooting [Transferred]` e
-      `IN - Out of Scope - Rerouted`; o Doc também cobre `SO - Troubleshooting only + Split & Transfer`
-      (exigiria uma condição de sugestão "Split & Transfer usado" — mesma restrição de `NOTE_WHEN_KEYS`).
+      3. [x] **"?" das fases ECL** — entregue (Doc "Template 2 e 3", por segmento+bloco, sem inventar o que o
+         Doc não diz; o fantasma de fase única troca a fase).
+      4. [x] **Sugestão do Consult com Split & Transfer** — entregue (`splitAny` + `onGenerated`).
+      5. [ ] **O texto da ajuda na Central** (campo no catálogo + fallback por bloco + semente). Decisão
+         estrutural a registrar em ADR quando for para a Central.
       `MMS only` e `M&A` seguem escondidos/sem definição, como o Lucas pediu.
 
 - [~] **Lembrete de qualidade em todo boot (2026-10-30, ADR-0021).** Pedido do

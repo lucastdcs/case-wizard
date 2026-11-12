@@ -56,7 +56,7 @@ cabeçalho), e um título repetiria isso. O texto impresso é **o cabeçalho exa
 a auditoria poder buscá-lo. É uma linha de texto **fora** da tabela: não altera a estrutura que
 se audita. Configurável por segmento (`showTitle`).
 
-**Sugestão de blocos** (`suggest`): ACT ou ECW sugerem `before`, `impl` e `after`; `consult` é
+**Sugestão de blocos** (`suggest`): ACT ou ECW sugerem `before`, `impl` e `after`; `consult` também é sugerido em `SO - Troubleshooting Only` **depois que o agente gera a nota de Split & Transfer** (`splitAny` + `st.splitUsed`; o componente avisa por `onGenerated`, que o Doc cita como "Dual SO - Troubleshooting only + Split & Transfer"); `consult` é
 sugerido em `IN - Troubleshooting [Transferred]` e `IN - Out of Scope - Rerouted`. É só uma
 sugestão (etiqueta "sugerido"); o agente liga e desliga. O bloco `general` é `always`.
 
@@ -95,6 +95,11 @@ Cada linha tem `id` **estável e imutável** (rascunhos, regras e traduções ap
 `text`, `long`, `date`, `yesno`, `link`, `cid`, `speakeasy` e `derived` (somente leitura, vem do
 estado). Os textos de ajuda (a instrução que no padrão vinha entre colchetes dentro da célula)
 **não vão para a nota**: viram a dica sob o campo e moram no catálogo (`hint`).
+
+**Condições** (`when`, `requiredWhen`, `suggest`; o backend valida o vocabulário, `NOTE_WHEN_KEYS`): `flow`, `europe`, `substatusAny`,
+`tasksAny` (alguma destas tasks está marcada), `tasksNone` (há task marcada e **nenhuma** é destas), `splitAny` (o Split & Transfer foi gerado e o
+sub-status está nesta lista) e `rowIs`. Linha `derived` com `auto: 'fixed'` e `value` (texto ou `{pt, es, en}`) tem valor **constante do catálogo**, no
+idioma da nota: é o que dá "No" e o motivo do Tag Support quando a task não é ACT/ECW.
 
 Correções do padrão original, já aplicadas no catálogo: colchetes que faltavam; `:` uniformes nos
 rótulos; "Sub-status Reason :" sem o espaço; o rótulo do consentimento ganhou o `?` nos três
@@ -287,6 +292,8 @@ título "Interim…" usa o cabeçalho completo do padrão.
 | `gtm_ga4` | GTM/GA4 verified: | text | conforme regra | sim | obrigatória em: SO - Implementation Only, SO - Educational Only, SO - Troubleshooting Only, NI - Awaiting Validation; fora desses, opcional (chip "+") |
 | `ts_used` | Used Tag Support? | yesno | sim | não | padrão `No`; só com ACT ou ECW |
 | `ts_reason` | Reason: | text | não | sim | só com ACT ou ECW; e `ts_used` = No |
+| `ts_used_na` | Used Tag Support? | derived | não | não | `No` fixo; só com task marcada e **nenhuma** ACT/ECW (sem pergunta) |
+| `ts_reason_na` | Reason: | derived | não | não | motivo fixo "Task does not apply to TSA usage." (idioma da nota); mesma condição |
 | `call_attempt` | Call attempt: | link | sim | sim | só em: IN - Not Reachable |
 | `ev_call1` | Contact evidence: Call 1 | link | não | sim | só em: NI - Attempted Contact |
 | `ev_call2` | Contact evidence: Call 2 | link | não | sim | só em: NI - Attempted Contact |
@@ -392,7 +399,9 @@ Cada linha tem a própria condição (tabela do bloco `extras`, §4). Pontos que
 - **GTM/GA4** é obrigatória em `SO - *` e `NI - Awaiting Validation` (os antigos `requiresTasks`)
   e opcional nos demais, onde entra pelo chip "+ GTM/GA4 verified" (mesmo padrão dos campos
   opcionais do formulário antigo).
-- **Tag Support** só com ACT ou ECW marcadas; nasce em `No`. **No formulário** a pergunta (`ts_used` e, com
+- **Tag Support** — **a pergunta só aparece com ACT ou ECW marcadas**; nasce em `No`. **Com tasks que não são ACT nem ECW** não há pergunta: a nota
+  já sai com `Used Tag Support?` = `No` e o motivo "Task does not apply to TSA usage." (linhas `ts_used_na` e `ts_reason_na`, valor fixo do catálogo no
+  idioma da nota; condição `tasksNone`), e o formulário mostra só uma linha informando isso (decisão do Lucas, 2026-11-12). Sem task nenhuma, nada. **No formulário** a pergunta (`ts_used` e, com
   `No`, `ts_reason`) sobe para um **cartão destacado** (fundo âmbar, faixa lateral, linha de ajuda) antes de qualquer
   bloco ou print, porque a resposta decide os prints de ACT/ECW (Lucas, 2026-11-12). **Só a ordem da tela muda:** as
   linhas continuam no bloco `extras` e saem na tabela Additional Details, a última da nota. Com `Yes`, cada task ACT/ECW em
@@ -455,7 +464,10 @@ tabela: a tela". Aqui ficam só as regras de comportamento que ela implementa:
   obrigatório). Um por vez; clicar no "?" **não** liga nem desliga o bloco; Esc fecha só o painel e devolve o foco ao "?". O texto
   é de **tela**, no idioma da **interface**, tirado do Doc "fluxo after implementation before", e **nunca vai para a nota** (o painel
   traz o aviso). Mora em `note-table-help.js`, fora do catálogo (um segmento publicado na Central substitui o embutido inteiro).
-  As fases ECL ainda não têm "?": ele só aparece onde há texto. `MMS only` e `M&A` ficam como o Doc os deixa, sem definição.
+  As **fases ECL** (SBS-E e MMS) também têm "?", com o texto do Doc "Template 2 e 3", **por segmento+bloco** (o mesmo bloco tem "quando usar" e
+  sub-status diferentes em cada um: `audit` é Phase 1 no SBS-E e Phase 2 no MMS) e sem inventar o que o Doc não diz (a auditoria e o Interim do SBS-E
+  não listam sub-status). `MMS only` e `M&A` ficam como o Doc os deixa, sem definição. No ECL (fase única) o bloco "fantasma" **troca** a fase
+  na prévia em vez de somar uma segunda tabela, e a faixa vem antes do título da fase (`data-block-h`, só na prévia).
   **Prévia na gaveta:** abrir o "?" mostra **onde o bloco entra**. Com 536px livres à esquerda da janela a gaveta abre sozinha; sem eles
   (ela sobreporia a janela e esconderia o painel) o painel tem o botão "Ver na prévia". A prévia rola até a tabela do bloco (só o
   painel dela, nunca a página do CRM; `auto` com `prefers-reduced-motion`). Bloco **desligado** = tabela "fantasma" (esmaecida, tracejada)

@@ -17,7 +17,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   nada dele entra na saída. Clicar no "?" não liga nem desliga o bloco; Esc fecha só o painel e
   devolve o foco; trocar o idioma com o painel aberto o repinta. O texto mora em
   `note-table-help.js`, fora do catálogo, porque um segmento publicado na Central substitui o
-  embutido inteiro. As fases ECL ainda não têm "?". `MMS only` e `M&A` seguem como o Doc os deixa.
+  embutido inteiro. **As fases ECL (SBS-E e MMS) também têm "?"**, com o texto do Doc "Template 2 e 3" por
+  segmento+bloco; no ECL o fantasma troca a fase (não soma) e a faixa vem antes do título. `MMS only` e
+  `M&A` seguem como o Doc os deixa.
   **A prévia na gaveta:** com espaço ao lado da janela, o "?" abre a gaveta sozinho e rola a prévia
   (só ela, não a página do CRM) até a tabela do bloco; se a gaveta sobreporia a janela (~1196px), o
   painel ganha o botão "Ver na prévia". O bloco **desligado** aparece como tabela "fantasma"
@@ -97,21 +99,22 @@ versions follow [Semantic Versioning](https://semver.org/).
   O comportamento é o mesmo (liga o campo de consentimento de gravação) e os
   identificadores internos (`CASO_PORTUGAL`, `isPortugalCase`) ficam, porque
   rascunhos já salvos dependem deles.
-- **Notas: a pergunta do Tag Support vem antes dos prints, com destaque, e a
-  linha sai sempre na nota.** Decisões do Lucas de 2026-11-12, nos dois módulos.
-  *Case Notes (módulo atual):* a pergunta aparece com **qualquer** task
-  selecionada (antes sumia e se zerava sem ACT/EC) e fica sempre antes dos
-  links/prints; o cartão ganhou borda cheia, faixa lateral e uma linha dizendo que
-  a resposta vem antes dos prints (PT/ES/EN). O Sim dispensa os prints só de
-  Ads Conversion Tracking e Enhanced Conversions; as demais tasks seguem pedindo.
-  A linha "Utilizou Tag Support?" agora sai **sempre** que a pergunta está visível,
-  tenha o agente mexido nela ou não — notas de casos sem ACT/EC ganham
-  "Utilizou Tag Support? ❌ Não". Também some a pergunta que ficava na tela ao
-  trocar para "sem substatus". `npm run smoke:tag-support` (4 modos de substatus).
-  *Nota em tabela (módulo novo):* a pergunta sobe para um **cartão destacado**
-  antes dos blocos e dos prints (a tabela da nota não muda: a linha segue no
-  Additional Details). Continua só com ACT/ECW marcadas — ver `PLAN.md`.
-
+- **Notas: Tag Support só pergunta com ACT/ECW, antes dos prints e com destaque; sem elas já vai
+  "Não" + o motivo.** Decisões do Lucas de 2026-11-12, nos dois módulos. A pergunta **só aparece
+  com Ads Conversion Tracking ou Enhanced Conversions entre as tasks**, sempre antes do lugar onde se
+  colam os prints, com destaque (borda cheia, faixa lateral, linha de ajuda PT/ES/EN). O Sim dispensa
+  os prints só dessas duas; as demais tasks seguem pedindo. **Com tasks que não são essas não há
+  pergunta**: a nota já sai com "Utilizou Tag Support? Não" e o motivo "Task não se aplica ao uso do
+  TSA", e a linha sai **sempre que há task**. Uma resposta "Sim" dada com a ACT marcada não sobrevive a
+  ela sair da seleção. *Nota em tabela:* o motivo e o "No" são linhas do catálogo (`ts_used_na`,
+  `ts_reason_na`, valor fixo no idioma da nota) e o formulário mostra só uma linha avisando; a pergunta
+  sobe para um cartão destacado antes dos blocos. `smoke:tag-support` e `smoke:note-table`.
+- **Nota em tabela: o Consult é sugerido depois de gerar o Split & Transfer.** O Doc cita "Dual SO -
+  Troubleshooting only + Split & Transfer"; agora, em `SO - Troubleshooting Only`, gerar a nota de
+  Split & Transfer faz o chip do Consult aparecer como sugerido (junto das regras antigas). O componente
+  de Split & Transfer ganhou um aviso opcional (`onGenerated`); sem ele, nada muda. Vocabulário novo de
+  condições no catálogo: `tasksNone` e `splitAny` (backend e Central atualizados; a cópia do
+  renderizador na Central foi regenerada).
 ### Fixed
 - **`UserPrefsService.sync()` nunca ia à nuvem depois de chamado sem e-mail.** O
   Links o chama no init do módulo, antes de a identidade do agente ser capturada;

@@ -77,23 +77,21 @@ Cenários atípicos onde o encerramento imediato é necessário.
 ## Tag Support e os prints das tasks
 
 A pergunta "Você utilizou o Tag Support?" (Sim/Não + motivo + aviso do
-formulário, `tag-support.js`) aparece assim que há **qualquer** task selecionada,
-em qualquer substatus em que o agente use o seletor de tasks (SO_* e
-`NI_Awaiting_Validation` já o mostram; nos demais ele vem pelo botão "Gostaria de
-adicionar uma task"). **Fica sempre antes dos links/prints** e tem destaque (borda
-cheia, faixa lateral e uma linha dizendo que a resposta vem antes dos prints):
-é um ponto importante do fluxo (decisão do Lucas, 2026-11-12). O que muda com a
-resposta depende de `ads_conversion_tracking` (ACT) ou `ads_enhanced_conversions`
-(EC) estarem entre as tasks:
+formulário, `tag-support.js`) **só aparece com `ads_conversion_tracking` (ACT) ou
+`ads_enhanced_conversions` (EC) selecionadas**. Quando aparece, **fica sempre antes
+dos links/prints** e tem destaque (borda cheia, faixa lateral e uma linha dizendo que a
+resposta vem antes dos prints): é um ponto importante do fluxo (decisão do Lucas,
+2026-11-12). Com tasks que não são essas **não há pergunta**: a nota já sai com "Não" e o
+motivo "Task não se aplica ao uso do TSA" (no idioma da interface, ver PLAN).
 
-| Tasks selecionadas | O que o Sim faz |
-|---|---|
-| ACT e/ou EC (sozinhas ou com outras) | Dispensa os prints **só de ACT/EC**; as demais tasks seguem pedindo os seus. "Incluir mesmo assim" devolve os de uma task. |
-| Nenhuma ACT/EC | Nada nos prints, que seguem obrigatórios. É só registro. |
-| Nenhuma task | A pergunta fica escondida. |
+| Tasks selecionadas | A pergunta | O que o Sim faz |
+|---|---|---|
+| ACT e/ou EC (sozinhas ou com outras) | Aparece, antes dos links/prints | Dispensa os prints **só de ACT/EC**; as demais tasks seguem pedindo os seus. "Incluir mesmo assim" devolve os de uma task. |
+| Task(s), nenhuma ACT/EC | Não aparece | — (a nota já leva "Não" + o motivo; os prints seguem obrigatórios) |
+| Nenhuma task | Não aparece | — (a nota não leva a linha) |
 
-Na nota a linha "Utilizou Tag Support?" sai **sempre** que a pergunta está visível
-(com ou sem ACT/EC, tenha o agente mexido nela ou não). Travado em
+A linha "Utilizou Tag Support?" sai **sempre que há task**: perguntada (ACT/EC) ou já preenchida (as
+outras). Uma resposta "Sim" dada com a ACT marcada **não sobrevive** a ela sair da seleção. Travado em
 `npm run smoke:tag-support`.
 
 ## Gaps conhecidos entre este documento e `SUBSTATUS_TEMPLATES`
